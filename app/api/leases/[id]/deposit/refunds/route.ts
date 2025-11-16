@@ -94,7 +94,8 @@ export async function POST(
         .is("signed_at", null)
         .maybeSingle();
 
-      if (!edl || !edl.signed_at) {
+      const edlData = edl as any;
+      if (!edlData || !edlData.signed_at) {
         return NextResponse.json(
           { error: "L'EDL de sortie doit être signé avant restitution totale" },
           { status: 400 }
