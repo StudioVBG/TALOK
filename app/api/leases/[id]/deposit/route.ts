@@ -52,7 +52,8 @@ export async function POST(
       .single();
 
     const leaseData = lease as any;
-    if (leaseData.property.owner_id !== profile?.id) {
+    const profileData = profile as any;
+    if (leaseData.property.owner_id !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
