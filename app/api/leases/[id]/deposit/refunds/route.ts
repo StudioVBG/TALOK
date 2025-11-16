@@ -122,12 +122,14 @@ export async function POST(
 
     if (error) throw error;
 
+    const movementData = movement as any;
+
     // Émettre un événement
     const eventType = is_partial ? "Deposit.PartiallyReturned" : "Deposit.Returned";
     await supabase.from("outbox").insert({
       event_type: eventType,
       payload: {
-        movement_id: movement.id,
+        movement_id: movementData.id,
         lease_id: params.id as any,
         amount,
         is_partial,
@@ -139,7 +141,7 @@ export async function POST(
       user_id: user.id,
       action: "deposit_returned",
       entity_type: "deposit",
-      entity_id: movement.id,
+      entity_id: movementData.id,
       metadata: { amount, is_partial, lease_id: params.id as any },
     } as any);
 
