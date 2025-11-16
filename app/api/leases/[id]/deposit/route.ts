@@ -170,7 +170,7 @@ export async function GET(
     const { data: movements, error } = await supabase
       .from("deposit_movements")
       .select("*")
-      .eq("lease_id", params.id)
+      .eq("lease_id", params.id as any)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
