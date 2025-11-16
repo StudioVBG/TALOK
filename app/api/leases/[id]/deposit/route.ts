@@ -85,12 +85,14 @@ export async function POST(
 
     if (error) throw error;
 
+    const movementData = movement as any;
+
     // Émettre un événement
     await supabase.from("outbox").insert({
       event_type: "Deposit.Received",
       payload: {
-        movement_id: movement.id,
-        lease_id: params.id,
+        movement_id: movementData.id,
+        lease_id: params.id as any,
         amount,
       },
     } as any);
@@ -100,8 +102,8 @@ export async function POST(
       user_id: user.id,
       action: "deposit_received",
       entity_type: "deposit",
-      entity_id: movement.id,
-      metadata: { amount, lease_id: params.id },
+      entity_id: movementData.id,
+      metadata: { amount, lease_id: params.id as any },
     } as any);
 
     return NextResponse.json({ movement });
@@ -154,7 +156,8 @@ export async function GET(
       .single();
 
     const leaseData = lease as any;
-    const hasAccess = roommate || leaseData?.property?.owner_id === profile?.id;
+    const profileData = profile as any;
+    const hasAccess = roommate || leaseData?.property?.owner_id === profileData?.id;
 
     if (!hasAccess) {
       return NextResponse.json(
