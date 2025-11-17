@@ -78,12 +78,32 @@ export async function GET(request: Request) {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error fetching properties:", error);
+        console.error("[GET /api/properties] Error fetching properties:", error);
+        console.error("[GET /api/properties] Error details:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          ownerId: profileData.id,
+          role: profileData.role
+        });
+        
         // Si erreur RLS (permission denied), retourner un tableau vide plutôt qu'une erreur 500
         if (error.code === "42501" || error.message?.includes("permission denied") || error.message?.includes("row-level security")) {
+          console.warn("[GET /api/properties] RLS error detected, returning empty array");
           return NextResponse.json({ properties: [] });
         }
-        throw error;
+        
+        // Pour toute autre erreur, logger et retourner un tableau vide pour éviter l'erreur 500 côté client
+        console.error("[GET /api/properties] Unexpected error, returning empty array to prevent 500");
+        return NextResponse.json({ 
+          properties: [],
+          error: "Erreur lors de la récupération des propriétés",
+          debug: {
+            code: error.code,
+            message: error.message
+          }
+        });
       }
       properties = data;
     } else {
