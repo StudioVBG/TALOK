@@ -20,9 +20,10 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     setLoading(true);
     try {
+      // Utiliser NEXT_PUBLIC_APP_URL en production, sinon window.location.origin
       const redirectTo =
         typeof window !== "undefined"
-          ? `${window.location.origin}/auth/reset-password`
+          ? `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/reset-password`
           : undefined;
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
