@@ -352,6 +352,7 @@ export default function AccountCreationPage() {
                 onChange={(e) => updateForm("prenom", e.target.value)}
                 required
                 disabled={loading}
+                className="text-slate-900"
               />
             </div>
             <div className="space-y-2">
@@ -363,6 +364,7 @@ export default function AccountCreationPage() {
                 onChange={(e) => updateForm("nom", e.target.value)}
                 required
                 disabled={loading}
+                className="text-slate-900"
               />
             </div>
             <div className="space-y-2">
@@ -375,7 +377,7 @@ export default function AccountCreationPage() {
                   value={draft.formData.telephone}
                   onChange={(e) => updateForm("telephone", e.target.value)}
                   disabled={loading || draft.skipPhone}
-                  className="pl-10"
+                  className="pl-10 text-slate-900"
                 />
               </div>
               <div className="flex items-center gap-2 pt-1">
@@ -404,7 +406,7 @@ export default function AccountCreationPage() {
                   onChange={(e) => updateForm("email", e.target.value)}
                   required
                   disabled={loading}
-                  className="pl-10"
+                  className="pl-10 text-slate-900"
                 />
               </div>
             </div>
@@ -459,7 +461,7 @@ export default function AccountCreationPage() {
                       onChange={(e) => updateForm("password", e.target.value)}
                       required
                       disabled={loading}
-                      className="pl-10"
+                      className="pl-10 text-slate-900"
                     />
                   </div>
                   <p className="text-xs text-slate-300">
@@ -475,6 +477,7 @@ export default function AccountCreationPage() {
                     onChange={(e) => updateForm("confirmPassword", e.target.value)}
                     required
                     disabled={loading}
+                    className="text-slate-900"
                   />
                 </div>
               </div>
