@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,9 +24,10 @@ import {
   Globe,
   Info,
 } from "lucide-react";
-import type { Property } from "@/lib/types";
+import type { Property, Room, Photo } from "@/lib/types";
 import { useToast } from "@/components/ui/use-toast";
 import { ModeLocationModal } from "./mode-location-modal";
+import { propertiesService } from "@/features/properties/services/properties.service";
 
 interface PropertyAnnouncementTabProps {
   property: Property;
@@ -44,10 +45,32 @@ export function PropertyAnnouncementTab({
   const [isUpdatingMode, setIsUpdatingMode] = useState(false);
   const [leaseModalOpen, setLeaseModalOpen] = useState(false);
   const [leaseInfo, setLeaseInfo] = useState<any>(null);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Calcul du score de complétion (simplifié)
-  const completionScore = calculateCompletionScore(property);
-  const completionChecks = getCompletionChecks(property);
+  // Charger les photos et rooms pour le calcul du score
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [photosData, roomsData] = await Promise.all([
+          propertiesService.listPhotos(property.id).catch(() => []),
+          propertiesService.listRooms(property.id).catch(() => []),
+        ]);
+        setPhotos(photosData || []);
+        setRooms(roomsData || []);
+      } catch (error) {
+        console.error("[PropertyAnnouncementTab] Erreur lors du chargement:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [property.id]);
+
+  // Calcul du score de complétion avec les vraies données
+  const completionScore = calculateCompletionScore(property, photos, rooms);
+  const completionChecks = getCompletionChecks(property, photos, rooms);
 
   const handleModeLocationChange = async (newMode: string) => {
     if (newMode === modeLocation) return;
@@ -105,20 +128,31 @@ export function PropertyAnnouncementTab({
             </div>
             <Progress value={completionScore} className="h-2" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {completionChecks.map((check) => (
-              <div key={check.id} className="flex items-center gap-2 text-sm">
-                {check.completed ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                )}
-                <span className={check.completed ? "" : "text-muted-foreground"}>
-                  {check.label}
-                </span>
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-sm text-muted-foreground text-center py-4">
+              Calcul du score en cours...
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {completionChecks.map((check) => (
+                <div key={check.id} className="flex items-center gap-2 text-sm">
+                  {check.completed ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  )}
+                  <span className={check.completed ? "text-foreground" : "text-muted-foreground"}>
+                    {check.label}
+                  </span>
+                  {check.weight && check.weight < 1 && (
+                    <Badge variant="outline" className="ml-auto text-xs">
+                      {check.weight < 0.5 ? "Optionnel" : "Recommandé"}
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -334,62 +368,207 @@ export function PropertyAnnouncementTab({
   );
 }
 
-function calculateCompletionScore(property: Property): number {
+function calculateCompletionScore(property: Property, photos: Photo[] = [], rooms: Room[] = []): number {
   let score = 0;
   let total = 0;
+  const propertyData = property as any;
 
-  // Titre
+  // Titre d'annonce (obligatoire)
   total++;
-  if ((property as any).titre_annonce) score++;
+  if (propertyData.titre_annonce?.trim()) score++;
 
-  // Description logement
-  total++;
-  if ((property as any).description_logement) score++;
+  // Tagline (optionnel mais recommandé)
+  total += 0.5;
+  if (propertyData.tagline?.trim()) score += 0.5;
 
-  // Photos (au moins 3)
+  // Description logement (obligatoire)
   total++;
-  // TODO: Vérifier le nombre réel de photos
-  // if (photos.length >= 3) score++;
+  if (propertyData.description_logement?.trim()) score++;
 
-  // Couchages
-  total++;
-  // TODO: Vérifier les couchages par chambre
-  // if (hasBeds) score++;
+  // Description accès voyageurs (optionnel)
+  total += 0.5;
+  if (propertyData.description_acces_voyageurs?.trim()) score += 0.5;
 
-  // Quartier
+  // Description à savoir (optionnel)
+  total += 0.5;
+  if (propertyData.description_a_savoir?.trim()) score += 0.5;
+
+  // Photos (minimum 3, idéal 5+)
   total++;
-  if ((property as any).description_quartier) score++;
+  const photoCount = photos.length;
+  if (photoCount >= 5) {
+    score += 1; // Parfait
+  } else if (photoCount >= 3) {
+    score += 0.7; // Minimum atteint
+  } else if (photoCount >= 1) {
+    score += 0.3; // Partiel
+  }
+
+  // Photo principale
+  total += 0.5;
+  if (photos.some((p) => p.is_main)) score += 0.5;
+
+  // Couchages par chambre (pour habitation)
+  const isHabitation = ["appartement", "maison", "studio", "colocation"].includes(property.type);
+  if (isHabitation) {
+    total++;
+    const bedrooms = rooms.filter((r) => r.type_piece === "chambre");
+    if (bedrooms.length > 0) {
+      // Vérifier si au moins une chambre a des couchages
+      // Note: Pour l'instant, on vérifie juste qu'il y a des chambres
+      // TODO: Vérifier les beds réels quand l'API sera disponible
+      score += 0.5; // Partiel car on ne vérifie pas encore les beds
+    }
+  }
+
+  // Séjour & accès (pour courte durée)
+  if (propertyData.mode_location === "courte_duree") {
+    total += 0.5;
+    if (propertyData.checkin_from && propertyData.checkin_to) score += 0.5;
+    
+    total += 0.5;
+    if (propertyData.checkout_time) score += 0.5;
+    
+    total += 0.5;
+    if (propertyData.mode_acces) score += 0.5;
+  }
+
+  // Règlement intérieur
+  total += 0.5;
+  if (propertyData.regles_animaux || propertyData.regles_fumeur || propertyData.regles_fetes) {
+    score += 0.5;
+  }
+
+  // Sécurité
+  total += 0.5;
+  if (propertyData.detecteur_fumee || propertyData.detecteur_co || propertyData.extincteur) {
+    score += 0.5;
+  }
+
+  // Quartier (recommandé)
+  total++;
+  if (propertyData.description_quartier?.trim()) {
+    score += 0.7; // Description présente
+    if (propertyData.points_forts_quartier && Array.isArray(propertyData.points_forts_quartier) && propertyData.points_forts_quartier.length > 0) {
+      score += 0.3; // Points forts ajoutés
+    }
+  }
 
   return Math.round((score / total) * 100);
 }
 
-function getCompletionChecks(property: Property): Array<{ id: string; label: string; completed: boolean }> {
-  return [
+function getCompletionChecks(
+  property: Property,
+  photos: Photo[] = [],
+  rooms: Room[] = []
+): Array<{ id: string; label: string; completed: boolean; weight?: number }> {
+  const propertyData = property as any;
+  const photoCount = photos.length;
+  const bedrooms = rooms.filter((r) => r.type_piece === "chambre");
+  const isHabitation = ["appartement", "maison", "studio", "colocation"].includes(property.type);
+
+  const checks: Array<{ id: string; label: string; completed: boolean; weight?: number }> = [
     {
       id: "titre_annonce",
       label: "Titre d'annonce",
-      completed: !!(property as any).titre_annonce,
+      completed: !!propertyData.titre_annonce?.trim(),
+      weight: 1,
+    },
+    {
+      id: "tagline",
+      label: "Tagline / accroche",
+      completed: !!propertyData.tagline?.trim(),
+      weight: 0.5,
     },
     {
       id: "description_logement",
       label: "Description du logement",
-      completed: !!(property as any).description_logement,
+      completed: !!propertyData.description_logement?.trim(),
+      weight: 1,
+    },
+    {
+      id: "description_acces",
+      label: "Description accès voyageurs",
+      completed: !!propertyData.description_acces_voyageurs?.trim(),
+      weight: 0.5,
     },
     {
       id: "photos_min",
-      label: "Au moins 3 photos",
-      completed: false, // TODO: Vérifier le nombre réel
+      label: `Au moins 3 photos (${photoCount} actuellement)`,
+      completed: photoCount >= 3,
+      weight: 1,
     },
     {
+      id: "photo_principale",
+      label: "Photo principale définie",
+      completed: photos.some((p) => p.is_main),
+      weight: 0.5,
+    },
+  ];
+
+  if (isHabitation) {
+    checks.push({
       id: "couchages",
-      label: "Couchages par chambre",
-      completed: false, // TODO: Vérifier les couchages
+      label: bedrooms.length > 0 
+        ? `Couchages par chambre (${bedrooms.length} chambre(s))`
+        : "Couchages par chambre",
+      completed: bedrooms.length > 0, // TODO: Vérifier les beds réels
+      weight: 1,
+    });
+  }
+
+  if (propertyData.mode_location === "courte_duree") {
+    checks.push(
+      {
+        id: "checkin",
+        label: "Horaires d'arrivée",
+        completed: !!(propertyData.checkin_from && propertyData.checkin_to),
+        weight: 0.5,
+      },
+      {
+        id: "checkout",
+        label: "Horaire de départ",
+        completed: !!propertyData.checkout_time,
+        weight: 0.5,
+      },
+      {
+        id: "mode_acces",
+        label: "Mode d'accès",
+        completed: !!propertyData.mode_acces,
+        weight: 0.5,
+      }
+    );
+  }
+
+  checks.push(
+    {
+      id: "reglement",
+      label: "Règlement intérieur",
+      completed: !!(propertyData.regles_animaux || propertyData.regles_fumeur || propertyData.regles_fetes),
+      weight: 0.5,
+    },
+    {
+      id: "securite",
+      label: "Équipements de sécurité",
+      completed: !!(propertyData.detecteur_fumee || propertyData.detecteur_co || propertyData.extincteur),
+      weight: 0.5,
     },
     {
       id: "quartier",
       label: "Description du quartier",
-      completed: !!(property as any).description_quartier,
+      completed: !!propertyData.description_quartier?.trim(),
+      weight: 1,
     },
-  ];
+    {
+      id: "points_forts",
+      label: "Points forts du quartier",
+      completed: !!(propertyData.points_forts_quartier && 
+        Array.isArray(propertyData.points_forts_quartier) && 
+        propertyData.points_forts_quartier.length > 0),
+      weight: 0.3,
+    }
+  );
+
+  return checks;
 }
 
