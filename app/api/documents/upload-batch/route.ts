@@ -82,8 +82,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
     }
 
-    const profileId = profile.id as string;
-    const role = profile.role as string;
+    const profileData = profile as any;
+    const profileId = profileData.id as string;
+    const role = profileData.role as string;
     let resolvedPropertyId = propertyId;
     let ownerId: string | null = null;
 

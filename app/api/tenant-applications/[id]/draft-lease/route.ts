@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * POST /api/tenant-applications/[id]/draft-lease - Générer un draft de bail pré-rempli
@@ -10,9 +11,10 @@ export async function POST(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -21,7 +23,7 @@ export async function POST(
     const applicationId = params.id;
 
     // Vérifier que l'application appartient à l'utilisateur
-    const { data: application, error: appError } = await supabase
+    const { data: application, error: appError } = await supabaseClient
       .from("tenant_applications")
       .select(`
         *,
@@ -29,8 +31,8 @@ export async function POST(
         property:properties(*),
         tenant_profile:profiles!tenant_applications_tenant_profile_id_fkey(*)
       `)
-      .eq("id", applicationId)
-      .eq("tenant_user", user.id)
+      .eq("id", applicationId as any)
+      .eq("tenant_user", user.id as any)
       .single();
 
     if (appError || !application) {
@@ -51,14 +53,16 @@ export async function POST(
 
     // Récupérer le template de bail approprié
     const propertyType = appData.property?.type || "appartement";
-    const { data: template } = await supabase
+    const { data: template } = await supabaseClient
       .from("lease_templates")
       .select("*")
-      .eq("type_bail", "meuble") // Par défaut, ajuster selon le contexte
-      .eq("is_active", true)
+      .eq("type_bail", "meuble" as any) // Par défaut, ajuster selon le contexte
+      .eq("is_active", true as any)
       .order("version", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    const templateData = template as any;
 
     // Préparer les variables pour le template
     const extractedFields = appData.extracted_json || {};
@@ -73,11 +77,11 @@ export async function POST(
     };
 
     // Créer le draft
-    const { data: draft, error: draftError } = await supabase
+    const { data: draft, error: draftError } = await supabaseClient
       .from("lease_drafts")
       .insert({
-        application_id: applicationId,
-        template_id: template?.id || null,
+        application_id: applicationId as any,
+        template_id: templateData?.id || null,
         version: 1,
         variables,
         pdf_url: null, // Sera généré par un job
@@ -87,23 +91,25 @@ export async function POST(
 
     if (draftError) throw draftError;
 
+    const draftData = draft as any;
+
     // Émettre un événement pour génération PDF
-    await supabase.from("outbox").insert({
+    await supabaseClient.from("outbox").insert({
       event_type: "lease.draft.created",
       payload: {
-        draft_id: draft.id,
+        draft_id: draftData.id,
         application_id: applicationId,
-        template_id: template?.id,
+        template_id: templateData?.id,
       },
     } as any);
 
     // Mettre à jour le statut de l'application
-    await supabase
+    await supabaseClient
       .from("tenant_applications")
-      .update({ status: "ready_to_sign" } as any)
-      .eq("id", applicationId);
+      .update({ status: "ready_to_sign" as any } as any)
+      .eq("id", applicationId as any);
 
-    return NextResponse.json({ draft });
+    return NextResponse.json({ draft: draftData });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },

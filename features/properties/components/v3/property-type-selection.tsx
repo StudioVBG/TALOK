@@ -34,14 +34,14 @@ const cardVariants = {
   hover: {
     scale: 1.02,
     y: -2,
-    transition: { type: "spring", stiffness: 300, damping: 20 },
+    transition: { type: "spring" as const, stiffness: 300, damping: 20 },
   },
   tap: { scale: 0.98 },
   selected: {
     scale: 1.03,
     y: -4,
     boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.3)",
-    transition: { type: "spring", stiffness: 300, damping: 20 },
+    transition: { type: "spring" as const, stiffness: 300, damping: 20 },
   },
 };
 
@@ -170,7 +170,7 @@ function TypeBlock({
   title: string;
   icon: typeof Home;
   description: string;
-  types: typeof PROPERTY_TYPE_GROUPS.habitation;
+  types: readonly { value: PropertyTypeV3; label: string; icon: string }[];
   selectedType?: PropertyTypeV3 | null;
   onSelect: (type: PropertyTypeV3) => void;
 }) {

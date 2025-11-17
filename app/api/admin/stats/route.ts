@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * GET /api/admin/stats - Statistiques admin
@@ -19,6 +20,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const supabaseClient = getTypedSupabaseClient(supabase);
+
     // Récupérer toutes les statistiques en parallèle
     const [
       users,
@@ -29,13 +32,13 @@ export async function GET(request: Request) {
       documents,
       blogPosts,
     ] = await Promise.all([
-      supabase.from("profiles").select("role"),
-      supabase.from("properties").select("type"),
-      supabase.from("leases").select("statut"),
-      supabase.from("invoices").select("statut"),
-      supabase.from("tickets").select("statut"),
-      supabase.from("documents").select("id"),
-      supabase.from("blog_posts").select("is_published"),
+      supabaseClient.from("profiles").select("role"),
+      supabaseClient.from("properties").select("type"),
+      supabaseClient.from("leases").select("statut"),
+      supabaseClient.from("invoices").select("statut"),
+      supabaseClient.from("tickets").select("statut"),
+      supabaseClient.from("documents").select("id"),
+      supabaseClient.from("blog_posts").select("is_published"),
     ]);
 
     // Log pour diagnostic

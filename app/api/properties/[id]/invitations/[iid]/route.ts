@@ -22,7 +22,7 @@ export async function DELETE(
     const { data: property } = await supabase
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!property) {
@@ -39,7 +39,8 @@ export async function DELETE(
       .single();
 
     const propertyData = property as any;
-    if (propertyData.owner_id !== profile?.id) {
+    const profileData = profile as any;
+    if (propertyData.owner_id !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -50,8 +51,8 @@ export async function DELETE(
     const { data: accessCode } = await supabase
       .from("unit_access_codes")
       .select("*")
-      .eq("id", params.iid)
-      .eq("property_id", params.id)
+      .eq("id", params.iid as any)
+      .eq("property_id", params.id as any)
       .single();
 
     if (!accessCode) {
@@ -61,6 +62,8 @@ export async function DELETE(
       );
     }
 
+    const accessCodeData = accessCode as any;
+
     // Marquer comme révoqué (ne pas supprimer, code brûlé à vie)
     const { data: updated, error } = await supabase
       .from("unit_access_codes")
@@ -69,7 +72,7 @@ export async function DELETE(
         retired_at: new Date().toISOString(),
         retired_reason: "Révoqué par le propriétaire",
       } as any)
-      .eq("id", params.iid)
+      .eq("id", params.iid as any)
       .select()
       .single();
 
@@ -81,7 +84,7 @@ export async function DELETE(
       payload: {
         access_code_id: params.iid,
         property_id: params.id,
-        code: accessCode.code,
+        code: accessCodeData.code,
       },
     } as any);
 
@@ -91,7 +94,7 @@ export async function DELETE(
       action: "invitation_revoked",
       entity_type: "property",
       entity_id: params.id,
-      metadata: { code_id: params.iid, code: accessCode.code },
+      metadata: { code_id: params.iid, code: accessCodeData.code },
     } as any);
 
     return NextResponse.json({ success: true, access_code: updated });

@@ -12,6 +12,7 @@ interface SharePayload {
     expiresAt: string;
     token: string;
     shareUrl: string;
+    pdfUrl?: string;
   };
 }
 

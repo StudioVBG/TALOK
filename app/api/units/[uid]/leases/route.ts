@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * POST /api/units/[uid]/leases - Créer un bail depuis un modèle
@@ -10,9 +11,10 @@ export async function POST(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -29,13 +31,13 @@ export async function POST(
     }
 
     // Récupérer l'unité
-    const { data: unit } = await supabase
+    const { data: unit } = await supabaseClient
       .from("units")
       .select(`
         id,
         property:properties!inner(id, owner_id)
       `)
-      .eq("id", params.uid)
+      .eq("id", params.uid as any)
       .single();
 
     if (!unit) {
@@ -46,14 +48,16 @@ export async function POST(
     }
 
     // Vérifier que l'utilisateur est propriétaire
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id as any)
       .single();
 
+    const profileData = profile as any;
+
     const unitData = unit as any;
-    if (unitData.property.owner_id !== profile?.id) {
+    if (unitData.property.owner_id !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -63,40 +67,43 @@ export async function POST(
     // Récupérer le template si fourni
     let template = null;
     if (template_id) {
-      const { data: templateData } = await supabase
+      const { data: templateData } = await supabaseClient
         .from("lease_templates")
         .select("*")
-        .eq("id", template_id)
-        .eq("is_active", true)
+        .eq("id", template_id as any)
+        .eq("is_active", true as any)
         .single();
       template = templateData;
     }
 
     // Créer le bail
-    const { data: lease, error: leaseError } = await supabase
+    const { data: lease, error: leaseError } = await supabaseClient
       .from("leases")
       .insert({
-        unit_id: params.uid,
+        unit_id: params.uid as any,
         type_bail,
         loyer,
         charges_forfaitaires: charges_forfaitaires || 0,
         depot_de_garantie: depot_de_garantie || 0,
         date_debut,
         date_fin: date_fin || null,
-        statut: "draft",
+        statut: "draft" as any,
       } as any)
       .select()
       .single();
 
     if (leaseError) throw leaseError;
 
+    const leaseData = lease as any;
+
     // Créer le draft depuis le template
     if (template) {
-      const { data: draft, error: draftError } = await supabase
+      const templateData = template as any;
+      const { data: draft, error: draftError } = await supabaseClient
         .from("lease_drafts")
         .insert({
-          lease_id: lease.id,
-          template_id: template.id,
+          lease_id: leaseData.id,
+          template_id: templateData.id,
           version: 1,
           variables: variables || {},
         } as any)
@@ -107,27 +114,28 @@ export async function POST(
         console.error("Erreur création draft:", draftError);
         // Ne pas bloquer si le draft échoue
       } else {
+        const draftData = draft as any;
         // Émettre un événement
-        await supabase.from("outbox").insert({
+        await supabaseClient.from("outbox").insert({
           event_type: "Lease.Drafted",
           payload: {
-            lease_id: lease.id,
-            draft_id: draft.id,
-            template_id: template.id,
+            lease_id: leaseData.id,
+            draft_id: draftData.id,
+            template_id: templateData.id,
           },
         } as any);
       }
     }
 
     // Ajouter le propriétaire comme signataire
-    await supabase.from("lease_signers").insert({
-      lease_id: lease.id,
-      profile_id: profile.id,
-      role: "proprietaire",
-      signature_status: "pending",
+    await supabaseClient.from("lease_signers").insert({
+      lease_id: leaseData.id,
+      profile_id: profileData.id,
+      role: "proprietaire" as any,
+      signature_status: "pending" as any,
     } as any);
 
-    return NextResponse.json({ lease });
+    return NextResponse.json({ lease: leaseData });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },

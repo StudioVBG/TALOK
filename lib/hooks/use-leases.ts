@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { typedSupabaseClient } from "@/lib/supabase/typed-client";
 import type { LeaseRow, LeaseInsert, LeaseUpdate } from "@/lib/supabase/typed-client";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * Hook pour récupérer tous les baux de l'utilisateur
@@ -22,7 +23,8 @@ export function useLeases(propertyId?: string | null) {
     queryFn: async () => {
       if (!profile) throw new Error("Non authentifié");
       
-      let query = typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      let query = supabaseClient
         .from("leases")
         .select("*")
         .order("created_at", { ascending: false });
@@ -34,7 +36,7 @@ export function useLeases(propertyId?: string | null) {
       // Filtrer selon le rôle
       if (profile.role === "owner") {
         // Les propriétaires voient les baux de leurs propriétés
-        const { data: properties } = await typedSupabaseClient
+        const { data: properties } = await supabaseClient
           .from("properties")
           .select("id")
           .eq("owner_id", profile.id);
@@ -43,11 +45,11 @@ export function useLeases(propertyId?: string | null) {
           return [];
         }
         
-        const propertyIds = properties.map((p) => p.id);
+        const propertyIds = (properties as any[]).map((p: any) => p.id);
         query = query.in("property_id", propertyIds);
       } else if (profile.role === "tenant") {
         // Les locataires voient leurs baux via lease_signers
-        const { data: signers } = await typedSupabaseClient
+        const { data: signers } = await supabaseClient
           .from("lease_signers")
           .select("lease_id")
           .eq("profile_id", profile.id);
@@ -56,7 +58,7 @@ export function useLeases(propertyId?: string | null) {
           return [];
         }
         
-        const leaseIds = signers.map((s) => s.lease_id);
+        const leaseIds = (signers as any[]).map((s: any) => s.lease_id);
         query = query.in("id", leaseIds);
       }
       
@@ -77,7 +79,8 @@ export function useLease(leaseId: string | null) {
     queryFn: async () => {
       if (!leaseId) throw new Error("Lease ID requis");
       
-      const { data, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data, error } = await supabaseClient
         .from("leases")
         .select("*")
         .eq("id", leaseId)
@@ -98,9 +101,10 @@ export function useCreateLease() {
   
   return useMutation({
     mutationFn: async (data: LeaseInsert) => {
-      const { data: lease, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: lease, error } = await supabaseClient
         .from("leases")
-        .insert(data)
+        .insert(data as any)
         .select()
         .single();
       
@@ -121,9 +125,10 @@ export function useUpdateLease() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: LeaseUpdate }) => {
-      const { data: lease, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: lease, error } = await supabaseClient
         .from("leases")
-        .update(data)
+        .update(data as any)
         .eq("id", id)
         .select()
         .single();

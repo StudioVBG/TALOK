@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * POST /api/threads - Créer un fil de discussion
@@ -7,9 +8,10 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -27,43 +29,46 @@ export async function POST(request: Request) {
 
     // Vérifier l'accès selon le contexte
     let hasAccess = false;
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id as any)
       .single();
 
+    const profileData = profile as any;
+
     switch (context_type) {
       case "property": {
-        const { data: property } = await supabase
+        const { data: property } = await supabaseClient
           .from("properties")
           .select("owner_id")
-          .eq("id", context_id)
+          .eq("id", context_id as any)
           .single();
-        hasAccess = property?.owner_id === profile?.id;
+        const propertyData = property as any;
+        hasAccess = propertyData?.owner_id === profileData?.id;
         break;
       }
       case "lease": {
-        const { data: roommate } = await supabase
+        const { data: roommate } = await supabaseClient
           .from("roommates")
           .select("id")
-          .eq("lease_id", context_id)
+          .eq("lease_id", context_id as any)
           .eq("user_id", user.id as any)
           .maybeSingle();
         hasAccess = !!roommate;
         break;
       }
       case "ticket": {
-        const { data: ticket } = await supabase
+        const { data: ticket } = await supabaseClient
           .from("tickets")
           .select(`
             property:properties!inner(owner_id),
             lease:leases(roommates(user_id))
           `)
-          .eq("id", context_id)
+          .eq("id", context_id as any)
           .single();
         const ticketData = ticket as any;
-        hasAccess = ticketData?.property?.owner_id === profile?.id ||
+        hasAccess = ticketData?.property?.owner_id === profileData?.id ||
           ticketData?.lease?.roommates?.some((r: any) => r.user_id === user.id);
         break;
       }
@@ -77,13 +82,13 @@ export async function POST(request: Request) {
     }
 
     // Créer le fil
-    const { data: thread, error } = await supabase
+    const { data: thread, error } = await supabaseClient
       .from("chat_threads")
       .insert({
         context_type,
         context_id,
         title,
-        created_by: user.id,
+        created_by: user.id as any,
       } as any)
       .select()
       .single();

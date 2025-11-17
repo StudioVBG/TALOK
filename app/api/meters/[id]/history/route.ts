@@ -28,7 +28,7 @@ export async function GET(
     const { data: meter, error: meterError } = await supabase
       .from("meters")
       .select("*, lease:leases(id)")
-      .eq("id", meterId)
+      .eq("id", meterId as any)
       .single();
 
     if (meterError || !meter) {
@@ -59,7 +59,7 @@ export async function GET(
     let query = supabase
       .from("meter_readings")
       .select("*")
-      .eq("meter_id", meterId)
+      .eq("meter_id", meterId as any)
       .order("reading_date", { ascending: false })
       .limit(limit);
 
@@ -78,7 +78,7 @@ export async function GET(
     const { data: estimates, error: estimatesError } = await supabase
       .from("consumption_estimates")
       .select("*")
-      .eq("meter_id", meterId)
+      .eq("meter_id", meterId as any)
       .order("period_start", { ascending: false })
       .limit(limit);
 

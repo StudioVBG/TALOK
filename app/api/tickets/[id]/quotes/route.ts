@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * POST /api/tickets/[tid]/quotes - Proposer un devis pour un ticket
@@ -10,9 +11,10 @@ export async function POST(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -36,13 +38,13 @@ export async function POST(
     }
 
     // Vérifier que l'utilisateur est prestataire assigné
-    const { data: ticket } = await supabase
+    const { data: ticket } = await supabaseClient
       .from("tickets")
       .select(`
         id,
         work_orders!inner(provider_id)
       `)
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!ticket) {
@@ -52,7 +54,7 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
@@ -67,7 +69,7 @@ export async function POST(
     }
 
     const ticketData = ticket as any;
-    const isAssigned = ticketData.work_orders?.some((wo: any) => wo.provider_id === profile.id);
+    const isAssigned = ticketData.work_orders?.some((wo: any) => wo.provider_id === profileData.id);
 
     if (!isAssigned) {
       return NextResponse.json(
@@ -77,11 +79,11 @@ export async function POST(
     }
 
     // Créer le devis
-    const { data: quote, error } = await supabase
+    const { data: quote, error } = await supabaseClient
       .from("quotes")
       .insert({
         ticket_id: params.id,
-        provider_id: profile.id,
+        provider_id: profileData.id,
         amount,
         description,
         valid_until: valid_until || null,
@@ -93,12 +95,12 @@ export async function POST(
     if (error) throw error;
 
     // Émettre un événement
-    await supabase.from("outbox").insert({
+    await supabaseClient.from("outbox").insert({
       event_type: "Quote.Submitted",
       payload: {
-        quote_id: quote.id,
+        quote_id: (quote as any).id,
         ticket_id: params.id,
-        provider_id: profile.id,
+        provider_id: profileData.id,
         amount,
       },
     } as any);
@@ -121,23 +123,24 @@ export async function GET(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
     // Vérifier l'accès au ticket
-    const { data: ticket } = await supabase
+    const { data: ticket } = await supabaseClient
       .from("tickets")
       .select(`
         id,
         property:properties!inner(owner_id),
         lease:leases(roommates(user_id))
       `)
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!ticket) {
@@ -147,14 +150,15 @@ export async function GET(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id as any)
       .single();
 
     const ticketData = ticket as any;
-    const hasAccess = ticketData.property.owner_id === profile?.id ||
+    const profileDataGet = profile as any;
+    const hasAccess = ticketData.property.owner_id === profileDataGet?.id ||
       ticketData.lease?.roommates?.some((r: any) => r.user_id === user.id);
 
     if (!hasAccess) {
@@ -165,13 +169,13 @@ export async function GET(
     }
 
     // Récupérer les devis
-    const { data: quotes, error } = await supabase
+    const { data: quotes, error } = await supabaseClient
       .from("quotes")
       .select(`
         *,
         provider:profiles!quotes_provider_id_fkey(prenom, nom)
       `)
-      .eq("ticket_id", params.id)
+      .eq("ticket_id", params.id as any)
       .order("created_at", { ascending: false });
 
     if (error) throw error;

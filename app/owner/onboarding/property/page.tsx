@@ -91,7 +91,7 @@ export default function FirstPropertyPage() {
         ascenseur: false,
         energie: null,
         ges: null,
-      });
+      } as any);
 
       // Si colocation, créer l'unité
       if (validated.is_colocation && validated.unit_nom) {
@@ -107,7 +107,8 @@ export default function FirstPropertyPage() {
       }
 
       // Marquer l'étape comme complétée
-      await onboardingService.saveDraft("final_review", { property_id: property.id }, "owner");
+      const propertyData = property as any;
+      await onboardingService.saveDraft("final_review", { property_id: propertyData.id }, "owner");
       await onboardingService.markStepCompleted("first_property", "owner");
 
       toast({

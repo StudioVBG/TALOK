@@ -38,12 +38,13 @@ export async function GET(
       return NextResponse.json({ error: "Logement introuvable." }, { status: 404 });
     }
 
-    const pdfBytes = await buildPropertyPdf(params.token, share, property);
+    const propertyData = property as any;
+    const pdfBytes = await buildPropertyPdf(params.token, share, propertyData);
 
     return new Response(Buffer.from(pdfBytes), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="gl-logement-${property.id}.pdf"`,
+        "Content-Disposition": `attachment; filename="gl-logement-${propertyData.id}.pdf"`,
       },
     });
   } catch (error: any) {

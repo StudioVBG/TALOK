@@ -307,6 +307,24 @@ export function PropertyForm({ property, onSuccess, onCancel }: PropertyFormProp
     () => formData.parking_details ?? createDefaultParkingDetails(),
     [formData.parking_details]
   );
+  // Calculs pour l'encadrement des loyers
+  const encadrementCeiling = useMemo(() => {
+    if (!formData.zone_encadrement) return 0;
+    const loyerRef = formData.loyer_reference_majoré ?? 0;
+    const complement = formData.complement_loyer ?? 0;
+    return loyerRef + complement;
+  }, [formData.zone_encadrement, formData.loyer_reference_majoré, formData.complement_loyer]);
+  
+  const encadrementOver = useMemo(() => {
+    if (!formData.zone_encadrement || encadrementCeiling === 0) return false;
+    const loyerBase = formData.loyer_base ?? 0;
+    return loyerBase > encadrementCeiling + 0.01; // Tolérance de 0.01€
+  }, [formData.zone_encadrement, formData.loyer_base, encadrementCeiling]);
+  
+  const complementRequiresJustification = useMemo(() => {
+    return formData.zone_encadrement && (formData.complement_loyer ?? 0) > 0;
+  }, [formData.zone_encadrement, formData.complement_loyer]);
+  
   const submitLabel = isLocked
     ? "Modification verrouillée"
     : loading

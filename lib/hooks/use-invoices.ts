@@ -8,6 +8,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { typedSupabaseClient } from "@/lib/supabase/typed-client";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 import type { InvoiceRow, InvoiceInsert, InvoiceUpdate } from "@/lib/supabase/typed-client";
 import { useAuth } from "@/lib/hooks/use-auth";
 
@@ -22,7 +23,8 @@ export function useInvoices(leaseId?: string | null) {
     queryFn: async () => {
       if (!profile) throw new Error("Non authentifié");
       
-      let query = typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      let query = supabaseClient
         .from("invoices")
         .select("*")
         .order("periode", { ascending: false });
@@ -55,7 +57,8 @@ export function useInvoice(invoiceId: string | null) {
     queryFn: async () => {
       if (!invoiceId) throw new Error("Invoice ID requis");
       
-      const { data, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data, error } = await supabaseClient
         .from("invoices")
         .select("*")
         .eq("id", invoiceId)
@@ -79,12 +82,13 @@ export function useCreateInvoice() {
     mutationFn: async (data: InvoiceInsert) => {
       if (!profile) throw new Error("Non authentifié");
       
-      const { data: invoice, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: invoice, error } = await supabaseClient
         .from("invoices")
         .insert({
           ...data,
           owner_id: profile.role === "owner" ? profile.id : data.owner_id,
-        })
+        } as any)
         .select()
         .single();
       
@@ -105,9 +109,10 @@ export function useUpdateInvoice() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InvoiceUpdate }) => {
-      const { data: invoice, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: invoice, error } = await supabaseClient
         .from("invoices")
-        .update(data)
+        .update(data as any)
         .eq("id", id)
         .select()
         .single();

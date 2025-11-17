@@ -68,8 +68,8 @@ export async function GET(
     const { data: { user: authUser }, error: authUserError } = await adminClient.auth.admin.getUserById(profile.user_id);
 
     return NextResponse.json({
-      id: profile.id,
-      profile_id: profile.id,
+      id: (profile as any).id,
+      profile_id: (profile as any).id,
       user_id: profile.user_id,
       name: `${profile.prenom || ""} ${profile.nom || ""}`.trim() || "Sans nom",
       prenom: profile.prenom || "",
@@ -174,6 +174,8 @@ export async function PATCH(
         .select("user_id")
         .eq("id", providerId as any)
         .single();
+
+    const profileData = profile as any;
 
       if (profile?.user_id) {
         const adminClient = createClient(

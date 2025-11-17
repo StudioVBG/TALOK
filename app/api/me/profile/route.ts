@@ -83,7 +83,8 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const { data: profile, error: updateError } = await supabase
+    const supabaseClient = supabase as any;
+    const { data: profile, error: updateError } = await supabaseClient
       .from("profiles")
       .update(updatePayload)
       .eq("user_id", user.id as any)

@@ -36,7 +36,7 @@ export async function POST(
         property:properties!inner(owner_id),
         roommates(user_id)
       `)
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!lease) {
@@ -48,12 +48,14 @@ export async function POST(
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, role")
       .eq("user_id", user.id as any)
       .single();
 
     const leaseData = lease as any;
-    const isOwner = leaseData.property.owner_id === profile?.id;
+    const profileData = profile as any;
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = leaseData.property.owner_id === profileData?.id;
     const isTenant = leaseData.roommates?.some((r: any) => r.user_id === user.id);
 
     if (!isOwner && !isTenant) {
@@ -84,30 +86,32 @@ export async function POST(
     const { data: roommate } = await supabase
       .from("roommates")
       .select("id")
-      .eq("lease_id", params.id)
+      .eq("lease_id", params.id as any)
       .eq("user_id", user.id as any)
       .limit(1)
       .maybeSingle();
 
     if (roommate) {
+      const roommateData = roommate as any;
       const { data: guarantor } = await supabase
         .from("guarantors")
         .select("id")
-        .eq("roommate_id", roommate.id)
-        .eq("type", "visale")
+        .eq("roommate_id", roommateData.id)
+        .eq("type", "visale" as any)
         .maybeSingle();
 
       if (guarantor) {
+        const guarantorData = guarantor as any;
         await supabase
           .from("guarantors")
           .update({
             status: "accepted",
             metadata: visaleData,
           } as any)
-          .eq("id", guarantor.id);
+          .eq("id", guarantorData.id);
       } else {
         await supabase.from("guarantors").insert({
-          roommate_id: roommate.id,
+          roommate_id: roommateData.id,
           type: "visale",
           status: "accepted",
           metadata: visaleData,
@@ -119,7 +123,7 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "Guarantee.Validated",
       payload: {
-        lease_id: params.id,
+        lease_id: params.id as any,
         type: "visale",
         visale_data: visaleData,
       },

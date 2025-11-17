@@ -71,7 +71,7 @@ export async function POST(
     const { data: movement, error } = await supabase
       .from("deposit_movements")
       .insert({
-        lease_id: params.id,
+        lease_id: params.id as any,
         type: "encaissement",
         amount,
         reason: reason || "Dépôt de garantie",
@@ -179,7 +179,7 @@ export async function GET(
     const { data: balance } = await supabase
       .from("deposit_balance")
       .select("*")
-      .eq("lease_id", params.id)
+      .eq("lease_id", params.id as any)
       .maybeSingle();
 
     return NextResponse.json({

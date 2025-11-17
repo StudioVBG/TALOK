@@ -40,7 +40,8 @@ export async function POST(request: Request) {
     }
 
     // Récupérer l'ancien avatar pour le supprimer si nécessaire
-    const { data: existingProfile } = await supabase
+    const supabaseClient = supabase as any;
+    const { data: existingProfile } = await supabaseClient
       .from("profiles")
       .select("avatar_url")
       .eq("user_id", user.id as any)
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
       data: { publicUrl },
     } = supabase.storage.from("avatars").getPublicUrl(path);
 
-    const { data: profile, error: updateError } = await supabase
+    const { data: profile, error: updateError } = await supabaseClient
       .from("profiles")
       .update({ avatar_url: path })
       .eq("user_id", user.id as any)

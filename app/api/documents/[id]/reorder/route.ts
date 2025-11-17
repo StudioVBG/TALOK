@@ -70,19 +70,21 @@ export async function PATCH(
       return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
     }
 
+    const profileData = profile as any;
+
     const { data: document, error: documentError } = await serviceClient
       .from("documents")
       .select("id, property_id, lease_id, owner_id, tenant_id, collection, position, is_cover")
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (documentError || !document) {
       return NextResponse.json({ error: "Document introuvable" }, { status: 404 });
     }
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = document.owner_id && document.owner_id === profile.id;
-    const isTenant = document.tenant_id && document.tenant_id === profile.id;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = document.owner_id && document.owner_id === profileData.id;
+    const isTenant = document.tenant_id && document.tenant_id === profileData.id;
 
     if (!isAdmin && !isOwner && !isTenant) {
       return NextResponse.json(

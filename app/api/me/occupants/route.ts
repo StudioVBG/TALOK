@@ -78,7 +78,8 @@ export async function POST(request: Request) {
     }
 
     // Seul le locataire principal peut ajouter des occupants
-    if (roommate.role !== "principal") {
+    const roommateData = roommate as any;
+    if (roommateData.role !== "principal") {
       return NextResponse.json(
         { error: "Seul le locataire principal peut ajouter des occupants" },
         { status: 403 }
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
       .insert({
         lease_id,
         user_id: user.id, // Temporaire, sera mis à jour si l'occupant crée un compte
-        profile_id: profile.id,
+        profile_id: (profile as any).id,
         role: "occupant",
         first_name,
         last_name,
@@ -148,7 +149,7 @@ export async function DELETE(
     const { data: occupant } = await supabase
       .from("roommates")
       .select("*, lease:leases(id)")
-      .eq("id", occupantId)
+      .eq("id", occupantId as any)
       .single();
 
     if (!occupant) {
@@ -167,7 +168,8 @@ export async function DELETE(
       .is("left_on", null)
       .single();
 
-    if (!userRoommate || userRoommate.role !== "principal") {
+    const userRoommateData = userRoommate as any;
+    if (!userRoommateData || userRoommateData.role !== "principal") {
       return NextResponse.json(
         { error: "Seul le locataire principal peut supprimer des occupants" },
         { status: 403 }
@@ -178,7 +180,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("roommates")
       .update({ left_on: new Date().toISOString().split("T")[0] } as any)
-      .eq("id", occupantId);
+      .eq("id", occupantId as any);
 
     if (error) throw error;
 

@@ -93,10 +93,10 @@ export default function AccountCreationPage() {
 
   useEffect(() => {
     onboardingService.getDraft().then((saved) => {
-      if (saved?.data?.accountCreation) {
+      if (saved?.data?.accountCreation && typeof saved.data.accountCreation === "object") {
         setDraft((prev) => ({
           ...prev,
-          ...saved.data.accountCreation,
+          ...(saved.data.accountCreation as any),
         }));
       }
     });

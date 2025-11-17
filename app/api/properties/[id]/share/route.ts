@@ -18,7 +18,8 @@ async function getAuthorizedContext(request: Request, propertyId: string) {
     throw new Error("Non authentifié");
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const supabaseClient = supabase as any;
+  const { data: profile, error: profileError } = await supabaseClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id as any)
@@ -27,6 +28,8 @@ async function getAuthorizedContext(request: Request, propertyId: string) {
   if (profileError || !profile) {
     throw new Error("Profil introuvable");
   }
+
+  const profileData = profile as any;
 
   const { client: serviceClient } = getServiceRoleClient();
 
@@ -40,8 +43,8 @@ async function getAuthorizedContext(request: Request, propertyId: string) {
     throw new Error("Logement introuvable");
   }
 
-  const isAdmin = profile.role === "admin";
-  const isOwner = property.owner_id === profile.id;
+  const isAdmin = profileData.role === "admin";
+  const isOwner = property.owner_id === profileData.id;
 
   if (!isAdmin && !isOwner) {
     throw new Error("Seul le propriétaire ou un admin peut gérer les liens publics.");
@@ -72,13 +75,16 @@ export async function POST(
     const rawToken = crypto.randomUUID().replace(/-/g, "");
     const token = `${rawToken}${crypto.randomUUID().slice(0, 8)}`;
 
+    const profileData = profile as any;
+    const propertyData = property as any;
+
     const { data: shareRecord, error: insertError } = await serviceClient
       .from("property_share_tokens")
       .insert({
-        property_id: property.id,
+        property_id: propertyData.id,
         token,
         expires_at: expiresAt,
-        created_by: profile.id,
+        created_by: profileData.id,
       })
       .select("*")
       .single();

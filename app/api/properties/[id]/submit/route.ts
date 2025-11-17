@@ -52,6 +52,8 @@ export async function POST(
       );
     }
 
+    const profileData = profile as any;
+
     const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select(
@@ -89,14 +91,16 @@ export async function POST(
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    if (property.owner_id !== profile.id) {
+    const propertyData = property as any;
+
+    if (propertyData.owner_id !== profileData.id) {
       return NextResponse.json(
         { error: "Vous n'avez pas les droits sur ce logement" },
         { status: 403 }
       );
     }
 
-    if (!["draft", "rejected"].includes(property.etat)) {
+    if (!["draft", "rejected"].includes(propertyData.etat)) {
       return NextResponse.json(
         { error: "Ce logement est déjà soumis ou publié" },
         { status: 400 }
@@ -104,7 +108,7 @@ export async function POST(
     }
 
     // Déterminer le type de bien pour adapter les validations
-    const propertyType = property.type as string;
+    const propertyType = propertyData.type as string;
     const isHabitation = ["appartement", "maison", "studio", "colocation"].includes(propertyType);
     const isParking = ["parking", "box"].includes(propertyType);
     const isLocal = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(propertyType);
@@ -136,32 +140,32 @@ export async function POST(
 
     // Vérifications basiques de complétude adaptées selon le type de bien
     const missingFields: string[] = [];
-    if (!property.adresse_complete) missingFields.push("adresse_complete");
-    if (!property.usage_principal) missingFields.push("usage_principal");
-    if (!property.type) missingFields.push("type");
+    if (!propertyData.adresse_complete) missingFields.push("adresse_complete");
+    if (!propertyData.usage_principal) missingFields.push("usage_principal");
+    if (!propertyData.type) missingFields.push("type");
 
-    const loyerHC = property.loyer_hc ?? property.loyer_base;
+    const loyerHC = propertyData.loyer_hc ?? propertyData.loyer_base;
 
     if (!loyerHC || loyerHC <= 0) missingFields.push("loyer_hc");
-    if (property.charges_mensuelles === null || property.charges_mensuelles < 0)
+    if (propertyData.charges_mensuelles === null || propertyData.charges_mensuelles < 0)
       missingFields.push("charges_mensuelles");
-    if (property.depot_garantie === null || property.depot_garantie < 0)
+    if (propertyData.depot_garantie === null || propertyData.depot_garantie < 0)
       missingFields.push("depot_garantie");
 
     // Validations spécifiques selon le type de bien
     if (isHabitation) {
       // Habitation : surface habitable, nb_pieces, DPE, chauffage/clim
-      if (!property.surface || property.surface <= 0) missingFields.push("surface");
-      if (!property.nb_pieces || property.nb_pieces <= 0) missingFields.push("nb_pieces");
-      if (!property.dpe_classe_energie) missingFields.push("dpe_classe_energie");
-      if (!property.dpe_classe_climat) missingFields.push("dpe_classe_climat");
-      if (!property.chauffage_type) missingFields.push("chauffage_type");
-      if (property.chauffage_type && property.chauffage_type !== "aucun" && !property.chauffage_energie) {
+      if (!propertyData.surface || propertyData.surface <= 0) missingFields.push("surface");
+      if (!propertyData.nb_pieces || propertyData.nb_pieces <= 0) missingFields.push("nb_pieces");
+      if (!propertyData.dpe_classe_energie) missingFields.push("dpe_classe_energie");
+      if (!propertyData.dpe_classe_climat) missingFields.push("dpe_classe_climat");
+      if (!propertyData.chauffage_type) missingFields.push("chauffage_type");
+      if (propertyData.chauffage_type && propertyData.chauffage_type !== "aucun" && !propertyData.chauffage_energie) {
         missingFields.push("chauffage_energie");
       }
-      if (!property.eau_chaude_type) missingFields.push("eau_chaude_type");
-      if (!property.clim_presence) missingFields.push("clim_presence");
-      if (property.clim_presence === "fixe" && !property.clim_type) {
+      if (!propertyData.eau_chaude_type) missingFields.push("eau_chaude_type");
+      if (!propertyData.clim_presence) missingFields.push("clim_presence");
+      if (propertyData.clim_presence === "fixe" && !propertyData.clim_type) {
         missingFields.push("clim_type");
       }
     } else if (isParking) {
@@ -186,7 +190,7 @@ export async function POST(
 
     // Validation DPE uniquement pour habitation
     if (isHabitation) {
-      if (property.dpe_classe_energie === "G") {
+      if (propertyData.dpe_classe_energie === "G") {
         return NextResponse.json(
           {
             error:
@@ -196,7 +200,7 @@ export async function POST(
         );
       }
 
-      if (property.dpe_consommation === null || property.dpe_emissions === null) {
+      if (propertyData.dpe_consommation === null || propertyData.dpe_emissions === null) {
         return NextResponse.json(
           {
             error: "Complétez les indicateurs DPE (consommation et émissions) avant de soumettre.",
@@ -206,8 +210,8 @@ export async function POST(
       }
     }
 
-    if (property.zone_encadrement) {
-      if (property.loyer_reference_majoré === null) {
+    if (propertyData.zone_encadrement) {
+      if (propertyData.loyer_reference_majoré === null) {
         return NextResponse.json(
           {
             error:
@@ -217,7 +221,7 @@ export async function POST(
         );
       }
       const plafond =
-        (property.loyer_reference_majoré ?? 0) + (property.complement_loyer ?? 0);
+        (propertyData.loyer_reference_majoré ?? 0) + (propertyData.complement_loyer ?? 0);
       if (loyerHC > plafond + 0.01) {
         return NextResponse.json(
           {
@@ -227,7 +231,7 @@ export async function POST(
           { status: 400 }
         );
       }
-      if (property.complement_loyer && property.complement_loyer > 0 && !property.complement_justification) {
+      if (propertyData.complement_loyer && propertyData.complement_loyer > 0 && !propertyData.complement_justification) {
         return NextResponse.json(
           {
             error:
@@ -239,7 +243,7 @@ export async function POST(
     }
 
     // Validation permis de louer (uniquement pour habitation)
-    if (isHabitation && property.permis_louer_requis && !property.permis_louer_numero) {
+    if (isHabitation && propertyData.permis_louer_requis && !propertyData.permis_louer_numero) {
       return NextResponse.json(
         {
           error: "Renseignez le numéro d'autorisation du permis de louer avant de soumettre.",
@@ -388,7 +392,7 @@ export async function POST(
       entity_type: "property",
       entity_id: propertyId,
       metadata: {
-        previous_status: property.etat,
+        previous_status: propertyData.etat,
         new_status: "pending",
       },
     });

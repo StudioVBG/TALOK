@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { typedSupabaseClient } from "@/lib/supabase/typed-client";
 import type { TicketRow, TicketInsert, TicketUpdate } from "@/lib/supabase/typed-client";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * Hook pour récupérer tous les tickets de l'utilisateur
@@ -22,7 +23,8 @@ export function useTickets(propertyId?: string | null) {
     queryFn: async () => {
       if (!profile) throw new Error("Non authentifié");
       
-      let query = typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      let query = supabaseClient
         .from("tickets")
         .select("*")
         .order("created_at", { ascending: false });
@@ -34,7 +36,7 @@ export function useTickets(propertyId?: string | null) {
       // Filtrer selon le rôle
       if (profile.role === "owner") {
         // Les propriétaires voient les tickets de leurs propriétés
-        const { data: properties } = await typedSupabaseClient
+        const { data: properties } = await supabaseClient
           .from("properties")
           .select("id")
           .eq("owner_id", profile.id);
@@ -43,24 +45,24 @@ export function useTickets(propertyId?: string | null) {
           return [];
         }
         
-        const propertyIds = properties.map((p) => p.id);
+        const propertyIds = (properties as any[]).map((p: any) => p.id);
         query = query.in("property_id", propertyIds);
       } else if (profile.role === "tenant") {
         // Les locataires voient les tickets qu'ils ont créés ou ceux de leurs baux
-        const { data: signers } = await typedSupabaseClient
+        const { data: signers } = await supabaseClient
           .from("lease_signers")
           .select("lease_id")
           .eq("profile_id", profile.id);
         
         if (signers && signers.length > 0) {
-          const leaseIds = signers.map((s) => s.lease_id);
-          const { data: leases } = await typedSupabaseClient
+          const leaseIds = (signers as any[]).map((s: any) => s.lease_id);
+          const { data: leases } = await supabaseClient
             .from("leases")
             .select("property_id")
             .in("id", leaseIds);
           
           if (leases && leases.length > 0) {
-            const propertyIds = [...new Set(leases.map((l) => l.property_id).filter(Boolean))];
+            const propertyIds = [...new Set((leases as any[]).map((l: any) => l.property_id).filter(Boolean))];
             query = query.or(`property_id.in.(${propertyIds.join(",")}),created_by_profile_id.eq.${profile.id}`);
           } else {
             query = query.eq("created_by_profile_id", profile.id);
@@ -87,7 +89,8 @@ export function useTicket(ticketId: string | null) {
     queryFn: async () => {
       if (!ticketId) throw new Error("Ticket ID requis");
       
-      const { data, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data, error } = await supabaseClient
         .from("tickets")
         .select("*")
         .eq("id", ticketId)
@@ -111,12 +114,13 @@ export function useCreateTicket() {
     mutationFn: async (data: TicketInsert) => {
       if (!profile) throw new Error("Non authentifié");
       
-      const { data: ticket, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: ticket, error } = await supabaseClient
         .from("tickets")
         .insert({
           ...data,
           created_by_profile_id: profile.id,
-        })
+        } as any)
         .select()
         .single();
       
@@ -137,9 +141,10 @@ export function useUpdateTicket() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: TicketUpdate }) => {
-      const { data: ticket, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: ticket, error } = await supabaseClient
         .from("tickets")
-        .update(data)
+        .update(data as any)
         .eq("id", id)
         .select()
         .single();

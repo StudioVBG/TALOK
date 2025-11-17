@@ -27,7 +27,7 @@ export async function POST(
         property:properties!inner(owner_id)
       `)
       // @ts-ignore - Supabase typing issue
-      .eq("id", params.iid)
+      .eq("id", params.iid as any)
       .single();
 
     if (!edl) {

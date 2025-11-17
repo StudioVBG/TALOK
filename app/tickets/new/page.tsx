@@ -14,12 +14,12 @@ function NewTicketPageContent() {
   const propertyId = searchParams.get("propertyId");
 
   useEffect(() => {
-    if (profile && !canManageTickets(profile.role)) {
+    if (profile && !canManageTickets(profile.role as any)) {
       router.push("/dashboard");
     }
   }, [profile, router]);
 
-  if (!profile || !canManageTickets(profile.role)) {
+  if (!profile || !canManageTickets(profile.role as any)) {
     return null;
   }
 

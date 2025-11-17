@@ -10,10 +10,22 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { typedSupabaseClient } from "@/lib/supabase/typed-client";
 import type { Database } from "@/lib/supabase/database.types";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
-type DocumentRow = Database["public"]["Tables"]["documents"]["Row"];
-type DocumentInsert = Database["public"]["Tables"]["documents"]["Insert"];
-type DocumentUpdate = Database["public"]["Tables"]["documents"]["Update"];
+type DocumentRow = {
+  id: string;
+  owner_id?: string | null;
+  tenant_id?: string | null;
+  property_id?: string | null;
+  lease_id?: string | null;
+  type: string;
+  storage_path: string;
+  metadata?: Record<string, any> | null;
+  created_at?: string;
+  updated_at?: string;
+};
+type DocumentInsert = Partial<DocumentRow>;
+type DocumentUpdate = Partial<DocumentRow>;
 
 /**
  * Hook pour récupérer tous les documents de l'utilisateur
@@ -30,7 +42,8 @@ export function useDocuments(filters?: {
     queryFn: async () => {
       if (!profile) throw new Error("Non authentifié");
       
-      let query = typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      let query = supabaseClient
         .from("documents")
         .select("*")
         .order("created_at", { ascending: false });
@@ -71,7 +84,8 @@ export function useDocument(documentId: string | null) {
     queryFn: async () => {
       if (!documentId) throw new Error("Document ID requis");
       
-      const { data, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data, error } = await supabaseClient
         .from("documents")
         .select("*")
         .eq("id", documentId)
@@ -101,9 +115,10 @@ export function useCreateDocument() {
         tenant_id: profile.role === "tenant" ? profile.id : data.tenant_id,
       };
       
-      const { data: document, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: document, error } = await supabaseClient
         .from("documents")
-        .insert(insertData)
+        .insert(insertData as any)
         .select()
         .single();
       
@@ -130,9 +145,10 @@ export function useUpdateDocument() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: DocumentUpdate }) => {
-      const { data: document, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: document, error } = await supabaseClient
         .from("documents")
-        .update(data)
+        .update(data as any)
         .eq("id", id)
         .select()
         .single();
@@ -161,7 +177,8 @@ export function useDeleteDocument() {
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { error } = await supabaseClient
         .from("documents")
         .delete()
         .eq("id", id);

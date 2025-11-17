@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { Database } from "@/lib/supabase/types";
+import type { Database } from "@/lib/supabase/database.types";
 import { NextRequest } from "next/server";
 
 /**
@@ -14,18 +14,23 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll();
+        get(name: string) {
+          return cookieStore.get(name)?.value;
         },
-        setAll(cookiesToSet) {
+        set(name: string, value: string, options?: any) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
+            cookieStore.set(name, value, options);
           } catch {
-            // The `setAll` method was called from a Server Component.
+            // The `set` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing
             // user sessions.
+          }
+        },
+        remove(name: string, options?: any) {
+          try {
+            cookieStore.set(name, "", { ...options, maxAge: 0 });
+          } catch {
+            // Ignore
           }
         },
       },
@@ -76,10 +81,14 @@ export function createClientFromRequest(request: Request | NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return parsedCookies;
+        get(name: string) {
+          return parsedCookies.find(c => c.name === name)?.value;
         },
-        setAll() {
+        set(name: string, value: string) {
+          // Dans les routes API, on ne peut pas modifier les cookies de réponse
+          // de cette manière. Les cookies sont gérés par le middleware.
+        },
+        remove(name: string) {
           // Dans les routes API, on ne peut pas modifier les cookies de réponse
           // de cette manière. Les cookies sont gérés par le middleware.
         },

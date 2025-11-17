@@ -259,7 +259,9 @@ export function EquipmentsInfoStep({
               title="Chauffage & confort"
               icon={<Flame className="h-6 w-6 text-primary" />}
             >
-              {/* ... champs chauffage/clim */}
+              <div className="text-sm text-muted-foreground">
+                Les champs de chauffage et confort seront implémentés prochainement.
+              </div>
             </UnifiedSectionCard>
 
             {/* Bloc C - Équipements (Bento Grid) */}
@@ -293,7 +295,9 @@ export function EquipmentsInfoStep({
               title="Informations du parking"
               icon={<Car className="h-6 w-6 text-primary" />}
             >
-              {/* ... champs parking */}
+              <div className="text-sm text-muted-foreground">
+                Les champs spécifiques au parking seront implémentés prochainement.
+              </div>
             </UnifiedSectionCard>
           </motion.div>
         )}
@@ -310,7 +314,9 @@ export function EquipmentsInfoStep({
               title="Informations du local"
               icon={<Building2 className="h-6 w-6 text-primary" />}
             >
-              {/* ... champs local pro */}
+              <div className="text-sm text-muted-foreground">
+                Les champs spécifiques aux locaux professionnels seront implémentés prochainement.
+              </div>
             </UnifiedSectionCard>
           </motion.div>
         )}

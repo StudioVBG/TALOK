@@ -14,12 +14,12 @@ function NewLeasePageContent() {
   const propertyId = searchParams.get("propertyId");
 
   useEffect(() => {
-    if (profile && !canManageLeases(profile.role)) {
+    if (profile && !canManageLeases(profile.role as any)) {
       router.push("/dashboard");
     }
   }, [profile, router]);
 
-  if (!profile || !canManageLeases(profile.role)) {
+  if (!profile || !canManageLeases(profile.role as any)) {
     return null;
   }
 

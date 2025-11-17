@@ -23,17 +23,20 @@ export async function PATCH(
     const body = await request.json();
     const validated = roomUpdateSchema.parse(body);
 
-    const { data: profile } = await supabase
+    const supabaseClient = supabase as any;
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
       .single();
 
+    const profileData = profile as any;
+
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: property, error: propertyError } = await supabase
+    const { data: property, error: propertyError } = await supabaseClient
       .from("properties")
       .select("owner_id, type, etat")
       .eq("id", params.id as any)
@@ -43,8 +46,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = property.owner_id === profile.id;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = property.owner_id === profileData.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(
@@ -60,7 +63,7 @@ export async function PATCH(
       );
     }
 
-    const { data: room, error: roomError } = await supabase
+    const { data: room, error: roomError } = await supabaseClient
       .from("rooms")
       .select("id, property_id")
       .eq("id", params.roomId as any)
@@ -88,7 +91,7 @@ export async function PATCH(
       }
     }
 
-    const { data: updatedRoom, error: updateError } = await supabase
+    const { data: updatedRoom, error: updateError } = await supabaseClient
       .from("rooms")
       .update(updates as any)
       .eq("id", params.roomId as any)
@@ -136,17 +139,20 @@ export async function DELETE(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
+    const supabaseClient = supabase as any;
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
       .single();
 
+    const profileData = profile as any;
+
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: property, error: propertyError } = await supabase
+    const { data: property, error: propertyError } = await supabaseClient
       .from("properties")
       .select("owner_id, type, etat")
       .eq("id", params.id as any)
@@ -156,8 +162,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = property.owner_id === profile.id;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = property.owner_id === profileData.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(
@@ -173,7 +179,7 @@ export async function DELETE(
       );
     }
 
-    const { data: room, error: roomError } = await supabase
+    const { data: room, error: roomError } = await supabaseClient
       .from("rooms")
       .select("id")
       .eq("id", params.roomId as any)
@@ -184,7 +190,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Pièce introuvable" }, { status: 404 });
     }
 
-    const { data: photos } = await supabase
+    const { data: photos } = await supabaseClient
       .from("photos")
       .select("id")
       .eq("room_id", params.roomId as any)
@@ -200,7 +206,7 @@ export async function DELETE(
       );
     }
 
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseClient
       .from("rooms")
       .delete()
       .eq("id", params.roomId as any)

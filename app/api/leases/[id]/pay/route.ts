@@ -115,7 +115,7 @@ export async function POST(
     const { data: paymentIntent, error: intentError } = await supabase
       .from("payment_intents")
       .insert({
-        lease_id: params.id,
+        lease_id: params.id as any,
         payment_share_id: paymentShareId,
         amount,
         currency: "EUR",
@@ -130,13 +130,15 @@ export async function POST(
 
     if (intentError) throw intentError;
 
+    const paymentIntentData = paymentIntent as any;
+
     // Mettre à jour le statut de la part de paiement
     await supabase
       .from("payment_shares")
       .update({
         status: "pending",
         provider,
-        provider_intent_id: paymentIntent.id,
+        provider_intent_id: paymentIntentData.id,
         last_event_at: new Date().toISOString(),
       } as any)
       .eq("id", paymentShareId as any);
@@ -144,10 +146,10 @@ export async function POST(
     // Émettre un événement
     await supabase.from("outbox").insert({
       event_type: "payment.intent.created",
-      payload: {
-        payment_intent_id: paymentIntent.id,
-        lease_id: params.id,
-        payment_share_id: paymentShareId,
+        payload: {
+          payment_intent_id: paymentIntentData.id,
+          lease_id: params.id as any,
+          payment_share_id: paymentShareId,
         amount,
         method,
       },
@@ -158,7 +160,7 @@ export async function POST(
       user_id: user.id,
       action: "payment",
       entity_type: "payment_intent",
-      entity_id: paymentIntent.id,
+      entity_id: paymentIntentData.id,
       metadata: { amount, method, month },
     } as any);
 

@@ -150,7 +150,7 @@ export async function POST(
         event_type: "signature.escalated",
         payload: {
           signature_level: level,
-          lease_id: params.id,
+          lease_id: params.id as any,
           draft_id: (draft as any).id,
         },
       } as any);
@@ -164,11 +164,13 @@ export async function POST(
 
     if (signatureError) throw signatureError;
 
+    const signatureResult = signature as any;
+
     // Créer la preuve de signature
     const { data: evidence, error: evidenceError } = await supabase
       .from("signature_evidence")
       .insert({
-        signature_id: signature.id,
+        signature_id: signatureResult.id,
         doc_id: (draft as any).id,
         owner_id: (profile as any).id,
         ip_inet: ip,
@@ -219,7 +221,7 @@ export async function POST(
       await supabase.from("outbox").insert({
         event_type: "lease.signed",
         payload: {
-          lease_id: params.id,
+          lease_id: params.id as any,
           draft_id: (draft as any).id,
         },
       } as any);
@@ -231,7 +233,7 @@ export async function POST(
       action: "sign",
       entity_type: "lease",
       entity_id: params.id,
-      metadata: { level, signature_id: signature.id },
+      metadata: { level, signature_id: signatureData.id },
       ip_inet: ip,
       user_agent: userAgent,
     } as any);

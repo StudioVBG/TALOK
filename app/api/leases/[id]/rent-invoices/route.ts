@@ -38,7 +38,7 @@ export async function POST(
         charges_forfaitaires,
         property:properties!inner(owner_id)
       `)
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!lease) {
@@ -62,7 +62,8 @@ export async function POST(
       .eq("user_id", user.id as any)
       .single();
 
-    if (leaseData.property.owner_id !== profile?.id) {
+    const profileData = profile as any;
+    if (leaseData.property.owner_id !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -73,7 +74,7 @@ export async function POST(
     const { data: existing } = await supabase
       .from("invoices")
       .select("id")
-      .eq("lease_id", params.id)
+      .eq("lease_id", params.id as any)
       .eq("periode", month)
       .maybeSingle();
 
@@ -88,12 +89,13 @@ export async function POST(
     const { data: roommates } = await supabase
       .from("roommates")
       .select("profile_id, role")
-      .eq("lease_id", params.id)
-      .eq("role", "principal")
+      .eq("lease_id", params.id as any)
+      .eq("role", "principal" as any)
       .is("left_on", null)
       .limit(1);
 
-    const tenantProfileId = roommates?.[0]?.profile_id;
+    const roommatesData = roommates as any;
+    const tenantProfileId = roommatesData?.[0]?.profile_id;
 
     if (!tenantProfileId) {
       return NextResponse.json(
@@ -111,8 +113,8 @@ export async function POST(
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
       .insert({
-        lease_id: params.id,
-        owner_id: profile.id,
+        lease_id: params.id as any,
+        owner_id: profileData.id,
         tenant_id: tenantProfileId,
         periode: month,
         montant_total,
@@ -125,23 +127,26 @@ export async function POST(
 
     if (invoiceError) throw invoiceError;
 
+    const invoiceData = invoice as any;
+
     // Si colocation, créer les parts de paiement
     const { data: allRoommates } = await supabase
       .from("roommates")
       .select("id, weight, role")
-      .eq("lease_id", params.id)
-      .in("role", ["principal", "tenant"])
+      .eq("lease_id", params.id as any)
+      .in("role", ["principal", "tenant"] as any)
       .is("left_on", null);
 
-    if (allRoommates && allRoommates.length > 1) {
-      const totalWeight = allRoommates.reduce((sum, r: any) => sum + parseFloat(r.weight || 1), 0);
+    const allRoommatesData = allRoommates as any;
+    if (allRoommatesData && allRoommatesData.length > 1) {
+      const totalWeight = allRoommatesData.reduce((sum: number, r: any) => sum + parseFloat(r.weight || 1), 0);
       const monthDate = new Date(`${month}-01`);
 
-      for (const roommate of allRoommates) {
+      for (const roommate of allRoommatesData) {
         const share = (parseFloat(roommate.weight || 1) / totalWeight) * montant_total;
         await supabase.from("payment_shares").insert({
-          lease_id: params.id,
-          invoice_id: invoice.id,
+          lease_id: params.id as any,
+          invoice_id: invoiceData.id,
           month: monthDate.toISOString().split("T")[0],
           roommate_id: roommate.id,
           due_amount: share,
@@ -154,8 +159,8 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "Rent.InvoiceIssued",
       payload: {
-        invoice_id: invoice.id,
-        lease_id: params.id,
+        invoice_id: invoiceData.id,
+        lease_id: params.id as any,
         month,
         montant_total,
       },
@@ -166,7 +171,7 @@ export async function POST(
       user_id: user.id,
       action: "invoice_issued",
       entity_type: "invoice",
-      entity_id: invoice.id,
+      entity_id: invoiceData.id,
       metadata: { month, montant_total },
     } as any);
 

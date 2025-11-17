@@ -108,12 +108,12 @@ export function PropertiesList() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {paginatedProperties.map((property) => (
-          <PropertyCard
-            key={property.id}
-            property={property}
-            onRefresh={handleRefresh}
-            onRemove={handleRemove}
-          />
+            <PropertyCard
+              key={property.id}
+              property={property as any}
+              onRefresh={handleRefresh}
+              onRemove={handleRemove}
+            />
         ))}
       </div>
 

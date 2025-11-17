@@ -58,15 +58,16 @@ export async function POST(
     const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select("id, owner_id, type")
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (propertyError || !property) {
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = property.owner_id === profile.id;
+    const profileData = profile as any;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = property.owner_id === profileData.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(
@@ -155,7 +156,7 @@ export async function POST(
 
     const { data: signedUpload, error: signedError } = await serviceClient.storage
       .from(PHOTOS_BUCKET)
-      .createSignedUploadUrl(storagePath, 60);
+      .createSignedUploadUrl(storagePath, { upsert: false });
 
     if (signedError || !signedUpload) {
       return NextResponse.json(

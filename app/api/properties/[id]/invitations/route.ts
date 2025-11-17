@@ -26,7 +26,7 @@ export async function POST(
     const { data: property } = await supabase
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!property) {
@@ -43,7 +43,8 @@ export async function POST(
       .single();
 
     const propertyData = property as any;
-    if (propertyData.owner_id !== profile?.id) {
+    const profileData = profile as any;
+    if (propertyData.owner_id !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -56,7 +57,7 @@ export async function POST(
         .from("unit_access_codes")
         .select("id")
         .eq("unit_id", unit_id)
-        .eq("status", "active")
+        .eq("status", "active" as any)
         .maybeSingle();
 
       if (existing) {
@@ -85,12 +86,14 @@ export async function POST(
 
     if (error) throw error;
 
+    const accessCodeData = accessCode as any;
+
     // Émettre un événement
     await supabase.from("outbox").insert({
       event_type: "Property.InvitationCreated",
       payload: {
-        access_code_id: accessCode.id,
-        property_id: params.id,
+        access_code_id: accessCodeData.id,
+        property_id: params.id as any,
         unit_id: unit_id || null,
         code,
       },
@@ -138,7 +141,7 @@ export async function GET(
     const { data: property } = await supabase
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!property) {
@@ -155,7 +158,8 @@ export async function GET(
       .single();
 
     const propertyData = property as any;
-    if (propertyData.owner_id !== profile?.id) {
+    const profileData = profile as any;
+    if (propertyData.owner_id !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -166,7 +170,7 @@ export async function GET(
     const { data: codes, error } = await supabase
       .from("unit_access_codes")
       .select("*")
-      .eq("property_id", params.id)
+      .eq("property_id", params.id as any)
       .order("created_at", { ascending: false });
 
     if (error) throw error;

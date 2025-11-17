@@ -34,7 +34,7 @@ export async function GET(
           )
         )
       `)
-      .eq("id", params.pid)
+      .eq("id", params.pid as any)
       .single();
 
     if (!payment) {
@@ -53,6 +53,8 @@ export async function GET(
       .eq("user_id", user.id as any)
       .single();
 
+    const profileData = profile as any;
+
     const { data: roommate } = await supabase
       .from("roommates")
       .select("id")
@@ -60,7 +62,7 @@ export async function GET(
       .eq("user_id", user.id as any)
       .maybeSingle();
 
-    const hasAccess = roommate || paymentData.invoice.lease.property.owner_id === profile?.id;
+    const hasAccess = roommate || paymentData.invoice.lease.property.owner_id === profileData?.id;
 
     if (!hasAccess) {
       return NextResponse.json(
@@ -81,18 +83,19 @@ export async function GET(
     const { data: receipt } = await supabase
       .from("documents")
       .select("*")
-      .eq("type", "quittance")
+      .eq("type", "quittance" as any)
       .eq("lease_id", paymentData.invoice.lease_id)
       .eq("metadata->>invoice_id", paymentData.invoice.id)
       .maybeSingle();
 
     if (receipt) {
+      const receiptData = receipt as any;
       // Générer une URL signée
       const { data: signedUrl } = await supabase.storage
         .from("documents")
-        .createSignedUrl(receipt.storage_path, 3600);
+        .createSignedUrl(receiptData.storage_path, 3600);
 
-      return NextResponse.json({ url: signedUrl?.signedUrl, receipt });
+      return NextResponse.json({ url: signedUrl?.signedUrl, receipt: receiptData });
     }
 
     // Générer la quittance si elle n'existe pas

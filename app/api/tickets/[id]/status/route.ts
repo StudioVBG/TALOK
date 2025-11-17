@@ -38,7 +38,7 @@ export async function PATCH(
         property:properties!inner(owner_id),
         lease:leases(roommates(user_id))
       `)
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!ticket) {
@@ -54,11 +54,13 @@ export async function PATCH(
       .eq("user_id", user.id as any)
       .single();
 
+    const profileData = profile as any;
+
     const ticketData = ticket as any;
-    const isAdmin = profile?.role === "admin";
-    const isOwner = ticketData.property?.owner_id === profile?.id;
-    const isCreator = ticketData.created_by_profile_id === profile?.id;
-    const isProvider = profile?.role === "provider" && ticketData.work_orders?.some((wo: any) => wo.provider_id === profile.id);
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = ticketData.property?.owner_id === profileData?.id;
+    const isCreator = ticketData.created_by_profile_id === profileData?.id;
+    const isProvider = profileData?.role === "provider" && ticketData.work_orders?.some((wo: any) => wo.provider_id === profileData.id);
     const isTenant = ticketData.lease?.roommates?.some((r: any) => r.user_id === user.id);
 
     // Vérifier les permissions selon le statut
@@ -86,7 +88,7 @@ export async function PATCH(
     const { data: updated, error } = await supabase
       .from("tickets")
       .update({ statut } as any)
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .select()
       .single();
 

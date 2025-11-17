@@ -1,18 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 import { workOrderSchema } from "@/lib/validations";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { data: workOrder, error } = await supabase
+    const { data: workOrder, error } = await supabaseClient
       .from("work_orders")
       .select("*")
       .eq("id", params.id as any)
@@ -28,9 +30,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
@@ -38,7 +41,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const body = await request.json();
     const validated = workOrderSchema.partial().parse(body);
 
-    const { data: workOrder, error } = await supabase
+    const { data: workOrder, error } = await supabaseClient
       .from("work_orders")
       .update(validated as any)
       .eq("id", params.id as any)
@@ -51,17 +54,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const validatedData = validated as any;
     if (validatedData.statut === "done") {
       const workOrderData = workOrder as any;
-      await supabase
+      await supabaseClient
         .from("tickets")
         .update({ statut: "resolved" } as any)
         .eq("id", workOrderData.ticket_id as any);
 
       // Émettre un événement
-      await supabase.from("outbox").insert({
+      await supabaseClient.from("outbox").insert({
         event_type: "Ticket.Done",
         payload: {
           ticket_id: workOrderData.ticket_id,
-          work_order_id: workOrder.id,
+          work_order_id: workOrderData.id,
         },
       } as any);
     }
@@ -78,14 +81,15 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { error } = await supabase.from("work_orders").delete().eq("id", params.id as any);
+    const { error } = await supabaseClient.from("work_orders").delete().eq("id", params.id as any);
 
     if (error) throw error;
     return NextResponse.json({ success: true });

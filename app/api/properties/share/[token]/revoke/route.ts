@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getServiceRoleClient } from "@/lib/server/service-role-client";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 interface RevokePayload {
   reason?: string;
@@ -26,24 +27,26 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const body = (await request.json().catch(() => ({}))) as RevokePayload;
     const { client: serviceClient } = getServiceRoleClient();
 
     const { data: tokenRecord, error: tokenError } = await serviceClient
       .from("property_share_tokens")
       .select("id, property_id, revoked_at")
-      .eq("token", params.token)
+      .eq("token", params.token as any)
       .single();
 
     if (tokenError || !tokenRecord) {
       return NextResponse.json({ error: "Lien introuvable" }, { status: 404 });
     }
 
-    if (tokenRecord.revoked_at) {
+    const tokenRecordData = tokenRecord as any;
+    if (tokenRecordData.revoked_at) {
       return NextResponse.json({ error: "Lien déjà révoqué." }, { status: 400 });
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
@@ -56,15 +59,17 @@ export async function POST(
     const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select("owner_id")
-      .eq("id", tokenRecord.property_id)
+      .eq("id", tokenRecordData.property_id as any)
       .single();
 
     if (propertyError || !property) {
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = property.owner_id === profile.id;
+    const profileData = profile as any;
+    const propertyData = property as any;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = propertyData.owner_id === profileData.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(
@@ -77,10 +82,10 @@ export async function POST(
       .from("property_share_tokens")
       .update({
         revoked_at: new Date().toISOString(),
-        revoked_by: profile.id,
+        revoked_by: profileData.id,
         revoke_reason: body.reason ?? null,
-      })
-      .eq("id", tokenRecord.id);
+      } as any)
+      .eq("id", tokenRecordData.id as any);
 
     if (updateError) {
       console.error("token revoke error", updateError);

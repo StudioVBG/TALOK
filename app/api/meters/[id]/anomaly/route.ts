@@ -40,7 +40,7 @@ export async function POST(
           )
         )
       `)
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!meter) {
@@ -57,7 +57,8 @@ export async function POST(
       .single();
 
     const meterData = meter as any;
-    const isOwner = meterData.property?.owner_id === profile?.id;
+    const profileData = profile as any;
+    const isOwner = meterData.property?.owner_id === profileData?.id;
     const isTenant = meterData.property?.leases?.some((lease: any) =>
       lease.roommates?.some((r: any) => r.user_id === user.id)
     );
@@ -73,7 +74,7 @@ export async function POST(
     const { data: recentReadings } = await supabase
       .from("meter_readings")
       .select("reading_value, reading_date")
-      .eq("meter_id", params.id)
+      .eq("meter_id", params.id as any)
       .order("reading_date", { ascending: false })
       .limit(3);
 

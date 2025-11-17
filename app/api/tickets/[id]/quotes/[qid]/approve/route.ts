@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * POST /api/tickets/[tid]/quotes/[qid]/approve - Approuver un devis (BTN-P15)
@@ -10,22 +11,23 @@ export async function POST(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
     // Vérifier que l'utilisateur est propriétaire du logement
-    const { data: ticket } = await supabase
+    const { data: ticket } = await supabaseClient
       .from("tickets")
       .select(`
         id,
         property:properties!inner(owner_id)
       `)
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!ticket) {
@@ -35,15 +37,16 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
       .single();
 
     const ticketData = ticket as any;
-    const isAdmin = profile?.role === "admin";
-    const isOwner = ticketData.property?.owner_id === profile?.id;
+    const profileData = profile as any;
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = ticketData.property?.owner_id === profileData?.id;
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json(
@@ -53,11 +56,11 @@ export async function POST(
     }
 
     // Vérifier que le devis existe et est en attente
-    const { data: quote } = await supabase
+    const { data: quote } = await supabaseClient
       .from("quotes")
       .select("*")
-      .eq("id", params.qid)
-      .eq("ticket_id", params.id)
+      .eq("id", params.qid as any)
+      .eq("ticket_id", params.id as any)
       .single();
 
     if (!quote) {
@@ -75,27 +78,27 @@ export async function POST(
     }
 
     // Approuver le devis
-    const { data: updatedQuote, error } = await supabase
+    const { data: updatedQuote, error } = await supabaseClient
       .from("quotes")
       .update({
         status: "approved",
         approved_at: new Date().toISOString(),
         approved_by: user.id,
       } as any)
-      .eq("id", params.qid)
+      .eq("id", params.qid as any)
       .select()
       .single();
 
     if (error) throw error;
 
     // Mettre à jour le statut du ticket en "in_progress"
-    await supabase
+    await supabaseClient
       .from("tickets")
       .update({ statut: "in_progress" } as any)
-      .eq("id", params.id);
+      .eq("id", params.id as any);
 
     // Émettre des événements
-    await supabase.from("outbox").insert({
+    await supabaseClient.from("outbox").insert({
       event_type: "Quote.Approved",
       payload: {
         quote_id: params.qid,
@@ -104,7 +107,7 @@ export async function POST(
       },
     } as any);
 
-    await supabase.from("outbox").insert({
+    await supabaseClient.from("outbox").insert({
       event_type: "Ticket.InProgress",
       payload: {
         ticket_id: params.id,
@@ -113,7 +116,7 @@ export async function POST(
     } as any);
 
     // Journaliser
-    await supabase.from("audit_log").insert({
+    await supabaseClient.from("audit_log").insert({
       user_id: user.id,
       action: "quote_approved",
       entity_type: "quote",

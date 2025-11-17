@@ -11,6 +11,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { typedSupabaseClient } from "@/lib/supabase/typed-client";
 import type { PropertyRow } from "@/lib/supabase/typed-client";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -19,10 +20,12 @@ export function usePropertiesInfinite() {
   
   return useInfiniteQuery({
     queryKey: ["properties", "infinite", profile?.id],
+    initialPageParam: 0,
     queryFn: async ({ pageParam = 0 }) => {
       if (!profile) throw new Error("Non authentifié");
       
-      let query = typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      let query = supabaseClient
         .from("properties")
         .select("*")
         .order("created_at", { ascending: false })
@@ -33,28 +36,28 @@ export function usePropertiesInfinite() {
         query = query.eq("owner_id", profile.id);
       } else if (profile.role !== "admin") {
         // Les locataires voient les propriétés via leurs baux
-        const { data: leases } = await typedSupabaseClient
+        const { data: leases } = await supabaseClient
           .from("lease_signers")
           .select("lease_id")
           .eq("profile_id", profile.id)
-          .in("role", ["locataire_principal", "colocataire"]);
+          .in("role", ["locataire_principal", "colocataire"] as any);
         
         if (!leases || leases.length === 0) {
           return { data: [], nextPage: null };
         }
         
-        const leaseIds = leases.map((l) => l.lease_id);
-        const { data: leasesData } = await typedSupabaseClient
+        const leaseIds = (leases as any[]).map((l: any) => l.lease_id);
+        const { data: leasesData } = await supabaseClient
           .from("leases")
           .select("property_id")
           .in("id", leaseIds)
-          .eq("statut", "active");
+          .eq("statut", "active" as any);
         
         if (!leasesData || leasesData.length === 0) {
           return { data: [], nextPage: null };
         }
         
-        const propertyIds = [...new Set(leasesData.map((l) => l.property_id).filter(Boolean))];
+        const propertyIds = [...new Set((leasesData as any[]).map((l: any) => l.property_id).filter(Boolean))];
         query = query.in("id", propertyIds);
       }
       

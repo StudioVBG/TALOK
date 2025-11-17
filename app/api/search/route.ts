@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * GET /api/search - Recherche plein texte (BTN-U01)
@@ -7,9 +8,10 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -26,7 +28,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
@@ -43,7 +45,7 @@ export async function GET(request: Request) {
     // Recherche dans les propriétés (si owner ou admin)
     if (!type || type === "properties" || type === "all") {
       if (profileData?.role === "owner" || profileData?.role === "admin") {
-        const { data: properties } = await supabase
+        const { data: properties } = await supabaseClient
           .from("properties")
           .select("id, adresse_complete, type")
           .or(`adresse_complete.ilike.%${q}%,type.ilike.%${q}%`)
@@ -55,7 +57,7 @@ export async function GET(request: Request) {
 
     // Recherche dans les baux
     if (!type || type === "leases" || type === "all") {
-      const { data: leases } = await supabase
+      const { data: leases } = await supabaseClient
         .from("leases")
         .select("id, type_bail, date_debut, date_fin")
         .or(`type_bail.ilike.%${q}%`)
@@ -66,7 +68,7 @@ export async function GET(request: Request) {
 
     // Recherche dans les tickets
     if (!type || type === "tickets" || type === "all") {
-      const { data: tickets } = await supabase
+      const { data: tickets } = await supabaseClient
         .from("tickets")
         .select("id, titre, description, statut")
         .or(`titre.ilike.%${q}%,description.ilike.%${q}%`)
@@ -77,7 +79,7 @@ export async function GET(request: Request) {
 
     // Recherche dans les documents
     if (!type || type === "documents" || type === "all") {
-      const { data: documents } = await supabase
+      const { data: documents } = await supabaseClient
         .from("documents")
         .select("id, type, storage_path")
         .or(`type.ilike.%${q}%`)

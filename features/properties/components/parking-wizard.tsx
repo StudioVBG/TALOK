@@ -805,7 +805,7 @@ export function ParkingWizard({
   );
 }
 
-interface FloatingFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface FloatingFieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
   label: string;
   value: string | number | null;
   onChange: (value: string) => void;

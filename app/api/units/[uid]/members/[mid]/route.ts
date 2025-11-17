@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * PATCH /api/units/[uid]/members/[mid] - Changer le rôle d'un membre de la colocation
@@ -10,9 +11,10 @@ export async function PATCH(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -29,7 +31,7 @@ export async function PATCH(
     }
 
     // Récupérer le membre
-    const { data: member } = await supabase
+    const { data: member } = await supabaseClient
       .from("roommates")
       .select(`
         *,
@@ -38,8 +40,8 @@ export async function PATCH(
           property:properties!inner(owner_id)
         )
       `)
-      .eq("id", params.mid)
-      .eq("lease_id", (await supabase.from("units").select("property_id").eq("id", params.uid).single()).data?.property_id)
+      .eq("id", params.mid as any)
+      .eq("lease_id", (await supabaseClient.from("units").select("property_id").eq("id", params.uid as any).single()).data?.property_id)
       .single();
 
     if (!member) {
@@ -50,14 +52,15 @@ export async function PATCH(
     }
 
     // Vérifier que l'utilisateur est propriétaire
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id as any)
       .single();
 
     const memberData = member as any;
-    if (memberData.lease?.property?.owner_id !== profile?.id) {
+    const profileData = profile as any;
+    if (memberData.lease?.property?.owner_id !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -66,11 +69,11 @@ export async function PATCH(
 
     // Vérifier les contraintes (max 2 principaux)
     if (role === "principal") {
-      const { data: principals } = await supabase
+      const { data: principals } = await supabaseClient
         .from("roommates")
         .select("id")
         .eq("lease_id", memberData.lease_id)
-        .eq("role", "principal")
+        .eq("role", "principal" as any)
         .neq("id", params.mid)
         .is("left_on", null);
 
@@ -83,17 +86,17 @@ export async function PATCH(
     }
 
     // Mettre à jour le rôle
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await supabaseClient
       .from("roommates")
       .update({ role } as any)
-      .eq("id", params.mid)
+      .eq("id", params.mid as any)
       .select()
       .single();
 
     if (error) throw error;
 
     // Émettre un événement
-    await supabase.from("outbox").insert({
+    await supabaseClient.from("outbox").insert({
       event_type: "Cohousing.RoleUpdated",
       payload: {
         roommate_id: params.mid,
@@ -104,7 +107,7 @@ export async function PATCH(
     } as any);
 
     // Journaliser
-    await supabase.from("audit_log").insert({
+    await supabaseClient.from("audit_log").insert({
       user_id: user.id,
       action: "role_updated",
       entity_type: "roommate",

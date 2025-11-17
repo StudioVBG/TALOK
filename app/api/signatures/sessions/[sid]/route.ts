@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * GET /api/signatures/sessions/[sid] - Récupérer le statut d'une session de signature
@@ -10,9 +11,10 @@ export async function GET(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -20,14 +22,14 @@ export async function GET(
 
     // TODO: Récupérer la session depuis une table dédiée ou depuis les signatures
     // Pour l'instant, on simule
-    const { data: signatures } = await supabase
+    const { data: signatures } = await supabaseClient
       .from("signatures")
       .select(`
         *,
         lease:leases(id, statut),
         signer:profiles!signatures_signer_profile_id_fkey(id, prenom, nom)
       `)
-      .eq("id", params.sid)
+      .eq("id", params.sid as any)
       .maybeSingle();
 
     if (!signatures) {
@@ -40,14 +42,15 @@ export async function GET(
     const signatureData = signatures as any;
 
     // Vérifier les permissions
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id as any)
       .single();
 
-    const hasAccess = signatureData.signer_profile_id === profile?.id || 
-      signatureData.lease?.property?.owner_id === profile?.id;
+    const profileData = profile as any;
+    const hasAccess = signatureData.signer_profile_id === profileData?.id || 
+      signatureData.lease?.property?.owner_id === profileData?.id;
 
     if (!hasAccess) {
       return NextResponse.json(

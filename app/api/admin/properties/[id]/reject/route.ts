@@ -59,7 +59,7 @@ export async function POST(
       .update({
         etat: "rejected",
         validated_at: now,
-        validated_by: profile.id,
+        validated_by: (profile as any).id,
         rejection_reason: reason,
       })
       .eq("id", propertyId)

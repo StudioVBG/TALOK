@@ -59,7 +59,7 @@ export async function DELETE(
     const { data: document, error: documentError } = await serviceClient
       .from("documents")
       .select(baseColumns.join(", "))
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (documentError || !document) {
@@ -78,9 +78,10 @@ export async function DELETE(
       is_cover?: boolean;
     };
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = doc.owner_id && doc.owner_id === profile.id;
-    const isTenant = doc.tenant_id && doc.tenant_id === profile.id;
+    const profileData = profile as any;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = doc.owner_id && doc.owner_id === profileData.id;
+    const isTenant = doc.tenant_id && doc.tenant_id === profileData.id;
 
     if (!isAdmin && !isOwner && !isTenant) {
       return NextResponse.json(

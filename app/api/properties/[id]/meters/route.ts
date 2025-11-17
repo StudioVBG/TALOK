@@ -39,7 +39,7 @@ export async function POST(
     const { data: property } = await supabase
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!property) {
@@ -56,7 +56,8 @@ export async function POST(
       .single();
 
     const propertyData = property as any;
-    if (propertyData.owner_id !== profile?.id) {
+    const profileData = profile as any;
+    if (propertyData.owner_id !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -79,12 +80,14 @@ export async function POST(
 
     if (error) throw error;
 
+    const meterData = meter as any;
+
     // Journaliser
     await supabase.from("audit_log").insert({
       user_id: user.id,
       action: "meter_added",
       entity_type: "meter",
-      entity_id: meter.id,
+      entity_id: meterData.id,
       metadata: { type, reference, is_connected },
     } as any);
 

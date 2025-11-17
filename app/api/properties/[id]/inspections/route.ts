@@ -39,7 +39,7 @@ export async function POST(
     const { data: property } = await supabase
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!property) {
@@ -56,7 +56,8 @@ export async function POST(
       .single();
 
     const propertyData = property as any;
-    if (propertyData.owner_id !== profile?.id) {
+    const profileData = profile as any;
+    if (propertyData.owner_id !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -79,12 +80,14 @@ export async function POST(
 
     if (error) throw error;
 
+    const edlData = edl as any;
+
     // Émettre un événement
     await supabase.from("outbox").insert({
       event_type: "Inspection.Scheduled",
       payload: {
-        edl_id: edl.id,
-        property_id: params.id,
+        edl_id: edlData.id,
+        property_id: params.id as any,
         lease_id,
         type,
         scheduled_at,
@@ -96,11 +99,11 @@ export async function POST(
       user_id: user.id,
       action: "edl_scheduled",
       entity_type: "edl",
-      entity_id: edl.id,
+      entity_id: edlData.id,
       metadata: { type, scheduled_at },
     } as any);
 
-    return NextResponse.json({ edl });
+    return NextResponse.json({ edl: edlData });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },

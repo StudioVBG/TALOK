@@ -75,8 +75,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = property.owner_id === profile.id;
+    const profileData = profile as any;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = property.owner_id === profileData.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(
@@ -205,8 +206,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = property.owner_id === profile.id;
+    const profileData = profile as any;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = property.owner_id === profileData.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(

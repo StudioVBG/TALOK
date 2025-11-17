@@ -27,8 +27,8 @@ export function ProtectedRoute({
       return;
     }
 
-    if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
-      router.push("/dashboard");
+    if (allowedRoles && profile && !allowedRoles.includes(profile.role as any)) {
+      router.push("/dashboard" as any);
       return;
     }
   }, [user, profile, loading, allowedRoles, redirectTo, router]);
@@ -48,7 +48,7 @@ export function ProtectedRoute({
     return null;
   }
 
-  if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
+  if (allowedRoles && profile && !allowedRoles.includes(profile.role as any)) {
     return null;
   }
 

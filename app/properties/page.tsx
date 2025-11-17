@@ -12,12 +12,12 @@ function PropertiesPageContent() {
   const router = useRouter();
 
   useEffect(() => {
-    if (profile && !canManageProperties(profile.role)) {
+    if (profile && !canManageProperties(profile.role as any)) {
       router.push("/dashboard");
     }
   }, [profile, router]);
 
-  if (!profile || !canManageProperties(profile.role)) {
+  if (!profile || !canManageProperties(profile.role as any)) {
     return null;
   }
 

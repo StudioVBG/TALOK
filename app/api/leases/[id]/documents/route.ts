@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * GET /api/leases/[id]/documents - Récupérer les documents d'un bail
@@ -10,9 +11,10 @@ export async function GET(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -21,10 +23,10 @@ export async function GET(
     const leaseId = params.id;
 
     // Vérifier que l'utilisateur a accès à ce bail
-    const { data: roommate } = await supabase
+    const { data: roommate } = await supabaseClient
       .from("roommates")
       .select("id")
-      .eq("lease_id", leaseId)
+      .eq("lease_id", leaseId as any)
       .eq("user_id", user.id as any)
       .maybeSingle();
 
@@ -36,10 +38,10 @@ export async function GET(
     }
 
     // Récupérer les documents
-    const { data: documents, error } = await supabase
+    const { data: documents, error } = await supabaseClient
       .from("documents")
       .select("*")
-      .eq("lease_id", leaseId)
+      .eq("lease_id", leaseId as any)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -48,7 +50,7 @@ export async function GET(
     const documentsWithUrls = await Promise.all(
       (documents || []).map(async (doc: any) => {
         if (doc.storage_path) {
-          const { data: signedUrl } = await supabase.storage
+          const { data: signedUrl } = await supabaseClient.storage
             .from("documents")
             .createSignedUrl(doc.storage_path, 3600); // 1 heure
 

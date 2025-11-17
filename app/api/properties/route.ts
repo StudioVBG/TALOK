@@ -24,7 +24,8 @@ export async function GET(request: Request) {
     }
 
     // Récupérer le profil
-    const { data: profile } = await supabase
+    const supabaseClient = supabase as any;
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
@@ -402,7 +403,8 @@ export async function POST(request: Request) {
     const draftPayload = propertyDraftSchema.safeParse(body);
 
     // Récupérer le profil
-    const { data: profile } = await supabase
+    const supabaseClientPost = supabase as any;
+    const { data: profile } = await supabaseClientPost
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)

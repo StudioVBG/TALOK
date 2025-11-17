@@ -91,7 +91,7 @@ export async function POST(
     await supabaseClient.from("outbox").insert({
       event_type: "Lease.Activated",
       payload: {
-        lease_id: params.id,
+        lease_id: params.id as any,
         activated_by: user.id,
         manual: true,
       },

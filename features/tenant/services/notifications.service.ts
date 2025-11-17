@@ -81,10 +81,10 @@ export class NotificationsService {
   /**
    * S'abonner aux nouvelles notifications (Realtime)
    */
-  subscribeToNotifications(callback: (notification: Notification) => void) {
+  async subscribeToNotifications(callback: (notification: Notification) => void) {
     const {
       data: { user },
-    } = this.supabase.auth.getUser();
+    } = await this.supabase.auth.getUser();
 
     return this.supabase
       .channel("notifications")

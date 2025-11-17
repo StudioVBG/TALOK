@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * GET /api/tickets/[id]/messages - Récupérer les messages d'un ticket
@@ -10,9 +11,10 @@ export async function GET(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -21,10 +23,10 @@ export async function GET(
     const ticketId = params.id;
 
     // Vérifier l'accès au ticket
-    const { data: ticket } = await supabase
+    const { data: ticket } = await supabaseClient
       .from("tickets")
       .select("id, lease_id, created_by_profile_id")
-      .eq("id", ticketId)
+      .eq("id", ticketId as any)
       .single();
 
     if (!ticket) {
@@ -34,23 +36,26 @@ export async function GET(
       );
     }
 
+    const ticketData = ticket as any;
+
     // Vérifier les permissions
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("role")
       .eq("user_id", user.id as any)
       .single();
 
-    const isOwnerOrAdmin = profile?.role === "owner" || profile?.role === "admin";
-    const isCreator = ticket.created_by_profile_id === profile?.id;
+    const profileData = profile as any;
+    const isOwnerOrAdmin = profileData?.role === "owner" || profileData?.role === "admin";
+    const isCreator = ticketData.created_by_profile_id === profileData?.id;
 
     // Vérifier si membre du bail
     let hasAccess = isOwnerOrAdmin || isCreator;
-    if (ticket.lease_id) {
-      const { data: roommate } = await supabase
+    if (ticketData.lease_id) {
+      const { data: roommate } = await supabaseClient
         .from("roommates")
         .select("id")
-        .eq("lease_id", ticket.lease_id)
+        .eq("lease_id", ticketData.lease_id as any)
         .eq("user_id", user.id as any)
         .maybeSingle();
       hasAccess = hasAccess || !!roommate;
@@ -64,7 +69,7 @@ export async function GET(
     }
 
     // Récupérer les messages
-    const { data: messages, error } = await supabase
+    const { data: messages, error } = await supabaseClient
       .from("ticket_messages")
       .select(`
         *,
@@ -98,9 +103,10 @@ export async function POST(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseClient = getTypedSupabaseClient(supabase);
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await supabaseClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -118,10 +124,10 @@ export async function POST(
     }
 
     // Vérifier l'accès au ticket (même logique que GET)
-    const { data: ticket } = await supabase
+    const { data: ticket } = await supabaseClient
       .from("tickets")
       .select("id, lease_id, created_by_profile_id")
-      .eq("id", ticketId)
+      .eq("id", ticketId as any)
       .single();
 
     if (!ticket) {
@@ -131,21 +137,24 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
+    const ticketDataPost = ticket as any;
+
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
       .single();
 
-    const isOwnerOrAdmin = profile?.role === "owner" || profile?.role === "admin";
-    const isCreator = ticket.created_by_profile_id === profile?.id;
+    const profileDataPost = profile as any;
+    const isOwnerOrAdmin = profileDataPost?.role === "owner" || profileDataPost?.role === "admin";
+    const isCreator = ticketDataPost.created_by_profile_id === profileDataPost?.id;
 
     let hasAccess = isOwnerOrAdmin || isCreator;
-    if (ticket.lease_id) {
-      const { data: roommate } = await supabase
+    if (ticketDataPost.lease_id) {
+      const { data: roommate } = await supabaseClient
         .from("roommates")
         .select("id")
-        .eq("lease_id", ticket.lease_id)
+        .eq("lease_id", ticketDataPost.lease_id as any)
         .eq("user_id", user.id as any)
         .maybeSingle();
       hasAccess = hasAccess || !!roommate;
@@ -167,11 +176,11 @@ export async function POST(
     }
 
     // Créer le message
-    const { data: message, error } = await supabase
+    const { data: message, error } = await supabaseClient
       .from("ticket_messages")
       .insert({
-        ticket_id: ticketId,
-        sender_user: user.id,
+        ticket_id: ticketId as any,
+        sender_user: user.id as any,
         body: messageBody,
         attachments,
         is_internal,
@@ -181,17 +190,19 @@ export async function POST(
 
     if (error) throw error;
 
+    const messageData = message as any;
+
     // Émettre un événement
-    await supabase.from("outbox").insert({
+    await supabaseClient.from("outbox").insert({
       event_type: "ticket.message.created",
       payload: {
         ticket_id: ticketId,
-        message_id: message.id,
+        message_id: messageData.id,
         sender_user: user.id,
       },
     } as any);
 
-    return NextResponse.json({ message });
+    return NextResponse.json({ message: messageData });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * Middleware pour gérer l'idempotence des requêtes (P2-1)
@@ -38,10 +39,11 @@ export async function checkIdempotency(
   // Vérifier dans la base de données (table idempotency_keys)
   try {
     const supabase = await createClient();
-    const { data: existing } = await supabase
+    const supabaseClient = getTypedSupabaseClient(supabase);
+    const { data: existing } = await supabaseClient
       .from("idempotency_keys")
       .select("*")
-      .eq("key", key)
+      .eq("key", key as any)
       .single();
 
     if (existing) {
@@ -82,7 +84,8 @@ export async function storeIdempotency(
   // Stocker dans la base de données
   try {
     const supabase = await createClient();
-    await supabase.from("idempotency_keys").insert({
+    const supabaseClient = getTypedSupabaseClient(supabase);
+    await supabaseClient.from("idempotency_keys").insert({
       key,
       response: JSON.stringify(response),
       created_at: new Date().toISOString(),

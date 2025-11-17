@@ -10,10 +10,21 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { typedSupabaseClient } from "@/lib/supabase/typed-client";
 import type { Database } from "@/lib/supabase/database.types";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
-type PaymentRow = Database["public"]["Tables"]["payments"]["Row"];
-type PaymentInsert = Database["public"]["Tables"]["payments"]["Insert"];
-type PaymentUpdate = Database["public"]["Tables"]["payments"]["Update"];
+type PaymentRow = {
+  id: string;
+  invoice_id: string;
+  montant: number;
+  moyen: string;
+  provider_ref?: string | null;
+  date_paiement?: string | null;
+  statut: string;
+  created_at?: string;
+  updated_at?: string;
+};
+type PaymentInsert = Partial<PaymentRow>;
+type PaymentUpdate = Partial<PaymentRow>;
 
 /**
  * Hook pour récupérer tous les paiements de l'utilisateur
@@ -26,7 +37,8 @@ export function usePayments(invoiceId?: string | null) {
     queryFn: async () => {
       if (!profile) throw new Error("Non authentifié");
       
-      let query = typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      let query = supabaseClient
         .from("payments")
         .select("*")
         .order("created_at", { ascending: false });
@@ -38,7 +50,7 @@ export function usePayments(invoiceId?: string | null) {
       // Filtrer selon le rôle via les factures
       if (profile.role === "owner") {
         // Les propriétaires voient les paiements de leurs factures
-        const { data: invoices } = await typedSupabaseClient
+        const { data: invoices } = await supabaseClient
           .from("invoices")
           .select("id")
           .eq("owner_id", profile.id);
@@ -47,11 +59,11 @@ export function usePayments(invoiceId?: string | null) {
           return [];
         }
         
-        const invoiceIds = invoices.map((inv) => inv.id);
+        const invoiceIds = (invoices as any[]).map((inv: any) => inv.id);
         query = query.in("invoice_id", invoiceIds);
       } else if (profile.role === "tenant") {
         // Les locataires voient les paiements de leurs factures
-        const { data: invoices } = await typedSupabaseClient
+        const { data: invoices } = await supabaseClient
           .from("invoices")
           .select("id")
           .eq("tenant_id", profile.id);
@@ -60,7 +72,7 @@ export function usePayments(invoiceId?: string | null) {
           return [];
         }
         
-        const invoiceIds = invoices.map((inv) => inv.id);
+        const invoiceIds = (invoices as any[]).map((inv: any) => inv.id);
         query = query.in("invoice_id", invoiceIds);
       }
       
@@ -81,7 +93,8 @@ export function usePayment(paymentId: string | null) {
     queryFn: async () => {
       if (!paymentId) throw new Error("Payment ID requis");
       
-      const { data, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data, error } = await supabaseClient
         .from("payments")
         .select("*")
         .eq("id", paymentId)
@@ -102,9 +115,10 @@ export function useCreatePayment() {
   
   return useMutation({
     mutationFn: async (data: PaymentInsert) => {
-      const { data: payment, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: payment, error } = await supabaseClient
         .from("payments")
-        .insert(data)
+        .insert(data as any)
         .select()
         .single();
       
@@ -127,9 +141,10 @@ export function useUpdatePayment() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: PaymentUpdate }) => {
-      const { data: payment, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: payment, error } = await supabaseClient
         .from("payments")
-        .update(data)
+        .update(data as any)
         .eq("id", id)
         .select()
         .single();

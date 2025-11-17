@@ -11,6 +11,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { typedSupabaseClient } from "@/lib/supabase/typed-client";
 import type { PropertyRow, PropertyUpdate } from "@/lib/supabase/typed-client";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * Hook pour mettre à jour une propriété avec optimistic update
@@ -21,9 +22,10 @@ export function useUpdatePropertyOptimistic() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: PropertyUpdate }) => {
-      const { data: property, error } = await typedSupabaseClient
+      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      const { data: property, error } = await supabaseClient
         .from("properties")
-        .update(data)
+        .update(data as any)
         .eq("id", id)
         .select()
         .single();

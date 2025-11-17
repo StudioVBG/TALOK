@@ -26,7 +26,7 @@ export async function POST(
         statut,
         property:properties!inner(owner_id)
       `)
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!lease) {
@@ -43,8 +43,9 @@ export async function POST(
       .single();
 
     const leaseData = lease as any;
-    const isAdmin = profile?.role === "admin";
-    const isOwner = leaseData.property?.owner_id === profile?.id;
+    const profileData = profile as any;
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = leaseData.property?.owner_id === profileData?.id;
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json(
@@ -70,7 +71,7 @@ export async function POST(
         statut: "terminated",
         date_fin: termination_date || new Date().toISOString().split("T")[0],
       } as any)
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .select()
       .single();
 
@@ -80,7 +81,7 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "Lease.Terminated",
       payload: {
-        lease_id: params.id,
+        lease_id: params.id as any,
         termination_date: termination_date || new Date().toISOString().split("T")[0],
         reason,
         terminated_by: user.id,

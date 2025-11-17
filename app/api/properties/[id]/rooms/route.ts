@@ -179,8 +179,9 @@ export async function POST(
 
     console.log(`[POST /api/properties/${params.id}/rooms] Propriété trouvée: owner_id=${property.owner_id}, etat=${property.etat || "N/A"}, type=${property.type || "N/A"}`);
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = property.owner_id === profile.id;
+    const profileData = profile as any;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = property.owner_id === profileData.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(

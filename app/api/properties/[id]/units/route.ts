@@ -39,7 +39,7 @@ export async function POST(
     const { data: property } = await supabase
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id)
+      .eq("id", params.id as any)
       .single();
 
     if (!property) {
@@ -56,7 +56,8 @@ export async function POST(
       .single();
 
     const propertyData = property as any;
-    if (propertyData.owner_id !== profile?.id) {
+    const profileData = profile as any;
+    if (propertyData.owner_id !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -77,16 +78,18 @@ export async function POST(
 
     if (error) throw error;
 
+    const unitData = unit as any;
+
     // Créer un code d'accès pour cette unité
     const { createClient: createSupabaseClient } = await import("@/lib/supabase/server");
     const supabaseAdmin = await createSupabaseClient();
     
     const code = await generateUniqueCode(supabaseAdmin);
     await supabaseAdmin.from("unit_access_codes").insert({
-      unit_id: unit.id,
-      property_id: params.id,
+      unit_id: unitData.id,
+      property_id: params.id as any,
       code,
-      status: "active",
+      status: "active" as any,
       created_by: user.id,
     } as any);
 
@@ -94,14 +97,14 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "Cohousing.Activated",
       payload: {
-        unit_id: unit.id,
-        property_id: params.id,
+        unit_id: unitData.id,
+        property_id: params.id as any,
         capacite_max,
         auto_validation_threshold,
       },
     } as any);
 
-    return NextResponse.json({ unit, access_code: code });
+    return NextResponse.json({ unit: unitData, access_code: code });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },

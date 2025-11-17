@@ -12,12 +12,12 @@ function ChargesPageContent() {
   const router = useRouter();
 
   useEffect(() => {
-    if (profile && !canManageProperties(profile.role)) {
-      router.push("/dashboard");
+    if (profile && !canManageProperties(profile.role as any)) {
+      router.push("/dashboard" as any);
     }
   }, [profile, router]);
 
-  if (!profile || !canManageProperties(profile.role)) {
+  if (!profile || !canManageProperties(profile.role as any)) {
     return null;
   }
 

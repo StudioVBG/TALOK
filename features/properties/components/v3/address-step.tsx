@@ -39,6 +39,7 @@ interface AddressStepProps {
   }) => void;
   errors?: {
     adresse_complete?: string;
+    complement_adresse?: string;
     code_postal?: string;
     ville?: string;
   };

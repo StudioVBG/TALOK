@@ -236,8 +236,9 @@ export async function PATCH(
 
     console.log(`[PATCH /api/properties/${params.id}] Propriété trouvée: owner_id=${property.owner_id}, etat=${property.etat || "N/A"}, type=${property.type || "N/A"}`);
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = property.owner_id === profile.id;
+    const profileData = profile as any;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = property.owner_id === profileData.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(
@@ -378,10 +379,13 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const validated = propertySchema.partial().parse(body);
+    // Utiliser propertyGeneralUpdateSchema pour les mises à jour partielles
+    const validated = propertyGeneralUpdateSchema.parse(body);
+
+    const supabaseClient = supabase as any;
 
     // Vérifier que l'utilisateur est propriétaire de la propriété
-    const { data: property, error: propertyError } = await supabase
+    const { data: property, error: propertyError } = await supabaseClient
       .from("properties")
       .select("owner_id, etat")
       .eq("id", params.id as any)
@@ -391,7 +395,7 @@ export async function PUT(
       return NextResponse.json({ error: "Propriété non trouvée" }, { status: 404 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
@@ -421,7 +425,7 @@ export async function PUT(
       );
     }
 
-    const { data: updatedProperty, error: updateError } = await supabase
+    const { data: updatedProperty, error: updateError } = await supabaseClient
       .from("properties")
       .update(validated as any)
       .eq("id", params.id as any)
@@ -533,7 +537,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Propriété non trouvée" }, { status: 404 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)

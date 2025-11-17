@@ -20,7 +20,8 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { data: property, error: propertyError } = await supabase
+    const supabaseClient = supabase as any;
+    const { data: property, error: propertyError } = await supabaseClient
       .from("properties")
       .select(
         "id, owner_id, type, chauffage_type, chauffage_energie, eau_chaude_type, clim_presence, clim_type"
@@ -67,20 +68,24 @@ export async function PATCH(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const supabaseClient = supabase as any;
+
     const body = await request.json();
     const validated = propertyHeatingSchema.parse(body);
 
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
       .single();
 
+    const profileData = profile as any;
+
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: property, error: propertyError } = await supabase
+    const { data: property, error: propertyError } = await supabaseClient
       .from("properties")
       .select("owner_id, type, etat")
       .eq("id", params.id as any)
@@ -90,8 +95,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    const isAdmin = profile.role === "admin";
-    const isOwner = property.owner_id === profile.id;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = property.owner_id === profileData.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(
@@ -125,7 +130,7 @@ export async function PATCH(
       updated_at: new Date().toISOString(),
     };
 
-    const { data: updatedProperty, error: updateError } = await supabase
+    const { data: updatedProperty, error: updateError } = await supabaseClient
       .from("properties")
       .update(heatingUpdates as any)
       .eq("id", params.id as any)

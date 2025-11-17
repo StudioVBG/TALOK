@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       .from("guarantors")
       .select("id")
       .eq("lease_id", lease_id as any)
-      .eq("profile_id", profile.id)
+      .eq("profile_id", (profile as any).id)
       .maybeSingle();
 
     if (existing) {
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       .from("guarantors")
       .insert({
         lease_id,
-        profile_id: profile.id,
+        profile_id: (profile as any).id,
         user_id: user.id,
         first_name,
         last_name,
