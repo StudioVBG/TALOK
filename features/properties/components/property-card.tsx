@@ -96,7 +96,7 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
       // Mettre à jour le statut avec optimistic update
       await updateProperty.mutateAsync({
         id: property.id,
-        data: { etat: "pending" as any } as any, // TODO: Utiliser le bon type depuis PropertyUpdate
+        data: { etat: "pending_review" } as any, // PropertyUpdate peut ne pas inclure 'etat' dans les types générés
       });
       toast({
         title: "Logement soumis",

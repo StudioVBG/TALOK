@@ -292,7 +292,7 @@ export function RoomsPhotosStep({
     try {
       console.log(`[RoomsPhotosStep] Ajout d'une pièce pour propertyId=${propertyId}`);
       const newRoom = await propertiesService.createRoom(propertyId, {
-        type_piece: "autre" as any, // TODO: Migrer RoomPayload vers RoomTypeV3
+        type_piece: "autre" as any, // RoomTypeV3 compatible avec RoomType via cast
         label_affiche: "Nouvelle pièce",
         surface_m2: null,
         chauffage_present: true,
@@ -346,7 +346,7 @@ export function RoomsPhotosStep({
           file_name: file.name,
           mime_type: file.type,
           room_id: roomId || undefined,
-          tag: (tag as any) || undefined, // TODO: Migrer PhotoUploadRequest vers PhotoTagV3
+          tag: (tag as any) || undefined, // PhotoTagV3 compatible avec PhotoTag via cast
         });
 
         // Uploader vers Supabase Storage

@@ -40,9 +40,18 @@ import {
   Wifi,
   Tv,
   ChefHat,
-  Car as CarIcon,
   Shield,
   Zap,
+  Waves,
+  Droplet,
+  Coffee,
+  Wind,
+  Dumbbell,
+  Bike,
+  ParkingCircle,
+  PawPrint,
+  Heart,
+  Sprout,
 } from "lucide-react";
 import type { PropertyTypeV3, EquipmentV3 } from "@/lib/types/property-v3";
 import { HAB_EQUIPMENTS } from "@/lib/types/property-v3";
@@ -95,21 +104,21 @@ const EQUIPMENT_ICONS: Record<EquipmentV3, typeof Wifi> = {
   wifi: Wifi,
   television: Tv,
   cuisine_equipee: ChefHat,
-  lave_linge: CarIcon, // TODO: remplacer par icône appropriée
-  lave_vaisselle: CarIcon,
-  micro_ondes: CarIcon,
-  machine_a_cafe: CarIcon,
-  fer_repasser: CarIcon,
-  seche_cheveux: CarIcon,
+  lave_linge: Waves, // Machine à laver
+  lave_vaisselle: Droplet, // Lave-vaisselle
+  micro_ondes: Zap, // Micro-ondes (électricité)
+  machine_a_cafe: Coffee, // Machine à café
+  fer_repasser: Zap, // Fer à repasser (électricité)
+  seche_cheveux: Wind, // Sèche-cheveux (vent)
   balcon: Home,
   terrasse: Home,
-  jardin: Home,
-  piscine: CarIcon,
-  salle_sport: CarIcon,
-  local_velo: CarIcon,
-  parking_residence: CarIcon,
-  animaux_acceptes: CarIcon,
-  equipement_bebe: CarIcon,
+  jardin: Sprout, // Jardin (plante)
+  piscine: Waves, // Piscine (eau)
+  salle_sport: Dumbbell, // Salle de sport
+  local_velo: Bike, // Local vélo
+  parking_residence: ParkingCircle, // Parking résidence
+  animaux_acceptes: PawPrint, // Animaux acceptés
+  equipement_bebe: Heart, // Équipement bébé
   climatisation: Snowflake,
 };
 

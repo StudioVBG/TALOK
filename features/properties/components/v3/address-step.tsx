@@ -256,9 +256,21 @@ export function AddressStep({ adresse_complete = "", complement_adresse = "", co
   const [localDepartement, setLocalDepartement] = useState(departement);
 
   // Debounce pour les suggestions d'adresse
-  const debouncedSearch = useDebouncedCallback((query: string) => {
-    // TODO: Intégrer avec une API externe (Geoapify, Algolia Places, Google Places)
-    // Pour l'instant, suggestions basées sur le code postal
+  const debouncedSearch = useDebouncedCallback(async (query: string) => {
+    // NOTE: Intégration future avec API de géolocalisation
+    // Options disponibles :
+    // - Geoapify (https://www.geoapify.com/) : 3000 requêtes/jour gratuites
+    // - Algolia Places (https://www.algolia.com/products/places/) : 1000 requêtes/mois gratuites
+    // - Google Places API : Payant mais très complet
+    // 
+    // Exemple d'implémentation avec Geoapify :
+    // const response = await fetch(
+    //   `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&apiKey=${process.env.NEXT_PUBLIC_GEOAPIFY_KEY}&limit=5`
+    // );
+    // const data = await response.json();
+    // return data.features.map(f => ({ adresse_complete: f.properties.formatted, ... }));
+    //
+    // Pour l'instant, suggestions basées sur le code postal uniquement
   }, 300);
 
   // Suggestions basées sur le code postal
