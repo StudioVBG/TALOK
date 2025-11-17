@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/protected-route";
-import { PropertyDetailPremium } from "@/features/properties/components/v3/property-detail-premium";
+import { PropertyDetailV2 } from "@/features/properties/components/v3/property-detail-v2";
 
 function PropertyDetailPageContent() {
   const params = useParams();
@@ -11,7 +11,7 @@ function PropertyDetailPageContent() {
     return null;
   }
 
-  return <PropertyDetailPremium propertyId={params.id} />;
+  return <PropertyDetailV2 propertyId={params.id} />;
 }
 
 export default function PropertyDetailPage() {
