@@ -56,16 +56,7 @@ export function useInvoice(invoiceId: string | null) {
     queryKey: ["invoice", invoiceId],
     queryFn: async () => {
       if (!invoiceId) throw new Error("Invoice ID requis");
-      
-      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
-      const { data, error } = await supabaseClient
-        .from("invoices")
-        .select("*")
-        .eq("id", invoiceId)
-        .single();
-      
-      if (error) throw error;
-      return data as InvoiceRow;
+      return await invoicesService.getInvoiceById(invoiceId);
     },
     enabled: !!invoiceId,
   });
@@ -81,19 +72,13 @@ export function useCreateInvoice() {
   return useMutation({
     mutationFn: async (data: InvoiceInsert) => {
       if (!profile) throw new Error("Non authentifié");
-      
-      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
-      const { data: invoice, error } = await supabaseClient
-        .from("invoices")
-        .insert({
-          ...data,
-          owner_id: profile.role === "owner" ? profile.id : data.owner_id,
-        } as any)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return invoice as InvoiceRow;
+      return await invoicesService.createInvoice({
+        ...data,
+        lease_id: data.lease_id,
+        periode: data.periode || "",
+        montant_loyer: (data as any).montant_loyer || 0,
+        montant_charges: (data as any).montant_charges || 0,
+      } as any);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
@@ -109,16 +94,7 @@ export function useUpdateInvoice() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InvoiceUpdate }) => {
-      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
-      const { data: invoice, error } = await supabaseClient
-        .from("invoices")
-        .update(data as any)
-        .eq("id", id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return invoice as InvoiceRow;
+      return await invoicesService.updateInvoice(id, data as any);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });

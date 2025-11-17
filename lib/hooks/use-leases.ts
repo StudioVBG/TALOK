@@ -7,10 +7,9 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { typedSupabaseClient } from "@/lib/supabase/typed-client";
 import type { LeaseRow, LeaseInsert, LeaseUpdate } from "@/lib/supabase/typed-client";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
+import { leasesService } from "@/features/leases/services/leases.service";
 
 /**
  * Hook pour récupérer tous les baux de l'utilisateur
@@ -23,48 +22,19 @@ export function useLeases(propertyId?: string | null) {
     queryFn: async () => {
       if (!profile) throw new Error("Non authentifié");
       
-      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
-      let query = supabaseClient
-        .from("leases")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
       if (propertyId) {
-        query = query.eq("property_id", propertyId);
+        return await leasesService.getLeasesByProperty(propertyId);
       }
       
       // Filtrer selon le rôle
       if (profile.role === "owner") {
-        // Les propriétaires voient les baux de leurs propriétés
-        const { data: properties } = await supabaseClient
-          .from("properties")
-          .select("id")
-          .eq("owner_id", profile.id);
-        
-        if (!properties || properties.length === 0) {
-          return [];
-        }
-        
-        const propertyIds = (properties as any[]).map((p: any) => p.id);
-        query = query.in("property_id", propertyIds);
+        return await leasesService.getLeasesByOwner(profile.id);
       } else if (profile.role === "tenant") {
-        // Les locataires voient leurs baux via lease_signers
-        const { data: signers } = await supabaseClient
-          .from("lease_signers")
-          .select("lease_id")
-          .eq("profile_id", profile.id);
-        
-        if (!signers || signers.length === 0) {
-          return [];
-        }
-        
-        const leaseIds = (signers as any[]).map((s: any) => s.lease_id);
-        query = query.in("id", leaseIds);
+        return await leasesService.getLeasesByTenant(profile.id);
       }
       
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as LeaseRow[];
+      // Par défaut, récupérer tous les baux (admin)
+      return await leasesService.getLeases();
     },
     enabled: !!profile,
   });
@@ -78,16 +48,7 @@ export function useLease(leaseId: string | null) {
     queryKey: ["lease", leaseId],
     queryFn: async () => {
       if (!leaseId) throw new Error("Lease ID requis");
-      
-      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
-      const { data, error } = await supabaseClient
-        .from("leases")
-        .select("*")
-        .eq("id", leaseId)
-        .single();
-      
-      if (error) throw error;
-      return data as LeaseRow;
+      return await leasesService.getLeaseById(leaseId);
     },
     enabled: !!leaseId,
   });
@@ -101,15 +62,7 @@ export function useCreateLease() {
   
   return useMutation({
     mutationFn: async (data: LeaseInsert) => {
-      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
-      const { data: lease, error } = await supabaseClient
-        .from("leases")
-        .insert(data as any)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return lease as LeaseRow;
+      return await leasesService.createLease(data as any);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leases"] });
@@ -125,16 +78,7 @@ export function useUpdateLease() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: LeaseUpdate }) => {
-      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
-      const { data: lease, error } = await supabaseClient
-        .from("leases")
-        .update(data as any)
-        .eq("id", id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return lease as LeaseRow;
+      return await leasesService.updateLease(id, data as any);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["leases"] });

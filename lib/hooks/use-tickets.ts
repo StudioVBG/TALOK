@@ -88,16 +88,7 @@ export function useTicket(ticketId: string | null) {
     queryKey: ["ticket", ticketId],
     queryFn: async () => {
       if (!ticketId) throw new Error("Ticket ID requis");
-      
-      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
-      const { data, error } = await supabaseClient
-        .from("tickets")
-        .select("*")
-        .eq("id", ticketId)
-        .single();
-      
-      if (error) throw error;
-      return data as TicketRow;
+      return await ticketsService.getTicketById(ticketId);
     },
     enabled: !!ticketId,
   });
@@ -113,19 +104,14 @@ export function useCreateTicket() {
   return useMutation({
     mutationFn: async (data: TicketInsert) => {
       if (!profile) throw new Error("Non authentifié");
-      
-      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
-      const { data: ticket, error } = await supabaseClient
-        .from("tickets")
-        .insert({
-          ...data,
-          created_by_profile_id: profile.id,
-        } as any)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return ticket as TicketRow;
+      return await ticketsService.createTicket({
+        ...data,
+        property_id: data.property_id,
+        lease_id: (data as any).lease_id || null,
+        titre: (data as any).titre || "",
+        description: (data as any).description || "",
+        priorite: (data as any).priorite || "normale",
+      } as any);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
@@ -141,16 +127,7 @@ export function useUpdateTicket() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: TicketUpdate }) => {
-      const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
-      const { data: ticket, error } = await supabaseClient
-        .from("tickets")
-        .update(data as any)
-        .eq("id", id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return ticket as TicketRow;
+      return await ticketsService.updateTicket(id, data as any);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
