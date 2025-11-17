@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Gestion Locative",
   description: "Application SaaS de gestion locative pour la France et les DROM",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
