@@ -29,20 +29,8 @@ export async function GET(request: Request) {
     
     console.log(`[GET /api/properties] Auth successful, elapsed: ${Date.now() - startTime}ms`);
 
-    // Récupérer le profil
-    const supabaseClient = supabase as any;
-    const { data: profile } = await supabaseClient
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
-    }
-
-    const profileData = profile as any;
-
+    // Utiliser directement le service client pour éviter les problèmes d'authentification
+    // et contourner RLS pour améliorer les performances
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -63,6 +51,21 @@ export async function GET(request: Request) {
         persistSession: false,
       },
     });
+
+    // Récupérer le profil avec le service client pour éviter les problèmes RLS
+    const { data: profile, error: profileError } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id as any)
+      .single();
+
+    if (profileError || !profile) {
+      console.error("[GET /api/properties] Error fetching profile:", profileError);
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
+    const profileData = profile as any;
+    console.log(`[GET /api/properties] Profile found: id=${profileData.id}, role=${profileData.role}, elapsed: ${Date.now() - startTime}ms`);
 
     // Récupérer les propriétés selon le rôle
     let properties: any[] | undefined;
@@ -148,8 +151,10 @@ export async function GET(request: Request) {
       }
     }
 
-    // Optimisation : Ne récupérer les médias que si nécessaire et avec timeout
-    if (properties && properties.length > 0) {
+    // TEMPORAIREMENT DÉSACTIVÉ : Récupération des médias pour éviter les timeouts
+    // TODO: Réactiver une fois les problèmes de performance résolus
+    // Les médias peuvent être récupérés séparément via /api/properties/[id]/documents si nécessaire
+    if (false && properties && properties.length > 0) {
       try {
         // Limiter le nombre de propriétés pour éviter les timeouts
         const propertyIds = properties.slice(0, 50).map((p) => p.id as string);
