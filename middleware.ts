@@ -15,9 +15,50 @@ export async function middleware(request: NextRequest) {
     response.headers.set("Expires", "0");
   }
 
+  // Validation de l'URL Supabase
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("❌ Variables d'environnement Supabase manquantes");
+    return NextResponse.json(
+      { error: "Configuration Supabase manquante" },
+      { status: 500 }
+    );
+  }
+
+  // Vérifier que l'URL n'est pas celle du dashboard
+  if (supabaseUrl.includes("supabase.com/dashboard")) {
+    console.error(
+      "❌ ERREUR: NEXT_PUBLIC_SUPABASE_URL pointe vers le dashboard au lieu de l'API.",
+      "Utilisez l'URL de l'API: https://xxxxx.supabase.co"
+    );
+    return NextResponse.json(
+      {
+        error: "Configuration Supabase incorrecte",
+        message: "L'URL Supabase pointe vers le dashboard. Utilisez l'URL de l'API.",
+      },
+      { status: 500 }
+    );
+  }
+
+  // Vérifier le format de l'URL
+  if (!supabaseUrl.includes(".supabase.co")) {
+    console.error(
+      "❌ Format d'URL Supabase invalide. Doit se terminer par .supabase.co"
+    );
+    return NextResponse.json(
+      {
+        error: "Configuration Supabase invalide",
+        message: "Format d'URL invalide. Doit se terminer par .supabase.co",
+      },
+      { status: 500 }
+    );
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {

@@ -9,8 +9,29 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 import { createClient as createBrowserClient } from "./client";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+// Validation des variables d'environnement
+if (!supabaseUrl) {
+  throw new Error(
+    "NEXT_PUBLIC_SUPABASE_URL is not set. Please configure it in your environment variables."
+  );
+}
+
+if (supabaseUrl.includes("supabase.com/dashboard") || supabaseUrl.includes("/settings/api-keys")) {
+  throw new Error(
+    `Invalid NEXT_PUBLIC_SUPABASE_URL: "${supabaseUrl}". ` +
+    `It should be your Supabase API URL (e.g., https://xxxxx.supabase.co), ` +
+    `not the dashboard URL. Get it from: Supabase Dashboard → Settings → API → Project URL`
+  );
+}
+
+if (!supabaseAnonKey) {
+  throw new Error(
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Please configure it in your environment variables."
+  );
+}
 
 /**
  * Client Supabase typé pour le frontend
@@ -30,7 +51,7 @@ export function createTypedServiceClient() {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for service client");
   }
   
-  return createClient<Database>(supabaseUrl, serviceRoleKey, {
+  return createClient<Database>(supabaseUrl!, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

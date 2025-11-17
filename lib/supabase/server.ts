@@ -9,9 +9,32 @@ import { NextRequest } from "next/server";
 export async function createClient() {
   const cookieStore = await cookies();
 
+  // Validation de l'URL Supabase
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL is not set. Please configure it in your environment variables."
+    );
+  }
+
+  if (supabaseUrl.includes("supabase.com/dashboard") || supabaseUrl.includes("/settings/api-keys")) {
+    throw new Error(
+      `Invalid NEXT_PUBLIC_SUPABASE_URL: "${supabaseUrl}". ` +
+      `It should be your Supabase API URL (e.g., https://xxxxx.supabase.co), ` +
+      `not the dashboard URL. Get it from: Supabase Dashboard → Settings → API → Project URL`
+    );
+  }
+
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseAnonKey) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Please configure it in your environment variables."
+    );
+  }
+
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
@@ -76,9 +99,32 @@ export function createClientFromRequest(request: Request | NextRequest) {
     console.log("createClientFromRequest: Cookie names:", parsedCookies.map(c => c.name).join(", "));
   }
   
+  // Validation de l'URL Supabase
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL is not set. Please configure it in your environment variables."
+    );
+  }
+
+  if (supabaseUrl.includes("supabase.com/dashboard") || supabaseUrl.includes("/settings/api-keys")) {
+    throw new Error(
+      `Invalid NEXT_PUBLIC_SUPABASE_URL: "${supabaseUrl}". ` +
+      `It should be your Supabase API URL (e.g., https://xxxxx.supabase.co), ` +
+      `not the dashboard URL. Get it from: Supabase Dashboard → Settings → API → Project URL`
+    );
+  }
+
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseAnonKey) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Please configure it in your environment variables."
+    );
+  }
+
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
