@@ -14,6 +14,7 @@ import Image from "next/image";
 import type { Property, Room, Photo } from "@/lib/types";
 import { propertiesService } from "@/features/properties/services/properties.service";
 import { useToast } from "@/components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRooms, useCreateRoom, useDeleteRoom } from "@/lib/hooks/use-rooms";
 import { usePhotos, useUpdatePhoto, useDeletePhoto } from "@/lib/hooks/use-photos";
 
@@ -143,7 +144,8 @@ export function PropertyRoomsPhotosTab({
         title: "Succès",
         description: `${files.length} photo(s) ajoutée(s)`,
       });
-      // React Query invalidera automatiquement le cache
+      // Invalider le cache React Query pour rafraîchir les photos
+      queryClient.invalidateQueries({ queryKey: ["photos", propertyId] });
     } catch (error: any) {
       toast({
         title: "Erreur",
