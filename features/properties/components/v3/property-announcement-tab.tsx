@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,8 @@ import {
 import type { Property, Room, Photo } from "@/lib/types";
 import { useToast } from "@/components/ui/use-toast";
 import { ModeLocationModal } from "./mode-location-modal";
-import { propertiesService } from "@/features/properties/services/properties.service";
+import { useRooms } from "@/lib/hooks/use-rooms";
+import { usePhotos } from "@/lib/hooks/use-photos";
 
 interface PropertyAnnouncementTabProps {
   property: Property;
@@ -45,28 +46,12 @@ export function PropertyAnnouncementTab({
   const [isUpdatingMode, setIsUpdatingMode] = useState(false);
   const [leaseModalOpen, setLeaseModalOpen] = useState(false);
   const [leaseInfo, setLeaseInfo] = useState<any>(null);
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  // Charger les photos et rooms pour le calcul du score
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [photosData, roomsData] = await Promise.all([
-          propertiesService.listPhotos(property.id).catch(() => []),
-          propertiesService.listRooms(property.id).catch(() => []),
-        ]);
-        setPhotos(photosData || []);
-        setRooms(roomsData || []);
-      } catch (error) {
-        console.error("[PropertyAnnouncementTab] Erreur lors du chargement:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [property.id]);
+  // Utiliser React Query pour les photos et rooms
+  const { data: photos = [], isLoading: photosLoading } = usePhotos(property.id);
+  const { data: rooms = [], isLoading: roomsLoading } = useRooms(property.id);
+  
+  const loading = photosLoading || roomsLoading;
 
   // Calcul du score de complétion avec les vraies données
   const completionScore = calculateCompletionScore(property, photos, rooms);

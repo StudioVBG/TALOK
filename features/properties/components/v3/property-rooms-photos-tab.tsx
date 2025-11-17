@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,8 @@ import Image from "next/image";
 import type { Property, Room, Photo } from "@/lib/types";
 import { propertiesService } from "@/features/properties/services/properties.service";
 import { useToast } from "@/components/ui/use-toast";
+import { useRooms, useCreateRoom, useDeleteRoom } from "@/lib/hooks/use-rooms";
+import { usePhotos, useUpdatePhoto, useDeletePhoto } from "@/lib/hooks/use-photos";
 
 interface PropertyRoomsPhotosTabProps {
   propertyId: string;
@@ -27,45 +29,41 @@ export function PropertyRoomsPhotosTab({
   isHabitation,
 }: PropertyRoomsPhotosTabProps) {
   const { toast } = useToast();
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [propertyId]);
+  // Utiliser React Query pour les rooms et photos
+  const { data: rooms = [], isLoading: roomsLoading, error: roomsError } = useRooms(propertyId);
+  const { data: photos = [], isLoading: photosLoading, error: photosError } = usePhotos(propertyId);
+  
+  const queryClient = useQueryClient();
+  const createRoom = useCreateRoom();
+  const deleteRoomMutation = useDeleteRoom();
+  const updatePhotoMutation = useUpdatePhoto();
+  const deletePhotoMutation = useDeletePhoto();
 
-  async function fetchData() {
-    try {
-      setLoading(true);
-      
-      // Charger les rooms et photos en parallèle
-      const [roomsData, photosData] = await Promise.all([
-        propertiesService.listRooms(propertyId).catch(() => []),
-        propertiesService.listPhotos(propertyId).catch(() => []),
-      ]);
-      
-      setRooms(roomsData || []);
-      setPhotos(photosData || []);
-      
-      // Sélectionner automatiquement la première pièce s'il y en a
-      if (roomsData && roomsData.length > 0 && !selectedRoomId) {
-        setSelectedRoomId(roomsData[0].id);
-      }
-    } catch (error: any) {
-      console.error("[PropertyRoomsPhotosTab] Erreur lors du chargement:", error);
+  const loading = roomsLoading || photosLoading;
+
+  // Sélectionner automatiquement la première pièce s'il y en a
+  useEffect(() => {
+    if (rooms.length > 0 && !selectedRoomId) {
+      setSelectedRoomId(rooms[0].id);
+    }
+  }, [rooms, selectedRoomId]);
+
+  // Gérer les erreurs
+  useEffect(() => {
+    if (roomsError || photosError) {
+      const error = roomsError || photosError;
+      console.error("[PropertyRoomsPhotosTab] Erreur:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les données.",
+        description: error instanceof Error ? error.message : "Impossible de charger les données.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  }
+  }, [roomsError, photosError, toast]);
 
   const selectedRoomPhotos = selectedRoomId
     ? photos.filter((p) => p.room_id === selectedRoomId)
@@ -73,25 +71,22 @@ export function PropertyRoomsPhotosTab({
 
   const unclassifiedPhotos = photos.filter((p) => !p.room_id);
   
-  // Recharger les données après ajout/suppression
-  const handleRefresh = () => {
-    fetchData();
-  };
-
   const handleAddRoom = async () => {
     try {
-      const newRoom = await propertiesService.createRoom(propertyId, {
-        type_piece: "autre" as any,
-        label_affiche: "Nouvelle pièce",
-        surface_m2: null,
-        chauffage_present: true,
-        clim_presente: false,
+      const newRoom = await createRoom.mutateAsync({
+        propertyId,
+        data: {
+          type_piece: "autre" as any,
+          label_affiche: "Nouvelle pièce",
+          surface_m2: null,
+          chauffage_present: true,
+          clim_presente: false,
+        },
       });
       toast({
         title: "Succès",
         description: "Pièce ajoutée avec succès",
       });
-      handleRefresh();
       setSelectedRoomId(newRoom.id);
     } catch (error: any) {
       toast({
@@ -104,7 +99,7 @@ export function PropertyRoomsPhotosTab({
 
   const handleDeleteRoom = async (roomId: string) => {
     try {
-      await propertiesService.deleteRoom(propertyId, roomId);
+      await deleteRoomMutation.mutateAsync({ propertyId, roomId });
       toast({
         title: "Succès",
         description: "Pièce supprimée",
@@ -112,7 +107,6 @@ export function PropertyRoomsPhotosTab({
       if (selectedRoomId === roomId) {
         setSelectedRoomId(null);
       }
-      handleRefresh();
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -149,7 +143,7 @@ export function PropertyRoomsPhotosTab({
         title: "Succès",
         description: `${files.length} photo(s) ajoutée(s)`,
       });
-      handleRefresh();
+      // React Query invalidera automatiquement le cache
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -357,12 +351,14 @@ export function PropertyRoomsPhotosTab({
                             variant="secondary"
                             onClick={async () => {
                               try {
-                                await propertiesService.updatePhoto(photo.id, { is_main: true });
+                                await updatePhotoMutation.mutateAsync({
+                                  photoId: photo.id,
+                                  data: { is_main: true },
+                                });
                                 toast({
                                   title: "Succès",
                                   description: "Photo définie comme principale",
                                 });
-                                handleRefresh();
                               } catch (error: any) {
                                 toast({
                                   title: "Erreur",
@@ -380,12 +376,11 @@ export function PropertyRoomsPhotosTab({
                           variant="destructive"
                           onClick={async () => {
                             try {
-                              await propertiesService.deletePhoto(photo.id);
+                              await deletePhotoMutation.mutateAsync(photo.id);
                               toast({
                                 title: "Succès",
                                 description: "Photo supprimée",
                               });
-                              handleRefresh();
                             } catch (error: any) {
                               toast({
                                 title: "Erreur",

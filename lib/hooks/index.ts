@@ -6,6 +6,8 @@
  */
 
 export * from "./use-properties";
+export * from "./use-rooms";
+export * from "./use-photos";
 export * from "./use-properties-infinite";
 export * from "./use-properties-optimistic";
 export * from "./use-leases";
