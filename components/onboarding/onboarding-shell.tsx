@@ -26,11 +26,11 @@ export function OnboardingShell({ stepLabel, title, subtitle, children, footer }
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 120 }}
-          className="mx-auto flex max-w-3xl flex-col items-center gap-4 text-center"
+          className="mx-auto flex max-w-3xl flex-col items-center gap-4 text-center px-4"
         >
           <Badge className="bg-white/10 text-white backdrop-blur">{stepLabel}</Badge>
-          <h1 className="text-4xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-lg text-slate-200">{subtitle}</p>
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight break-words">{title}</h1>
+          <p className="text-base sm:text-lg text-slate-200 break-words">{subtitle}</p>
         </motion.div>
 
         <motion.div

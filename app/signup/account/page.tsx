@@ -423,24 +423,26 @@ export default function AccountCreationPage() {
           </div>
           <div className="rounded-xl border border-white/15 bg-black/10 p-4 space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <Label htmlFor="useMagicLink" className="font-medium">
+              <div className="flex-1">
+                <Label htmlFor="useMagicLink" className="font-medium cursor-pointer">
                   Utiliser un lien magique
                 </Label>
                 <p className="text-xs text-slate-300">Connexion sans mot de passe via email sécurisé.</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-300">
-                  {draft.useMagicLink ? "Sans mot de passe" : "Mot de passe requis"}
-                </span>
-                <input
-                  type="checkbox"
-                  id="useMagicLink"
-                  checked={draft.useMagicLink}
-                  onChange={(e) => void autosave({ useMagicLink: e.target.checked })}
-                  disabled={loading}
-                  className="rounded border-white/30 bg-transparent"
-                />
+              <div className="flex items-center gap-2 sm:flex-shrink-0">
+                <label htmlFor="useMagicLink" className="flex items-center gap-2 cursor-pointer">
+                  <span className="text-xs text-slate-300">
+                    {draft.useMagicLink ? "Sans mot de passe" : "Mot de passe requis"}
+                  </span>
+                  <input
+                    type="checkbox"
+                    id="useMagicLink"
+                    checked={draft.useMagicLink}
+                    onChange={(e) => void autosave({ useMagicLink: e.target.checked })}
+                    disabled={loading}
+                    className="h-5 w-5 rounded border-white/30 bg-transparent cursor-pointer"
+                  />
+                </label>
               </div>
             </div>
 
