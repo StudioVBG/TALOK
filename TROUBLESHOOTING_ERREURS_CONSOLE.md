@@ -8,8 +8,12 @@ Les erreurs affichées dans la console sont **principalement liées aux extensio
 
 1. **Extensions de Navigateur**
    - `background.js`, `extensionState.js`, `utils.js`, `heuristicsRedefinitions.js`
-   - Ces fichiers sont chargés par des extensions (gestionnaire de mots de passe, etc.)
-   - **Impact** : Aucun sur l'application
+   - `content_script.js` - Scripts d'extensions qui tentent d'interagir avec les formulaires
+   - Ces fichiers sont chargés par des extensions (gestionnaire de mots de passe, outils de productivité, etc.)
+   - **Erreurs courantes** :
+     - `Cannot read properties of undefined (reading 'control')` - Extension qui essaie d'accéder à une propriété inexistante
+     - `ERR_FILE_NOT_FOUND` sur des fichiers d'extensions
+   - **Impact** : Aucun sur l'application (ces erreurs sont ignorables)
 
 2. **Erreurs 400 sur Supabase Auth**
    - `grant_type=password` retourne 400
@@ -82,8 +86,19 @@ Pour surveiller les vraies erreurs de l'application :
 
 Ces erreurs peuvent être ignorées en toute sécurité :
 - `FrameDoesNotExistError` (cache navigateur)
-- Erreurs d'extensions (`background.js`, `extensionState.js`, etc.)
+- Erreurs d'extensions (`background.js`, `extensionState.js`, `content_script.js`, etc.)
 - `ERR_FILE_NOT_FOUND` sur des fichiers d'extensions
+- `Cannot read properties of undefined (reading 'control')` dans `content_script.js` - Extension qui essaie d'interagir avec les formulaires
+- `shouldOfferCompletionListForField`, `elementWasFocused`, `processInputEvent` - Fonctions d'extensions de gestionnaire de mots de passe
+
+### Comment masquer ces erreurs dans la console
+
+**Chrome/Edge DevTools** :
+1. Ouvrir DevTools (F12)
+2. Aller dans l'onglet **Console**
+3. Cliquer sur l'icône **⚙️ Settings** (en haut à droite)
+4. Cocher **"Hide messages from extensions"**
+5. Les erreurs d'extensions seront masquées automatiquement
 
 ## 🎯 Prochaines Étapes
 

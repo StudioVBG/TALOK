@@ -125,44 +125,67 @@ export default function AccountCreationPage() {
     admin: "/dashboard",
   };
 
-  const autosave = async (updated?: Partial<AccountDraft>) => {
+  // Helper pour sauvegarder en arrière-plan
+  const saveDraftInBackground = (nextDraft: AccountDraft) => {
     setAutosaving(true);
-    const nextDraft = {
-      ...draft,
-      ...updated,
-    };
-    try {
-      await onboardingService.saveDraft(
-        "account_creation",
-        {
-          accountCreation: nextDraft,
-          inviteToken,
-          propertyCode,
-        },
-        role!
-      );
+    void onboardingService.saveDraft(
+      "account_creation",
+      {
+        accountCreation: nextDraft,
+        inviteToken,
+        propertyCode,
+      },
+      role!
+    ).then(() => {
       setLastAutosave(new Date());
-    } finally {
       setAutosaving(false);
-      setDraft(nextDraft);
-    }
+    }).catch(() => {
+      setAutosaving(false);
+    });
+  };
+
+  const autosave = (updated: Partial<AccountDraft>) => {
+    // Mettre à jour le state immédiatement pour que les valeurs s'affichent tout de suite
+    setDraft((prev) => {
+      const nextDraft = {
+        ...prev,
+        ...updated,
+      };
+      // Sauvegarder en arrière-plan sans bloquer l'UI
+      saveDraftInBackground(nextDraft);
+      return nextDraft;
+    });
   };
 
   const updateForm = (key: keyof AccountDraft["formData"], value: string) => {
-    void autosave({
-      formData: {
-        ...draft.formData,
-        [key]: value,
-      },
+    // Mettre à jour le state immédiatement pour l'affichage
+    setDraft((prev) => {
+      const nextDraft = {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          [key]: value,
+        },
+      };
+      // Sauvegarder en arrière-plan
+      saveDraftInBackground(nextDraft);
+      return nextDraft;
     });
   };
 
   const updateConsent = (key: keyof AccountDraft["consents"], value: boolean) => {
-    void autosave({
-      consents: {
-        ...draft.consents,
-        [key]: value,
-      },
+    // Mettre à jour le state immédiatement pour l'affichage
+    setDraft((prev) => {
+      const nextDraft = {
+        ...prev,
+        consents: {
+          ...prev.consents,
+          [key]: value,
+        },
+      };
+      // Sauvegarder en arrière-plan
+      saveDraftInBackground(nextDraft);
+      return nextDraft;
     });
   };
 
