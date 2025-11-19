@@ -1,4 +1,5 @@
 import { createClient, createClientFromRequest } from "@/lib/supabase/server";
+import { getSupabaseConfig } from "@/lib/supabase/config";
 
 /**
  * Helper pour récupérer l'utilisateur authentifié depuis les cookies ou le token Bearer
@@ -7,25 +8,12 @@ export async function getAuthenticatedUser(request: Request) {
   // Utiliser createClientFromRequest pour les routes API afin d'avoir accès aux cookies de la requête
   const supabase = createClientFromRequest(request);
   
-  const cookieHeader = request.headers.get("cookie");
-  console.log("getAuthenticatedUser: Cookies header:", cookieHeader ? "présent" : "absent");
-  if (cookieHeader) {
-    // Extraire les noms des cookies pour le debug
-    const cookieNames = cookieHeader.split(";").map(c => c.trim().split("=")[0]).filter(Boolean);
-    console.log("getAuthenticatedUser: Cookie names:", cookieNames.join(", "));
-  }
-  
   // Essayer d'abord avec les cookies
   let { data: { user }, error: authError } = await supabase.auth.getUser();
   
   if (authError) {
+    // Log uniquement les erreurs réelles
     console.error("getAuthenticatedUser: Error from getUser():", authError.message);
-  }
-  
-  if (user) {
-    console.log("getAuthenticatedUser: User found from cookies:", user.email, user.id);
-  } else {
-    console.log("getAuthenticatedUser: No user from cookies, trying Authorization header");
   }
   
   // Si pas d'utilisateur, essayer avec le token dans les headers
@@ -33,7 +21,6 @@ export async function getAuthenticatedUser(request: Request) {
     const authHeader = request.headers.get("Authorization");
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
-      console.log("getAuthenticatedUser: Trying with Bearer token");
       
       // Créer un nouveau client avec le token dans les headers
       const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
@@ -51,7 +38,6 @@ export async function getAuthenticatedUser(request: Request) {
       
       const { data: { user: userFromToken }, error: tokenError } = await tokenClient.auth.getUser();
       if (!tokenError && userFromToken) {
-        console.log("getAuthenticatedUser: User found from Bearer token:", userFromToken.email);
         user = userFromToken;
         authError = null;
         // Utiliser le client avec token pour les requêtes suivantes
@@ -59,8 +45,6 @@ export async function getAuthenticatedUser(request: Request) {
       } else if (tokenError) {
         console.error("getAuthenticatedUser: Error from getUser(token):", tokenError.message);
       }
-    } else {
-      console.log("getAuthenticatedUser: No Authorization header found");
     }
   }
 
@@ -84,9 +68,6 @@ export async function requireAdmin(request: Request) {
   }
 
   if (!user) {
-    console.warn("requireAdmin: No user found");
-    const cookieHeader = request.headers.get("cookie");
-    console.log("requireAdmin: Cookies present:", cookieHeader ? "yes" : "no");
     return {
       error: { message: "Non authentifié", status: 401 },
       user: null,
@@ -95,21 +76,19 @@ export async function requireAdmin(request: Request) {
     };
   }
 
-  console.log("requireAdmin: User found:", user.id, user.email);
-
   // Vérifier que l'utilisateur est admin
   // Utiliser le service role pour éviter les problèmes RLS dans les routes API admin
   const { createClient } = await import("@supabase/supabase-js");
-  const serviceClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const { url, serviceRoleKey } = getSupabaseConfig();
+  if (!serviceRoleKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY n'est pas défini");
+  }
+  const serviceClient = createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 
   // Déclarer profileData en dehors du try pour qu'elle soit accessible après
   let profileData: any = null;
@@ -133,10 +112,8 @@ export async function requireAdmin(request: Request) {
     }
 
     profileData = profile as any;
-    console.log("requireAdmin: Profile role:", profileData?.role);
 
     if (!profileData || profileData?.role !== "admin") {
-      console.warn(`requireAdmin: User ${user.email} is not admin (role: ${profileData?.role || "undefined"})`);
       return {
         error: { message: "Accès non autorisé", status: 403 },
         user: null,
@@ -165,8 +142,6 @@ export async function requireAdmin(request: Request) {
       supabase: null,
     };
   }
-
-  console.log("requireAdmin: Admin access granted for:", user.email);
   // Retourner le service client pour les requêtes suivantes (contourne RLS)
   return {
     error: null,

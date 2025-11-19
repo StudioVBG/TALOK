@@ -5,18 +5,9 @@
  */
 
 import wizardConfig from "@/config/property-wizard-config.json";
+import type { PropertyTypeV3 } from "@/lib/types/property-v3";
 
-export type PropertyType = 
-  | "appartement"
-  | "maison"
-  | "studio"
-  | "colocation"
-  | "parking"
-  | "box"
-  | "local_commercial"
-  | "bureaux"
-  | "entrepot"
-  | "fonds_de_commerce";
+export type PropertyType = PropertyTypeV3;
 
 export type PropertyGroup = "habitation" | "parking_box" | "local_commercial";
 

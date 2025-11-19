@@ -14,7 +14,7 @@ import { leasesService } from "@/features/leases/services/leases.service";
 /**
  * Hook pour récupérer tous les baux de l'utilisateur
  */
-export function useLeases(propertyId?: string | null) {
+export function useLeases(propertyId?: string | null, options?: { enabled?: boolean }) {
   const { profile } = useAuth();
   
   return useQuery({
@@ -46,7 +46,7 @@ export function useLeases(propertyId?: string | null) {
         return [];
       }
     },
-    enabled: !!profile,
+    enabled: options?.enabled !== false && !!profile, // Utiliser le paramètre enabled si fourni
     retry: (failureCount, error: any) => {
       // Ne pas réessayer si c'est une erreur d'authentification ou de timeout
       if (error?.statusCode === 401 || error?.statusCode === 403 || error?.statusCode === 504) {
@@ -58,6 +58,9 @@ export function useLeases(propertyId?: string | null) {
     staleTime: 30 * 1000, // 30 secondes
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
+    // PROTECTION : Limiter les tentatives pour éviter les requêtes infinies
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
   });
 }
 

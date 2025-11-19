@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Home, Briefcase, Car } from "lucide-react";
+import { Building2, Home, Briefcase, Car, Plus } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/helpers/format";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
@@ -68,11 +68,14 @@ export function OwnerPortfolioByModule({ modules }: OwnerPortfolioByModuleProps)
         <Card className="backdrop-blur-sm bg-white/80 border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
           <CardHeader>
             <CardTitle>Portefeuille par module</CardTitle>
-            <CardDescription>Aucun bien enregistré pour le moment</CardDescription>
+            <CardDescription>Commencer avec votre premier bien</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild>
-              <Link href={OWNER_ROUTES.properties.path}>Ajouter un bien</Link>
+            <Button asChild size="lg" className="w-full">
+              <Link href={`${OWNER_ROUTES.properties.path}/new`}>
+                <Plus className="mr-2 h-4 w-4" />
+                Ajouter un bien
+              </Link>
             </Button>
           </CardContent>
         </Card>

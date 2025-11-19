@@ -691,6 +691,7 @@ export const propertyWizardConfigV3: WizardConfigV3 = {
     maison: appartementStudioFields,
     studio: appartementStudioFields,
     colocation: appartementStudioFields,
+    saisonnier: appartementStudioFields, // Ajout pour compatibilité
     parking: parkingBoxFields,
     box: parkingBoxFields,
     local_commercial: localProFields,

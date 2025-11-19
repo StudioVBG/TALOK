@@ -138,11 +138,16 @@ export const ownerFinanceSchema = z.object({
 });
 
 // Owner-3 : Premier logement
-export const firstPropertySchema = z.object({
-  adresse_complete: z.string().min(1, "L'adresse est requise"),
-  code_postal: z.string().regex(/^[0-9]{5}$/, "Le code postal doit contenir 5 chiffres"),
-  ville: z.string().min(1, "La ville est requise"),
-  departement: z.string().length(2, "Le département doit contenir 2 caractères"),
+// Utilise les schémas partiels réutilisables pour éviter la duplication
+import { addressSchema, financialSchema, dpeSchema, permisLouerSchema } from "./schemas-shared";
+
+export const firstPropertySchema = addressSchema
+  .merge(financialSchema.pick({ charges_mensuelles: true, depot_garantie: true, zone_encadrement: true, loyer_reference_majoré: true, complement_loyer: true, complement_justification: true }))
+  .merge(dpeSchema)
+  .merge(permisLouerSchema)
+  .extend({
+    // Champs spécifiques à l'onboarding
+    loyer_base: z.number().positive("Le loyer hors charges est requis"), // Alias pour loyer_hc
   type: z.enum([
     "appartement",
     "maison",
@@ -156,22 +161,6 @@ export const firstPropertySchema = z.object({
   surface: z.number().positive("La surface doit être positive"),
   nb_pieces: z.number().int().positive("Le nombre de pièces doit être positif"),
   is_colocation: z.boolean().default(false),
-  loyer_base: z.number().positive("Le loyer hors charges est requis"),
-  charges_mensuelles: z.number().min(0, "Les charges ne peuvent pas être négatives"),
-  depot_garantie: z.number().min(0, "Le dépôt de garantie ne peut pas être négatif"),
-  zone_encadrement: z.boolean().optional(),
-  loyer_reference_majoré: z.number().min(0).optional().nullable(),
-  complement_loyer: z.number().min(0).optional().nullable(),
-  complement_justification: z.string().optional().nullable(),
-  dpe_classe_energie: z.enum(["A", "B", "C", "D", "E", "F", "G"]),
-  dpe_classe_climat: z.enum(["A", "B", "C", "D", "E", "F", "G"]),
-  dpe_consommation: z.number().min(0, "La consommation doit être positive"),
-  dpe_emissions: z.number().min(0, "Les émissions doivent être positives"),
-  dpe_estimation_conso_min: z.number().min(0).optional().nullable(),
-  dpe_estimation_conso_max: z.number().min(0).optional().nullable(),
-  permis_louer_requis: z.boolean().optional(),
-  permis_louer_numero: z.string().optional().nullable(),
-  permis_louer_date: z.string().optional().nullable(),
   // Si colocation
   unit_nom: z.string().optional(),
   unit_capacite_max: z.number().int().min(1).max(10).optional(),

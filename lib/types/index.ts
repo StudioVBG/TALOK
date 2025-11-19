@@ -2,16 +2,33 @@
 
 export type UserRole = "admin" | "owner" | "tenant" | "provider" | "guarantor";
 
+// ============================================
+// PROPERTY TYPES - Migration V3
+// ============================================
+// ⚠️ DEPRECATED: Utiliser PropertyTypeV3 depuis @/lib/types/property-v3
+// Ce type est conservé pour compatibilité avec l'ancien code.
+// Migration progressive vers PropertyTypeV3 en cours.
+/**
+ * @deprecated Utiliser PropertyTypeV3 depuis @/lib/types/property-v3
+ * Ce type sera supprimé dans une version future.
+ * Utilisez: import { PropertyTypeV3 as PropertyType } from "@/lib/types/property-v3"
+ */
 export type PropertyType =
   | "appartement"
   | "maison"
+  | "studio"
   | "colocation"
   | "saisonnier"
   | "local_commercial"
   | "bureaux"
   | "entrepot"
   | "parking"
+  | "box"
   | "fonds_de_commerce";
+
+// Alias vers PropertyTypeV3 pour migration progressive
+// Les nouveaux développements doivent utiliser PropertyTypeV3 directement
+// (exporté plus bas dans EXPORTS V3)
 
 export type PropertyUsage =
   | "habitation"
@@ -21,7 +38,17 @@ export type PropertyUsage =
   | "parking"
   | "fonds_de_commerce";
 
+// ============================================
+// PROPERTY STATUS - Migration V3
+// ============================================
+/**
+ * @deprecated Utiliser PropertyStatusV3 depuis @/lib/types/property-v3
+ * PropertyStatus a des valeurs dupliquées (fr/en). PropertyStatusV3 utilise uniquement les valeurs anglaises.
+ */
 export type PropertyStatus = "brouillon" | "en_attente" | "published" | "publie" | "rejete" | "rejected" | "archive" | "archived";
+
+// Alias vers PropertyStatusV3
+// (exporté plus bas dans EXPORTS V3)
 
 export type HeatingType = "individuel" | "collectif" | "aucun";
 export type HeatingEnergy = "electricite" | "gaz" | "fioul" | "bois" | "reseau_urbain" | "autre" | null;
@@ -29,6 +56,13 @@ export type HotWaterType = "electrique_indiv" | "gaz_indiv" | "collectif" | "sol
 export type ClimatePresence = "aucune" | "fixe" | "mobile";
 export type ClimateType = "split" | "gainable" | null;
 
+// ============================================
+// ROOM TYPES - Migration V3
+// ============================================
+/**
+ * @deprecated Utiliser RoomTypeV3 depuis @/lib/types/property-v3
+ * RoomTypeV3 ajoute "jardin", "bureau", "dressing"
+ */
 export type RoomType =
   | "sejour"
   | "chambre"
@@ -42,7 +76,20 @@ export type RoomType =
   | "cave"
   | "autre";
 
+// Alias vers RoomTypeV3
+// (exporté plus bas dans EXPORTS V3)
+
+// ============================================
+// PHOTO TAGS - Migration V3
+// ============================================
+/**
+ * @deprecated Utiliser PhotoTagV3 depuis @/lib/types/property-v3
+ * PhotoTagV3 ajoute "emplacement", "acces", "façade", "interieur", "vitrine", "autre"
+ */
 export type PhotoTag = "vue_generale" | "plan" | "detail" | "exterieur" | null;
+
+// Alias vers PhotoTagV3
+// (exporté plus bas dans EXPORTS V3)
 
 export type ParkingPlacementType = "outdoor" | "covered" | "box" | "underground";
 export type ParkingVehicleProfile = "city" | "berline" | "suv" | "utility" | "two_wheels";
@@ -220,6 +267,14 @@ export interface ProviderProfile {
   updated_at: string;
 }
 
+// ============================================
+// PROPERTY INTERFACE - Migration V3
+// ============================================
+/**
+ * @deprecated Utiliser PropertyV3 depuis @/lib/types/property-v3
+ * PropertyV3 inclut de nouveaux champs structurés (parking, locaux pro, équipements)
+ * Utilisez toPropertyV3() pour convertir depuis Property legacy
+ */
 export interface Property {
   id: string;
   owner_id: string;
@@ -427,6 +482,9 @@ export interface Ticket {
   description: string;
   priorite: TicketPriority;
   statut: TicketStatus;
+  ai_summary?: string;
+  ai_suggested_action?: string;
+  ai_suggested_provider_type?: string[]; // e.g. ["plomberie", "chauffage"]
   created_at: string;
   updated_at: string;
 }
@@ -460,6 +518,10 @@ export interface Document {
   uploaded_by: string | null;
   storage_path: string;
   metadata: Record<string, unknown> | null;
+  verification_status?: "pending" | "verified" | "rejected" | "manual_review_required";
+  ai_analysis?: Record<string, unknown>;
+  rejection_reason?: string;
+  verified_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -476,4 +538,49 @@ export interface BlogPost {
   created_at: string;
   updated_at: string;
 }
+
+// ============================================
+// EXPORTS V3 - Types et interfaces V3
+// ============================================
+// Ré-exporter les types V3 pour faciliter les imports
+export type {
+  PropertyTypeV3,
+  PropertyStatusV3,
+  PropertyV3,
+  RoomTypeV3,
+  PhotoTagV3,
+  ParkingTypeV3,
+  ParkingGabaritV3,
+  ParkingAccesV3,
+  LocalTypeV3,
+  TypeBailV3,
+  TypeBailHabitationV3,
+  TypeBailParkingV3,
+  TypeBailProV3,
+  EquipmentV3,
+} from "./property-v3";
+
+export {
+  PROPERTY_TYPE_GROUPS,
+  ROOM_TYPES,
+  PHOTO_TAGS,
+  HAB_EQUIPMENTS,
+} from "./property-v3";
+
+// ============================================
+// EXPORTS COMPATIBILITY - Fonctions de conversion
+// ============================================
+export {
+  toPropertyTypeV3,
+  fromPropertyTypeV3,
+  isValidPropertyTypeV3,
+  toRoomTypeV3,
+  fromRoomTypeV3,
+  toPhotoTagV3,
+  fromPhotoTagV3,
+  toPropertyStatusV3,
+  fromPropertyStatusV3,
+  toPropertyV3,
+  isPropertyV3,
+} from "./compatibility";
 

@@ -3,11 +3,23 @@ import { z } from "zod";
 import { propertySchema } from "@/lib/validations";
 import { validatePropertyData, safeValidatePropertyData } from "@/lib/validations/property-validator";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { propertiesQuerySchema, validateQueryParams } from "@/lib/validations/params";
+import type {
+  ServiceSupabaseClient,
+  TypedSupabaseClient,
+  MediaDocument,
+  SupabaseError,
+  PropertyData,
+  ProfileData,
+} from "@/lib/types/supabase-client";
 
-// Configuration de timeout optimisée : 8 secondes max pour éviter la surconsommation CPU
-const MAX_REQUEST_TIME = 8000;
-const AUTH_TIMEOUT = 2000;
-const QUERY_TIMEOUT = 3000;
+// Configuration de timeout optimisée : 25 secondes max pour les requêtes complexes
+const MAX_REQUEST_TIME = 25000;
+const AUTH_TIMEOUT = 3000;
+const QUERY_TIMEOUT = 8000; // Augmenté pour les requêtes complexes
+
+type SupabaseDbClient = ServiceSupabaseClient | TypedSupabaseClient;
 
 /**
  * GET /api/properties - Récupérer les propriétés de l'utilisateur
@@ -15,15 +27,26 @@ const QUERY_TIMEOUT = 3000;
  * 
  * Configuration Vercel: maxDuration: 10s
  */
-export const maxDuration = 10;
+export const maxDuration = 20;
 
 export async function GET(request: Request) {
   const startTime = Date.now();
   
   try {
-    // Authentification avec timeout simple
+    // ✅ VALIDATION: Valider les query params avec gestion d'erreur
+    const url = new URL(request.url);
+    let queryParams;
+    try {
+      queryParams = validateQueryParams(propertiesQuerySchema, url.searchParams);
+    } catch (validationError) {
+      // Si la validation échoue, utiliser des paramètres par défaut au lieu de planter
+      console.warn("[GET /api/properties] Invalid query params, using defaults:", validationError);
+      queryParams = {};
+    }
+
+    // ✅ AUTHENTIFICATION: Authentification avec timeout simple
     const authPromise = getAuthenticatedUser(request);
-    const authTimeout = new Promise<any>((resolve) => {
+    const authTimeout = new Promise<{ user: null; error: { message: string; status: number }; supabase: null }>((resolve) => {
       setTimeout(() => {
         resolve({ user: null, error: { message: "Auth timeout", status: 504 }, supabase: null });
       }, AUTH_TIMEOUT);
@@ -32,221 +55,257 @@ export async function GET(request: Request) {
     const { user, error, supabase } = await Promise.race([authPromise, authTimeout]);
     
     if (error || !user || !supabase) {
-      return NextResponse.json({ 
-        properties: [],
-        error: error?.message || "Non authentifié"
-      }, { status: error?.status || 401 });
+      throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
     }
 
-    // Vérifier le temps écoulé
-    if (Date.now() - startTime > MAX_REQUEST_TIME - 2000) {
-      return NextResponse.json({ 
-        properties: [],
-        error: "Request timeout"
-      }, { status: 504 });
+    // ✅ TIMEOUT: Vérifier le temps écoulé
+    if (Date.now() - startTime > MAX_REQUEST_TIME - 5000) {
+      throw new ApiError(504, "Request timeout");
     }
 
-    // Créer le service client une seule fois
+    // ✅ CONFIGURATION: Créer le service client une seule fois (avec fallback)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let dbClient: SupabaseDbClient | null = null;
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        {
-          error: "SUPABASE_SERVICE_ROLE_KEY manquante",
-          properties: []
+    if (supabaseUrl && serviceRoleKey) {
+      const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
+      dbClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
         },
-        { status: 500 }
-      );
+      });
+    } else {
+      dbClient = supabase as TypedSupabaseClient;
+      console.warn("[GET /api/properties] SUPABASE_SERVICE_ROLE_KEY manquante, fallback sur le client utilisateur");
     }
 
-    const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
-    const serviceClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    if (!dbClient) {
+      throw new ApiError(500, "Client Supabase non disponible");
+    }
 
-    // Récupérer le profil avec timeout simple
-    const profilePromise = serviceClient
+    // ✅ PERMISSIONS: Récupérer le profil avec timeout simple
+    const profilePromise = dbClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
     
-    const profileTimeout = new Promise<any>((resolve) => {
+    const profileTimeout = new Promise<{ data: ProfileData | null; error: { message: string } }>((resolve) => {
       setTimeout(() => {
         resolve({ data: null, error: { message: "Timeout" } });
       }, QUERY_TIMEOUT);
     });
 
-    const { data: profile, error: profileError } = await Promise.race([profilePromise, profileTimeout]);
+    const { data: profile, error: profileError } = await Promise.race([profilePromise, profileTimeout]) as {
+      data: ProfileData | null;
+      error: { message: string } | null;
+    };
 
     if (profileError || !profile) {
-      return NextResponse.json({ 
-        properties: [],
-        error: "Profil non trouvé"
-      }, { status: 404 });
+      throw new ApiError(404, "Profil non trouvé", profileError);
     }
 
-    const profileData = profile as any;
-
-    // Vérifier le temps écoulé avant les requêtes principales
-    if (Date.now() - startTime > MAX_REQUEST_TIME - 3000) {
-      return NextResponse.json({ 
-        properties: [],
-        error: "Request timeout"
-      }, { status: 504 });
+    // ✅ TIMEOUT: Vérifier le temps écoulé avant les requêtes principales
+    if (Date.now() - startTime > MAX_REQUEST_TIME - 5000) {
+      throw new ApiError(504, "Request timeout");
     }
 
-    // Récupérer les propriétés selon le rôle - requêtes optimisées
-    let properties: any[] = [];
+    // ✅ RÉCUPÉRATION: Récupérer les propriétés selon le rôle - requêtes optimisées
+    let properties: Array<Record<string, unknown>> = [];
+    
+    // ✅ PAGINATION: Récupérer les paramètres de pagination
+    const page = parseInt(queryParams.page as string || "1");
+    const limit = Math.min(parseInt(queryParams.limit as string || "100"), 200); // Max 200
+    const offset = (page - 1) * limit;
     
     try {
       // Colonnes essentielles uniquement pour réduire le temps de traitement
       const essentialColumns = "id, owner_id, type, type_bien, adresse_complete, code_postal, ville, surface, nb_pieces, loyer_base, created_at, etat";
       
-      if (profileData.role === "admin") {
-        // Admins : limiter à 50 propriétés
-        const queryPromise = serviceClient
+      // ✅ RECHERCHE: Construire la requête avec recherche si fournie
+      let baseQuery;
+      
+      if (profile.role === "admin") {
+        baseQuery = dbClient
           .from("properties")
-          .select(essentialColumns)
-          .order("created_at", { ascending: false })
-          .limit(50);
-
-        const { data, error: queryError } = await Promise.race([
-          queryPromise,
-          new Promise<any>((resolve) => {
-            setTimeout(() => resolve({ data: [], error: { message: "Timeout" } }), QUERY_TIMEOUT);
-          })
-        ]);
-
-        properties = (data || []);
-      } else if (profileData.role === "owner") {
-        // Propriétaires : leurs propriétés uniquement
-        const { data, error } = await serviceClient
+          .select(essentialColumns, { count: "exact" })
+          .order("created_at", { ascending: false });
+      } else if (profile.role === "owner") {
+        baseQuery = dbClient
           .from("properties")
-          .select(essentialColumns)
-          .eq("owner_id", profileData.id as any)
-          .order("created_at", { ascending: false })
-          .limit(100); // Limite augmentée car requête filtrée
-
-        if (error) {
-          console.error("[GET /api/properties] Error:", error);
-          properties = [];
-        } else {
-          properties = data || [];
-        }
+          .select(essentialColumns, { count: "exact" })
+          .eq("owner_id", profile.id)
+          .order("created_at", { ascending: false });
       } else {
         // Locataires : propriétés avec baux actifs
-        // Requête optimisée : récupérer les lease_ids puis les property_ids en une seule requête
-        const { data: signers, error: signersError } = await Promise.race([
-          serviceClient
+        const signersResult = await Promise.race([
+          dbClient
             .from("lease_signers")
             .select("lease_id")
-            .eq("profile_id", profileData.id as any)
-            .in("role", ["locataire_principal", "colocataire"] as any)
+            .eq("profile_id", profile.id)
+            .in("role", ["locataire_principal", "colocataire"])
             .limit(50),
-          new Promise<any>((resolve) => {
-            setTimeout(() => resolve({ data: [], error: { message: "Timeout" } }), QUERY_TIMEOUT);
+          new Promise<{ data: Array<{ lease_id: string }> | null; error: { message: string } | null }>((resolve) => {
+            setTimeout(() => resolve({ data: null, error: { message: "Timeout" } }), QUERY_TIMEOUT);
           })
-        ]);
+        ]) as { data: Array<{ lease_id: string }> | null; error: { message: string } | null };
+        
+        const { data: signers, error: signersError } = signersResult;
 
-        if (signersError && signersError.message !== "Timeout") {
-          console.error("[GET /api/properties] Error fetching signers:", signersError);
-          properties = [];
-        } else if (signers && signers.length > 0) {
-          const leaseIds = signers.map((s: any) => s.lease_id).filter(Boolean);
+        if (!signersError && signers && signers.length > 0) {
+          const leaseIds = signers.map((s) => s.lease_id).filter(Boolean) as string[];
           
-          // Récupérer les property_ids des baux actifs
-          const { data: leases, error: leasesError } = await Promise.race([
-            serviceClient
+          const leasesResult = await Promise.race([
+            dbClient
               .from("leases")
               .select("property_id")
               .in("id", leaseIds)
-              .eq("statut", "active" as any)
+              .eq("statut", "active")
               .limit(50),
-            new Promise<any>((resolve) => {
-              setTimeout(() => resolve({ data: [], error: { message: "Timeout" } }), QUERY_TIMEOUT);
+            new Promise<{ data: Array<{ property_id: string }> | null; error: { message: string } | null }>((resolve) => {
+              setTimeout(() => resolve({ data: null, error: { message: "Timeout" } }), QUERY_TIMEOUT);
             })
-          ]);
+          ]) as { data: Array<{ property_id: string }> | null; error: { message: string } | null };
+          
+          const { data: leases, error: leasesError } = leasesResult;
 
-          if (leasesError && leasesError.message !== "Timeout") {
-            console.error("[GET /api/properties] Error fetching leases:", leasesError);
-            properties = [];
-          } else if (leases && leases.length > 0) {
-            const propertyIds = [...new Set(leases.map((l: any) => l.property_id).filter(Boolean))];
+          if (!leasesError && leases && leases.length > 0) {
+            const propertyIds = [...new Set(leases.map((l) => l.property_id).filter(Boolean))];
             
-            // Récupérer les propriétés
-            const { data, error } = await Promise.race([
-              serviceClient
-                .from("properties")
-                .select(essentialColumns)
-                .in("id", propertyIds)
-                .limit(50),
-              new Promise<any>((resolve) => {
-                setTimeout(() => resolve({ data: [], error: { message: "Timeout" } }), QUERY_TIMEOUT);
-              })
-            ]);
-
-            if (error && error.message !== "Timeout") {
-              console.error("[GET /api/properties] Error fetching properties:", error);
-              properties = [];
-            } else {
-              properties = data || [];
-            }
+            baseQuery = dbClient
+              .from("properties")
+              .select(essentialColumns, { count: "exact" })
+              .in("id", propertyIds)
+              .order("created_at", { ascending: false });
+          } else {
+            properties = [];
+            baseQuery = null;
           }
+        } else {
+          properties = [];
+          baseQuery = null;
         }
       }
-    } catch (queryError: any) {
+
+      // ✅ RECHERCHE: Appliquer la recherche si fournie
+      if (baseQuery && queryParams.search) {
+        const searchTerm = (queryParams.search as string).toLowerCase();
+        baseQuery = baseQuery.or(`adresse_complete.ilike.%${searchTerm}%,code_postal.ilike.%${searchTerm}%,ville.ilike.%${searchTerm}%`);
+      }
+
+      // ✅ FILTRES: Appliquer les filtres si fournis
+      if (baseQuery && queryParams.type) {
+        baseQuery = baseQuery.eq("type", queryParams.type);
+      }
+      if (baseQuery && queryParams.type_bien) {
+        baseQuery = baseQuery.eq("type_bien", queryParams.type_bien);
+      }
+      if (baseQuery && queryParams.etat) {
+        baseQuery = baseQuery.eq("etat", queryParams.etat);
+      }
+
+      // ✅ PAGINATION: Appliquer la pagination
+      if (baseQuery) {
+        const queryPromise = baseQuery.range(offset, offset + limit - 1);
+
+        const { data, error, count } = await Promise.race([
+          queryPromise,
+          new Promise<{ data: Array<Record<string, unknown>>; error: { message: string }; count: number | null }>((resolve) => {
+            setTimeout(() => resolve({ data: [], error: { message: "Timeout" }, count: null }), QUERY_TIMEOUT);
+          })
+        ]);
+
+        if (error && error.message !== "Timeout") {
+          throw new ApiError(500, "Erreur lors de la récupération des propriétés", error);
+        }
+
+        properties = (data || []);
+        
+        // ✅ MÉDIAS: Charger les médias (photos de couverture) de manière asynchrone et non-bloquante
+        // Ne pas bloquer la réponse si les médias prennent trop de temps
+        if (properties.length > 0 && dbClient && properties.length <= 20) {
+          // Limiter le chargement des médias aux petites listes pour éviter les timeouts
+          try {
+            const propertyIds = properties.map((p: any) => p.id).filter(Boolean) as string[];
+            
+            // Timeout de 2 secondes max pour les médias
+            const mediaPromise = fetchPropertyMedia(dbClient, propertyIds);
+            const mediaTimeout = new Promise<Map<string, any>>((resolve) => {
+              setTimeout(() => resolve(new Map()), 2000);
+            });
+            
+            const mediaMap = await Promise.race([mediaPromise, mediaTimeout]);
+            
+            // Enrichir les propriétés avec les médias
+            properties = properties.map((property: any) => {
+              const media = mediaMap.get(property.id);
+              return {
+                ...property,
+                cover_url: media?.cover_url || null,
+                cover_document_id: media?.cover_document_id || null,
+                documents_count: media?.documents_count || 0,
+              };
+            });
+          } catch (mediaError) {
+            // Ne pas faire échouer la requête si les médias échouent
+            console.warn("[GET /api/properties] Error loading media (non-blocking):", mediaError);
+          }
+        } else if (properties.length > 20) {
+          // Pour les grandes listes, ne pas charger les médias pour éviter les timeouts
+          properties = properties.map((property: any) => ({
+            ...property,
+            cover_url: null,
+            cover_document_id: null,
+            documents_count: 0,
+          }));
+        }
+      }
+    } catch (queryError: unknown) {
       console.error("[GET /api/properties] Query error:", queryError);
-      properties = [];
+      if (queryError instanceof ApiError) {
+        throw queryError;
+      }
+      throw new ApiError(500, "Erreur lors de la récupération des propriétés", queryError);
     }
 
     const elapsedTime = Date.now() - startTime;
     
     // Log uniquement si > 3 secondes pour réduire les logs
     if (elapsedTime > 3000) {
-      console.warn(`[GET /api/properties] Slow request: ${elapsedTime}ms, role: ${profileData.role}, count: ${properties.length}`);
+      console.warn(`[GET /api/properties] Slow request: ${elapsedTime}ms, role: ${profile.role}, count: ${properties.length}`);
     }
     
-    // Retourner une erreur si trop lent
+    // ✅ TIMEOUT: Retourner une erreur si trop lent
     if (elapsedTime > MAX_REQUEST_TIME) {
-      return NextResponse.json(
-        { 
-          error: "La requête a pris trop de temps",
-          properties: []
-        },
-        { status: 504 }
-      );
+      throw new ApiError(504, "La requête a pris trop de temps");
     }
 
-    // Ajouter des headers de cache pour réduire la charge CPU
+    // ✅ RÉPONSE: Ajouter des headers de cache pour réduire la charge CPU
     return NextResponse.json(
-      { properties: properties || [] },
+      { 
+        properties: properties || [],
+        pagination: {
+          page,
+          limit,
+          total: properties.length, // Note: count exact nécessiterait une requête séparée
+        }
+      },
       {
         headers: {
           'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
         },
       }
     );
-  } catch (error: any) {
-    const elapsedTime = Date.now() - startTime;
-    console.error("[GET /api/properties] Error:", error);
-    
-    return NextResponse.json(
-      { 
-        error: error.message || "Erreur serveur",
-        properties: []
-      },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    // ✅ GESTION ERREURS: Utiliser handleApiError pour une gestion uniforme
+    return handleApiError(error);
   }
 }
 
 async function fetchPropertyMedia(
-  serviceClient: any,
+  serviceClient: ServiceSupabaseClient | TypedSupabaseClient,
   propertyIds: string[]
 ): Promise<Map<string, { cover_document_id: string | null; cover_url: string | null; documents_count: number }>> {
   const result = new Map<string, { cover_document_id: string | null; cover_url: string | null; documents_count: number }>();
@@ -255,27 +314,27 @@ async function fetchPropertyMedia(
     return result;
   }
 
-  // Limiter le nombre de propriétés pour éviter les timeouts
-  const limitedPropertyIds = propertyIds.slice(0, 50);
+  // Limiter le nombre de propriétés pour éviter les timeouts (réduit à 20)
+  const limitedPropertyIds = propertyIds.slice(0, 20);
   
   try {
-    // Essayer d'abord avec la requête complète
+    // Essayer d'abord avec la requête complète (timeout réduit à 2 secondes)
     const primaryQuery = serviceClient
       .from("documents")
       .select("id, property_id, preview_url, storage_path, is_cover, position")
       .in("property_id", limitedPropertyIds)
       .eq("collection", "property_media")
-      .limit(500); // Limiter le nombre de résultats
+      .limit(100); // Limiter le nombre de résultats (réduit de 500 à 100)
 
-    let mediaDocs: any[] | null = null;
-    let mediaError: any = null;
+    let mediaDocs: MediaDocument[] | null = null;
+    let mediaError: SupabaseError | null = null;
 
     const attempt = await Promise.race([
       primaryQuery,
       new Promise<any>((resolve) => {
         setTimeout(() => {
           resolve({ data: null, error: { message: "Timeout" } });
-        }, 3000); // Timeout de 3 secondes
+        }, 2000); // Timeout réduit à 2 secondes
       })
     ]);
     
@@ -302,17 +361,17 @@ async function fetchPropertyMedia(
             .from("documents")
             .select("id, property_id, preview_url, storage_path, created_at")
             .in("property_id", limitedPropertyIds)
-            .limit(500),
-          new Promise<any>((resolve) => {
+            .limit(100), // Limiter à 100 résultats
+          new Promise<{ data: MediaDocument[] | null; error: SupabaseError | null }>((resolve) => {
             setTimeout(() => {
               resolve({ data: null, error: { message: "Timeout" } });
-            }, 3000);
+            }, 2000); // Timeout réduit à 2 secondes
           })
         ]);
 
         mediaDocs = fallback.data;
         mediaError = fallback.error;
-      } catch (fallbackError: any) {
+      } catch (fallbackError: unknown) {
         console.error("[fetchPropertyMedia] Fallback query failed:", fallbackError);
         return result;
       }
@@ -325,7 +384,7 @@ async function fetchPropertyMedia(
       return result;
     }
 
-    mediaDocs.forEach((doc: any) => {
+    mediaDocs.forEach((doc: MediaDocument) => {
       if (!doc.property_id) return;
       const current = result.get(doc.property_id) ?? {
         cover_document_id: null,
@@ -344,13 +403,13 @@ async function fetchPropertyMedia(
     });
 
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[fetchPropertyMedia] Unexpected error:", error);
     return result;
   }
 }
 
-async function generateUniquePropertyCode(serviceClient: any): Promise<string> {
+async function generateUniquePropertyCode(serviceClient: ServiceSupabaseClient): Promise<string> {
   const { generateCode } = await import("@/lib/helpers/code-generator");
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const candidate = await generateCode();
@@ -403,14 +462,19 @@ function getMissingOptionalColumn(
 }
 
 async function insertPropertyRecord(
-  serviceClient: any,
+  serviceClient: ServiceSupabaseClient,
   payload: Record<string, unknown>
-): Promise<{ data: any; warning?: string }> {
+): Promise<{ data: PropertyData; warning?: string }> {
   const sanitizedPayload = { ...payload };
   const warnings: string[] = [];
 
   while (true) {
-    const attempt = await serviceClient.from("properties").insert(sanitizedPayload as any).select().single();
+    // Note: Utilisation de `as any` pour gérer les colonnes optionnelles dynamiques
+    // qui peuvent ne pas exister dans le schéma TypeScript mais existent en base
+    const attempt = await serviceClient.from("properties").insert(sanitizedPayload as any).select().single() as {
+      data: PropertyData | null;
+      error: SupabaseError | null;
+    };
     if (!attempt.error && attempt.data) {
       return { data: attempt.data, warning: warnings[0] };
     }
@@ -435,8 +499,8 @@ async function createDraftProperty({
 }: {
   payload: z.infer<typeof propertyDraftSchema>;
   profileId: string;
-  serviceClient: any;
-}) {
+  serviceClient: ServiceSupabaseClient;
+}): Promise<PropertyData> {
   const uniqueCode = await generateUniquePropertyCode(serviceClient);
   const insertPayload: Record<string, unknown> = {
     owner_id: profileId,
@@ -504,53 +568,26 @@ const propertyDraftSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
-    if (error) {
-      return NextResponse.json(
-        { error: error.message, details: (error as any).details },
-        { status: error.status || 401 }
-      );
+    if (error || !user || !supabase) {
+      throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
     }
 
-    if (!user || !supabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
+    // ✅ VALIDATION: Valider le body
     const body = await request.json();
     const draftPayload = propertyDraftSchema.safeParse(body);
 
-    // Récupérer le profil
-    const supabaseClientPost = supabase as any;
-    const { data: profile } = await supabaseClientPost
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
-    }
-
-    const profileData = profile as any;
-
-    if (profileData.role !== "owner") {
-      return NextResponse.json(
-        { error: "Seuls les propriétaires peuvent créer des propriétés" },
-        { status: 403 }
-      );
-    }
-
+    // ✅ CONFIGURATION: Vérifier les variables d'environnement
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        {
-          error:
-            "SUPABASE_SERVICE_ROLE_KEY manquante. Configurez la clé service-role pour créer des logements.",
-        },
-        { status: 500 }
+      throw new ApiError(
+        500,
+        "Configuration serveur incomplète",
+        "SUPABASE_SERVICE_ROLE_KEY manquante. Configurez la clé service-role pour créer des logements."
       );
     }
 
@@ -562,66 +599,82 @@ export async function POST(request: Request) {
       },
     });
 
+    // ✅ PERMISSIONS: Récupérer le profil
+    const { data: profile, error: profileError } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profileError || !profile) {
+      throw new ApiError(404, "Profil non trouvé", profileError);
+    }
+
+    // ✅ PERMISSIONS: Vérifier que l'utilisateur est propriétaire
+    if (profile.role !== "owner") {
+      throw new ApiError(403, "Seuls les propriétaires peuvent créer des propriétés");
+    }
+
+    // ✅ CRÉATION: Créer un draft ou une propriété complète
     if (draftPayload.success) {
       console.log(`[POST /api/properties] Création d'un draft avec type_bien=${draftPayload.data.type_bien}`);
       const property = await createDraftProperty({
         payload: draftPayload.data,
-        profileId: profileData.id as string,
+        profileId: profile.id,
         serviceClient,
       });
       console.log(`[POST /api/properties] Draft créé avec succès: id=${property.id}, owner_id=${property.owner_id}`);
       return NextResponse.json({ property }, { status: 201 });
     }
 
-    // Utiliser le validator avec détection automatique V3 vs Legacy
+    // ✅ VALIDATION: Utiliser le validator avec détection automatique V3 vs Legacy
     const validationResult = safeValidatePropertyData(body);
     if (!validationResult.success) {
-      return NextResponse.json(
-        { error: "Données invalides", details: validationResult.error.errors },
-        { status: 400 }
-      );
+      throw new ApiError(400, "Données invalides", validationResult.error.errors);
     }
     const validated = validationResult.data;
 
     const uniqueCode = await generateUniquePropertyCode(serviceClient);
 
-    // Créer la propriété avec le code unique
+    // ✅ CRÉATION: Créer la propriété avec le code unique
     const { data: property } = await insertPropertyRecord(serviceClient, {
       ...validated,
-      owner_id: profileData.id as any,
+      owner_id: profile.id,
       unique_code: uniqueCode,
     });
 
-    // Émettre un événement
-    await serviceClient.from("outbox").insert({
-      event_type: "Property.Created",
-      payload: {
-        property_id: property.id,
-        owner_id: profileData.id,
-        unique_code: uniqueCode,
-      },
-    } as any);
-
-    // Journaliser
-    await serviceClient.from("audit_log").insert({
-      user_id: user.id,
-      action: "property_created",
-      entity_type: "property",
-      entity_id: property.id,
-      metadata: { unique_code: uniqueCode },
-    } as any);
-
-    return NextResponse.json({ property });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Données invalides", details: error.errors },
-        { status: 400 }
-      );
+    // ✅ ÉVÉNEMENTS: Émettre un événement (si la table existe)
+    try {
+      await serviceClient.from("outbox").insert({
+        event_type: "Property.Created",
+        payload: {
+          property_id: property.id,
+          owner_id: profile.id,
+          unique_code: uniqueCode,
+        },
+      });
+    } catch (outboxError) {
+      // Ignorer si la table n'existe pas
+      console.warn("[POST /api/properties] Table outbox non disponible:", outboxError);
     }
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+
+    // ✅ AUDIT: Journaliser (si la table existe)
+    try {
+      await serviceClient.from("audit_log").insert({
+        user_id: user.id,
+        action: "property_created",
+        entity_type: "property",
+        entity_id: property.id,
+        metadata: { unique_code: uniqueCode },
+      });
+    } catch (auditError) {
+      // Ignorer si la table n'existe pas
+      console.warn("[POST /api/properties] Table audit_log non disponible:", auditError);
+    }
+
+    return NextResponse.json({ property }, { status: 201 });
+  } catch (error: unknown) {
+    // ✅ GESTION ERREURS: Utiliser handleApiError pour une gestion uniforme
+    return handleApiError(error);
   }
 }

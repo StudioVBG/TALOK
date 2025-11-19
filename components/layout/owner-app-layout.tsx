@@ -23,6 +23,7 @@ import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { OwnerBottomNav } from "./owner-bottom-nav";
 import { cn } from "@/lib/utils";
 import { authService } from "@/features/auth/services/auth.service";
+import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
 
 const navigation = [
   { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard },
@@ -33,30 +34,44 @@ const navigation = [
   { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle },
 ];
 
-export function OwnerAppLayout({ children }: { children: React.ReactNode }) {
+interface OwnerAppLayoutProps {
+  children: React.ReactNode;
+  profile?: {
+    id: string;
+    role: string;
+    prenom?: string | null;
+    nom?: string | null;
+  } | null;
+}
+
+export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile, loading } = useAuth();
+  const { profile: clientProfile, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  // Rediriger si pas propriétaire
+  // Utiliser le profil du serveur si disponible, sinon celui du client
+  const profile = serverProfile || clientProfile;
+
+  // Rediriger si pas propriétaire (seulement côté client si pas de profil serveur)
   useEffect(() => {
-    if (!loading && profile?.role !== "owner") {
-      if (profile?.role === "tenant") {
+    if (!serverProfile && !loading && clientProfile?.role !== "owner") {
+      if (clientProfile?.role === "tenant") {
         router.replace("/app/tenant");
       } else {
         router.replace("/dashboard");
       }
     }
-  }, [profile, loading, router]);
+  }, [clientProfile, loading, router, serverProfile]);
 
   const handleSignOut = async () => {
     await authService.signOut();
     router.push("/auth/signin");
   };
 
-  if (loading) {
+  // Si pas de profil serveur et chargement côté client, afficher loading
+  if (!serverProfile && loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center space-y-4">
@@ -67,6 +82,7 @@ export function OwnerAppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Si pas de profil du tout, ne rien afficher (redirection en cours)
   if (!profile || profile.role !== "owner") {
     return null;
   }
@@ -176,6 +192,7 @@ export function OwnerAppLayout({ children }: { children: React.ReactNode }) {
                 </h2>
               </div>
               <div className="flex items-center gap-x-4 lg:gap-x-6">
+                <DarkModeToggle />
                 <Button variant="outline" size="sm" asChild>
                   <Link href={OWNER_ROUTES.support.path}>
                     <HelpCircle className="h-4 w-4 mr-2" />

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { invoiceSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { invoicesQuerySchema, validateQueryParams } from "@/lib/validations/params";
 
 /**
  * GET /api/invoices - Récupérer les factures de l'utilisateur
@@ -20,6 +21,21 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    // ✅ VALIDATION: Valider les query params
+    const url = new URL(request.url);
+    let queryParams;
+    try {
+      queryParams = validateQueryParams(invoicesQuerySchema, url.searchParams);
+    } catch (validationError) {
+      console.warn("[GET /api/invoices] Invalid query params, using defaults:", validationError);
+      queryParams = {};
+    }
+
+    // ✅ PAGINATION: Récupérer les paramètres de pagination
+    const page = parseInt(queryParams.page as string || "1");
+    const limit = Math.min(parseInt(queryParams.limit as string || "50"), 200); // Max 200
+    const offset = (page - 1) * limit;
+
     // Récupérer le profil
     const { data: profile } = await (supabase as any)
       .from("profiles")
@@ -31,43 +47,66 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    // Récupérer les factures selon le rôle
+    // Récupérer les factures selon le rôle avec pagination et filtres
     let invoices: any[] | undefined;
+    let totalCount: number | null = null;
     const supabaseClient = supabase as any;
+    
+    let baseQuery;
+    
     if ((profile as any).role === "admin") {
       // Les admins voient toutes les factures
-      const { data, error } = await supabaseClient
+      baseQuery = supabaseClient
         .from("invoices")
-        .select("*")
+        .select("*", { count: "exact" })
         .order("periode", { ascending: false });
-
-      if (error) throw error;
-      invoices = data;
     } else if ((profile as any).role === "owner") {
       // Les propriétaires voient leurs factures
-      const { data, error } = await supabaseClient
+      baseQuery = supabaseClient
         .from("invoices")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("owner_id", (profile as any).id)
         .order("periode", { ascending: false });
-
-      if (error) throw error;
-      invoices = data;
     } else if ((profile as any).role === "tenant") {
       // Les locataires voient leurs factures
-      const { data, error } = await supabaseClient
+      baseQuery = supabaseClient
         .from("invoices")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("tenant_id", (profile as any).id)
         .order("periode", { ascending: false });
+    } else {
+      invoices = [];
+      baseQuery = null;
+    }
+
+    // ✅ FILTRES: Appliquer les filtres si fournis
+    if (baseQuery) {
+      if (queryParams.lease_id || queryParams.leaseId) {
+        baseQuery = baseQuery.eq("lease_id", queryParams.lease_id || queryParams.leaseId);
+      }
+      if (queryParams.statut || queryParams.status) {
+        baseQuery = baseQuery.eq("statut", queryParams.statut || queryParams.status);
+      }
+      if (queryParams.periode) {
+        baseQuery = baseQuery.eq("periode", queryParams.periode);
+      }
+
+      // ✅ PAGINATION: Appliquer la pagination
+      const { data, error, count } = await baseQuery.range(offset, offset + limit - 1);
 
       if (error) throw error;
       invoices = data;
-    } else {
-      invoices = [];
+      totalCount = count;
     }
 
-    return NextResponse.json({ invoices: invoices || [] });
+    return NextResponse.json({ 
+      invoices: invoices || [],
+      pagination: {
+        page,
+        limit,
+        total: totalCount || invoices?.length || 0,
+      }
+    });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },

@@ -28,22 +28,38 @@ export function useProperties() {
       }
       
       try {
-        // Utiliser l'API route au lieu d'appeler directement Supabase
-        const response = await apiClient.get<{ properties: PropertyRow[] }>("/properties");
+        // ✅ Utiliser l'API route scopée aux propriétaires /api/owner/properties
+        const response = await apiClient.get<{ 
+          properties: PropertyRow[];
+          pagination: {
+            page: number;
+            limit: number;
+            total: number;
+          };
+        }>("/owner/properties");
         
-        // Gérer différents formats de réponse
-        if (Array.isArray(response)) {
-          return response;
-        } else if ((response as any).properties) {
-          return (response as any).properties || [];
-        } else {
-          console.warn("[useProperties] Unexpected response format:", response);
-          return [];
+        // ✅ Gérer le format de réponse OwnerPropertiesResponse
+        if (response && typeof response === "object") {
+          if ("properties" in response && Array.isArray(response.properties)) {
+            return response.properties;
+          }
+          // Fallback : si la réponse est directement un tableau (rétrocompatibilité)
+          if (Array.isArray(response)) {
+            return response;
+          }
         }
+        
+        console.warn("[useProperties] Unexpected response format:", response);
+        return [];
       } catch (error: any) {
         console.error("[useProperties] Error fetching properties:", error);
+        console.error("[useProperties] Error details:", {
+          message: error?.message,
+          statusCode: error?.statusCode,
+          data: error?.data,
+        });
         
-        // Si c'est une erreur de timeout ou réseau, retourner un tableau vide avec un message d'erreur clair
+        // Si c'est une erreur de timeout ou réseau
         if (error?.statusCode === 504 || error?.message?.includes("timeout") || error?.message?.includes("Timeout")) {
           throw new Error("Le chargement prend trop de temps. Veuillez réessayer.");
         }
@@ -53,8 +69,9 @@ export function useProperties() {
           throw new Error("Vous n'êtes pas autorisé à accéder à ces données.");
         }
         
-        // Pour les autres erreurs, propager l'erreur originale
-        throw error;
+        // Pour les autres erreurs, propager l'erreur originale avec le message détaillé
+        const errorMessage = error?.data?.error || error?.message || "Erreur lors de la récupération des propriétés";
+        throw new Error(errorMessage);
       }
     },
     enabled: !!profile,
@@ -221,17 +238,53 @@ export function useUpdateProperty(optimistic: boolean = false) {
 }
 
 /**
- * Hook pour supprimer une propriété
+ * Hook pour supprimer une propriété avec optimistic update
  */
 export function useDeleteProperty() {
   const queryClient = useQueryClient();
+  const { profile } = useAuth();
   
   return useMutation({
     mutationFn: async (id: string) => {
       // Utiliser l'API route au lieu d'appeler directement Supabase
       await apiClient.delete(`/properties/${id}`);
     },
+    onMutate: async (id) => {
+      // Annuler les requêtes en cours pour éviter les conflits
+      await queryClient.cancelQueries({ queryKey: ["properties"] });
+      await queryClient.cancelQueries({ queryKey: ["property", id] });
+      
+      // Sauvegarder l'état précédent pour rollback
+      const previousProperties = queryClient.getQueryData<PropertyRow[]>([
+        "properties",
+        profile?.id,
+      ]);
+      const previousProperty = queryClient.getQueryData<PropertyRow>(["property", id]);
+      
+      // Mise à jour optimiste - supprimer la propriété de la liste
+      if (previousProperties) {
+        queryClient.setQueryData<PropertyRow[]>(
+          ["properties", profile?.id],
+          (old) => old?.filter((p) => p.id !== id) ?? []
+        );
+      }
+      
+      // Supprimer aussi de la cache individuelle
+      queryClient.removeQueries({ queryKey: ["property", id] });
+      
+      return { previousProperties, previousProperty };
+    },
+    onError: (error, id, context) => {
+      // Rollback en cas d'erreur
+      if (context?.previousProperties) {
+        queryClient.setQueryData(["properties", profile?.id], context.previousProperties);
+      }
+      if (context?.previousProperty) {
+        queryClient.setQueryData(["property", id], context.previousProperty);
+      }
+    },
     onSuccess: () => {
+      // Invalider les queries pour s'assurer que les données sont à jour
       queryClient.invalidateQueries({ queryKey: ["properties"] });
     },
   });

@@ -37,8 +37,11 @@ import { ROOM_TYPES, PHOTO_TAGS } from "@/lib/types/property-v3";
 import type { Room, Photo } from "@/lib/types";
 import { propertiesService } from "@/features/properties/services/properties.service";
 import { useToast } from "@/components/ui/use-toast";
-import { StepHeader, UnifiedSelect } from "@/lib/design-system/wizard-components";
+import { UnifiedSelect } from "@/lib/design-system/wizard-components";
 import { containerVariants } from "@/lib/design-system/animations";
+import { WizardStepLayout } from "@/lib/design-system/wizard-layout";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface RoomsPhotosStepProps {
   propertyId: string;
@@ -49,6 +52,14 @@ interface RoomsPhotosStepProps {
   photos?: (Photo | PhotoV3)[];
   onRoomsChange?: (rooms: (Room | RoomV3)[]) => void;
   onPhotosChange?: (photos: (Photo | PhotoV3)[]) => void;
+  stepNumber?: number;
+  totalSteps?: number;
+  mode?: "fast" | "full";
+  onModeChange?: (mode: "fast" | "full") => void;
+  onBack?: () => void;
+  onNext?: () => void;
+  canGoNext?: boolean;
+  microCopy?: string;
 }
 
 // Composant de pièce éditable
@@ -247,6 +258,14 @@ export function RoomsPhotosStep({
   photos: initialPhotos = [],
   onRoomsChange,
   onPhotosChange,
+  stepNumber = 1,
+  totalSteps = 8,
+  mode = "full",
+  onModeChange,
+  onBack,
+  onNext,
+  canGoNext = true,
+  microCopy,
 }: RoomsPhotosStepProps) {
   const { toast } = useToast();
   const [rooms, setRooms] = useState<(Room | RoomV3)[]>(initialRooms as (Room | RoomV3)[]);
@@ -259,6 +278,35 @@ export function RoomsPhotosStep({
   const isHabitation = ["appartement", "maison", "studio", "colocation"].includes(type_bien);
   const isParking = ["parking", "box"].includes(type_bien);
   const isLocalPro = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(type_bien);
+
+  // Vérifier que propertyId existe avant de continuer
+  if (!propertyId || !propertyId.trim()) {
+    return (
+      <WizardStepLayout
+        title={isHabitation ? "Pièces & photos" : "Photos du bien"}
+        description="Erreur : Le bien doit être sauvegardé avant de continuer"
+        stepNumber={stepNumber}
+        totalSteps={totalSteps}
+        mode={mode}
+        onModeChange={onModeChange}
+        progressValue={(stepNumber / totalSteps) * 100}
+        onBack={onBack}
+        onNext={undefined}
+        canGoNext={false}
+        microCopy="Veuillez retourner en arrière et compléter les informations"
+      >
+        <div className="p-8 text-center">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erreur</AlertTitle>
+            <AlertDescription>
+              Le bien n&apos;a pas pu être sauvegardé. Veuillez retourner en arrière et vérifier les informations saisies.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </WizardStepLayout>
+    );
+  }
 
   // Auto-créer pièces par défaut au premier accès
   useEffect(() => {
@@ -395,19 +443,25 @@ export function RoomsPhotosStep({
   }, [photos, onPhotosChange]);
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
-      {/* Titre */}
-      <StepHeader
-        title={isHabitation ? "Pièces & photos" : "Photos du bien"}
-        description={
-          isHabitation
-            ? "Ajoutez les pièces et les photos associées"
-            : "Ajoutez les photos du bien avec les tags appropriés"
-        }
-        icon={isHabitation ? <Home className="h-6 w-6 text-primary" /> : <Camera className="h-6 w-6 text-primary" />}
-      />
-
-      {/* Contenu adaptatif */}
+    <WizardStepLayout
+      title={isHabitation ? "Pièces & photos" : "Photos du bien"}
+      description={
+        isHabitation
+          ? "Ajoutez les pièces et les photos associées"
+          : "Ajoutez les photos du bien avec les tags appropriés"
+      }
+      stepNumber={stepNumber}
+      totalSteps={totalSteps}
+      mode={mode}
+      onModeChange={onModeChange}
+      progressValue={(stepNumber / totalSteps) * 100}
+      onBack={onBack}
+      onNext={onNext}
+      canGoNext={canGoNext}
+      microCopy={microCopy}
+    >
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+        {/* Contenu adaptatif */}
       <AnimatePresence mode="wait">
         {isHabitation && (
           <motion.div
@@ -634,7 +688,8 @@ export function RoomsPhotosStep({
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+      </motion.div>
+    </WizardStepLayout>
   );
 }
 

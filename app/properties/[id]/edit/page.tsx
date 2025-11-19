@@ -1,79 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ProtectedRoute } from "@/components/protected-route";
-import { PropertyForm } from "@/features/properties/components/property-form";
-import { propertiesService } from "@/features/properties/services/properties.service";
-import type { Property } from "@/lib/types";
-import { useToast } from "@/components/ui/use-toast";
+import { useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 
-function EditPropertyPageContent() {
-  const params = useParams();
+/**
+ * Redirection vers la route canonique d'édition d'un logement
+ * 
+ * Route legacy : /properties/[id]/edit
+ * Route canonique : /app/owner/properties/[id]/edit
+ */
+export default function LegacyEditPropertyPage() {
   const router = useRouter();
-  const { toast } = useToast();
-  const [property, setProperty] = useState<Property | null>(null);
-  const [loading, setLoading] = useState(true);
+  const params = useParams();
 
   useEffect(() => {
-    if (params.id) {
-      fetchProperty(params.id as string);
+    if (params.id && typeof params.id === "string") {
+      router.replace(`/app/owner/properties/${params.id}/edit`);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
-
-  async function fetchProperty(id: string) {
-    try {
-      setLoading(true);
-      const data = await propertiesService.getPropertyById(id);
-      setProperty(data);
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de charger le logement.",
-        variant: "destructive",
-      });
-      router.push("/properties");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const handleSuccess = () => {
-    router.push(`/properties/${params.id}`);
-  };
-
-  const handleCancel = () => {
-    router.push(`/properties/${params.id}`);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Chargement...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!property) {
-    return null;
-  }
+  }, [router, params.id]);
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
-      <PropertyForm property={property} onSuccess={handleSuccess} onCancel={handleCancel} />
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto"></div>
+        <p className="text-muted-foreground">Redirection...</p>
+      </div>
     </div>
   );
 }
-
-export default function EditPropertyPage() {
-  return (
-    <ProtectedRoute allowedRoles={["admin", "owner"]}>
-      <EditPropertyPageContent />
-    </ProtectedRoute>
-  );
-}
-

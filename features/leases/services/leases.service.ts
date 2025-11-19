@@ -35,7 +35,7 @@ export class LeasesService {
 
   async getLeasesByProperty(propertyId: string) {
     const response = await apiClient.get<{ leases: Lease[] }>(
-      `/leases?property_id=${encodeURIComponent(propertyId)}`
+      `/leases?propertyId=${encodeURIComponent(propertyId)}`
     );
     return response.leases;
   }

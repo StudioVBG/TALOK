@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { propertyGeneralUpdateSchema, propertySchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { propertyIdParamSchema } from "@/lib/validations/params";
+import type { ServiceSupabaseClient, MediaDocument, SupabaseError } from "@/lib/types/supabase-client";
 
 /**
  * GET /api/properties/[id] - Récupérer une propriété par ID
@@ -13,29 +16,25 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
+    const propertyId = propertyIdParamSchema.parse(params.id);
+
+    // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);
 
-    if (authError) {
-      return NextResponse.json(
-        { error: authError.message, details: (authError as any).details },
-        { status: authError.status || 401 }
-      );
+    if (authError || !user || !supabase) {
+      throw new ApiError(authError?.status || 401, authError?.message || "Non authentifié");
     }
 
-    if (!user || !supabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
+    // ✅ CONFIGURATION: Vérifier les variables d'environnement
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        {
-          error:
-            "SUPABASE_SERVICE_ROLE_KEY manquante. Configurez la clé service-role pour consulter un logement.",
-        },
-        { status: 500 }
+      throw new ApiError(
+        500,
+        "Configuration serveur incomplète",
+        "SUPABASE_SERVICE_ROLE_KEY manquante. Configurez la clé service-role pour consulter un logement."
       );
     }
 
@@ -47,75 +46,71 @@ export async function GET(
       },
     });
 
-    // Récupérer le profil pour vérifier les permissions
+    // ✅ PERMISSIONS: Récupérer le profil pour vérifier les permissions
     const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
     if (profileError || !profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+      throw new ApiError(404, "Profil non trouvé", profileError);
     }
 
-    const profileData = profile as any;
-
-    // Récupérer la propriété
+    // ✅ RÉCUPÉRATION: Récupérer la propriété avec ID validé
     const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select("*")
-      .eq("id", params.id as any)
+      .eq("id", propertyId)
       .maybeSingle();
 
     if (propertyError) {
-      console.error(`[GET /api/properties/${params.id}] Erreur lors de la récupération:`, propertyError);
-      throw propertyError;
+      console.error(`[GET /api/properties/${propertyId}] Erreur lors de la récupération:`, propertyError);
+      throw new ApiError(500, "Erreur lors de la récupération de la propriété", propertyError);
     }
+    
     if (!property) {
-      console.warn(`[GET /api/properties/${params.id}] Propriété non trouvée (ID: ${params.id})`);
-      return NextResponse.json({ error: "Propriété non trouvée" }, { status: 404 });
+      throw new ApiError(404, "Propriété non trouvée", { propertyId });
     }
 
-    console.log(`[GET /api/properties/${params.id}] Propriété trouvée: owner_id=${property.owner_id}`);
+    // ✅ PERMISSIONS: Vérifier les permissions d'accès
+    const isAdmin = profile.role === "admin";
+    const isOwner = profile.id === property.owner_id;
 
-    const propertyData = property as any;
-
-    // Vérifier les permissions : admin peut tout voir, owner peut voir ses propriétés
-    if (profileData.role !== "admin" && profileData.id !== propertyData.owner_id) {
+    if (!isAdmin && !isOwner) {
       // Vérifier si l'utilisateur a un bail actif sur cette propriété
       const { data: leases, error: leasesError } = await serviceClient
         .from("lease_signers")
         .select("lease_id")
-        .eq("profile_id", profileData.id);
+        .eq("profile_id", profile.id);
 
-      if (leasesError) throw leasesError;
+      if (leasesError) {
+        throw new ApiError(500, "Erreur lors de la vérification des baux", leasesError);
+      }
 
       if (leases && leases.length > 0) {
-        const leaseIds = leases.map((l: any) => l.lease_id);
+        const leaseIds = leases.map((l) => l.lease_id).filter(Boolean);
         const { data: activeLeases, error: activeLeasesError } = await serviceClient
           .from("leases")
           .select("property_id")
           .in("id", leaseIds)
-          .eq("property_id", params.id)
+          .eq("property_id", propertyId)
           .eq("statut", "active");
 
-        if (activeLeasesError) throw activeLeasesError;
+        if (activeLeasesError) {
+          throw new ApiError(500, "Erreur lors de la vérification des baux actifs", activeLeasesError);
+        }
 
         if (!activeLeases || activeLeases.length === 0) {
-          return NextResponse.json(
-            { error: "Vous n'avez pas accès à cette propriété" },
-            { status: 403 }
-          );
+          throw new ApiError(403, "Vous n'avez pas accès à cette propriété");
         }
       } else {
-        return NextResponse.json(
-          { error: "Vous n'avez pas accès à cette propriété" },
-          { status: 403 }
-        );
+        throw new ApiError(403, "Vous n'avez pas accès à cette propriété");
       }
     }
 
-    const mediaInfo = await fetchSinglePropertyMedia(serviceClient, propertyData.id);
+    // ✅ MÉDIAS: Récupérer les médias de la propriété
+    const mediaInfo = await fetchSinglePropertyMedia(serviceClient, property.id);
 
     return NextResponse.json({
       property: {
@@ -123,11 +118,9 @@ export async function GET(
         ...mediaInfo,
       },
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    // ✅ GESTION ERREURS: Utiliser handleApiError pour une gestion uniforme
+    return handleApiError(error);
   }
 }
 
@@ -139,29 +132,25 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
+    const propertyId = propertyIdParamSchema.parse(params.id);
+
+    // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);
 
-    if (authError) {
-      return NextResponse.json(
-        { error: authError.message, details: (authError as any).details },
-        { status: authError.status || 401 }
-      );
+    if (authError || !user || !supabase) {
+      throw new ApiError(authError?.status || 401, authError?.message || "Non authentifié");
     }
 
-    if (!user || !supabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
+    // ✅ CONFIGURATION: Vérifier les variables d'environnement
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        {
-          error:
-            "SUPABASE_SERVICE_ROLE_KEY manquante. Configurez la clé service-role pour mettre à jour un logement.",
-        },
-        { status: 500 }
+      throw new ApiError(
+        500,
+        "Configuration serveur incomplète",
+        "SUPABASE_SERVICE_ROLE_KEY manquante. Configurez la clé service-role pour mettre à jour un logement."
       );
     }
 
@@ -173,29 +162,30 @@ export async function PATCH(
       },
     });
 
+    // ✅ VALIDATION: Valider le body avec Zod
     const body = await request.json();
     const validated = propertyGeneralUpdateSchema.parse(body);
 
-    // Récupérer le profil avec serviceClient pour éviter les problèmes RLS
+    // ✅ PERMISSIONS: Récupérer le profil avec serviceClient pour éviter les problèmes RLS
     const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
     if (profileError || !profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+      throw new ApiError(404, "Profil non trouvé", profileError);
     }
 
-    // Récupérer la propriété avec serviceClient pour éviter les problèmes RLS
+    // ✅ RÉCUPÉRATION: Récupérer la propriété avec ID validé
     // Essayer d'abord avec toutes les colonnes, puis sans si certaines n'existent pas
-    let property: any = null;
-    let propertyError: any = null;
+    let property: { owner_id: string; etat?: string; type?: string | null } | null = null;
+    let propertyError: unknown = null;
     
     const { data: propertyWithAll, error: errorWithAll } = await serviceClient
       .from("properties")
       .select("owner_id, etat, type")
-      .eq("id", params.id as any)
+      .eq("id", propertyId)
       .maybeSingle();
 
     if (errorWithAll) {
@@ -205,7 +195,7 @@ export async function PATCH(
         const { data: propertyMinimal, error: errorMinimal } = await serviceClient
           .from("properties")
           .select("owner_id")
-          .eq("id", params.id as any)
+          .eq("id", propertyId)
           .maybeSingle();
         
         if (errorMinimal) {
@@ -228,46 +218,36 @@ export async function PATCH(
     }
 
     if (propertyError) {
-      console.error(`[PATCH /api/properties/${params.id}] Erreur lors de la récupération de la propriété:`, propertyError);
-      throw propertyError;
+      console.error(`[PATCH /api/properties/${propertyId}] Erreur lors de la récupération de la propriété:`, propertyError);
+      throw new ApiError(500, "Erreur lors de la récupération de la propriété", propertyError);
     }
 
     if (!property) {
-      console.warn(`[PATCH /api/properties/${params.id}] Propriété non trouvée (ID: ${params.id})`);
-      return NextResponse.json({ error: "Propriété non trouvée" }, { status: 404 });
+      throw new ApiError(404, "Propriété non trouvée", { propertyId });
     }
 
-    console.log(`[PATCH /api/properties/${params.id}] Propriété trouvée: owner_id=${property.owner_id}, etat=${property.etat || "N/A"}, type=${property.type || "N/A"}`);
-
-    const profileData = profile as any;
-    const isAdmin = profileData.role === "admin";
-    const isOwner = property.owner_id === profileData.id;
+    // ✅ PERMISSIONS: Vérifier les permissions de modification
+    const isAdmin = profile.role === "admin";
+    const isOwner = property.owner_id === profile.id;
 
     if (!isAdmin && !isOwner) {
-      return NextResponse.json(
-        { error: "Vous n'avez pas la permission de modifier ce logement" },
-        { status: 403 }
-      );
+      throw new ApiError(403, "Vous n'avez pas la permission de modifier ce logement");
     }
 
-    // Vérifier l'état seulement si la colonne existe
-    const propertyEtat = (property as any).etat;
-    if (!isAdmin && propertyEtat && !["draft", "rejected"].includes(propertyEtat as string)) {
-      return NextResponse.json(
-        { error: "Impossible de modifier un logement soumis ou publié" },
-        { status: 400 }
-      );
+    // ✅ VALIDATION MÉTIER: Vérifier l'état seulement si la colonne existe
+    const propertyEtat = property.etat;
+    if (!isAdmin && propertyEtat && !["draft", "rejected"].includes(propertyEtat)) {
+      throw new ApiError(400, "Impossible de modifier un logement soumis ou publié");
     }
 
     // Retirer la restriction sur le type "appartement" pour permettre tous les types V3
     // Le flux PATCH peut maintenant être utilisé pour tous les types de biens
 
-    // Vérifier le changement de mode_location si présent
-    const validatedData = validated as any;
-    if (validatedData.mode_location && validatedData.mode_location !== (property as any).mode_location) {
+    // ✅ VALIDATION MÉTIER: Vérifier le changement de mode_location si présent
+    if ("mode_location" in validated && validated.mode_location) {
       const { hasActiveLeaseForProperty } = await import("@/lib/helpers/lease-helper");
       const { hasActive, lease, error: leaseError } = await hasActiveLeaseForProperty(
-        params.id,
+        propertyId,
         supabaseUrl,
         serviceRoleKey
       );
@@ -309,38 +289,41 @@ export async function PATCH(
 
     const updates: Record<string, unknown> = { ...validated, updated_at: new Date().toISOString() };
 
+    // Mapping type_bien → type pour compatibilité (si type_bien est fourni mais pas type)
+    if (Object.prototype.hasOwnProperty.call(validated, "type_bien") && !Object.prototype.hasOwnProperty.call(validated, "type")) {
+      updates.type = validated.type_bien;
+    }
+    // Si les deux sont fournis, s'assurer qu'ils sont cohérents
+    if (Object.prototype.hasOwnProperty.call(validated, "type_bien") && Object.prototype.hasOwnProperty.call(validated, "type")) {
+      // type_bien a la priorité pour V3
+      updates.type = validated.type_bien;
+    }
+
+    // Mapping loyer_hc → loyer_base pour compatibilité
     if (Object.prototype.hasOwnProperty.call(validated, "loyer_hc")) {
       const value = validated.loyer_hc ?? null;
       updates.loyer_base = value ?? 0;
     }
 
-    // Utiliser serviceClient pour la mise à jour pour éviter les problèmes RLS
+    // ✅ MISE À JOUR: Utiliser serviceClient pour la mise à jour pour éviter les problèmes RLS
     const { data: updatedProperty, error: updateError } = await serviceClient
       .from("properties")
-      .update(updates as any)
-      .eq("id", params.id as any)
+      .update(updates)
+      .eq("id", propertyId)
       .select()
       .single();
 
     if (updateError || !updatedProperty) {
-      return NextResponse.json(
-        { error: updateError?.message || "Impossible de mettre à jour le logement" },
-        { status: 500 }
+      throw new ApiError(
+        500,
+        "Impossible de mettre à jour le logement",
+        updateError
       );
     }
 
     return NextResponse.json({ property: updatedProperty });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Données invalides", details: error.errors },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error);
   }
 }
 
@@ -395,12 +378,12 @@ async function fetchSinglePropertyMedia(serviceClient: any, propertyId: string) 
     };
   }
 
-  const sortedDocs = mediaDocs.slice().sort((a: any, b: any) => {
-    const posA = a.position ?? Number.MAX_SAFE_INTEGER;
-    const posB = b.position ?? Number.MAX_SAFE_INTEGER;
+  const sortedDocs = mediaDocs.slice().sort((a: MediaDocument, b: MediaDocument) => {
+    const posA = (a as { position?: number }).position ?? Number.MAX_SAFE_INTEGER;
+    const posB = (b as { position?: number }).position ?? Number.MAX_SAFE_INTEGER;
     return posA - posB;
   });
-  const cover = sortedDocs.find((doc: any) => doc.is_cover) ?? sortedDocs[0] ?? null;
+  const cover = sortedDocs.find((doc: MediaDocument) => (doc as { is_cover?: boolean }).is_cover) ?? sortedDocs[0] ?? null;
 
   return {
     cover_document_id: cover?.id ?? null,
@@ -417,82 +400,89 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
+    const propertyId = propertyIdParamSchema.parse(params.id);
+
+    // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);
 
     if (authError || !user || !supabase) {
-      return NextResponse.json(
-        { error: authError?.message || "Non authentifié" },
-        { status: authError?.status || 401 }
+      throw new ApiError(authError?.status || 401, authError?.message || "Non authentifié");
+    }
+
+    // ✅ VALIDATION: Valider le body avec Zod
+    const body = await request.json();
+    const validated = propertyGeneralUpdateSchema.parse(body);
+
+    // ✅ CONFIGURATION: Vérifier les variables d'environnement
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new ApiError(
+        500,
+        "Configuration serveur incomplète",
+        "SUPABASE_SERVICE_ROLE_KEY manquante"
       );
     }
 
-    const body = await request.json();
-    // Utiliser propertyGeneralUpdateSchema pour les mises à jour partielles
-    const validated = propertyGeneralUpdateSchema.parse(body);
+    const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
+    const serviceClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
 
-    const supabaseClient = supabase as any;
-
-    // Vérifier que l'utilisateur est propriétaire de la propriété
-    const { data: property, error: propertyError } = await supabaseClient
+    // ✅ PERMISSIONS: Vérifier que l'utilisateur est propriétaire de la propriété
+    const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select("owner_id, etat")
-      .eq("id", params.id as any)
+      .eq("id", propertyId)
       .single();
 
     if (propertyError || !property) {
-      return NextResponse.json({ error: "Propriété non trouvée" }, { status: 404 });
+      throw new ApiError(404, "Propriété non trouvée", propertyError);
     }
 
-    const { data: profile } = await supabaseClient
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
-    if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    if (profileError || !profile) {
+      throw new ApiError(404, "Profil non trouvé", profileError);
     }
 
-    const profileData = profile as any;
-    const propertyData = property as any;
+    // ✅ PERMISSIONS: Vérifier les permissions
+    const isAdmin = profile.role === "admin";
+    const isOwner = profile.id === property.owner_id;
 
-    if (profileData.role !== "admin" && profileData.id !== propertyData.owner_id) {
-      return NextResponse.json(
-        { error: "Vous n'avez pas la permission de modifier cette propriété" },
-        { status: 403 }
-      );
+    if (!isAdmin && !isOwner) {
+      throw new ApiError(403, "Vous n'avez pas la permission de modifier cette propriété");
     }
 
-    if (
-      profileData.role !== "admin" &&
-      !["draft", "rejected"].includes(propertyData.etat as string)
-    ) {
-      return NextResponse.json(
-        { error: "Impossible de modifier un logement en cours de validation ou publié" },
-        { status: 400 }
-      );
+    // ✅ VALIDATION MÉTIER: Vérifier l'état
+    if (!isAdmin && property.etat && !["draft", "rejected"].includes(property.etat)) {
+      throw new ApiError(400, "Impossible de modifier un logement en cours de validation ou publié");
     }
 
-    const { data: updatedProperty, error: updateError } = await supabaseClient
+    // ✅ MISE À JOUR: Mettre à jour la propriété
+    const { data: updatedProperty, error: updateError } = await serviceClient
       .from("properties")
-      .update(validated as any)
-      .eq("id", params.id as any)
+      .update(validated)
+      .eq("id", propertyId)
       .select()
       .single();
 
-    if (updateError) throw updateError;
-    return NextResponse.json({ property: updatedProperty });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Données invalides", details: error.errors },
-        { status: 400 }
-      );
+    if (updateError || !updatedProperty) {
+      throw new ApiError(500, "Impossible de mettre à jour la propriété", updateError);
     }
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+
+    return NextResponse.json({ property: updatedProperty });
+  } catch (error: unknown) {
+    return handleApiError(error);
   }
 }
 
@@ -504,22 +494,25 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
+    const propertyId = propertyIdParamSchema.parse(params.id);
+
+    // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);
 
     if (authError || !user || !supabase) {
-      return NextResponse.json(
-        { error: authError?.message || "Non authentifié" },
-        { status: authError?.status || 401 }
-      );
+      throw new ApiError(authError?.status || 401, authError?.message || "Non authentifié");
     }
 
+    // ✅ CONFIGURATION: Vérifier les variables d'environnement
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: "SUPABASE_SERVICE_ROLE_KEY manquante. Impossible de supprimer le logement." },
-        { status: 500 }
+      throw new ApiError(
+        500,
+        "Configuration serveur incomplète",
+        "SUPABASE_SERVICE_ROLE_KEY manquante. Impossible de supprimer le logement."
       );
     }
 
@@ -528,15 +521,15 @@ export async function DELETE(
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Vérifier que l'utilisateur est propriétaire de la propriété
+    // ✅ RÉCUPÉRATION: Vérifier que l'utilisateur est propriétaire de la propriété
     // Essayer d'abord avec etat, puis sans si la colonne n'existe pas
-    let property: any = null;
-    let propertyError: any = null;
+    let property: { owner_id: string; etat?: string } | null = null;
+    let propertyError: unknown = null;
     
     const { data: propertyWithEtat, error: errorWithEtat } = await serviceClient
       .from("properties")
       .select("owner_id, etat")
-      .eq("id", params.id as any)
+      .eq("id", propertyId)
       .maybeSingle();
 
     if (errorWithEtat) {
@@ -545,7 +538,7 @@ export async function DELETE(
         const { data: propertyWithoutEtat, error: errorWithoutEtat } = await serviceClient
           .from("properties")
           .select("owner_id")
-          .eq("id", params.id as any)
+          .eq("id", propertyId)
           .maybeSingle();
         
         if (errorWithoutEtat) {
@@ -565,70 +558,64 @@ export async function DELETE(
     }
 
     if (propertyError) {
-      throw propertyError;
+      throw new ApiError(500, "Erreur lors de la récupération de la propriété", propertyError);
     }
 
     if (!property) {
+      // Fallback: essayer de supprimer directement (pour compatibilité)
       const { error: fallbackError, count } = await serviceClient
         .from("properties")
         .delete({ count: "exact" })
-        .eq("id", params.id as any);
+        .eq("id", propertyId);
 
       if (fallbackError) {
-        throw fallbackError;
+        throw new ApiError(500, "Erreur lors de la suppression", fallbackError);
       }
 
       if ((count ?? 0) > 0) {
         return NextResponse.json({ success: true });
       }
 
-      return NextResponse.json({ error: "Propriété non trouvée" }, { status: 404 });
+      throw new ApiError(404, "Propriété non trouvée", { propertyId });
     }
 
-    const { data: profile } = await serviceClient
+    // ✅ PERMISSIONS: Vérifier le profil
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
-    if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    if (profileError || !profile) {
+      throw new ApiError(404, "Profil non trouvé", profileError);
     }
 
-    const profileData = profile as any;
-    const propertyData = property as any;
+    // ✅ PERMISSIONS: Vérifier les permissions de suppression
+    const isAdmin = profile.role === "admin";
+    const isOwner = profile.id === property.owner_id;
 
-    if (profileData.role !== "admin" && profileData.id !== propertyData.owner_id) {
-      return NextResponse.json(
-        { error: "Vous n'avez pas la permission de supprimer cette propriété" },
-        { status: 403 }
-      );
+    if (!isAdmin && !isOwner) {
+      throw new ApiError(403, "Vous n'avez pas la permission de supprimer cette propriété");
     }
 
-    // Vérifier l'état seulement si la colonne existe (etat sera "draft" par défaut si la colonne n'existe pas)
-    if (
-      profileData.role !== "admin" &&
-      propertyData.etat &&
-      propertyData.etat !== "draft"
-    ) {
-      return NextResponse.json(
-        { error: "Seuls les brouillons peuvent être supprimés" },
-        { status: 400 }
-      );
+    // ✅ VALIDATION MÉTIER: Vérifier l'état (seuls les brouillons peuvent être supprimés)
+    if (!isAdmin && property.etat && property.etat !== "draft") {
+      throw new ApiError(400, "Seuls les brouillons peuvent être supprimés");
     }
 
+    // ✅ SUPPRESSION: Supprimer la propriété
     const { error: deleteError } = await serviceClient
       .from("properties")
       .delete()
-      .eq("id", params.id as any);
+      .eq("id", propertyId);
 
-    if (deleteError) throw deleteError;
+    if (deleteError) {
+      throw new ApiError(500, "Erreur lors de la suppression", deleteError);
+    }
+
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error);
   }
 }
 

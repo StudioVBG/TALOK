@@ -158,7 +158,7 @@ const basePropertySchemaV3 = z.object({
 // Décision : Schéma complet pour appartement, maison, studio, colocation
 // NOTE : Créer une version base (sans superRefine) pour discriminatedUnion, puis une version avec validations
 
-const habitationSchemaV3Base = basePropertySchemaV3.extend({
+export const habitationSchemaV3Base = basePropertySchemaV3.extend({
   type_bien: z.enum(["appartement", "maison", "studio", "colocation"]),
   surface_habitable_m2: z.number().positive("La surface habitable doit être strictement positive"),
   nb_pieces: z.number().int().min(1, "Le nombre de pièces doit être au moins 1"),
@@ -207,7 +207,7 @@ export const habitationSchemaV3 = habitationSchemaV3Base.superRefine((data, ctx)
 // Source existante : lib/validations/index.ts ligne 244-261 (parking validation)
 // Décision : Nouveau schéma structuré (pas JSONB)
 
-const parkingSchemaV3 = basePropertySchemaV3
+export const parkingSchemaV3 = basePropertySchemaV3
   .extend({
     type_bien: z.enum(["parking", "box"]),
     parking_type: parkingTypeEnum,
@@ -229,7 +229,7 @@ const parkingSchemaV3 = basePropertySchemaV3
 // Source existante : Aucun schéma spécifique actuellement
 // Décision : Nouveau schéma basé sur le modèle V3
 
-const localProSchemaV3 = basePropertySchemaV3
+export const localProSchemaV3 = basePropertySchemaV3
   .extend({
     type_bien: z.enum(["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"]),
     local_surface_totale: z.number().positive("La surface totale doit être strictement positive"),
@@ -345,4 +345,8 @@ export type ParkingV3Input = z.infer<typeof parkingSchemaV3>;
 export type LocalProV3Input = z.infer<typeof localProSchemaV3>;
 export type RoomV3Input = z.infer<typeof roomSchemaV3>;
 export type PhotoV3Input = z.infer<typeof photoSchemaV3>;
+export type PropertyV3UpdateInput = z.infer<typeof propertyUpdateSchemaV3>;
+export type HabitationV3UpdateInput = z.infer<typeof habitationUpdateSchemaV3>;
+export type ParkingV3UpdateInput = z.infer<typeof parkingUpdateSchemaV3>;
+export type LocalProV3UpdateInput = z.infer<typeof localProUpdateSchemaV3>;
 

@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { DynamicField } from "./dynamic-field";
 import { getFieldsForStep, type StepConfig, type PropertyType } from "@/lib/config/property-wizard-loader";
 import { containerVariants, itemVariants } from "@/lib/design-system/animations";
+import { WizardStepLayout } from "@/lib/design-system/wizard-layout";
 
 interface DynamicStepProps {
   step: StepConfig;
@@ -19,6 +20,14 @@ interface DynamicStepProps {
   formData: Record<string, any>;
   onChange: (updates: Record<string, any>) => void;
   fieldErrors?: Record<string, string>;
+  stepNumber?: number;
+  totalSteps?: number;
+  mode?: "fast" | "full";
+  onModeChange?: (mode: "fast" | "full") => void;
+  onBack?: () => void;
+  onNext?: () => void;
+  canGoNext?: boolean;
+  microCopy?: string;
 }
 
 export function DynamicStep({
@@ -27,6 +36,14 @@ export function DynamicStep({
   formData,
   onChange,
   fieldErrors = {},
+  stepNumber = 1,
+  totalSteps = 8,
+  mode = "full",
+  onModeChange,
+  onBack,
+  onNext,
+  canGoNext = true,
+  microCopy,
 }: DynamicStepProps) {
   const fields = useMemo(() => {
     return getFieldsForStep(step, typeBien);
@@ -44,74 +61,88 @@ export function DynamicStep({
     );
 
     return (
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="space-y-8"
+      <WizardStepLayout
+        title={step.title}
+        description={step.description}
+        stepNumber={stepNumber}
+        totalSteps={totalSteps}
+        mode={mode}
+        onModeChange={onModeChange}
+        progressValue={(stepNumber / totalSteps) * 100}
+        onBack={onBack}
+        onNext={onNext}
+        canGoNext={canGoNext}
+        microCopy={microCopy}
       >
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold">{step.title}</h2>
-          {step.description && (
-            <p className="text-muted-foreground">{step.description}</p>
-          )}
-        </div>
-
-        {visibleSections.map((section) => (
-          <motion.div
-            key={section.id}
-            variants={itemVariants}
-            className="space-y-6"
-          >
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                {section.fields.map((field) => (
-                  <DynamicField
-                    key={field.id}
-                    field={field}
-                    value={formData[field.id]}
-                    onChange={(value) => handleFieldChange(field.id, value)}
-                    error={fieldErrors[field.id]}
-                    typeBien={typeBien}
-                    formData={formData}
-                  />
-                ))}
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </motion.div>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="space-y-6"
+        >
+          {visibleSections.map((section) => (
+            <motion.div
+              key={section.id}
+              variants={itemVariants}
+              className="space-y-6"
+            >
+              <Card>
+                <CardContent className="p-6 space-y-6">
+                  {section.fields.map((field) => (
+                    <DynamicField
+                      key={field.id}
+                      field={field}
+                      value={formData[field.id]}
+                      onChange={(value) => handleFieldChange(field.id, value)}
+                      error={fieldErrors[field.id]}
+                      typeBien={typeBien}
+                      formData={formData}
+                    />
+                  ))}
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+      </WizardStepLayout>
     );
   }
 
   // Rendre les champs directs
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="space-y-6"
+    <WizardStepLayout
+      title={step.title}
+      description={step.description}
+      stepNumber={stepNumber}
+      totalSteps={totalSteps}
+      mode={mode}
+      onModeChange={onModeChange}
+      progressValue={(stepNumber / totalSteps) * 100}
+      onBack={onBack}
+      onNext={onNext}
+      canGoNext={canGoNext}
+      microCopy={microCopy}
     >
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold">{step.title}</h2>
-        {step.description && (
-          <p className="text-muted-foreground">{step.description}</p>
-        )}
-      </div>
-
-      {fields.map((field) => (
-        <motion.div key={field.id} variants={itemVariants}>
-          <DynamicField
-            field={field}
-            value={formData[field.id]}
-            onChange={(value) => handleFieldChange(field.id, value)}
-            error={fieldErrors[field.id]}
-            typeBien={typeBien}
-            formData={formData}
-          />
-        </motion.div>
-      ))}
-    </motion.div>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-6"
+      >
+        {fields.map((field) => (
+          <motion.div key={field.id} variants={itemVariants}>
+            <DynamicField
+              field={field}
+              value={formData[field.id]}
+              onChange={(value) => handleFieldChange(field.id, value)}
+              error={fieldErrors[field.id]}
+              typeBien={typeBien}
+              formData={formData}
+            />
+          </motion.div>
+        ))}
+      </motion.div>
+    </WizardStepLayout>
   );
 }
 

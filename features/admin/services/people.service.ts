@@ -206,188 +206,74 @@ export class PeopleService {
 
   /**
    * Logements d'un propriétaire
-   * Note: Cette méthode nécessite encore le client Supabase direct
-   * TODO: Créer une route API pour cette méthode
+   * Utilise la route API /api/admin/people/owners/[id]/properties
    */
   async getOwnerProperties(ownerId: string) {
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("properties")
-      .select(
-        `
-        *,
-        leases!inner(
-          id,
-          statut,
-          lease_signers!inner(
-            profile_id,
-            role
-          )
-        )
-      `
-      )
-      .eq("owner_id", ownerId);
-
-    if (error) throw error;
-
-    const dataArray4 = data as any[];
-    return (
-      dataArray4?.map((property) => {
-        const activeLeases = property.leases?.filter((l: any) =>
-          ["active", "pending_signature"].includes(l.statut)
-        ) || [];
-        const tenantsCount = new Set(
-          activeLeases.flatMap((l: any) =>
-            l.lease_signers
-              ?.filter((ls: any) =>
-                ["locataire_principal", "colocataire"].includes(ls.role)
-              )
-              .map((ls: any) => ls.profile_id)
-          )
-        ).size;
-
-        return {
-          id: property.id,
-          ref: property.unique_code,
-          address: property.adresse_complete,
-          status: "active", // TODO: déterminer le statut
-          tenants_count: tenantsCount,
-          owner_id: ownerId,
-        };
-      }) || []
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/admin/people/owners/${ownerId}/properties`,
+      {
+        method: "GET",
+        headers,
+      }
     );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Erreur lors de la récupération des propriétés");
+    }
+
+    const data = await response.json();
+    return data.properties || [];
   }
 
   /**
    * Locataires d'un logement
-   * Note: Cette méthode nécessite encore le client Supabase direct
-   * TODO: Créer une route API pour cette méthode
+   * Utilise la route API /api/admin/properties/[id]/tenants
    */
   async getPropertyTenants(propertyId: string) {
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("leases")
-      .select(
-        `
-        id,
-        statut,
-        lease_signers!inner(
-          profile_id,
-          role,
-          profiles!inner(
-            id,
-            prenom,
-            nom,
-            telephone,
-            user_id
-          )
-        )
-      `
-      )
-      .eq("property_id", propertyId)
-      .in("statut", ["active", "pending_signature"]);
-
-    if (error) throw error;
-
-    const dataArray6 = data as any[];
-    const profileIds =
-      dataArray6?.flatMap((lease: any) =>
-        lease.lease_signers
-          ?.filter((ls: any) =>
-            ["locataire_principal", "colocataire"].includes(ls.role)
-          )
-          .map((ls: any) => ls.profiles?.id)
-          .filter(Boolean)
-      ) || [];
-
-    // Récupérer les âges
-    const { data: ages } = await supabase
-      .from("v_person_age")
-      .select("person_id, age_years")
-      .in("person_id", profileIds);
-
-    const agesArray3 = ages as any[];
-    const ageMap = new Map(
-      agesArray3?.map((a) => [a.person_id, a.age_years]) || []
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/admin/properties/${propertyId}/tenants`,
+      {
+        method: "GET",
+        headers,
+      }
     );
 
-    // Les emails seront récupérés via une route API si nécessaire
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Erreur lors de la récupération des locataires");
+    }
 
-    const dataArray5 = data as any[];
-    return (
-      dataArray5?.flatMap((lease: any) =>
-        lease.lease_signers
-          ?.filter((ls: any) =>
-            ["locataire_principal", "colocataire"].includes(ls.role)
-          )
-          .map((ls: any) => {
-            const profile = ls.profiles;
-            const fullName = `${profile?.prenom || ""} ${profile?.nom || ""}`.trim();
-
-            return {
-              id: profile?.id,
-              full_name: fullName || "Sans nom",
-              email: undefined, // Récupéré via API si nécessaire
-              phone: profile?.telephone || undefined,
-              age_years: ageMap.get(profile?.id) ?? null,
-              lease_id: lease.id,
-              lease_status: lease.statut,
-            };
-          })
-      ) || []
-    );
+    const data = await response.json();
+    return data.tenants || [];
   }
 
   /**
    * Analytics d'âge
-   * Note: Cette méthode nécessite encore le client Supabase direct
-   * TODO: Créer une route API pour cette méthode
+   * Utilise la route API /api/admin/analytics/age
    */
   async getAgeAnalytics(role: "owner" | "tenant"): Promise<AgeAnalytics> {
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("v_portfolio_age_buckets")
-      .select("*")
-      .eq("role", role);
+    const headers = await this.getAuthHeaders();
+    const url = new URL(
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/admin/analytics/age`
+    );
+    url.searchParams.set("role", role);
 
-    if (error) throw error;
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers,
+    });
 
-    const dataArray7 = data as any[];
-    const buckets =
-      dataArray7?.map((row: any) => ({
-        bucket: row.bucket,
-        count: row.persons,
-      })) || [];
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Erreur lors de la récupération des analytics");
+    }
 
-    // Calculer moyenne et médiane (approximatif)
-    const total = buckets.reduce((sum, b) => sum + b.count, 0);
-    const avg =
-      buckets.length > 0
-        ? buckets.reduce((sum, b) => {
-            const midAge = getMidAge(b.bucket);
-            return sum + (midAge || 0) * b.count;
-          }, 0) / total
-        : undefined;
-
-    return {
-      role,
-      buckets,
-      avg: avg ? Math.round(avg) : undefined,
-    };
+    const data = await response.json();
+    return data;
   }
-}
-
-function getMidAge(bucket: string): number | null {
-  if (bucket === "unknown" || bucket === "<18") return null;
-  const match = bucket.match(/(\d+)-(\d+)/);
-  if (match) {
-    return (parseInt(match[1]) + parseInt(match[2])) / 2;
-  }
-  if (bucket === "65+") return 70;
-  return null;
 }
 
 export const peopleService = new PeopleService();

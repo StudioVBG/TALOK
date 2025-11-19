@@ -4,10 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { ticketsService } from "../services/tickets.service";
 import type { Ticket } from "@/lib/types";
 import { formatDateShort } from "@/lib/helpers/format";
+import { Sparkles } from "lucide-react";
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -101,6 +103,21 @@ export function TicketCard({ ticket, onDelete }: TicketCardProps) {
         <div className="text-sm text-muted-foreground mb-4">
           Créé le {formatDateShort(ticket.created_at)}
         </div>
+
+        {ticket.ai_summary && (
+           <div className="bg-blue-50 border border-blue-100 rounded-md p-2 mb-4 text-xs text-blue-800 flex items-start gap-2">
+              <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0 text-blue-500" />
+              <div>
+                <span className="font-medium block mb-1">Analyse IA</span>
+                {ticket.ai_summary}
+                {ticket.ai_suggested_action && (
+                  <div className="mt-1 pt-1 border-t border-blue-200">
+                    Action: {ticket.ai_suggested_action}
+                  </div>
+                )}
+              </div>
+           </div>
+        )}
 
         <div className="flex gap-2">
           <Link href={`/tickets/${ticket.id}`} className="flex-1">

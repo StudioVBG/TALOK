@@ -23,7 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
-import { PropertiesDebug } from "@/components/debug/properties-debug";
 
 interface ApiProvider {
   id: string;
@@ -291,19 +290,6 @@ export default function AdminIntegrationsPage() {
           Nouvelle clé API
         </Button>
       </div>
-
-      {/* Test API Propriétés */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Test API Propriétés</CardTitle>
-          <CardDescription>
-            Vérification de la connexion frontend/backend et des données de propriétés
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PropertiesDebug />
-        </CardContent>
-      </Card>
 
       {/* Configuration Supabase */}
       <Card className="mb-6">

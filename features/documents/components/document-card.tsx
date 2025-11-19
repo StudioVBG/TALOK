@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import { documentsService } from "../services/documents.service";
 import type { Document } from "@/lib/types";
 import { formatDateShort } from "@/lib/helpers/format";
+import { CheckCircle, AlertCircle, XCircle, Clock } from "lucide-react";
 
 interface DocumentCardProps {
   document: Document;
@@ -75,13 +78,68 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
     return path.split(".").pop()?.toUpperCase() || "FILE";
   };
 
+  const getVerificationBadge = () => {
+    const status = document.verification_status;
+    if (!status) return null;
+
+    switch (status) {
+      case "verified":
+        return (
+          <Badge className="bg-green-500 hover:bg-green-600 flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" /> Vérifié
+          </Badge>
+        );
+      case "rejected":
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="destructive" className="flex items-center gap-1 cursor-help">
+                  <XCircle className="w-3 h-3" /> Rejeté
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{document.rejection_reason || "Document non conforme"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      case "manual_review_required":
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge className="bg-amber-500 hover:bg-amber-600 flex items-center gap-1 cursor-help">
+                  <AlertCircle className="w-3 h-3" /> À vérifier
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{document.rejection_reason || "Vérification manuelle requise"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      case "pending":
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1 animate-pulse">
+            <Clock className="w-3 h-3" /> Analyse IA...
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">{getTypeLabel(document.type)}</CardTitle>
-        <CardDescription>
-          Ajouté le {formatDateShort(document.created_at)}
-        </CardDescription>
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-start gap-2">
+          <div>
+            <CardTitle className="text-lg">{getTypeLabel(document.type)}</CardTitle>
+            <CardDescription>Ajouté le {formatDateShort(document.created_at)}</CardDescription>
+          </div>
+          {getVerificationBadge()}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">

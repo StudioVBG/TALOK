@@ -1,53 +1,43 @@
 /**
- * Utilitaires pour gérer les URLs de redirection
- * Détecte automatiquement l'URL correcte selon l'environnement
+ * Utilitaires pour les URLs de redirection Supabase Auth
+ * Utilise NEXT_PUBLIC_APP_URL en production, window.location.origin en développement
  */
 
 /**
- * Obtient l'URL de base de l'application
- * En production sur Vercel, utilise l'URL Vercel
- * En développement, utilise localhost
+ * Obtenir l'URL de base de l'application
  */
-export function getAppUrl(): string {
-  // En production sur Vercel, utiliser l'URL Vercel depuis les headers
-  if (typeof window !== "undefined") {
-    // Côté client
-    const hostname = window.location.hostname;
-    
-    // Si on est sur Vercel (production)
-    if (hostname.includes("vercel.app") || hostname.includes("gestion-immo-nine")) {
-      return `https://${hostname}`;
-    }
-    
-    // Sinon, utiliser l'URL actuelle (localhost en dev)
-    return window.location.origin;
-  }
-  
-  // Côté serveur
+export function getBaseUrl(): string {
+  // En production, utiliser la variable d'environnement
   if (process.env.NEXT_PUBLIC_APP_URL) {
     return process.env.NEXT_PUBLIC_APP_URL;
   }
   
-  // En production sur Vercel, utiliser VERCEL_URL
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+  // En développement, utiliser window.location.origin si disponible
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
   }
   
-  // Fallback par défaut
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  // Fallback pour les contextes server-side
+  return 'http://localhost:3000';
 }
 
 /**
- * Obtient l'URL de callback pour l'authentification
+ * Obtenir l'URL complète pour le callback d'authentification
  */
 export function getAuthCallbackUrl(): string {
-  return `${getAppUrl()}/auth/callback`;
+  return `${getBaseUrl()}/auth/callback`;
 }
 
 /**
- * Obtient l'URL de redirection pour la réinitialisation de mot de passe
+ * Obtenir l'URL complète pour la réinitialisation de mot de passe
  */
 export function getResetPasswordUrl(): string {
-  return `${getAppUrl()}/auth/reset-password`;
+  return `${getBaseUrl()}/auth/reset-password`;
 }
 
+/**
+ * Obtenir l'URL complète pour la vérification d'email
+ */
+export function getVerifyEmailUrl(): string {
+  return `${getBaseUrl()}/auth/verify-email`;
+}

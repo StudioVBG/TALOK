@@ -1,47 +1,28 @@
 "use client";
 
-import { Suspense } from "react";
-import { ProtectedRoute } from "@/components/protected-route";
-import { PropertyWizardV3 } from "@/features/properties/components/v3/property-wizard-v3";
-import { useRouter } from "next/navigation";
-import { canManageProperties } from "@/lib/helpers/permissions";
-import { useAuth } from "@/lib/hooks/use-auth";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-function PropertyWizardWrapper() {
-  return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <PropertyWizardV3 />
-    </div>
-  );
-}
-
-function NewPropertyPageContent() {
-  const { profile } = useAuth();
+/**
+ * Redirection vers la route canonique d'ajout de logement
+ * 
+ * Route legacy : /properties/new
+ * Route canonique : /app/owner/property/new
+ */
+export default function LegacyNewPropertyPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (profile && !canManageProperties(profile.role as any)) {
-      router.push("/dashboard");
-    }
-  }, [profile, router]);
-
-  if (!profile || !canManageProperties(profile.role as any)) {
-    return null;
-  }
+    router.replace("/app/owner/property/new");
+  }, [router]);
 
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Chargement...</div>}>
-      <PropertyWizardWrapper />
-    </Suspense>
-  );
-}
-
-export default function NewPropertyPage() {
-  return (
-    <ProtectedRoute allowedRoles={["admin", "owner"]}>
-      <NewPropertyPageContent />
-    </ProtectedRoute>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto"></div>
+        <p className="text-muted-foreground">Redirection...</p>
+      </div>
+    </div>
   );
 }
 

@@ -11,7 +11,8 @@ function NewLeasePageContent() {
   const { profile } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const propertyId = searchParams.get("propertyId");
+  const propertyId =
+    searchParams.get("propertyId") ?? searchParams.get("property_id");
 
   useEffect(() => {
     if (profile && !canManageLeases(profile.role as any)) {
@@ -23,25 +24,29 @@ function NewLeasePageContent() {
     return null;
   }
 
-  const handleSuccess = () => {
+  const redirectAfterAction = () => {
     if (propertyId) {
-      router.push(`/properties/${propertyId}`);
+      router.push(`/app/owner/properties/${propertyId}`);
     } else {
-      router.push("/leases");
+      router.push("/app/owner/contracts");
     }
   };
 
+  const handleSuccess = () => {
+    redirectAfterAction();
+  };
+
   const handleCancel = () => {
-    if (propertyId) {
-      router.push(`/properties/${propertyId}`);
-    } else {
-      router.push("/leases");
-    }
+    redirectAfterAction();
   };
 
   return (
     <div className="container mx-auto p-6 max-w-2xl">
-      <LeaseForm propertyId={propertyId || undefined} onSuccess={handleSuccess} onCancel={handleCancel} />
+      <LeaseForm
+        propertyId={propertyId || undefined}
+        onSuccess={handleSuccess}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }

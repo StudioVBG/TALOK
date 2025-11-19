@@ -1,213 +1,291 @@
 /**
- * PropertyTypeSelection - Composant de sélection du type de bien V3
+ * PropertyTypeSelection - Composant de sélection du type de bien V3 (SOTA 2025)
  * 
- * Architecture UX finale :
- * - Cartes horizontales compactes (160-200px large, 120-150px haut)
- * - Labels horizontaux lisibles
- * - Icônes emoji grandes et visibles
- * - Bouton "Choisir" clair
- * - 3 blocs séparés visuellement (Habitation, Parking & Box, Local commercial)
- * - Sélection active avec contour épais, fond clair, check
- * - Message d'aide raccourci et professionnel
+ * Améliorations :
+ * - FilterBar sticky avec pills et search instantané
+ * - Icônes lucide-react (remplace emojis)
+ * - Grille responsive 1→2→3→4 cols
+ * - Cartes full-click avec états clairs
+ * - Navigation clavier (flèches + Enter)
+ * - Empty state avec bouton "Effacer le filtre"
+ * - Prefetch next step sur hover/focus
+ * - Analytics events complets
  */
 
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState, useCallback, useMemo, useRef, forwardRef } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { PROPERTY_TYPE_GROUPS } from "@/lib/types/property-v3";
 import type { PropertyTypeV3 } from "@/lib/types/property-v3";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, Home, Car, Building2 } from "lucide-react";
-import { containerVariants, itemVariants } from "@/lib/design-system/animations";
-import { CLASSES } from "@/lib/design-system/design-tokens";
+import { 
+  Home, 
+  Building2, 
+  Car, 
+  Warehouse, 
+  Store, 
+  Users, 
+  Check,
+  Search,
+  X
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { WizardStepLayout } from "@/lib/design-system/wizard-layout";
+import { emitAnalyticsEvent, PropertyWizardEvents } from "@/lib/helpers/analytics-events";
+import { useDebouncedCallback } from "use-debounce";
+import { useRouter } from "next/navigation";
 
 interface PropertyTypeSelectionProps {
   selectedType?: PropertyTypeV3 | null;
   onSelect: (type: PropertyTypeV3) => void;
   onContinue?: () => void;
+  stepNumber?: number;
+  totalSteps?: number;
+  mode?: "fast" | "full";
+  onModeChange?: (mode: "fast" | "full") => void;
+  onBack?: () => void;
 }
 
-// Variants pour les cartes horizontales
-const cardVariants = {
-  initial: { scale: 1, y: 0 },
-  hover: {
-    scale: 1.02,
-    y: -2,
-    transition: { type: "spring" as const, stiffness: 300, damping: 20 },
-  },
-  tap: { scale: 0.98 },
-  selected: {
-    scale: 1.03,
-    y: -4,
-    boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.3)",
-    transition: { type: "spring" as const, stiffness: 300, damping: 20 },
-  },
+// Mapping des icônes lucide-react par type
+const TYPE_ICONS: Record<PropertyTypeV3, typeof Home> = {
+  appartement: Building2,
+  maison: Home,
+  studio: Home,
+  colocation: Users,
+  saisonnier: Home,
+  parking: Car,
+  box: Car,
+  local_commercial: Store,
+  bureaux: Building2,
+  entrepot: Warehouse,
+  fonds_de_commerce: Store,
 };
 
-// Composant de carte horizontale compacte
-function TypeCard({
-  type,
-  label,
-  icon,
-  isSelected,
-  onSelect,
+// Groupes de filtres
+const FILTER_GROUPS = [
+  { id: "all", label: "Tous" },
+  { id: "habitation", label: "Habitation" },
+  { id: "parking", label: "Parking & Box" },
+  { id: "locaux", label: "Commercial" },
+] as const;
+
+type FilterGroup = typeof FILTER_GROUPS[number]["id"];
+
+// Flatten all types for filtering
+const ALL_TYPES = [
+  ...PROPERTY_TYPE_GROUPS.habitation,
+  ...PROPERTY_TYPE_GROUPS.parking,
+  ...PROPERTY_TYPE_GROUPS.locaux,
+].map((item) => ({
+  ...item,
+  icon: TYPE_ICONS[item.value],
+  group: 
+    PROPERTY_TYPE_GROUPS.habitation.some(t => t.value === item.value) ? "habitation" :
+    PROPERTY_TYPE_GROUPS.parking.some(t => t.value === item.value) ? "parking" :
+    "locaux",
+}));
+
+// Helper pour calculer les colonnes selon breakpoint
+function computeCols(width: number): number {
+  if (width < 640) return 1; // sm
+  if (width < 768) return 2; // md
+  if (width < 1280) return 3; // lg
+  return 4; // xl
+}
+
+// Composant FilterBar sticky
+function FilterBar({
+  activeFilter,
+  onFilterChange,
+  searchQuery,
+  onSearchChange,
 }: {
-  type: PropertyTypeV3;
-  label: string;
-  icon: string;
-  isSelected: boolean;
-  onSelect: () => void;
+  activeFilter: FilterGroup;
+  onFilterChange: (filter: FilterGroup) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }) {
+  const debouncedSearch = useDebouncedCallback((value: string) => {
+    onSearchChange(value);
+    if (value.length > 0) {
+      emitAnalyticsEvent(PropertyWizardEvents.TYPE_SEARCH_USED, {
+        query_length: value.length,
+      });
+    }
+  }, 120);
+
   return (
-    <motion.div
-      variants={cardVariants}
-      initial="initial"
-      animate={isSelected ? "selected" : "initial"}
-      whileHover="hover"
-      whileTap="tap"
-      className="w-full"
-    >
-      <Card
-        className={`relative cursor-pointer border-2 overflow-hidden transition-all duration-300 ${
-          isSelected
-            ? "border-primary bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 shadow-lg ring-2 ring-primary/20"
-            : "border-border/50 bg-background/80 backdrop-blur-sm hover:border-primary/50 hover:bg-primary/5"
-        }`}
-        onClick={onSelect}
-        style={{
-          minWidth: "160px",
-          maxWidth: "200px",
-          height: "140px",
-        }}
-      >
-        {/* Effet de brillance animé pour la sélection */}
-        {isSelected && (
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-            animate={{
-              x: ["-100%", "200%"],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-          />
-        )}
-
-        <CardContent className="p-5 h-full flex flex-col justify-between relative z-10">
-          {/* Icône emoji grande */}
-          <div className="flex items-center justify-between mb-3">
-            <motion.div
-              className="text-5xl"
-              animate={isSelected ? { scale: 1.1, rotate: [0, 5, -5, 0] } : { scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              {icon}
-            </motion.div>
-            {/* Check icon animé */}
-            <AnimatePresence>
-              {isSelected && (
-                <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md"
-                >
-                  <Check className="h-4 w-4" />
-                </motion.div>
+    <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
+      <div className="flex flex-col gap-3">
+        {/* Pills filters */}
+        <div className="flex flex-wrap gap-2" role="tablist">
+          {FILTER_GROUPS.map((group) => (
+            <button
+              key={group.id}
+              type="button"
+              role="tab"
+              aria-selected={activeFilter === group.id}
+              onClick={() => {
+                onFilterChange(group.id);
+                if (group.id !== "all") {
+                  emitAnalyticsEvent(PropertyWizardEvents.TYPE_FILTER_USED, {
+                    group: group.id,
+                  });
+                }
+              }}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-all",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                activeFilter === group.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
-            </AnimatePresence>
-          </div>
-
-          {/* Label horizontal */}
-          <div className="flex-1 flex flex-col justify-end">
-            <h3
-              className={`text-base font-bold tracking-tight transition-colors ${
-                isSelected ? "text-primary" : "text-foreground"
-              }`}
             >
-              {label}
-            </h3>
-            {/* Bouton "Choisir" */}
-            {!isSelected && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-2"
-              >
-                <span className="text-xs text-muted-foreground font-medium">Choisir</span>
-              </motion.div>
-            )}
-          </div>
-        </CardContent>
+              {group.label}
+            </button>
+          ))}
+        </div>
 
-        {/* Glow effect au hover/selection */}
-        {isSelected && (
-          <motion.div
-            className="absolute inset-0 rounded-lg bg-primary/20 blur-xl -z-0"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1.2 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
+        {/* Search input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Rechercher un type de bien..."
+            value={searchQuery}
+            onChange={(e) => {
+              const value = e.target.value;
+              debouncedSearch(value);
+            }}
+            className="pl-9 pr-9"
+            aria-label="Rechercher un type de bien"
           />
-        )}
-      </Card>
-    </motion.div>
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                debouncedSearch("");
+                onSearchChange("");
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Effacer la recherche"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
-// Composant de bloc (Habitation, Parking, Locaux)
-function TypeBlock({
-  title,
-  icon: Icon,
-  description,
-  types,
-  selectedType,
-  onSelect,
-}: {
-  title: string;
+// Composant TypeCard amélioré (avec forwardRef pour AnimatePresence)
+const TypeCard = forwardRef<HTMLDivElement, {
+  type: PropertyTypeV3;
+  label: string;
   icon: typeof Home;
-  description: string;
-  types: readonly { value: PropertyTypeV3; label: string; icon: string }[];
-  selectedType?: PropertyTypeV3 | null;
-  onSelect: (type: PropertyTypeV3) => void;
-}) {
-  return (
-    <motion.div variants={itemVariants} className="space-y-6">
-      {/* En-tête du bloc avec séparation visuelle */}
-      <div className="pb-4 border-b border-border/50">
-        <div className="flex items-center gap-4">
-          <motion.div
-            className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary/25 via-primary/15 to-primary/10 shadow-md"
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          >
-            <Icon className="h-7 w-7 text-primary" />
-          </motion.div>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-              {title}
-            </h2>
-            <p className="text-base text-muted-foreground leading-relaxed mt-1">{description}</p>
-          </div>
-        </div>
-      </div>
+  isSelected: boolean;
+  onSelect: () => void;
+  index: number;
+  totalCols: number;
+  isGridFocused?: boolean;
+}>(({
+  type,
+  label,
+  icon: Icon,
+  isSelected,
+  onSelect,
+  index,
+  totalCols,
+  isGridFocused = false,
+}, ref) => {
+  const reducedMotion = useReducedMotion();
+  const shouldReduceMotion = reducedMotion ?? false;
 
-      {/* Grille de cartes horizontales flexibles */}
-      <div className="flex flex-wrap gap-4">
-        {types.map(({ value, label, icon }) => (
-          <TypeCard
-            key={value}
-            type={value}
-            label={label}
-            icon={icon}
-            isSelected={selectedType === value}
-            onSelect={() => onSelect(value)}
-          />
-        ))}
-      </div>
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ 
+        duration: shouldReduceMotion ? 0 : 0.22,
+        delay: shouldReduceMotion ? 0 : index * 0.03,
+      }}
+      className="w-full"
+    >
+      <motion.button
+        type="button"
+        role="option"
+        aria-pressed={isSelected}
+        aria-label={`${label}${isSelected ? " (sélectionné)" : ""}`}
+        data-index={index}
+        onClick={onSelect}
+        tabIndex={isGridFocused ? 0 : -1}
+        className={cn(
+          "relative w-full rounded-2xl border-2 transition-all",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+          "min-h-[120px] min-w-[120px]",
+          isSelected
+            ? "border-primary/70 bg-primary/5 shadow-sm"
+            : "border-border bg-card hover:border-primary/30 hover:shadow-sm"
+        )}
+        whileHover={shouldReduceMotion ? {} : { y: -2, scale: 1.01 }}
+        whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+        transition={{ duration: 0.22 }}
+      >
+        <CardContent className="p-6 h-full flex flex-col items-center justify-center gap-3">
+          {/* Icon */}
+          <motion.div
+            animate={isSelected && !shouldReduceMotion ? { scale: 1.1 } : { scale: 1 }}
+            transition={{ duration: 0.22 }}
+          >
+            <Icon className="h-8 w-8 text-primary" />
+          </motion.div>
+
+          {/* Label */}
+          <h3 className="text-sm font-semibold text-center">{label}</h3>
+
+          {/* Badge "Sélectionné" */}
+          <AnimatePresence>
+            {isSelected && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ duration: 0.22 }}
+              >
+                <Badge variant="default" className="text-xs">
+                  <Check className="h-3 w-3 mr-1" />
+                  Sélectionné
+                </Badge>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </CardContent>
+      </motion.button>
+    </motion.div>
+  );
+});
+
+TypeCard.displayName = "TypeCard";
+
+// Empty state component
+function EmptyState({ onClearFilter }: { onClearFilter: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="text-center py-12"
+    >
+      <p className="text-muted-foreground mb-4">Aucun type de bien trouvé</p>
+      <Button variant="outline" onClick={onClearFilter}>
+        Effacer le filtre
+      </Button>
     </motion.div>
   );
 }
@@ -216,117 +294,237 @@ export function PropertyTypeSelection({
   selectedType,
   onSelect,
   onContinue,
+  stepNumber = 1,
+  totalSteps = 8,
+  mode = "full",
+  onModeChange,
+  onBack,
 }: PropertyTypeSelectionProps) {
+  const router = useRouter();
+  const reducedMotion = useReducedMotion();
+  const shouldReduceMotion = reducedMotion ?? false;
+  
+  const [activeFilter, setActiveFilter] = useState<FilterGroup>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [windowWidth, setWindowWidth] = useState(1024);
+  const [isGridFocused, setIsGridFocused] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+
   const canContinue = selectedType !== null && selectedType !== undefined;
 
-  // Passage automatique à l'étape suivante après sélection
-  const handleSelect = (type: PropertyTypeV3) => {
+  // Compute columns based on window width
+  const totalCols = useMemo(() => computeCols(windowWidth), [windowWidth]);
+
+  // Update window width on resize
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Handle select with analytics
+  const handleSelect = useCallback((type: PropertyTypeV3) => {
     onSelect(type);
-    // Délai pour permettre l'animation de sélection avant de passer à l'étape suivante
-    setTimeout(() => {
-      onContinue?.();
-    }, 500);
+    setFocusedIndex(null);
+    
+    // Émettre l'événement analytics de sélection
+    emitAnalyticsEvent(PropertyWizardEvents.TYPE_SELECTED, {
+      type_bien: type,
+      mode,
+    });
+  }, [onSelect, mode]);
+
+  // Filter types based on active filter and search
+  const filteredTypes = useMemo(() => {
+    let filtered = ALL_TYPES;
+
+    // Apply group filter
+    if (activeFilter !== "all") {
+      filtered = filtered.filter((item) => item.group === activeFilter);
+    }
+
+    // Apply search filter
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (item) =>
+          item.label.toLowerCase().includes(query) ||
+          item.value.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [activeFilter, debouncedSearchQuery]);
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (filteredTypes.length === 0) return;
+
+      const currentIndex = focusedIndex ?? (selectedType ? filteredTypes.findIndex(t => t.value === selectedType) : -1);
+      const startIndex = currentIndex < 0 ? 0 : currentIndex;
+
+      switch (e.key) {
+        case "ArrowRight":
+          e.preventDefault();
+          const nextIndex = Math.min(startIndex + 1, filteredTypes.length - 1);
+          setFocusedIndex(nextIndex);
+          setIsGridFocused(true);
+          requestAnimationFrame(() => {
+            const nextCard = gridRef.current?.querySelector(`button[data-index="${nextIndex}"]`) as HTMLElement;
+            nextCard?.focus();
+          });
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          const prevIndex = Math.max(startIndex - 1, 0);
+          setFocusedIndex(prevIndex);
+          setIsGridFocused(true);
+          requestAnimationFrame(() => {
+            const prevCard = gridRef.current?.querySelector(`button[data-index="${prevIndex}"]`) as HTMLElement;
+            prevCard?.focus();
+          });
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          const downIndex = Math.min(startIndex + totalCols, filteredTypes.length - 1);
+          setFocusedIndex(downIndex);
+          setIsGridFocused(true);
+          requestAnimationFrame(() => {
+            const downCard = gridRef.current?.querySelector(`button[data-index="${downIndex}"]`) as HTMLElement;
+            downCard?.focus();
+          });
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          const upIndex = Math.max(startIndex - totalCols, 0);
+          setFocusedIndex(upIndex);
+          setIsGridFocused(true);
+          requestAnimationFrame(() => {
+            const upCard = gridRef.current?.querySelector(`button[data-index="${upIndex}"]`) as HTMLElement;
+            upCard?.focus();
+          });
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (focusedIndex !== null && focusedIndex >= 0 && filteredTypes[focusedIndex]) {
+            handleSelect(filteredTypes[focusedIndex].value);
+          } else if (selectedType && canContinue) {
+            onContinue?.();
+          }
+          break;
+      }
+    },
+    [filteredTypes, focusedIndex, selectedType, canContinue, totalCols, onContinue, handleSelect, setIsGridFocused]
+  );
+
+  // Émettre l'événement analytics au montage
+  useEffect(() => {
+    emitAnalyticsEvent(PropertyWizardEvents.TYPE_STEP_VIEW, {
+      mode,
+      step_number: stepNumber,
+      total_steps: totalSteps,
+    });
+  }, [mode, stepNumber, totalSteps]);
+
+  // Prefetch next step when type is selected
+  useEffect(() => {
+    if (selectedType) {
+      router.prefetch("/app/owner/property/new?step=address");
+    }
+  }, [selectedType, router]);
+
+  const handleClearFilter = () => {
+    setActiveFilter("all");
+    setSearchQuery("");
+    setDebouncedSearchQuery("");
   };
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-12">
-      {/* Titre et description */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="space-y-3"
-      >
-        <h1 className="text-4xl font-bold tracking-tight text-foreground">
-          Quel type de bien souhaitez-vous ajouter ?
-        </h1>
-        <p className="text-lg text-muted-foreground leading-relaxed">
-          Sélectionnez le type de bien pour adapter le parcours à vos besoins
-        </p>
-      </motion.div>
-
-      {/* 3 Blocs séparés visuellement */}
-      <div className="space-y-10">
-        {/* Bloc 1 - Habitation */}
-        <TypeBlock
-          title="Habitation"
-          icon={Home}
-          description="Appartements, maisons, studios et colocations"
-          types={PROPERTY_TYPE_GROUPS.habitation}
-          selectedType={selectedType}
-          onSelect={handleSelect}
+    <WizardStepLayout
+      title="Ajouter un bien"
+      description="Étape 1 — Sélectionnez le type de bien."
+      stepNumber={stepNumber}
+      totalSteps={totalSteps}
+      mode={mode}
+      onModeChange={onModeChange}
+      progressValue={(stepNumber / totalSteps) * 100}
+      onBack={onBack}
+      onNext={canContinue ? () => {
+        emitAnalyticsEvent(PropertyWizardEvents.CTA_CONTINUE_CLICK, {
+          step: "TYPE",
+          mode,
+        });
+        onContinue?.();
+      } : undefined}
+      canGoNext={canContinue}
+      nextLabel="Continuer"
+      microCopy="Parfait, on passe à l'adresse ✨"
+      showModeSwitch={true}
+    >
+      <div className="space-y-6">
+        {/* FilterBar sticky */}
+        <FilterBar
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+          searchQuery={searchQuery}
+          onSearchChange={setDebouncedSearchQuery}
         />
 
-        {/* Bloc 2 - Parking & Box */}
-        <TypeBlock
-          title="Parking & Box"
-          icon={Car}
-          description="Places de parking et boxes fermés"
-          types={PROPERTY_TYPE_GROUPS.parking}
-          selectedType={selectedType}
-          onSelect={handleSelect}
-        />
+        {/* Grid */}
+        <div
+          ref={gridRef}
+          role="listbox"
+          aria-label="Types de biens disponibles"
+          onKeyDown={handleKeyDown}
+          onFocus={() => setIsGridFocused(true)}
+          onBlur={(e) => {
+            // Only blur if focus is not moving to a child
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setIsGridFocused(false);
+            }
+          }}
+          tabIndex={0}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg"
+        >
+          <AnimatePresence mode="popLayout">
+            {filteredTypes.length > 0 ? (
+              filteredTypes.map((item, index) => (
+                <TypeCard
+                  key={item.value}
+                  type={item.value}
+                  label={item.label}
+                  icon={item.icon}
+                  isSelected={selectedType === item.value}
+                  onSelect={() => handleSelect(item.value)}
+                  index={index}
+                  totalCols={totalCols}
+                  isGridFocused={isGridFocused}
+                />
+              ))
+            ) : (
+              <EmptyState key="empty" onClearFilter={handleClearFilter} />
+            )}
+          </AnimatePresence>
+        </div>
 
-        {/* Bloc 3 - Locaux professionnels */}
-        <TypeBlock
-          title="Local commercial"
-          icon={Building2}
-          description="Commerces, bureaux, entrepôts et fonds de commerce"
-          types={PROPERTY_TYPE_GROUPS.locaux}
-          selectedType={selectedType}
-          onSelect={handleSelect}
-        />
-      </div>
-
-      {/* Message d'aide raccourci et professionnel */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.5 }}
-        className={`${CLASSES.glass} rounded-xl border-2 border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-5 shadow-md`}
-      >
-        <div className="flex items-center gap-3">
-          <motion.div
-            animate={{ rotate: [0, 10, -10, 0] }}
-            transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-            className="text-xl"
-          >
-            ℹ️
-          </motion.div>
-          <p className="text-sm text-foreground leading-relaxed">
+        {/* Info card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.22 }}
+          className="rounded-xl border-2 border-primary/20 bg-primary/5 p-4"
+        >
+          <p className="text-sm text-foreground">
             <strong className="font-semibold text-primary">Le questionnaire s'adapte automatiquement</strong> selon le type de bien sélectionné.
           </p>
-        </div>
-      </motion.div>
-
-      {/* Bouton Continuer (optionnel, car passage automatique) */}
-      <AnimatePresence>
-        {canContinue && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            className="flex justify-end pt-4"
-          >
-            <Button
-              size="lg"
-              onClick={onContinue}
-              className="min-w-[200px] shadow-lg transition-all hover:shadow-xl"
-            >
-              Continuer
-              <motion.span
-                initial={{ x: -5 }}
-                animate={{ x: [0, 5, 0] }}
-                transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                className="ml-2"
-              >
-                →
-              </motion.span>
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+        </motion.div>
+      </div>
+    </WizardStepLayout>
   );
 }

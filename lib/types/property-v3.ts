@@ -30,6 +30,7 @@ export type PropertyTypeV3 =
   | "maison"
   | "studio"              // Nouveau (modèle V3)
   | "colocation"
+  | "saisonnier"          // Rétrocompatibilité
   | "parking"
   | "box"                 // Nouveau (modèle V3) - distinct de parking
   | "local_commercial"

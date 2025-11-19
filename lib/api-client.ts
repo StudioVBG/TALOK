@@ -19,25 +19,41 @@ export class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-
-    const headers = new Headers({
-      'Content-Type': 'application/json',
-      ...options.headers,
-    });
-
-    if (session?.access_token) {
-      headers.set('Authorization', `Bearer ${session.access_token}`);
-    }
-
-    const url = `${API_BASE}${endpoint}`;
-    console.log(`[api-client] Request: ${options.method || 'GET'} ${url}`);
-
-    // Timeout de 10 secondes pour éviter les chargements infinis
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      // Gérer l'erreur de refresh token invalide
+      if (sessionError && (sessionError.message?.includes('refresh_token') || sessionError.message?.includes('Invalid Refresh Token'))) {
+        console.error('[api-client] Refresh token invalide, redirection vers connexion');
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth')) {
+          // Nettoyer la session invalide
+          await supabase.auth.signOut();
+          window.location.href = '/auth/signin?error=session_expired';
+        }
+        throw new Error('Session expirée. Veuillez vous reconnecter.');
+      }
+
+      const headers = new Headers({
+        'Content-Type': 'application/json',
+        ...options.headers,
+      });
+
+      if (session?.access_token) {
+        headers.set('Authorization', `Bearer ${session.access_token}`);
+      }
+
+      const url = `${API_BASE}${endpoint}`;
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[api-client] Request: ${options.method || "GET"} ${url}`);
+      }
+
+      // Timeout de 20 secondes pour les requêtes complexes (properties, leases)
+      // Augmenté de 10s à 20s pour éviter les timeouts prématurés
+      const controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), 20000);
+
       const response = await fetch(url, {
         ...options,
         headers,
@@ -45,7 +61,10 @@ export class ApiClient {
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Erreur serveur' }));
@@ -81,7 +100,9 @@ export class ApiClient {
       }
       return data;
     } catch (error: any) {
-      clearTimeout(timeoutId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       
       // Gérer les erreurs de timeout/abort
       if (error.name === 'AbortError' || error.message?.includes('aborted')) {
@@ -90,7 +111,7 @@ export class ApiClient {
         throw timeoutError;
       }
       
-      // Propager les autres erreurs
+      // Propager les autres erreurs (y compris les erreurs de session)
       throw error;
     }
   }

@@ -1,7 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import { ticketSchema } from "@/lib/validations";
 import type { Ticket, TicketStatus, TicketPriority } from "@/lib/types";
-import { createClient } from "@/lib/supabase/client";
 
 export interface CreateTicketData {
   property_id: string;
@@ -16,7 +15,6 @@ export interface UpdateTicketData extends Partial<CreateTicketData> {
 }
 
 export class TicketsService {
-  private supabase = createClient();
 
   async getTickets(): Promise<Ticket[]> {
     const response = await apiClient.get<{ tickets: Ticket[] }>("/tickets");

@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError } from "@/lib/helpers/api-error";
 import { createClient } from "@supabase/supabase-js";
 import type { ProfileRow, TicketRow } from "@/lib/supabase/typed-client";
+import { ticketsQuerySchema, validateQueryParams } from "@/lib/validations/params";
 
 /**
  * GET /api/tickets - Récupérer les tickets de l'utilisateur
@@ -25,6 +26,21 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
+
+    // ✅ VALIDATION: Valider les query params
+    const url = new URL(request.url);
+    let queryParams;
+    try {
+      queryParams = validateQueryParams(ticketsQuerySchema, url.searchParams);
+    } catch (validationError) {
+      console.warn("[GET /api/tickets] Invalid query params, using defaults:", validationError);
+      queryParams = {};
+    }
+
+    // ✅ PAGINATION: Récupérer les paramètres de pagination
+    const page = parseInt(queryParams.page as string || "1");
+    const limit = Math.min(parseInt(queryParams.limit as string || "50"), 200); // Max 200
+    const offset = (page - 1) * limit;
 
     // Utiliser le service client pour éviter les problèmes RLS
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -53,17 +69,17 @@ export async function GET(request: Request) {
 
     const profileData = profile as any;
 
-    // Récupérer les tickets selon le rôle avec service client
+    // Récupérer les tickets selon le rôle avec service client, pagination et filtres
     let tickets: TicketRow[] | undefined;
+    let totalCount: number | null = null;
+    let baseQuery;
+    
     if (profileData.role === "admin") {
       // Les admins voient tous les tickets
-      const { data, error } = await serviceClient
+      baseQuery = serviceClient
         .from("tickets")
-        .select("*")
+        .select("*", { count: "exact" })
         .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      tickets = (data as TicketRow[] | null) ?? undefined;
     } else if (profileData.role === "owner") {
       // Les propriétaires voient les tickets de leurs propriétés
       const { data: properties, error: propertiesError } = await serviceClient
@@ -74,16 +90,14 @@ export async function GET(request: Request) {
       if (propertiesError) throw propertiesError;
       if (!properties || properties.length === 0) {
         tickets = [];
+        baseQuery = null;
       } else {
         const propertyIds = properties.map((p) => p.id);
-        const { data, error } = await serviceClient
+        baseQuery = serviceClient
           .from("tickets")
-          .select("*")
+          .select("*", { count: "exact" })
           .in("property_id", propertyIds)
           .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        tickets = data ? (data as TicketRow[]) : undefined;
       }
     } else if (profileData.role === "tenant") {
       // Les locataires voient les tickets de leurs baux ou créés par eux
@@ -96,32 +110,57 @@ export async function GET(request: Request) {
       if (signersError) throw signersError;
       if (!signers || signers.length === 0) {
         // Pas de baux, seulement les tickets créés par le locataire
-        const { data, error } = await serviceClient
+        baseQuery = serviceClient
           .from("tickets")
-          .select("*")
+          .select("*", { count: "exact" })
           .eq("created_by_profile_id", profileData.id)
           .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        tickets = data ? (data as TicketRow[]) : undefined;
       } else {
         const leaseIds = signers.map((s) => s.lease_id);
-        const { data, error } = await serviceClient
+        baseQuery = serviceClient
           .from("tickets")
-          .select("*")
+          .select("*", { count: "exact" })
           .or(`lease_id.in.(${leaseIds.join(",")}),created_by_profile_id.eq.${profileData.id}`)
           .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        tickets = data ? (data as TicketRow[]) : undefined;
       }
     } else {
       tickets = [];
+      baseQuery = null;
+    }
+
+    // ✅ FILTRES: Appliquer les filtres si fournis
+    if (baseQuery) {
+      if (queryParams.property_id || queryParams.propertyId) {
+        baseQuery = baseQuery.eq("property_id", queryParams.property_id || queryParams.propertyId);
+      }
+      if (queryParams.lease_id || queryParams.leaseId) {
+        baseQuery = baseQuery.eq("lease_id", queryParams.lease_id || queryParams.leaseId);
+      }
+      if (queryParams.statut || queryParams.status) {
+        baseQuery = baseQuery.eq("statut", queryParams.statut || queryParams.status);
+      }
+      if (queryParams.priorite || queryParams.priority) {
+        baseQuery = baseQuery.eq("priorite", queryParams.priorite || queryParams.priority);
+      }
+
+      // ✅ PAGINATION: Appliquer la pagination
+      const { data, error, count } = await baseQuery.range(offset, offset + limit - 1);
+
+      if (error) throw error;
+      tickets = data ? (data as TicketRow[]) : undefined;
+      totalCount = count;
     }
 
     // Ajouter des headers de cache pour réduire la charge CPU
     return NextResponse.json(
-      { tickets: tickets || [] },
+      { 
+        tickets: tickets || [],
+        pagination: {
+          page,
+          limit,
+          total: totalCount || tickets?.length || 0,
+        }
+      },
       {
         headers: {
           'Cache-Control': 'private, max-age=60, stale-while-revalidate=120',
@@ -136,6 +175,8 @@ export async function GET(request: Request) {
     );
   }
 }
+
+import { maintenanceAiService } from "@/features/tickets/services/maintenance-ai.service";
 
 /**
  * POST /api/tickets - Créer un nouveau ticket
@@ -207,6 +248,14 @@ export async function POST(request: Request) {
         priority: validated.priorite,
       },
     } as any);
+
+    // AI Analysis Trigger (Async but awaited here for serverless environment safety)
+    try {
+        // En background job idéalement, mais ici on l'exécute
+        await maintenanceAiService.analyzeAndEnrichTicket(ticket.id);
+    } catch (aiError) {
+        console.error("AI Maintenance analysis failed:", aiError);
+    }
 
     // Journaliser
     await serviceClient.from("audit_log").insert({

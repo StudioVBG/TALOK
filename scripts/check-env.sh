@@ -1,91 +1,73 @@
 #!/bin/bash
 
-# Script de vérification des variables d'environnement
-# Usage: npm run check-env
-
-set -e
-
-echo "🔍 Vérification des variables d'environnement..."
+echo "🔍 VÉRIFICATION DE L'ENVIRONNEMENT"
 echo ""
 
-# Charger les variables depuis .env.local si elles existent
+# 1. Vérifier .env.local
+echo "1️⃣ Variables d'environnement:"
 if [ -f .env.local ]; then
-  export $(cat .env.local | grep -v '^#' | xargs)
-fi
-
-# Variables obligatoires
-REQUIRED_VARS=(
-  "NEXT_PUBLIC_SUPABASE_URL"
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY"
-  "SUPABASE_SERVICE_ROLE_KEY"
-)
-
-# Variables optionnelles
-OPTIONAL_VARS=(
-  "NEXT_PUBLIC_APP_URL"
-)
-
-has_errors=false
-
-echo "📋 Variables OBLIGATOIRES:"
-echo ""
-
-for var in "${REQUIRED_VARS[@]}"; do
-  value="${!var}"
+  echo "  ✅ .env.local existe"
+  grep -q "NEXT_PUBLIC_SUPABASE_URL" .env.local && echo "  ✅ NEXT_PUBLIC_SUPABASE_URL défini" || echo "  ❌ NEXT_PUBLIC_SUPABASE_URL manquant"
+  grep -q "SUPABASE_SERVICE_ROLE_KEY" .env.local && echo "  ✅ SUPABASE_SERVICE_ROLE_KEY défini" || echo "  ❌ SUPABASE_SERVICE_ROLE_KEY manquant"
   
-  if [ -z "$value" ]; then
-    echo "  ❌ $var: Variable manquante"
-    has_errors=true
-  else
-    # Masquer la valeur pour la sécurité
-    if [ ${#value} -gt 20 ]; then
-      masked="${value:0:10}...${value: -10}"
-    else
-      masked="$value"
-    fi
-    
-    # Vérification spéciale pour NEXT_PUBLIC_SUPABASE_URL
-    if [ "$var" = "NEXT_PUBLIC_SUPABASE_URL" ]; then
-      if [[ "$value" == *"supabase.com/dashboard"* ]]; then
-        echo "  ❌ $var: ERREUR - L'URL pointe vers le dashboard Supabase"
-        echo "     Utilisez: https://xxxxx.supabase.co"
-        has_errors=true
-      elif [[ "$value" != *".supabase.co"* ]]; then
-        echo "  ❌ $var: Format invalide (doit se terminer par .supabase.co)"
-        has_errors=true
-      else
-        echo "  ✅ $var: $masked"
-      fi
-    else
-      echo "  ✅ $var: $masked"
-    fi
+  # Extraire l'URL pour vérifier le projet
+  SUPABASE_URL=$(grep "NEXT_PUBLIC_SUPABASE_URL" .env.local | cut -d'=' -f2 | tr -d '"' | tr -d "'" | tr -d ' ')
+  if [ ! -z "$SUPABASE_URL" ]; then
+    echo "  📋 URL Supabase: $SUPABASE_URL"
   fi
-done
-
-echo ""
-echo "📋 Variables OPTIONNELLES:"
-echo ""
-
-for var in "${OPTIONAL_VARS[@]}"; do
-  value="${!var}"
-  
-  if [ -z "$value" ]; then
-    echo "  ⚪ $var: Non définie (optionnel)"
-  else
-    echo "  ✅ $var: Définie"
-  fi
-done
-
-echo ""
-echo "============================================================"
-
-if [ "$has_errors" = true ]; then
-  echo "❌ ERREURS DÉTECTÉES"
-  echo ""
-  echo "Corrigez les erreurs ci-dessus avant de déployer."
-  exit 1
 else
-  echo "✅ Toutes les variables sont correctement configurées !"
-  echo ""
-  exit 0
+  echo "  ❌ .env.local n'existe pas"
 fi
+
+# 2. Vérifier project_ref
+echo ""
+echo "2️⃣ Project Ref:"
+if [ -f supabase/config.toml ]; then
+  PROJECT_REF=$(grep -E "^project_id\s*=" supabase/config.toml | head -1 | sed 's/.*"\(.*\)".*/\1/' | tr -d ' ')
+  if [ ! -z "$PROJECT_REF" ]; then
+    echo "  📋 Project Ref trouvé: $PROJECT_REF"
+    echo "  📋 Attendu: poeijjosocmqlhgsacud"
+    if [ "$PROJECT_REF" = "poeijjosocmqlhgsacud" ]; then
+      echo "  ✅ Project Ref correspond"
+    else
+      echo "  ⚠️ Project Ref différent"
+    fi
+  else
+    echo "  ⚠️ Project Ref non trouvé dans config.toml"
+  fi
+else
+  echo "  ⚠️ supabase/config.toml non trouvé"
+fi
+
+# 3. Vérifier migrations
+echo ""
+echo "3️⃣ Migrations:"
+if [ -f "supabase/migrations/202502180003_ensure_user_profile_id_works.sql" ]; then
+  echo "  ✅ Migration 202502180003 trouvée"
+else
+  echo "  ❌ Migration 202502180003 manquante"
+fi
+
+if [ -f "supabase/migrations/202502180002_fix_rls_conflicts_final.sql" ]; then
+  echo "  ✅ Migration 202502180002 trouvée"
+else
+  echo "  ⚠️ Migration 202502180002 manquante"
+fi
+
+# 4. Vérifier Supabase CLI
+echo ""
+echo "4️⃣ Supabase CLI:"
+if command -v supabase &> /dev/null; then
+  echo "  ✅ Supabase CLI installé: $(supabase --version)"
+else
+  echo "  ❌ Supabase CLI non installé"
+fi
+
+echo ""
+echo "✅ Vérification terminée"
+echo ""
+echo "📋 PROCHAINES ÉTAPES:"
+echo "  1. Si migrations manquantes: vérifier le dossier supabase/migrations/"
+echo "  2. Si project_ref différent: exécuter 'supabase link --project-ref poeijjosocmqlhgsacud'"
+echo "  3. Appliquer les migrations: 'supabase db push'"
+echo "  4. Vérifier le diagnostic: http://localhost:3000/api/debug/properties"

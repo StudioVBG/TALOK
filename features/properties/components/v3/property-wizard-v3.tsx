@@ -17,21 +17,47 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
+import { motion, AnimatePresence, type Variants, useReducedMotion } from "framer-motion";
 import { useDebouncedCallback } from "use-debounce";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ChevronLeft, ChevronRight, Save, Sparkles, Zap, Settings } from "lucide-react";
+import dynamic from "next/dynamic";
 import { propertySchemaV3 } from "@/lib/validations/property-v3";
 import { validateProperty } from "@/lib/validations/property-validation";
 import { getStepsForType, wizardConfigData, type PropertyType, type StepConfig } from "@/lib/config/property-wizard-loader";
 import { PropertyTypeSelection } from "./property-type-selection";
-import { RoomsPhotosStep } from "./rooms-photos-step";
-import { RecapStep } from "./recap-step";
-import { DynamicStep } from "./dynamic-step";
+import { StepSkeleton } from "./step-skeleton";
+
+// Code-split des étapes pour réduire le bundle initial (~30-40% de réduction)
+// Les composants sont chargés à la demande pour améliorer les performances
+const RoomsPhotosStep = dynamic(
+  () => import("./rooms-photos-step").then((mod) => ({ default: mod.RoomsPhotosStep })),
+  {
+    loading: () => <StepSkeleton />,
+    ssr: false,
+  }
+);
+
+const RecapStep = dynamic(
+  () => import("./recap-step").then((mod) => ({ default: mod.RecapStep })),
+  {
+    loading: () => <StepSkeleton />,
+    ssr: false,
+  }
+);
+
+const DynamicStep = dynamic(
+  () => import("./dynamic-step").then((mod) => ({ default: mod.DynamicStep })),
+  {
+    loading: () => <StepSkeleton />,
+    ssr: false,
+  }
+);
+
 import type { PropertyTypeV3, PropertyV3 } from "@/lib/types/property-v3";
 import type { Room, Photo } from "@/lib/types";
 import { propertiesService } from "../../services/properties.service";
@@ -45,6 +71,42 @@ interface PropertyWizardV3Props {
   initialData?: Partial<PropertyV3>;
   onSuccess?: (propertyId: string) => void;
   onCancel?: () => void;
+}
+
+// Composant wrapper pour les transitions entre étapes avec support reduced motion
+function StepTransitionContent({ 
+  currentStepId, 
+  renderCurrentStep 
+}: { 
+  currentStepId?: string; 
+  renderCurrentStep: () => React.ReactNode;
+}) {
+  const reducedMotion = useReducedMotion();
+  const shouldReduceMotion = reducedMotion ?? false;
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={currentStepId || "loading"}
+        initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: 20, scale: 0.98 }}
+        animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, x: 0, scale: 1 }}
+        exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: -20, scale: 0.98 }}
+        transition={{ 
+          duration: shouldReduceMotion ? 0.15 : 0.3, 
+          ease: [0.4, 0, 0.2, 1], // easeInOut cubic-bezier SOTA 2025
+          opacity: { duration: shouldReduceMotion ? 0.1 : 0.2 },
+        }}
+        className={`${CLASSES.card} ${CLASSES.cardHover} p-6 md:p-8 lg:p-10`}
+        style={{
+          boxShadow: SHADOWS.xl,
+        }}
+      >
+        <Suspense fallback={<StepSkeleton />}>
+          {renderCurrentStep()}
+        </Suspense>
+      </motion.div>
+    </AnimatePresence>
+  );
 }
 
 // Variants d'animation optimisés SOTA 2025 (200-250ms)
@@ -103,6 +165,8 @@ export function PropertyWizardV3({
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savedDraftId, setSavedDraftId] = useState<string | null>(propertyId || null);
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false); // Flag pour éviter les créations multiples
+  const draftCreationPromiseRef = useRef<Promise<string | null> | null>(null); // Ref pour partager la promesse de création
 
   // State principal du formulaire (utilise Record pour supporter tous les champs dynamiques)
   const [formData, setFormData] = useState<Record<string, any>>({
@@ -129,7 +193,7 @@ export function PropertyWizardV3({
       return allSteps.filter((step) => {
         // Toujours inclure : type_bien, adresse, photos (simple), recap
         if (step.id === "type_bien" || step.id === "recap") return true;
-        if (step.id === "adresse" || step.id === "details") return true;
+        if (step.id === "adresse" || step.id === "infos_essentielles") return true;
         // Mode simple pour photos (pas de gestion détaillée des pièces)
         if (step.id === "pieces_photos") {
           // Remplacer par une version simplifiée si disponible
@@ -145,9 +209,36 @@ export function PropertyWizardV3({
   }, [formData.type_bien, mode]);
 
   const currentStep = stepsForType[currentStepIndex];
+  
+  // Log de débogage pour identifier le problème
+  useEffect(() => {
+    if (stepsForType.length === 0) {
+      console.error("[PropertyWizardV3] Aucune étape disponible !", {
+        type_bien: formData.type_bien,
+        mode,
+        allSteps: getStepsForType(formData.type_bien as PropertyType | undefined),
+      });
+    }
+    if (!currentStep) {
+      console.error("[PropertyWizardV3] currentStep est undefined !", {
+        currentStepIndex,
+        stepsForTypeLength: stepsForType.length,
+        stepsForType: stepsForType.map(s => s.id),
+      });
+    }
+  }, [stepsForType, currentStep, currentStepIndex, formData.type_bien, mode]);
+  
+  // S'assurer que currentStepIndex est valide
+  useEffect(() => {
+    if (stepsForType.length > 0 && currentStepIndex >= stepsForType.length) {
+      console.warn("[PropertyWizardV3] currentStepIndex hors limites, réinitialisation à 0");
+      setCurrentStepIndex(0);
+    }
+  }, [stepsForType.length, currentStepIndex]);
+  
   const isFirstStep = currentStepIndex === 0;
-  const isLastStep = currentStepIndex === stepsForType.length - 1;
-  const progress = ((currentStepIndex + 1) / stepsForType.length) * 100;
+  const isLastStep = stepsForType.length > 0 && currentStepIndex === stepsForType.length - 1;
+  const progress = stepsForType.length > 0 ? ((currentStepIndex + 1) / stepsForType.length) * 100 : 0;
 
   // Auto-save avec debounce
   const autoSave = useDebouncedCallback(async (data: Partial<PropertyV3>) => {
@@ -175,20 +266,46 @@ export function PropertyWizardV3({
       
       // Si type_bien est défini et qu'on n'a pas encore de draft, créer le draft
       let currentDraftId = savedDraftId;
-      if (newData.type_bien && !currentDraftId && !propertyId) {
-        try {
-          console.log(`[PropertyWizardV3] Création d'un draft avec type_bien=${newData.type_bien}`);
-          const property = await propertiesService.createDraftProperty({
-            type_bien: newData.type_bien as any,
-            usage_principal: "habitation", // Valeur par défaut, sera ajustée selon le type
-          });
-          currentDraftId = property.id;
-          console.log(`[PropertyWizardV3] Draft créé avec succès: id=${currentDraftId}`);
-          setSavedDraftId(currentDraftId);
-        } catch (error: any) {
-          console.error("[PropertyWizardV3] Erreur création draft:", error);
-          // Ne pas bloquer l'utilisateur, on réessaiera plus tard
-        }
+      if (newData.type_bien && !currentDraftId && !propertyId && !isCreatingDraft && !draftCreationPromiseRef.current) {
+        setIsCreatingDraft(true);
+        const creationPromise = (async () => {
+          try {
+            console.log(`[PropertyWizardV3] Création d'un draft avec type_bien=${newData.type_bien}`);
+            const property = await propertiesService.createDraftProperty({
+              type_bien: newData.type_bien as any,
+              usage_principal: "habitation", // Valeur par défaut, sera ajustée selon le type
+            });
+            currentDraftId = property.id;
+            console.log(`[PropertyWizardV3] Draft créé avec succès: id=${currentDraftId}`);
+            setSavedDraftId(currentDraftId);
+            return currentDraftId;
+          } catch (error: any) {
+            const errorMessage = error?.message || error?.toString() || "Erreur inconnue";
+            const errorDetails = error?.response?.data || error?.data || error;
+            console.error("[PropertyWizardV3] Erreur création draft:", {
+              message: errorMessage,
+              details: errorDetails,
+              stack: error?.stack,
+              statusCode: error?.statusCode || error?.status,
+            });
+            toast({
+              title: "Erreur de sauvegarde",
+              description: errorMessage || "Impossible de créer le brouillon. Veuillez réessayer.",
+              variant: "destructive",
+            });
+            // Ne pas bloquer l'utilisateur immédiatement, mais le draft sera requis pour l'étape photos
+            return null;
+          } finally {
+            setIsCreatingDraft(false);
+            draftCreationPromiseRef.current = null;
+          }
+        })();
+        draftCreationPromiseRef.current = creationPromise;
+        // Attendre la création pour avoir currentDraftId
+        currentDraftId = await creationPromise;
+      } else if (draftCreationPromiseRef.current) {
+        // Si une création est en cours, attendre son résultat
+        currentDraftId = await draftCreationPromiseRef.current;
       }
       
       // Auto-save si on a un draft
@@ -211,7 +328,7 @@ export function PropertyWizardV3({
         }
       }
     },
-    [formData, savedDraftId, propertyId]
+    [formData, savedDraftId, propertyId, isCreatingDraft, toast]
   );
 
   // Créer le brouillon initial (seulement si type_bien est déjà défini)
@@ -346,7 +463,58 @@ export function PropertyWizardV3({
     return Object.keys(stepFieldErrors).length === 0 && stepGlobalErrors.length === 0;
   }, [currentStep, formData, rooms, photos]);
 
-  const handleNext = useCallback(() => {
+  // S'assurer que le draft existe avant d'arriver à l'étape photos
+  const ensureDraftExists = useCallback(async (): Promise<string | null> => {
+    if (savedDraftId) {
+      return savedDraftId;
+    }
+    
+    if (!formData.type_bien) {
+      return null;
+    }
+    
+    // Éviter les créations multiples simultanées : réutiliser la promesse en cours
+    if (draftCreationPromiseRef.current) {
+      return draftCreationPromiseRef.current;
+    }
+    
+    setIsCreatingDraft(true);
+    const creationPromise = (async () => {
+      try {
+        console.log(`[PropertyWizardV3] Création d'un draft avec type_bien=${formData.type_bien}`);
+        const property = await propertiesService.createDraftProperty({
+          type_bien: formData.type_bien as any,
+          usage_principal: "habitation",
+        });
+        console.log(`[PropertyWizardV3] Draft créé avec succès: id=${property.id}`);
+        setSavedDraftId(property.id);
+        return property.id;
+      } catch (error: any) {
+        const errorMessage = error?.message || error?.toString() || "Erreur inconnue";
+        const errorDetails = error?.response?.data || error?.data || error;
+        console.error("[PropertyWizardV3] Erreur création draft (ensureDraftExists):", {
+          message: errorMessage,
+          details: errorDetails,
+          stack: error?.stack,
+          statusCode: error?.statusCode || error?.status,
+        });
+        toast({
+          title: "Erreur",
+          description: errorMessage || "Impossible de sauvegarder le bien. Veuillez réessayer.",
+          variant: "destructive",
+        });
+        return null;
+      } finally {
+        setIsCreatingDraft(false);
+        draftCreationPromiseRef.current = null; // Réinitialiser la ref après la création
+      }
+    })();
+    
+    draftCreationPromiseRef.current = creationPromise;
+    return creationPromise;
+  }, [savedDraftId, formData.type_bien, toast]);
+
+  const handleNext = useCallback(async () => {
     if (!validateCurrentStep()) {
       const errorMessages = [
         ...Object.values(fieldErrors),
@@ -363,11 +531,46 @@ export function PropertyWizardV3({
       return;
     }
     
+    // S'assurer que le draft existe avant de passer à une étape qui nécessite un propertyId
+    // Les étapes qui nécessitent un draft : adresse, infos_essentielles, equipements, pieces_photos, etc.
+    // (toutes sauf type_bien)
+    const nextStepIndex = currentStepIndex + 1;
+    const nextStep = stepsForType[nextStepIndex];
+    const currentStep = stepsForType[currentStepIndex];
+    
+    // Si on n'est plus à l'étape type_bien et qu'on n'a pas de draft, le créer
+    if (currentStep?.id !== "type_bien" && !savedDraftId && formData.type_bien) {
+      console.log(`[PropertyWizardV3] Pas de draft trouvé avant étape ${nextStep?.id}, création...`);
+      const draftId = await ensureDraftExists();
+      if (!draftId) {
+        // Ne pas avancer si le draft n'a pas pu être créé
+        toast({
+          title: "Erreur",
+          description: "Le bien doit être sauvegardé avant de continuer. Veuillez réessayer.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // Vérification spécifique pour l'étape photos
+    if (nextStep?.id === "pieces_photos") {
+      const draftId = await ensureDraftExists();
+      if (!draftId) {
+        toast({
+          title: "Erreur",
+          description: "Le bien doit être sauvegardé avant de continuer. Veuillez réessayer.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     // Réinitialiser les erreurs avant de passer à l'étape suivante
     setFieldErrors({});
     setGlobalErrors([]);
     goToNextStep();
-  }, [validateCurrentStep, goToNextStep, toast, fieldErrors, globalErrors]);
+  }, [validateCurrentStep, goToNextStep, toast, fieldErrors, globalErrors, currentStepIndex, stepsForType, ensureDraftExists, savedDraftId, formData.type_bien]);
 
   // Soumission finale avec validation complète
   const handleSubmit = useCallback(async () => {
@@ -483,10 +686,33 @@ export function PropertyWizardV3({
 
   // Rendu de l'étape actuelle avec support des modes custom
   const renderCurrentStep = () => {
-    if (!currentStep) return null;
+    if (!currentStep) {
+      console.error("[PropertyWizardV3] renderCurrentStep: currentStep est undefined", {
+        currentStepIndex,
+        stepsForTypeLength: stepsForType.length,
+        stepsForType: stepsForType.map(s => s.id),
+      });
+      return (
+        <div className="p-8 text-center">
+          <p className="text-lg font-semibold text-destructive mb-2">
+            Erreur : Aucune étape disponible
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Veuillez rafraîchir la page ou contacter le support.
+          </p>
+        </div>
+      );
+    }
+
+    const isLastStep = currentStepIndex === stepsForType.length - 1;
+    const isCurrentStepValid = !fieldErrors || Object.keys(fieldErrors).length === 0;
 
     // Étapes avec modes spéciaux (custom, simple-photos, summary)
     if (currentStep.mode === "custom" && currentStep.id === "pieces_photos") {
+      // Vérifier que propertyId existe pour cette étape critique
+      const hasValidPropertyId = !!savedDraftId && savedDraftId.trim() !== "";
+      const canProceed = isCurrentStepValid && hasValidPropertyId;
+      
       return (
         <RoomsPhotosStep
           propertyId={savedDraftId || ""}
@@ -497,6 +723,18 @@ export function PropertyWizardV3({
           photos={photos as any}
           onRoomsChange={(r) => setRooms(r as Room[])}
           onPhotosChange={(p) => setPhotos(p as Photo[])}
+          stepNumber={currentStepIndex + 1}
+          totalSteps={stepsForType.length}
+          mode={mode}
+          onModeChange={(newMode) => {
+            const params = new URLSearchParams(searchParams?.toString() || "");
+            params.set("mode", newMode);
+            router.push(`?${params.toString()}`);
+          }}
+          onBack={currentStepIndex > 0 ? goToPreviousStep : undefined}
+          onNext={handleNext}
+          canGoNext={canProceed}
+          microCopy={getMicroCopy(currentStep.id, isLastStep, mode)}
         />
       );
     }
@@ -512,6 +750,16 @@ export function PropertyWizardV3({
           onSubmit={handleSubmit}
           onEdit={goToStep}
           isSubmitting={isSubmitting}
+          stepNumber={currentStepIndex + 1}
+          totalSteps={stepsForType.length}
+          mode={mode}
+          onModeChange={(newMode) => {
+            const params = new URLSearchParams(searchParams?.toString() || "");
+            params.set("mode", newMode);
+            router.push(`?${params.toString()}`);
+          }}
+          onBack={currentStepIndex > 0 ? goToPreviousStep : undefined}
+          microCopy={getMicroCopy(currentStep.id, isLastStep, mode)}
         />
       );
     }
@@ -525,6 +773,15 @@ export function PropertyWizardV3({
             updateFormData({ type_bien: type, type: type }); // Mettre à jour type_bien et type pour compatibilité
           }}
           onContinue={handleNext}
+          stepNumber={currentStepIndex + 1}
+          totalSteps={stepsForType.length}
+          mode={mode}
+          onModeChange={(newMode) => {
+            const params = new URLSearchParams(searchParams?.toString() || "");
+            params.set("mode", newMode);
+            router.push(`?${params.toString()}`);
+          }}
+          onBack={currentStepIndex > 0 ? goToPreviousStep : undefined}
         />
       );
     }
@@ -537,9 +794,32 @@ export function PropertyWizardV3({
         formData={formData}
         onChange={updateFormData}
         fieldErrors={fieldErrors}
+        stepNumber={currentStepIndex + 1}
+        totalSteps={stepsForType.length}
+        mode={mode}
+        onModeChange={(newMode) => {
+          const params = new URLSearchParams(searchParams?.toString() || "");
+          params.set("mode", newMode);
+          router.push(`?${params.toString()}`);
+        }}
+        onBack={currentStepIndex > 0 ? goToPreviousStep : undefined}
+        onNext={handleNext}
+        canGoNext={isCurrentStepValid}
+        microCopy={getMicroCopy(currentStep.id, isLastStep, mode)}
       />
     );
   };
+
+  // Log de débogage au rendu
+  useEffect(() => {
+    console.log("[PropertyWizardV3] Rendu du composant", {
+      currentStepIndex,
+      stepsForTypeLength: stepsForType.length,
+      currentStepId: currentStep?.id,
+      mode,
+      type_bien: formData.type_bien,
+    });
+  }, [currentStepIndex, stepsForType.length, currentStep?.id, mode, formData.type_bien]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-muted/20 to-background p-4 md:p-8">
@@ -617,10 +897,13 @@ export function PropertyWizardV3({
                 transition={{ delay: 0.2, duration: 0.25 }}
                 className="text-lg text-muted-foreground"
               >
-                {mode === "fast" 
-                  ? `Un questionnaire ultra-simple en ${stepsForType.length} étapes pour créer rapidement votre brouillon`
-                  : `Un questionnaire détaillé en ${stepsForType.length} étapes pour créer votre brouillon complet`
-                }
+                {stepsForType.length > 0 ? (
+                  mode === "fast" 
+                    ? `Un questionnaire ultra-simple en ${stepsForType.length} étapes pour créer rapidement votre brouillon`
+                    : `Un questionnaire détaillé en ${stepsForType.length} étapes pour créer votre brouillon complet`
+                ) : (
+                  "Chargement du formulaire..."
+                )}
               </motion.p>
             </div>
             {onCancel && (
@@ -641,28 +924,29 @@ export function PropertyWizardV3({
           </div>
 
           {/* Barre de progression améliorée */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="space-y-3"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <motion.div
-                  variants={badgeVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-sm"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Étape {currentStepIndex + 1} sur {stepsForType.length}
-                </motion.div>
-                <span className="text-sm font-medium text-muted-foreground">
-                  {Math.round(progress)}% complété
-                </span>
+          {stepsForType.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    variants={badgeVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-sm"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Étape {currentStepIndex + 1} sur {stepsForType.length}
+                  </motion.div>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {Math.round(progress)}% complété
+                  </span>
+                </div>
               </div>
-            </div>
             <div className="relative h-3 overflow-hidden rounded-full bg-muted/50 backdrop-blur-sm">
               <motion.div
                 variants={progressVariants}
@@ -686,8 +970,9 @@ export function PropertyWizardV3({
                 }}
                 className="absolute inset-y-0 right-0 w-1/4 h-full bg-gradient-to-r from-transparent via-primary/50 to-primary rounded-full"
               />
-            </div>
-          </motion.div>
+              </div>
+            </motion.div>
+          )}
 
           {/* Indicateur d'auto-save amélioré */}
           <AnimatePresence>
@@ -714,84 +999,12 @@ export function PropertyWizardV3({
         </motion.div>
 
         {/* Contenu de l'étape avec animations fluides SOTA 2025 */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentStep?.id || "loading"}
-            variants={optimizedStepVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className={`${CLASSES.card} ${CLASSES.cardHover} p-6 md:p-8 lg:p-10`}
-            style={{
-              boxShadow: SHADOWS.xl,
-            }}
-          >
-            {renderCurrentStep()}
-          </motion.div>
-        </AnimatePresence>
+        <StepTransitionContent 
+          currentStepId={currentStep?.id}
+          renderCurrentStep={renderCurrentStep}
+        />
 
-        {/* Navigation améliorée */}
-        {currentStep?.id !== "recap" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="flex items-center justify-between pt-4"
-          >
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                variant="outline"
-                onClick={goToPreviousStep}
-                disabled={isFirstStep}
-                className={`gap-2 ${CLASSES.button} ${isFirstStep ? "opacity-50 cursor-not-allowed" : CLASSES.buttonHover}`}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Précédent
-              </Button>
-            </motion.div>
-
-            <div className="flex items-center gap-3">
-              {/* Micro-copie contextuelle */}
-              <motion.p
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3, duration: 0.25 }}
-                className="text-sm text-muted-foreground hidden sm:block"
-              >
-                {getMicroCopy(currentStep?.id || "", isLastStep, mode)}
-              </motion.p>
-              
-              <motion.div 
-                whileHover={{ scale: 1.02 }} 
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              >
-                <Button
-                  onClick={handleNext}
-                  disabled={isSubmitting}
-                  className={`gap-2 ${CLASSES.button} ${CLASSES.buttonHover} bg-gradient-to-r from-primary to-primary/90 shadow-lg shadow-primary/30 transition-all duration-200`}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      >
-                        <Save className="h-4 w-4" />
-                      </motion.div>
-                      Enregistrement...
-                    </>
-                  ) : (
-                    <>
-                      {isLastStep ? "Soumettre" : "Suivant"}
-                      <ChevronRight className="h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </motion.div>
-            </div>
-          </motion.div>
-        )}
+        {/* Navigation supprimée - Utilise uniquement le StickyFooter de WizardStepLayout pour éviter les doublons et superpositions */}
       </div>
     </div>
   );

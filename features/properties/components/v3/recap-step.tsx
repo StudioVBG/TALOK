@@ -19,8 +19,8 @@ import { ExecutiveSummary, type SummaryRoom } from "@/features/properties/compon
 import { CheckCircle2, AlertCircle, Loader2, Send } from "lucide-react";
 import type { PropertyTypeV3 } from "@/lib/types/property-v3";
 import type { Room, Photo } from "@/lib/types";
-import { StepHeader } from "@/lib/design-system/wizard-components";
 import { containerVariants } from "@/lib/design-system/animations";
+import { WizardStepLayout } from "@/lib/design-system/wizard-layout";
 
 interface RecapStepProps {
   propertyId?: string;
@@ -33,6 +33,12 @@ interface RecapStepProps {
   onEdit?: (stepId: string) => void;
   isSubmitting?: boolean;
   errors?: string[];
+  stepNumber?: number;
+  totalSteps?: number;
+  mode?: "fast" | "full";
+  onModeChange?: (mode: "fast" | "full") => void;
+  onBack?: () => void;
+  microCopy?: string;
 }
 
 // Animation pour les sections de récapitulatif
@@ -68,6 +74,12 @@ export function RecapStep({
   onEdit,
   isSubmitting = false,
   errors = [],
+  stepNumber = 1,
+  totalSteps = 8,
+  mode = "full",
+  onModeChange,
+  onBack,
+  microCopy,
 }: RecapStepProps) {
   const [validationErrors, setValidationErrors] = useState<string[]>(errors);
 
@@ -91,15 +103,23 @@ export function RecapStep({
   };
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
-      {/* Titre */}
-      <StepHeader
-        title="Récapitulatif"
-        description="Vérifiez l'ensemble avant validation"
-        icon={<CheckCircle2 className="h-6 w-6 text-primary" />}
-      />
-
-      {/* Erreurs de validation */}
+    <WizardStepLayout
+      title="Récapitulatif"
+      description="Vérifiez l'ensemble avant validation"
+      stepNumber={stepNumber}
+      totalSteps={totalSteps}
+      mode={mode}
+      onModeChange={onModeChange}
+      progressValue={(stepNumber / totalSteps) * 100}
+      onBack={onBack}
+      onNext={handleSubmit}
+      canGoNext={!isSubmitting}
+      nextLabel={isSubmitting ? "Soumission..." : "Soumettre pour validation"}
+      microCopy={microCopy || "Tout est prêt ! Soumettez votre logement 🎉"}
+      showModeSwitch={false}
+    >
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+        {/* Erreurs de validation */}
       <AnimatePresence>
         {validationErrors.length > 0 && (
           <motion.div
@@ -313,38 +333,11 @@ export function RecapStep({
         </motion.div>
       </motion.div>
 
-      {/* Bouton de soumission */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="flex justify-end gap-4 pt-4"
-      >
-        <Button
-          size="lg"
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          className="min-w-[250px] shadow-lg transition-all hover:shadow-xl"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-              Soumission en cours...
-            </>
-          ) : (
-            <>
-              <Send className="h-5 w-5 mr-2" />
-              Soumettre pour validation
-            </>
-          )}
-        </Button>
-      </motion.div>
-
       {/* Message d'aide */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 0.6 }}
         className="rounded-lg border border-border/50 bg-muted/30 p-4"
       >
         <p className="text-sm text-muted-foreground">
@@ -353,7 +346,8 @@ export function RecapStep({
           paiements.
         </p>
       </motion.div>
-    </motion.div>
+      </motion.div>
+    </WizardStepLayout>
   );
 }
 

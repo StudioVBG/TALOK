@@ -181,9 +181,66 @@ const roomTypeEnum = z.enum([
 const roomEmitterEnum = z.enum(["radiateur", "plancher", "convecteur", "poele"]);
 const photoTagEnum = z.enum(["vue_generale", "plan", "detail", "exterieur"]);
 
-// Validation des logements
-// ⚠️ DEPRECATED: Utiliser propertySchemaV3 de @/lib/validations/property-v3 pour les nouveaux développements
-// Ce schéma est conservé pour compatibilité avec l'ancien code. Migration progressive vers V3 en cours.
+// ============================================
+// EXPORTS DES SCHÉMAS PARTIELS RÉUTILISABLES
+// ============================================
+export {
+  addressSchema,
+  addressUpdateSchema,
+  dpeSchema,
+  dpeUpdateSchema,
+  financialSchema,
+  financialUpdateSchema,
+  heatingComfortSchema,
+  heatingComfortUpdateSchema,
+  permisLouerSchema,
+  permisLouerUpdateSchema,
+  leaseConditionsSchema,
+  leaseConditionsUpdateSchema,
+} from "./schemas-shared";
+
+// ============================================
+// EXPORTS DES MESSAGES D'ERREUR
+// ============================================
+export { ValidationMessages, getValidationMessage } from "./error-messages";
+
+// ============================================
+// EXPORTS DES SCHÉMAS V3
+// ============================================
+export {
+  propertySchemaV3,
+  propertySchemaV3Base,
+  habitationSchemaV3,
+  habitationSchemaV3Base,
+  parkingSchemaV3,
+  localProSchemaV3,
+  habitationUpdateSchemaV3,
+  parkingUpdateSchemaV3,
+  localProUpdateSchemaV3,
+  propertyUpdateSchemaV3,
+  roomSchemaV3,
+  photoSchemaV3,
+  type PropertyV3Input,
+  type HabitationV3Input,
+  type ParkingV3Input,
+  type LocalProV3Input,
+  type RoomV3Input,
+  type PhotoV3Input,
+  type PropertyV3UpdateInput,
+  type HabitationV3UpdateInput,
+  type ParkingV3UpdateInput,
+  type LocalProV3UpdateInput,
+} from "./property-v3";
+
+// ============================================
+// VALIDATION DES LOGEMENTS - LEGACY
+// ============================================
+/**
+ * @deprecated Utiliser propertySchemaV3 de @/lib/validations/property-v3 pour les nouveaux développements
+ * Ce schéma est conservé pour compatibilité avec l'ancien code. Migration progressive vers V3 en cours.
+ * 
+ * Utilisez validatePropertyData() ou safeValidatePropertyData() pour une détection automatique V3 vs Legacy.
+ */
 export const propertySchema = z
   .object({
   type: z.enum([
@@ -281,7 +338,33 @@ export const propertySchema = z
 
 export const propertyGeneralUpdateSchema = z
   .object({
+    // Champs de base
+    type_bien: z.enum([
+      "appartement",
+      "maison",
+      "studio",
+      "colocation",
+      "parking",
+      "box",
+      "local_commercial",
+      "bureaux",
+      "entrepot",
+      "fonds_de_commerce",
+    ]).optional(),
+    type: z.enum([
+      "appartement",
+      "maison",
+      "studio",
+      "colocation",
+      "parking",
+      "box",
+      "local_commercial",
+      "bureaux",
+      "entrepot",
+      "fonds_de_commerce",
+    ]).optional(),
     adresse_complete: z.string().min(1).optional(),
+    complement_adresse: z.string().optional().nullable(),
     code_postal: z.string().regex(/^[0-9]{5}$/, "Le code postal doit contenir 5 chiffres").optional(),
     ville: z.string().min(1).optional(),
     departement: z.string().length(2).optional().nullable(),
@@ -293,6 +376,47 @@ export const propertyGeneralUpdateSchema = z
     etage: z.number().int().optional().nullable(),
     ascenseur: z.boolean().optional(),
     meuble: z.boolean().optional(),
+    // Extérieurs V3
+    has_balcon: z.boolean().optional(),
+    has_terrasse: z.boolean().optional(),
+    has_jardin: z.boolean().optional(),
+    has_cave: z.boolean().optional(),
+    // Équipements V3
+    equipments: z.array(z.string()).optional(),
+    // Chauffage & confort
+    chauffage_type: z.enum(["individuel", "collectif", "aucun"]).optional().nullable(),
+    chauffage_energie: z.enum(["electricite", "gaz", "fioul", "bois", "reseau_urbain", "autre"]).optional().nullable(),
+    eau_chaude_type: z.enum(["electrique_indiv", "gaz_indiv", "collectif", "solaire", "autre"]).optional().nullable(),
+    clim_presence: z.enum(["aucune", "mobile", "fixe"]).optional().nullable(),
+    clim_type: z.enum(["split", "gainable"]).optional().nullable(),
+    // Parking V3
+    parking_type: z.enum(["place_exterieure", "place_couverte", "box", "souterrain"]).optional().nullable(),
+    parking_numero: z.string().max(50).optional().nullable(),
+    parking_niveau: z.string().max(20).optional().nullable(),
+    parking_gabarit: z.enum(["citadine", "berline", "suv", "utilitaire", "2_roues"]).optional().nullable(),
+    parking_acces: z.array(z.enum(["badge", "telecommande", "cle", "digicode", "acces_libre"])).optional(),
+    parking_portail_securise: z.boolean().optional(),
+    parking_video_surveillance: z.boolean().optional(),
+    parking_gardien: z.boolean().optional(),
+    // Locaux pro V3
+    local_surface_totale: z.number().min(0).optional().nullable(),
+    local_type: z.enum(["boutique", "restaurant", "bureaux", "atelier", "stockage", "autre"]).optional().nullable(),
+    local_has_vitrine: z.boolean().optional(),
+    local_access_pmr: z.boolean().optional(),
+    local_clim: z.boolean().optional(),
+    local_fibre: z.boolean().optional(),
+    local_alarme: z.boolean().optional(),
+    local_rideau_metal: z.boolean().optional(),
+    local_acces_camion: z.boolean().optional(),
+    local_parking_clients: z.boolean().optional(),
+    // Conditions de location V3
+    type_bail: z.enum([
+      "vide", "meuble", "colocation",
+      "parking_seul", "accessoire_logement",
+      "3_6_9", "derogatoire", "precaire", "professionnel", "autre"
+    ]).optional().nullable(),
+    preavis_mois: z.number().int().min(1).max(12).optional().nullable(),
+    // Financier
     loyer_hc: z.number().min(0).optional().nullable(),
     charges_mensuelles: z.number().min(0).optional().nullable(),
     depot_garantie: z.number().min(0).optional().nullable(),

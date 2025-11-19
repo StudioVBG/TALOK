@@ -1,24 +1,30 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { ProtectedRoute } from "@/components/protected-route";
-import { PropertyDetailV2 } from "@/features/properties/components/v3/property-detail-v2";
+import { useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 
-function PropertyDetailPageContent() {
+/**
+ * Redirection vers la route canonique de détail d'un logement
+ * 
+ * Route legacy : /properties/[id]
+ * Route canonique : /app/owner/properties/[id]
+ */
+export default function LegacyPropertyDetailPage() {
+  const router = useRouter();
   const params = useParams();
-  
-  if (!params.id || typeof params.id !== "string") {
-    return null;
-  }
 
-  return <PropertyDetailV2 propertyId={params.id} />;
-}
+  useEffect(() => {
+    if (params.id && typeof params.id === "string") {
+      router.replace(`/app/owner/properties/${params.id}`);
+    }
+  }, [router, params.id]);
 
-export default function PropertyDetailPage() {
   return (
-    <ProtectedRoute allowedRoles={["admin", "owner"]}>
-      <PropertyDetailPageContent />
-    </ProtectedRoute>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto"></div>
+        <p className="text-muted-foreground">Redirection...</p>
+      </div>
+    </div>
   );
 }
-

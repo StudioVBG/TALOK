@@ -1,0 +1,23 @@
+import { NextResponse } from "next/server";
+import { supabaseServer } from "../../../_lib/supabase";
+
+function genCode() {
+  return "U" + Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+export async function POST(_req: Request, { params }: { params: { id: string } }) {
+  const sb = await supabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const code = genCode();
+  const { error } = await sb
+    .from("units")
+    .update({ code_unique: code })
+    .eq("id", params.id);
+  
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ code });
+}
+

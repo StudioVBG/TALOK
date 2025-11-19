@@ -12,6 +12,8 @@ function isImage(mimeType: string) {
   return mimeType.startsWith("image/");
 }
 
+import { documentAiService } from "@/features/documents/services/document-ai.service";
+
 export async function POST(request: Request) {
   try {
     const { user, error } = await getAuthenticatedUser(request);
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
 
     const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
-      .select("id, role")
+      .select("id, role, first_name, last_name")
       .eq("user_id", user.id)
       .single();
 
@@ -261,6 +263,33 @@ export async function POST(request: Request) {
           { error: insertError?.message || `Erreur lors de l'enregistrement du fichier ${file.name}` },
           { status: 500 }
         );
+      }
+
+      // Trigger AI Analysis
+      try {
+        let tenantName: string | undefined;
+        if (role === "tenant") {
+          const p = profileData as any;
+          if (p.first_name && p.last_name) {
+            tenantName = `${p.first_name} ${p.last_name}`;
+          }
+        }
+
+        const publicUrlForAnalysis =
+          (record.preview_url as string) ||
+          serviceClient.storage.from("documents").getPublicUrl(filePath).data.publicUrl;
+
+        // We await here to ensure execution in serverless environment, 
+        // though ideally this would be offloaded to a background job
+        await documentAiService.analyzeDocument(
+          (document as any).id,
+          publicUrlForAnalysis,
+          type,
+          tenantName
+        );
+      } catch (aiError) {
+        console.error("AI Analysis failed for doc", (document as any).id, aiError);
+        // Do not block upload success if AI fails
       }
 
       insertedDocuments.push(document);

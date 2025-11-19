@@ -1,22 +1,23 @@
 "use client";
 
 import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from "recharts";
 import { ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/helpers/format";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Chargement dynamique de Recharts (bibliothèque lourde ~200KB)
+const FinanceChart = dynamic(
+  () => import("./finance-chart"),
+  { 
+    ssr: false,
+    loading: () => <Skeleton className="h-64 w-full" />
+  }
+);
 
 interface FinanceData {
   period: string;
@@ -58,6 +59,18 @@ const kpiVariants = {
 };
 
 export function OwnerFinanceSummary({ chartData, kpis }: OwnerFinanceSummaryProps) {
+  // Vérification de sécurité pour éviter les erreurs si les données ne sont pas encore chargées
+  if (!kpis || !kpis.revenue_current_month || !kpis.revenue_last_month) {
+    return (
+      <Card className="backdrop-blur-sm bg-white/80 border-white/20 shadow-xl">
+        <CardContent className="py-12 text-center">
+          <Skeleton className="h-64 w-full mb-4" />
+          <Skeleton className="h-8 w-48 mx-auto" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   const currentMonthDiff = kpis.revenue_current_month.collected - kpis.revenue_current_month.expected;
   const lastMonthDiff = kpis.revenue_last_month.collected - kpis.revenue_last_month.expected;
 
@@ -81,62 +94,14 @@ export function OwnerFinanceSummary({ chartData, kpis }: OwnerFinanceSummaryProp
           <CardDescription>Loyers encaissés vs attendus sur 6 mois</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Graphique */}
+          {/* Graphique - Chargé dynamiquement pour optimiser le démarrage */}
           <motion.div
             className="h-64 w-full min-h-[256px]"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
           >
-            {chartData && chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={256} minHeight={256}>
-                <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200" />
-                <XAxis
-                  dataKey="period"
-                  className="text-xs"
-                  tick={{ fill: "#64748b" }}
-                />
-                <YAxis
-                  className="text-xs"
-                  tick={{ fill: "#64748b" }}
-                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                  }}
-                  formatter={(value: number) => formatCurrency(value)}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="expected"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  name="Attendus"
-                  dot={{ r: 4 }}
-                  animationDuration={1000}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="collected"
-                  stroke="#10b981"
-                  strokeWidth={3}
-                  name="Encaissés"
-                  dot={{ r: 4 }}
-                  animationDuration={1000}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <p>Aucune donnée disponible</p>
-              </div>
-            )}
+            <FinanceChart chartData={chartData} />
           </motion.div>
 
           {/* KPIs */}

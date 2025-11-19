@@ -56,9 +56,12 @@ export async function GET(request: Request) {
     const profileData = profile as any;
 
     const url = new URL(request.url);
-    const propertyIdParam = url.searchParams.get("propertyId");
-    const ownerIdParam = url.searchParams.get("ownerId");
-    const tenantIdParam = url.searchParams.get("tenantId");
+    const propertyIdParam =
+      url.searchParams.get("propertyId") ?? url.searchParams.get("property_id");
+    const ownerIdParam =
+      url.searchParams.get("ownerId") ?? url.searchParams.get("owner_id");
+    const tenantIdParam =
+      url.searchParams.get("tenantId") ?? url.searchParams.get("tenant_id");
 
     // Sécuriser les filtres explicites
     let ownerProfileId: string | null = null;
