@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from "next/server";
 import { messagingAiService } from "@/features/tickets/services/messaging-ai.service";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";

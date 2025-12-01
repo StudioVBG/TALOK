@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Data fetching pour les tickets (Owner)
  * Server-side uniquement

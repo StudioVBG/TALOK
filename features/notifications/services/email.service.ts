@@ -1,6 +1,31 @@
-// Service pour l'envoi d'emails
-// Note: Peut utiliser Resend, SendGrid, ou Supabase Edge Functions
+/**
+ * Service de notifications email
+ * 
+ * Utilise le service Resend pour envoyer des emails
+ * avec des templates professionnels
+ */
 
+import { emailService } from "@/lib/emails";
+
+// Ré-exporter toutes les fonctions du service email
+export {
+  sendEmail,
+  sendInvoiceNotification,
+  sendPaymentConfirmation,
+  sendPaymentReminder,
+  sendNewTicketNotification,
+  sendTicketUpdateNotification,
+  sendSignatureRequest,
+  sendLeaseSignedNotification,
+  sendPropertyInvitation,
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+} from "@/lib/emails";
+
+// Export par défaut du service complet
+export { emailService };
+
+// Types exportés
 export interface EmailData {
   to: string;
   subject: string;
@@ -8,93 +33,52 @@ export interface EmailData {
   text?: string;
 }
 
+/**
+ * Classe de compatibilité avec l'ancien service
+ * @deprecated Utilisez directement les fonctions exportées du service email
+ */
 export class EmailService {
   async sendEmail(data: EmailData) {
-    // TODO: Implémenter l'envoi d'email via une API (Resend, SendGrid, etc.)
-    // Pour l'instant, on log juste l'email
-    console.log("Email would be sent:", data);
-
-    // Exemple avec une API route Next.js
-    try {
-      const response = await fetch("/api/emails/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to send email");
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error sending email:", error);
-      throw error;
-    }
+    return emailService.send(data);
   }
 
   async sendInvoiceNotification(invoiceId: string, tenantEmail: string) {
-    const subject = "Nouvelle facture disponible";
-    const html = `
-      <h1>Nouvelle facture disponible</h1>
-      <p>Une nouvelle facture est disponible dans votre espace locataire.</p>
-      <p>Connectez-vous pour consulter et payer votre facture.</p>
-    `;
-
-    return this.sendEmail({
+    // Compatibilité basique - les données complètes doivent être passées
+    console.warn('[EmailService] Utilisation dépréciée. Utilisez emailService.sendInvoiceNotification avec toutes les données.');
+    return emailService.send({
       to: tenantEmail,
-      subject,
-      html,
+      subject: "Nouvelle facture disponible",
+      html: `<p>Une nouvelle facture est disponible. ID: ${invoiceId}</p>`,
     });
   }
 
   async sendPaymentConfirmation(paymentId: string, tenantEmail: string, amount: number) {
-    const subject = "Confirmation de paiement";
-    const html = `
-      <h1>Paiement confirmé</h1>
-      <p>Votre paiement de ${amount}€ a été confirmé avec succès.</p>
-      <p>Merci pour votre paiement.</p>
-    `;
-
-    return this.sendEmail({
+    console.warn('[EmailService] Utilisation dépréciée. Utilisez emailService.sendPaymentConfirmation avec toutes les données.');
+    return emailService.send({
       to: tenantEmail,
-      subject,
-      html,
+      subject: "Confirmation de paiement",
+      html: `<p>Votre paiement de ${amount}€ a été confirmé. ID: ${paymentId}</p>`,
     });
   }
 
   async sendTicketNotification(ticketId: string, ownerEmail: string, ticketTitle: string) {
-    const subject = "Nouveau ticket de maintenance";
-    const html = `
-      <h1>Nouveau ticket de maintenance</h1>
-      <p>Un nouveau ticket a été créé : ${ticketTitle}</p>
-      <p>Connectez-vous pour consulter et gérer le ticket.</p>
-    `;
-
-    return this.sendEmail({
+    console.warn('[EmailService] Utilisation dépréciée. Utilisez emailService.sendNewTicketNotification avec toutes les données.');
+    return emailService.send({
       to: ownerEmail,
-      subject,
-      html,
+      subject: "Nouveau ticket de maintenance",
+      html: `<p>Nouveau ticket: ${ticketTitle}. ID: ${ticketId}</p>`,
     });
   }
 
   async sendLeaseSignatureRequest(leaseId: string, signerEmail: string, signerName: string) {
-    const subject = "Demande de signature de bail";
-    const html = `
-      <h1>Signature de bail requise</h1>
-      <p>Bonjour ${signerName},</p>
-      <p>Vous devez signer un bail. Connectez-vous pour consulter et signer le document.</p>
-    `;
-
-    return this.sendEmail({
+    console.warn('[EmailService] Utilisation dépréciée. Utilisez emailService.sendSignatureRequest avec toutes les données.');
+    return emailService.send({
       to: signerEmail,
-      subject,
-      html,
+      subject: "Demande de signature de bail",
+      html: `<p>Bonjour ${signerName}, vous devez signer un bail. ID: ${leaseId}</p>`,
     });
   }
 }
 
-export const emailService = new EmailService();
-
+// Instance pour compatibilité
+export const legacyEmailService = new EmailService();

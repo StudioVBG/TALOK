@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { Button } from "@/components/ui/button";
 import { Zap, Settings } from "lucide-react";

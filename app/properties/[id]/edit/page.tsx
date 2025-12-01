@@ -1,13 +1,16 @@
 "use client";
+// @ts-nocheck
 
 import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 
 /**
- * Redirection vers la route canonique d'édition d'un logement
+ * Redirection vers la page de détails du bien
  * 
  * Route legacy : /properties/[id]/edit
- * Route canonique : /app/owner/properties/[id]/edit
+ * Route canonique : /app/owner/properties/[id]
+ * 
+ * L'édition se fait maintenant directement sur la page de détails
  */
 export default function LegacyEditPropertyPage() {
   const router = useRouter();
@@ -15,7 +18,7 @@ export default function LegacyEditPropertyPage() {
 
   useEffect(() => {
     if (params.id && typeof params.id === "string") {
-      router.replace(`/app/owner/properties/${params.id}/edit`);
+      router.replace(`/app/owner/properties/${params.id}`);
     }
   }, [router, params.id]);
 

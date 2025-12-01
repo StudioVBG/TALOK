@@ -172,10 +172,138 @@ async function processEvent(supabase: any, event: any) {
       }
       break;
 
+    // Mise à jour législative - Notification aux propriétaires et locataires
+    case "Legislation.Updated":
+      await handleLegislationUpdate(supabase, payload);
+      break;
+
     // Autres événements (à étendre selon besoins)
     default:
       console.log(`Événement non géré: ${event_type}`);
   }
+}
+
+/**
+ * Gère les notifications de mise à jour législative
+ * Envoie des emails aux propriétaires et locataires concernés
+ */
+async function handleLegislationUpdate(supabase: any, payload: any) {
+  const { user_id, user_name, lease_id, is_owner, version, changes, description } = payload;
+
+  // Récupérer les préférences de notification de l'utilisateur
+  const { data: settings } = await supabase
+    .from("notification_settings")
+    .select("*")
+    .eq("user_id", user_id)
+    .single();
+
+  // Récupérer l'email de l'utilisateur
+  const { data: authUser } = await supabase.auth.admin.getUserById(user_id);
+  const userEmail = authUser?.user?.email;
+
+  if (!userEmail) {
+    console.log(`Pas d'email trouvé pour l'utilisateur ${user_id}`);
+    return;
+  }
+
+  // Préparer le contenu de l'email
+  const emailSubject = is_owner
+    ? `📋 Mise à jour législative ${version} - Action requise pour votre bail`
+    : `📋 Mise à jour législative ${version} - Information concernant votre location`;
+
+  const changesHtml = changes
+    ?.map((c: any) => `<li><strong>${c.field}</strong>: ${c.description}</li>`)
+    .join("") || "<li>Mise à jour des clauses légales</li>";
+
+  const emailBody = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #1e293b;">Bonjour ${user_name || ""},</h2>
+      
+      <p>Une mise à jour législative <strong>(${version})</strong> concerne ${
+        is_owner ? "un de vos baux" : "votre bail de location"
+      }.</p>
+      
+      <div style="background: #f8fafc; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #92400e;">Changements apportés</h3>
+        <p>${description || "Mise à jour conforme aux derniers décrets en vigueur."}</p>
+        <ul style="color: #475569;">
+          ${changesHtml}
+        </ul>
+      </div>
+
+      ${is_owner ? `
+        <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0; color: #92400e;">
+            <strong>⚠️ Action requise :</strong> Ces modifications seront appliquées automatiquement lors du prochain renouvellement de bail. 
+            Vous pouvez consulter les détails dans votre espace propriétaire.
+          </p>
+        </div>
+      ` : `
+        <p style="color: #64748b;">
+          Ces modifications seront appliquées lors du prochain renouvellement de votre bail. 
+          Votre propriétaire a été informé de ces changements.
+        </p>
+      `}
+
+      <p style="margin-top: 30px;">
+        <a href="${Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.gestionlocative.fr"}/leases/${lease_id}" 
+           style="background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">
+          Voir les détails du bail
+        </a>
+      </p>
+
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+      
+      <p style="color: #94a3b8; font-size: 12px;">
+        Vous recevez cet email car vous êtes ${is_owner ? "propriétaire" : "locataire"} d'un bien géré via notre plateforme.
+        <br />
+        Pour modifier vos préférences de notification, rendez-vous dans les paramètres de votre compte.
+      </p>
+    </div>
+  `;
+
+  // Si l'utilisateur accepte les emails, envoyer
+  const shouldSendEmail = settings?.email_enabled !== false;
+
+  if (shouldSendEmail && userEmail) {
+    // Appeler le service d'envoi d'email
+    const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
+    
+    if (emailServiceUrl) {
+      try {
+        await fetch(emailServiceUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
+          },
+          body: JSON.stringify({
+            to: userEmail,
+            subject: emailSubject,
+            html: emailBody,
+          }),
+        });
+        console.log(`Email de mise à jour législative envoyé à ${userEmail}`);
+      } catch (error) {
+        console.error(`Erreur envoi email à ${userEmail}:`, error);
+      }
+    } else {
+      console.log(`Email service non configuré. Email à envoyer à ${userEmail}: ${emailSubject}`);
+    }
+  }
+
+  // Log dans audit_log pour traçabilité
+  await supabase.from("audit_log").insert({
+    user_id,
+    action: "legislation_notification_sent",
+    entity_type: "lease",
+    entity_id: lease_id,
+    metadata: {
+      version,
+      is_owner,
+      email_sent: shouldSendEmail && !!userEmail,
+    },
+  } as any);
 }
 
 async function sendNotification(supabase: any, notification: any) {

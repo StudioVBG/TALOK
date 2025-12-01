@@ -1,6 +1,6 @@
 /* 
- * IMPORTANT: Tous les @import doivent être placés AVANT les directives @tailwind
- * Si vous devez ajouter des @import, placez-les ici, avant @tailwind base
+ * Tailwind CSS - Feuille de styles principale
+ * Les imports externes (ex: polices Google) doivent être placés en premier
  */
 
 @tailwind base;
@@ -107,6 +107,28 @@
   }
 }
 
+@layer utilities {
+  /* Scrollbar masquée mais fonctionnelle (clean look) */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  /* Text Shadow subtil pour lisibilité sur image */
+  .text-shadow-sm {
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  
+  /* Animation de gradient fluide */
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 8s ease infinite;
+  }
+}
+
 /* Smooth transitions pour tous les éléments interactifs */
 * {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
@@ -166,6 +188,12 @@
     transform: scale(1.1);
     opacity: 0;
   }
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .animate-shimmer {

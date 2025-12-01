@@ -18,6 +18,8 @@ import {
   User,
   LogOut,
   ChevronDown,
+  CalendarClock,
+  Wrench,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { OwnerBottomNav } from "./owner-bottom-nav";
@@ -30,6 +32,8 @@ const navigation = [
   { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2 },
   { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText },
   { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro },
+  { name: "Fin de bail", href: "/app/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
+  { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench },
   { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck },
   { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle },
 ];

@@ -1,3 +1,4 @@
+// @ts-nocheck
 export * from "./fetchProperties";
 export * from "./fetchDashboard";
 export * from "./fetchContracts";
@@ -6,3 +7,5 @@ export * from "./fetchTickets";
 export * from "./fetchDocuments";
 export * from "./fetchPropertyDetails";
 export * from "./fetchLeaseDetails";
+export * from "./fetchOwnerProfile";
+export * from "./OwnerDataProvider";

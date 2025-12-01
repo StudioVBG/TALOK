@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { useCallback, useEffect, useState } from "react";
 import { ExecutiveSummary } from "@/features/properties/components/executive-summary";

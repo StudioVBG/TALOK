@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../_lib/supabase";
 

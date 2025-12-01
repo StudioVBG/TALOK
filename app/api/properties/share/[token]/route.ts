@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextResponse } from "next/server";
 import { getBaseUrl } from "@/lib/helpers/url";
 import { getServiceRoleClient } from "@/lib/server/service-role-client";

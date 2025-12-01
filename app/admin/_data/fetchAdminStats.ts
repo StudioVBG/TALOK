@@ -33,6 +33,11 @@ export async function fetchAdminStats(): Promise<AdminStatsData | null> {
     throw new Error("Non authentifié");
   }
 
+  // Note: Cette RPC est rapide (agrégats). 
+  // On pourrait utiliser unstable_cache ici si la charge DB devenait critique,
+  // mais cela nécessiterait de gérer l'auth context (via service role).
+  // Pour l'instant, le Streaming UI (Suspense) suffit pour l'UX.
+  
   const { data, error } = await supabase.rpc("admin_stats");
 
   if (error) {

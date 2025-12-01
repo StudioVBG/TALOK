@@ -16,7 +16,31 @@
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 10
+    },
+    "app/api/cron/**/*.ts": {
+      "maxDuration": 120
+    },
+    "app/api/pdf/**/*.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/rent-reminders",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/irl-indexation",
+      "schedule": "0 10 1 * *"
+    },
+    {
+      "path": "/api/cron/lease-expiry-alerts",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/subscription-alerts",
+      "schedule": "0 10 * * *"
+    }
+  ]
 }
 

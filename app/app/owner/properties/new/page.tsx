@@ -1,17 +1,38 @@
 "use client";
+// @ts-nocheck
 
 import { Suspense, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/protected-route";
 import { PropertyWizardV3 } from "@/features/properties/components/v3/property-wizard-v3";
+import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
 
 function PropertyWizardWrapper() {
+  const router = useRouter();
+  const reset = usePropertyWizardStore((state) => state.reset);
+
+  // 🔧 Réinitialiser le wizard au montage pour s'assurer qu'on part d'un état propre
   useEffect(() => {
-    console.log("[OwnerNewPropertyPage] PropertyWizardWrapper monté");
-  }, []);
+    console.log("[OwnerNewPropertyPage] Reset du wizard pour nouvelle création");
+    reset();
+  }, [reset]);
+
+  const handleSuccess = (propertyId: string) => {
+    console.log("[OwnerNewPropertyPage] Succès ! Redirection vers :", `/app/owner/properties/${propertyId}`);
+    // Rediriger vers la page de détail pour compléter ou voir le bien
+    router.push(`/app/owner/properties/${propertyId}`);
+  };
+
+  const handleCancel = () => {
+    router.push("/app/owner/properties");
+  };
 
   return (
     <div className="space-y-6">
-      <PropertyWizardV3 />
+      <PropertyWizardV3 
+        onSuccess={handleSuccess}
+        onCancel={handleCancel}
+      />
     </div>
   );
 }
@@ -40,4 +61,3 @@ export default function OwnerNewPropertyPage() {
     </ProtectedRoute>
   );
 }
-

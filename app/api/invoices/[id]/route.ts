@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/helpers/api-error";

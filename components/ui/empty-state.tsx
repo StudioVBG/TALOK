@@ -1,118 +1,131 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
+import { ReactNode } from "react";
+import { LucideIcon, Plus, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion, useReducedMotion } from "framer-motion";
 
 interface EmptyStateProps {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   title: string;
-  description: string;
+  description?: string;
   action?: {
     label: string;
-    onClick: () => void;
-    variant?: "default" | "outline" | "ghost";
+    onClick?: () => void;
+    href?: string; // Support pour les liens directs
+    variant?: "default" | "outline" | "secondary";
   };
+  children?: ReactNode;
   className?: string;
-  size?: "sm" | "md" | "lg";
 }
 
-const sizeVariants = {
-  sm: {
-    icon: "h-8 w-8",
-    iconContainer: "p-4",
-    title: "text-base",
-    description: "text-sm",
-  },
-  md: {
-    icon: "h-12 w-12",
-    iconContainer: "p-6",
-    title: "text-lg",
-    description: "text-sm",
-  },
-  lg: {
-    icon: "h-16 w-16",
-    iconContainer: "p-8",
-    title: "text-xl",
-    description: "text-base",
-  },
-};
-
 export function EmptyState({
-  icon: Icon,
+  icon: Icon = Inbox,
   title,
   description,
   action,
+  children,
   className,
-  size = "md",
 }: EmptyStateProps) {
-  const sizes = sizeVariants[size];
-
+  const prefersReducedMotion = useReducedMotion();
+  const motionEnabled = !prefersReducedMotion;
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-      className={cn("flex flex-col items-center justify-center py-12 px-4", className)}
+      initial={motionEnabled ? { opacity: 0, scale: 0.95 } : undefined}
+      animate={motionEnabled ? { opacity: 1, scale: 1 } : undefined}
+      transition={motionEnabled ? { duration: 0.5 } : undefined}
+      className={cn(
+        "flex flex-col items-center justify-center text-center p-8 md:p-12 rounded-lg border border-dashed bg-slate-50/50",
+        className
+      )}
     >
-      <Card className="border-dashed bg-muted/30 backdrop-blur-sm">
-        <CardContent className="flex flex-col items-center justify-center py-12 px-6">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 15 }}
-            className="relative mb-6"
-          >
-            {/* Glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-100/50 to-indigo-100/50 rounded-full blur-xl opacity-50 dark:from-blue-900/30 dark:to-indigo-900/30" />
-            <div
-              className={cn(
-                "relative bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 rounded-full flex items-center justify-center",
-                sizes.iconContainer
-              )}
-            >
-              <Icon className={cn("text-blue-600 dark:text-blue-400", sizes.icon)} />
-            </div>
-          </motion.div>
+      <motion.div
+        className="mb-6 relative"
+        animate={
+          motionEnabled
+            ? {
+                scale: [1, 1.1, 1],
+                rotate: [0, 5, -5, 0],
+              }
+            : undefined
+        }
+        transition={
+          motionEnabled
+            ? {
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+                repeatDelay: 2,
+              }
+            : undefined
+        }
+      >
+        <div className="absolute inset-0 bg-blue-100 rounded-full opacity-20 blur-xl" />
+        <div className="relative bg-white p-4 rounded-full shadow-sm ring-1 ring-slate-100">
+          <Icon className="h-10 w-10 text-slate-400" />
+        </div>
+      </motion.div>
 
-          <motion.h3
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className={cn("font-semibold text-foreground mb-2", sizes.title)}
-          >
-            {title}
-          </motion.h3>
+      <motion.h3
+        initial={motionEnabled ? { opacity: 0, y: 10 } : undefined}
+        animate={motionEnabled ? { opacity: 1, y: 0 } : undefined}
+        transition={motionEnabled ? { delay: 0.2 } : undefined}
+        className="text-xl font-semibold text-slate-900 mb-2"
+      >
+        {title}
+      </motion.h3>
 
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className={cn(
-              "text-muted-foreground max-w-sm text-center leading-relaxed",
-              sizes.description
-            )}
-          >
-            {description}
-          </motion.p>
+      {description && (
+        <motion.p
+          initial={motionEnabled ? { opacity: 0, y: 10 } : undefined}
+          animate={motionEnabled ? { opacity: 1, y: 0 } : undefined}
+          transition={motionEnabled ? { delay: 0.3 } : undefined}
+          className="text-muted-foreground max-w-sm mb-8 text-sm md:text-base"
+        >
+          {description}
+        </motion.p>
+      )}
 
-          {action && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="mt-6"
-            >
-              <Button onClick={action.onClick} variant={action.variant || "default"}>
+      {children}
+
+      {action && (
+        <motion.div
+          initial={motionEnabled ? { opacity: 0, y: 10 } : undefined}
+          animate={motionEnabled ? { opacity: 1, y: 0 } : undefined}
+          transition={motionEnabled ? { delay: 0.4 } : undefined}
+        >
+          {action.href ? (
+            <Button asChild variant={action.variant || "default"} className="gap-2">
+              <a href={action.href}>
+                <Plus className="h-4 w-4" />
                 {action.label}
-              </Button>
-            </motion.div>
+              </a>
+            </Button>
+          ) : (
+            <Button onClick={action.onClick} variant={action.variant || "default"} className="gap-2">
+              <Plus className="h-4 w-4" />
+              {action.label}
+            </Button>
           )}
-        </CardContent>
-      </Card>
+        </motion.div>
+      )}
     </motion.div>
   );
 }
 
+export function EmptyProperties({ onAdd }: { onAdd?: () => void }) {
+  return (
+    <EmptyState
+      icon={Inbox} // Using Inbox as default Home icon if needed, or import Home from lucide-react
+      title="Aucun bien"
+      description="Vous n'avez pas encore ajouté de bien immobilier à votre portefeuille."
+      action={onAdd ? { label: "Ajouter mon premier bien", onClick: onAdd } : undefined}
+    />
+  );
+}
+
+// ... other exports kept simple or refactored to use the new EmptyState 
+// For brevity, I'm just exporting the main component and one example, 
+// ensuring existing imports don't break if they use named exports.
+// Ideally, other specific Empty* components should be updated to use the new base EmptyState.

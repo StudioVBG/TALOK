@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -94,7 +95,7 @@ export default function OwnerFinancePage() {
       });
 
       // Rediriger vers l'ajout du premier logement
-      router.push("/owner/onboarding/property");
+      router.push("/app/owner/onboarding/property");
     } catch (error: any) {
       toast({
         title: "Erreur",

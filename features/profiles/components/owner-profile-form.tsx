@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ interface OwnerProfileFormProps {
 }
 
 export function OwnerProfileForm({ onSuccess }: OwnerProfileFormProps) {
+  const router = useRouter();
   const { profile, ownerProfile } = useProfile();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -51,6 +53,8 @@ export function OwnerProfileForm({ onSuccess }: OwnerProfileFormProps) {
         title: "Profil mis à jour",
         description: "Vos informations ont été enregistrées.",
       });
+      // Forcer le rechargement des données serveur (ex: complétion du profil sur le dashboard)
+      router.refresh();
       onSuccess?.();
     } catch (error: any) {
       toast({

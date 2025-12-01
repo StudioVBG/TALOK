@@ -477,10 +477,14 @@ export async function fetchOwnerContractById(
     date_debut: lease.date_debut || "",
     date_fin: lease.date_fin || undefined,
     statut: lease.statut as LeaseStatus,
-    tenant: signer?.profile ? {
-      id: signer.profile.id,
-      prenom: signer.profile.prenom || "",
-      nom: signer.profile.nom || "",
+    tenant: signer?.profile && Array.isArray(signer.profile) && signer.profile.length > 0 ? {
+      id: signer.profile[0].id,
+      prenom: signer.profile[0].prenom || "",
+      nom: signer.profile[0].nom || "",
+    } : signer?.profile && !Array.isArray(signer.profile) ? {
+      id: (signer.profile as any).id,
+      prenom: (signer.profile as any).prenom || "",
+      nom: (signer.profile as any).nom || "",
     } : undefined,
     created_at: lease.created_at || new Date().toISOString(),
   } as OwnerContract;

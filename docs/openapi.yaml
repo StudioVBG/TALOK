@@ -1,0 +1,546 @@
+openapi: 3.0.3
+info:
+  title: Gestion Locative API
+  description: |
+    API REST pour l'application SaaS de gestion locative.
+    
+    ## Authentication
+    L'API utilise JWT Bearer tokens. Incluez le header `Authorization: Bearer <token>` dans vos requêtes.
+    
+    ## Idempotency
+    Pour les opérations POST qui modifient l'état (paiements, signatures), incluez le header `Idempotency-Key: <uuid>`.
+    
+    ## Rôles
+    - **admin**: Accès complet
+    - **owner**: Gestion de ses propriétés
+    - **tenant**: Gestion de son bail et paiements
+    - **provider**: Gestion de ses interventions
+  version: 1.0.0
+  contact:
+    name: Support
+    email: support@gestionlocative.fr
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+tags:
+  - name: Auth
+    description: Authentification et gestion de compte
+  - name: Properties
+    description: Gestion des logements
+  - name: Leases
+    description: Gestion des baux
+  - name: Invoices
+    description: Facturation et paiements
+  - name: Tickets
+    description: Tickets de maintenance
+  - name: Admin
+    description: Administration (admin uniquement)
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Créer un compte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterInput'
+      responses:
+        '201':
+          description: Compte créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '409':
+          description: Email déjà utilisé
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Se connecter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Identifiants invalides
+
+  /properties:
+    get:
+      tags: [Properties]
+      summary: Lister mes propriétés
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [all, draft, pending, published, archived]
+        - name: type
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Liste des propriétés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertiesListResponse'
+
+    post:
+      tags: [Properties]
+      summary: Créer une propriété
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePropertyInput'
+      responses:
+        '201':
+          description: Propriété créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyResponse'
+
+  /properties/{pid}:
+    get:
+      tags: [Properties]
+      summary: Détails d'une propriété
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Détails de la propriété
+        '404':
+          description: Propriété non trouvée
+
+  /properties/{pid}/invitations:
+    post:
+      tags: [Properties]
+      summary: Créer une invitation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvitationInput'
+      responses:
+        '201':
+          description: Invitation créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationResponse'
+
+  /leases:
+    get:
+      tags: [Leases]
+      summary: Lister les baux
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Liste des baux
+
+    post:
+      tags: [Leases]
+      summary: Créer un bail (brouillon)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLeaseInput'
+      responses:
+        '201':
+          description: Bail créé
+
+  /leases/{lid}/signature-sessions:
+    post:
+      tags: [Leases]
+      summary: Envoyer pour signature
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: lid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Session de signature créée
+
+  /leases/{lid}/rent-invoices:
+    post:
+      tags: [Invoices]
+      summary: Émettre une facture de loyer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: lid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Facture créée
+
+  /invoices/{iid}/payments:
+    post:
+      tags: [Invoices]
+      summary: Créer un paiement
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: iid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentInput'
+      responses:
+        '201':
+          description: Intent de paiement créé
+
+  /tickets:
+    get:
+      tags: [Tickets]
+      summary: Lister les tickets
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Liste des tickets
+
+    post:
+      tags: [Tickets]
+      summary: Créer un ticket
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketInput'
+      responses:
+        '201':
+          description: Ticket créé
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterInput:
+      type: object
+      required:
+        - email
+        - password
+        - role
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [owner, tenant, provider]
+        prenom:
+          type: string
+        nom:
+          type: string
+
+    RegisterResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+            email_confirmed:
+              type: boolean
+
+    LoginInput:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        user:
+          type: object
+        session:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+            expires_at:
+              type: integer
+        requires_2fa:
+          type: boolean
+
+    CreatePropertyInput:
+      type: object
+      required:
+        - type
+        - adresse_complete
+        - code_postal
+        - ville
+        - departement
+        - surface
+        - nb_pieces
+      properties:
+        type:
+          type: string
+          enum: [appartement, maison, studio, colocation, saisonnier, local_commercial, bureaux, parking]
+        adresse_complete:
+          type: string
+        code_postal:
+          type: string
+          pattern: '^\d{5}$'
+        ville:
+          type: string
+        departement:
+          type: string
+        surface:
+          type: number
+        nb_pieces:
+          type: integer
+        loyer_base:
+          type: number
+        charges_mensuelles:
+          type: number
+
+    PropertyResponse:
+      type: object
+      properties:
+        property:
+          type: object
+        unique_code:
+          type: string
+
+    PropertiesListResponse:
+      type: object
+      properties:
+        properties:
+          type: array
+          items:
+            type: object
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            total_pages:
+              type: integer
+
+    CreateInvitationInput:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [locataire_principal, colocataire, garant]
+        email:
+          type: string
+          format: email
+        expires_in_days:
+          type: integer
+          minimum: 1
+          maximum: 30
+
+    InvitationResponse:
+      type: object
+      properties:
+        invitation:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            token:
+              type: string
+            invite_url:
+              type: string
+            property_code:
+              type: string
+            expires_at:
+              type: string
+              format: date-time
+
+    CreateLeaseInput:
+      type: object
+      required:
+        - type_bail
+        - loyer
+        - date_debut
+      properties:
+        property_id:
+          type: string
+          format: uuid
+        unit_id:
+          type: string
+          format: uuid
+        type_bail:
+          type: string
+          enum: [nu, meuble, colocation, saisonnier, bail_mobilite, commercial_3_6_9]
+        loyer:
+          type: number
+        charges_forfaitaires:
+          type: number
+        depot_de_garantie:
+          type: number
+        date_debut:
+          type: string
+          format: date
+        date_fin:
+          type: string
+          format: date
+
+    CreatePaymentInput:
+      type: object
+      required:
+        - invoice_id
+        - montant
+        - moyen
+      properties:
+        invoice_id:
+          type: string
+          format: uuid
+        montant:
+          type: number
+        moyen:
+          type: string
+          enum: [cb, virement, prelevement]
+        return_url:
+          type: string
+          format: uri
+
+    CreateTicketInput:
+      type: object
+      required:
+        - property_id
+        - titre
+        - description
+      properties:
+        property_id:
+          type: string
+          format: uuid
+        lease_id:
+          type: string
+          format: uuid
+        titre:
+          type: string
+          minLength: 3
+        description:
+          type: string
+          minLength: 10
+        priorite:
+          type: string
+          enum: [basse, normale, haute]
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+

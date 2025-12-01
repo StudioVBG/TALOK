@@ -1,5 +1,4 @@
 import { apiClient } from "@/lib/api-client";
-import { propertySchema } from "@/lib/validations";
 import { safeValidatePropertyData } from "@/lib/validations/property-validator";
 import type {
   ParkingDetails,
@@ -148,6 +147,7 @@ export class PropertiesService {
     return properties.filter((p) => p.owner_id === ownerId);
   }
 
+  // Déprécié: Utiliser createDraftPropertyInit pour V3
   async createProperty(data: CreatePropertyData): Promise<Property> {
     // Utiliser le validator avec détection automatique V3 vs Legacy
     const validationResult = safeValidatePropertyData(data);
@@ -159,9 +159,16 @@ export class PropertiesService {
     return response.property;
   }
 
+  // Déprécié: Utiliser createDraftPropertyInit
   async createDraftProperty(payload: CreatePropertyDraftPayload): Promise<Property> {
+    // Utilise la route V2 (POST /api/properties)
     const response = await apiClient.post<{ property: Property }>("/properties", payload);
     return response.property;
+  }
+
+  // NOUVEAU: Création V3 via /api/properties/init
+  async createDraftPropertyInit(type: string): Promise<{ propertyId: string; status: string }> {
+    return apiClient.post<{ propertyId: string; status: string }>("/properties/init", { type });
   }
 
   async updateProperty(id: string, data: UpdatePropertyData): Promise<Property> {
@@ -169,7 +176,8 @@ export class PropertiesService {
     return response.property;
   }
 
-  async updatePropertyGeneral(id: string, data: PropertyGeneralUpdatePayload): Promise<Property> {
+  // Mise à jour tolérante (PATCH /api/properties/:id)
+  async updatePropertyGeneral(id: string, data: PropertyGeneralUpdatePayload | Partial<CreatePropertyData>): Promise<Property> {
     const response = await apiClient.patch<{ property: Property }>(`/properties/${id}`, data);
     return response.property;
   }
@@ -310,4 +318,3 @@ export class PropertiesService {
 }
 
 export const propertiesService = new PropertiesService();
-

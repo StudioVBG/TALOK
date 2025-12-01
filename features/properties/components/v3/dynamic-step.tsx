@@ -22,8 +22,8 @@ interface DynamicStepProps {
   fieldErrors?: Record<string, string>;
   stepNumber?: number;
   totalSteps?: number;
-  mode?: "fast" | "full";
-  onModeChange?: (mode: "fast" | "full") => void;
+  mode?: "fast" | "full" | "unified";
+  onModeChange?: (mode: "fast" | "full" | "unified") => void;
   onBack?: () => void;
   onNext?: () => void;
   canGoNext?: boolean;

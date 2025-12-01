@@ -68,9 +68,11 @@ export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Masquer la navbar pour les pages owner (elles ont leur propre layout avec sidebar)
-  // Masquer aussi pour /profile si l'utilisateur est owner (redirection vers /app/owner/profile)
-  if (pathname?.startsWith("/app/owner") || (pathname === "/profile" && profile?.role === "owner")) {
+  // Masquer la navbar pour les dashboards (elles ont leur propre layout avec sidebar)
+  // Nouvelle structure SOTA 2025: /owner, /tenant, /provider, /admin
+  // Ancien format: /app/owner, /app/tenant pour la compatibilité
+  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/app/owner", "/app/tenant", "/app/provider", "/app/vendor", "/admin"];
+  if (hiddenPaths.some(path => pathname?.startsWith(path))) {
     return null;
   }
 
@@ -97,25 +99,28 @@ export function Navbar() {
         { href: "/admin/dashboard", label: "Admin", icon: <BarChart3 className="h-4 w-4" /> }
       );
     } else if (profile.role === "owner") {
+      // Nouvelle structure SOTA 2025
       items.push(
-        { href: "/app/owner/dashboard", label: "Tableau de bord", icon: <Home className="h-4 w-4" /> },
-        { href: "/app/owner/properties", label: "Mes biens", icon: <Building2 className="h-4 w-4" /> },
-        { href: "/app/owner/contracts", label: "Baux & locataires", icon: <FileText className="h-4 w-4" /> },
-        { href: "/app/owner/money", label: "Loyers & revenus", icon: <Receipt className="h-4 w-4" /> },
-        { href: "/app/owner/documents", label: "Documents", icon: <FileText className="h-4 w-4" /> },
-        { href: "/app/owner/support", label: "Aide & services", icon: <HelpCircle className="h-4 w-4" /> }
+        { href: "/owner", label: "Tableau de bord", icon: <Home className="h-4 w-4" /> },
+        { href: "/owner/properties", label: "Mes biens", icon: <Building2 className="h-4 w-4" /> },
+        { href: "/owner/leases", label: "Baux & locataires", icon: <FileText className="h-4 w-4" /> },
+        { href: "/owner/finances", label: "Loyers & revenus", icon: <Receipt className="h-4 w-4" /> },
+        { href: "/owner/documents", label: "Documents", icon: <FileText className="h-4 w-4" /> },
+        { href: "/owner/support", label: "Aide & services", icon: <HelpCircle className="h-4 w-4" /> }
       );
     } else if (profile.role === "tenant") {
+      // Nouvelle structure SOTA 2025
       items.push(
-        { href: "/app/tenant", label: "Tableau de bord", icon: <Home className="h-4 w-4" /> },
-        { href: "/leases", label: "Mes baux", icon: <FileText className="h-4 w-4" /> },
-        { href: "/invoices", label: "Mes factures", icon: <Receipt className="h-4 w-4" /> },
-        { href: "/tickets", label: "Mes tickets", icon: <Wrench className="h-4 w-4" /> }
+        { href: "/tenant", label: "Tableau de bord", icon: <Home className="h-4 w-4" /> },
+        { href: "/tenant/home", label: "Mon logement", icon: <Building2 className="h-4 w-4" /> },
+        { href: "/tenant/payments", label: "Paiements", icon: <Receipt className="h-4 w-4" /> },
+        { href: "/tenant/tickets", label: "Demandes", icon: <Wrench className="h-4 w-4" /> }
       );
     } else if (profile.role === "provider") {
+      // Nouvelle structure SOTA 2025
       items.push(
         { href: "/app/provider", label: "Tableau de bord", icon: <Home className="h-4 w-4" /> },
-        { href: "/work-orders", label: "Interventions", icon: <Wrench className="h-4 w-4" /> }
+        { href: "/app/provider/work-orders", label: "Interventions", icon: <Wrench className="h-4 w-4" /> }
       );
     }
 

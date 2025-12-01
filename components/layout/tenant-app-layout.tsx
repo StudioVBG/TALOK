@@ -7,133 +7,315 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   FileText,
-  Wallet,
+  CreditCard,
   MessageSquare,
   Settings,
   LogOut,
   Menu,
   X,
-  User
+  Home,
+  Wrench,
+  Gauge,
+  FileSignature,
+  Users,
+  HelpCircle,
+  Bell,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/hooks/use-auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
-  profile?: { id: string; role: string; prenom?: string | null; nom?: string | null; avatar_url?: string | null } | null;
+  profile?: {
+    id: string;
+    role: string;
+    prenom?: string | null;
+    nom?: string | null;
+    avatar_url?: string | null;
+  } | null;
 }
 
 export function TenantAppLayout({ children, profile: serverProfile }: TenantAppLayoutProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { profile: clientProfile, signOut } = useAuth();
-  
+
   const profile = serverProfile || clientProfile;
 
-  const navigation = [
-    { name: "Tableau de bord", href: "/app/tenant/dashboard", icon: LayoutDashboard },
-    { name: "Mon bail", href: "/app/tenant/lease", icon: FileText },
-    { name: "Paiements", href: "/app/tenant/payments", icon: Wallet },
-    { name: "Demandes", href: "/app/tenant/requests", icon: MessageSquare },
-    { name: "Paramètres", href: "/app/tenant/settings", icon: Settings },
+  const mainNavigation = [
+    {
+      name: "Tableau de bord",
+      href: "/app/tenant/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      name: "Mon logement",
+      href: "/app/tenant/lease",
+      icon: Home,
+    },
+    {
+      name: "Paiements",
+      href: "/app/tenant/payments",
+      icon: CreditCard,
+    },
+    {
+      name: "Documents",
+      href: "/app/tenant/documents",
+      icon: FileText,
+    },
   ];
 
-  const isCurrent = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+  const secondaryNavigation = [
+    {
+      name: "Demandes",
+      href: "/app/tenant/requests",
+      icon: Wrench,
+    },
+    {
+      name: "Compteurs",
+      href: "/app/tenant/meters",
+      icon: Gauge,
+    },
+    {
+      name: "Signatures",
+      href: "/app/tenant/signatures",
+      icon: FileSignature,
+    },
+    {
+      name: "Messages",
+      href: "/app/tenant/messages",
+      icon: MessageSquare,
+    },
+  ];
+
+  const bottomNavigation = [
+    {
+      name: "Aide",
+      href: "/app/tenant/help",
+      icon: HelpCircle,
+    },
+    {
+      name: "Paramètres",
+      href: "/app/tenant/settings",
+      icon: Settings,
+    },
+  ];
+
+  const isCurrent = (href: string) =>
+    pathname === href || pathname?.startsWith(href + "/");
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Mobile Header */}
-      <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b shadow-sm sticky top-0 z-50">
-        <div className="font-bold text-xl text-blue-600">Espace Locataire</div>
-        <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
-          {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </Button>
+      <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b shadow-sm sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </Button>
+          <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            ImmoGestion
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-9 w-9 p-0 rounded-full">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-blue-100 text-blue-700 text-sm">
+                    {profile?.prenom?.[0]}
+                    {profile?.nom?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span>
+                    {profile?.prenom} {profile?.nom}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    Locataire
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/app/tenant/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Paramètres
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => signOut()}
+                className="text-red-600 focus:text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Déconnexion
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-white border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-slate-800 border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="h-16 flex items-center px-6 border-b">
+        {/* Logo */}
+        <div className="h-16 flex items-center px-6 border-b shrink-0">
+          <Link href="/app/tenant/dashboard" className="flex items-center gap-2">
             <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               ImmoGestion
             </span>
-            <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
               Locataire
-            </span>
-          </div>
+            </Badge>
+          </Link>
+        </div>
 
-          {/* User Profile */}
-          <div className="p-4 border-b bg-slate-50/50">
-            <div className="flex items-center gap-3">
-              <Avatar>
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-blue-100 text-blue-700">
-                  {profile?.prenom?.[0]}{profile?.nom?.[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div className="overflow-hidden">
-                <p className="text-sm font-medium truncate">
-                  {profile?.prenom} {profile?.nom}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">Locataire</p>
-              </div>
+        {/* User Profile Card */}
+        <div className="p-4 border-b shrink-0">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+            <Avatar className="h-11 w-11 ring-2 ring-white dark:ring-slate-700 shadow-sm">
+              <AvatarImage src={profile?.avatar_url || undefined} />
+              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
+                {profile?.prenom?.[0]}
+                {profile?.nom?.[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div className="overflow-hidden flex-1">
+              <p className="text-sm font-semibold truncate">
+                {profile?.prenom} {profile?.nom}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">Locataire</p>
             </div>
           </div>
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => (
+        {/* Main Navigation */}
+        <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
+              Principal
+            </p>
+            {mainNavigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                   isCurrent(item.href)
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
-                <item.icon className={cn("h-5 w-5", isCurrent(item.href) ? "text-blue-600" : "text-slate-400")} />
+                <item.icon
+                  className={cn(
+                    "h-5 w-5",
+                    isCurrent(item.href)
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-slate-400"
+                  )}
+                />
                 {item.name}
               </Link>
             ))}
-          </nav>
-
-          {/* Footer */}
-          <div className="p-4 border-t">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={() => signOut()}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Déconnexion
-            </Button>
           </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
+              Gestion
+            </p>
+            {secondaryNavigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                  isCurrent(item.href)
+                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                )}
+                onClick={() => setSidebarOpen(false)}
+              >
+                <item.icon
+                  className={cn(
+                    "h-5 w-5",
+                    isCurrent(item.href)
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-slate-400"
+                  )}
+                />
+                {item.name}
+              </Link>
+            ))}
+          </div>
+        </nav>
+
+        {/* Bottom Navigation */}
+        <div className="p-4 border-t space-y-1 shrink-0">
+          {bottomNavigation.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                isCurrent(item.href)
+                  ? "bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+              )}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <item.icon className="h-5 w-5 text-slate-400" />
+              {item.name}
+            </Link>
+          ))}
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+            onClick={() => signOut()}
+          >
+            <LogOut className="mr-3 h-5 w-5" />
+            Déconnexion
+          </Button>
         </div>
       </aside>
 
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-sm"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Main Content */}
-      <main className="lg:pl-64 pt-0 lg:pt-0 min-h-screen transition-all duration-200">
+      <main className="lg:pl-64 min-h-screen transition-all duration-200">
         {children}
       </main>
     </div>
   );
 }
-

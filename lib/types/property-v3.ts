@@ -197,16 +197,39 @@ export const HAB_EQUIPMENTS: EquipmentV3[] = [
 // Décision : Extension du type existant avec 'jardin'
 
 export type RoomTypeV3 =
+  // Espaces de vie
   | "sejour"
+  | "salon_cuisine"       // SOTA 2025 : Espace ouvert salon/cuisine
+  | "salon_sam"           // SOTA 2025 : Salon/Salle à manger
+  | "open_space"          // SOTA 2025 : Séjour + Cuisine + SAM
+  // Espaces nuit
   | "chambre"
+  | "suite_parentale"     // SOTA 2025 : Chambre + SDB
+  | "suite_enfant"        // SOTA 2025 : Chambre enfant + SDB
+  | "mezzanine"           // SOTA 2025
+  // Pièces fonctionnelles
   | "cuisine"
+  | "cuisine_americaine"  // SOTA 2025 : Cuisine ouverte
+  | "bureau"              // Nouveau
+  | "dressing"            // Nouveau
+  | "buanderie"           // Nouveau
+  | "cellier"             // Nouveau
+  // Sanitaires
   | "salle_de_bain"
+  | "salle_eau"           // Douche uniquement
   | "wc"
+  // Circulations
   | "entree"
   | "couloir"
+  // Extérieurs & annexes
   | "balcon"
   | "terrasse"
-  | "jardin"              // Ajouté (modèle V3)
+  | "jardin"
+  | "cave"                // Nouveau
+  // Locaux pro
+  | "emplacement"         // Parking
+  | "box"                 // Parking
+  | "stockage"            // Entrepôt
   | "autre";
 
 // ============================================
@@ -239,16 +262,39 @@ export type PhotoTagV3 =
 // Décision : Extraire dans lib/types pour réutilisation
 
 export const ROOM_TYPES: { value: RoomTypeV3; label: string; icon: typeof Home }[] = [
+  // Espaces de vie
   { value: "sejour", label: "Séjour", icon: Home },
+  { value: "salon_cuisine", label: "Salon/Cuisine ouverte", icon: Home },
+  { value: "salon_sam", label: "Salon/Salle à manger", icon: Home },
+  { value: "open_space", label: "Open Space", icon: Home },
+  // Espaces nuit
   { value: "chambre", label: "Chambre", icon: Home },
+  { value: "suite_parentale", label: "Suite parentale", icon: Home },
+  { value: "suite_enfant", label: "Suite enfant", icon: Home },
+  { value: "mezzanine", label: "Mezzanine", icon: Home },
+  // Pièces fonctionnelles
   { value: "cuisine", label: "Cuisine", icon: Home },
+  { value: "cuisine_americaine", label: "Cuisine américaine", icon: Home },
+  { value: "bureau", label: "Bureau", icon: Home },
+  { value: "dressing", label: "Dressing", icon: Home },
+  { value: "buanderie", label: "Buanderie", icon: Home },
+  { value: "cellier", label: "Cellier", icon: Home },
+  // Sanitaires
   { value: "salle_de_bain", label: "Salle de bain", icon: Home },
+  { value: "salle_eau", label: "Salle d'eau", icon: Home },
   { value: "wc", label: "WC", icon: Home },
+  // Circulations
   { value: "entree", label: "Entrée", icon: Home },
   { value: "couloir", label: "Couloir", icon: Home },
+  // Extérieurs
   { value: "balcon", label: "Balcon", icon: Home },
   { value: "terrasse", label: "Terrasse", icon: Home },
   { value: "jardin", label: "Jardin", icon: Home },
+  { value: "cave", label: "Cave", icon: Home },
+  // Locaux pro
+  { value: "emplacement", label: "Emplacement", icon: Home },
+  { value: "box", label: "Box", icon: Home },
+  { value: "stockage", label: "Stockage", icon: Home },
   { value: "autre", label: "Autre", icon: Home },
 ];
 

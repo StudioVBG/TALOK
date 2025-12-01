@@ -17,7 +17,7 @@ import {
   Menu,
   X,
   Search,
-  Network,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,6 @@ const adminNavItems: NavCategory[] = [
     category: "Vue d'ensemble",
     items: [
       { href: "/admin/dashboard", label: "Tableau de bord", icon: BarChart3 },
-      { href: "/admin/overview", label: "Vue d'ensemble", icon: Network },
       { href: "/admin/reports", label: "Rapports", icon: FileText },
     ],
   },
@@ -57,7 +56,9 @@ const adminNavItems: NavCategory[] = [
     category: "Gestion",
     items: [
       { href: "/admin/people", label: "Annuaire", icon: Users },
-      { href: "/admin/providers/pending", label: "Validation Prestataires", icon: Building2 },
+      { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
+      { href: "/admin/providers/pending", label: "Validation Prestataires", icon: ShieldCheck },
+      { href: "/admin/templates", label: "Templates Baux", icon: ScrollText },
       { href: "/admin/blog", label: "Blog", icon: BookOpen },
     ],
   },
@@ -65,15 +66,14 @@ const adminNavItems: NavCategory[] = [
     category: "Configuration",
     items: [
       { href: "/admin/integrations", label: "Intégrations", icon: Key },
-      { href: "/admin/moderation", label: "Modération", icon: ShieldCheck },
+      { href: "/admin/moderation", label: "Modération", icon: Shield },
       { href: "/admin/accounting", label: "Comptabilité", icon: Calculator },
     ],
   },
   {
-    category: "Sécurité",
+    category: "Confidentialité",
     items: [
-      { href: "/admin/privacy", label: "Confidentialité", icon: Lock },
-      { href: "/admin/tests", label: "Tests", icon: Shield },
+      { href: "/admin/privacy", label: "RGPD", icon: Lock },
     ],
   },
 ];

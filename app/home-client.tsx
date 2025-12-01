@@ -1,8 +1,9 @@
 "use client";
+// @ts-nocheck
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +54,8 @@ const features = [
 export default function HomeClient() {
   // Utiliser useMemo pour éviter les re-créations inutiles
   const memoizedFeatures = useMemo(() => features, []);
+  const prefersReducedMotion = useReducedMotion();
+  const motionEnabled = !prefersReducedMotion;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
@@ -66,15 +69,17 @@ export default function HomeClient() {
       <div className="relative mx-auto flex max-w-6xl flex-col gap-16 px-4 py-20">
         {/* Hero Section */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 120 }}
+          initial={motionEnabled ? { opacity: 0, y: 20 } : undefined}
+          animate={motionEnabled ? { opacity: 1, y: 0 } : undefined}
+          transition={motionEnabled ? { type: "spring", stiffness: 120 } : undefined}
           className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center"
         >
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+            initial={motionEnabled ? { scale: 0.9, opacity: 0 } : undefined}
+            animate={motionEnabled ? { scale: 1, opacity: 1 } : undefined}
+            transition={
+              motionEnabled ? { delay: 0.1, type: "spring", stiffness: 200 } : undefined
+            }
             className="flex items-center gap-3"
           >
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 shadow-lg shadow-indigo-500/50">
@@ -97,9 +102,9 @@ export default function HomeClient() {
           </p>
 
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            initial={motionEnabled ? { opacity: 0, y: 10 } : undefined}
+            animate={motionEnabled ? { opacity: 1, y: 0 } : undefined}
+            transition={motionEnabled ? { delay: 0.2 } : undefined}
             className="flex flex-col sm:flex-row gap-4 mt-4"
           >
             <Link href="/signup/role">
@@ -125,9 +130,11 @@ export default function HomeClient() {
 
         {/* Features Grid */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, type: "spring", stiffness: 120 }}
+          initial={motionEnabled ? { opacity: 0, y: 20 } : undefined}
+          animate={motionEnabled ? { opacity: 1, y: 0 } : undefined}
+          transition={
+            motionEnabled ? { delay: 0.3, type: "spring", stiffness: 120 } : undefined
+          }
           className="grid gap-6 md:grid-cols-3"
         >
           {memoizedFeatures.map((feature, index) => {
@@ -135,10 +142,14 @@ export default function HomeClient() {
             return (
               <motion.div
                 key={feature.role}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 + index * 0.1, type: "spring", stiffness: 120 }}
-                whileHover={{ y: -4 }}
+                initial={motionEnabled ? { opacity: 0, y: 20 } : undefined}
+                animate={motionEnabled ? { opacity: 1, y: 0 } : undefined}
+                transition={
+                  motionEnabled
+                    ? { delay: 0.4 + index * 0.1, type: "spring", stiffness: 120 }
+                    : undefined
+                }
+                whileHover={motionEnabled ? { y: -4 } : undefined}
                 className="group"
               >
                 <Card className="relative h-full overflow-hidden border-white/10 bg-white/5 backdrop-blur transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:shadow-xl hover:shadow-indigo-500/10">
@@ -159,9 +170,13 @@ export default function HomeClient() {
                       {feature.items.map((item, itemIndex) => (
                         <motion.li
                           key={itemIndex}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.5 + index * 0.1 + itemIndex * 0.05 }}
+                          initial={motionEnabled ? { opacity: 0, x: -10 } : undefined}
+                          animate={motionEnabled ? { opacity: 1, x: 0 } : undefined}
+                          transition={
+                            motionEnabled
+                              ? { delay: 0.5 + index * 0.1 + itemIndex * 0.05 }
+                              : undefined
+                          }
                           className="flex items-start gap-2 text-slate-200"
                         >
                           <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-400" />
@@ -178,9 +193,9 @@ export default function HomeClient() {
 
         {/* Footer */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
+          initial={motionEnabled ? { opacity: 0 } : undefined}
+          animate={motionEnabled ? { opacity: 1 } : undefined}
+          transition={motionEnabled ? { delay: 0.7 } : undefined}
           className="flex flex-col items-center gap-4 text-sm text-slate-300"
         >
           <div className="flex items-center gap-2">

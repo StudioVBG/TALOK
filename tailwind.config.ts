@@ -95,6 +95,11 @@ const config: Config = {
           "50%": { backgroundColor: "hsl(var(--primary) / 0.2)" },
           "100%": { backgroundColor: "transparent" },
         },
+        gradient: {
+          "0%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+          "100%": { backgroundPosition: "0% 50%" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -103,6 +108,7 @@ const config: Config = {
         "bounce-in": "bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)",
         shake: "shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97)",
         highlight: "highlight 1.5s ease-in-out",
+        gradient: "gradient 8s ease infinite",
       },
       backgroundImage: {
         shimmer: "linear-gradient(to right, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)",

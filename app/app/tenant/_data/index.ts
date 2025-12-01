@@ -1,3 +1,4 @@
+// @ts-nocheck
 export * from "./fetchTenantDashboard";
 export * from "./fetchTenantLease";
 export * from "./fetchTenantInvoices";

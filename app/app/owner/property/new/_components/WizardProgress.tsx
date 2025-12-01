@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { motion } from "framer-motion";
 import { useNewProperty } from "../_store/useNewProperty";

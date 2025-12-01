@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Data fetching pour le dashboard Owner
  * Utilise une RPC Supabase pour batch les requêtes

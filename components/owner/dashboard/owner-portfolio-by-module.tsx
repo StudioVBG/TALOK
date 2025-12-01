@@ -58,7 +58,13 @@ const moduleVariants = {
 };
 
 export function OwnerPortfolioByModule({ modules }: OwnerPortfolioByModuleProps) {
-  if (modules.length === 0) {
+  // Sécuriser les modules avec des valeurs par défaut
+  const safeModules = (modules || []).filter(m => m && m.module).map(m => ({
+    ...m,
+    stats: m.stats || {},
+  }));
+
+  if (safeModules.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -96,8 +102,8 @@ export function OwnerPortfolioByModule({ modules }: OwnerPortfolioByModuleProps)
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {modules.map((module, index) => {
-              const Icon = moduleIcons[module.module];
+            {safeModules.map((module, index) => {
+              const Icon = moduleIcons[module.module] || Building2; // Icône par défaut
               const colorClass = moduleColors[module.module] || "bg-slate-50 text-slate-700 border-slate-200";
               
               return (

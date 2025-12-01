@@ -4,6 +4,12 @@ import type { Database } from "@/lib/supabase/database.types";
 import { NextRequest } from "next/server";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 
+// Re-export du service client pour compatibilité
+export { getServiceClient as createServiceRoleClient } from "./service-client";
+
+// Alias pour compatibilité avec les anciens imports
+export { createClient as createServerClient };
+
 /**
  * Crée un client Supabase pour les Server Components
  */

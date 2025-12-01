@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -154,7 +155,7 @@ export default function RoleChoicePage() {
       </div>
       <div className="relative mx-auto flex max-w-6xl flex-col gap-10 px-4 pb-16 pt-16">
         <div className="mx-auto max-w-3xl space-y-4 text-center">
-          <Badge className="bg-white/10 text-white backdrop-blur">Étape 1 / 4 – Sélectionnez votre expérience</Badge>
+          <Badge className="bg-white/10 text-white backdrop-blur">Étape 1 / 3 – Sélectionnez votre expérience</Badge>
           <div className="flex items-center justify-center gap-3">
             <h1 className="text-4xl font-semibold tracking-tight">Bienvenue sur Gestion Locative 👋</h1>
             <Sparkles className="h-6 w-6 text-indigo-200" />

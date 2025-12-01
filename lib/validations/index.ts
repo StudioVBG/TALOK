@@ -1,6 +1,10 @@
 // Schémas Zod pour la validation
 import { z } from "zod";
 
+const isoDateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide (YYYY-MM-DD)");
+
 // Validation des rôles
 export const userRoleSchema = z.enum(["admin", "owner", "tenant", "provider", "guarantor"]);
 
@@ -9,7 +13,7 @@ export const profileSchema = z.object({
   prenom: z.string().min(1, "Le prénom est requis"),
   nom: z.string().min(1, "Le nom est requis"),
   telephone: z.string().regex(/^[0-9]{10}$/, "Le téléphone doit contenir 10 chiffres").optional().nullable(),
-  date_naissance: z.string().date().optional().nullable(),
+  date_naissance: isoDateString.optional().nullable(),
 });
 
 export const profileUpdateSchema = z
@@ -48,16 +52,30 @@ export const profileUpdateSchema = z
   );
 
 // Validation des propriétaires
+// Note: Utiliser uniquement les champs de base qui existent dans la table owner_profiles
 export const ownerProfileSchema = z.object({
-  type: z.enum(["particulier", "societe"]),
+  type: z.enum(["particulier", "societe"]).optional(),
   siret: z.string().regex(/^[0-9]{14}$/, "Le SIRET doit contenir 14 chiffres").optional().nullable(),
   tva: z.string().optional().nullable(),
   iban: z
     .string()
-    .regex(/^[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}([A-Z0-9]?){0,16}$/, "Format IBAN invalide")
+    .regex(/^[A-Z]{2}[0-9]{2}[A-Z0-9]{4,}$/, "Format IBAN invalide")
     .optional()
-    .nullable(),
+    .nullable()
+    .or(z.literal("")),
+  bic: z
+    .string()
+    .regex(/^[A-Z]{6}[A-Z0-9]{2,5}$/, "Format BIC invalide")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  titulaire_compte: z.string().max(255).optional().nullable(),
+  nom_banque: z.string().max(255).optional().nullable(),
   adresse_facturation: z.string().optional().nullable(),
+});
+
+// Schéma étendu pour les fonctionnalités avancées (nécessite migration pour ajouter les colonnes)
+export const ownerProfileExtendedSchema = ownerProfileSchema.extend({
   usage_strategie: z
     .enum(["habitation_only", "mixte_B2C_B2B", "B2B_only"])
     .default("habitation_only"),
@@ -370,6 +388,8 @@ export const propertyGeneralUpdateSchema = z
     departement: z.string().length(2).optional().nullable(),
     latitude: z.number().min(-90).max(90).optional().nullable(),
     longitude: z.number().min(-180).max(180).optional().nullable(),
+    // Surface : accepter les deux noms de champs pour compatibilité
+    surface: z.number().min(0).optional().nullable(),
     surface_habitable_m2: z.number().min(0).optional().nullable(),
     nb_pieces: z.number().int().min(0).optional().nullable(),
     nb_chambres: z.number().int().min(0).optional().nullable(),
@@ -555,8 +575,8 @@ export const leaseSchema = z.object({
   loyer: z.number().positive("Le loyer doit être positif"),
   charges_forfaitaires: z.number().min(0, "Les charges ne peuvent pas être négatives"),
   depot_de_garantie: z.number().min(0, "Le dépôt de garantie ne peut pas être négatif"),
-  date_debut: z.string().date(),
-  date_fin: z.string().date().optional().nullable(),
+  date_debut: isoDateString,
+  date_fin: isoDateString.optional().nullable(),
   indice_reference: z.enum(["IRL", "ILC", "ILAT"]).optional().nullable(),
   indice_base: z.number().min(0).optional().nullable(),
   indice_courant: z.number().min(0).optional().nullable(),
@@ -640,7 +660,7 @@ export const ticketSchema = z.object({
 export const workOrderSchema = z.object({
   ticket_id: z.string().uuid(),
   provider_id: z.string().uuid(),
-  date_intervention_prevue: z.string().date().optional().nullable(),
+  date_intervention_prevue: isoDateString.optional().nullable(),
   cout_estime: z.number().positive().optional().nullable(),
 });
 

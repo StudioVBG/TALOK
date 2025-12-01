@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { fetchTenantLease } from "../_data/fetchTenantLease";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

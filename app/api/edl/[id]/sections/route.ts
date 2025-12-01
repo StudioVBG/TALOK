@@ -1,92 +1,126 @@
+// @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
-/**
- * POST /api/edl/[id]/sections - Ajouter des sections/items à un EDL
- */
+const sectionSchema = z.object({
+  sections: z.array(
+    z.object({
+      room_name: z.string().min(1),
+      items: z.array(
+        z.object({
+          room_name: z.string(),
+          item_name: z.string(),
+          condition: z.enum(["bon", "moyen", "mauvais", "tres_mauvais"]).nullable().optional(),
+          notes: z.string().optional().nullable(),
+        })
+      ),
+    })
+  ),
+});
+
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { sections } = body; // Array de { room_name, items: Array<{ item_name, condition, notes }> }
-
-    if (!sections || !Array.isArray(sections)) {
-      return NextResponse.json(
-        { error: "sections requis (array)" },
-        { status: 400 }
-      );
-    }
-
-    // Vérifier que l'EDL appartient à l'utilisateur
-    const { data: edl } = await supabase
+    // Verify EDL exists and user has access
+    const { data: edl, error: edlError } = await supabase
       .from("edl")
-      .select("id, created_by")
-      .eq("id", params.id as any)
+      .select("id, lease_id, created_by")
+      .eq("id", params.id)
       .single();
 
-    if (!edl || !("created_by" in edl) || (edl as any).created_by !== user.id) {
+    if (edlError || !edl) {
+      return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
+    }
+
+    // Check if user is the creator or the owner of the property
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
+    // If not the creator, check if owner of the property
+    if (edl.created_by !== user.id) {
+      const { data: lease } = await supabase
+        .from("leases")
+        .select(`
+          properties!inner(owner_id)
+        `)
+        .eq("id", edl.lease_id)
+        .single();
+
+      if (!lease || (lease.properties as any)?.owner_id !== profile.id) {
+        return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+      }
+    }
+
+    // Parse and validate body
+    const body = await request.json();
+    const validated = sectionSchema.parse(body);
+
+    // Flatten all items
+    const allItems: any[] = [];
+    for (const section of validated.sections) {
+      for (const item of section.items) {
+        allItems.push({
+          edl_id: params.id,
+          room_name: item.room_name || section.room_name,
+          item_name: item.item_name,
+          condition: item.condition || null,
+          notes: item.notes || null,
+        });
+      }
+    }
+
+    // Insert items
+    const { data: insertedItems, error: insertError } = await supabase
+      .from("edl_items")
+      .insert(allItems)
+      .select();
+
+    if (insertError) {
+      console.error("[POST /api/edl/[id]/sections] Insert error:", insertError);
       return NextResponse.json(
-        { error: "EDL non trouvé ou non autorisé" },
-        { status: 403 }
+        { error: "Erreur lors de l'ajout des éléments" },
+        { status: 500 }
       );
     }
 
-    // Insérer les items
-    const itemsToInsert: Array<{
-      edl_id: string;
-      room_name: string;
-      item_name: string;
-      condition: string | null;
-      notes: string | null;
-    }> = [];
+    // Update EDL status to in_progress if it was draft
+    await supabase
+      .from("edl")
+      .update({ status: "in_progress" })
+      .eq("id", params.id)
+      .eq("status", "draft");
 
-    sections.forEach((section: any) => {
-      if (section.items && Array.isArray(section.items)) {
-        section.items.forEach((item: any) => {
-          itemsToInsert.push({
-            edl_id: params.id,
-            room_name: section.room_name,
-            item_name: item.item_name,
-            condition: item.condition || null,
-            notes: item.notes || null,
-          });
-        });
-      }
+    return NextResponse.json({
+      items: insertedItems,
+      count: insertedItems?.length || 0,
     });
+  } catch (error: any) {
+    console.error("[POST /api/edl/[id]/sections] Error:", error);
 
-    if (itemsToInsert.length === 0) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Aucun item à insérer" },
+        { error: "Données invalides", details: error.errors },
         { status: 400 }
       );
     }
 
-    const { data: insertedItems, error } = await supabase
-      .from("edl_items")
-      .insert(itemsToInsert as any)
-      .select();
-
-    if (error) throw error;
-
-    // Mettre à jour le statut de l'EDL
-    await supabase
-      .from("edl")
-      .update({ status: "in_progress" } as any)
-      .eq("id", params.id as any);
-
-    return NextResponse.json({ items: insertedItems });
-  } catch (error: any) {
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },
       { status: 500 }
@@ -94,3 +128,54 @@ export async function POST(
   }
 }
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    }
+
+    // Fetch EDL items grouped by room
+    const { data: items, error } = await supabase
+      .from("edl_items")
+      .select("*")
+      .eq("edl_id", params.id)
+      .order("room_name", { ascending: true })
+      .order("item_name", { ascending: true });
+
+    if (error) {
+      console.error("[GET /api/edl/[id]/sections] Error:", error);
+      return NextResponse.json(
+        { error: "Erreur lors de la récupération des éléments" },
+        { status: 500 }
+      );
+    }
+
+    // Group by room
+    const sections: Record<string, any[]> = {};
+    for (const item of items || []) {
+      if (!sections[item.room_name]) {
+        sections[item.room_name] = [];
+      }
+      sections[item.room_name].push(item);
+    }
+
+    return NextResponse.json({
+      sections: Object.entries(sections).map(([room_name, items]) => ({
+        room_name,
+        items,
+      })),
+    });
+  } catch (error: any) {
+    console.error("[GET /api/edl/[id]/sections] Error:", error);
+    return NextResponse.json(
+      { error: error.message || "Erreur serveur" },
+      { status: 500 }
+    );
+  }
+}

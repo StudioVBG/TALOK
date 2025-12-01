@@ -482,9 +482,6 @@ export interface Ticket {
   description: string;
   priorite: TicketPriority;
   statut: TicketStatus;
-  ai_summary?: string;
-  ai_suggested_action?: string;
-  ai_suggested_provider_type?: string[]; // e.g. ["plomberie", "chauffage"]
   created_at: string;
   updated_at: string;
 }
@@ -518,10 +515,6 @@ export interface Document {
   uploaded_by: string | null;
   storage_path: string;
   metadata: Record<string, unknown> | null;
-  verification_status?: "pending" | "verified" | "rejected" | "manual_review_required";
-  ai_analysis?: Record<string, unknown>;
-  rejection_reason?: string;
-  verified_at?: string;
   created_at: string;
   updated_at: string;
 }

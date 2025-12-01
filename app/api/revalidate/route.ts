@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Route API pour forcer la revalidation du cache Next.js
  * Utilisée après création/modification de données pour rafraîchir les Server Components

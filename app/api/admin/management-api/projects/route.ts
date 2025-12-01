@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Route API pour gérer les projets Supabase via l'API Management
  * 

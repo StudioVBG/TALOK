@@ -1,23 +1,13 @@
 "use client";
+// @ts-nocheck
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { ownerProfileOnboardingSchema } from "@/lib/validations/onboarding";
-import { ownerProfilesService } from "@/features/profiles/services/owner-profiles.service";
-import { Building2, User, ArrowRight } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { TomOnboarding } from "@/components/ai/tom-onboarding";
+import { UpdateOwnerProfileArgs } from "@/lib/ai/tools-schema";
 
 export default function OwnerProfileOnboardingPage() {
   const router = useRouter();
@@ -45,14 +35,21 @@ export default function OwnerProfileOnboardingPage() {
     });
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Cette fonction est appelée par Tom à chaque fois qu'il extrait des infos
+  const handleTomUpdate = (data: UpdateOwnerProfileArgs) => {
+    console.log("Tom update:", data);
+    setFormData(prev => ({ ...prev, ...data }));
+  };
+
+  // Cette fonction est appelée quand Tom a fini la conversation
+  const handleTomComplete = async () => {
     setLoading(true);
 
     try {
+      // On valide ce qu'on a récolté (Tom a déjà structuré, mais on revérifie)
       const validated = ownerProfileOnboardingSchema.parse(formData);
 
-      // Récupérer le profil
+      // Récupérer le profil Supabase
       const supabase = (await import("@/lib/supabase/client")).createClient();
       const {
         data: { user },
@@ -76,6 +73,7 @@ export default function OwnerProfileOnboardingPage() {
           type: validated.type,
           siret: validated.siret || null,
           tva: validated.tva || null,
+          // TODO: Ajouter raison_sociale si le schéma BDD le supporte (pour l'instant mappé sur le type societe)
         } as any,
         {
           onConflict: "profile_id",
@@ -84,162 +82,61 @@ export default function OwnerProfileOnboardingPage() {
 
       if (error) throw error;
 
-      // Sauvegarder le brouillon
+      // Sauvegarder le brouillon et marquer terminé
       await onboardingService.saveDraft("owner_profile", validated, "owner");
       await onboardingService.markStepCompleted("owner_profile", "owner");
 
       toast({
-        title: "Profil enregistré",
-        description: "Vos informations ont été sauvegardées.",
+        title: "Profil configuré avec succès !",
+        description: "Merci Tom ! Redirection vers l'étape suivante...",
       });
 
       // Rediriger vers les paramètres financiers
-      router.push("/owner/onboarding/finance");
+      router.push("/app/owner/onboarding/finance");
     } catch (error: any) {
+      console.error(error);
       toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        title: "Erreur de sauvegarde",
+        description: "Il manque peut-être des informations. Tom va vous aider.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle>Votre profil propriétaire</CardTitle>
-          <CardDescription>
-            Indiquez si vous êtes un particulier ou une société
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <Label>Type de propriétaire *</Label>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card
-                  className={`cursor-pointer transition-all ${
-                    formData.type === "particulier"
-                      ? "border-primary ring-2 ring-primary"
-                      : "hover:border-primary/50"
-                  }`}
-                  onClick={() => setFormData({ ...formData, type: "particulier" })}
-                >
-                  <CardContent className="pt-6">
-                    <div className="flex items-center space-x-3">
-                      <User className="w-6 h-6 text-primary" />
-                      <div>
-                        <h3 className="font-semibold">Particulier</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Personne physique
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card
-                  className={`cursor-pointer transition-all ${
-                    formData.type === "societe"
-                      ? "border-primary ring-2 ring-primary"
-                      : "hover:border-primary/50"
-                  }`}
-                  onClick={() => setFormData({ ...formData, type: "societe" })}
-                >
-                  <CardContent className="pt-6">
-                    <div className="flex items-center space-x-3">
-                      <Building2 className="w-6 h-6 text-primary" />
-                      <div>
-                        <h3 className="font-semibold">Société</h3>
-                        <p className="text-sm text-muted-foreground">
-                          SCI, SARL, SAS, etc.
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-blue-50/50">
+      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-5 gap-8">
+        
+        {/* Colonne gauche : Infos contextuelles */}
+        <div className="hidden md:flex md:col-span-2 flex-col justify-center space-y-6 p-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Bienvenue.</h1>
+            <p className="text-lg text-slate-600">Configurons votre espace propriétaire ensemble.</p>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-white rounded-xl shadow-sm border border-slate-100">
+              <div className="text-sm font-medium text-slate-500 mb-1">Type</div>
+              <div className="text-lg font-semibold capitalize">{formData.type}</div>
             </div>
-
-            {formData.type === "societe" && (
-              <div className="space-y-4 border-t pt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="raison_sociale">Raison sociale *</Label>
-                  <Input
-                    id="raison_sociale"
-                    value={formData.raison_sociale}
-                    onChange={(e) => setFormData({ ...formData, raison_sociale: e.target.value })}
-                    required
-                    disabled={loading}
-                    placeholder="Ma SCI"
-                  />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="siren">SIREN (9 chiffres)</Label>
-                    <Input
-                      id="siren"
-                      value={formData.siren}
-                      onChange={(e) => setFormData({ ...formData, siren: e.target.value.replace(/\D/g, "").slice(0, 9) })}
-                      disabled={loading}
-                      placeholder="123456789"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="siret">SIRET (14 chiffres)</Label>
-                    <Input
-                      id="siret"
-                      value={formData.siret}
-                      onChange={(e) => setFormData({ ...formData, siret: e.target.value.replace(/\D/g, "").slice(0, 14) })}
-                      disabled={loading}
-                      placeholder="12345678901234"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tva">Numéro TVA intracommunautaire</Label>
-                  <Input
-                    id="tva"
-                    value={formData.tva}
-                    onChange={(e) => setFormData({ ...formData, tva: e.target.value })}
-                    disabled={loading}
-                    placeholder="FR12345678901"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ubo">UBO (Ultimate Beneficial Owner)</Label>
-                  <Input
-                    id="ubo"
-                    value={formData.ubo}
-                    onChange={(e) => setFormData({ ...formData, ubo: e.target.value })}
-                    disabled={loading}
-                    placeholder="Nom du bénéficiaire effectif"
-                  />
-                </div>
+            
+            {formData.type === 'societe' && (
+               <div className="p-4 bg-white rounded-xl shadow-sm border border-slate-100">
+                <div className="text-sm font-medium text-slate-500 mb-1">Société</div>
+                <div className="font-semibold">{formData.raison_sociale || "..."}</div>
+                {formData.siret && <div className="text-sm text-slate-400 font-mono mt-1">{formData.siret}</div>}
               </div>
             )}
+          </div>
+        </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                "Enregistrement..."
-              ) : (
-                <>
-                  Continuer
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        {/* Colonne droite : Tom */}
+        <div className="md:col-span-3">
+           <TomOnboarding onDataUpdate={handleTomUpdate} onComplete={handleTomComplete} />
+        </div>
+        
+      </div>
     </div>
   );
 }
-

@@ -45,7 +45,12 @@ export async function GET(request: Request) {
 
       // Pour les locataires, rediriger vers le dashboard locataire
       if (profileData?.role === "tenant") {
-        return NextResponse.redirect(new URL("/app/tenant", origin));
+        return NextResponse.redirect(new URL("/app/tenant/dashboard", origin));
+      }
+
+      // Pour les prestataires, rediriger vers le dashboard prestataire
+      if (profileData?.role === "provider") {
+        return NextResponse.redirect(new URL("/app/provider/dashboard", origin));
       }
 
       // Pour les autres, rediriger vers le dashboard qui gérera la checklist

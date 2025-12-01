@@ -99,6 +99,11 @@ export const rateLimitPresets = {
     windowMs: 15 * 60 * 1000, // 15 minutes
     maxRequests: 5,
   },
+  // Limite pour les inscriptions
+  signup: {
+    windowMs: 60 * 60 * 1000, // 1 heure
+    maxRequests: 3,
+  },
   // Limite générale pour les API
   api: {
     windowMs: 60 * 1000, // 1 minute
@@ -109,5 +114,83 @@ export const rateLimitPresets = {
     windowMs: 60 * 1000, // 1 minute
     maxRequests: 10,
   },
+  // Limite pour les invitations de bail
+  leaseInvite: {
+    windowMs: 60 * 60 * 1000, // 1 heure
+    maxRequests: 10,
+  },
+  // Limite pour les signatures
+  signature: {
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 10,
+  },
+  // Limite pour l'envoi d'emails
+  email: {
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 5,
+  },
+  // Limite pour les SMS (OTP)
+  sms: {
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 3,
+  },
+  // Limite pour la recherche
+  search: {
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 30,
+  },
+  // Limite pour les exports
+  export: {
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    maxRequests: 5,
+  },
+  // Limite pour la génération de PDF
+  pdf: {
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 10,
+  },
 };
+
+/**
+ * Helper pour appliquer le rate limiting dans une route API
+ * @returns null si OK, Response si limite atteinte
+ */
+export function applyRateLimit(
+  request: Request,
+  preset: keyof typeof rateLimitPresets,
+  identifier?: string
+): Response | null {
+  const options = rateLimitPresets[preset];
+  const limiter = rateLimit(options);
+  
+  // Utiliser l'identifiant fourni ou l'IP
+  const key = identifier || 
+    request.headers.get("x-forwarded-for") || 
+    request.headers.get("x-real-ip") || 
+    "unknown";
+  
+  const result = limiter(key);
+  
+  if (!result.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: "Trop de requêtes. Veuillez réessayer plus tard.",
+        resetAt: result.resetAt,
+        retryAfter: Math.ceil((result.resetAt - Date.now()) / 1000),
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "X-RateLimit-Limit": options.maxRequests.toString(),
+          "X-RateLimit-Remaining": result.remaining.toString(),
+          "X-RateLimit-Reset": result.resetAt.toString(),
+          "Retry-After": Math.ceil((result.resetAt - Date.now()) / 1000).toString(),
+        },
+      }
+    );
+  }
+  
+  return null;
+}
 

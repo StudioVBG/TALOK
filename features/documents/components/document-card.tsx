@@ -79,7 +79,7 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
   };
 
   const getVerificationBadge = () => {
-    const status = document.verification_status;
+    const status = (document as any).verification_status;
     if (!status) return null;
 
     switch (status) {
@@ -99,7 +99,7 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{document.rejection_reason || "Document non conforme"}</p>
+                <p>{(document as any).rejection_reason || "Document non conforme"}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -114,7 +114,7 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{document.rejection_reason || "Vérification manuelle requise"}</p>
+                <p>{(document as any).rejection_reason || "Vérification manuelle requise"}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

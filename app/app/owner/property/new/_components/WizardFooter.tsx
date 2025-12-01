@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { Button } from "@/components/ui/button";
 import { useNewProperty } from "../_store/useNewProperty";

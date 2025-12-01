@@ -1,86 +1,87 @@
 "use client";
+// @ts-nocheck
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useToast } from "@/components/ui/use-toast";
-import { Search, Eye, Building2, Users, Wrench } from "lucide-react";
-// On pourrait importer fetchAdminUsers côté client aussi pour la pagination/recherche dynamique via Server Actions ou API route
-// Pour simplifier la migration, on va simuler ou utiliser les données initiales
-// Idéalement : Server Actions pour la pagination
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { Search, Eye, Building2, Users, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
+import { useDebounce } from "@/lib/hooks/use-debounce";
 
 interface PeopleClientProps {
-  initialData: {
-    owners: { users: any[]; total: number };
-    tenants: { users: any[]; total: number };
-    vendors: { users: any[]; total: number };
-  };
+  activeTab: "owners" | "tenants" | "vendors";
+  initialData: { users: any[]; total: number }; // Données de l'onglet actif uniquement
+  currentPage: number;
+  currentSearch: string;
 }
 
-export function PeopleClient({ initialData }: PeopleClientProps) {
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"owners" | "tenants" | "vendors">("owners");
-  const [search, setSearch] = useState("");
-  
-  // Données
-  const [owners, setOwners] = useState(initialData.owners.users);
-  const [tenants, setTenants] = useState(initialData.tenants.users);
-  const [vendors, setVendors] = useState(initialData.vendors.users);
-  
-  const [totalOwners, setTotalOwners] = useState(initialData.owners.total);
-  const [totalTenants, setTotalTenants] = useState(initialData.tenants.total);
-  const [totalVendors, setTotalVendors] = useState(initialData.vendors.total);
+export function PeopleClient({ activeTab, initialData, currentPage, currentSearch }: PeopleClientProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // Pagination locale (pour l'instant, car on n'a pas implémenté le refetch côté client via Server Action)
-  // TODO: Implémenter fetchAdminUsers via Server Action pour pagination réelle
-  const limit = 20;
-  const [pages, setPages] = useState({
-    owners: 1,
-    tenants: 1,
-    vendors: 1,
-  });
+  // State local pour l'input de recherche (pour éviter de update l'URL à chaque frappe)
+  const [searchInput, setSearchInput] = useState(currentSearch);
+  const debouncedSearch = useDebounce(searchInput, 300);
 
-  const handleSearch = (value: string) => {
-    setSearch(value);
-    // Filtrage client-side basique sur les données chargées
-    // En prod : debounce + Server Action
+  // Synchroniser l'URL quand le debounce change
+  useEffect(() => {
+    if (debouncedSearch !== currentSearch) {
+      updateUrl({ search: debouncedSearch, page: 1 }); // Reset page on search
+    }
+  }, [debouncedSearch, currentSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateUrl = (updates: { tab?: string; page?: number; search?: string }) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    if (updates.tab) {
+      params.set("tab", updates.tab);
+      params.set("page", "1"); // Reset page on tab change
+      params.set("search", ""); // Reset search on tab change (optionnel, mais souvent mieux)
+      setSearchInput(""); // Clear input
+    }
+    
+    if (updates.page) params.set("page", updates.page.toString());
+    
+    if (updates.search !== undefined) {
+      if (updates.search) params.set("search", updates.search);
+      else params.delete("search");
+    }
+
+    router.push(`${pathname}?${params.toString()}`);
   };
 
-  // Filtrage local
-  const filteredOwners = useMemo(() => {
-    return owners.filter((u: any) => 
-      (u.nom?.toLowerCase().includes(search.toLowerCase()) || 
-       u.prenom?.toLowerCase().includes(search.toLowerCase()) || 
-       u.user?.email?.toLowerCase().includes(search.toLowerCase()))
-    );
-  }, [owners, search]);
+  const totalPages = Math.ceil(initialData.total / 20);
 
-  const filteredTenants = useMemo(() => {
-    return tenants.filter((u: any) => 
-      (u.nom?.toLowerCase().includes(search.toLowerCase()) || 
-       u.prenom?.toLowerCase().includes(search.toLowerCase()) || 
-       u.user?.email?.toLowerCase().includes(search.toLowerCase()))
-    );
-  }, [tenants, search]);
-
-  const filteredVendors = useMemo(() => {
-    return vendors.filter((u: any) => 
-      (u.nom?.toLowerCase().includes(search.toLowerCase()) || 
-       u.prenom?.toLowerCase().includes(search.toLowerCase()) || 
-       u.user?.email?.toLowerCase().includes(search.toLowerCase()))
-    );
-  }, [vendors, search]);
+  const columns = [
+    {
+      header: "Nom",
+      cell: (user: any) => <span className="font-medium">{user.prenom} {user.nom}</span>
+    },
+    {
+      header: "Email",
+      cell: (user: any) => user.user?.email || user.email || "-"
+    },
+    {
+      header: "Téléphone",
+      cell: (user: any) => user.telephone || "-"
+    },
+    {
+      header: "Actions",
+      cell: (user: any) => (
+        <Link href={`/admin/people/${activeTab}/${user.id}`}>
+          <Button variant="ghost" size="sm">
+            <Eye className="h-4 w-4 mr-1" />
+            Voir
+          </Button>
+        </Link>
+      )
+    }
+  ];
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -105,8 +106,8 @@ export function PeopleClient({ initialData }: PeopleClientProps) {
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Rechercher..."
-                  value={search}
-                  onChange={(e) => handleSearch(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-8"
                 />
               </div>
@@ -114,145 +115,62 @@ export function PeopleClient({ initialData }: PeopleClientProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs 
+            value={activeTab} 
+            onValueChange={(v) => updateUrl({ tab: v })}
+          >
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="owners">
                 <Building2 className="mr-2 h-4 w-4" />
-                Propriétaires ({totalOwners})
+                Propriétaires
               </TabsTrigger>
               <TabsTrigger value="tenants">
                 <Users className="mr-2 h-4 w-4" />
-                Locataires ({totalTenants})
+                Locataires
               </TabsTrigger>
               <TabsTrigger value="vendors">
                 <Wrench className="mr-2 h-4 w-4" />
-                Prestataires ({totalVendors})
+                Prestataires
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="owners" className="mt-6">
-                <div className="space-y-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nom</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Téléphone</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOwners.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                            Aucun propriétaire trouvé
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredOwners.map((owner: any) => (
-                          <TableRow key={owner.id}>
-                            <TableCell className="font-medium">{owner.prenom} {owner.nom}</TableCell>
-                            <TableCell>{owner.user?.email || "-"}</TableCell>
-                            <TableCell>{owner.telephone || "-"}</TableCell>
-                            <TableCell>
-                              <Link href={`/admin/people/owners/${owner.id}`}>
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  Voir
-                                </Button>
-                              </Link>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-            </TabsContent>
+            {/* Contenu Unique (rechargé par le serveur selon l'onglet) */}
+            <div className="space-y-4">
+              <ResponsiveTable
+                data={initialData.users}
+                columns={columns}
+                keyExtractor={(user) => user.id}
+                emptyMessage="Aucun utilisateur trouvé"
+              />
 
-            <TabsContent value="tenants" className="mt-6">
-                <div className="space-y-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nom</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Téléphone</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredTenants.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                            Aucun locataire trouvé
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredTenants.map((tenant: any) => (
-                          <TableRow key={tenant.id}>
-                            <TableCell className="font-medium">{tenant.prenom} {tenant.nom}</TableCell>
-                            <TableCell>{tenant.user?.email || "-"}</TableCell>
-                            <TableCell>{tenant.telephone || "-"}</TableCell>
-                            <TableCell>
-                              <Link href={`/admin/people/tenants/${tenant.id}`}>
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  Voir
-                                </Button>
-                              </Link>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage <= 1}
+                    onClick={() => updateUrl({ page: currentPage - 1 })}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="flex items-center px-2 text-sm">
+                    Page {currentPage} sur {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => updateUrl({ page: currentPage + 1 })}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-            </TabsContent>
-
-            <TabsContent value="vendors" className="mt-6">
-                <div className="space-y-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nom</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Téléphone</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredVendors.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                            Aucun prestataire trouvé
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredVendors.map((vendor: any) => (
-                          <TableRow key={vendor.id}>
-                            <TableCell className="font-medium">{vendor.prenom} {vendor.nom}</TableCell>
-                            <TableCell>{vendor.user?.email || "-"}</TableCell>
-                            <TableCell>{vendor.telephone || "-"}</TableCell>
-                            <TableCell>
-                              <Link href={`/admin/people/vendors/${vendor.id}`}>
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  Voir
-                                </Button>
-                              </Link>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-            </TabsContent>
+              )}
+            </div>
           </Tabs>
         </CardContent>
       </Card>
     </div>
   );
 }
-

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import type { Profile } from "@/lib/types";
 const MAX_AVATAR_SIZE_MB = 2;
 
 export function ProfileGeneralForm() {
+  const router = useRouter();
   const { profile, user, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -82,6 +84,8 @@ export function ProfileGeneralForm() {
         description: "Vos informations ont été enregistrées.",
       });
       await refreshProfile();
+      // Forcer le rechargement des données serveur (ex: complétion du profil sur le dashboard)
+      router.refresh();
       setFormData({
         prenom: updatedProfile.prenom ?? "",
         nom: updatedProfile.nom ?? "",
@@ -141,6 +145,8 @@ export function ProfileGeneralForm() {
         description: "Votre photo de profil a été mise à jour.",
       });
       await refreshProfile();
+      // Forcer le rechargement des données serveur
+      router.refresh();
     } catch (error: any) {
       toast({
         title: "Erreur",

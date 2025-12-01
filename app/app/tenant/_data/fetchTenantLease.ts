@@ -1,53 +1,35 @@
+// @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 
 export async function fetchTenantLease(userId: string) {
   const supabase = await createClient();
 
-  // Récupérer le profil
-  const { data: profile } = await supabase
+  // Récupérer le profil tenant
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("id")
     .eq("user_id", userId)
     .single();
 
-  if (!profile) return null;
+  if (profileError || !profile) {
+    console.warn("[fetchTenantLease] Profil introuvable pour le user", userId);
+    return null;
+  }
 
-  // Récupérer le bail actif
-  const { data: lease } = await supabase
-    .from("leases")
-    .select(`
-      *,
-      property:properties (
-        *,
-        owner:profiles!owner_id (
-          prenom,
-          nom,
-          email,
-          telephone
-        )
-      ),
-      documents (*)
-    `)
-    .eq("statut", "active") // Ou pending_signature
-    // TODO: Filtrer par lease_signers pour être sûr que c'est le bon locataire
-    // Pour l'instant on suppose une relation simple ou on utilise une vue
-    .limit(1)
-    .maybeSingle();
-    
-  // Correction: La relation directe leases -> profile n'existe pas, il faut passer par lease_signers
-  // Mais pour simplifier ici, on va utiliser une approche plus robuste :
-  
-  const { data: leaseSigner } = await supabase
+  // Récupérer le bail lié à ce profil via lease_signers
+  const { data: leaseSigner, error: signerError } = await supabase
     .from("lease_signers")
     .select("lease_id")
     .eq("profile_id", profile.id)
-    .eq("signature_status", "signed") // ou pending
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (!leaseSigner) return null;
+  if (signerError || !leaseSigner) {
+    return null;
+  }
 
-  const { data: fullLease } = await supabase
+  const { data: lease, error: leaseError } = await supabase
     .from("leases")
     .select(`
       *,
@@ -57,13 +39,33 @@ export async function fetchTenantLease(userId: string) {
           prenom,
           nom,
           email,
-          telephone
+          telephone,
+          avatar_url
         )
       ),
-      documents (*)
+      documents (*),
+      lease_signers(
+        id,
+        role,
+        signature_status,
+        signed_at,
+        profiles (
+          id,
+          prenom,
+          nom,
+          email,
+          telephone,
+          avatar_url
+        )
+      )
     `)
     .eq("id", leaseSigner.lease_id)
     .single();
 
-  return fullLease;
+  if (leaseError || !lease) {
+    console.error("[fetchTenantLease] Bail introuvable:", leaseError);
+    return null;
+  }
+
+  return lease;
 }

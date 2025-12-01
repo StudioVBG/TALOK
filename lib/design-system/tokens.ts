@@ -1,108 +1,265 @@
 /**
  * Design System Tokens - SOTA 2025
- * 
- * Système de design harmonisé pour une UX/UI moderne et cohérente
+ * Système de design unifié pour Lokatif
  */
 
-export const designTokens = {
-  colors: {
-    primary: {
-      50: '#eff6ff',
-      100: '#dbeafe',
-      200: '#bfdbfe',
-      300: '#93c5fd',
-      400: '#60a5fa',
-      500: '#3b82f6',
-      600: '#2563eb',
-      700: '#1d4ed8',
-      800: '#1e40af',
-      900: '#1e3a8a',
-      950: '#172554',
-    },
-    semantic: {
-      success: {
-        DEFAULT: 'hsl(142 71% 45%)',
-        foreground: 'hsl(0 0% 100%)',
-        light: 'hsl(142 71% 55%)',
-        dark: 'hsl(142 71% 35%)',
-      },
-      warning: {
-        DEFAULT: 'hsl(38 92% 50%)',
-        foreground: 'hsl(0 0% 100%)',
-        light: 'hsl(38 92% 60%)',
-        dark: 'hsl(38 92% 40%)',
-      },
-      error: {
-        DEFAULT: 'hsl(0 84% 60%)',
-        foreground: 'hsl(0 0% 100%)',
-        light: 'hsl(0 84% 70%)',
-        dark: 'hsl(0 84% 50%)',
-      },
-      info: {
-        DEFAULT: 'hsl(199 89% 48%)',
-        foreground: 'hsl(0 0% 100%)',
-        light: 'hsl(199 89% 58%)',
-        dark: 'hsl(199 89% 38%)',
-      },
-    },
+// ============================================================================
+// STATUS COLORS
+// ============================================================================
+
+export const statusStyles = {
+  success: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-950/50 dark:border-emerald-900',
+  warning: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950/50 dark:border-amber-900',
+  error: 'text-rose-700 bg-rose-50 border-rose-200 dark:text-rose-400 dark:bg-rose-950/50 dark:border-rose-900',
+  info: 'text-sky-700 bg-sky-50 border-sky-200 dark:text-sky-400 dark:bg-sky-950/50 dark:border-sky-900',
+  neutral: 'text-slate-700 bg-slate-50 border-slate-200 dark:text-slate-300 dark:bg-slate-900 dark:border-slate-800',
+} as const;
+
+export type StatusVariant = keyof typeof statusStyles;
+
+// ============================================================================
+// KPI CARD STYLES
+// ============================================================================
+
+export const kpiStyles = {
+  blue: {
+    icon: 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400',
+    trend: 'text-blue-600 dark:text-blue-400',
   },
-  spacing: {
-    xs: '0.5rem',   // 8px
-    sm: '0.75rem',  // 12px
-    md: '1rem',     // 16px
-    lg: '1.5rem',   // 24px
-    xl: '2rem',     // 32px
-    '2xl': '3rem',  // 48px
-    '3xl': '4rem',  // 64px
+  emerald: {
+    icon: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400',
+    trend: 'text-emerald-600 dark:text-emerald-400',
   },
-  shadows: {
-    sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-    md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-    lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
-    xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
-    '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
-    inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
+  amber: {
+    icon: 'bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400',
+    trend: 'text-amber-600 dark:text-amber-400',
   },
-  borderRadius: {
-    sm: '0.375rem',   // 6px
-    md: '0.5rem',     // 8px
-    lg: '0.75rem',    // 12px
-    xl: '1rem',       // 16px
-    '2xl': '1.5rem',  // 24px
-    full: '9999px',
+  rose: {
+    icon: 'bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400',
+    trend: 'text-rose-600 dark:text-rose-400',
   },
-  transitions: {
-    fast: '150ms cubic-bezier(0.4, 0, 0.2, 1)',
-    base: '200ms cubic-bezier(0.4, 0, 0.2, 1)',
-    slow: '300ms cubic-bezier(0.4, 0, 0.2, 1)',
-    bounce: '300ms cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+  violet: {
+    icon: 'bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-400',
+    trend: 'text-violet-600 dark:text-violet-400',
   },
-  typography: {
-    fontFamily: {
-      sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
-      mono: ['var(--font-mono)', 'monospace'],
-    },
-    fontSize: {
-      xs: ['0.75rem', { lineHeight: '1rem', letterSpacing: '0.025em' }],
-      sm: ['0.875rem', { lineHeight: '1.25rem', letterSpacing: '0.01em' }],
-      base: ['1rem', { lineHeight: '1.5rem', letterSpacing: '0' }],
-      lg: ['1.125rem', { lineHeight: '1.75rem', letterSpacing: '-0.01em' }],
-      xl: ['1.25rem', { lineHeight: '1.75rem', letterSpacing: '-0.02em' }],
-      '2xl': ['1.5rem', { lineHeight: '2rem', letterSpacing: '-0.025em' }],
-      '3xl': ['1.875rem', { lineHeight: '2.25rem', letterSpacing: '-0.03em' }],
-      '4xl': ['2.25rem', { lineHeight: '2.5rem', letterSpacing: '-0.035em' }],
-    },
-  },
-  zIndex: {
-    dropdown: 1000,
-    sticky: 1020,
-    fixed: 1030,
-    modalBackdrop: 1040,
-    modal: 1050,
-    popover: 1060,
-    tooltip: 1070,
+  cyan: {
+    icon: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-950 dark:text-cyan-400',
+    trend: 'text-cyan-600 dark:text-cyan-400',
   },
 } as const;
 
-export type DesignTokens = typeof designTokens;
+export type KpiVariant = keyof typeof kpiStyles;
 
+// ============================================================================
+// BADGE STYLES
+// ============================================================================
+
+export const badgeStyles = {
+  default: 'bg-primary/10 text-primary border-primary/20',
+  success: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-900',
+  warning: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-900',
+  error: 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-400 dark:border-rose-900',
+  info: 'bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950 dark:text-sky-400 dark:border-sky-900',
+  outline: 'bg-transparent border-border text-foreground',
+} as const;
+
+export type BadgeVariant = keyof typeof badgeStyles;
+
+// ============================================================================
+// PRIORITY STYLES
+// ============================================================================
+
+export const priorityStyles = {
+  low: 'text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-800',
+  medium: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/50',
+  high: 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/50',
+  urgent: 'text-rose-600 bg-rose-100 dark:text-rose-400 dark:bg-rose-900/50',
+} as const;
+
+export type PriorityVariant = keyof typeof priorityStyles;
+
+// ============================================================================
+// INVOICE/PAYMENT STATUS
+// ============================================================================
+
+export const invoiceStatusStyles = {
+  draft: 'text-slate-600 bg-slate-100 border-slate-200 dark:text-slate-400 dark:bg-slate-800 dark:border-slate-700',
+  sent: 'text-sky-600 bg-sky-100 border-sky-200 dark:text-sky-400 dark:bg-sky-900/50 dark:border-sky-800',
+  paid: 'text-emerald-600 bg-emerald-100 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-900/50 dark:border-emerald-800',
+  late: 'text-rose-600 bg-rose-100 border-rose-200 dark:text-rose-400 dark:bg-rose-900/50 dark:border-rose-800',
+  cancelled: 'text-slate-500 bg-slate-50 border-slate-200 dark:text-slate-500 dark:bg-slate-900 dark:border-slate-800',
+} as const;
+
+export type InvoiceStatus = keyof typeof invoiceStatusStyles;
+
+// ============================================================================
+// LEASE STATUS
+// ============================================================================
+
+export const leaseStatusStyles = {
+  draft: 'text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-800',
+  pending_signature: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/50',
+  active: 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/50',
+  terminated: 'text-slate-500 bg-slate-100 dark:text-slate-500 dark:bg-slate-800',
+} as const;
+
+export type LeaseStatus = keyof typeof leaseStatusStyles;
+
+// ============================================================================
+// TICKET STATUS
+// ============================================================================
+
+export const ticketStatusStyles = {
+  open: 'text-sky-600 bg-sky-100 dark:text-sky-400 dark:bg-sky-900/50',
+  in_progress: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/50',
+  resolved: 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/50',
+  closed: 'text-slate-500 bg-slate-100 dark:text-slate-500 dark:bg-slate-800',
+} as const;
+
+export type TicketStatus = keyof typeof ticketStatusStyles;
+
+// ============================================================================
+// ANIMATIONS (CSS-only for performance)
+// ============================================================================
+
+export const animations = {
+  fadeIn: 'animate-in fade-in duration-300',
+  fadeOut: 'animate-out fade-out duration-200',
+  slideInFromRight: 'animate-in slide-in-from-right duration-300',
+  slideInFromLeft: 'animate-in slide-in-from-left duration-300',
+  slideInFromTop: 'animate-in slide-in-from-top duration-300',
+  slideInFromBottom: 'animate-in slide-in-from-bottom duration-300',
+  scaleIn: 'animate-in zoom-in-95 duration-200',
+  scaleOut: 'animate-out zoom-out-95 duration-150',
+} as const;
+
+// ============================================================================
+// SPACING SYSTEM
+// ============================================================================
+
+export const spacing = {
+  page: 'px-4 sm:px-6 lg:px-8',
+  section: 'space-y-6',
+  card: 'p-4 sm:p-6',
+  stack: {
+    xs: 'space-y-1',
+    sm: 'space-y-2',
+    md: 'space-y-4',
+    lg: 'space-y-6',
+    xl: 'space-y-8',
+  },
+  inline: {
+    xs: 'space-x-1',
+    sm: 'space-x-2',
+    md: 'space-x-4',
+    lg: 'space-x-6',
+  },
+} as const;
+
+// ============================================================================
+// GRID SYSTEMS
+// ============================================================================
+
+export const grids = {
+  kpi: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4',
+  twoCol: 'grid grid-cols-1 lg:grid-cols-2 gap-6',
+  threeCol: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6',
+  sidebar: 'grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6',
+} as const;
+
+// ============================================================================
+// TYPOGRAPHY
+// ============================================================================
+
+export const typography = {
+  h1: 'text-3xl font-bold tracking-tight',
+  h2: 'text-2xl font-semibold tracking-tight',
+  h3: 'text-xl font-semibold',
+  h4: 'text-lg font-medium',
+  body: 'text-base text-foreground',
+  small: 'text-sm text-muted-foreground',
+  tiny: 'text-xs text-muted-foreground',
+  label: 'text-sm font-medium',
+} as const;
+
+// ============================================================================
+// CARD VARIANTS
+// ============================================================================
+
+export const cardStyles = {
+  default: 'bg-card border border-border rounded-xl shadow-sm',
+  elevated: 'bg-card border border-border rounded-xl shadow-md',
+  interactive: 'bg-card border border-border rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all cursor-pointer',
+  ghost: 'bg-transparent border-0 shadow-none',
+  gradient: 'bg-gradient-to-br from-primary/5 via-transparent to-primary/5 border border-primary/10 rounded-xl',
+} as const;
+
+export type CardVariant = keyof typeof cardStyles;
+
+// ============================================================================
+// BUTTON VARIANTS (extended)
+// ============================================================================
+
+export const buttonExtended = {
+  gradient: 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg shadow-primary/25',
+  glow: 'bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-shadow',
+} as const;
+
+// ============================================================================
+// NAVIGATION STYLES
+// ============================================================================
+
+export const navStyles = {
+  item: 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+  itemActive: 'bg-primary/10 text-primary dark:bg-primary/20',
+  itemInactive: 'text-muted-foreground hover:bg-muted hover:text-foreground',
+  icon: 'h-5 w-5 shrink-0',
+  iconActive: 'text-primary',
+  iconInactive: 'text-muted-foreground',
+} as const;
+
+// ============================================================================
+// APP CONFIG
+// ============================================================================
+
+export const APP_CONFIG = {
+  name: 'Lokatif',
+  tagline: 'Gestion locative simplifiée',
+  logo: {
+    icon: 'Building2',
+    gradient: 'from-primary to-primary/60',
+  },
+} as const;
+
+// ============================================================================
+// ROLE SPECIFIC COLORS
+// ============================================================================
+
+export const roleStyles = {
+  owner: {
+    primary: 'text-blue-600 dark:text-blue-400',
+    bg: 'bg-blue-50 dark:bg-blue-950/50',
+    border: 'border-blue-200 dark:border-blue-900',
+    badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+  },
+  tenant: {
+    primary: 'text-emerald-600 dark:text-emerald-400',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/50',
+    border: 'border-emerald-200 dark:border-emerald-900',
+    badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
+  },
+  provider: {
+    primary: 'text-violet-600 dark:text-violet-400',
+    bg: 'bg-violet-50 dark:bg-violet-950/50',
+    border: 'border-violet-200 dark:border-violet-900',
+    badge: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-300',
+  },
+  admin: {
+    primary: 'text-rose-600 dark:text-rose-400',
+    bg: 'bg-rose-50 dark:bg-rose-950/50',
+    border: 'border-rose-200 dark:border-rose-900',
+    badge: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-300',
+  },
+} as const;
+
+export type UserRole = keyof typeof roleStyles;

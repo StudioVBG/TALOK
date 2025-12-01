@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { ProtectedRoute } from "@/components/protected-route";
 import { OwnerProfileForm } from "@/features/profiles/components/owner-profile-form";

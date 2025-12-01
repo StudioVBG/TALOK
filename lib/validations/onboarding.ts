@@ -1,6 +1,10 @@
 // Schémas Zod pour l'onboarding
 import { z } from "zod";
 
+const isoDateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide (YYYY-MM-DD)");
+
 // Validation du mot de passe (12+ caractères, 1 maj/min/chiffre/spécial)
 export const passwordSchema = z
   .string()
@@ -225,7 +229,7 @@ export const tenantSignLeaseSchema = z.object({
   lease_id: z.string().uuid(),
   signature_payload: z.string().min(1, "Signature requise"), // Signature eIDAS/SES
   depot_garantie_moyen: z.enum(["carte", "pay_by_bank", "virement"]).optional(),
-  edl_entree_date: z.string().date().optional(),
+  edl_entree_date: isoDateString.optional(),
   edl_entree_heure: z.string().optional(),
 });
 
@@ -236,7 +240,7 @@ export const guarantorContextSchema = z.object({
   invite_token: z.string().min(1, "Token d'invitation requis"),
   prenom: z.string().min(1, "Le prénom est requis"),
   nom: z.string().min(1, "Le nom est requis"),
-  date_naissance: z.string().date(),
+  date_naissance: isoDateString,
   piece_identite_path: z.string().optional(),
 });
 

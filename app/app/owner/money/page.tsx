@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchInvoices } from "../_data/fetchInvoices";

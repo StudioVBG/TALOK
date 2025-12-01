@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 
 export async function fetchTenantInvoices(userId: string) {

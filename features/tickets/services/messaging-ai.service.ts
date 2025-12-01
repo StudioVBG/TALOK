@@ -1,6 +1,5 @@
-import { messageDraftGraph, MessageDraftState } from "./message-draft.graph";
+import { messageDraftGraph, MessageDraftState } from "../ai/message-draft.graph";
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 
 export class MessagingAiService {
   
@@ -8,7 +7,7 @@ export class MessagingAiService {
    * Suggest a reply based on ticket history
    */
   async suggestTicketReply(ticketId: string, userId: string) {
-    const supabase = createClient(cookies());
+    const supabase = await createClient();
 
     // 1. Fetch Ticket & Messages
     const { data: ticket } = await supabase
@@ -40,7 +39,7 @@ export class MessagingAiService {
       context: ticket.description.toLowerCase().includes('fuite') ? 'fuite' : 'general'
     };
 
-    const result = await messageDraftGraph.invoke(state);
+    const result = await messageDraftGraph.invoke(state as any) as unknown as MessageDraftState;
     return result.draftResponse;
   }
 }

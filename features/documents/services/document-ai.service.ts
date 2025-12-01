@@ -1,6 +1,5 @@
-import { documentAnalysisGraph, DocumentAnalysisState } from "./document-analysis.graph";
+import { documentAnalysisGraph, DocumentAnalysisState } from "../ai/document-analysis.graph";
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 
 export class DocumentAiService {
   
@@ -21,13 +20,13 @@ export class DocumentAiService {
 
     try {
       // Run the LangGraph workflow
-      const result = await documentAnalysisGraph.invoke(initialState);
+      const result = await documentAnalysisGraph.invoke(initialState as any) as unknown as DocumentAnalysisState;
       
       // Update the database with results
       await this.updateDocumentStatus(
         documentId, 
-        result.verificationStatus, 
-        result.extractedData, 
+        result.verificationStatus || 'pending', 
+        result.extractedData || {}, 
         result.rejectionReason
       );
 
@@ -46,7 +45,7 @@ export class DocumentAiService {
     analysis: any, 
     reason?: string
   ) {
-    const supabase = createClient(cookies());
+    const supabase = await createClient();
     
     const updateData: any = {
       verification_status: status,

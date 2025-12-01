@@ -1,6 +1,5 @@
-import { maintenanceGraph, MaintenanceState } from "./maintenance.graph";
+import { maintenanceGraph, MaintenanceState } from "../ai/maintenance.graph";
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 
 export class MaintenanceAiService {
   
@@ -8,7 +7,7 @@ export class MaintenanceAiService {
    * Run AI analysis on a newly created ticket
    */
   async analyzeAndEnrichTicket(ticketId: string) {
-    const supabase = createClient(cookies());
+    const supabase = await createClient();
 
     // 1. Fetch Ticket
     const { data: ticket } = await supabase
@@ -27,7 +26,7 @@ export class MaintenanceAiService {
     };
 
     try {
-      const result = await maintenanceGraph.invoke(initialState);
+      const result = await maintenanceGraph.invoke(initialState as any) as unknown as MaintenanceState;
       
       // 3. Update Ticket with AI insights
       await supabase

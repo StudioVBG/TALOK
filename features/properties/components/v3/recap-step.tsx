@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ExecutiveSummary, type SummaryRoom } from "@/features/properties/components/executive-summary";
 import { CheckCircle2, AlertCircle, Loader2, Send } from "lucide-react";
-import type { PropertyTypeV3 } from "@/lib/types/property-v3";
+import type { PropertyTypeV3, RoomV3, PhotoV3 } from "@/lib/types/property-v3";
 import type { Room, Photo } from "@/lib/types";
 import { containerVariants } from "@/lib/design-system/animations";
 import { WizardStepLayout } from "@/lib/design-system/wizard-layout";
@@ -26,8 +26,8 @@ interface RecapStepProps {
   propertyId?: string;
   type_bien: PropertyTypeV3;
   data: Record<string, any>;
-  rooms?: Room[];
-  photos?: Photo[];
+  rooms?: (Room | RoomV3)[];
+  photos?: (Photo | PhotoV3)[];
   parkingDetails?: any;
   onSubmit: () => Promise<void>;
   onEdit?: (stepId: string) => void;
@@ -35,8 +35,8 @@ interface RecapStepProps {
   errors?: string[];
   stepNumber?: number;
   totalSteps?: number;
-  mode?: "fast" | "full";
-  onModeChange?: (mode: "fast" | "full") => void;
+  mode?: "fast" | "full" | "unified";
+  onModeChange?: (mode: "fast" | "full" | "unified") => void;
   onBack?: () => void;
   microCopy?: string;
 }

@@ -197,16 +197,15 @@ export class OnboardingService {
 
   /**
    * Obtenir les étapes requises pour un rôle
+   * Note: Les consentements et le profil minimal sont maintenant intégrés dans account_creation
    */
   private getRequiredSteps(role: UserRole): string[] {
     switch (role) {
       case "owner":
         return [
           "role_choice",
-          "account_creation",
+          "account_creation",  // Inclut: identité, consentements, téléphone
           "email_verification",
-          "consents",
-          "minimal_profile",
           "owner_profile",
           "owner_finance",
           "first_property",
@@ -217,8 +216,6 @@ export class OnboardingService {
           "role_choice",
           "account_creation",
           "email_verification",
-          "consents",
-          "minimal_profile",
           "tenant_context",
           "tenant_file",
           "tenant_payment",
@@ -228,11 +225,18 @@ export class OnboardingService {
           "role_choice",
           "account_creation",
           "email_verification",
-          "consents",
-          "minimal_profile",
           "provider_profile",
           "provider_services",
           "provider_ops",
+        ];
+      case "guarantor":
+        return [
+          "role_choice",
+          "account_creation",
+          "email_verification",
+          "guarantor_context",
+          "guarantor_financial",
+          "guarantor_sign",
         ];
       default:
         return [];

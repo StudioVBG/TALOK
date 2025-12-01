@@ -23,7 +23,7 @@ export async function fetchAdminProperties(options: { status?: string; search?: 
 
   if (error) {
     console.error("Error fetching admin properties:", error);
-    return [];
+    return { properties: [], total: 0 };
   }
 
   return { properties: data || [], total: count || 0 };

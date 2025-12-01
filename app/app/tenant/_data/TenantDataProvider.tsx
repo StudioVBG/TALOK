@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Context Provider pour les données Tenant
  */

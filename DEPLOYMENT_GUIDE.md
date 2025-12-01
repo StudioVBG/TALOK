@@ -28,12 +28,41 @@
 - **⚠️ SECRET** : Ne jamais exposer publiquement
 - **Environnements** : ✅ Production, ✅ Preview, ✅ Development
 
-### Variables OPTIONNELLES
+### Variables pour les Paiements (Stripe)
+
+#### 4. `STRIPE_SECRET_KEY` (Recommandé)
+- **Format** : `sk_live_...` ou `sk_test_...`
+- **Où trouver** : Stripe Dashboard → Developers → API keys
+- **Environnements** : ✅ Production, ✅ Preview, ✅ Development
+
+#### 5. `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (Recommandé)
+- **Format** : `pk_live_...` ou `pk_test_...`
+- **Où trouver** : Stripe Dashboard → Developers → API keys
+- **Environnements** : ✅ Production, ✅ Preview, ✅ Development
+
+#### 6. `STRIPE_WEBHOOK_SECRET` (Recommandé)
+- **Format** : `whsec_...`
+- **Où trouver** : Stripe Dashboard → Developers → Webhooks
+- **Environnements** : ✅ Production
+
+### Variables pour les Emails (Resend)
+
+#### 7. `RESEND_API_KEY` (Recommandé)
+- **Format** : `re_...`
+- **Où trouver** : Resend Dashboard → API Keys
+- **Usage** : Envoi d'emails (factures, notifications, signatures)
+- **Environnements** : ✅ Production, ✅ Preview
+
+#### 8. `RESEND_FROM_EMAIL` (Optionnel)
+- **Format** : `Gestion Locative <noreply@votre-domaine.com>`
+- **Note** : Le domaine doit être vérifié sur Resend
+- **Défaut** : `Gestion Locative <noreply@gestionlocative.fr>`
+
+### Autres Variables OPTIONNELLES
 
 - `NEXT_PUBLIC_APP_URL` : URL de l'application (ex: `https://gestion-immo.vercel.app`)
-- `STRIPE_SECRET_KEY` : Pour les paiements Stripe
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` : Clé publique Stripe
-- `RESEND_API_KEY` : Pour l'envoi d'emails
+- `YOUSIGN_API_KEY` : Pour les signatures électroniques
+- `YOUSIGN_WEBHOOK_SECRET` : Pour les webhooks Yousign
 
 ## 📝 Étapes de Déploiement
 

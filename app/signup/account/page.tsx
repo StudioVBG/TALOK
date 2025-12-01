@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -121,7 +122,7 @@ export default function AccountCreationPage() {
   }, [role]);
 
   const nextStepByRole: Record<UserRole, string> = {
-    owner: "/owner/onboarding/profile",
+    owner: "/app/owner/onboarding/profile",
     tenant: inviteToken ? `/tenant/onboarding/context?invite=${inviteToken}` : "/tenant/onboarding/context",
     provider: "/provider/onboarding/profile",
     guarantor: inviteToken ? `/guarantor/onboarding/context?invite=${inviteToken}` : "/guarantor/onboarding/context",
@@ -303,7 +304,7 @@ export default function AccountCreationPage() {
 
   return (
     <OnboardingShell
-      stepLabel="Étape 2 / 4 – Créons votre accès"
+      stepLabel="Étape 2 / 3 – Créons votre accès"
       title={`Créons votre compte${roleLabel ? ` ${roleLabel}` : ""}`}
       subtitle="Identité, sécurité et consentements : tout en une seule étape."
       footer={

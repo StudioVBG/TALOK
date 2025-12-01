@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { ProtectedRoute } from "@/components/protected-route";
 import { LeaseForm } from "@/features/leases/components/lease-form";

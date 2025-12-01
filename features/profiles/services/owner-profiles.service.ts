@@ -1,5 +1,4 @@
-import { createClient } from "@/lib/supabase/client";
-import { ownerProfileSchema } from "@/lib/validations";
+import { apiClient } from "@/lib/api-client";
 import type { OwnerProfile, OwnerType } from "@/lib/types";
 
 export interface CreateOwnerProfileData {
@@ -13,62 +12,54 @@ export interface CreateOwnerProfileData {
 export interface UpdateOwnerProfileData extends Partial<CreateOwnerProfileData> {}
 
 export class OwnerProfilesService {
-  private supabase = createClient();
-
-  async getOwnerProfile(profileId: string) {
-    const { data, error } = await this.supabase
-      .from("owner_profiles")
-      .select("*")
-      .eq("profile_id", profileId)
-      .maybeSingle();
-
-    // Ignorer les erreurs courantes (profil non trouvé, RLS, format)
-    if (error) {
-      const ignorableErrors = ["PGRST116", "42501", "406"];
-      const ignorableMessages = ["permission denied", "not acceptable", "row-level security"];
-      
-      const shouldIgnore = ignorableErrors.includes(error.code || "") || 
-        ignorableMessages.some(msg => error.message?.toLowerCase().includes(msg));
-      
-      if (!shouldIgnore) {
-        console.warn("[OwnerProfilesService] Error fetching owner profile:", error);
-        throw error;
+  /**
+   * Récupère le profil propriétaire via l'API (contourne les RLS)
+   */
+  async getOwnerProfile(_profileId: string) {
+    try {
+      const data = await apiClient.get<OwnerProfile | null>("/me/owner-profile");
+      return data;
+    } catch (error: any) {
+      // Ignorer les erreurs 404 (profil non trouvé)
+      if (error.status === 404) {
+        return null;
       }
+      console.warn("[OwnerProfilesService] Error fetching owner profile:", error);
+      return null;
     }
-    return data as OwnerProfile | null;
   }
 
-  async createOrUpdateOwnerProfile(profileId: string, data: CreateOwnerProfileData) {
-    const validatedData = ownerProfileSchema.parse(data);
-
-    // Vérifier si le profil existe déjà
-    const existing = await this.getOwnerProfile(profileId);
-
-    if (existing) {
-      // Mettre à jour
-      const { data: profile, error } = await this.supabase
-        .from("owner_profiles")
-        .update(validatedData)
-        .eq("profile_id", profileId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return profile as OwnerProfile;
-    } else {
-      // Créer
-      const { data: profile, error } = await this.supabase
-        .from("owner_profiles")
-        .insert({
-          profile_id: profileId,
-          ...validatedData,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return profile as OwnerProfile;
+  /**
+   * Récupère le profil propriétaire de l'utilisateur connecté
+   */
+  async getMyOwnerProfile() {
+    try {
+      const data = await apiClient.get<OwnerProfile | null>("/me/owner-profile");
+      return data;
+    } catch (error: any) {
+      // Ignorer les erreurs 404 (profil non trouvé)
+      if (error.status === 404) {
+        return null;
+      }
+      console.warn("[OwnerProfilesService] Error fetching my owner profile:", error);
+      return null;
     }
+  }
+
+  /**
+   * Met à jour le profil propriétaire de l'utilisateur connecté
+   */
+  async updateMyOwnerProfile(data: UpdateOwnerProfileData) {
+    const profile = await apiClient.put<OwnerProfile>("/me/owner-profile", data);
+    return profile;
+  }
+
+  /**
+   * Crée ou met à jour le profil propriétaire via l'API (contourne les RLS)
+   */
+  async createOrUpdateOwnerProfile(_profileId: string, data: CreateOwnerProfileData) {
+    const profile = await apiClient.put<OwnerProfile>("/me/owner-profile", data);
+    return profile;
   }
 }
 

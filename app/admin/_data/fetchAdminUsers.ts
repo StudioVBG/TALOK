@@ -1,12 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 
-export async function fetchAdminUsers(options: { role?: string; search?: string; limit?: number; offset?: number } = {}) {
+interface FetchAdminUsersResult {
+  users: any[];
+  total: number;
+}
+
+export async function fetchAdminUsers(options: { role?: string; search?: string; limit?: number; offset?: number } = {}): Promise<FetchAdminUsersResult> {
   const supabase = await createClient();
   const { role, search, limit = 50, offset = 0 } = options;
 
   // Vérifier admin
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return []; // Ou throw
+  if (!user) return { users: [], total: 0 };
 
   // Note: Sécurité RLS doit permettre à l'admin de voir tous les profils.
   // Si RLS bloque, il faut utiliser supabase admin client (service role) OU ajuster les policies.
@@ -14,7 +19,7 @@ export async function fetchAdminUsers(options: { role?: string; search?: string;
 
   let query = supabase
     .from("profiles")
-    .select("*, user:auth.users(email)", { count: "exact" }) // Join avec auth.users si possible, sinon fetch séparé
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -30,7 +35,7 @@ export async function fetchAdminUsers(options: { role?: string; search?: string;
 
   if (error) {
     console.error("Error fetching admin users:", error);
-    return [];
+    return { users: [], total: 0 };
   }
 
   return { users: data || [], total: count || 0 };

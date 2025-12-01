@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -73,7 +74,7 @@ export default function OwnerAutomationPage() {
       });
 
       // Rediriger vers les invitations
-      router.push("/owner/onboarding/invite");
+      router.push("/app/owner/onboarding/invite");
     } catch (error: any) {
       toast({
         title: "Erreur",

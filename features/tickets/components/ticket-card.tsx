@@ -104,15 +104,15 @@ export function TicketCard({ ticket, onDelete }: TicketCardProps) {
           Créé le {formatDateShort(ticket.created_at)}
         </div>
 
-        {ticket.ai_summary && (
+        {(ticket as any).ai_summary && (
            <div className="bg-blue-50 border border-blue-100 rounded-md p-2 mb-4 text-xs text-blue-800 flex items-start gap-2">
               <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0 text-blue-500" />
               <div>
                 <span className="font-medium block mb-1">Analyse IA</span>
-                {ticket.ai_summary}
-                {ticket.ai_suggested_action && (
+                {(ticket as any).ai_summary}
+                {(ticket as any).ai_suggested_action && (
                   <div className="mt-1 pt-1 border-t border-blue-200">
-                    Action: {ticket.ai_suggested_action}
+                    Action: {(ticket as any).ai_suggested_action}
                   </div>
                 )}
               </div>

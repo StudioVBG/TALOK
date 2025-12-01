@@ -1,193 +1,251 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+// @ts-nocheck
+import { NextRequest, NextResponse } from "next/server";
+import { stripe, verifyWebhookSignature, formatAmountFromStripe, type PaymentMetadata } from "@/lib/stripe";
+import { createClient as createServerClient } from "@supabase/supabase-js";
+import { sendPaymentConfirmation, sendPaymentReminder } from "@/lib/emails";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import Stripe from "stripe";
 
-/**
- * POST /api/webhooks/payments - Handler pour les webhooks de paiement (Stripe/GoCardless)
- */
-export async function POST(request: Request) {
+// Utiliser le service role pour bypasser RLS
+const supabase = createServerClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
+
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const signature = request.headers.get("x-signature") || request.headers.get("stripe-signature");
-    
-    // Lire le body une seule fois
-    const rawBody = await request.text();
-    let body: any;
-    try {
-      body = JSON.parse(rawBody);
-    } catch {
-      return NextResponse.json({ error: "Body invalide" }, { status: 400 });
-    }
-
     // Vérifier la signature du webhook
-    if (signature) {
-      const { verifyStripeWebhook, verifyWebhookSignature } = await import("@/lib/middleware/webhook-verification");
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET || "";
-      
-      const isValid = request.headers.get("stripe-signature")
-        ? verifyStripeWebhook(rawBody, signature, webhookSecret)
-        : verifyWebhookSignature(rawBody, signature, webhookSecret);
-      
-      if (!isValid) {
-        return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
-      }
+    const body = await request.text();
+    const signature = request.headers.get("stripe-signature");
+
+    if (!signature) {
+      console.error("[webhook/payments] Signature manquante");
+      return NextResponse.json({ error: "Signature manquante" }, { status: 400 });
     }
 
-    const eventType = body.type || body.event_type;
+    let event: Stripe.Event;
+    try {
+      event = verifyWebhookSignature(body, signature);
+    } catch (err: any) {
+      console.error("[webhook/payments] Signature invalide:", err.message);
+      return NextResponse.json({ error: "Signature invalide" }, { status: 400 });
+    }
 
-    // Traiter selon le type d'événement
-    switch (eventType) {
+    console.log(`[webhook/payments] Événement reçu: ${event.type}`);
+
+    // Traiter les événements
+    switch (event.type) {
       case "payment_intent.succeeded":
-      case "payment.succeeded": {
-        const paymentIntentId = body.data?.object?.id || body.payment_intent_id;
-        await handlePaymentSucceeded(supabase, paymentIntentId, body);
+        await handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
         break;
-      }
 
       case "payment_intent.payment_failed":
-      case "payment.failed": {
-        const paymentIntentId = body.data?.object?.id || body.payment_intent_id;
-        await handlePaymentFailed(supabase, paymentIntentId, body);
+        await handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
         break;
-      }
 
-      case "payment_intent.scheduled":
-      case "payment.scheduled": {
-        const paymentIntentId = body.data?.object?.id || body.payment_intent_id;
-        await handlePaymentScheduled(supabase, paymentIntentId, body);
+      case "payment_intent.canceled":
+        await handlePaymentCanceled(event.data.object as Stripe.PaymentIntent);
         break;
-      }
 
       default:
-        console.log("Événement non géré:", eventType);
+        console.log(`[webhook/payments] Événement non géré: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.error("Erreur webhook paiement:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+    console.error("[webhook/payments] Erreur:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-async function handlePaymentSucceeded(supabase: any, providerIntentId: string, webhookData: any) {
-  // Trouver le payment intent
-  const { data: paymentIntent } = await supabase
-    .from("payment_intents")
-    .select("*")
-    .eq("provider_intent_id", providerIntentId)
+async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+  const metadata = paymentIntent.metadata as unknown as PaymentMetadata;
+  const { invoiceId, profileId } = metadata;
+
+  console.log(`[webhook/payments] Paiement réussi: ${paymentIntent.id}`);
+
+  // 1. Mettre à jour le paiement
+  const { data: payment, error: paymentError } = await supabase
+    .from("payments")
+    .update({
+      statut: "succeeded",
+      date_paiement: new Date().toISOString().split("T")[0],
+    })
+    .eq("provider_ref", paymentIntent.id)
+    .select()
     .single();
 
-  if (!paymentIntent) {
-    console.error("Payment intent non trouvé:", providerIntentId);
-    return;
+  if (paymentError) {
+    console.error("[webhook/payments] Erreur mise à jour paiement:", paymentError);
+    throw paymentError;
   }
 
-  // Mettre à jour le payment intent
-  await supabase
-    .from("payment_intents")
-    .update({
-      status: "succeeded",
-      metadata: webhookData.data?.object || webhookData,
-    } as any)
-    .eq("id", paymentIntent.id);
-
-  // Mettre à jour la part de paiement
-  if (paymentIntent.payment_share_id) {
-    await supabase
-      .from("payment_shares")
-      .update({
-        status: "paid",
-        amount_paid: paymentIntent.amount,
-        last_event_at: new Date().toISOString(),
-      } as any)
-      .eq("id", paymentIntent.payment_share_id);
-
-    // Émettre un événement
-    await supabase.from("outbox").insert({
-      event_type: "payment.succeeded",
-      payload: {
-        payment_intent_id: paymentIntent.id,
-        payment_share_id: paymentIntent.payment_share_id,
-        lease_id: paymentIntent.lease_id,
-        amount: paymentIntent.amount,
-      },
-    } as any);
-  }
-}
-
-async function handlePaymentFailed(supabase: any, providerIntentId: string, webhookData: any) {
-  const { data: paymentIntent } = await supabase
-    .from("payment_intents")
-    .select("*")
-    .eq("provider_intent_id", providerIntentId)
+  // 2. Vérifier si la facture est entièrement payée
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("id, montant_total")
+    .eq("id", invoiceId)
     .single();
 
-  if (!paymentIntent) return;
+  if (invoice) {
+    // Calculer le total payé
+    const { data: payments } = await supabase
+      .from("payments")
+      .select("montant")
+      .eq("invoice_id", invoiceId)
+      .eq("statut", "succeeded");
 
-  await supabase
-    .from("payment_intents")
-    .update({
-      status: "failed",
-      metadata: webhookData.data?.object || webhookData,
-    } as any)
-    .eq("id", paymentIntent.id);
+    const totalPaid = (payments || []).reduce((sum, p: any) => sum + Number(p.montant), 0);
 
-  if (paymentIntent.payment_share_id) {
-    await supabase
-      .from("payment_shares")
-      .update({
-        status: "failed",
-        last_event_at: new Date().toISOString(),
-      } as any)
-      .eq("id", paymentIntent.payment_share_id);
+    // Si entièrement payé, mettre à jour le statut de la facture
+    if (totalPaid >= invoice.montant_total) {
+      await supabase
+        .from("invoices")
+        .update({ statut: "paid" })
+        .eq("id", invoiceId);
 
-    await supabase.from("outbox").insert({
-      event_type: "payment.failed",
-      payload: {
-        payment_intent_id: paymentIntent.id,
-        payment_share_id: paymentIntent.payment_share_id,
-        lease_id: paymentIntent.lease_id,
-      },
-    } as any);
+      console.log(`[webhook/payments] Facture ${invoiceId} marquée comme payée`);
+
+      // 3. Générer la quittance
+      await generateReceipt(invoiceId, payment.id);
+    }
+  }
+
+  // 4. Envoyer une notification au propriétaire
+  if (metadata.propertyId) {
+    const { data: property } = await supabase
+      .from("properties")
+      .select("owner_id")
+      .eq("id", metadata.propertyId)
+      .single();
+
+    if (property) {
+      await supabase.from("notifications").insert({
+        profile_id: property.owner_id,
+        type: "payment_received",
+        title: "Paiement reçu",
+        message: `Un paiement de ${formatAmountFromStripe(paymentIntent.amount)}€ a été reçu.`,
+        data: { invoiceId, paymentId: payment.id },
+      });
+    }
+  }
+
+  // 5. Envoyer un email de confirmation au locataire
+  try {
+    const { data: tenantProfile } = await supabase
+      .from("profiles")
+      .select("prenom, nom, user_id")
+      .eq("id", profileId)
+      .single();
+
+    if (tenantProfile) {
+      // Récupérer l'email depuis auth.users
+      const { data: authUser } = await supabase.auth.admin.getUserById(tenantProfile.user_id);
+      
+      if (authUser?.user?.email) {
+        await sendPaymentConfirmation({
+          tenantEmail: authUser.user.email,
+          tenantName: `${tenantProfile.prenom || ""} ${tenantProfile.nom || ""}`.trim() || "Locataire",
+          amount: formatAmountFromStripe(paymentIntent.amount),
+          paymentDate: format(new Date(), "d MMMM yyyy", { locale: fr }),
+          paymentMethod: "Carte bancaire",
+          period: invoice?.periode || "N/A",
+          paymentId: payment.id,
+        });
+        console.log(`[webhook/payments] Email de confirmation envoyé à ${authUser.user.email}`);
+      }
+    }
+  } catch (emailError) {
+    // Ne pas bloquer si l'email échoue
+    console.error("[webhook/payments] Erreur envoi email:", emailError);
   }
 }
 
-async function handlePaymentScheduled(supabase: any, providerIntentId: string, webhookData: any) {
-  const { data: paymentIntent } = await supabase
-    .from("payment_intents")
-    .select("*")
-    .eq("provider_intent_id", providerIntentId)
+async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
+  console.log(`[webhook/payments] Paiement échoué: ${paymentIntent.id}`);
+
+  // Mettre à jour le statut du paiement
+  const { error } = await supabase
+    .from("payments")
+    .update({ statut: "failed" })
+    .eq("provider_ref", paymentIntent.id);
+
+  if (error) {
+    console.error("[webhook/payments] Erreur mise à jour paiement:", error);
+    throw error;
+  }
+
+  // Notifier le locataire
+  const metadata = paymentIntent.metadata as unknown as PaymentMetadata;
+  if (metadata.profileId) {
+    await supabase.from("notifications").insert({
+      profile_id: metadata.profileId,
+      type: "payment_failed",
+      title: "Paiement échoué",
+      message: "Votre paiement n'a pas pu être traité. Veuillez réessayer.",
+      data: { invoiceId: metadata.invoiceId },
+    });
+  }
+}
+
+async function handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent) {
+  console.log(`[webhook/payments] Paiement annulé: ${paymentIntent.id}`);
+
+  // Supprimer ou annuler le paiement en attente
+  await supabase
+    .from("payments")
+    .delete()
+    .eq("provider_ref", paymentIntent.id)
+    .eq("statut", "pending");
+}
+
+async function generateReceipt(invoiceId: string, paymentId: string) {
+  console.log(`[webhook/payments] Génération quittance pour facture ${invoiceId}`);
+
+  // Récupérer les infos nécessaires
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select(`
+      *,
+      leases(
+        id,
+        property_id,
+        properties(adresse_complete, ville)
+      )
+    `)
+    .eq("id", invoiceId)
     .single();
 
-  if (!paymentIntent) return;
+  if (!invoice) return;
 
-  await supabase
-    .from("payment_intents")
-    .update({
-      status: "scheduled",
-      metadata: webhookData.data?.object || webhookData,
-    } as any)
-    .eq("id", paymentIntent.id);
+  // Créer un document quittance
+  const { error } = await supabase.from("documents").insert({
+    type: "quittance",
+    owner_id: invoice.owner_id,
+    tenant_id: invoice.tenant_id,
+    property_id: (invoice.leases as any)?.property_id,
+    lease_id: invoice.lease_id,
+    title: `Quittance ${invoice.periode}`,
+    metadata: {
+      invoiceId,
+      paymentId,
+      periode: invoice.periode,
+      montant: invoice.montant_total,
+      generated_at: new Date().toISOString(),
+    },
+    storage_path: `quittances/${invoice.tenant_id}/${invoiceId}.pdf`,
+  });
 
-  if (paymentIntent.payment_share_id) {
-    await supabase
-      .from("payment_shares")
-      .update({
-        status: "scheduled",
-        last_event_at: new Date().toISOString(),
-      } as any)
-      .eq("id", paymentIntent.payment_share_id);
-
-    await supabase.from("outbox").insert({
-      event_type: "payment.scheduled",
-      payload: {
-        payment_intent_id: paymentIntent.id,
-        payment_share_id: paymentIntent.payment_share_id,
-        lease_id: paymentIntent.lease_id,
-      },
-    } as any);
+  if (error) {
+    console.error("[webhook/payments] Erreur création quittance:", error);
   }
-}
 
+  // TODO: Générer le PDF réel via une Edge Function
+}

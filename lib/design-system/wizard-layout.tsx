@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Zap, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-type WizardMode = "fast" | "full";
+type WizardMode = "fast" | "full" | "unified";
 
 interface WizardStepLayoutProps {
   // Header

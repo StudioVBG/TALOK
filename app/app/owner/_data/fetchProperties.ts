@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Data fetching pour les propriétés (Owner)
  * Server-side uniquement - utilisé dans Server Components

@@ -1,23 +1,71 @@
 /**
- * Export centralisé de tous les hooks React Query
- * 
- * Tous les hooks utilisent les types Database générés depuis Supabase
- * pour une connexion type-safe BDD → Frontend
+ * Export centralisé des hooks personnalisés
  */
 
-export * from "./use-properties";
-export * from "./use-rooms";
-export * from "./use-photos";
-// use-properties-infinite et use-properties-optimistic sont maintenant intégrés dans use-properties
-export * from "./use-leases";
-export * from "./use-invoices";
-export * from "./use-tickets";
-export * from "./use-payments";
-export * from "./use-work-orders";
-export * from "./use-documents";
-export * from "./use-auth";
-export * from "./use-pagination";
-export * from "./use-dashboard";
-export * from "./use-mutation-with-toast";
-export * from "./use-debounce";
+// Hooks de performance
+export {
+  useWebVitals,
+  useInView,
+  useDebounce,
+  useThrottle,
+  useLazyLoad,
+  useRenderTime,
+  useWhyDidYouRender,
+} from "./use-performance";
 
+// Hooks de prefetch
+export {
+  usePrefetchPage,
+  usePrefetchQuery,
+  usePrefetchOnMount,
+  usePrefetchOnVisible,
+} from "./use-prefetch";
+
+// Legacy export
+export { usePrefetchPage as usePrefetch } from "./use-prefetch";
+
+// Hooks de mutations optimistes
+export {
+  useOptimisticMutation,
+  useOptimisticToggle,
+  useOptimisticDelete,
+  useOptimisticCreate,
+} from "./use-optimistic-mutation";
+
+// Hooks pour les formulaires avec validation
+export {
+  useFormWithValidation,
+  useServerValidation,
+  useFormApiErrors,
+} from "./use-form-with-validation";
+
+// Hooks pour les API avec cache
+export {
+  queryKeys,
+  useApiQuery,
+  useApiMutation,
+  usePropertyApi,
+  useInvoiceApi,
+  useTicketApi,
+} from "./use-api";
+
+// Hooks pour les propriétés
+export {
+  useProperties,
+  usePropertiesInfinite,
+  useProperty,
+  useCreateProperty,
+  useUpdateProperty,
+  useDeleteProperty,
+} from "./use-properties";
+
+// Hooks pour les baux
+export {
+  useLeases,
+  useLease,
+  useCreateLease,
+  useUpdateLease,
+} from "./use-leases";
+
+// Re-export des hooks courants
+export { useToast, toast } from "@/components/ui/use-toast";

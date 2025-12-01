@@ -64,7 +64,7 @@ export function SignInForm() {
         return;
       }
       
-      // Rediriger selon le rôle
+      // Rediriger selon le rôle - Routes existantes fonctionnelles
       if (profileData?.role === "admin") {
         console.log("[SignIn] Redirection vers /admin/dashboard");
         router.push("/admin/dashboard");
@@ -72,8 +72,11 @@ export function SignInForm() {
         console.log("[SignIn] Redirection vers /app/owner/dashboard");
         router.push("/app/owner/dashboard");
       } else if (profileData?.role === "tenant") {
-        console.log("[SignIn] Redirection vers /app/tenant");
-        router.push("/app/tenant");
+        console.log("[SignIn] Redirection vers /app/tenant/dashboard");
+        router.push("/app/tenant/dashboard");
+      } else if (profileData?.role === "provider") {
+        console.log("[SignIn] Redirection vers /vendor/dashboard");
+        router.push("/vendor/dashboard");
       } else {
         console.log("[SignIn] Redirection vers /dashboard");
         router.push("/dashboard");

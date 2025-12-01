@@ -4,6 +4,11 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import * as dotenv from "dotenv";
+import * as path from "path";
+
+// Charger les variables d'environnement depuis .env.local
+dotenv.config({ path: path.join(process.cwd(), ".env.local") });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -40,8 +45,8 @@ async function createAdminUser() {
     });
 
     if (authError) {
-      if (authError.message.includes("already registered")) {
-        console.log("⚠️  L'utilisateur existe déjà, mise à jour du profil...");
+      if (authError.message.includes("already") && authError.message.includes("registered")) {
+        console.log("⚠️  L'utilisateur existe déjà, mise à jour du compte...");
         
         // Récupérer l'utilisateur existant
         const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
@@ -50,6 +55,20 @@ async function createAdminUser() {
         const user = users.users.find((u) => u.email === email);
         if (!user) {
           throw new Error("Utilisateur trouvé mais impossible de récupérer les détails");
+        }
+
+        // Confirmer l'email et mettre à jour le mot de passe si nécessaire
+        const { error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
+          user.id,
+          { 
+            email_confirm: true,
+            password: password 
+          }
+        );
+        if (updateUserError) {
+          console.log("⚠️  Erreur confirmation email:", updateUserError.message);
+        } else {
+          console.log("✅ Email confirmé !");
         }
 
         // Mettre à jour le profil
@@ -62,6 +81,9 @@ async function createAdminUser() {
 
         console.log("✅ Profil mis à jour avec le rôle admin");
         console.log(`   User ID: ${user.id}`);
+        console.log("\n🎉 Compte admin prêt !");
+        console.log(`   Email: ${email}`);
+        console.log(`   Mot de passe: ${password}`);
         return;
       }
       throw authError;

@@ -1,76 +1,57 @@
 #!/bin/bash
 
-# Script pour vérifier les variables d'environnement locales
-# Usage: ./scripts/check-env-local.sh
+set -euo pipefail
 
-echo "🔍 Vérification des variables d'environnement LOCALES (.env.local)"
-echo ""
-
-if [ ! -f .env.local ]; then
-  echo "❌ Fichier .env.local introuvable"
-  echo "   Créez-le avec: cp env.example .env.local"
-  exit 1
-fi
-
-# Charger les variables
-export $(cat .env.local | grep -v '^#' | xargs)
-
-REQUIRED_VARS=(
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="${PROJECT_ROOT}/.env.local"
+REQUIRED_KEYS=(
   "NEXT_PUBLIC_SUPABASE_URL"
   "NEXT_PUBLIC_SUPABASE_ANON_KEY"
   "SUPABASE_SERVICE_ROLE_KEY"
+  "API_KEY_MASTER_KEY"
 )
 
-echo "📋 Variables dans .env.local:"
+echo "🔍 Vérification des variables dans .env.local"
+echo "Fichier : ${ENV_FILE}"
 echo ""
 
-has_errors=false
+if [ ! -f "${ENV_FILE}" ]; then
+  echo "❌ .env.local introuvable. Créez-le avec 'cp env.example .env.local'."
+  exit 1
+fi
 
-for var in "${REQUIRED_VARS[@]}"; do
-  value="${!var}"
-  
+mask() {
+  local value="$1"
+  local length=${#value}
+  if [ "$length" -le 8 ]; then
+    printf "%s" "$value"
+    return
+  fi
+  local prefix=${value:0:4}
+  local suffix=${value: -4}
+  printf "%s...%s" "$prefix" "$suffix"
+}
+
+missing=0
+
+for key in "${REQUIRED_KEYS[@]}"; do
+  value=$(grep -E "^[[:space:]]*${key}=" "${ENV_FILE}" | tail -n 1 | cut -d '=' -f2-)
+  value=$(echo "$value" | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/")
+
   if [ -z "$value" ]; then
-    echo "  ❌ $var: MANQUANTE"
-    has_errors=true
+    echo "❌ ${key} manquant dans .env.local"
+    missing=1
   else
-    # Masquer la valeur
-    if [ ${#value} -gt 20 ]; then
-      masked="${value:0:15}...${value: -10}"
-    else
-      masked="$value"
-    fi
-    
-    # Vérification spéciale pour NEXT_PUBLIC_SUPABASE_URL
-    if [ "$var" = "NEXT_PUBLIC_SUPABASE_URL" ]; then
-      if [[ "$value" == *"supabase.com/dashboard"* ]]; then
-        echo "  ❌ $var: ERREUR - L'URL pointe vers le dashboard Supabase"
-        echo "     Utilisez: https://xxxxx.supabase.co"
-        has_errors=true
-      elif [[ "$value" != *".supabase.co"* ]]; then
-        echo "  ❌ $var: Format invalide (doit se terminer par .supabase.co)"
-        has_errors=true
-      else
-        echo "  ✅ $var: $masked"
-      fi
-    else
-      echo "  ✅ $var: $masked"
-    fi
+    echo "✅ ${key} = $(mask "$value")"
   fi
 done
 
 echo ""
-echo "============================================================"
-
-if [ "$has_errors" = true ]; then
-  echo "❌ ERREURS DÉTECTÉES"
-  echo ""
-  echo "Corrigez les erreurs ci-dessus avant de continuer."
-  exit 1
+if [ "$missing" -ne 0 ]; then
+  echo "❌ Complétez les variables manquantes dans .env.local puis relancez le script."
 else
-  echo "✅ Toutes les variables locales sont correctement configurées !"
-  echo ""
-  echo "💡 Pour synchroniser avec Vercel, utilisez: ./scripts/sync-env-to-vercel.sh"
-  echo "💡 Pour comparer avec Vercel, utilisez: ./scripts/compare-env.sh"
-  exit 0
+  echo "✅ Toutes les variables critiques sont définies dans .env.local."
 fi
+
+exit "$missing"
 
