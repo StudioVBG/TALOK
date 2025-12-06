@@ -38,6 +38,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { CNIScanner } from "./CNIScanner";
+import { SignaturePad, type SignatureData } from "@/components/signature/SignaturePad";
 
 interface Lease {
   id: string;
@@ -103,47 +104,21 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
     lieuNaissance: "",
     nationalite: "Française",
     telephone: "",
+    countryCode: "", // Indicatif pays (auto-détecté ou manuel)
     adresseActuelle: "",
     situationPro: "",
     revenus: "",
   });
+  const [detectedTerritory, setDetectedTerritory] = useState<string | null>(null);
   const [hasReadLease, setHasReadLease] = useState(false);
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-
-  // Vérification identité simulée (CNI scan)
-  const handleIdentityVerification = useCallback(async () => {
-    setIsSubmitting(true);
-    
-    // Simuler le scan de CNI
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Simuler des données extraites
-    const extractedData = {
-      nom: "MARTIN",
-      prenom: "Marie",
-      dateNaissance: "1990-05-15",
-      lieuNaissance: "Lyon",
-      nationalite: "Française",
-    };
-    
-    setProfileData(prev => ({
-      ...prev,
-      ...extractedData,
-    }));
-    
-    setIdentityVerified(true);
-    setIsSubmitting(false);
-    
-    toast({
-      title: "✅ Identité vérifiée",
-      description: "Vos informations ont été extraites automatiquement",
-    });
-    
-    // Passer à l'étape suivante
-    setCurrentStep(2);
-  }, [toast]);
+  const [verificationMethod, setVerificationMethod] = useState<"sms" | "email">("sms");
+  const [smsError, setSmsError] = useState<string | null>(null);
+  
+  // Mode de signature : "otp" (code SMS/email) ou "pad" (tracé au doigt/texte)
+  const [signatureMode, setSignatureMode] = useState<"pad" | "otp">("pad");
 
   // Mise à jour du profil
   const handleProfileUpdate = (field: string, value: string) => {
@@ -197,9 +172,10 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
     }
   };
 
-  // Envoyer le code OTP
-  const handleSendOtp = async () => {
-    if (!profileData.telephone) {
+  // Envoyer le code OTP (SMS ou Email)
+  const handleSendOtp = async (method: "sms" | "email" = verificationMethod) => {
+    // Validation selon la méthode
+    if (method === "sms" && !profileData.telephone) {
       toast({
         title: "Téléphone requis",
         description: "Veuillez renseigner votre numéro de téléphone",
@@ -207,29 +183,62 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
       });
       return;
     }
+    
+    if (method === "email" && !profileData.email) {
+      toast({
+        title: "Email requis",
+        description: "Veuillez renseigner votre adresse email",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSubmitting(true);
+    setSmsError(null);
     
     try {
+      const payload: any = { method };
+      
+      if (method === "sms") {
+        payload.phone = profileData.telephone;
+        payload.countryCode = profileData.countryCode || undefined;
+      } else {
+        payload.email = profileData.email;
+      }
+
       const response = await fetch(`/api/signature/${token}/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: profileData.telephone }),
+        body: JSON.stringify(payload),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Erreur lors de l'envoi du code");
+        // Si erreur SMS avec suggestion email
+        if (data.allow_email_fallback) {
+          setSmsError(data.error);
+          toast({
+            title: "⚠️ SMS non reçu ?",
+            description: "Vous pouvez essayer par email",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw new Error(data.error || "Erreur lors de l'envoi du code");
       }
 
       setOtpSent(true);
+      setVerificationMethod(method);
+      
       toast({
-        title: "📱 Code envoyé",
-        description: `Un code de vérification a été envoyé au ${profileData.telephone}`,
+        title: method === "sms" ? "📱 Code envoyé" : "📧 Code envoyé",
+        description: data.message,
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Erreur",
-        description: "Impossible d'envoyer le code SMS",
+        description: error.message || "Impossible d'envoyer le code",
         variant: "destructive",
       });
     } finally {
@@ -269,6 +278,51 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
       
       // Rediriger vers la page de succès
       window.location.href = `/signature/success?lease_id=${lease.id}`;
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de signer le bail",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Signer avec le pad (signature au doigt/texte)
+  const handleSignWithPad = async (signatureData: SignatureData) => {
+    setIsSubmitting(true);
+    
+    try {
+      const response = await fetch(`/api/signature/${token}/sign-with-pad`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signatureType: signatureData.type,
+          signatureImage: signatureData.data,
+          signerName: `${profileData.prenom} ${profileData.nom}`,
+          identityVerified: identityVerified,
+          identityMethod: identityMethod,
+          userAgent: signatureData.metadata.userAgent,
+          screenSize: signatureData.metadata.screenSize,
+          touchDevice: signatureData.metadata.touchDevice,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erreur lors de la signature");
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: "🎉 Bail signé !",
+        description: "Votre contrat a été signé avec succès",
+      });
+      
+      // Rediriger vers la page de succès
+      window.location.href = `/signature/success?lease_id=${lease.id}&proof=${result.proof_id}`;
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -556,7 +610,7 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                         value={profileData.nom}
                         onChange={(e) => handleProfileUpdate("nom", e.target.value)}
                         placeholder="MARTIN"
-                        className={identityVerified ? "bg-slate-50" : ""}
+                        className={identityVerified ? "bg-slate-50 text-slate-900 dark:text-slate-900" : ""}
                       />
                     </div>
                     <div className="space-y-2">
@@ -565,7 +619,7 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                         value={profileData.prenom}
                         onChange={(e) => handleProfileUpdate("prenom", e.target.value)}
                         placeholder="Marie"
-                        className={identityVerified ? "bg-slate-50" : ""}
+                        className={identityVerified ? "bg-slate-50 text-slate-900 dark:text-slate-900" : ""}
                       />
                     </div>
                     <div className="space-y-2">
@@ -574,7 +628,7 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                         type="date"
                         value={profileData.dateNaissance}
                         onChange={(e) => handleProfileUpdate("dateNaissance", e.target.value)}
-                        className={identityVerified ? "bg-slate-50" : ""}
+                        className={identityVerified ? "bg-slate-50 text-slate-900 dark:text-slate-900" : ""}
                       />
                     </div>
                     <div className="space-y-2">
@@ -583,17 +637,68 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                         value={profileData.lieuNaissance}
                         onChange={(e) => handleProfileUpdate("lieuNaissance", e.target.value)}
                         placeholder="Lyon"
-                        className={identityVerified ? "bg-slate-50" : ""}
+                        className={identityVerified ? "bg-slate-50 text-slate-900 dark:text-slate-900" : ""}
                       />
                     </div>
                     <div className="col-span-2 space-y-2">
                       <Label>Téléphone portable *</Label>
-                      <Input
-                        type="tel"
-                        value={profileData.telephone}
-                        onChange={(e) => handleProfileUpdate("telephone", e.target.value)}
-                        placeholder="06 12 34 56 78"
-                      />
+                      <div className="flex gap-2">
+                        <Select
+                          value={profileData.countryCode}
+                          onValueChange={(v) => {
+                            handleProfileUpdate("countryCode", v);
+                            setDetectedTerritory(null); // Réinitialiser la détection auto
+                          }}
+                        >
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Pays" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="33">🇫🇷 +33 France</SelectItem>
+                            <SelectItem value="596">🇲🇶 +596 Martinique</SelectItem>
+                            <SelectItem value="590">🇬🇵 +590 Guadeloupe</SelectItem>
+                            <SelectItem value="262">🇷🇪 +262 Réunion</SelectItem>
+                            <SelectItem value="594">🇬🇫 +594 Guyane</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="tel"
+                          value={profileData.telephone}
+                          onChange={(e) => {
+                            const phone = e.target.value;
+                            handleProfileUpdate("telephone", phone);
+                            // Détection automatique du territoire
+                            const cleaned = phone.replace(/[^0-9]/g, "");
+                            if (cleaned.length >= 4 && !profileData.countryCode) {
+                              const prefix = cleaned.substring(0, 4);
+                              if (["0696", "0697"].includes(prefix)) {
+                                setDetectedTerritory("Martinique (+596)");
+                                handleProfileUpdate("countryCode", "596");
+                              } else if (["0690", "0691"].includes(prefix)) {
+                                setDetectedTerritory("Guadeloupe (+590)");
+                                handleProfileUpdate("countryCode", "590");
+                              } else if (["0692", "0693"].includes(prefix)) {
+                                setDetectedTerritory("Réunion (+262)");
+                                handleProfileUpdate("countryCode", "262");
+                              } else if (prefix === "0694") {
+                                setDetectedTerritory("Guyane (+594)");
+                                handleProfileUpdate("countryCode", "594");
+                              } else if (cleaned.startsWith("06") || cleaned.startsWith("07")) {
+                                setDetectedTerritory("France (+33)");
+                                handleProfileUpdate("countryCode", "33");
+                              }
+                            }
+                          }}
+                          placeholder="696 12 34 56"
+                          className="flex-1"
+                        />
+                      </div>
+                      {detectedTerritory && (
+                        <p className="text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          Détecté : {detectedTerritory}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Nécessaire pour la signature par SMS
                       </p>
@@ -677,40 +782,119 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                     </p>
                   </div>
 
-                  {/* Aperçu simplifié */}
-                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold">Contrat de {LEASE_TYPE_LABELS[lease.type_bail]}</h3>
-                      <Button variant="outline" size="sm" className="gap-1">
-                        <Eye className="h-4 w-4" />
-                        Voir le PDF complet
-                      </Button>
+                  {/* Aperçu du bail amélioré SOTA 2025 */}
+                  <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    {/* En-tête avec adresse */}
+                    <div className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-blue-100 text-xs uppercase tracking-wider mb-1">
+                            {LEASE_TYPE_LABELS[lease.type_bail]}
+                          </p>
+                          <h3 className="font-semibold text-lg">
+                            {lease.property?.adresse_complete || propertyAddress}
+                          </h3>
+                          <p className="text-blue-100 text-sm">
+                            {lease.property?.code_postal} {lease.property?.ville}
+                          </p>
+                        </div>
+                        <Button variant="secondary" size="sm" className="gap-1 shrink-0">
+                          <Eye className="h-4 w-4" />
+                          PDF complet
+                        </Button>
+                      </div>
+                      
+                      {/* Caractéristiques du bien */}
+                      {lease.property && (
+                        <div className="flex flex-wrap gap-3 mt-3 text-sm">
+                          {lease.property.surface && (
+                            <span className="px-2 py-0.5 bg-white/20 rounded-full">
+                              {lease.property.surface} m²
+                            </span>
+                          )}
+                          {lease.property.nb_pieces && (
+                            <span className="px-2 py-0.5 bg-white/20 rounded-full">
+                              {lease.property.nb_pieces} pièces
+                            </span>
+                          )}
+                          {lease.property.dpe_classe && (
+                            <span className="px-2 py-0.5 bg-white/20 rounded-full">
+                              DPE {lease.property.dpe_classe}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Bailleur</p>
-                        <p className="font-medium">{ownerName}</p>
+                    {/* Parties du contrat */}
+                    <div className="grid grid-cols-2 divide-x divide-slate-200 dark:divide-slate-700 border-b border-slate-200 dark:border-slate-700">
+                      <div className="p-3">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Bailleur</p>
+                        <p className="font-medium mt-1">{ownerName}</p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Locataire</p>
-                        <p className="font-medium">{profileData.prenom} {profileData.nom}</p>
+                      <div className="p-3">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Locataire</p>
+                        <p className="font-medium mt-1">{profileData.prenom} {profileData.nom}</p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Loyer mensuel</p>
-                        <p className="font-medium">{formatCurrency(lease.loyer)}</p>
+                    </div>
+
+                    {/* Montants */}
+                    <div className="grid grid-cols-4 divide-x divide-slate-200 dark:divide-slate-700 text-center">
+                      <div className="p-3">
+                        <p className="text-lg font-bold text-blue-600">{formatCurrency(lease.loyer)}</p>
+                        <p className="text-xs text-muted-foreground">Loyer</p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Charges</p>
-                        <p className="font-medium">{formatCurrency(lease.charges_forfaitaires || 0)}</p>
+                      <div className="p-3">
+                        <p className="text-lg font-bold">
+                          {lease.charges_forfaitaires ? formatCurrency(lease.charges_forfaitaires) : "Incluses"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Charges</p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Dépôt de garantie</p>
-                        <p className="font-medium">{formatCurrency(lease.depot_de_garantie || 0)}</p>
+                      <div className="p-3">
+                        <p className="text-lg font-bold">{formatCurrency(lease.depot_de_garantie || 0)}</p>
+                        <p className="text-xs text-muted-foreground">Dépôt</p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Date de début</p>
-                        <p className="font-medium">{formatDateShort(lease.date_debut)}</p>
+                      <div className="p-3">
+                        <p className="text-lg font-bold text-green-600">
+                          {formatCurrency(lease.loyer + (lease.charges_forfaitaires || 0))}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Total/mois</p>
+                      </div>
+                    </div>
+
+                    {/* Dates et durée */}
+                    <div className="p-4 bg-slate-100 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            <span className="text-muted-foreground">Du</span>{" "}
+                            <span className="font-medium">{formatDateShort(lease.date_debut)}</span>
+                            {lease.date_fin && (
+                              <>
+                                {" "}<span className="text-muted-foreground">au</span>{" "}
+                                <span className="font-medium">{formatDateShort(lease.date_fin)}</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        {!lease.date_fin && lease.type_bail !== "saisonnier" && (
+                          <Badge variant="outline" className="text-xs">
+                            Durée indéterminée
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {/* Rappels importants */}
+                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Shield className="h-3 w-3" />
+                          Assurance habitation obligatoire
+                        </div>
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <AlertCircle className="h-3 w-3" />
+                          Préavis : {lease.type_bail === "meuble" ? "1 mois" : "3 mois"}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -766,30 +950,178 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                   <div className="text-center">
                     <h2 className="text-xl font-bold">Signature électronique</h2>
                     <p className="text-muted-foreground mt-1">
-                      Signez avec un code de vérification SMS
+                      Choisissez votre méthode de signature
                     </p>
                   </div>
 
-                  {!otpSent ? (
+                  {/* Choix du mode de signature */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSignatureMode("pad")}
+                      className={cn(
+                        "p-4 rounded-xl border-2 transition-all text-left",
+                        signatureMode === "pad"
+                          ? "border-green-500 bg-green-50 dark:bg-green-950/30"
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                      )}
+                    >
+                      <PenTool className={cn(
+                        "h-8 w-8 mb-2",
+                        signatureMode === "pad" ? "text-green-600" : "text-slate-400"
+                      )} />
+                      <p className="font-semibold">Signature rapide</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Dessinez ou tapez votre signature
+                      </p>
+                      <Badge variant="secondary" className="mt-2 text-xs">
+                        Recommandé
+                      </Badge>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setSignatureMode("otp")}
+                      className={cn(
+                        "p-4 rounded-xl border-2 transition-all text-left",
+                        signatureMode === "otp"
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                      )}
+                    >
+                      <Smartphone className={cn(
+                        "h-8 w-8 mb-2",
+                        signatureMode === "otp" ? "text-blue-600" : "text-slate-400"
+                      )} />
+                      <p className="font-semibold">Code SMS/Email</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Recevez un code de vérification
+                      </p>
+                    </button>
+                  </div>
+
+                  {/* Mode Signature Pad (recommandé) */}
+                  {signatureMode === "pad" && (
                     <div className="space-y-4">
-                      <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                        <div className="flex items-center gap-3">
-                          <Smartphone className="h-6 w-6 text-blue-600" />
-                          <div>
-                            <p className="font-medium text-blue-900 dark:text-blue-100">
-                              Vérification par SMS
-                            </p>
-                            <p className="text-sm text-blue-700 dark:text-blue-300">
-                              Un code sera envoyé au {profileData.telephone}
-                            </p>
-                          </div>
-                        </div>
+                      <SignaturePad
+                        signerName={`${profileData.prenom} ${profileData.nom}`}
+                        onSignatureComplete={handleSignWithPad}
+                        disabled={isSubmitting}
+                      />
+                      
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep(3)}
+                        className="w-full gap-2"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Retour à l'aperçu
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Mode OTP (code SMS/Email) */}
+                  {signatureMode === "otp" && !otpSent && (
+                    <div className="space-y-4">
+                      {/* Choix SMS ou Email */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant={verificationMethod === "sms" ? "default" : "outline"}
+                          onClick={() => setVerificationMethod("sms")}
+                          className="gap-2"
+                          size="sm"
+                        >
+                          <Smartphone className="h-4 w-4" />
+                          SMS
+                        </Button>
+                        <Button
+                          variant={verificationMethod === "email" ? "default" : "outline"}
+                          onClick={() => setVerificationMethod("email")}
+                          className="gap-2"
+                          size="sm"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Email
+                        </Button>
                       </div>
 
+                      {/* Info méthode SMS */}
+                      {verificationMethod === "sms" && (
+                        <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center gap-3">
+                            <Smartphone className="h-6 w-6 text-blue-600" />
+                            <div>
+                              <p className="font-medium text-blue-900 dark:text-blue-100">
+                                Vérification par SMS
+                              </p>
+                              <p className="text-sm text-blue-700 dark:text-blue-300">
+                                Un code sera envoyé au {profileData.countryCode ? `+${profileData.countryCode} ` : ""}{profileData.telephone}
+                              </p>
+                              {detectedTerritory && (
+                                <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  {detectedTerritory}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Info méthode Email */}
+                      {verificationMethod === "email" && (
+                        <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-6 w-6 text-purple-600" />
+                            <div>
+                              <p className="font-medium text-purple-900 dark:text-purple-100">
+                                Vérification par email
+                              </p>
+                              <p className="text-sm text-purple-700 dark:text-purple-300">
+                                Un code sera envoyé à {profileData.email}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Message d'erreur SMS avec suggestion email */}
+                      {smsError && (
+                        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                                SMS non reçu ?
+                              </p>
+                              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                {smsError}
+                              </p>
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() => {
+                                  setVerificationMethod("email");
+                                  setSmsError(null);
+                                }}
+                                className="text-amber-700 p-0 h-auto mt-1"
+                              >
+                                → Essayer par email
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <Button
-                        onClick={handleSendOtp}
+                        onClick={() => handleSendOtp(verificationMethod)}
                         disabled={isSubmitting}
-                        className="w-full gap-2 bg-gradient-to-r from-green-600 to-emerald-600"
+                        className={cn(
+                          "w-full gap-2",
+                          verificationMethod === "sms" 
+                            ? "bg-gradient-to-r from-green-600 to-emerald-600"
+                            : "bg-gradient-to-r from-purple-600 to-indigo-600"
+                        )}
                       >
                         {isSubmitting ? (
                           <>
@@ -798,13 +1130,29 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                           </>
                         ) : (
                           <>
-                            <Smartphone className="h-4 w-4" />
-                            Envoyer le code de vérification
+                            {verificationMethod === "sms" ? (
+                              <Smartphone className="h-4 w-4" />
+                            ) : (
+                              <FileText className="h-4 w-4" />
+                            )}
+                            Envoyer le code par {verificationMethod === "sms" ? "SMS" : "email"}
                           </>
                         )}
                       </Button>
+                      
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep(3)}
+                        className="w-full gap-2"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Retour à l'aperçu
+                      </Button>
                     </div>
-                  ) : (
+                  )}
+
+                  {/* Mode OTP - Code envoyé */}
+                  {signatureMode === "otp" && otpSent && (
                     <div className="space-y-4">
                       <div className="p-4 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
                         <div className="flex items-center gap-3">
@@ -814,7 +1162,10 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                               Code envoyé !
                             </p>
                             <p className="text-sm text-green-700 dark:text-green-300">
-                              Entrez le code reçu au {profileData.telephone}
+                              {verificationMethod === "sms" 
+                                ? `Entrez le code reçu au ${profileData.countryCode ? `+${profileData.countryCode} ` : ""}${profileData.telephone}`
+                                : `Entrez le code reçu à ${profileData.email}`
+                              }
                             </p>
                           </div>
                         </div>
@@ -852,22 +1203,25 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
 
                       <button
                         type="button"
-                        onClick={handleSendOtp}
+                        onClick={() => handleSendOtp(verificationMethod)}
                         className="text-sm text-blue-600 hover:underline w-full text-center"
                       >
                         Renvoyer le code
                       </button>
+                      
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setOtpSent(false);
+                          setOtpCode("");
+                        }}
+                        className="w-full gap-2"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Changer de méthode
+                      </Button>
                     </div>
                   )}
-
-                  <Button
-                    variant="ghost"
-                    onClick={() => setCurrentStep(3)}
-                    className="w-full gap-2"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Retour à l'aperçu
-                  </Button>
                 </div>
               )}
             </motion.div>

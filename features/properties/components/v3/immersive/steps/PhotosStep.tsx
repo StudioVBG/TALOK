@@ -2,16 +2,25 @@
 
 import React, { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, Loader2, Trash2, Star } from "lucide-react";
+import { Upload, Loader2, Trash2, Star, Download, CheckCircle2, AlertCircle } from "lucide-react";
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
 import { propertiesService } from "@/features/properties/services/properties.service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Image from "next/image";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 
 export function PhotosStep() {
-  const { propertyId, photos, rooms, setPhotos } = usePropertyWizardStore();
+  const { 
+    propertyId, 
+    photos, 
+    rooms, 
+    setPhotos,
+    photoImportStatus,
+    photoImportProgress,
+    pendingPhotoUrls,
+  } = usePropertyWizardStore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -57,6 +66,65 @@ export function PhotosStep() {
 
   return (
     <div className="h-full flex flex-col">
+      {/* 🆕 Indicateur d'import automatique */}
+      {(photoImportStatus === 'importing' || (pendingPhotoUrls.length > 0 && photoImportStatus === 'idle')) && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex-shrink-0 mb-4 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-800"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+              <Download className="h-5 w-5 text-blue-600 animate-bounce" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-blue-900 dark:text-blue-100">
+                Import des photos en cours...
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                {photoImportStatus === 'importing' 
+                  ? `Téléchargement de ${pendingPhotoUrls.length} photo(s) depuis l'annonce`
+                  : `${pendingPhotoUrls.length} photo(s) en attente d'import`
+                }
+              </p>
+            </div>
+            <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+          </div>
+          {photoImportStatus === 'importing' && (
+            <Progress className="mt-3 h-1.5" value={50} />
+          )}
+        </motion.div>
+      )}
+      
+      {/* Notification succès import */}
+      {photoImportStatus === 'done' && photoImportProgress.total > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="flex-shrink-0 mb-4 p-3 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 flex items-center gap-3"
+        >
+          <CheckCircle2 className="h-5 w-5 text-green-600" />
+          <p className="text-sm text-green-700 dark:text-green-300">
+            <strong>{photoImportProgress.imported}</strong> photo(s) importée(s) depuis l'annonce !
+          </p>
+        </motion.div>
+      )}
+      
+      {/* Notification erreur import */}
+      {photoImportStatus === 'error' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex-shrink-0 mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-center gap-3"
+        >
+          <AlertCircle className="h-5 w-5 text-amber-600" />
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            Certaines photos n'ont pas pu être importées. Ajoutez-les manuellement.
+          </p>
+        </motion.div>
+      )}
+
       {/* Zone Drop */}
       <div
         className={cn(
@@ -92,7 +160,7 @@ export function PhotosStep() {
                   exit={{ opacity: 0, scale: 0.8 }}
                   className="relative rounded-lg overflow-hidden border bg-card group aspect-square"
                 >
-                  <Image src={photo.url || ""} alt="Photo" fill className={cn("object-cover", photo.is_main && "ring-2 ring-primary ring-inset")} />
+                  <Image src={photo.url || ""} alt="Photo" fill sizes="(max-width: 768px) 50vw, 150px" className={cn("object-cover", photo.is_main && "ring-2 ring-primary ring-inset")} />
                   
                   {photo.is_main && (
                     <span className="absolute top-1 left-1 bg-primary text-white text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
@@ -125,7 +193,7 @@ export function PhotosStep() {
             {photos.slice(0, 5).map((photo) => (
               <div key={photo.id} className="flex items-center gap-1.5 bg-muted/50 rounded-md p-1.5">
                 <div className="h-8 w-8 rounded overflow-hidden relative flex-shrink-0">
-                  <Image src={photo.url || ""} alt="" fill className="object-cover" />
+                  <Image src={photo.url || ""} alt="" fill sizes="32px" className="object-cover" />
                 </div>
                 <Select value={photo.room_id || "none"} onValueChange={(val) => handleAssignRoom(photo.id, val)}>
                   <SelectTrigger className="h-7 text-[10px] w-20 border-0 bg-transparent"><SelectValue placeholder="Pièce" /></SelectTrigger>

@@ -3,9 +3,11 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { MapPin, Loader2, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MapPin, Loader2, CheckCircle2, Navigation, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/lib/hooks/use-debounce";
+import { getDepartementCodeFromCP } from "@/lib/helpers/address-utils";
 
 interface AddressSuggestion {
   label: string;
@@ -30,6 +32,34 @@ interface AddressAutocompleteProps {
   onChange?: (value: string) => void;
   placeholder?: string;
   className?: string;
+  showGeolocation?: boolean;
+}
+
+// Cache simple pour les résultats de recherche (évite les requêtes dupliquées)
+const searchCache = new Map<string, AddressSuggestion[]>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const cacheTimestamps = new Map<string, number>();
+
+function getCachedResult(query: string): AddressSuggestion[] | null {
+  const cached = searchCache.get(query);
+  const timestamp = cacheTimestamps.get(query);
+  if (cached && timestamp && Date.now() - timestamp < CACHE_DURATION) {
+    return cached;
+  }
+  return null;
+}
+
+function setCachedResult(query: string, results: AddressSuggestion[]) {
+  searchCache.set(query, results);
+  cacheTimestamps.set(query, Date.now());
+  // Nettoyer le cache si trop grand
+  if (searchCache.size > 100) {
+    const firstKey = searchCache.keys().next().value;
+    if (firstKey) {
+      searchCache.delete(firstKey);
+      cacheTimestamps.delete(firstKey);
+    }
+  }
 }
 
 export function AddressAutocomplete({
@@ -38,55 +68,135 @@ export function AddressAutocomplete({
   onChange,
   placeholder = "Rechercher une adresse...",
   className,
+  showGeolocation = true,
 }: AddressAutocompleteProps) {
   const [query, setQuery] = useState(value || "");
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeolocating, setIsGeolocating] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [hasSelected, setHasSelected] = useState(false);
+  const [noResults, setNoResults] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
   const debouncedQuery = useDebounce(query, 300);
 
-  // Recherche API
+  // Recherche API avec cache
   const searchAddress = useCallback(async (searchQuery: string) => {
     if (searchQuery.length < 3 || hasSelected) {
       setSuggestions([]);
+      setNoResults(false);
+      return;
+    }
+
+    // Vérifier le cache
+    const cached = getCachedResult(searchQuery);
+    if (cached) {
+      setSuggestions(cached);
+      setNoResults(cached.length === 0);
+      setIsOpen(cached.length > 0);
       return;
     }
 
     setIsLoading(true);
+    setNoResults(false);
+    
     try {
       const response = await fetch(
-        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(searchQuery)}&limit=5&autocomplete=1`
+        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(searchQuery)}&limit=6&autocomplete=1&type=housenumber`
       );
       const data = await response.json();
 
       if (data.features && data.features.length > 0) {
-        setSuggestions(
-          data.features.map((feature: any) => ({
-            label: feature.properties.label,
-            housenumber: feature.properties.housenumber,
-            street: feature.properties.street,
-            city: feature.properties.city,
-            postcode: feature.properties.postcode,
-            context: feature.properties.context,
-            coordinates: feature.geometry.coordinates,
-          }))
-        );
+        const results = data.features.map((feature: any) => ({
+          label: feature.properties.label,
+          housenumber: feature.properties.housenumber,
+          street: feature.properties.street,
+          city: feature.properties.city,
+          postcode: feature.properties.postcode,
+          context: feature.properties.context,
+          coordinates: feature.geometry.coordinates,
+        }));
+        setSuggestions(results);
+        setCachedResult(searchQuery, results);
         setIsOpen(true);
+        setNoResults(false);
       } else {
         setSuggestions([]);
+        setCachedResult(searchQuery, []);
+        setNoResults(true);
       }
     } catch (error) {
       console.error("Address search error:", error);
       setSuggestions([]);
+      setNoResults(true);
     } finally {
       setIsLoading(false);
     }
   }, [hasSelected]);
+
+  // Géolocalisation
+  const handleGeolocation = useCallback(async () => {
+    if (!navigator.geolocation) {
+      setGeoError("Géolocalisation non supportée");
+      return;
+    }
+
+    setIsGeolocating(true);
+    setGeoError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          // Reverse geocoding avec l'API BAN
+          const response = await fetch(
+            `https://api-adresse.data.gouv.fr/reverse/?lon=${position.coords.longitude}&lat=${position.coords.latitude}`
+          );
+          const data = await response.json();
+
+          if (data.features && data.features.length > 0) {
+            const feature = data.features[0];
+            const suggestion: AddressSuggestion = {
+              label: feature.properties.label,
+              housenumber: feature.properties.housenumber,
+              street: feature.properties.street,
+              city: feature.properties.city,
+              postcode: feature.properties.postcode,
+              context: feature.properties.context,
+              coordinates: feature.geometry.coordinates,
+            };
+            handleSelect(suggestion);
+          } else {
+            setGeoError("Adresse non trouvée");
+          }
+        } catch (error) {
+          console.error("Reverse geocoding error:", error);
+          setGeoError("Erreur de géolocalisation");
+        } finally {
+          setIsGeolocating(false);
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        setGeoError(
+          error.code === 1
+            ? "Permission refusée"
+            : error.code === 2
+            ? "Position indisponible"
+            : "Délai dépassé"
+        );
+        setIsGeolocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  }, []);
 
   // Effet de recherche
   useEffect(() => {
@@ -95,20 +205,21 @@ export function AddressAutocomplete({
 
   // Gérer la sélection
   const handleSelect = (suggestion: AddressSuggestion) => {
-    const departementCode = suggestion.postcode.startsWith("97")
-      ? suggestion.postcode.substring(0, 3)
-      : suggestion.postcode.substring(0, 2);
+    // Utiliser le helper centralisé pour extraire le département
+    const departementCode = getDepartementCodeFromCP(suggestion.postcode);
 
     setQuery(suggestion.label);
     setHasSelected(true);
     setSuggestions([]);
     setIsOpen(false);
+    setNoResults(false);
+    setGeoError(null);
     
     onSelect({
       adresse_complete: suggestion.label,
       ville: suggestion.city,
       code_postal: suggestion.postcode,
-      departement: departementCode,
+      departement: departementCode || undefined,
       latitude: suggestion.coordinates[1],
       longitude: suggestion.coordinates[0],
     });
@@ -120,6 +231,7 @@ export function AddressAutocomplete({
     setQuery(newValue);
     setHasSelected(false);
     setSelectedIndex(-1);
+    setGeoError(null);
     onChange?.(newValue);
   };
 
@@ -161,36 +273,72 @@ export function AddressAutocomplete({
 
   return (
     <div className={cn("relative", className)}>
-      <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-        <Input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          onFocus={() => suggestions.length > 0 && setIsOpen(true)}
-          onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-          placeholder={placeholder}
-          className={cn(
-            "pl-9 pr-10 h-11 transition-all",
-            hasSelected && "border-green-500 focus-visible:ring-green-500/50"
-          )}
-          autoComplete="off"
-        />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          ) : hasSelected ? (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-            >
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </motion.div>
-          ) : null}
+      <div className="relative flex gap-2">
+        <div className="relative flex-1">
+          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+          <Input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => suggestions.length > 0 && setIsOpen(true)}
+            onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+            placeholder={placeholder}
+            className={cn(
+              "pl-9 pr-10 h-11 transition-all",
+              hasSelected && "border-green-500 focus-visible:ring-green-500/50"
+            )}
+            autoComplete="off"
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : hasSelected ? (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+              >
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              </motion.div>
+            ) : null}
+          </div>
         </div>
+        
+        {/* Bouton de géolocalisation */}
+        {showGeolocation && (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            onClick={handleGeolocation}
+            disabled={isGeolocating}
+            title="Utiliser ma position"
+          >
+            {isGeolocating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Navigation className="h-4 w-4" />
+            )}
+          </Button>
+        )}
       </div>
+
+      {/* Message d'erreur géolocalisation */}
+      <AnimatePresence>
+        {geoError && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="mt-2 flex items-center gap-2 text-sm text-destructive"
+          >
+            <AlertCircle className="h-4 w-4" />
+            {geoError}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Dropdown suggestions */}
       <AnimatePresence>
@@ -234,7 +382,26 @@ export function AddressAutocomplete({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Message "Aucun résultat" */}
+      <AnimatePresence>
+        {noResults && query.length >= 3 && !isLoading && !hasSelected && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute z-50 w-full mt-1 bg-popover border rounded-lg shadow-lg p-4"
+          >
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <AlertCircle className="h-4 w-4" />
+              <p className="text-sm">Aucune adresse trouvée pour "{query}"</p>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Essayez avec un numéro de rue ou vérifiez l'orthographe.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-

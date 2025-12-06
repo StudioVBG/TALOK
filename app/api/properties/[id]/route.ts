@@ -169,10 +169,16 @@ export async function PATCH(
     // DEBUG: Log les données reçues pour diagnostiquer les problèmes de sauvegarde
     console.log(`[PATCH /api/properties/${params.id}] Body reçu:`, JSON.stringify(body, null, 2));
     
-    const validated = propertyGeneralUpdateSchema.parse(body);
+    // Utiliser safeParse pour avoir des logs détaillés en cas d'erreur de validation
+    const parseResult = propertyGeneralUpdateSchema.safeParse(body);
+    if (!parseResult.success) {
+      console.error(`[PATCH /api/properties/${params.id}] ❌ Erreur validation Zod:`, JSON.stringify(parseResult.error.errors, null, 2));
+      throw new ApiError(400, "Données invalides", parseResult.error.errors);
+    }
+    const validated = parseResult.data;
     
     // DEBUG: Log les données après validation
-    console.log(`[PATCH /api/properties/${params.id}] Validé:`, JSON.stringify(validated, null, 2));
+    console.log(`[PATCH /api/properties/${params.id}] ✅ Validé:`, JSON.stringify(validated, null, 2));
 
     // ✅ PERMISSIONS: Récupérer le profil avec serviceClient pour éviter les problèmes RLS
     const { data: profile, error: profileError } = await serviceClient

@@ -20,12 +20,20 @@ import {
   ChevronDown,
   CalendarClock,
   Wrench,
+  Shield,
+  CreditCard,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { OwnerBottomNav } from "./owner-bottom-nav";
 import { cn } from "@/lib/utils";
 import { authService } from "@/features/auth/services/auth.service";
 import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
+import { AssistantPanel } from "@/components/ai/assistant-panel";
+import { SubscriptionProvider, UpgradeTrigger } from "@/components/subscription";
+import { CommandPalette } from "@/components/command-palette";
+import { NotificationCenter } from "@/components/notifications";
+import { FavoritesList } from "@/components/ui/favorites-list";
+import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
 
 const navigation = [
   { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard },
@@ -35,6 +43,8 @@ const navigation = [
   { name: "Fin de bail", href: "/app/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
   { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench },
   { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck },
+  { name: "Protocoles juridiques", href: "/app/owner/legal-protocols", icon: Shield },
+  { name: "Facturation", href: "/app/settings/billing", icon: CreditCard },
   { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle },
 ];
 
@@ -93,6 +103,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
 
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
+      <SubscriptionProvider>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
         {/* Desktop Sidebar */}
         <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
@@ -190,12 +201,29 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
             </Button>
 
             <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-              <div className="flex flex-1 items-center">
+              <div className="flex flex-1 items-center gap-4">
                 <h2 className="text-lg font-semibold text-slate-900">
                   {navigation.find((item) => pathname === item.href || pathname?.startsWith(item.href + "/"))?.name || "Tableau de bord"}
                 </h2>
+                {/* SOTA 2025 - Bouton recherche rapide qui ouvre Command Palette */}
+                <button
+                  onClick={() => {
+                    const event = new KeyboardEvent("keydown", { key: "k", metaKey: true });
+                    document.dispatchEvent(event);
+                  }}
+                  className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  <span className="text-slate-400">Recherche rapide...</span>
+                  <kbd className="px-1.5 py-0.5 text-xs font-mono bg-white rounded border shadow-sm">⌘K</kbd>
+                </button>
               </div>
               <div className="flex items-center gap-x-4 lg:gap-x-6">
+                {/* SOTA 2025 - Aide raccourcis */}
+                <KeyboardShortcutsHelp />
+                {/* SOTA 2025 - Favoris */}
+                <FavoritesList />
+                {/* SOTA 2025 - Centre de notifications */}
+                <NotificationCenter />
                 <DarkModeToggle />
                 <Button variant="outline" size="sm" asChild>
                   <Link href={OWNER_ROUTES.support.path}>
@@ -256,7 +284,17 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         {/* Mobile Bottom Navigation */}
         <OwnerBottomNav />
         <div className="h-16 md:hidden" />
+
+        {/* Assistant IA - Bouton flottant */}
+        <AssistantPanel />
+
+        {/* SOTA 2025 - Command Palette (⌘K) */}
+        <CommandPalette role="owner" />
+
+        {/* SOTA 2025 - Floating Upgrade Button */}
+        <UpgradeTrigger variant="floating" />
       </div>
+      </SubscriptionProvider>
     </ProtectedRoute>
   );
 }

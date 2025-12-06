@@ -58,6 +58,7 @@ interface Props {
 const statusConfig: Record<string, { label: string; color: string }> = {
   assigned: { label: "À accepter", color: "bg-amber-100 text-amber-800" },
   scheduled: { label: "Planifié", color: "bg-blue-100 text-blue-800" },
+  in_progress: { label: "En cours", color: "bg-purple-100 text-purple-800" },
   done: { label: "Terminé", color: "bg-green-100 text-green-800" },
   cancelled: { label: "Annulé", color: "bg-gray-100 text-gray-800" },
 };
@@ -68,7 +69,7 @@ const priorityConfig: Record<string, { label: string; color: string }> = {
   haute: { label: "Urgente", color: "bg-red-100 text-red-600" },
 };
 
-type DialogType = "accept" | "reject" | "complete" | null;
+type DialogType = "accept" | "reject" | "start" | "complete" | null;
 
 export function VendorJobsClient({ jobs: initialJobs }: Props) {
   const router = useRouter();
@@ -116,11 +117,12 @@ export function VendorJobsClient({ jobs: initialJobs }: Props) {
     
     setLoading(true);
     try {
-      const response = await fetch(`/api/work-orders/${selectedJob.id}/accept`, {
+      const response = await fetch(`/api/provider/jobs/${selectedJob.id}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date_intervention_prevue: scheduledDate || null,
+          action: "accept",
+          scheduled_date: scheduledDate || null,
         }),
       });
 
@@ -162,11 +164,12 @@ export function VendorJobsClient({ jobs: initialJobs }: Props) {
     
     setLoading(true);
     try {
-      const response = await fetch(`/api/work-orders/${selectedJob.id}/reject`, {
+      const response = await fetch(`/api/provider/jobs/${selectedJob.id}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reason: rejectReason || "Non disponible",
+          action: "reject",
+          notes: rejectReason || "Non disponible",
         }),
       });
 
@@ -201,18 +204,62 @@ export function VendorJobsClient({ jobs: initialJobs }: Props) {
     }
   };
 
+  const handleStart = async () => {
+    if (!selectedJob) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/provider/jobs/${selectedJob.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "start",
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors du démarrage");
+      }
+
+      // Mettre à jour localement
+      setJobs(jobs.map(j => 
+        j.id === selectedJob.id 
+          ? { ...j, status: "in_progress" }
+          : j
+      ));
+
+      toast({
+        title: "Intervention démarrée",
+        description: "Le propriétaire a été notifié du début de l'intervention.",
+      });
+      
+      closeDialog();
+      router.refresh();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleComplete = async () => {
     if (!selectedJob) return;
     
     setLoading(true);
     try {
-      const response = await fetch(`/api/work-orders/${selectedJob.id}/complete`, {
+      const response = await fetch(`/api/provider/jobs/${selectedJob.id}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cout_final: finalCost ? parseFloat(finalCost) : null,
+          action: "complete",
+          final_cost: finalCost ? parseFloat(finalCost) : null,
           notes: completionNotes || null,
-          date_intervention_reelle: new Date().toISOString().split("T")[0],
         }),
       });
 
@@ -274,7 +321,7 @@ export function VendorJobsClient({ jobs: initialJobs }: Props) {
           />
         </div>
         <div className="flex gap-2 flex-wrap">
-          {["all", "assigned", "scheduled", "done"].map((status) => (
+          {["all", "assigned", "scheduled", "in_progress", "done"].map((status) => (
             <Button
               key={status}
               variant={statusFilter === status ? "default" : "outline"}
@@ -379,19 +426,36 @@ export function VendorJobsClient({ jobs: initialJobs }: Props) {
                       <>
                         <Button
                           size="sm"
-                          onClick={() => openDialog(job, "complete")}
+                          onClick={() => openDialog(job, "start")}
                         >
-                          <CheckCircle2 className="h-4 w-4 mr-1" />
-                          Terminer
+                          <Wrench className="h-4 w-4 mr-1" />
+                          Démarrer
                         </Button>
-                        <Button size="sm" variant="outline">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => router.push("/app/provider/quotes/new")}
+                        >
                           <FileText className="h-4 w-4 mr-1" />
                           Devis
                         </Button>
                       </>
                     )}
+                    {job.status === "in_progress" && (
+                      <Button
+                        size="sm"
+                        onClick={() => openDialog(job, "complete")}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Terminer
+                      </Button>
+                    )}
                     {job.status === "done" && (
-                      <Button size="sm" variant="outline">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push("/app/provider/invoices")}
+                      >
                         <FileText className="h-4 w-4 mr-1" />
                         Facturer
                       </Button>
@@ -456,6 +520,39 @@ export function VendorJobsClient({ jobs: initialJobs }: Props) {
             <Button onClick={handleAccept} disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Start Dialog */}
+      <Dialog open={dialogType === "start"} onOpenChange={closeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Démarrer l'intervention</DialogTitle>
+            <DialogDescription>
+              Confirmez que vous commencez cette intervention. Le propriétaire sera notifié.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedJob && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <p className="font-semibold">{selectedJob.title}</p>
+                <p className="text-sm text-muted-foreground">{selectedJob.description}</p>
+                <p className="text-sm">
+                  <MapPin className="h-4 w-4 inline mr-1" />
+                  {selectedJob.property_address}, {selectedJob.property_city}
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog} disabled={loading}>
+              Annuler
+            </Button>
+            <Button onClick={handleStart} disabled={loading}>
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Démarrer maintenant
             </Button>
           </DialogFooter>
         </DialogContent>

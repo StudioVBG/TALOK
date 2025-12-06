@@ -1,0 +1,1040 @@
+openapi: 3.1.0
+info:
+  title: API Gestion Locative
+  description: |
+    API REST pour la plateforme SaaS de gestion locative.
+    
+    ## Authentification
+    
+    Toutes les requêtes (sauf mention contraire) nécessitent une authentification via:
+    - Cookie de session Supabase
+    - Header `Authorization: Bearer <token>`
+    
+    ## Rôles
+    
+    - `admin` : Accès complet à toutes les ressources
+    - `owner` : Propriétaire, accès à ses biens et baux
+    - `tenant` : Locataire, accès à ses baux et paiements
+    - `provider` : Prestataire, accès à ses interventions
+    
+    ## Pagination
+    
+    Les endpoints de liste supportent la pagination:
+    - `page` : Numéro de page (défaut: 1)
+    - `limit` : Nombre d'éléments par page (défaut: 20, max: 200)
+    
+  version: 1.0.0
+  contact:
+    name: Support Technique
+    email: support@gestionlocative.fr
+  license:
+    name: Propriétaire
+    
+servers:
+  - url: http://localhost:3000/api
+    description: Développement local
+  - url: https://gestion-locative.vercel.app/api
+    description: Production
+
+tags:
+  - name: Properties
+    description: Gestion des biens immobiliers
+  - name: Leases
+    description: Gestion des baux
+  - name: Payments
+    description: Paiements et facturation
+  - name: Tickets
+    description: Tickets de maintenance
+  - name: Documents
+    description: Gestion documentaire
+  - name: Auth
+    description: Authentification et profils
+  - name: End of Lease
+    description: Processus de fin de bail
+
+paths:
+  # ═══════════════════════════════════════════════════════════════
+  # PROPERTIES
+  # ═══════════════════════════════════════════════════════════════
+  /properties:
+    get:
+      tags:
+        - Properties
+      summary: Liste des propriétés
+      description: |
+        Récupère la liste des propriétés de l'utilisateur connecté.
+        - Owners : leurs propriétés uniquement
+        - Admins : toutes les propriétés
+      operationId: listProperties
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 200
+        - name: search
+          in: query
+          description: Recherche par adresse, ville ou code postal
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [appartement, maison, studio, colocation, saisonnier, local_commercial]
+        - name: etat
+          in: query
+          schema:
+            type: string
+            enum: [draft, active, archived]
+        - name: ville
+          in: query
+          schema:
+            type: string
+        - name: surface_min
+          in: query
+          schema:
+            type: number
+        - name: surface_max
+          in: query
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Liste des propriétés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  properties:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Property'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+          
+    post:
+      tags:
+        - Properties
+      summary: Créer une propriété
+      description: Crée une nouvelle propriété (draft ou complète)
+      operationId: createProperty
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/PropertyDraft'
+                - $ref: '#/components/schemas/PropertyCreate'
+      responses:
+        '201':
+          description: Propriété créée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  property:
+                    $ref: '#/components/schemas/Property'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /properties/{id}:
+    get:
+      tags:
+        - Properties
+      summary: Détails d'une propriété
+      operationId: getProperty
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Détails de la propriété
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          
+    put:
+      tags:
+        - Properties
+      summary: Modifier une propriété
+      operationId: updateProperty
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropertyUpdate'
+      responses:
+        '200':
+          description: Propriété modifiée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+                
+    delete:
+      tags:
+        - Properties
+      summary: Supprimer une propriété
+      operationId: deleteProperty
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Propriété supprimée
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ═══════════════════════════════════════════════════════════════
+  # LEASES
+  # ═══════════════════════════════════════════════════════════════
+  /leases:
+    get:
+      tags:
+        - Leases
+      summary: Liste des baux
+      operationId: listLeases
+      parameters:
+        - name: property_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: owner_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Liste des baux
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  leases:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Lease'
+                      
+    post:
+      tags:
+        - Leases
+      summary: Créer un bail
+      operationId: createLease
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeaseCreate'
+      responses:
+        '201':
+          description: Bail créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lease'
+
+  /leases/{id}:
+    get:
+      tags:
+        - Leases
+      summary: Détails d'un bail
+      operationId: getLease
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Détails du bail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseDetails'
+
+  /leases/{id}/sign:
+    post:
+      tags:
+        - Leases
+      summary: Signer un bail
+      operationId: signLease
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signature_data:
+                  type: string
+                  description: Image base64 de la signature
+      responses:
+        '200':
+          description: Signature enregistrée
+
+  # ═══════════════════════════════════════════════════════════════
+  # PAYMENTS
+  # ═══════════════════════════════════════════════════════════════
+  /payments/create-intent:
+    post:
+      tags:
+        - Payments
+      summary: Créer un intent de paiement Stripe
+      operationId: createPaymentIntent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - invoiceId
+                - amount
+              properties:
+                invoiceId:
+                  type: string
+                  format: uuid
+                amount:
+                  type: number
+                  minimum: 0.01
+                currency:
+                  type: string
+                  default: eur
+      responses:
+        '200':
+          description: Intent créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientSecret:
+                    type: string
+                  paymentIntentId:
+                    type: string
+                  paymentId:
+                    type: string
+                    format: uuid
+
+  /invoices:
+    get:
+      tags:
+        - Payments
+      summary: Liste des factures
+      operationId: listInvoices
+      parameters:
+        - name: lease_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, sent, paid, late]
+      responses:
+        '200':
+          description: Liste des factures
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Invoice'
+
+  # ═══════════════════════════════════════════════════════════════
+  # TICKETS
+  # ═══════════════════════════════════════════════════════════════
+  /tickets:
+    get:
+      tags:
+        - Tickets
+      summary: Liste des tickets
+      operationId: listTickets
+      parameters:
+        - name: property_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, in_progress, resolved, closed]
+      responses:
+        '200':
+          description: Liste des tickets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tickets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Ticket'
+                      
+    post:
+      tags:
+        - Tickets
+      summary: Créer un ticket
+      operationId: createTicket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketCreate'
+      responses:
+        '201':
+          description: Ticket créé
+
+  /tickets/{id}:
+    get:
+      tags:
+        - Tickets
+      summary: Détails d'un ticket
+      operationId: getTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Détails du ticket
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+
+  # ═══════════════════════════════════════════════════════════════
+  # DOCUMENTS
+  # ═══════════════════════════════════════════════════════════════
+  /documents:
+    get:
+      tags:
+        - Documents
+      summary: Liste des documents
+      operationId: listDocuments
+      parameters:
+        - name: property_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: lease_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [bail, EDL_entree, EDL_sortie, quittance, attestation_assurance]
+      responses:
+        '200':
+          description: Liste des documents
+
+  /documents/upload:
+    post:
+      tags:
+        - Documents
+      summary: Uploader un document
+      operationId: uploadDocument
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                type:
+                  type: string
+                property_id:
+                  type: string
+                  format: uuid
+                lease_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Document uploadé
+
+  # ═══════════════════════════════════════════════════════════════
+  # END OF LEASE
+  # ═══════════════════════════════════════════════════════════════
+  /end-of-lease:
+    get:
+      tags:
+        - End of Lease
+      summary: Liste des processus de fin de bail
+      operationId: listLeaseEndProcesses
+      responses:
+        '200':
+          description: Liste des processus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  processes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaseEndProcess'
+                      
+    post:
+      tags:
+        - End of Lease
+      summary: Déclencher un processus de fin de bail
+      operationId: createLeaseEndProcess
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lease_id
+              properties:
+                lease_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Processus créé
+
+  # ═══════════════════════════════════════════════════════════════
+  # AUTH
+  # ═══════════════════════════════════════════════════════════════
+  /me/profile:
+    get:
+      tags:
+        - Auth
+      summary: Profil de l'utilisateur connecté
+      operationId: getMyProfile
+      responses:
+        '200':
+          description: Profil utilisateur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+                
+    put:
+      tags:
+        - Auth
+      summary: Modifier mon profil
+      operationId: updateMyProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+      responses:
+        '200':
+          description: Profil modifié
+
+components:
+  schemas:
+    # ═══════════════════════════════════════════════════════════════
+    # PROPERTY SCHEMAS
+    # ═══════════════════════════════════════════════════════════════
+    Property:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [appartement, maison, studio, colocation, saisonnier, local_commercial]
+        adresse_complete:
+          type: string
+        code_postal:
+          type: string
+        ville:
+          type: string
+        surface:
+          type: number
+        nb_pieces:
+          type: integer
+        etat:
+          type: string
+          enum: [draft, active, archived]
+        unique_code:
+          type: string
+        cover_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          
+    PropertyDraft:
+      type: object
+      required:
+        - type_bien
+      properties:
+        type_bien:
+          type: string
+          enum: [appartement, maison, studio, colocation, saisonnier, local_commercial]
+        usage_principal:
+          type: string
+          enum: [habitation, local_commercial, bureaux]
+          
+    PropertyCreate:
+      type: object
+      required:
+        - type
+        - adresse_complete
+        - code_postal
+        - ville
+      properties:
+        type:
+          type: string
+        adresse_complete:
+          type: string
+        code_postal:
+          type: string
+        ville:
+          type: string
+        surface:
+          type: number
+        nb_pieces:
+          type: integer
+          
+    PropertyUpdate:
+      type: object
+      properties:
+        adresse_complete:
+          type: string
+        code_postal:
+          type: string
+        ville:
+          type: string
+        surface:
+          type: number
+        nb_pieces:
+          type: integer
+        etat:
+          type: string
+
+    # ═══════════════════════════════════════════════════════════════
+    # LEASE SCHEMAS
+    # ═══════════════════════════════════════════════════════════════
+    Lease:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        property_id:
+          type: string
+          format: uuid
+        type_bail:
+          type: string
+          enum: [nu, meuble, colocation, saisonnier, mobilite, etudiant]
+        loyer:
+          type: number
+        charges_forfaitaires:
+          type: number
+        depot_de_garantie:
+          type: number
+        date_debut:
+          type: string
+          format: date
+        date_fin:
+          type: string
+          format: date
+          nullable: true
+        statut:
+          type: string
+          enum: [draft, pending_signature, active, terminated]
+        created_at:
+          type: string
+          format: date-time
+          
+    LeaseDetails:
+      allOf:
+        - $ref: '#/components/schemas/Lease'
+        - type: object
+          properties:
+            property:
+              $ref: '#/components/schemas/Property'
+            signers:
+              type: array
+              items:
+                $ref: '#/components/schemas/LeaseSigner'
+                
+    LeaseCreate:
+      type: object
+      required:
+        - property_id
+        - loyer
+        - date_debut
+      properties:
+        property_id:
+          type: string
+          format: uuid
+        type_bail:
+          type: string
+          default: meuble
+        loyer:
+          type: number
+          minimum: 0.01
+        charges_forfaitaires:
+          type: number
+          default: 0
+        depot_garantie:
+          type: number
+        date_debut:
+          type: string
+          format: date
+        date_fin:
+          type: string
+          format: date
+          
+    LeaseSigner:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        profile_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [proprietaire, locataire_principal, colocataire, garant]
+        signature_status:
+          type: string
+          enum: [pending, signed, refused]
+        signed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ═══════════════════════════════════════════════════════════════
+    # PAYMENT SCHEMAS
+    # ═══════════════════════════════════════════════════════════════
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lease_id:
+          type: string
+          format: uuid
+        periode:
+          type: string
+          description: Format YYYY-MM
+        montant_total:
+          type: number
+        montant_loyer:
+          type: number
+        montant_charges:
+          type: number
+        statut:
+          type: string
+          enum: [draft, sent, paid, late]
+        created_at:
+          type: string
+          format: date-time
+          
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoice_id:
+          type: string
+          format: uuid
+        montant:
+          type: number
+        moyen:
+          type: string
+          enum: [cb, virement, prelevement]
+        statut:
+          type: string
+          enum: [pending, succeeded, failed]
+        date_paiement:
+          type: string
+          format: date-time
+
+    # ═══════════════════════════════════════════════════════════════
+    # TICKET SCHEMAS
+    # ═══════════════════════════════════════════════════════════════
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        property_id:
+          type: string
+          format: uuid
+        titre:
+          type: string
+        description:
+          type: string
+        priorite:
+          type: string
+          enum: [basse, normale, haute]
+        statut:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+        created_by_profile_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+          
+    TicketCreate:
+      type: object
+      required:
+        - property_id
+        - titre
+      properties:
+        property_id:
+          type: string
+          format: uuid
+        lease_id:
+          type: string
+          format: uuid
+        titre:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        priorite:
+          type: string
+          enum: [basse, normale, haute]
+          default: normale
+
+    # ═══════════════════════════════════════════════════════════════
+    # END OF LEASE SCHEMAS
+    # ═══════════════════════════════════════════════════════════════
+    LeaseEndProcess:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lease_id:
+          type: string
+          format: uuid
+        property_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - pending
+            - triggered
+            - edl_scheduled
+            - edl_in_progress
+            - edl_completed
+            - damages_assessed
+            - dg_calculated
+            - renovation_planned
+            - renovation_in_progress
+            - ready_to_rent
+            - completed
+            - cancelled
+        progress_percentage:
+          type: integer
+          minimum: 0
+          maximum: 100
+        lease_end_date:
+          type: string
+          format: date
+        dg_amount:
+          type: number
+        dg_retention_amount:
+          type: number
+        dg_refund_amount:
+          type: number
+        property:
+          $ref: '#/components/schemas/Property'
+        lease:
+          $ref: '#/components/schemas/Lease'
+
+    # ═══════════════════════════════════════════════════════════════
+    # PROFILE SCHEMAS
+    # ═══════════════════════════════════════════════════════════════
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [admin, owner, tenant, provider]
+        prenom:
+          type: string
+        nom:
+          type: string
+        email:
+          type: string
+          format: email
+        telephone:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          
+    ProfileUpdate:
+      type: object
+      properties:
+        prenom:
+          type: string
+        nom:
+          type: string
+        telephone:
+          type: string
+
+    # ═══════════════════════════════════════════════════════════════
+    # COMMON SCHEMAS
+    # ═══════════════════════════════════════════════════════════════
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+          
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            
+    Unauthorized:
+      description: Non authentifié
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            
+    Forbidden:
+      description: Accès non autorisé
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            
+    NotFound:
+      description: Ressource non trouvée
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sb-access-token
+
+security:
+  - bearerAuth: []
+  - cookieAuth: []
+

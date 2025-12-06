@@ -1,6 +1,13 @@
+/**
+ * Maintenance Ticket Analysis Graph
+ * SOTA Décembre 2025 - Optimisé pour GPT-5.1
+ * 
+ * Utilise la configuration centralisée des modèles IA
+ */
+
 import { StateGraph, END, START } from "@langchain/langgraph";
-import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { createStandardModel } from "@/lib/ai/config";
 
 // --- State Definition ---
 export interface MaintenanceState {
@@ -30,22 +37,28 @@ async function analyzeTicket(state: MaintenanceState) {
 
   try {
     if (process.env.OPENAI_API_KEY) {
-      const model = new ChatOpenAI({ 
-        modelName: "gpt-4o", 
-        temperature: 0,
-        apiKey: process.env.OPENAI_API_KEY
-      });
+      // Utiliser le modèle standard pour l'analyse de tickets
+      // Note: Migrer vers GPT-5.1 avec reasoning_effort: "low" pour cette tâche
+      const model = createStandardModel();
       
       const response = await model.invoke([
-        new SystemMessage(`Analyze this maintenance request. 
-          Return a valid JSON object ONLY with:
-          - urgencyScore (1-10)
-          - detectedIssues (array of strings)
-          - suggestedProviderTypes (array of strings e.g. 'plomberie', 'electricite')
-          - suggestedAction (concise action plan)
-          - priority ('basse', 'normale', 'haute')
-          - summary (short summary of analysis)`),
-        new HumanMessage(`Title: ${state.title}\nDescription: ${state.description}`)
+        new SystemMessage(`Tu es un expert en maintenance immobilière. Analyse cette demande d'intervention.
+          
+          Retourne UNIQUEMENT un objet JSON valide avec:
+          - urgencyScore (1-10, où 10 = urgence absolue)
+          - detectedIssues (tableau des problèmes détectés, ex: ["fuite", "joint usé"])
+          - suggestedProviderTypes (types de prestataires, ex: ["plomberie", "serrurerie"])
+          - suggestedAction (plan d'action concis en français)
+          - priority ("basse" | "normale" | "haute")
+          - summary (résumé court de l'analyse)
+          - estimatedResponseTime (délai recommandé: "2h" | "24h" | "48h" | "1 semaine")
+          
+          Critères d'urgence:
+          - 9-10: Danger immédiat (fuite importante, problème électrique, serrure bloquée)
+          - 7-8: Urgent (chauffage en panne en hiver, fuite légère)
+          - 4-6: Normal (équipement défaillant, peinture, petites réparations)
+          - 1-3: Faible (améliorations, esthétique)`),
+        new HumanMessage(`Titre: ${state.title}\n\nDescription: ${state.description}`)
       ]);
 
       const cleanJson = (response.content as string).replace(/```json|```/g, '').trim();

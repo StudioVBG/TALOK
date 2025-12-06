@@ -14,6 +14,9 @@ let serviceClient: ReturnType<typeof createClient<Database>> | null = null;
  * Ce client bypass toutes les RLS policies
  * À utiliser uniquement côté serveur pour les opérations qui nécessitent un accès complet
  */
+// Alias pour compatibilité
+export const createServiceRoleClient = () => getServiceClient();
+
 export function getServiceClient() {
   if (serviceClient) {
     return serviceClient;

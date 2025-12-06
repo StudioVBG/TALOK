@@ -1,10 +1,10 @@
-// @ts-nocheck
 /**
  * Data fetching pour le dashboard Owner
  * Utilise une RPC Supabase pour batch les requêtes
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export interface OwnerDashboardData {
   properties: {
@@ -35,6 +35,31 @@ export interface OwnerDashboardData {
   }>;
 }
 
+// Type pour la réponse RPC
+interface OwnerDashboardRPCResponse {
+  properties_stats?: {
+    total: number;
+    active: number;
+    draft: number;
+  };
+  leases_stats?: {
+    total: number;
+    active: number;
+    pending: number;
+  };
+  invoices_stats?: {
+    total: number;
+    paid: number;
+    pending: number;
+    late: number;
+  };
+  tickets_stats?: {
+    total: number;
+    open: number;
+    in_progress: number;
+  };
+}
+
 /**
  * Récupère les données du dashboard pour un propriétaire
  * Utilise une RPC Supabase pour réduire les appels
@@ -49,7 +74,7 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   // Vérifier les permissions
@@ -76,13 +101,13 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
     throw new Error(`Erreur lors du chargement du dashboard: ${error.message}`);
   }
 
-  const dashboardData = data as any;
+  const dashboardData = data as OwnerDashboardRPCResponse;
 
   return {
-    properties: dashboardData.properties_stats || { total: 0, active: 0, draft: 0 },
-    leases: dashboardData.leases_stats || { total: 0, active: 0, pending: 0 },
-    invoices: dashboardData.invoices_stats || { total: 0, paid: 0, pending: 0, late: 0 },
-    tickets: dashboardData.tickets_stats || { total: 0, open: 0, in_progress: 0 },
+    properties: dashboardData?.properties_stats || { total: 0, active: 0, draft: 0 },
+    leases: dashboardData?.leases_stats || { total: 0, active: 0, pending: 0 },
+    invoices: dashboardData?.invoices_stats || { total: 0, paid: 0, pending: 0, late: 0 },
+    tickets: dashboardData?.tickets_stats || { total: 0, open: 0, in_progress: 0 },
     recentActivity: [], // À implémenter plus tard
   };
 }

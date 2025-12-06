@@ -6,6 +6,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { redirect } from "next/navigation";
 
 // Client service role pour bypass les RLS (évite la récursion infinie)
 function getServiceClient() {
@@ -74,7 +75,7 @@ export async function fetchDocuments(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   // Utiliser le service client pour bypass les RLS (évite la récursion infinie sur lease_signers)
@@ -173,7 +174,7 @@ export async function fetchDocument(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   // Utiliser le service client pour bypass les RLS

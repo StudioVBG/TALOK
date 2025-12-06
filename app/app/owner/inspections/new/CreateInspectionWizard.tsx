@@ -146,9 +146,26 @@ const CONDITION_OPTIONS = [
 const STEPS = [
   { id: "lease", title: "Bail", description: "Sélectionnez le bail concerné" },
   { id: "type", title: "Type", description: "Entrée ou sortie" },
+  { id: "meters", title: "Compteurs", description: "Relevés des compteurs" },
   { id: "rooms", title: "Pièces", description: "Sélectionnez les pièces" },
   { id: "inspection", title: "Inspection", description: "Remplissez l'EDL" },
   { id: "summary", title: "Résumé", description: "Vérifiez et validez" },
+];
+
+// Types de compteurs pour les relevés
+interface MeterReading {
+  type: "electricity" | "gas" | "water" | "water_hot";
+  meterNumber: string;
+  reading: string;
+  unit: string;
+  photo?: File;
+}
+
+const METER_TYPES = [
+  { type: "electricity" as const, label: "Électricité", unit: "kWh", icon: "⚡" },
+  { type: "gas" as const, label: "Gaz", unit: "m³", icon: "🔥" },
+  { type: "water" as const, label: "Eau froide", unit: "m³", icon: "💧" },
+  { type: "water_hot" as const, label: "Eau chaude", unit: "m³", icon: "🚿" },
 ];
 
 export function CreateInspectionWizard({ leases }: Props) {
@@ -166,6 +183,12 @@ export function CreateInspectionWizard({ leases }: Props) {
   const [roomsData, setRoomsData] = useState<RoomData[]>([]);
   const [currentRoomIndex, setCurrentRoomIndex] = useState(0);
   const [generalNotes, setGeneralNotes] = useState("");
+  
+  // État pour les compteurs
+  const [meterReadings, setMeterReadings] = useState<MeterReading[]>([
+    { type: "electricity", meterNumber: "", reading: "", unit: "kWh" },
+    { type: "water", meterNumber: "", reading: "", unit: "m³" },
+  ]);
 
   const canProceed = useCallback(() => {
     switch (step) {
@@ -174,15 +197,43 @@ export function CreateInspectionWizard({ leases }: Props) {
       case 1:
         return edlType && scheduledDate;
       case 2:
-        return selectedRooms.length > 0;
+        // Au moins un compteur avec un relevé
+        return meterReadings.some(m => m.reading.trim() !== "");
       case 3:
-        return roomsData.length > 0;
+        return selectedRooms.length > 0;
       case 4:
+        return roomsData.length > 0;
+      case 5:
         return true;
       default:
         return false;
     }
-  }, [step, selectedLease, edlType, scheduledDate, selectedRooms.length, roomsData.length]);
+  }, [step, selectedLease, edlType, scheduledDate, meterReadings, selectedRooms.length, roomsData.length]);
+  
+  // Fonctions pour gérer les compteurs
+  const updateMeterReading = (index: number, field: keyof MeterReading, value: string) => {
+    setMeterReadings(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+  
+  const addMeter = (type: MeterReading["type"]) => {
+    const meterType = METER_TYPES.find(m => m.type === type);
+    if (meterType) {
+      setMeterReadings(prev => [...prev, {
+        type,
+        meterNumber: "",
+        reading: "",
+        unit: meterType.unit,
+      }]);
+    }
+  };
+  
+  const removeMeter = (index: number) => {
+    setMeterReadings(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleRoomToggle = (roomId: string) => {
     setSelectedRooms((prev) =>
@@ -210,7 +261,7 @@ export function CreateInspectionWizard({ leases }: Props) {
   };
 
   const handleNext = () => {
-    if (step === 2) {
+    if (step === 3) {
       initializeRoomsData();
     }
     setStep((prev) => Math.min(prev + 1, STEPS.length - 1));
@@ -246,7 +297,7 @@ export function CreateInspectionWizard({ leases }: Props) {
     try {
       setIsSubmitting(true);
 
-      // Create EDL
+      // Create EDL with meter readings
       const response = await fetch(`/api/properties/${selectedLease.property.id}/inspections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -255,6 +306,7 @@ export function CreateInspectionWizard({ leases }: Props) {
           scheduled_at: scheduledDate,
           lease_id: selectedLease.id,
           notes: generalNotes,
+          meter_readings: meterReadings.filter(m => m.reading.trim() !== ""),
         }),
       });
 
@@ -476,8 +528,91 @@ export function CreateInspectionWizard({ leases }: Props) {
             </Card>
           )}
 
-          {/* Step 3: Select Rooms */}
+          {/* Step 3: Relevés des compteurs */}
           {step === 2 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-xl">⚡</span>
+                  Relevés des compteurs
+                </CardTitle>
+                <CardDescription>
+                  Notez les relevés de compteurs au moment de l&apos;état des lieux
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {meterReadings.map((meter, index) => {
+                  const meterType = METER_TYPES.find(m => m.type === meter.type);
+                  return (
+                    <div key={index} className="p-4 border rounded-lg bg-slate-50/50 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{meterType?.icon}</span>
+                          <span className="font-medium">{meterType?.label}</span>
+                        </div>
+                        {meterReadings.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeMeter(index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor={`meter-number-${index}`}>N° Compteur</Label>
+                          <Input
+                            id={`meter-number-${index}`}
+                            placeholder="Ex: 12345678"
+                            value={meter.meterNumber}
+                            onChange={(e) => updateMeterReading(index, "meterNumber", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`meter-reading-${index}`}>Index ({meter.unit})</Label>
+                          <Input
+                            id={`meter-reading-${index}`}
+                            type="number"
+                            placeholder="Ex: 15234"
+                            value={meter.reading}
+                            onChange={(e) => updateMeterReading(index, "reading", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Boutons pour ajouter des compteurs */}
+                <div className="flex flex-wrap gap-2 pt-4 border-t">
+                  <span className="text-sm text-muted-foreground mr-2 self-center">Ajouter :</span>
+                  {METER_TYPES.filter(m => !meterReadings.some(r => r.type === m.type) || m.type === "electricity" || m.type === "water").map((type) => (
+                    <Button
+                      key={type.type}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addMeter(type.type)}
+                      className="gap-2"
+                    >
+                      <span>{type.icon}</span>
+                      {type.label}
+                    </Button>
+                  ))}
+                </div>
+                
+                <p className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg">
+                  💡 <strong>Conseil :</strong> Prenez une photo de chaque compteur pour conserver une preuve du relevé.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 4: Select Rooms */}
+          {step === 3 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -533,8 +668,8 @@ export function CreateInspectionWizard({ leases }: Props) {
             </Card>
           )}
 
-          {/* Step 4: Room-by-Room Inspection */}
-          {step === 3 && currentRoom && (
+          {/* Step 5: Room-by-Room Inspection */}
+          {step === 4 && currentRoom && (
             <div className="space-y-4">
               {/* Room Navigation */}
               <div className="flex items-center gap-2 overflow-x-auto pb-2">
@@ -628,8 +763,8 @@ export function CreateInspectionWizard({ leases }: Props) {
             </div>
           )}
 
-          {/* Step 5: Summary */}
-          {step === 4 && (
+          {/* Step 6: Summary */}
+          {step === 5 && (
             <Card>
               <CardHeader>
                 <CardTitle>Résumé de l&apos;état des lieux</CardTitle>

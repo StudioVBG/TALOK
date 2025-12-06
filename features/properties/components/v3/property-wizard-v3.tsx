@@ -118,7 +118,20 @@ interface PropertyWizardV3Props {
 export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel }: PropertyWizardV3Props) {
   const router = useRouter();
   const { toast } = useToast();
-  const { currentStep, propertyId: storePropertyId, loadProperty, updateFormData, formData, syncStatus, setStep, reset } = usePropertyWizardStore();
+  const { 
+    currentStep, 
+    propertyId: storePropertyId, 
+    loadProperty, 
+    updateFormData, 
+    formData, 
+    syncStatus, 
+    setStep, 
+    reset,
+    pendingPhotoUrls,
+    photoImportStatus,
+    importPendingPhotos,
+    initializeDraft, // 🆕 Pour créer le draft après import
+  } = usePropertyWizardStore();
   const [showConfetti, setShowConfetti] = useState(false);
   const [showImportStep, setShowImportStep] = useState(!propertyId); // Afficher import step seulement si création
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -139,6 +152,14 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
     }
   }, [propertyId, storePropertyId, loadProperty]);
 
+  // 🆕 Import automatique des photos quand le propertyId devient disponible
+  useEffect(() => {
+    if (storePropertyId && pendingPhotoUrls.length > 0 && photoImportStatus === 'idle') {
+      console.log(`[Wizard] PropertyId disponible, lancement de l'import de ${pendingPhotoUrls.length} photos...`);
+      importPendingPhotos();
+    }
+  }, [storePropertyId, pendingPhotoUrls.length, photoImportStatus, importPendingPhotos]);
+
   const handleImport = async (url: string) => {
     setIsAnalyzing(true);
     try {
@@ -152,24 +173,161 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
         if (error) throw new Error(error);
         
         // Pré-remplir le store avec les données scrapées
-        updateFormData({
-            type: data.type,
-            adresse_complete: data.titre, // Fallback titre comme adresse temporaire
-            surface: data.surface,
-            loyer_hc: data.loyer_hc,
-            code_postal: data.code_postal,
-            // On pourrait aussi pré-charger la description etc.
-        });
+        // ⚠️ Ne JAMAIS utiliser le titre comme adresse !
+        const formUpdate: Record<string, any> = {
+            type: data.type || "appartement",
+        };
         
-        // Passer à l'étape suivante (Address pour corriger l'adresse)
-        // On skip TypeStep car on l'a deviné
+        // Adresse : utiliser l'adresse complète ou l'adresse simple
+        if (data.adresse_complete) {
+            formUpdate.adresse_complete = data.adresse_complete;
+        } else if (data.adresse) {
+            formUpdate.adresse_complete = data.adresse;
+        }
+        // Ne pas pré-remplir avec le titre, l'utilisateur devra saisir manuellement
+        
+        // Code postal et ville
+        if (data.code_postal) {
+            formUpdate.code_postal = data.code_postal;
+        }
+        if (data.ville) {
+            formUpdate.ville = data.ville;
+        }
+        
+        // Description du bien (pour affichage / notes)
+        if (data.description && data.description.length > 50) {
+            formUpdate.description = data.description;
+        }
+        
+        // Autres données de base
+        if (data.surface) {
+            formUpdate.surface = data.surface;
+            formUpdate.surface_habitable_m2 = data.surface;
+        }
+        if (data.nb_pieces) formUpdate.nb_pieces = data.nb_pieces;
+        if (data.nb_chambres) formUpdate.nb_chambres = data.nb_chambres;
+        if (data.loyer_hc) formUpdate.loyer_hc = data.loyer_hc;
+        
+        // 🆕 Détails avancés extraits
+        if (data.meuble !== null && data.meuble !== undefined) {
+            formUpdate.meuble = data.meuble;
+        }
+        if (data.dpe_classe_energie) {
+            formUpdate.dpe_classe_energie = data.dpe_classe_energie.toUpperCase();
+        }
+        // ✅ GES -> dpe_classe_climat (nom de la colonne en BDD)
+        if (data.dpe_ges) {
+            formUpdate.dpe_classe_climat = data.dpe_ges.toUpperCase();
+        }
+        if (data.etage !== null && data.etage !== undefined) {
+            formUpdate.etage = data.etage;
+        }
+        if (data.ascenseur !== null && data.ascenseur !== undefined) {
+            formUpdate.ascenseur = data.ascenseur;
+        }
+        
+        // ✅ Mapper vers les bons noms de champs (has_xxx)
+        if (data.balcon) formUpdate.has_balcon = true;
+        if (data.terrasse) formUpdate.has_terrasse = true;
+        if (data.cave) formUpdate.has_cave = true;
+        if (data.jardin) formUpdate.has_jardin = true;
+        
+        // 🏠 Visite virtuelle (Matterport, Nodalview, etc.)
+        if (data.visite_virtuelle_url) {
+            formUpdate.visite_virtuelle_url = data.visite_virtuelle_url;
+            console.log(`[Wizard] Visite virtuelle détectée: ${data.visite_virtuelle_url}`);
+        }
+        
+        // ✅ Chauffage : mapper vers les bons champs du schéma
+        // chauffage_type dans le schéma = mode (individuel/collectif/aucun)
+        // chauffage_energie dans le schéma = source d'énergie (gaz/electricite/fioul/bois/etc.)
+        if (data.chauffage_type || data.chauffage_mode) {
+            // Mapper l'énergie de chauffage (gaz, electrique, fioul, etc.)
+            const energieMapping: Record<string, string> = {
+                gaz: 'gaz',
+                electrique: 'electricite',
+                électrique: 'electricite',
+                pac: 'electricite', // Pompe à chaleur = électrique
+                fioul: 'fioul',
+                bois: 'bois',
+            };
+            
+            const modeMapping: Record<string, string> = {
+                collectif: 'collectif',
+                individuel: 'individuel',
+            };
+            
+            // Si chauffage_type contient une énergie, la mapper
+            if (data.chauffage_type && energieMapping[data.chauffage_type]) {
+                formUpdate.chauffage_energie = energieMapping[data.chauffage_type];
+            }
+            
+            // Si chauffage_mode contient un mode, le mapper
+            if (data.chauffage_mode && modeMapping[data.chauffage_mode]) {
+                formUpdate.chauffage_type = modeMapping[data.chauffage_mode];
+            }
+            // Si chauffage_type contient un mode (individuel/collectif)
+            else if (data.chauffage_type && modeMapping[data.chauffage_type]) {
+                formUpdate.chauffage_type = modeMapping[data.chauffage_type];
+            }
+        }
+        
+        // 🆕 IMPORTANT: Créer le draft AVANT de mettre à jour les données
+        // Sinon le propertyId n'existe pas et les pièces/photos ne peuvent pas être sauvegardées
+        const detectedType = (formUpdate.type || "appartement") as any;
+        console.log(`[Wizard] Création du draft avec type: ${detectedType}`);
+        await initializeDraft(detectedType);
+        
+        // Maintenant on peut mettre à jour les données
+        updateFormData(formUpdate);
+        
+        // 🆕 Stocker les URLs des photos pour import en arrière-plan
+        if (data.photos && data.photos.length > 0) {
+            usePropertyWizardStore.getState().setPendingPhotoUrls(data.photos);
+            console.log(`[Wizard] ${data.photos.length} photos en attente d'import`);
+        }
+        
+        // Passer à l'étape suivante (Address pour corriger/compléter l'adresse)
         usePropertyWizardStore.getState().setStep('address'); 
         setShowImportStep(false);
 
-        toast({
-            title: "Import réussi !",
-            description: "Vérifiez les informations récupérées.",
-        });
+        // Feedback adapté selon la qualité de l'extraction
+        const quality = data.extraction_quality || {};
+        const missingFields = [];
+        if (!quality.has_address) missingFields.push("adresse");
+        if (!quality.has_postal_code) missingFields.push("code postal");
+        if (!quality.has_city) missingFields.push("ville");
+        
+        // Compter les champs trouvés
+        const foundFields = [];
+        if (data.surface) foundFields.push("surface");
+        if (data.loyer_hc) foundFields.push("loyer");
+        if (data.nb_pieces) foundFields.push("pièces");
+        if (data.meuble !== null) foundFields.push("meublé");
+        if (data.dpe_classe_energie) foundFields.push("DPE");
+        if (data.chauffage_type) foundFields.push("chauffage");
+        if (data.etage !== null) foundFields.push("étage");
+        
+        // Message avec info photos
+        const photosInfo = quality.photos_count > 0 
+            ? ` 📷 ${quality.photos_count} photo(s) en import.`
+            : "";
+        
+        if (missingFields.length > 0) {
+            toast({
+                title: "Import partiel",
+                description: `${foundFields.length} info(s) récupérées. Complétez : ${missingFields.join(", ")}.${photosInfo}`,
+                variant: "default",
+            });
+        } else {
+            const detailsInfo = foundFields.length > 3 
+                ? `${foundFields.length} informations récupérées !` 
+                : `Infos : ${foundFields.join(", ")}.`;
+            toast({
+                title: "✨ Import réussi !",
+                description: `${detailsInfo}${photosInfo}`,
+            });
+        }
     } catch (err) {
         console.error(err);
         toast({

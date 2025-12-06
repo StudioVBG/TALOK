@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Data fetching pour les baux (Owner)
  * Server-side uniquement
@@ -6,6 +5,7 @@
 
 import { createClient as createServiceRoleClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import type { LeaseRow } from "@/lib/supabase/typed-client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -48,7 +48,7 @@ export async function fetchContracts(
   } = await supabaseAuth.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   const supabase = await getElevatedClient();
@@ -121,7 +121,7 @@ export async function fetchContract(
   } = await supabaseAuth.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   const supabase = await getElevatedClient();

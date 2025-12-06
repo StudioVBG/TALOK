@@ -19,21 +19,45 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
   const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
   const supabase = supabaseAdmin();
 
-  // 1. Récupérer la propriété
-  // Colonnes essentielles, sans type_bien ni loyer_base
-  const essentialColumns = "id, owner_id, type, adresse_complete, code_postal, ville, surface, nb_pieces, loyer_hc, charges_mensuelles, created_at, etat, nb_chambres, meuble, dpe_classe_energie, dpe_classe_climat";
+  // 1. D'abord récupérer la propriété SANS filtrer par owner_id pour debug
+  const { data: propertyCheck, error: checkError } = await supabase
+    .from("properties")
+    .select("id, owner_id")
+    .eq("id", propertyId)
+    .maybeSingle();
   
+  console.log(`[fetchPropertyDetails] Check property: id=${propertyCheck?.id}, owner_id=${propertyCheck?.owner_id}, expected_owner=${ownerId}`);
+  console.log(`[fetchPropertyDetails] Owner match: ${propertyCheck?.owner_id === ownerId}`);
+  
+  if (checkError) {
+    console.error("[fetchPropertyDetails] Check Error:", checkError);
+  }
+
+  // 2. Récupérer la propriété avec SELECT * pour éviter les erreurs de colonnes manquantes
+  // On vérifie manuellement les permissions après
   const { data: property, error: propertyError } = await supabase
     .from("properties")
-    .select(essentialColumns)
+    .select("*")
     .eq("id", propertyId)
-    .eq("owner_id", ownerId)
-    .single();
+    .maybeSingle();
 
-  if (propertyError || !property) {
+  if (propertyError) {
     console.error("[fetchPropertyDetails] Property Error (Admin):", propertyError);
     return null;
   }
+  
+  if (!property) {
+    console.error("[fetchPropertyDetails] Property not found for id:", propertyId);
+    return null;
+  }
+  
+  // Vérifier manuellement que l'owner correspond
+  if (property.owner_id !== ownerId) {
+    console.error(`[fetchPropertyDetails] Owner mismatch: property.owner_id=${property.owner_id}, expected=${ownerId}`);
+    return null;
+  }
+  
+  console.log(`[fetchPropertyDetails] ✅ Property found and owner verified`)
 
   // 2. Récupérer les données liées en parallèle
   const [

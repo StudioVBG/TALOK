@@ -30,3 +30,6 @@ export type { ComparisonPhoto } from "./edl-photo-comparison";
 export { EDLConductor } from "./edl-conductor";
 export type { EDLData, EDLRoom, EDLPhoto } from "./edl-conductor";
 
+// === Relevés de compteurs EDL (Décret 2016-382) ===
+export { EDLMeterReadings } from "./edl-meter-readings";
+

@@ -10,6 +10,18 @@ import { stripe } from "@/lib/stripe";
 
 export async function POST(request: Request) {
   try {
+    // Vérifier si Stripe est configuré
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("[checkout] STRIPE_SECRET_KEY n'est pas configurée");
+      return NextResponse.json(
+        { 
+          error: "Stripe n'est pas configuré. Veuillez contacter l'administrateur.",
+          code: "STRIPE_NOT_CONFIGURED"
+        }, 
+        { status: 503 }
+      );
+    }
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -132,7 +144,7 @@ export async function POST(request: Request) {
       cancel_url:
         cancel_url || `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
       subscription_data: {
-        trial_period_days: existingSub ? undefined : 14, // 14 jours d'essai pour les nouveaux
+        trial_period_days: existingSub ? undefined : 30, // 1er mois offert pour les nouveaux
         metadata: {
           profile_id: profile.id,
           plan_id: plan.id,
@@ -166,6 +178,18 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error("Erreur création checkout:", error);
+    
+    // Gérer les erreurs Stripe spécifiques
+    if (error.type === "StripeAuthenticationError" || error.message?.includes("Invalid API Key")) {
+      return NextResponse.json(
+        { 
+          error: "Configuration Stripe invalide. Veuillez contacter l'administrateur.",
+          code: "STRIPE_AUTH_ERROR"
+        },
+        { status: 503 }
+      );
+    }
+    
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },
       { status: 500 }

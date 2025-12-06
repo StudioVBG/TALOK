@@ -27,26 +27,70 @@ async function getTenantProfileAdmin(tenantId: string) {
             owner_id
           )
         )
+      ),
+      lease_signers:lease_signers(
+        lease_id,
+        role,
+        signature_status,
+        signed_at,
+        lease:leases(
+          id,
+          statut,
+          type_bail,
+          loyer,
+          property:properties(
+            id,
+            adresse_complete,
+            ville
+          )
+        )
       )
     `)
     .eq("id", tenantId)
-    .eq("role", "tenant")
     .single();
 
   if (error || !tenant) {
+    console.log("[Admin Tenant] Erreur ou tenant non trouvé:", error);
     return null;
   }
 
-  // Récupérer les documents du locataire
-  const { data: documents } = await supabase
-    .from("tenant_documents")
+  // Récupérer les documents du locataire depuis la table "documents"
+  const { data: documents, error: docsError } = await supabase
+    .from("documents")
     .select("*")
-    .eq("tenant_profile_id", tenantId)
-    .order("uploaded_at", { ascending: false });
+    .eq("tenant_id", tenantId)
+    .order("created_at", { ascending: false });
+
+  if (docsError) {
+    console.log("[Admin Tenant] Erreur documents:", docsError);
+  }
+
+  // Fallback: essayer tenant_documents si la table existe
+  let allDocuments = documents || [];
+  try {
+    const { data: tenantDocs } = await supabase
+      .from("tenant_documents")
+      .select("*")
+      .eq("tenant_profile_id", tenantId)
+      .order("uploaded_at", { ascending: false });
+    
+    if (tenantDocs && tenantDocs.length > 0) {
+      // Normaliser le format et fusionner
+      const normalizedDocs = tenantDocs.map(d => ({
+        ...d,
+        created_at: d.uploaded_at || d.created_at,
+        type: d.document_type || d.type,
+      }));
+      allDocuments = [...allDocuments, ...normalizedDocs];
+    }
+  } catch (e) {
+    // Table tenant_documents n'existe peut-être pas
+    console.log("[Admin Tenant] tenant_documents non disponible");
+  }
 
   return {
     ...tenant,
-    documents: documents || [],
+    documents: allDocuments,
   };
 }
 

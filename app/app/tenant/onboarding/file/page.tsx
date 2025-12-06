@@ -109,8 +109,8 @@ export default function TenantFilePage() {
         description: "Vos informations ont été sauvegardées.",
       });
 
-      // Rediriger vers les paiements
-      router.push("/app/tenant/onboarding/payments");
+      // Rediriger vers la vérification d'identité
+      router.push("/app/tenant/onboarding/identity");
     } catch (error: any) {
       toast({
         title: "Erreur",

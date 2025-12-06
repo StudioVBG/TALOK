@@ -1,7 +1,7 @@
 "use client";
 // @ts-nocheck
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,14 +10,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ResponsiveContainer,
   LineChart,
+  BarChart,
+  Bar,
   Line,
   CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
   Legend,
+  Area,
+  AreaChart,
+  ComposedChart,
 } from "recharts";
-import { Search, Euro, CheckCircle, AlertCircle, Building2, Loader2, Bell } from "lucide-react";
+import { Search, Euro, CheckCircle, AlertCircle, Building2, Loader2, Bell, Download } from "lucide-react";
+import { exportInvoices } from "@/lib/services/export-service";
 import { formatCurrency } from "@/lib/helpers/format";
 import type { InvoicesWithPagination } from "../_data/fetchInvoices";
 import { markInvoiceAsPaid, sendPaymentReminder, generateMonthlyInvoices } from "./actions";
@@ -30,6 +36,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PlanGateInline, UsageLimitBanner } from "@/components/subscription";
 
 interface MoneyClientProps {
   data: InvoicesWithPagination;
@@ -50,12 +57,45 @@ export function MoneyClient({ data }: MoneyClientProps) {
     return address.includes(searchQuery.toLowerCase());
   });
 
-  const chartData = [
-    { period: "2024-01", collected: 1200 },
-    { period: "2024-02", collected: 1200 },
-    { period: "2024-03", collected: 1200 },
-    { period: "2024-04", collected: 2400 },
-  ];
+  // Générer les données du graphique à partir des factures réelles
+  const chartData = useMemo(() => {
+    // Grouper les factures par mois (derniers 12 mois)
+    const monthlyData: Record<string, { paid: number; pending: number; late: number }> = {};
+    
+    // Initialiser les 12 derniers mois
+    const today = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      monthlyData[key] = { paid: 0, pending: 0, late: 0 };
+    }
+    
+    // Remplir avec les données réelles
+    invoices.forEach((inv: any) => {
+      if (!inv.periode) return;
+      const period = inv.periode.substring(0, 7); // Format YYYY-MM
+      if (monthlyData[period]) {
+        const amount = Number(inv.montant_total) || 0;
+        if (inv.statut === "paid") {
+          monthlyData[period].paid += amount;
+        } else if (inv.statut === "late") {
+          monthlyData[period].late += amount;
+        } else {
+          monthlyData[period].pending += amount;
+        }
+      }
+    });
+    
+    // Convertir en tableau pour Recharts
+    return Object.entries(monthlyData).map(([period, data]) => ({
+      period: period,
+      periodLabel: new Date(period + "-01").toLocaleDateString("fr-FR", { month: "short", year: "2-digit" }),
+      collected: data.paid,
+      pending: data.pending,
+      late: data.late,
+      total: data.paid + data.pending + data.late,
+    }));
+  }, [invoices]);
 
   const handleMarkPaid = (invoiceId: string) => {
     setPendingInvoice({ id: invoiceId, action: "pay" });
@@ -211,6 +251,21 @@ export function MoneyClient({ data }: MoneyClientProps) {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              {/* Bouton Export CSV */}
+              <Button
+                variant="outline"
+                className="gap-2 bg-white/50 backdrop-blur-sm"
+                onClick={() => exportInvoices(filteredInvoices.map(inv => ({
+                  ...inv,
+                  tenant_name: inv.lease?.signers?.[0]?.profile?.prenom + ' ' + inv.lease?.signers?.[0]?.profile?.nom || 'N/A',
+                  property_address: inv.lease?.property?.adresse_complete || 'N/A',
+                })), "csv")}
+                disabled={filteredInvoices.length === 0}
+              >
+                <Download className="h-4 w-4" />
+                Exporter
+              </Button>
+              
               <Button
                 variant="default"
                 className="gap-2 shadow-lg hover:shadow-xl transition-all"
@@ -220,13 +275,26 @@ export function MoneyClient({ data }: MoneyClientProps) {
                 {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
                 Générer les factures du mois
               </Button>
-              <Button asChild variant="outline" className="gap-2 bg-white/50 backdrop-blur-sm">
-                <Link href="/app/owner/money/settings">
-                  <Building2 className="w-4 h-4" />
-                  Connexions Bancaires
-                </Link>
-              </Button>
+              {/* PlanGate SOTA 2025 - Open Banking */}
+              <PlanGateInline feature="open_banking">
+                <Button asChild variant="outline" className="gap-2 bg-white/50 backdrop-blur-sm">
+                  <Link href="/app/owner/money/settings">
+                    <Building2 className="w-4 h-4" />
+                    Connexions Bancaires
+                  </Link>
+                </Button>
+              </PlanGateInline>
             </div>
+          </div>
+
+          {/* Usage Limit Banner SOTA 2025 */}
+          <div className="mb-6">
+            <UsageLimitBanner
+              resource="leases"
+              variant="inline"
+              threshold={80}
+              dismissible={true}
+            />
           </div>
 
           {/* KPIs */}
@@ -301,28 +369,105 @@ export function MoneyClient({ data }: MoneyClientProps) {
               )}
             </TabsContent>
 
-            {/* Historique */}
+            {/* Historique et Statistiques */}
             <TabsContent value="history">
-              <GlassCard>
-                <CardHeader>
-                  <CardTitle>Historique (Simulé)</CardTitle>
-                  <CardDescription>Les données réelles arriveront avec la RPC stats</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                     <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="period" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
-                        <Tooltip 
-                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="collected" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: "#3b82f6" }} activeDot={{ r: 6 }} />
-                     </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </GlassCard>
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Graphique des encaissements */}
+                <GlassCard>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Évolution des encaissements</CardTitle>
+                    <CardDescription>12 derniers mois</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={280}>
+                       <AreaChart data={chartData}>
+                          <defs>
+                            <linearGradient id="colorCollected" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis dataKey="periodLabel" stroke="#94a3b8" fontSize={12} />
+                          <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={(v) => `${(v/1000).toFixed(0)}k€`} />
+                          <Tooltip 
+                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              formatter={(value: number) => [`${value.toLocaleString('fr-FR')} €`, '']}
+                              labelFormatter={(label) => `Période: ${label}`}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="collected" 
+                            name="Encaissé"
+                            stroke="#10b981" 
+                            strokeWidth={2} 
+                            fill="url(#colorCollected)"
+                          />
+                       </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </GlassCard>
+
+                {/* Graphique répartition par statut */}
+                <GlassCard>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Répartition par statut</CardTitle>
+                    <CardDescription>Comparaison mensuelle</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={280}>
+                       <BarChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis dataKey="periodLabel" stroke="#94a3b8" fontSize={12} />
+                          <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={(v) => `${(v/1000).toFixed(0)}k€`} />
+                          <Tooltip 
+                              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                              formatter={(value: number) => [`${value.toLocaleString('fr-FR')} €`, '']}
+                          />
+                          <Legend />
+                          <Bar dataKey="collected" name="Payé" fill="#10b981" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="pending" name="En attente" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="late" name="En retard" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                       </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </GlassCard>
+
+                {/* Statistiques rapides */}
+                <GlassCard className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Statistiques de paiement</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-4 bg-emerald-50 rounded-lg">
+                        <p className="text-2xl font-bold text-emerald-600">
+                          {stats.totalCollected > 0 ? Math.round((stats.totalCollected / (stats.totalDue || 1)) * 100) : 0}%
+                        </p>
+                        <p className="text-sm text-muted-foreground">Taux encaissement</p>
+                      </div>
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <p className="text-2xl font-bold text-blue-600">
+                          {invoices.filter((i: any) => i.statut === "paid").length}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Factures payées</p>
+                      </div>
+                      <div className="text-center p-4 bg-amber-50 rounded-lg">
+                        <p className="text-2xl font-bold text-amber-600">
+                          {invoices.filter((i: any) => i.statut === "sent" || i.statut === "draft").length}
+                        </p>
+                        <p className="text-sm text-muted-foreground">En attente</p>
+                      </div>
+                      <div className="text-center p-4 bg-red-50 rounded-lg">
+                        <p className="text-2xl font-bold text-red-600">
+                          {invoices.filter((i: any) => i.statut === "late").length}
+                        </p>
+                        <p className="text-sm text-muted-foreground">En retard</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </GlassCard>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

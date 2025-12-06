@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,8 +33,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Search, FileText, Plus, MoreHorizontal, Eye, Download, Trash2, Loader2 } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
-import { useOwnerData } from "../_data/OwnerDataProvider";
+import { exportLeases } from "@/lib/services/export-service";
 import { useToast } from "@/components/ui/use-toast";
+
+// React Query hooks pour la réactivité
+import { useLeases, useDeleteLease } from "@/lib/hooks/use-leases";
+import { useProperties } from "@/lib/hooks/use-properties";
 
 // SOTA Imports
 import { PageTransition } from "@/components/ui/page-transition";
@@ -43,19 +46,21 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { UsageLimitBanner } from "@/components/subscription";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function ContractsClient() {
-  const router = useRouter();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const propertyIdFilter = searchParams.get("property_id");
   const filterParam = searchParams.get("filter");
 
-  // Utiliser les données du Context
-  const { contracts: allContracts, properties: propertiesData, refetch } = useOwnerData();
+  // ✅ React Query : données réactives avec mise à jour automatique
+  const { data: leases = [], isLoading: isLoadingLeases } = useLeases();
+  const { data: properties = [], isLoading: isLoadingProperties } = useProperties();
+  const deleteLeaseMutation = useDeleteLease();
   
-  const leases = allContracts || [];
-  const properties = propertiesData?.properties || [];
+  const isLoading = isLoadingLeases || isLoadingProperties;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -66,47 +71,29 @@ export function ContractsClient() {
   // États pour la suppression
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [leaseToDelete, setLeaseToDelete] = useState<any>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Fonction de suppression
+  // ✅ Suppression avec React Query - mise à jour automatique de l'UI !
   const handleDeleteLease = async () => {
     if (!leaseToDelete) return;
     
-    setIsDeleting(true);
-    try {
-      const response = await fetch(`/api/leases/${leaseToDelete.id}`, {
-        method: "DELETE",
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Erreur lors de la suppression");
-      }
-
-      toast({
-        title: "✅ Bail supprimé",
-        description: "Le bail a été supprimé avec succès.",
-      });
-
-      // Rafraîchir les données
-      if (refetch) {
-        refetch();
-      } else {
-        router.refresh();
-      }
-    } catch (error: any) {
-      console.error("Erreur suppression:", error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer le bail",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-      setDeleteDialogOpen(false);
-      setLeaseToDelete(null);
-    }
+    deleteLeaseMutation.mutate(leaseToDelete.id, {
+      onSuccess: () => {
+        toast({
+          title: "✅ Bail supprimé",
+          description: "Le bail a été supprimé avec succès.",
+        });
+        setDeleteDialogOpen(false);
+        setLeaseToDelete(null);
+      },
+      onError: (error: any) => {
+        console.error("Erreur suppression:", error);
+        toast({
+          title: "Erreur",
+          description: error.message || "Impossible de supprimer le bail",
+          variant: "destructive",
+        });
+      },
+    });
   };
 
   // Ouvrir la dialog de confirmation
@@ -149,8 +136,12 @@ export function ContractsClient() {
       meuble: "Habitation (meublé)",
       colocation: "Colocation",
       saisonnier: "Saisonnier",
-      commercial: "Commercial",
-      pro: "Professionnel",
+      bail_mobilite: "Bail Mobilité",
+      contrat_parking: "Parking",
+      commercial_3_6_9: "Commercial 3/6/9",
+      commercial_derogatoire: "Commercial dérogatoire",
+      professionnel: "Professionnel",
+      location_gerance: "Location-gérance",
     };
     return labels[type] || type;
   };
@@ -237,12 +228,6 @@ export function ContractsClient() {
                                     Voir le détail
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/app/owner/contracts/${lease.id}/preview`} className="flex items-center">
-                                    <FileText className="mr-2 h-4 w-4" />
-                                    Aperçu PDF
-                                </Link>
-                            </DropdownMenuItem>
                             <DropdownMenuItem 
                                 onClick={() => window.open(`/api/leases/${lease.id}/pdf`, '_blank')}
                                 className="flex items-center"
@@ -297,13 +282,13 @@ export function ContractsClient() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteLeaseMutation.isPending}>Annuler</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteLease}
-              disabled={isDeleting}
+              disabled={deleteLeaseMutation.isPending}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
-              {isDeleting ? (
+              {deleteLeaseMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Suppression...
@@ -331,12 +316,43 @@ export function ContractsClient() {
                 Gérez vos contrats et vos locataires
               </p>
             </div>
-            <Button asChild className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <Link href="/app/owner/contracts/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Créer un bail
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              {/* Bouton Export CSV */}
+              <Button
+                variant="outline"
+                onClick={() => exportLeases(filteredLeases.map((lease: any) => {
+                  const property = properties.find((p: any) => p.id === lease.property_id);
+                  return {
+                    ...lease,
+                    property_address: property?.adresse_complete || 'N/A',
+                    tenant_name: lease.signers?.find((s: any) => s.role === 'locataire_principal')?.profile?.prenom + ' ' + 
+                      lease.signers?.find((s: any) => s.role === 'locataire_principal')?.profile?.nom || 'N/A',
+                  };
+                }), "csv")}
+                disabled={filteredLeases.length === 0}
+                className="border-slate-300 hover:bg-slate-100"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Exporter
+              </Button>
+              
+              <Button asChild className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <Link href="/app/owner/contracts/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Créer un bail
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Usage Limit Banner SOTA 2025 */}
+          <div className="mb-6">
+            <UsageLimitBanner
+              resource="leases"
+              variant="inline"
+              threshold={70}
+              dismissible={true}
+            />
           </div>
 
           {/* Onglets */}
@@ -371,8 +387,10 @@ export function ContractsClient() {
                     <SelectItem value="meuble">Habitation (meublé)</SelectItem>
                     <SelectItem value="colocation">Colocation</SelectItem>
                     <SelectItem value="saisonnier">Saisonnier</SelectItem>
-                    <SelectItem value="commercial">Commercial</SelectItem>
-                    <SelectItem value="pro">Professionnel</SelectItem>
+                    <SelectItem value="bail_mobilite">Bail Mobilité</SelectItem>
+                    <SelectItem value="contrat_parking">Parking</SelectItem>
+                    <SelectItem value="commercial_3_6_9">Commercial 3/6/9</SelectItem>
+                    <SelectItem value="professionnel">Professionnel</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -389,7 +407,22 @@ export function ContractsClient() {
               </div>
 
               {/* Liste des baux */}
-              {filteredLeases.length === 0 ? (
+              {isLoading ? (
+                <GlassCard className="p-6">
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded-lg" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                        <Skeleton className="h-8 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                </GlassCard>
+              ) : filteredLeases.length === 0 ? (
                 <EmptyState
                     title="Aucun bail trouvé"
                     description="Vous n'avez pas encore de bail correspondant à vos critères."

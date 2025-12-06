@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   ArrowLeft, 
   Building2, 
@@ -22,7 +24,18 @@ import {
   Camera,
   Trash2,
   Plus,
-  ImageIcon
+  ImageIcon,
+  Euro,
+  Car,
+  Shield,
+  Video,
+  Key,
+  Hash,
+  Flame,
+  Snowflake,
+  Store,
+  Wifi,
+  Accessibility
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -30,13 +43,762 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { formatCurrency } from "@/lib/helpers/format";
 import { useToast } from "@/components/ui/use-toast";
 import type { PropertyDetails } from "../../_data/fetchPropertyDetails";
+import { PropertyMetersSection } from "@/components/owner/properties/PropertyMetersSection";
+import { FavoriteButton } from "@/components/ui/favorite-button";
+import { EntityNotes } from "@/components/ui/entity-notes";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Navigation } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// Import dynamique de la carte pour éviter les erreurs SSR
+const PropertyMap = dynamic(
+  () => import("@/components/maps/property-map").then((mod) => mod.PropertyMap),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="h-[200px] bg-muted/50 rounded-xl flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <MapPin className="h-6 w-6 animate-pulse" />
+          <span className="text-sm">Chargement de la carte...</span>
+        </div>
+      </div>
+    )
+  }
+);
 
 interface PropertyDetailsClientProps {
   details: PropertyDetails;
   propertyId: string;
+}
+
+// ============================================
+// COMPOSANT : Badges de caractéristiques adaptés au type de bien
+// ============================================
+
+const HABITATION_TYPES = ["appartement", "maison", "studio", "colocation", "saisonnier"];
+const PARKING_TYPES = ["parking", "box"];
+const PRO_TYPES = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"];
+
+function PropertyCharacteristicsBadges({ property }: { property: any }) {
+  const propertyType = property.type || "";
+  
+  // ========== PARKING / BOX ==========
+  if (PARKING_TYPES.includes(propertyType)) {
+    return (
+      <div className="flex flex-wrap gap-3">
+        {/* Type de parking */}
+        <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 rounded-lg">
+          <Car className="h-4 w-4 text-purple-600" />
+          <div>
+            <p className="text-xs text-muted-foreground">Type</p>
+            <p className="font-semibold text-sm capitalize">
+              {property.parking_type === "box" ? "Box fermé" : 
+               property.parking_type === "place_couverte" ? "Couvert" :
+               property.parking_type === "souterrain" ? "Souterrain" : "Extérieur"}
+            </p>
+          </div>
+        </div>
+        
+        {/* Numéro de place */}
+        {property.parking_numero && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
+            <Hash className="h-4 w-4 text-blue-600" />
+            <div>
+              <p className="text-xs text-muted-foreground">N° Place</p>
+              <p className="font-semibold text-sm">{property.parking_numero}</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Niveau */}
+        {property.parking_niveau && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-lg">
+            <Building2 className="h-4 w-4 text-indigo-600" />
+            <div>
+              <p className="text-xs text-muted-foreground">Niveau</p>
+              <p className="font-semibold text-sm">{property.parking_niveau}</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Gabarit */}
+        {property.parking_gabarit && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-lg">
+            <Car className="h-4 w-4 text-amber-600" />
+            <div>
+              <p className="text-xs text-muted-foreground">Gabarit max</p>
+              <p className="font-semibold text-sm capitalize">{property.parking_gabarit}</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Sécurité */}
+        {(property.parking_video_surveillance || property.parking_gardien || property.parking_portail_securise) && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg">
+            <Shield className="h-4 w-4 text-red-600" />
+            <div>
+              <p className="text-xs text-muted-foreground">Sécurité</p>
+              <p className="font-semibold text-sm">
+                {[
+                  property.parking_video_surveillance && "Vidéo",
+                  property.parking_gardien && "Gardien",
+                  property.parking_portail_securise && "Portail"
+                ].filter(Boolean).join(", ")}
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {/* Surface (pour box) */}
+        {property.surface && property.surface > 0 && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg">
+            <span className="text-slate-600 text-lg">📐</span>
+            <div>
+              <p className="text-xs text-muted-foreground">Surface</p>
+              <p className="font-semibold text-sm">{property.surface} m²</p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // ========== LOCAL PROFESSIONNEL ==========
+  if (PRO_TYPES.includes(propertyType)) {
+    return (
+      <div className="flex flex-wrap gap-3">
+        {/* Surface */}
+        <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
+          <span className="text-blue-600 text-lg">📐</span>
+          <div>
+            <p className="text-xs text-muted-foreground">Surface</p>
+            <p className="font-semibold text-sm">{property.local_surface_totale || property.surface} m²</p>
+          </div>
+        </div>
+        
+        {/* Type de local */}
+        {property.local_type && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 rounded-lg">
+            <Store className="h-4 w-4 text-purple-600" />
+            <div>
+              <p className="text-xs text-muted-foreground">Type</p>
+              <p className="font-semibold text-sm capitalize">{property.local_type}</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Étage */}
+        {property.etage !== undefined && property.etage !== null && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-lg">
+            <Building2 className="h-4 w-4 text-indigo-600" />
+            <div>
+              <p className="text-xs text-muted-foreground">Étage</p>
+              <p className="font-semibold text-sm">{property.etage === 0 ? 'RDC' : property.etage}</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Équipements */}
+        {property.local_has_vitrine && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-lg">
+            <span className="text-amber-600 text-lg">🪟</span>
+            <div>
+              <p className="text-xs text-muted-foreground">Vitrine</p>
+              <p className="font-semibold text-sm">Oui</p>
+            </div>
+          </div>
+        )}
+        
+        {property.local_access_pmr && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
+            <Accessibility className="h-4 w-4 text-green-600" />
+            <div>
+              <p className="text-xs text-muted-foreground">Accès PMR</p>
+              <p className="font-semibold text-sm">Oui</p>
+            </div>
+          </div>
+        )}
+        
+        {property.local_fibre && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-cyan-50 rounded-lg">
+            <Wifi className="h-4 w-4 text-cyan-600" />
+            <div>
+              <p className="text-xs text-muted-foreground">Fibre</p>
+              <p className="font-semibold text-sm">Oui</p>
+            </div>
+          </div>
+        )}
+        
+        {property.local_clim && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-sky-50 rounded-lg">
+            <Snowflake className="h-4 w-4 text-sky-600" />
+            <div>
+              <p className="text-xs text-muted-foreground">Climatisation</p>
+              <p className="font-semibold text-sm">Oui</p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // ========== HABITATION (par défaut) ==========
+  return (
+    <div className="flex flex-wrap gap-3">
+      {/* Surface */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
+        <span className="text-blue-600 text-lg">📐</span>
+        <div>
+          <p className="text-xs text-muted-foreground">Surface</p>
+          <p className="font-semibold text-sm">{property.surface} m²</p>
+        </div>
+      </div>
+      
+      {/* Pièces */}
+      {property.nb_pieces > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg">
+          <span className="text-emerald-600 text-lg">🚪</span>
+          <div>
+            <p className="text-xs text-muted-foreground">Pièces</p>
+            <p className="font-semibold text-sm">{property.nb_pieces}</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Type */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-violet-50 rounded-lg">
+        <span className="text-violet-600 text-lg">🏠</span>
+        <div>
+          <p className="text-xs text-muted-foreground">Type</p>
+          <p className="font-semibold text-sm capitalize">{property.type}</p>
+        </div>
+      </div>
+      
+      {/* DPE */}
+      {property.dpe_classe_energie && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-lg">
+          <span className="text-amber-600 text-lg">⚡</span>
+          <div>
+            <p className="text-xs text-muted-foreground">DPE</p>
+            <p className="font-semibold text-sm">{property.dpe_classe_energie}</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Étage */}
+      {property.etage !== undefined && property.etage !== null && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-lg">
+          <Building2 className="h-4 w-4 text-indigo-600" />
+          <div>
+            <p className="text-xs text-muted-foreground">Étage</p>
+            <p className="font-semibold text-sm">{property.etage === 0 ? 'RDC' : property.etage}</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Chauffage */}
+      {property.chauffage_type && property.chauffage_type !== "aucun" && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 rounded-lg">
+          <Flame className="h-4 w-4 text-orange-600" />
+          <div>
+            <p className="text-xs text-muted-foreground">Chauffage</p>
+            <p className="font-semibold text-sm capitalize">
+              {property.chauffage_type} {property.chauffage_energie ? `(${property.chauffage_energie})` : ""}
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* Climatisation */}
+      {property.clim_presence && property.clim_presence !== "aucune" && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-cyan-50 rounded-lg">
+          <Snowflake className="h-4 w-4 text-cyan-600" />
+          <div>
+            <p className="text-xs text-muted-foreground">Climatisation</p>
+            <p className="font-semibold text-sm capitalize">{property.clim_presence}</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Meublé */}
+      {property.meuble && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-teal-50 rounded-lg">
+          <span className="text-teal-600 text-lg">🛋️</span>
+          <div>
+            <p className="text-xs text-muted-foreground">Meublé</p>
+            <p className="font-semibold text-sm">Oui</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
+// COMPOSANT : Formulaire d'édition adapté au type de bien
+// ============================================
+
+interface PropertyEditFormProps {
+  property: any;
+  editedValues: Record<string, any>;
+  handleFieldChange: (field: string, value: any) => void;
+  getValue: (field: string) => any;
+}
+
+const DPE_OPTIONS = ["A", "B", "C", "D", "E", "F", "G", "NC"];
+
+function PropertyEditForm({ property, editedValues, handleFieldChange, getValue }: PropertyEditFormProps) {
+  const propertyType = property.type || "";
+  const isParking = PARKING_TYPES.includes(propertyType);
+  const isPro = PRO_TYPES.includes(propertyType);
+  const isHabitation = HABITATION_TYPES.includes(propertyType);
+  const showEtage = ["appartement", "studio", "colocation", "local_commercial", "bureaux", "entrepot"].includes(propertyType);
+
+  // ========== FORMULAIRE PARKING ==========
+  if (isParking) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Type de parking */}
+          <div>
+            <Label className="text-xs">Type de parking</Label>
+            <Select value={getValue("parking_type") || ""} onValueChange={(v) => handleFieldChange("parking_type", v)}>
+              <SelectTrigger className="mt-1 h-9"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="place_exterieure">Place extérieure</SelectItem>
+                <SelectItem value="place_couverte">Place couverte</SelectItem>
+                <SelectItem value="box">Box fermé</SelectItem>
+                <SelectItem value="souterrain">Souterrain</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Numéro de place */}
+          <div>
+            <Label className="text-xs">N° de place</Label>
+            <Input
+              value={getValue("parking_numero") || ""}
+              onChange={(e) => handleFieldChange("parking_numero", e.target.value)}
+              placeholder="Ex: A42"
+              className="mt-1 h-9"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Niveau */}
+          <div>
+            <Label className="text-xs">Niveau</Label>
+            <Input
+              value={getValue("parking_niveau") || ""}
+              onChange={(e) => handleFieldChange("parking_niveau", e.target.value)}
+              placeholder="Ex: -1, RDC"
+              className="mt-1 h-9"
+            />
+          </div>
+          {/* Gabarit */}
+          <div>
+            <Label className="text-xs">Gabarit max</Label>
+            <Select value={getValue("parking_gabarit") || ""} onValueChange={(v) => handleFieldChange("parking_gabarit", v)}>
+              <SelectTrigger className="mt-1 h-9"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="2_roues">2 roues</SelectItem>
+                <SelectItem value="citadine">Citadine</SelectItem>
+                <SelectItem value="berline">Berline</SelectItem>
+                <SelectItem value="suv">SUV</SelectItem>
+                <SelectItem value="utilitaire">Utilitaire</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Surface (pour box) */}
+        {property.type === "box" && (
+          <div className="w-1/2">
+            <Label className="text-xs">Surface (m²)</Label>
+            <Input
+              type="number"
+              value={getValue("surface") || ""}
+              onChange={(e) => handleFieldChange("surface", e.target.value)}
+              className="mt-1 h-9"
+            />
+          </div>
+        )}
+
+        {/* Sécurité */}
+        <div className="p-3 bg-slate-50 rounded-lg">
+          <Label className="text-xs font-medium mb-3 block">Sécurité</Label>
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <Switch 
+                checked={getValue("parking_portail_securise") || false} 
+                onCheckedChange={(c) => handleFieldChange("parking_portail_securise", c)} 
+              />
+              <span className="text-sm">Portail sécurisé</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch 
+                checked={getValue("parking_video_surveillance") || false} 
+                onCheckedChange={(c) => handleFieldChange("parking_video_surveillance", c)} 
+              />
+              <span className="text-sm">Vidéosurveillance</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch 
+                checked={getValue("parking_gardien") || false} 
+                onCheckedChange={(c) => handleFieldChange("parking_gardien", c)} 
+              />
+              <span className="text-sm">Gardien</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Visite virtuelle */}
+        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <Label className="text-xs font-medium mb-2 flex items-center gap-2">
+            <Video className="h-4 w-4 text-blue-600" />
+            Visite virtuelle (optionnel)
+          </Label>
+          <Input
+            value={getValue("visite_virtuelle_url") || ""}
+            onChange={(e) => handleFieldChange("visite_virtuelle_url", e.target.value)}
+            placeholder="https://my.matterport.com/show/?m=..."
+            className="mt-1 h-9"
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Lien Matterport, Nodalview, ou autre service de visite 360°
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== FORMULAIRE LOCAL PRO ==========
+  if (isPro) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Surface */}
+          <div>
+            <Label className="text-xs">Surface totale (m²)</Label>
+            <Input
+              type="number"
+              value={getValue("local_surface_totale") || getValue("surface") || ""}
+              onChange={(e) => {
+                handleFieldChange("local_surface_totale", e.target.value);
+                handleFieldChange("surface", e.target.value);
+              }}
+              className="mt-1 h-9"
+            />
+          </div>
+          {/* Type de local */}
+          <div>
+            <Label className="text-xs">Type de local</Label>
+            <Select value={getValue("local_type") || ""} onValueChange={(v) => handleFieldChange("local_type", v)}>
+              <SelectTrigger className="mt-1 h-9"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="boutique">Boutique</SelectItem>
+                <SelectItem value="restaurant">Restaurant</SelectItem>
+                <SelectItem value="bureaux">Bureaux</SelectItem>
+                <SelectItem value="atelier">Atelier</SelectItem>
+                <SelectItem value="stockage">Stockage</SelectItem>
+                <SelectItem value="autre">Autre</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Étage */}
+        {showEtage && (
+          <div className="w-1/2">
+            <Label className="text-xs">Étage / Niveau</Label>
+            <Input
+              type="number"
+              value={getValue("etage") ?? ""}
+              onChange={(e) => handleFieldChange("etage", e.target.value)}
+              placeholder="0 = RDC"
+              className="mt-1 h-9"
+            />
+          </div>
+        )}
+
+        {/* Équipements */}
+        <div className="p-3 bg-slate-50 rounded-lg">
+          <Label className="text-xs font-medium mb-3 block">Équipements</Label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2">
+              <Switch checked={getValue("local_has_vitrine") || false} onCheckedChange={(c) => handleFieldChange("local_has_vitrine", c)} />
+              <span className="text-sm">Vitrine</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={getValue("local_access_pmr") || false} onCheckedChange={(c) => handleFieldChange("local_access_pmr", c)} />
+              <span className="text-sm">Accès PMR</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={getValue("local_clim") || false} onCheckedChange={(c) => handleFieldChange("local_clim", c)} />
+              <span className="text-sm">Climatisation</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={getValue("local_fibre") || false} onCheckedChange={(c) => handleFieldChange("local_fibre", c)} />
+              <span className="text-sm">Fibre optique</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={getValue("local_alarme") || false} onCheckedChange={(c) => handleFieldChange("local_alarme", c)} />
+              <span className="text-sm">Alarme</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={getValue("local_rideau_metal") || false} onCheckedChange={(c) => handleFieldChange("local_rideau_metal", c)} />
+              <span className="text-sm">Rideau métallique</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={getValue("local_acces_camion") || false} onCheckedChange={(c) => handleFieldChange("local_acces_camion", c)} />
+              <span className="text-sm">Accès camion</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={getValue("local_parking_clients") || false} onCheckedChange={(c) => handleFieldChange("local_parking_clients", c)} />
+              <span className="text-sm">Parking clients</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Visite virtuelle */}
+        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <Label className="text-xs font-medium mb-2 flex items-center gap-2">
+            <Video className="h-4 w-4 text-blue-600" />
+            Visite virtuelle (optionnel)
+          </Label>
+          <Input
+            value={getValue("visite_virtuelle_url") || ""}
+            onChange={(e) => handleFieldChange("visite_virtuelle_url", e.target.value)}
+            placeholder="https://my.matterport.com/show/?m=..."
+            className="mt-1 h-9"
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Lien Matterport, Nodalview, ou autre service de visite 360°
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== FORMULAIRE HABITATION (par défaut) ==========
+  return (
+    <div className="space-y-4">
+      {/* Surface & Pièces */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <Label className="text-xs">Surface (m²)</Label>
+          <Input
+            type="number"
+            value={getValue("surface") || ""}
+            onChange={(e) => handleFieldChange("surface", e.target.value)}
+            className="mt-1 h-9"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Pièces</Label>
+          <Input
+            type="number"
+            value={getValue("nb_pieces") || ""}
+            onChange={(e) => handleFieldChange("nb_pieces", e.target.value)}
+            className="mt-1 h-9"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Chambres</Label>
+          <Input
+            type="number"
+            value={getValue("nb_chambres") || ""}
+            onChange={(e) => handleFieldChange("nb_chambres", e.target.value)}
+            className="mt-1 h-9"
+          />
+        </div>
+        {showEtage && (
+          <div>
+            <Label className="text-xs">Étage</Label>
+            <Input
+              type="number"
+              value={getValue("etage") ?? ""}
+              onChange={(e) => handleFieldChange("etage", e.target.value)}
+              placeholder="0 = RDC"
+              className="mt-1 h-9"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Switches */}
+      <div className="flex flex-wrap gap-6">
+        {showEtage && (
+          <div className="flex items-center gap-2">
+            <Switch checked={getValue("ascenseur") || false} onCheckedChange={(c) => handleFieldChange("ascenseur", c)} />
+            <span className="text-sm">Ascenseur</span>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Switch checked={getValue("meuble") || false} onCheckedChange={(c) => handleFieldChange("meuble", c)} />
+          <span className="text-sm">Meublé</span>
+        </div>
+      </div>
+
+      {/* DPE */}
+      <div className="p-3 bg-green-50 rounded-lg">
+        <Label className="text-xs font-medium mb-3 block">DPE - Diagnostic de Performance Énergétique</Label>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs text-muted-foreground">Classe énergie</Label>
+            <div className="flex gap-1 mt-1">
+              {DPE_OPTIONS.map((cls) => (
+                <button
+                  key={cls}
+                  type="button"
+                  onClick={() => handleFieldChange("dpe_classe_energie", cls)}
+                  className={`flex-1 h-8 rounded text-sm font-bold text-white transition-all ${
+                    cls === "A" ? "bg-green-600" :
+                    cls === "B" ? "bg-lime-500" :
+                    cls === "C" ? "bg-yellow-400 text-black" :
+                    cls === "D" ? "bg-amber-400 text-black" :
+                    cls === "E" ? "bg-orange-500" :
+                    cls === "F" ? "bg-red-500" : "bg-red-700"
+                  } ${getValue("dpe_classe_energie") === cls ? "ring-2 ring-offset-1 ring-primary scale-105" : "opacity-60 hover:opacity-100"}`}
+                >
+                  {cls}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Émissions GES</Label>
+            <div className="flex gap-1 mt-1">
+              {DPE_OPTIONS.map((cls) => (
+                <button
+                  key={cls}
+                  type="button"
+                  onClick={() => handleFieldChange("dpe_classe_climat", cls)}
+                  className={`flex-1 h-8 rounded text-sm font-bold text-white transition-all ${
+                    cls === "A" ? "bg-violet-200 text-violet-900" :
+                    cls === "B" ? "bg-violet-300 text-violet-900" :
+                    cls === "C" ? "bg-violet-400" :
+                    cls === "D" ? "bg-violet-500" :
+                    cls === "E" ? "bg-violet-600" :
+                    cls === "F" ? "bg-violet-700" : "bg-violet-800"
+                  } ${getValue("dpe_classe_climat") === cls ? "ring-2 ring-offset-1 ring-primary scale-105" : "opacity-60 hover:opacity-100"}`}
+                >
+                  {cls}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Chauffage & Eau chaude */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="p-3 bg-orange-50 rounded-lg">
+          <Label className="text-xs font-medium mb-2 block">Chauffage</Label>
+          <Select value={getValue("chauffage_type") || ""} onValueChange={(v) => handleFieldChange("chauffage_type", v)}>
+            <SelectTrigger className="h-9 mb-2"><SelectValue placeholder="Type..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="individuel">Individuel</SelectItem>
+              <SelectItem value="collectif">Collectif</SelectItem>
+              <SelectItem value="aucun">Aucun</SelectItem>
+            </SelectContent>
+          </Select>
+          {getValue("chauffage_type") && getValue("chauffage_type") !== "aucun" && (
+            <Select value={getValue("chauffage_energie") || ""} onValueChange={(v) => handleFieldChange("chauffage_energie", v)}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Énergie..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="electricite">Électricité</SelectItem>
+                <SelectItem value="gaz">Gaz</SelectItem>
+                <SelectItem value="fioul">Fioul</SelectItem>
+                <SelectItem value="bois">Bois</SelectItem>
+                <SelectItem value="reseau_urbain">Réseau urbain</SelectItem>
+                <SelectItem value="autre">Autre</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        <div className="p-3 bg-blue-50 rounded-lg">
+          <Label className="text-xs font-medium mb-2 block">Eau chaude</Label>
+          <Select value={getValue("eau_chaude_type") || ""} onValueChange={(v) => handleFieldChange("eau_chaude_type", v)}>
+            <SelectTrigger className="h-9"><SelectValue placeholder="Type..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="electrique_indiv">Électrique individuel</SelectItem>
+              <SelectItem value="gaz_indiv">Gaz individuel</SelectItem>
+              <SelectItem value="collectif">Collectif</SelectItem>
+              <SelectItem value="solaire">Solaire</SelectItem>
+              <SelectItem value="autre">Autre</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Climatisation */}
+      <div className="p-3 bg-cyan-50 rounded-lg">
+        <Label className="text-xs font-medium mb-2 block">Climatisation</Label>
+        <div className="flex items-center gap-4">
+          <Select value={getValue("clim_presence") || "aucune"} onValueChange={(v) => handleFieldChange("clim_presence", v)}>
+            <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="aucune">Aucune</SelectItem>
+              <SelectItem value="fixe">Fixe</SelectItem>
+              <SelectItem value="mobile">Mobile</SelectItem>
+            </SelectContent>
+          </Select>
+          {getValue("clim_presence") === "fixe" && (
+            <Select value={getValue("clim_type") || ""} onValueChange={(v) => handleFieldChange("clim_type", v)}>
+              <SelectTrigger className="w-32 h-9"><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="split">Split</SelectItem>
+                <SelectItem value="gainable">Gainable</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </div>
+
+      {/* Extérieurs */}
+      <div className="p-3 bg-slate-50 rounded-lg">
+        <Label className="text-xs font-medium mb-3 block">Extérieurs & Annexes</Label>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <Switch checked={getValue("has_balcon") || false} onCheckedChange={(c) => handleFieldChange("has_balcon", c)} />
+            <span className="text-sm">Balcon</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={getValue("has_terrasse") || false} onCheckedChange={(c) => handleFieldChange("has_terrasse", c)} />
+            <span className="text-sm">Terrasse</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={getValue("has_jardin") || false} onCheckedChange={(c) => handleFieldChange("has_jardin", c)} />
+            <span className="text-sm">Jardin</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={getValue("has_cave") || false} onCheckedChange={(c) => handleFieldChange("has_cave", c)} />
+            <span className="text-sm">Cave</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Visite virtuelle */}
+      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <Label className="text-xs font-medium mb-2 flex items-center gap-2">
+          <Video className="h-4 w-4 text-blue-600" />
+          Visite virtuelle (optionnel)
+        </Label>
+        <Input
+          value={getValue("visite_virtuelle_url") || ""}
+          onChange={(e) => handleFieldChange("visite_virtuelle_url", e.target.value)}
+          placeholder="https://my.matterport.com/show/?m=..."
+          className="mt-1 h-9"
+        />
+        <p className="text-[10px] text-muted-foreground mt-1">
+          Lien Matterport, Nodalview, ou autre service de visite 360°
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsClientProps) {
@@ -57,7 +819,12 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
   const [isSaving, setIsSaving] = useState(false);
 
   const { leases = [] } = details;
-  const activeLease = leases.find((l: any) => l.statut === "active");
+  // Chercher un bail existant (actif, en attente de signature, ou brouillon)
+  const existingLease = leases.find((l: any) => 
+    ["active", "pending_signature", "draft"].includes(l.statut)
+  );
+  const isLeaseActive = existingLease?.statut === "active";
+  const isLeasePending = existingLease?.statut === "pending_signature";
 
   // Mutation pour la suppression du bien
   const deleteProperty = useMutationWithToast({
@@ -80,14 +847,58 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
   // ========== GESTION DU MODE ÉDITION ==========
   const handleStartEditing = () => {
+    const p = property as any;
     setEditedValues({
-      adresse_complete: property.adresse_complete || "",
-      code_postal: property.code_postal || "",
-      ville: property.ville || "",
-      surface: property.surface || 0,
-      nb_pieces: property.nb_pieces || 0,
-      loyer_hc: property.loyer_hc || 0,
-      charges_mensuelles: (property as any).charges_mensuelles ?? 0,
+      // Adresse
+      adresse_complete: p.adresse_complete || "",
+      code_postal: p.code_postal || "",
+      ville: p.ville || "",
+      // Surface & Pièces
+      surface: p.surface || 0,
+      nb_pieces: p.nb_pieces || 0,
+      nb_chambres: p.nb_chambres || 0,
+      etage: p.etage ?? "",
+      ascenseur: p.ascenseur || false,
+      // Habitation
+      meuble: p.meuble || false,
+      dpe_classe_energie: p.dpe_classe_energie || "",
+      dpe_classe_climat: p.dpe_classe_climat || "",
+      chauffage_type: p.chauffage_type || "",
+      chauffage_energie: p.chauffage_energie || "",
+      eau_chaude_type: p.eau_chaude_type || "",
+      clim_presence: p.clim_presence || "aucune",
+      clim_type: p.clim_type || "",
+      // Extérieurs
+      has_balcon: p.has_balcon || false,
+      has_terrasse: p.has_terrasse || false,
+      has_jardin: p.has_jardin || false,
+      has_cave: p.has_cave || false,
+      // Parking
+      parking_type: p.parking_type || "",
+      parking_numero: p.parking_numero || "",
+      parking_niveau: p.parking_niveau || "",
+      parking_gabarit: p.parking_gabarit || "",
+      parking_acces: p.parking_acces || [],
+      parking_portail_securise: p.parking_portail_securise || false,
+      parking_video_surveillance: p.parking_video_surveillance || false,
+      parking_gardien: p.parking_gardien || false,
+      // Local Pro
+      local_type: p.local_type || "",
+      local_surface_totale: p.local_surface_totale || p.surface || 0,
+      local_has_vitrine: p.local_has_vitrine || false,
+      local_access_pmr: p.local_access_pmr || false,
+      local_clim: p.local_clim || false,
+      local_fibre: p.local_fibre || false,
+      local_alarme: p.local_alarme || false,
+      local_rideau_metal: p.local_rideau_metal || false,
+      local_acces_camion: p.local_acces_camion || false,
+      local_parking_clients: p.local_parking_clients || false,
+      // Financier
+      loyer_hc: p.loyer_hc || 0,
+      charges_mensuelles: p.charges_mensuelles ?? 0,
+      depot_garantie: p.depot_garantie || 0,
+      // Visite virtuelle (Matterport, Nodalview, etc.)
+      visite_virtuelle_url: p.visite_virtuelle_url || "",
     });
     setPendingPhotos([]);
     setPendingPhotoUrls([]);
@@ -109,16 +920,79 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
   const handleSaveAll = async () => {
     setIsSaving(true);
     try {
-      // 1. Sauvegarder les infos du bien
-      const payload = {
+      // Construire le payload avec tous les champs modifiés
+      const propertyType = property.type || "";
+      const isParking = ["parking", "box"].includes(propertyType);
+      const isPro = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(propertyType);
+      const isHabitation = ["appartement", "maison", "studio", "colocation", "saisonnier"].includes(propertyType);
+
+      // Payload de base (commun à tous les types)
+      const payload: Record<string, any> = {
         adresse_complete: editedValues.adresse_complete,
         code_postal: editedValues.code_postal,
         ville: editedValues.ville,
-        surface: parseFloat(editedValues.surface) || 0,
-        nb_pieces: parseInt(editedValues.nb_pieces, 10) || 0,
         loyer_hc: parseFloat(editedValues.loyer_hc) || 0,
         charges_mensuelles: parseFloat(editedValues.charges_mensuelles) || 0,
+        depot_garantie: parseFloat(editedValues.depot_garantie) || 0,
+        // Visite virtuelle (optionnel, commun à tous les types)
+        visite_virtuelle_url: editedValues.visite_virtuelle_url || null,
       };
+
+      // Champs spécifiques HABITATION
+      if (isHabitation) {
+        Object.assign(payload, {
+          surface: parseFloat(editedValues.surface) || 0,
+          nb_pieces: parseInt(editedValues.nb_pieces, 10) || 0,
+          nb_chambres: parseInt(editedValues.nb_chambres, 10) || 0,
+          etage: editedValues.etage !== "" ? parseInt(editedValues.etage, 10) : null,
+          ascenseur: editedValues.ascenseur || false,
+          meuble: editedValues.meuble || false,
+          dpe_classe_energie: editedValues.dpe_classe_energie || null,
+          dpe_classe_climat: editedValues.dpe_classe_climat || null,
+          chauffage_type: editedValues.chauffage_type || null,
+          chauffage_energie: editedValues.chauffage_energie || null,
+          eau_chaude_type: editedValues.eau_chaude_type || null,
+          clim_presence: editedValues.clim_presence || null,
+          clim_type: editedValues.clim_type || null,
+          has_balcon: editedValues.has_balcon || false,
+          has_terrasse: editedValues.has_terrasse || false,
+          has_jardin: editedValues.has_jardin || false,
+          has_cave: editedValues.has_cave || false,
+        });
+      }
+
+      // Champs spécifiques PARKING
+      if (isParking) {
+        Object.assign(payload, {
+          surface: parseFloat(editedValues.surface) || null,
+          parking_type: editedValues.parking_type || null,
+          parking_numero: editedValues.parking_numero || null,
+          parking_niveau: editedValues.parking_niveau || null,
+          parking_gabarit: editedValues.parking_gabarit || null,
+          parking_acces: editedValues.parking_acces || [],
+          parking_portail_securise: editedValues.parking_portail_securise || false,
+          parking_video_surveillance: editedValues.parking_video_surveillance || false,
+          parking_gardien: editedValues.parking_gardien || false,
+        });
+      }
+
+      // Champs spécifiques LOCAL PRO
+      if (isPro) {
+        Object.assign(payload, {
+          surface: parseFloat(editedValues.surface) || parseFloat(editedValues.local_surface_totale) || 0,
+          local_surface_totale: parseFloat(editedValues.local_surface_totale) || parseFloat(editedValues.surface) || 0,
+          etage: editedValues.etage !== "" ? parseInt(editedValues.etage, 10) : null,
+          local_type: editedValues.local_type || null,
+          local_has_vitrine: editedValues.local_has_vitrine || false,
+          local_access_pmr: editedValues.local_access_pmr || false,
+          local_clim: editedValues.local_clim || false,
+          local_fibre: editedValues.local_fibre || false,
+          local_alarme: editedValues.local_alarme || false,
+          local_rideau_metal: editedValues.local_rideau_metal || false,
+          local_acces_camion: editedValues.local_acces_camion || false,
+          local_parking_clients: editedValues.local_parking_clients || false,
+        });
+      }
 
       const response = await apiClient.patch<{ property: typeof property }>(
         `/properties/${propertyId}`,
@@ -262,13 +1136,25 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
           </Link>
         </Button>
 
-        {/* Bouton Modifier / Annuler */}
-        {!isEditing ? (
-          <Button onClick={handleStartEditing} variant="default" className="gap-2">
-            <Edit className="h-4 w-4" />
-            Modifier le bien
-          </Button>
-        ) : (
+        {/* Boutons d'action */}
+        <div className="flex items-center gap-2">
+          {/* Bouton Favori */}
+          <FavoriteButton
+            id={propertyId}
+            type="property"
+            label={property.adresse_complete || property.nom || "Bien"}
+            description={property.ville}
+            href={`/app/owner/properties/${propertyId}`}
+            variant="outline"
+          />
+          
+          {/* Bouton Modifier / Annuler */}
+          {!isEditing ? (
+            <Button onClick={handleStartEditing} variant="default" className="gap-2">
+              <Edit className="h-4 w-4" />
+              Modifier le bien
+            </Button>
+          ) : (
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCancelEditing} disabled={isSaving}>
               <X className="mr-2 h-4 w-4" />
@@ -288,7 +1174,8 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
               )}
             </Button>
           </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* ========== HERO / PHOTOS SECTION ========== */}
@@ -335,6 +1222,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     src={mainPhoto.url}
                     alt="Photo principale"
                     fill
+                    sizes="(max-width: 768px) 100vw, 75vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                     priority
                   />
@@ -427,6 +1315,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     src={photo.url}
                     alt={`Photo ${idx + 2}`}
                     fill
+                    sizes="25vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   
@@ -531,90 +1420,94 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       <div className="grid gap-6 md:grid-cols-3">
         {/* Colonne Gauche */}
         <div className="md:col-span-2 space-y-6">
+          {/* ========== CARACTÉRISTIQUES (adresse visible uniquement en mode édition) ========== */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Building2 className="h-5 w-5 text-blue-600" />
-                Informations Générales
+                Caractéristiques
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <Label htmlFor="adresse_complete">Adresse complète</Label>
-                  {isEditing ? (
-                    <Input
-                      id="adresse_complete"
-                      value={getValue("adresse_complete")}
-                      onChange={(e) => handleFieldChange("adresse_complete", e.target.value)}
-                      className="mt-1"
-                    />
-                  ) : (
-                    <p className="text-lg font-medium mt-1">{property.adresse_complete}</p>
-                  )}
+            <CardContent>
+              {/* Mode édition : afficher les champs d'adresse */}
+              {isEditing && (
+                <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                  <p className="text-xs text-muted-foreground mb-3 font-medium flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Modifier l'adresse
+                  </p>
+                  <div className="grid gap-3">
+                    <div>
+                      <Label htmlFor="adresse_complete" className="text-xs">Adresse</Label>
+                      <Input
+                        id="adresse_complete"
+                        value={getValue("adresse_complete")}
+                        onChange={(e) => handleFieldChange("adresse_complete", e.target.value)}
+                        className="mt-1 h-9"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="code_postal" className="text-xs">Code Postal</Label>
+                        <Input
+                          id="code_postal"
+                          value={getValue("code_postal")}
+                          onChange={(e) => handleFieldChange("code_postal", e.target.value)}
+                          className="mt-1 h-9"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="ville" className="text-xs">Ville</Label>
+                        <Input
+                          id="ville"
+                          value={getValue("ville")}
+                          onChange={(e) => handleFieldChange("ville", e.target.value)}
+                          className="mt-1 h-9"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="code_postal">Code Postal</Label>
-                  {isEditing ? (
-                    <Input
-                      id="code_postal"
-                      value={getValue("code_postal")}
-                      onChange={(e) => handleFieldChange("code_postal", e.target.value)}
-                      className="mt-1"
-                    />
-                  ) : (
-                    <p className="text-lg font-medium mt-1">{property.code_postal}</p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="ville">Ville</Label>
-                  {isEditing ? (
-                    <Input
-                      id="ville"
-                      value={getValue("ville")}
-                      onChange={(e) => handleFieldChange("ville", e.target.value)}
-                      className="mt-1"
-                    />
-                  ) : (
-                    <p className="text-lg font-medium mt-1">{property.ville}</p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="surface">Surface (m²)</Label>
-                  {isEditing ? (
-                    <Input
-                      id="surface"
-                      type="number"
-                      value={getValue("surface")}
-                      onChange={(e) => handleFieldChange("surface", e.target.value)}
-                      className="mt-1"
-                    />
-                  ) : (
-                    <p className="text-lg font-medium mt-1">{property.surface} m²</p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="nb_pieces">Nombre de pièces</Label>
-                  {isEditing ? (
-                    <Input
-                      id="nb_pieces"
-                      type="number"
-                      value={getValue("nb_pieces")}
-                      onChange={(e) => handleFieldChange("nb_pieces", e.target.value)}
-                      className="mt-1"
-                    />
-                  ) : (
-                    <p className="text-lg font-medium mt-1">{property.nb_pieces}</p>
-                  )}
-                </div>
-              </div>
+              )}
+
+              {/* Caractéristiques - toujours visibles */}
+              {isEditing ? (
+                <PropertyEditForm 
+                  property={property} 
+                  editedValues={editedValues} 
+                  handleFieldChange={handleFieldChange} 
+                  getValue={getValue}
+                />
+              ) : (
+                <PropertyCharacteristicsBadges property={property} />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ========== CARTE DE LOCALISATION ========== */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Navigation className="h-5 w-5 text-emerald-600" />
+                Localisation
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PropertyMap
+                latitude={(property as any).latitude}
+                longitude={(property as any).longitude}
+                address={`${property.adresse_complete}, ${property.code_postal} ${property.ville}`}
+                height="220px"
+                zoom={15}
+                markerColor="primary"
+              />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-green-600" />
+                <Euro className="h-5 w-5 text-green-600" />
                 Données Financières
               </CardTitle>
             </CardHeader>
@@ -660,22 +1553,56 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
               <CardTitle className="text-base">Occupation</CardTitle>
             </CardHeader>
             <CardContent>
-              {activeLease ? (
+              {existingLease ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Badge variant="default" className="bg-green-600">Loué</Badge>
-                    <Link href={`/app/owner/contracts/${activeLease.id}`} className="text-sm text-blue-600 hover:underline">
+                    <Badge 
+                      variant="default" 
+                      className={isLeaseActive ? "bg-green-600" : isLeasePending ? "bg-amber-500" : "bg-slate-500"}
+                    >
+                      {isLeaseActive ? "Loué" : isLeasePending ? "Signature en cours" : "Brouillon"}
+                    </Badge>
+                    <Link 
+                      href={`/app/owner/contracts/${existingLease.id}`} 
+                      className="text-sm text-blue-600 hover:underline"
+                    >
                       Voir le bail
                     </Link>
                   </div>
-                  <div className="pt-2 border-t">
-                    <p className="text-sm text-muted-foreground">Locataire(s)</p>
-                    <p className="font-medium">
-                      {activeLease.tenants?.length > 0 
-                        ? activeLease.tenants.map((t: any) => `${t.prenom} ${t.nom}`).join(", ")
-                        : "Inconnu"}
-                    </p>
-                  </div>
+                  {isLeaseActive && (
+                    <div className="pt-2 border-t">
+                      <p className="text-sm text-muted-foreground">Locataire(s)</p>
+                      <p className="font-medium">
+                        {existingLease.tenants?.length > 0 
+                          ? existingLease.tenants.map((t: any) => `${t.prenom} ${t.nom}`).join(", ")
+                          : "En attente"}
+                      </p>
+                    </div>
+                  )}
+                  {isLeasePending && (
+                    <div className="pt-2 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        En attente de signature des parties
+                      </p>
+                      <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+                        <Link href={`/app/owner/contracts/${existingLease.id}?tab=preview`}>
+                          Aperçu du bail
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                  {existingLease.statut === "draft" && (
+                    <div className="pt-2 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        Bail en cours de création
+                      </p>
+                      <Button asChild variant="outline" size="sm" className="mt-2 w-full">
+                        <Link href={`/app/owner/contracts/${existingLease.id}`}>
+                          Continuer la création
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center space-y-4">
@@ -686,6 +1613,56 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* ========== VISITE VIRTUELLE (si renseignée) ========== */}
+          {property.visite_virtuelle_url && !isEditing && (
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Video className="h-5 w-5 text-blue-600" />
+                  Visite virtuelle disponible
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Explorez ce bien en 360° grâce à la visite virtuelle.
+                </p>
+                <Button 
+                  asChild 
+                  className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+                >
+                  <a 
+                    href={property.visite_virtuelle_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    <Video className="h-4 w-4" />
+                    Lancer la visite virtuelle
+                    <span className="ml-2 opacity-70">↗</span>
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Section Compteurs - Masquer pour parking/box (pas de compteurs d'énergie) */}
+          {!["parking", "box"].includes(property.type || "") && (
+            <PropertyMetersSection propertyId={propertyId} />
+          )}
+
+          {/* Section Notes */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Notes privées</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EntityNotes 
+                entityType="property" 
+                entityId={propertyId}
+                maxDisplay={3}
+              />
             </CardContent>
           </Card>
 
@@ -788,6 +1765,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                   src={allDisplayPhotos[selectedPhotoIndex]?.url || ""} 
                   alt={`Photo ${selectedPhotoIndex + 1}`}
                   fill
+                  sizes="95vw"
                   className="object-contain"
                   priority
                 />
@@ -821,6 +1799,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                   src={photo.url} 
                   alt={`Miniature ${idx + 1}`} 
                   fill 
+                  sizes="64px"
                   className="object-cover" 
                 />
               </button>

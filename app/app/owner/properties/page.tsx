@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, LayoutGrid, LayoutList } from "lucide-react";
+import { Plus, Search, LayoutGrid, LayoutList, Download } from "lucide-react";
+import { exportProperties } from "@/lib/services/export-service";
 import { useProperties, useLeases } from "@/lib/hooks";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -28,6 +29,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 
 // Imports SOTA
 import { PageTransition } from "@/components/ui/page-transition";
+import { UsageLimitBanner } from "@/components/subscription";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -170,13 +172,55 @@ export default function OwnerPropertiesPage() {
     const labels: Record<string, string> = {
       appartement: "Appartement",
       maison: "Maison",
+      studio: "Studio",
       colocation: "Colocation",
       saisonnier: "Saisonnier",
-      commercial: "Local commercial",
-      bureau: "Bureau",
+      local_commercial: "Local commercial",
+      bureaux: "Bureaux",
+      entrepot: "Entrepôt",
       parking: "Parking",
+      box: "Box / Garage",
+      fonds_de_commerce: "Fonds de commerce",
     };
     return labels[type] || type;
+  };
+
+  // Types de biens sans "pièces" (parking, box, local commercial, etc.)
+  const TYPES_WITHOUT_ROOMS = ["parking", "box", "local_commercial", "bureaux", "entrepot", "fonds_de_commerce"];
+  
+  // Générer les badges adaptés au type de bien
+  const getBadgesForProperty = (property: any) => {
+    const badges = [];
+    
+    // Surface (toujours affichée)
+    badges.push({ 
+      label: `${property.surface || "?"} m²`, 
+      variant: "secondary" as const
+    });
+    
+    // Pièces : seulement pour les biens d'habitation
+    if (!TYPES_WITHOUT_ROOMS.includes(property.type)) {
+      badges.push({ 
+        label: `${property.nb_pieces || "?"} pièces`, 
+        variant: "secondary" as const
+      });
+    } else if (property.type === "parking" || property.type === "box") {
+      // Pour parking/box : afficher le numéro si disponible
+      if (property.parking_numero) {
+        badges.push({ 
+          label: `N°${property.parking_numero}`, 
+          variant: "secondary" as const
+        });
+      }
+    }
+    
+    // Loyer (toujours affiché)
+    badges.push({ 
+      label: formatCurrency(property.monthlyRent), 
+      variant: "default" as const
+    });
+    
+    return badges;
   };
 
   const columns = [
@@ -346,7 +390,20 @@ export default function OwnerPropertiesPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                className="flex gap-2"
               >
+                {/* Bouton Export CSV */}
+                <Button
+                  variant="outline"
+                  onClick={() => exportProperties(filteredProperties, "csv")}
+                  disabled={filteredProperties.length === 0}
+                  className="border-slate-300 hover:bg-slate-100"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Exporter
+                </Button>
+                
+                {/* Bouton Ajouter */}
                 <Button
                   asChild
                   className="relative overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
@@ -368,6 +425,19 @@ export default function OwnerPropertiesPage() {
                   </Link>
                 </Button>
               </motion.div>
+            </motion.div>
+
+            {/* Usage Limit Banner SOTA 2025 */}
+            <motion.div
+              variants={itemVariants}
+              className="mb-6"
+            >
+              <UsageLimitBanner
+                resource="properties"
+                variant="inline"
+                threshold={70}
+                dismissible={true}
+              />
             </motion.div>
 
             {/* Filtres avec animations */}
@@ -499,12 +569,8 @@ export default function OwnerPropertiesPage() {
                             title={property.adresse_complete || "Nouvelle propriété"}
                             subtitle={`${getTypeLabel(property.type)} • ${property.ville || ""}`}
                             
-                            // Badges automatiques
-                            badges={[
-                                { label: `${property.surface || "?"} m²`, variant: "secondary" },
-                                { label: `${property.nb_pieces || "?"} pièces`, variant: "secondary" },
-                                { label: formatCurrency(property.monthlyRent), variant: "default" }
-                            ]}
+                            // Badges automatiques adaptés au type de bien
+                            badges={getBadgesForProperty(property)}
                             
                             // Status badge
                             status={getStatusBadge(property.status)}

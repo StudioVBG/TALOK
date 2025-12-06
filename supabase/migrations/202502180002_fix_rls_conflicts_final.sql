@@ -17,6 +17,9 @@ DROP POLICY IF EXISTS "owners_can_delete_properties" ON properties;
 DROP POLICY IF EXISTS "owners_can_insert_properties" ON properties;
 DROP POLICY IF EXISTS "owners_can_select_properties" ON properties;
 DROP POLICY IF EXISTS "owners_can_update_properties" ON properties;
+DROP POLICY IF EXISTS "tenant_select_properties" ON properties;
+DROP POLICY IF EXISTS "admin_select_properties" ON properties;
+DROP POLICY IF EXISTS "owner_delete_properties" ON properties;
 
 -- Recréer UNIQUEMENT les politiques correctes utilisant public.user_profile_id()
 -- qui retourne le profiles.id de l'utilisateur connecté

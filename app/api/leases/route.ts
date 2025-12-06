@@ -1,37 +1,44 @@
-// @ts-nocheck
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 
 /**
  * Configuration Vercel: maxDuration: 10s
  */
 export const maxDuration = 10;
 
+interface Profile {
+  id: string;
+  role: "admin" | "owner" | "tenant" | "provider";
+}
+
+interface PropertyWithId {
+  id: string;
+}
+
+interface LeaseSignerWithLeaseId {
+  lease_id: string;
+}
+
 export async function GET(request: Request) {
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message, details: (error as any).details },
-        { status: error.status || 401 }
-      );
+      throw new ApiError(error.status || 401, error.message);
     }
 
     if (!user || !supabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      throw new ApiError(401, "Non authentifié");
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        {
-          error:
-            "SUPABASE_SERVICE_ROLE_KEY manquante. Configurez la clé service-role pour lister les baux.",
-        },
-        { status: 500 }
+      throw new ApiError(
+        500,
+        "SUPABASE_SERVICE_ROLE_KEY manquante. Configurez la clé service-role pour lister les baux."
       );
     }
 
@@ -47,14 +54,14 @@ export async function GET(request: Request) {
     const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
     if (profileError || !profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+      throw new ApiError(404, "Profil non trouvé");
     }
 
-    const profileData = profile as any;
+    const profileData = profile as Profile;
 
     const url = new URL(request.url);
     const propertyIdParam =
@@ -68,7 +75,7 @@ export async function GET(request: Request) {
     let ownerProfileId: string | null = null;
     if (ownerIdParam) {
       if (profileData.role !== "admin" && ownerIdParam !== profileData.id) {
-        return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+        throw new ApiError(403, "Accès non autorisé");
       }
       ownerProfileId = ownerIdParam;
     } else if (profileData.role === "owner") {
@@ -78,7 +85,7 @@ export async function GET(request: Request) {
     let tenantProfileId: string | null = null;
     if (tenantIdParam) {
       if (profileData.role !== "admin" && tenantIdParam !== profileData.id) {
-        return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+        throw new ApiError(403, "Accès non autorisé");
       }
       tenantProfileId = tenantIdParam;
     } else if (profileData.role === "tenant") {
@@ -110,7 +117,9 @@ export async function GET(request: Request) {
         return NextResponse.json({ leases: [] });
       }
 
-      const propertyIds = (ownerProperties || []).map((p: any) => p.id).filter(Boolean);
+      const propertyIds = ((ownerProperties || []) as PropertyWithId[])
+        .map((p) => p.id)
+        .filter(Boolean);
       if (propertyIds.length === 0) {
         return NextResponse.json({ leases: [] });
       }
@@ -130,7 +139,9 @@ export async function GET(request: Request) {
 
       if (signersError) throw signersError;
 
-      const leaseIds = (signers || []).map((s: any) => s.lease_id).filter(Boolean);
+      const leaseIds = ((signers || []) as LeaseSignerWithLeaseId[])
+        .map((s) => s.lease_id)
+        .filter(Boolean);
       if (leaseIds.length === 0) {
         return NextResponse.json({ leases: [] });
       }
@@ -150,13 +161,19 @@ export async function GET(request: Request) {
         },
       }
     );
-  } catch (error: any) {
-    console.error("Error in GET /api/leases:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error);
   }
+}
+
+interface PropertyWithOwner {
+  id: string;
+  owner_id: string;
+}
+
+interface LeaseResult {
+  id: string;
+  [key: string]: unknown;
 }
 
 /**
@@ -167,24 +184,18 @@ export async function POST(request: Request) {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status || 401 }
-      );
+      throw new ApiError(error.status || 401, error.message);
     }
 
     if (!user || !supabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      throw new ApiError(401, "Non authentifié");
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: "Configuration manquante" },
-        { status: 500 }
-      );
+      throw new ApiError(500, "Configuration manquante");
     }
 
     const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
@@ -199,31 +210,31 @@ export async function POST(request: Request) {
     const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
     if (profileError || !profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+      throw new ApiError(404, "Profil non trouvé");
     }
 
-    const profileData = profile as any;
+    const profileData = profile as Profile;
 
     // Seuls les propriétaires et admins peuvent créer des baux
     if (profileData.role !== "owner" && profileData.role !== "admin") {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+      throw new ApiError(403, "Accès non autorisé");
     }
 
     const body = await request.json();
     
     // Validation des champs requis
     if (!body.property_id) {
-      return NextResponse.json({ error: "property_id est requis" }, { status: 400 });
+      throw new ApiError(400, "property_id est requis");
     }
     if (!body.loyer || body.loyer <= 0) {
-      return NextResponse.json({ error: "loyer est requis et doit être positif" }, { status: 400 });
+      throw new ApiError(400, "loyer est requis et doit être positif");
     }
     if (!body.date_debut) {
-      return NextResponse.json({ error: "date_debut est requise" }, { status: 400 });
+      throw new ApiError(400, "date_debut est requise");
     }
 
     // Vérifier que le bien appartient au propriétaire (sauf admin)
@@ -235,24 +246,25 @@ export async function POST(request: Request) {
         .single();
 
       if (propertyError || !property) {
-        return NextResponse.json({ error: "Bien non trouvé" }, { status: 404 });
+        throw new ApiError(404, "Bien non trouvé");
       }
 
-      if ((property as any).owner_id !== profileData.id) {
-        return NextResponse.json({ error: "Vous n'êtes pas propriétaire de ce bien" }, { status: 403 });
+      const typedProperty = property as PropertyWithOwner;
+      if (typedProperty.owner_id !== profileData.id) {
+        throw new ApiError(403, "Vous n'êtes pas propriétaire de ce bien");
       }
     }
 
     // Créer le bail (attention: colonne = depot_de_garantie dans la BDD)
     const leaseData = {
-      property_id: body.property_id,
-      type_bail: body.type_bail || "meuble",
+      property_id: body.property_id as string,
+      type_bail: (body.type_bail as string) || "meuble",
       loyer: parseFloat(body.loyer),
       charges_forfaitaires: body.charges_forfaitaires ? parseFloat(body.charges_forfaitaires) : 0,
       depot_de_garantie: body.depot_garantie ? parseFloat(body.depot_garantie) : parseFloat(body.loyer),
-      date_debut: body.date_debut,
-      date_fin: body.date_fin || null,
-      statut: body.statut || "draft",
+      date_debut: body.date_debut as string,
+      date_fin: (body.date_fin as string) || null,
+      statut: (body.statut as string) || "draft",
     };
 
     const { data: lease, error: leaseError } = await serviceClient
@@ -261,26 +273,38 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (leaseError) {
+    if (leaseError || !lease) {
       console.error("[POST /api/leases] Error creating lease:", leaseError);
-      return NextResponse.json(
-        { error: leaseError.message || "Erreur lors de la création du bail" },
-        { status: 500 }
-      );
+      throw new ApiError(500, leaseError?.message || "Erreur lors de la création du bail");
     }
 
-    // Si un email de locataire est fourni, on pourrait créer une invitation ici
-    // Pour l'instant, on retourne juste le bail créé
+    const leaseResult = lease as LeaseResult;
 
-    console.log("[POST /api/leases] Bail créé:", lease);
+    // Ajouter le propriétaire comme signataire automatiquement
+    try {
+      const { error: ownerSignerError } = await serviceClient
+        .from("lease_signers")
+        .insert({
+          lease_id: leaseResult.id,
+          profile_id: profileData.id,
+          role: "proprietaire",
+          signature_status: "pending",
+        });
+
+      if (ownerSignerError) {
+        console.warn("[POST /api/leases] Erreur ajout signataire propriétaire:", ownerSignerError);
+      } else {
+        console.log("[POST /api/leases] Propriétaire ajouté comme signataire");
+      }
+    } catch (signerErr) {
+      console.warn("[POST /api/leases] Exception signataire (non bloquant):", signerErr);
+    }
+
+    console.log("[POST /api/leases] Bail créé:", leaseResult.id);
 
     return NextResponse.json(lease, { status: 201 });
-  } catch (error: any) {
-    console.error("Error in POST /api/leases:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return handleApiError(error);
   }
 }
 

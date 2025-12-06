@@ -70,14 +70,8 @@ export async function GET(request: Request, { params }: RouteParams) {
           surface,
           nb_pieces,
           etage,
-          nb_etages_immeuble,
-          annee_construction,
-          dpe_classe,
-          dpe_ges,
-          chauffage_type,
-          chauffage_energie,
-          eau_chaude_type,
-          description
+          energie,
+          ges
         ),
         signers:lease_signers (
           id,
@@ -175,13 +169,13 @@ export async function GET(request: Request, { params }: RouteParams) {
         surface_habitable: property?.surface || 0,
         nb_pieces_principales: property?.nb_pieces || 1,
         etage: property?.etage,
-        nb_etages_immeuble: property?.nb_etages_immeuble,
-        epoque_construction: mapEpoqueConstruction(property?.annee_construction),
+        nb_etages_immeuble: undefined,
+        epoque_construction: "apres_2005",
         regime: "mono_propriete",
-        chauffage_type: property?.chauffage_type || "individuel",
-        chauffage_energie: property?.chauffage_energie || "electricite",
-        eau_chaude_type: property?.eau_chaude_type || "individuel",
-        eau_chaude_energie: property?.chauffage_energie || "electricite",
+        chauffage_type: "individuel",
+        chauffage_energie: "electricite",
+        eau_chaude_type: "individuel",
+        eau_chaude_energie: "electricite",
         equipements_privatifs: [],
         parties_communes: [],
         annexes: [],
@@ -210,8 +204,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       diagnostics: {
         dpe: {
           date_realisation: new Date().toISOString(),
-          classe_energie: property?.dpe_classe || "D",
-          classe_ges: property?.dpe_ges || "D",
+          classe_energie: property?.energie || "D",
+          classe_ges: property?.ges || "D",
           consommation_energie: 150,
           estimation_cout_min: 800,
           estimation_cout_max: 1200,
@@ -408,7 +402,7 @@ async function generatePDF(html: string): Promise<Buffer> {
     borderWidth: 1,
   });
 
-  page1.drawText("💡 Astuce : Utilisez la page d'aperçu pour imprimer le bail complet", {
+  page1.drawText("Astuce : Utilisez la page d'apercu pour imprimer le bail complet", {
     x: 55,
     y: y - 25,
     size: 10,

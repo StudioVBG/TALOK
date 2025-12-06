@@ -320,7 +320,54 @@ export function DashboardClient() {
     );
   }
 
-  const { lease, property, invoices, tickets, stats } = dashboard;
+  // Extraire les données avec support multi-baux
+  const { 
+    lease, 
+    property, 
+    leases = [], // Nouveau : tableau de baux
+    properties = [], // Nouveau : tableau de propriétés
+    invoices, 
+    tickets, 
+    stats 
+  } = dashboard;
+  
+  // Détecter si le locataire a plusieurs baux actifs
+  const hasMultipleLeases = leases.length > 1;
+  const totalMonthlyRent = stats?.total_monthly_rent || (lease?.loyer || 0) + (lease?.charges_forfaitaires || 0);
+
+  // Helper pour obtenir l'icône selon le type de bien
+  const getPropertyIcon = (type: string) => {
+    switch(type) {
+      case 'parking':
+      case 'box':
+        return '🅿️';
+      case 'appartement':
+      case 'studio':
+        return '🏢';
+      case 'maison':
+        return '🏠';
+      case 'local_commercial':
+      case 'bureaux':
+        return '🏪';
+      default:
+        return '🏠';
+    }
+  };
+
+  // Helper pour obtenir le label du type de bail
+  const getLeaseTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      nu: "Location nue",
+      meuble: "Location meublée",
+      colocation: "Colocation",
+      saisonnier: "Saisonnier",
+      bail_mobilite: "Bail mobilité",
+      contrat_parking: "Parking",
+      commercial_3_6_9: "Commercial",
+      professionnel: "Professionnel",
+    };
+    return labels[type] || type;
+  };
 
   // Si on a un bail actif, afficher le dashboard normal
   return (
@@ -387,9 +434,102 @@ export function DashboardClient() {
         )}
 
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Colonne Gauche : Mon Logement */}
+          {/* Colonne Gauche : Mes Locations */}
           <div className="lg:col-span-2 space-y-6">
-            <motion.div variants={itemVariants}>
+            
+            {/* Section Multi-baux si plusieurs locations */}
+            {hasMultipleLeases ? (
+              <motion.div variants={itemVariants}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
+                    <Home className="h-5 w-5 text-blue-600" />
+                    Mes Locations ({leases.length})
+                  </h2>
+                  <Badge variant="secondary" className="gap-1">
+                    <Euro className="h-3 w-3" />
+                    Total : {formatCurrency(totalMonthlyRent)}/mois
+                  </Badge>
+                </div>
+                
+                <div className="grid gap-4">
+                  {leases.map((leaseItem: any, index: number) => (
+                    <GlassCard 
+                      key={leaseItem.id} 
+                      className={`overflow-hidden p-0 border-2 transition-all hover:shadow-lg ${
+                        index === 0 
+                          ? 'border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50' 
+                          : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-4">
+                            {/* Icône type de bien */}
+                            <div className={`text-3xl p-3 rounded-xl ${
+                              leaseItem.property?.type === 'parking' || leaseItem.property?.type === 'box'
+                                ? 'bg-emerald-100'
+                                : 'bg-blue-100'
+                            }`}>
+                              {getPropertyIcon(leaseItem.property?.type)}
+                            </div>
+                            
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {getLeaseTypeLabel(leaseItem.type_bail)}
+                                </Badge>
+                                <StatusBadge 
+                                  status={leaseItem.statut === 'active' ? 'Actif' : 'En attente'} 
+                                  type={leaseItem.statut === 'active' ? 'success' : 'warning'}
+                                  className="text-[10px]"
+                                />
+                              </div>
+                              
+                              <h3 className="font-bold text-lg text-slate-900">
+                                {leaseItem.property?.adresse_complete}
+                                {leaseItem.property?.parking_numero && (
+                                  <span className="text-blue-600"> • N°{leaseItem.property.parking_numero}</span>
+                                )}
+                              </h3>
+                              
+                              <p className="text-sm text-muted-foreground">
+                                {leaseItem.property?.ville}, {leaseItem.property?.code_postal}
+                                {leaseItem.property?.surface && (
+                                  <span> • {leaseItem.property.surface} m²</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Loyer */}
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-slate-900">
+                              {formatCurrency((leaseItem.loyer || 0) + (leaseItem.charges_forfaitaires || 0))}
+                            </p>
+                            <p className="text-xs text-muted-foreground">/mois</p>
+                          </div>
+                        </div>
+                        
+                        {/* Footer avec actions */}
+                        <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            <Calendar className="inline h-3 w-3 mr-1" />
+                            Depuis le {formatDateShort(leaseItem.date_debut)}
+                          </p>
+                          <Button variant="ghost" size="sm" asChild className="text-blue-600">
+                            <Link href={`/app/tenant/lease?id=${leaseItem.id}`}>
+                              Voir le bail <ChevronRight className="h-4 w-4 ml-1" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </GlassCard>
+                  ))}
+                </div>
+              </motion.div>
+            ) : (
+              /* Affichage classique si un seul bail */
+              <motion.div variants={itemVariants}>
                 <GlassCard gradient={true} className="overflow-hidden p-0 border-none shadow-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
                     <div className="relative">
                         {/* Background Pattern */}
@@ -443,7 +583,8 @@ export function DashboardClient() {
                         </CardContent>
                     </div>
                 </GlassCard>
-            </motion.div>
+              </motion.div>
+            )}
 
             {/* Dernières factures */}
             <motion.div variants={itemVariants}>

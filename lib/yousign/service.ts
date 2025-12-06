@@ -172,15 +172,16 @@ export async function addDocument(
 /**
  * Télécharger le document signé
  */
-export async function downloadSignedDocument(
+export async function downloadSignedDocumentById(
   signatureRequestId: string,
   documentId: string
 ): Promise<Buffer> {
+  const apiKey = await getYousignApiKey();
   const response = await fetch(
     `${YOUSIGN_API_URL}/signature_requests/${signatureRequestId}/documents/${documentId}/download`,
     {
       headers: {
-        "Authorization": `Bearer ${YOUSIGN_API_KEY}`,
+        "Authorization": `Bearer ${apiKey}`,
       },
     }
   );
@@ -198,11 +199,12 @@ export async function downloadSignedDocument(
 export async function downloadAuditTrail(
   signatureRequestId: string
 ): Promise<Buffer> {
+  const apiKey = await getYousignApiKey();
   const response = await fetch(
     `${YOUSIGN_API_URL}/signature_requests/${signatureRequestId}/audit_trails/download`,
     {
       headers: {
-        "Authorization": `Bearer ${YOUSIGN_API_KEY}`,
+        "Authorization": `Bearer ${apiKey}`,
       },
     }
   );

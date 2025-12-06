@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = (page - 1) * limit;
 
-    // Requête pour récupérer les propriétaires
+    // Requête pour récupérer les propriétaires (sans jointure properties)
     let query = supabase
       .from("profiles")
       .select(
@@ -39,8 +39,7 @@ export async function GET(request: Request) {
           type,
           siret,
           tva
-        ),
-        properties(id)
+        )
       `,
         { count: "exact" }
       )
@@ -63,9 +62,11 @@ export async function GET(request: Request) {
       );
     }
 
-    // Récupérer les âges depuis la vue
     const dataArray = (data || []) as any[];
     const profileIds = dataArray.map((p) => p.id);
+    const userIds = dataArray.map((p) => p.user_id).filter(Boolean);
+
+    // Récupérer les âges depuis la vue
     const { data: ages } = await supabase
       .from("v_person_age")
       .select("person_id, age_years")
@@ -76,11 +77,27 @@ export async function GET(request: Request) {
       agesArray.map((a) => [a.person_id, a.age_years])
     );
 
-    // Récupérer les property IDs
-    const propertyIds = dataArray
-      .flatMap((p) => (Array.isArray(p.properties) ? p.properties : []))
-      .map((prop: any) => prop.id)
-      .filter(Boolean);
+    // Récupérer TOUTES les propriétés pour ces propriétaires (par profile.id OU user_id)
+    const allOwnerIds = [...new Set([...profileIds, ...userIds])];
+    const { data: allProperties } = await supabase
+      .from("properties")
+      .select("id, owner_id")
+      .in("owner_id", allOwnerIds.length > 0 ? allOwnerIds : ["00000000-0000-0000-0000-000000000000"]);
+
+    // Créer un map owner_id -> properties[]
+    const propertiesByOwner = new Map<string, any[]>();
+    if (allProperties) {
+      allProperties.forEach((prop: any) => {
+        const ownerId = prop.owner_id;
+        if (!propertiesByOwner.has(ownerId)) {
+          propertiesByOwner.set(ownerId, []);
+        }
+        propertiesByOwner.get(ownerId)!.push(prop);
+      });
+    }
+
+    // Récupérer les property IDs pour les baux
+    const propertyIds = allProperties?.map((p: any) => p.id).filter(Boolean) || [];
 
     // Récupérer les leases séparément pour éviter la récursion RLS
     let leasesMap = new Map<string, any[]>();
@@ -101,12 +118,26 @@ export async function GET(request: Request) {
       }
     }
 
-    // Récupérer les emails depuis auth.users
-    const userIds = dataArray.map((p) => p.user_id).filter(Boolean);
+    // Récupérer les emails depuis auth.users via l'API admin
+    // userIds est déjà défini plus haut
     const emailsMap = new Map<string, string>();
     if (userIds.length > 0) {
-      // Note: On ne peut pas directement accéder à auth.users via Supabase client
-      // Les emails seront récupérés côté client si nécessaire
+      try {
+        // Récupérer tous les utilisateurs via l'API admin
+        const { data: authUsersData } = await supabase.auth.admin.listUsers({
+          perPage: 1000,
+        });
+        
+        if (authUsersData?.users) {
+          for (const authUser of authUsersData.users) {
+            if (userIds.includes(authUser.id) && authUser.email) {
+              emailsMap.set(authUser.id, authUser.email);
+            }
+          }
+        }
+      } catch (authErr) {
+        console.error("Error fetching emails from auth.users:", authErr);
+      }
     }
 
     // Compter les logements et baux actifs
@@ -115,7 +146,21 @@ export async function GET(request: Request) {
         ? profile.owner_profiles[0] 
         : null;
       const name = `${profile.prenom || ""} ${profile.nom || ""}`.trim();
-      const propertiesArray = Array.isArray(profile.properties) ? profile.properties : [];
+      
+      // Récupérer les propriétés par profile.id OU par user_id
+      const propertiesByProfileId = propertiesByOwner.get(profile.id) || [];
+      const propertiesByUserId = profile.user_id ? (propertiesByOwner.get(profile.user_id) || []) : [];
+      
+      // Combiner (éviter les doublons si les deux retournent les mêmes propriétés)
+      const propertyIdsSet = new Set<string>();
+      const propertiesArray: any[] = [];
+      [...propertiesByProfileId, ...propertiesByUserId].forEach((prop) => {
+        if (!propertyIdsSet.has(prop.id)) {
+          propertyIdsSet.add(prop.id);
+          propertiesArray.push(prop);
+        }
+      });
+      
       const unitsCount = propertiesArray.length;
       
       // Compter les baux actifs depuis la map

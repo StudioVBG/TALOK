@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export interface AdminStatsData {
   totalUsers: number;
@@ -30,7 +31,9 @@ export async function fetchAdminStats(): Promise<AdminStatsData | null> {
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    // Rediriger au lieu de lancer une erreur - le layout devrait déjà gérer cela
+    // mais cette protection supplémentaire évite les erreurs non gérées
+    redirect("/auth/signin");
   }
 
   // Note: Cette RPC est rapide (agrégats). 

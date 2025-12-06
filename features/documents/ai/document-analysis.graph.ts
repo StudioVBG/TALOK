@@ -1,7 +1,13 @@
-import { StateGraph, END, START } from "@langchain/langgraph";
-import { ChatOpenAI } from "@langchain/openai";
+/**
+ * Document Analysis Graph
+ * SOTA Décembre 2025 - Optimisé pour GPT-5.1
+ * 
+ * Utilise la configuration centralisée des modèles IA
+ */
+
+import { StateGraph, END, START, Annotation } from "@langchain/langgraph";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { z } from "zod";
+import { createAdvancedModel, createStandardModel } from "@/lib/ai/config";
 
 // --- State Definition ---
 export interface DocumentAnalysisState {
@@ -28,23 +34,29 @@ async function extractInfo(state: DocumentAnalysisState) {
   try {
     // Check for API Key
     if (process.env.OPENAI_API_KEY) {
-      const model = new ChatOpenAI({ 
-        modelName: "gpt-4o", 
-        temperature: 0,
-        apiKey: process.env.OPENAI_API_KEY
-      });
+      // Utiliser le modèle avancé pour l'analyse de documents (vision)
+      // Note: Migrer vers GPT-5.1 quand disponible pour bénéficier de:
+      // - Fenêtre de contexte 400K tokens
+      // - Meilleure précision vision
+      // - Raisonnement adaptatif
+      const model = createAdvancedModel();
       
       const response = await model.invoke([
-        new SystemMessage(`You are an expert document analyst for a property management SaaS. 
-          Extract key information from this ${state.declaredType}. 
-          Return a valid JSON object ONLY. No markdown formatting.
-          Structure based on document type:
-          - attestation_assurance: { insurer, policyNumber, startDate, endDate, insuredName }
-          - piece_identite: { type: "cni"|"passport", names: [], birthDate, expiryDate }
+        new SystemMessage(`Tu es un expert en analyse de documents pour un logiciel de gestion locative.
+          Extrais les informations clés de ce document de type "${state.declaredType}".
+          
+          IMPORTANT: Retourne UNIQUEMENT un objet JSON valide, sans formatage markdown.
+          
+          Structure attendue selon le type de document:
+          - attestation_assurance: { insurer, policyNumber, startDate, endDate, insuredName, coverageAmount }
+          - piece_identite: { type: "cni"|"passport"|"titre_sejour", names: [], birthDate, expiryDate, documentNumber }
+          - avis_imposition: { year, referenceIncome, taxAmount, declarantNames: [], fiscalAddress }
+          - justificatif_domicile: { type, providerName, address, issueDate }
+          - bulletin_salaire: { employer, employeeName, grossSalary, netSalary, period }
           `),
         new HumanMessage({
           content: [
-            { type: "text", text: "Analyze this image and extract data." },
+            { type: "text", text: "Analyse cette image et extrais les données structurées." },
             { type: "image_url", image_url: { url: state.documentUrl } }
           ]
         })

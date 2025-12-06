@@ -31,7 +31,7 @@ interface Property {
   loyer_hc?: number;
   charges_forfaitaires?: number;
   dpe_classe?: string;
-  dpe_ges?: string;
+  dpe_classe_climat?: string;
 }
 
 interface PropertySelectorProps {

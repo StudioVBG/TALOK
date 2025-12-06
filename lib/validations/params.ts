@@ -98,14 +98,18 @@ export const paginationQuerySchema = z.object({
 
 /**
  * Schéma pour les query params de filtrage de propriétés
+ * Recherche avancée avec filtres combinables
  */
 export const propertiesQuerySchema = z.object({
+  // Filtres par ID
   propertyId: uuidParamSchema.optional(),
   property_id: uuidParamSchema.optional(),
   ownerId: uuidParamSchema.optional(),
   owner_id: uuidParamSchema.optional(),
   tenantId: uuidParamSchema.optional(),
   tenant_id: uuidParamSchema.optional(),
+  
+  // Filtres par type de bien
   type: z.enum([
     "appartement",
     "maison",
@@ -132,9 +136,38 @@ export const propertiesQuerySchema = z.object({
     "entrepot",
     "fonds_de_commerce",
   ]).optional(),
+  
+  // Filtres par statut
   etat: z.enum(["draft", "pending_review", "published", "rejected", "archived"]).optional(),
   status: z.enum(["draft", "pending_review", "published", "rejected", "archived"]).optional(),
-  search: z.string().optional(), // Recherche textuelle
+  
+  // Recherche textuelle (adresse, ville, code postal)
+  search: z.string().optional(),
+  q: z.string().optional(), // Alias pour search
+  
+  // Filtres géographiques
+  ville: z.string().optional(),
+  code_postal: z.string().regex(/^\d{5}$/).optional(),
+  departement: z.string().min(2).max(3).optional(),
+  
+  // Filtres numériques (surface, pièces, loyer)
+  surface_min: z.coerce.number().min(0).optional(),
+  surface_max: z.coerce.number().min(0).optional(),
+  nb_pieces_min: z.coerce.number().int().min(1).optional(),
+  nb_pieces_max: z.coerce.number().int().min(1).optional(),
+  loyer_min: z.coerce.number().min(0).optional(),
+  loyer_max: z.coerce.number().min(0).optional(),
+  
+  // Filtres booléens
+  meuble: z.enum(["true", "false"]).transform(v => v === "true").optional(),
+  ascenseur: z.enum(["true", "false"]).transform(v => v === "true").optional(),
+  
+  // Tri
+  sort_by: z.enum(["created_at", "loyer_hc", "surface", "ville", "type"]).optional(),
+  sort_order: z.enum(["asc", "desc"]).default("desc").optional(),
+  
+  // Occupancy filter
+  occupancy: z.enum(["vacant", "occupied", "all"]).optional(),
 }).merge(paginationQuerySchema);
 
 /**

@@ -15,6 +15,11 @@ import {
   FileText,
   Settings,
   Sparkles,
+  Car,
+  Store,
+  Building2,
+  CalendarClock,
+  Key,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -90,7 +95,8 @@ export const LEASE_TYPE_CONFIGS = {
     durationMonths: 3,
     maxDepositMonths: 0,
   },
-  mobilite: {
+  // Clé = bail_mobilite (correspondant à la contrainte BDD)
+  bail_mobilite: {
     name: "Bail Mobilité",
     description: "Location temporaire pour personnes en mobilité",
     icon: Briefcase,
@@ -106,6 +112,60 @@ export const LEASE_TYPE_CONFIGS = {
     legalRef: "Loi ELAN 2018",
     durationMonths: 10,
     maxDepositMonths: 0,
+  },
+  // Clé = contrat_parking (correspondant à la contrainte BDD)
+  contrat_parking: {
+    name: "Bail Parking",
+    description: "Location de place de stationnement ou box",
+    icon: Car,
+    gradient: "from-emerald-600 via-teal-500 to-cyan-500",
+    bgGradient: "from-emerald-50 to-teal-100 dark:from-emerald-900/50 dark:to-teal-900/50",
+    accent: "#059669",
+    accentLight: "#34d399",
+    features: [
+      { label: "Durée", value: "Libre", icon: Clock },
+      { label: "Dépôt de garantie", value: "Libre", icon: Shield },
+      { label: "Préavis", value: "1 mois min", icon: CalendarClock },
+    ],
+    legalRef: "Code civil (art. 1709)",
+    durationMonths: 12,
+    maxDepositMonths: 2,
+  },
+  // Clé = commercial_3_6_9 (correspondant à la contrainte BDD)
+  commercial_3_6_9: {
+    name: "Bail Commercial 3/6/9",
+    description: "Location de locaux commerciaux ou artisanaux",
+    icon: Store,
+    gradient: "from-rose-600 via-pink-500 to-red-500",
+    bgGradient: "from-rose-50 to-pink-100 dark:from-rose-900/50 dark:to-pink-900/50",
+    accent: "#e11d48",
+    accentLight: "#fb7185",
+    features: [
+      { label: "Durée minimum", value: "9 ans", icon: Clock },
+      { label: "Résiliation", value: "Tous les 3 ans", icon: CalendarClock },
+      { label: "Droit au bail", value: "Cessible", icon: Key },
+    ],
+    legalRef: "Art. L.145-1 Code commerce",
+    durationMonths: 108,
+    maxDepositMonths: 3,
+  },
+  // Clé = professionnel (correspondant à la contrainte BDD)
+  professionnel: {
+    name: "Bail Professionnel",
+    description: "Location pour professions libérales et bureaux",
+    icon: Building2,
+    gradient: "from-sky-600 via-blue-500 to-indigo-500",
+    bgGradient: "from-sky-50 to-blue-100 dark:from-sky-900/50 dark:to-blue-900/50",
+    accent: "#0284c7",
+    accentLight: "#38bdf8",
+    features: [
+      { label: "Durée minimum", value: "6 ans", icon: Clock },
+      { label: "Préavis locataire", value: "6 mois", icon: CalendarClock },
+      { label: "Tacite reconduction", value: "Oui", icon: Scale },
+    ],
+    legalRef: "Art. 57A Loi 23/12/1986",
+    durationMonths: 72,
+    maxDepositMonths: 2,
   },
 } as const;
 
@@ -128,18 +188,23 @@ function getAvailableLeaseTypes(propertyType?: string): LeaseType[] {
   if (!propertyType) return Object.keys(LEASE_TYPE_CONFIGS) as LeaseType[];
   
   const mapping: Record<string, LeaseType[]> = {
-    appartement: ["nu", "meuble", "mobilite"],
+    // Habitation
+    appartement: ["nu", "meuble", "bail_mobilite"],
     maison: ["nu", "meuble"],
-    studio: ["meuble", "mobilite"],
+    studio: ["meuble", "bail_mobilite"],
     colocation: ["colocation", "meuble"],
     saisonnier: ["saisonnier"],
-    parking: [],
-    box: [],
-    local_commercial: [],
-    bureaux: [],
+    // Stationnement
+    parking: ["contrat_parking"],
+    box: ["contrat_parking"],
+    // Professionnel
+    local_commercial: ["commercial_3_6_9"],
+    bureaux: ["professionnel", "commercial_3_6_9"],
+    entrepot: ["commercial_3_6_9", "professionnel"],
+    fonds_de_commerce: ["commercial_3_6_9"],
   };
   
-  return mapping[propertyType] || ["nu", "meuble", "colocation", "saisonnier", "mobilite"];
+  return mapping[propertyType] || ["nu", "meuble", "colocation", "saisonnier", "bail_mobilite"];
 }
 
 export function LeaseTypeCards({ selectedType, onSelect, propertyType }: LeaseTypeCardsProps) {

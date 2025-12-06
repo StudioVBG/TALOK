@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { ProtectedRoute } from "@/components/protected-route";
 import { TicketForm } from "@/features/tickets/components/ticket-form";
@@ -24,19 +23,26 @@ function NewTicketPageContent() {
     return null;
   }
 
+  // Rediriger vers la bonne page selon le rôle
+  const getTicketsUrl = () => {
+    if (profile?.role === "owner") return "/app/owner/tickets";
+    if (profile?.role === "tenant") return "/app/tenant/requests";
+    return "/dashboard";
+  };
+
   const handleSuccess = () => {
     if (propertyId) {
-      router.push(`/properties/${propertyId}`);
+      router.push(`/app/owner/properties/${propertyId}`);
     } else {
-      router.push("/tickets");
+      router.push(getTicketsUrl());
     }
   };
 
   const handleCancel = () => {
     if (propertyId) {
-      router.push(`/properties/${propertyId}`);
+      router.push(`/app/owner/properties/${propertyId}`);
     } else {
-      router.push("/tickets");
+      router.push(getTicketsUrl());
     }
   };
 

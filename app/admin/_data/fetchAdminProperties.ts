@@ -4,9 +4,13 @@ export async function fetchAdminProperties(options: { status?: string; search?: 
   const supabase = await createClient();
   const { status, search, limit = 50, offset = 0 } = options;
 
+  // Vérifier que l'utilisateur est authentifié
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { properties: [], total: 0 };
+
   let query = supabase
     .from("properties")
-    .select("*, owner:profiles(prenom, nom, email)", { count: "exact" })
+    .select("*, owner:profiles(id, prenom, nom)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 

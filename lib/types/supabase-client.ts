@@ -84,6 +84,7 @@ export interface PropertyData {
   charges_mensuelles?: number | null;
   depot_garantie?: number | null;
   etat?: string | null;
+  visite_virtuelle_url?: string | null;
   created_at: string;
   updated_at: string;
 }

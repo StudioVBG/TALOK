@@ -48,12 +48,19 @@ const withPWA = require('next-pwa')({
 const nextConfig = {
   // Server Actions are available by default in Next.js 14
   
-  // Ignorer les erreurs TypeScript et ESLint pendant le build
-  // Note: À désactiver en production une fois les erreurs corrigées
+  // TypeScript & ESLint - Configuration SOTA 2025
+  // ⚠️ AUDIT 2025-12-05: 417 fichiers avec @ts-nocheck détectés
+  // Stratégie: Activer la vérification progressive
+  // - Phase 1: Garder ignoreBuildErrors temporairement (en cours)
+  // - Phase 2: Corriger les fichiers critiques (@ts-nocheck supprimés des layouts)
+  // - Phase 3: Désactiver ignoreBuildErrors une fois tous les fichiers corrigés
   typescript: {
+    // TODO: Mettre à false une fois tous les @ts-nocheck supprimés
+    // Progression: ~5 fichiers corrigés sur 417
     ignoreBuildErrors: true,
   },
   eslint: {
+    // TODO: Mettre à false une fois le lint propre
     ignoreDuringBuilds: true,
   },
   
@@ -164,15 +171,8 @@ const nextConfig = {
       "resend",
     ],
     
-    // Modularize imports pour tree-shaking optimal
-    modularizeImports: {
-      "date-fns": {
-        transform: "date-fns/{{member}}",
-      },
-      "lodash": {
-        transform: "lodash/{{member}}",
-      },
-    },
+    // Note: modularizeImports supprimé car obsolète dans Next.js 14+
+    // Les imports sont optimisés via optimizePackageImports ci-dessus
   },
 
   // Headers de sécurité (CSP)
@@ -186,10 +186,10 @@ const nextConfig = {
             value: [
               "frame-ancestors 'self'",
               "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "connect-src 'self' https://*.supabase.co https://*.googleapis.com https://api-adresse.data.gouv.fr",
-              "img-src 'self' blob: data: https://*.supabase.co https://*.googleapis.com https://images.unsplash.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://api-adresse.data.gouv.fr https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org",
+              "img-src 'self' blob: data: https://*.supabase.co https://*.googleapis.com https://images.unsplash.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://unpkg.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
             ].join("; "),
           },
         ],

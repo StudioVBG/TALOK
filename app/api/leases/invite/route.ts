@@ -2,10 +2,32 @@
 import { createClient, createClientFromRequest } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
 
-// Schéma de validation
+// Schéma pour un invité de colocation
+const inviteeSchema = z.object({
+  email: z.string().email("Email invalide"),
+  name: z.string().nullable().optional(),
+  role: z.enum(["principal", "colocataire"]),
+  weight: z.number().min(0).max(1).optional(),
+  room_label: z.string().nullable().optional(),
+  has_guarantor: z.boolean().optional(),
+  guarantor_email: z.string().email().nullable().optional(),
+  guarantor_name: z.string().nullable().optional(),
+});
+
+// Schéma pour la configuration colocation
+const colocConfigSchema = z.object({
+  nb_places: z.number().min(2).max(10),
+  bail_type: z.enum(["unique", "individuel"]),
+  solidarite: z.boolean(),
+  solidarite_duration_months: z.number().min(1).max(6),
+  split_mode: z.enum(["equal", "custom", "by_room"]),
+});
+
+// Schéma de validation (supporte bail standard ET colocation)
 const inviteSchema = z.object({
   property_id: z.string().uuid("ID de propriété invalide"),
   type_bail: z.string().min(1, "Type de bail requis"),
@@ -14,8 +36,12 @@ const inviteSchema = z.object({
   depot_garantie: z.number().min(0).default(0),
   date_debut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format de date invalide"),
   date_fin: z.string().nullable().optional(),
-  tenant_email: z.string().email("Email du locataire invalide"),
+  // Bail standard
+  tenant_email: z.string().email("Email du locataire invalide").optional(),
   tenant_name: z.string().nullable().optional(),
+  // Colocation
+  coloc_config: colocConfigSchema.optional(),
+  invitees: z.array(inviteeSchema).optional(),
 });
 
 /**
@@ -102,6 +128,15 @@ export async function POST(request: Request) {
     // Valider les données
     const body = await request.json();
     const validated = inviteSchema.parse(body);
+    
+    // Vérifier qu'on a soit tenant_email, soit invitees pour les colocations
+    const isColocationRequest = validated.type_bail === "colocation" && validated.invitees && validated.invitees.length > 0;
+    if (!isColocationRequest && !validated.tenant_email) {
+      return NextResponse.json({ 
+        error: "Email du locataire requis",
+        hint: "Pour un bail standard, l'email du locataire est obligatoire."
+      }, { status: 400 });
+    }
 
     // Vérifier que le bien appartient au propriétaire
     const { data: property, error: propError } = await supabase
@@ -121,41 +156,77 @@ export async function POST(request: Request) {
     // Utiliser le service client pour bypass les RLS (évite la récursion infinie)
     const serviceClient = getServiceClient();
 
-    // Vérifier si le locataire a déjà un compte
-    const { data: existingTenantAuth } = await serviceClient.auth.admin.listUsers();
-    const existingUser = existingTenantAuth?.users?.find(
-      (u) => u.email?.toLowerCase() === validated.tenant_email.toLowerCase()
-    );
-
-    let existingTenantProfile: { id: string; user_id: string } | null = null;
+    // Déterminer si c'est une colocation
+    const isColocation = validated.type_bail === "colocation" && validated.invitees && validated.invitees.length > 0;
     
-    if (existingUser) {
-      // Récupérer le profil du locataire existant
-      const { data: tenantProfile } = await serviceClient
-        .from("profiles")
-        .select("id, user_id, role")
-        .eq("user_id", existingUser.id)
-        .single();
+    // Liste des emails à traiter (soit un seul locataire, soit plusieurs colocataires)
+    const emailsToProcess = isColocation 
+      ? validated.invitees!.map(inv => ({ 
+          email: inv.email, 
+          name: inv.name, 
+          role: inv.role,
+          weight: inv.weight || (1 / validated.coloc_config!.nb_places),
+          room_label: inv.room_label,
+          has_guarantor: inv.has_guarantor,
+          guarantor_email: inv.guarantor_email,
+          guarantor_name: inv.guarantor_name,
+        }))
+      : [{ 
+          email: validated.tenant_email!, 
+          name: validated.tenant_name, 
+          role: "principal" as const,
+          weight: 1,
+          room_label: null,
+          has_guarantor: false,
+          guarantor_email: null,
+          guarantor_name: null,
+        }];
+
+    // Vérifier les comptes existants pour tous les emails
+    const { data: existingUsersAuth } = await serviceClient.auth.admin.listUsers();
+    
+    // Map email -> profil existant
+    const existingProfiles: Map<string, { id: string; user_id: string }> = new Map();
+    
+    for (const invitee of emailsToProcess) {
+      const existingUser = existingUsersAuth?.users?.find(
+        (u) => u.email?.toLowerCase() === invitee.email.toLowerCase()
+      );
       
-      if (tenantProfile) {
-        existingTenantProfile = tenantProfile;
-        console.log("[API leases/invite] Locataire existant trouvé:", tenantProfile.id);
+      if (existingUser) {
+        const { data: tenantProfile } = await serviceClient
+          .from("profiles")
+          .select("id, user_id, role")
+          .eq("user_id", existingUser.id)
+          .single();
+        
+        if (tenantProfile) {
+          existingProfiles.set(invitee.email.toLowerCase(), tenantProfile);
+          console.log(`[API leases/invite] Profil existant trouvé pour ${invitee.email}:`, tenantProfile.id);
+        }
       }
     }
 
-    // Créer le bail en mode draft (colonnes de base uniquement)
+    // Créer le bail
+    const leaseData: any = {
+      property_id: validated.property_id,
+      type_bail: validated.type_bail,
+      loyer: validated.loyer,
+      charges_forfaitaires: validated.charges_forfaitaires,
+      depot_de_garantie: validated.depot_garantie,
+      date_debut: validated.date_debut,
+      date_fin: validated.date_fin || null,
+      statut: "pending_signature",
+    };
+    
+    // Ajouter la config colocation si applicable
+    if (isColocation && validated.coloc_config) {
+      leaseData.coloc_config = validated.coloc_config;
+    }
+
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
-      .insert({
-        property_id: validated.property_id,
-        type_bail: validated.type_bail,
-        loyer: validated.loyer,
-        charges_forfaitaires: validated.charges_forfaitaires,
-        depot_de_garantie: validated.depot_garantie,
-        date_debut: validated.date_debut,
-        date_fin: validated.date_fin || null,
-        statut: "pending_signature", // Statut indiquant qu'on attend la signature du locataire
-      })
+      .insert(leaseData)
       .select()
       .single();
 
@@ -183,100 +254,204 @@ export async function POST(request: Request) {
       console.error("Erreur ajout signataire propriétaire:", signerError);
     }
 
-    // Si le locataire existe, l'ajouter comme signataire et créer une notification
-    if (existingTenantProfile) {
-      // Ajouter le locataire comme signataire
-      const { error: tenantSignerError } = await serviceClient
-        .from("lease_signers")
-        .insert({
+    // Traiter chaque invité (locataire standard ou colocataires)
+    const processedInvitees: { email: string; exists: boolean; notified: boolean }[] = [];
+    
+    for (const invitee of emailsToProcess) {
+      const existingProfile = existingProfiles.get(invitee.email.toLowerCase());
+      
+      // Créer le roommate pour les colocations
+      if (isColocation) {
+        const roommateData: any = {
           lease_id: lease.id,
-          profile_id: existingTenantProfile.id,
-          role: "locataire_principal",
-          signature_status: "pending",
-        });
-
-      if (tenantSignerError) {
-        console.error("Erreur ajout signataire locataire:", tenantSignerError);
-      } else {
-        console.log("[API leases/invite] Locataire ajouté comme signataire");
+          role: invitee.role === "principal" ? "principal" : "tenant",
+          weight: invitee.weight,
+          joined_on: validated.date_debut,
+          invitation_status: existingProfile ? "accepted" : "pending",
+          invited_email: invitee.email,
+        };
+        
+        if (existingProfile) {
+          roommateData.user_id = existingProfile.user_id;
+        }
+        
+        const { data: roommate, error: roommateError } = await serviceClient
+          .from("roommates")
+          .insert(roommateData)
+          .select()
+          .single();
+          
+        if (roommateError) {
+          console.error(`Erreur création roommate pour ${invitee.email}:`, roommateError);
+        } else {
+          console.log(`[API leases/invite] Roommate créé pour ${invitee.email}:`, roommate?.id);
+          
+          // Créer la part de dépôt de garantie
+          if (validated.depot_garantie > 0) {
+            const depositAmount = validated.depot_garantie * invitee.weight;
+            const { error: depositError } = await serviceClient
+              .from("deposit_shares")
+              .insert({
+                lease_id: lease.id,
+                roommate_id: roommate.id,
+                amount: depositAmount,
+                status: "pending",
+              });
+              
+            if (depositError) {
+              console.warn(`Erreur création deposit_share pour ${invitee.email}:`, depositError);
+            }
+          }
+        }
       }
-
-      // Créer une notification in-app pour le locataire
-      const { error: notifError } = await serviceClient
-        .from("notifications")
-        .insert({
-          user_id: existingTenantProfile.user_id,
-          type: "lease_invite",
-          title: "🏠 Nouveau bail à signer",
-          message: `${profile.prenom} ${profile.nom} vous invite à signer un bail pour ${property.adresse_complete}, ${property.code_postal} ${property.ville}. Loyer : ${validated.loyer}€/mois.`,
-          read: false,
-          metadata: {
+      
+      // Si le profil existe, l'ajouter comme signataire et créer une notification
+      if (existingProfile) {
+        // Ajouter comme signataire
+        const signerRole = invitee.role === "principal" 
+          ? "locataire_principal" 
+          : "colocataire";
+          
+        const { error: tenantSignerError } = await serviceClient
+          .from("lease_signers")
+          .insert({
             lease_id: lease.id,
-            property_id: validated.property_id,
-            owner_name: `${profile.prenom} ${profile.nom}`,
-            loyer: validated.loyer,
-            type_bail: validated.type_bail,
-          },
-        });
+            profile_id: existingProfile.id,
+            role: signerRole,
+            signature_status: "pending",
+          });
 
-      if (notifError) {
-        console.error("Erreur création notification:", notifError);
+        if (tenantSignerError) {
+          console.error(`Erreur ajout signataire ${invitee.email}:`, tenantSignerError);
+        } else {
+          console.log(`[API leases/invite] ${invitee.email} ajouté comme signataire (${signerRole})`);
+        }
+
+        // Créer notification in-app
+        const partText = isColocation 
+          ? ` Votre part : ${Math.round(invitee.weight * 100)}% (${Math.round(validated.loyer * invitee.weight)}€/mois).`
+          : "";
+          
+        const { error: notifError } = await serviceClient
+          .from("notifications")
+          .insert({
+            user_id: existingProfile.user_id,
+            type: "lease_invite",
+            title: isColocation ? "🏠 Invitation colocation" : "🏠 Nouveau bail à signer",
+            body: `${profile.prenom} ${profile.nom} vous invite à ${isColocation ? "rejoindre une colocation" : "signer un bail"} pour ${property.adresse_complete}, ${property.code_postal} ${property.ville}.${partText}`,
+            read: false,
+            metadata: {
+              lease_id: lease.id,
+              property_id: validated.property_id,
+              owner_name: `${profile.prenom} ${profile.nom}`,
+              loyer: validated.loyer,
+              type_bail: validated.type_bail,
+              is_colocation: isColocation,
+              weight: invitee.weight,
+            },
+          });
+
+        if (notifError) {
+          console.error(`Erreur notification pour ${invitee.email}:`, notifError);
+        } else {
+          console.log(`[API leases/invite] ✅ Notification créée pour ${invitee.email}`);
+        }
+        
+        processedInvitees.push({ email: invitee.email, exists: true, notified: true });
       } else {
-        console.log("[API leases/invite] ✅ Notification créée pour le locataire");
+        processedInvitees.push({ email: invitee.email, exists: false, notified: false });
       }
     }
 
-    // Générer un token simple basé sur l'ID du bail (encodé en base64)
-    const inviteToken = Buffer.from(`${lease.id}:${validated.tenant_email}:${Date.now()}`).toString("base64url");
-
-    // Construire l'URL d'invitation
+    // Construire l'URL d'invitation de base
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const inviteUrl = `${appUrl}/signature/${inviteToken}`;
-
-    // Envoyer l'email d'invitation via le service centralisé
-    let emailSent = false;
-    try {
-      const emailResult = await sendLeaseInviteEmail({
-        to: validated.tenant_email,
-        tenantName: validated.tenant_name || undefined,
-        ownerName: `${profile.prenom} ${profile.nom}`,
-        propertyAddress: `${property.adresse_complete}, ${property.code_postal} ${property.ville}`,
-        rent: validated.loyer,
-        charges: validated.charges_forfaitaires,
-        leaseType: validated.type_bail,
-        inviteUrl,
-      });
-      emailSent = emailResult.success;
-      if (!emailResult.success) {
-        console.warn("[API leases/invite] Email non envoyé:", emailResult.error);
-      } else {
-        console.log("[API leases/invite] ✅ Email envoyé avec succès, ID:", emailResult.messageId);
+    
+    // Envoyer les emails à chaque invité
+    const emailResults: { email: string; sent: boolean; inviteUrl: string }[] = [];
+    
+    for (const invitee of emailsToProcess) {
+      // Générer un token unique pour chaque invité
+      const inviteToken = Buffer.from(`${lease.id}:${invitee.email}:${Date.now()}`).toString("base64url");
+      const inviteUrl = `${appUrl}/signature/${inviteToken}`;
+      
+      let emailSent = false;
+      try {
+        // Personnaliser le message pour les colocations
+        const rentAmount = isColocation 
+          ? Math.round(validated.loyer * invitee.weight)
+          : validated.loyer;
+        const chargesAmount = isColocation
+          ? Math.round(validated.charges_forfaitaires * invitee.weight)
+          : validated.charges_forfaitaires;
+          
+        const emailResult = await sendLeaseInviteEmail({
+          to: invitee.email,
+          tenantName: invitee.name || undefined,
+          ownerName: `${profile.prenom} ${profile.nom}`,
+          propertyAddress: `${property.adresse_complete}, ${property.code_postal} ${property.ville}`,
+          rent: rentAmount,
+          charges: chargesAmount,
+          leaseType: isColocation ? "colocation" : validated.type_bail,
+          inviteUrl,
+        });
+        emailSent = emailResult.success;
+        if (!emailResult.success) {
+          console.warn(`[API leases/invite] Email non envoyé à ${invitee.email}:`, emailResult.error);
+        } else {
+          console.log(`[API leases/invite] ✅ Email envoyé à ${invitee.email}, ID:`, emailResult.messageId);
+        }
+      } catch (emailError) {
+        console.error(`[API leases/invite] Erreur envoi email à ${invitee.email}:`, emailError);
       }
-    } catch (emailError) {
-      console.error("[API leases/invite] Erreur envoi email:", emailError);
-      // On continue même si l'email échoue - le lien est toujours valide
+      
+      emailResults.push({ email: invitee.email, sent: emailSent, inviteUrl });
     }
+    
+    // Statistiques d'envoi
+    const emailsSentCount = emailResults.filter(r => r.sent).length;
+    const existingCount = processedInvitees.filter(p => p.exists).length;
 
     // Construire le message de retour
     let message = "";
-    if (existingTenantProfile) {
-      message = `Le locataire ${validated.tenant_email} a déjà un compte. `;
-      message += emailSent 
-        ? "Une notification et un email lui ont été envoyés." 
-        : "Une notification in-app a été créée.";
+    if (isColocation) {
+      message = `Bail colocation créé avec ${emailsToProcess.length} colocataire(s). `;
+      if (existingCount > 0) {
+        message += `${existingCount} avai(en)t déjà un compte et ont reçu une notification. `;
+      }
+      if (emailsSentCount > 0) {
+        message += `${emailsSentCount} email(s) d'invitation envoyé(s).`;
+      }
     } else {
-      message = emailSent 
-        ? `Invitation envoyée par email à ${validated.tenant_email}` 
-        : `Invitation créée. Lien d'invitation : ${inviteUrl} (email non envoyé - vérifiez la configuration)`;
+      const tenantExists = processedInvitees[0]?.exists;
+      const firstEmailResult = emailResults[0];
+      if (tenantExists) {
+        message = `Le locataire ${emailsToProcess[0].email} a déjà un compte. `;
+        message += firstEmailResult?.sent 
+          ? "Une notification et un email lui ont été envoyés." 
+          : "Une notification in-app a été créée.";
+      } else {
+        message = firstEmailResult?.sent 
+          ? `Invitation envoyée par email à ${emailsToProcess[0].email}` 
+          : `Invitation créée. Lien d'invitation : ${firstEmailResult?.inviteUrl} (email non envoyé - vérifiez la configuration)`;
+      }
     }
+
+    // ✅ Invalider les caches pour forcer le rechargement des pages
+    revalidatePath(`/app/owner/properties/${validated.property_id}`);
+    revalidatePath("/app/owner/properties");
+    revalidatePath("/app/owner/contracts");
 
     return NextResponse.json({
       success: true,
       lease_id: lease.id,
-      invite_url: inviteUrl,
-      email_sent: emailSent,
-      tenant_exists: !!existingTenantProfile,
-      tenant_notified: !!existingTenantProfile,
+      is_colocation: isColocation,
+      invitees: emailResults.map(r => ({
+        email: r.email,
+        invite_url: r.inviteUrl,
+        email_sent: r.sent,
+      })),
+      emails_sent_count: emailsSentCount,
+      existing_accounts_count: existingCount,
       message,
     });
 

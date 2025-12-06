@@ -33,9 +33,9 @@ export async function GET(
         prenom,
         nom,
         telephone,
+        user_id,
         created_at,
-        owner_profiles(*),
-        properties(*)
+        owner_profiles(*)
       `
       )
       .eq("id", ownerId)
@@ -49,6 +49,40 @@ export async function GET(
       );
     }
 
+    // Récupérer les propriétés séparément pour supporter les deux cas de owner_id
+    let { data: properties } = await supabase
+      .from("properties")
+      .select("*")
+      .eq("owner_id", ownerId);
+
+    // Si aucune propriété trouvée, essayer avec user_id comme owner_id
+    if ((!properties || properties.length === 0) && profile.user_id) {
+      const { data: propertiesByUserId } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("owner_id", profile.user_id);
+      
+      if (propertiesByUserId && propertiesByUserId.length > 0) {
+        console.log(`[GET /api/admin/people/owners/${ownerId}] Propriétés trouvées via user_id=${profile.user_id}`);
+        properties = propertiesByUserId;
+      }
+    }
+
+    // Récupérer l'email depuis auth.users via l'API admin
+    let email: string | undefined;
+    if (profile.user_id) {
+      try {
+        const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
+          profile.user_id
+        );
+        if (!userError && userData?.user) {
+          email = userData.user.email ?? undefined;
+        }
+      } catch (err) {
+        console.error("Error fetching owner email:", err);
+      }
+    }
+
     const { data: age } = await supabase
       .from("v_person_age")
       .select("age_years")
@@ -57,6 +91,8 @@ export async function GET(
 
     return NextResponse.json({
       ...profile,
+      properties: properties || [],
+      email,
       age_years: age?.age_years ?? null,
     });
   } catch (err: any) {

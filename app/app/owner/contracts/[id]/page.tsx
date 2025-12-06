@@ -25,7 +25,7 @@ export default async function OwnerContractDetailPage({ params }: PageProps) {
   // 2. Récupérer le profil (nécessaire pour le role ET pour l'ID owner)
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, role")
+    .select("id, role, prenom, nom")
     .eq("user_id", user.id)
     .single();
 
@@ -46,7 +46,17 @@ export default async function OwnerContractDetailPage({ params }: PageProps) {
       );
     }
 
-    return <LeaseDetailsClient details={details} leaseId={id} />;
+    return (
+      <LeaseDetailsClient 
+        details={details} 
+        leaseId={id} 
+        ownerProfile={{
+          id: profile.id,
+          prenom: profile.prenom || "",
+          nom: profile.nom || "",
+        }}
+      />
+    );
   } catch (error) {
     console.error("Error loading lease details:", error);
     return (

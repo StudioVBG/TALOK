@@ -19,10 +19,9 @@ export {
   usePrefetchQuery,
   usePrefetchOnMount,
   usePrefetchOnVisible,
+  usePrefetch,
+  withPrefetchOnHover,
 } from "./use-prefetch";
-
-// Legacy export
-export { usePrefetchPage as usePrefetch } from "./use-prefetch";
 
 // Hooks de mutations optimistes
 export {
@@ -66,6 +65,17 @@ export {
   useCreateLease,
   useUpdateLease,
 } from "./use-leases";
+
+// Hook pour les notifications temps réel
+export {
+  useNotifications,
+  type Notification,
+  type UseNotificationsOptions,
+  type UseNotificationsReturn,
+} from "./use-notifications";
+
+// Hook pour les notifications push du navigateur
+export { usePushNotifications } from "./use-push-notifications";
 
 // Re-export des hooks courants
 export { useToast, toast } from "@/components/ui/use-toast";

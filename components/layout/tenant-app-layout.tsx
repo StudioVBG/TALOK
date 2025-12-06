@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { AssistantPanel } from "@/components/ai/assistant-panel";
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
@@ -129,7 +130,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
             {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
           <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            ImmoGestion
+            Gestion Locative
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -187,7 +188,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         <div className="h-16 flex items-center px-6 border-b shrink-0">
           <Link href="/app/tenant/dashboard" className="flex items-center gap-2">
             <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              ImmoGestion
+              Gestion Locative
             </span>
             <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
               Locataire
@@ -316,6 +317,9 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
       <main className="lg:pl-64 min-h-screen transition-all duration-200">
         {children}
       </main>
+
+      {/* AI Assistant */}
+      <AssistantPanel />
     </div>
   );
 }

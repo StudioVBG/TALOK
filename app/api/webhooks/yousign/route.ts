@@ -1,97 +1,98 @@
-// @ts-nocheck
-import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServerClient } from "@supabase/supabase-js";
-import { verifyWebhookSignature, downloadSignedDocument, downloadAuditTrail } from "@/lib/yousign/service";
-import type { YousignWebhookEvent, YousignEventType } from "@/lib/yousign/types";
-
-// Supabase avec service role
-const supabase = createServerClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
-
 /**
- * POST /api/webhooks/yousign - Handler pour les webhooks Yousign
+ * Webhook Yousign pour les événements de signature
+ * POST /api/webhooks/yousign
  */
+
+import { NextRequest, NextResponse } from "next/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { verifyYousignWebhook, downloadSignedDocument } from "@/lib/yousign/yousign.service";
+
+// Types d'événements Yousign
+type YousignEventType =
+  | "signature_request.activated"
+  | "signature_request.done"
+  | "signature_request.declined"
+  | "signature_request.expired"
+  | "signer.done"
+  | "signer.declined"
+  | "signer.notified"
+  | "document.signed";
+
+interface YousignWebhookPayload {
+  event: YousignEventType;
+  signature_request_id: string;
+  signer_id?: string;
+  document_id?: string;
+  timestamp: string;
+  data: Record<string, any>;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const rawBody = await request.text();
+    const body = await request.text();
     const signature = request.headers.get("x-yousign-signature-256") || "";
 
-    // Vérifier la signature
-    if (process.env.YOUSIGN_WEBHOOK_SECRET) {
-      const isValid = verifyWebhookSignature(rawBody, signature);
-      if (!isValid) {
-        console.error("[webhook/yousign] Signature invalide");
-        return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
-      }
+    // Vérifier la signature du webhook
+    const isValid = await verifyYousignWebhook(body, signature);
+    if (!isValid) {
+      console.error("Signature webhook Yousign invalide");
+      return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
     }
 
-    const event: YousignWebhookEvent = JSON.parse(rawBody);
-    console.log(`[webhook/yousign] Événement reçu: ${event.event_name}`);
+    const payload: YousignWebhookPayload = JSON.parse(body);
+    const { event, signature_request_id, signer_id, data } = payload;
 
-    // Récupérer notre demande de signature
-    const yousignProcedureId = event.data.signature_request.id;
-    const { data: signatureRequest } = await supabase
-      .from("signature_requests")
-      .select("*, signers:signature_request_signers(*)")
-      .eq("yousign_procedure_id", yousignProcedureId)
-      .single();
+    console.log(`[Yousign Webhook] Événement: ${event}, Request: ${signature_request_id}`);
 
-    if (!signatureRequest) {
-      console.warn(`[webhook/yousign] Demande non trouvée pour: ${yousignProcedureId}`);
-      return NextResponse.json({ received: true });
-    }
+    const supabase = createServiceRoleClient();
 
-    // Traiter selon le type d'événement
-    switch (event.event_name) {
+    switch (event) {
       case "signature_request.activated":
-        await handleActivated(signatureRequest, event);
+        // La demande de signature a été activée
+        await handleSignatureActivated(supabase, signature_request_id);
         break;
 
       case "signer.notified":
-        await handleSignerNotified(signatureRequest, event);
+        // Un signataire a été notifié
+        await handleSignerNotified(supabase, signature_request_id, signer_id!, data);
         break;
 
-      case "signer.document_opened":
-        await handleSignerOpened(signatureRequest, event);
+      case "signer.done":
+        // Un signataire a signé
+        await handleSignerDone(supabase, signature_request_id, signer_id!, data);
         break;
 
-      case "signer.signed":
-        await handleSignerSigned(signatureRequest, event);
-        break;
-
-      case "signer.signature_declined":
-        await handleSignerDeclined(signatureRequest, event);
+      case "signer.declined":
+        // Un signataire a refusé
+        await handleSignerDeclined(supabase, signature_request_id, signer_id!, data);
         break;
 
       case "signature_request.done":
-        await handleRequestDone(signatureRequest, event);
+        // Tous les signataires ont signé
+        await handleSignatureComplete(supabase, signature_request_id, data);
+        break;
+
+      case "signature_request.declined":
+        // La demande a été refusée
+        await handleSignatureDeclined(supabase, signature_request_id, data);
         break;
 
       case "signature_request.expired":
-        await handleRequestExpired(signatureRequest, event);
+        // La demande a expiré
+        await handleSignatureExpired(supabase, signature_request_id);
         break;
 
       default:
-        console.log(`[webhook/yousign] Événement non géré: ${event.event_name}`);
+        console.log(`[Yousign Webhook] Événement non géré: ${event}`);
     }
-
-    // Audit log
-    await supabase.from("signature_audit_log").insert({
-      signature_request_id: signatureRequest.id,
-      action: `yousign_${event.event_name}`,
-      details: {
-        yousign_event_id: event.id,
-        signer_id: event.data.signer?.id,
-      },
-    });
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.error("[webhook/yousign] Erreur:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Erreur webhook Yousign:", error);
+    return NextResponse.json(
+      { error: error.message || "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
 
@@ -99,282 +100,252 @@ export async function POST(request: NextRequest) {
 // HANDLERS
 // ============================================
 
-async function handleActivated(signatureRequest: any, event: YousignWebhookEvent) {
-  console.log(`[webhook/yousign] Procédure activée: ${signatureRequest.id}`);
-  // Déjà géré lors de l'envoi
-}
-
-async function handleSignerNotified(signatureRequest: any, event: YousignWebhookEvent) {
-  const yousignSignerId = event.data.signer?.id;
-  if (!yousignSignerId) return;
-
-  console.log(`[webhook/yousign] Signataire notifié: ${yousignSignerId}`);
-
+async function handleSignatureActivated(supabase: any, requestId: string) {
+  // Mettre à jour le statut du bail
   await supabase
-    .from("signature_request_signers")
+    .from("leases")
     .update({
-      status: "notified",
-      notified_at: event.event_time,
+      statut: "pending_signature",
+      signature_request_id: requestId,
+      updated_at: new Date().toISOString(),
     })
-    .eq("yousign_signer_id", yousignSignerId);
-}
+    .eq("signature_request_id", requestId);
 
-async function handleSignerOpened(signatureRequest: any, event: YousignWebhookEvent) {
-  const yousignSignerId = event.data.signer?.id;
-  if (!yousignSignerId) return;
-
-  console.log(`[webhook/yousign] Document ouvert par: ${yousignSignerId}`);
-
+  // Mettre à jour le statut de l'engagement garant si applicable
   await supabase
-    .from("signature_request_signers")
+    .from("guarantor_engagements")
     .update({
-      status: "opened",
-      opened_at: event.event_time,
+      status: "pending_signature",
+      updated_at: new Date().toISOString(),
     })
-    .eq("yousign_signer_id", yousignSignerId);
+    .eq("signature_request_id", requestId);
+
+  console.log(`[Yousign] Signature request ${requestId} activée`);
 }
 
-async function handleSignerSigned(signatureRequest: any, event: YousignWebhookEvent) {
-  const yousignSignerId = event.data.signer?.id;
-  if (!yousignSignerId) return;
+async function handleSignerNotified(
+  supabase: any,
+  requestId: string,
+  signerId: string,
+  data: any
+) {
+  // Mettre à jour le statut du signataire
+  await supabase
+    .from("lease_signers")
+    .update({
+      signature_status: "pending",
+      notified_at: new Date().toISOString(),
+    })
+    .eq("yousign_signer_id", signerId);
 
-  console.log(`[webhook/yousign] Signataire a signé: ${yousignSignerId}`);
+  // Créer une notification
+  const { data: signer } = await supabase
+    .from("lease_signers")
+    .select("profile_id, lease:leases(property:properties(adresse_complete))")
+    .eq("yousign_signer_id", signerId)
+    .single();
 
+  if (signer) {
+    await supabase.rpc("notify_user", {
+      p_profile_id: signer.profile_id,
+      p_type: "signature_request",
+      p_title: "Signature requise",
+      p_body: `Vous avez un document à signer pour le bail de ${signer.lease?.property?.adresse_complete || "votre logement"}.`,
+      p_action_url: `/app/signature/${requestId}`,
+      p_priority: "high",
+    });
+  }
+
+  console.log(`[Yousign] Signataire ${signerId} notifié`);
+}
+
+async function handleSignerDone(
+  supabase: any,
+  requestId: string,
+  signerId: string,
+  data: any
+) {
+  const now = new Date().toISOString();
+
+  // Mettre à jour le signataire du bail
+  await supabase
+    .from("lease_signers")
+    .update({
+      signature_status: "signed",
+      signed_at: now,
+    })
+    .eq("yousign_signer_id", signerId);
+
+  // Mettre à jour l'engagement garant si applicable
+  await supabase
+    .from("guarantor_engagements")
+    .update({
+      signed_at: now,
+    })
+    .match({ signature_request_id: requestId });
+
+  console.log(`[Yousign] Signataire ${signerId} a signé`);
+}
+
+async function handleSignerDeclined(
+  supabase: any,
+  requestId: string,
+  signerId: string,
+  data: any
+) {
   // Mettre à jour le signataire
   await supabase
-    .from("signature_request_signers")
+    .from("lease_signers")
     .update({
-      status: "signed",
-      signed_at: event.event_time,
+      signature_status: "refused",
+      refusal_reason: data.decline_reason || "Refusé sans motif",
     })
-    .eq("yousign_signer_id", yousignSignerId);
-
-  // Récupérer le signataire pour notification
-  const { data: signer } = await supabase
-    .from("signature_request_signers")
-    .select("profile_id, first_name, last_name")
-    .eq("yousign_signer_id", yousignSignerId)
-    .single();
-
-  // Notifier le propriétaire de la demande
-  await supabase.from("notifications").insert({
-    profile_id: signatureRequest.owner_id,
-    type: "signer_signed",
-    title: "Signature reçue",
-    message: `${signer?.first_name} ${signer?.last_name} a signé le document "${signatureRequest.name}".`,
-    data: { signature_request_id: signatureRequest.id },
-  });
-}
-
-async function handleSignerDeclined(signatureRequest: any, event: YousignWebhookEvent) {
-  const yousignSignerId = event.data.signer?.id;
-  if (!yousignSignerId) return;
-
-  console.log(`[webhook/yousign] Signataire a refusé: ${yousignSignerId}`);
-
-  await supabase
-    .from("signature_request_signers")
-    .update({
-      status: "refused",
-      refused_at: event.event_time,
-      refused_reason: "Refusé par le signataire",
-    })
-    .eq("yousign_signer_id", yousignSignerId);
-
-  // Mettre à jour la demande
-  await supabase
-    .from("signature_requests")
-    .update({ status: "rejected" })
-    .eq("id", signatureRequest.id);
+    .eq("yousign_signer_id", signerId);
 
   // Notifier le propriétaire
-  const { data: signer } = await supabase
-    .from("signature_request_signers")
-    .select("first_name, last_name")
-    .eq("yousign_signer_id", yousignSignerId)
+  const { data: lease } = await supabase
+    .from("leases")
+    .select(`
+      id,
+      property:properties(owner_id, adresse_complete)
+    `)
+    .eq("signature_request_id", requestId)
     .single();
 
-  await supabase.from("notifications").insert({
-    profile_id: signatureRequest.owner_id,
-    type: "signer_declined",
-    title: "Signature refusée",
-    message: `${signer?.first_name} ${signer?.last_name} a refusé de signer "${signatureRequest.name}".`,
-    data: { signature_request_id: signatureRequest.id },
-  });
+  if (lease) {
+    await supabase.rpc("notify_user", {
+      p_profile_id: lease.property.owner_id,
+      p_type: "signature_declined",
+      p_title: "Signature refusée",
+      p_body: `Un signataire a refusé de signer le bail pour ${lease.property.adresse_complete}.`,
+      p_action_url: `/app/owner/contracts/${lease.id}`,
+      p_priority: "high",
+    });
+  }
+
+  console.log(`[Yousign] Signataire ${signerId} a refusé`);
 }
 
-async function handleRequestDone(signatureRequest: any, event: YousignWebhookEvent) {
-  console.log(`[webhook/yousign] Procédure terminée: ${signatureRequest.id}`);
+async function handleSignatureComplete(
+  supabase: any,
+  requestId: string,
+  data: any
+) {
+  const now = new Date().toISOString();
 
+  // Télécharger le document signé
+  let documentPath: string | null = null;
   try {
-    // ========================================
-    // ARCHIVAGE: Télécharger les documents
-    // ========================================
-    
-    // 1. Document signé
-    const signedPdf = await downloadSignedDocument(
-      signatureRequest.yousign_procedure_id,
-      "default" // Le premier document
-    );
+    const signedDocument = await downloadSignedDocument(requestId);
+    if (signedDocument) {
+      // Sauvegarder dans Supabase Storage
+      const fileName = `bail_signe_${requestId}_${Date.now()}.pdf`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(`signed-leases/${fileName}`, signedDocument, {
+          contentType: "application/pdf",
+        });
 
-    const signedPath = `signed/${signatureRequest.owner_id}/${signatureRequest.id}_signed.pdf`;
-    await supabase.storage.from("documents").upload(signedPath, signedPdf, {
-      contentType: "application/pdf",
-      upsert: true,
-    });
-
-    // Créer l'entrée document
-    const { data: signedDoc } = await supabase
-      .from("documents")
-      .insert({
-        type: signatureRequest.document_type,
-        owner_id: signatureRequest.owner_id,
-        property_id: signatureRequest.related_entity_type === "lease" 
-          ? null // À récupérer depuis lease
-          : null,
-        lease_id: signatureRequest.related_entity_type === "lease"
-          ? signatureRequest.related_entity_id
-          : null,
-        title: `${signatureRequest.name} - Signé`,
-        storage_path: signedPath,
-        metadata: {
-          yousign_procedure_id: signatureRequest.yousign_procedure_id,
-          signed_at: event.event_time,
-        },
-      })
-      .select()
-      .single();
-
-    // 2. Journal des preuves (audit trail)
-    const auditTrailPdf = await downloadAuditTrail(signatureRequest.yousign_procedure_id);
-
-    const proofPath = `proofs/${signatureRequest.owner_id}/${signatureRequest.id}_proof.pdf`;
-    await supabase.storage.from("documents").upload(proofPath, auditTrailPdf, {
-      contentType: "application/pdf",
-      upsert: true,
-    });
-
-    const { data: proofDoc } = await supabase
-      .from("documents")
-      .insert({
-        type: "autre",
-        owner_id: signatureRequest.owner_id,
-        title: `${signatureRequest.name} - Journal des preuves`,
-        storage_path: proofPath,
-        metadata: {
-          yousign_procedure_id: signatureRequest.yousign_procedure_id,
-          type: "audit_trail",
-        },
-      })
-      .select()
-      .single();
-
-    // ========================================
-    // Mettre à jour la demande
-    // ========================================
-    await supabase
-      .from("signature_requests")
-      .update({
-        status: "done",
-        completed_at: event.event_time,
-        signed_document_id: signedDoc?.id,
-        proof_document_id: proofDoc?.id,
-      })
-      .eq("id", signatureRequest.id);
-
-    // ========================================
-    // Actions post-signature selon le type
-    // ========================================
-    if (signatureRequest.related_entity_type === "lease" && signatureRequest.related_entity_id) {
-      // Activer le bail
-      await supabase
-        .from("leases")
-        .update({ statut: "active" })
-        .eq("id", signatureRequest.related_entity_id);
-
-      // Mettre à jour les lease_signers
-      const signers = signatureRequest.signers as any[];
-      for (const signer of signers) {
-        if (signer.profile_id) {
-          await supabase
-            .from("lease_signers")
-            .update({
-              signature_status: "signed",
-              signed_at: signer.signed_at,
-            })
-            .eq("lease_id", signatureRequest.related_entity_id)
-            .eq("profile_id", signer.profile_id);
-        }
+      if (!uploadError) {
+        documentPath = uploadData.path;
       }
+    }
+  } catch (error) {
+    console.error("Erreur téléchargement document signé:", error);
+  }
 
-      // Émettre événement
-      await supabase.from("outbox").insert({
-        event_type: "Lease.Activated",
-        payload: { lease_id: signatureRequest.related_entity_id },
+  // Mettre à jour le bail
+  const { data: lease, error: leaseError } = await supabase
+    .from("leases")
+    .update({
+      statut: "active",
+      signature_completed_at: now,
+      signed_document_path: documentPath,
+      updated_at: now,
+    })
+    .eq("signature_request_id", requestId)
+    .select(`
+      id,
+      property:properties(owner_id, adresse_complete)
+    `)
+    .single();
+
+  if (lease) {
+    // Créer le document en base
+    if (documentPath) {
+      await supabase.from("documents").insert({
+        type: "bail",
+        owner_id: lease.property.owner_id,
+        lease_id: lease.id,
+        property_id: lease.property.id,
+        storage_path: documentPath,
+        metadata: {
+          signed_at: now,
+          yousign_request_id: requestId,
+        },
       });
     }
 
-    // ========================================
-    // Notifier tous les participants
-    // ========================================
-    const signers = signatureRequest.signers as any[];
-    for (const signer of signers) {
-      if (signer.profile_id) {
-        await supabase.from("notifications").insert({
-          profile_id: signer.profile_id,
-          type: "signature_completed",
-          title: "Document signé",
-          message: `Le document "${signatureRequest.name}" a été signé par tous les participants.`,
-          data: {
-            signature_request_id: signatureRequest.id,
-            signed_document_id: signedDoc?.id,
-          },
-        });
-      }
-    }
-
     // Notifier le propriétaire
-    await supabase.from("notifications").insert({
-      profile_id: signatureRequest.owner_id,
-      type: "signature_completed",
-      title: "Signatures terminées",
-      message: `Toutes les signatures ont été recueillies pour "${signatureRequest.name}". Le document signé et le journal des preuves sont disponibles.`,
-      data: {
-        signature_request_id: signatureRequest.id,
-        signed_document_id: signedDoc?.id,
-        proof_document_id: proofDoc?.id,
-      },
+    await supabase.rpc("notify_user", {
+      p_profile_id: lease.property.owner_id,
+      p_type: "lease_signed",
+      p_title: "Bail signé !",
+      p_body: `Le bail pour ${lease.property.adresse_complete} a été signé par toutes les parties.`,
+      p_action_url: `/app/owner/contracts/${lease.id}`,
+      p_priority: "high",
     });
-
-    console.log(`[webhook/yousign] Archivage terminé pour: ${signatureRequest.id}`);
-  } catch (archiveError: any) {
-    console.error(`[webhook/yousign] Erreur archivage:`, archiveError);
-    // Marquer quand même comme terminé mais noter l'erreur
-    await supabase
-      .from("signature_requests")
-      .update({
-        status: "done",
-        completed_at: event.event_time,
-      })
-      .eq("id", signatureRequest.id);
   }
-}
 
-async function handleRequestExpired(signatureRequest: any, event: YousignWebhookEvent) {
-  console.log(`[webhook/yousign] Procédure expirée: ${signatureRequest.id}`);
-
+  // Mettre à jour l'engagement garant si applicable
   await supabase
-    .from("signature_requests")
-    .update({ status: "expired" })
-    .eq("id", signatureRequest.id);
+    .from("guarantor_engagements")
+    .update({
+      status: "active",
+      signed_at: now,
+    })
+    .eq("signature_request_id", requestId);
 
-  // Notifier le propriétaire
-  await supabase.from("notifications").insert({
-    profile_id: signatureRequest.owner_id,
-    type: "signature_expired",
-    title: "Demande de signature expirée",
-    message: `La demande "${signatureRequest.name}" a expiré sans que toutes les signatures soient recueillies.`,
-    data: { signature_request_id: signatureRequest.id },
-  });
+  console.log(`[Yousign] Signature complète pour ${requestId}`);
 }
 
+async function handleSignatureDeclined(
+  supabase: any,
+  requestId: string,
+  data: any
+) {
+  // Mettre à jour le bail
+  await supabase
+    .from("leases")
+    .update({
+      statut: "draft",
+      signature_request_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("signature_request_id", requestId);
+
+  // Mettre à jour l'engagement garant
+  await supabase
+    .from("guarantor_engagements")
+    .update({
+      status: "terminated",
+      released_reason: "Signature refusée",
+    })
+    .eq("signature_request_id", requestId);
+
+  console.log(`[Yousign] Signature refusée pour ${requestId}`);
+}
+
+async function handleSignatureExpired(supabase: any, requestId: string) {
+  // Mettre à jour le bail
+  await supabase
+    .from("leases")
+    .update({
+      statut: "draft",
+      signature_request_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("signature_request_id", requestId);
+
+  console.log(`[Yousign] Signature expirée pour ${requestId}`);
+}

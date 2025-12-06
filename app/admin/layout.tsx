@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AdminDataProvider } from "./_data/AdminDataProvider";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 
 export default async function AdminLayout({
   children,
@@ -38,6 +39,8 @@ export default async function AdminLayout({
   return (
     <ErrorBoundary>
       <AdminDataProvider stats={null}>
+        {/* Bannière d'impersonation (visible si session active) */}
+        <ImpersonationBanner />
         <div className="flex min-h-screen mesh-gradient">
           <AdminSidebar />
           <main className="flex-1 lg:pl-64 transition-all duration-200">

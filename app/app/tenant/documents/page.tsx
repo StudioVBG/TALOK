@@ -45,6 +45,9 @@ const itemVariants = {
 
 const documentTypeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   bail: { label: "Bail", icon: FileSignature, color: "bg-blue-100 text-blue-800" },
+  bail_signe_locataire: { label: "Bail signé", icon: FileSignature, color: "bg-green-100 text-green-800" },
+  bail_signe_proprietaire: { label: "Bail signé (propriétaire)", icon: FileSignature, color: "bg-green-100 text-green-800" },
+  cni: { label: "Pièce d'identité", icon: Shield, color: "bg-indigo-100 text-indigo-800" },
   quittance: { label: "Quittance", icon: Receipt, color: "bg-green-100 text-green-800" },
   attestation_assurance: { label: "Attestation assurance", icon: Shield, color: "bg-purple-100 text-purple-800" },
   EDL_entree: { label: "EDL Entrée", icon: FileCheck, color: "bg-amber-100 text-amber-800" },

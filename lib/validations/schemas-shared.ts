@@ -16,7 +16,7 @@ export const addressSchema = z.object({
   complement_adresse: z.string().optional().nullable(),
   code_postal: z.string().regex(/^[0-9]{5}$/, "Le code postal doit contenir 5 chiffres"),
   ville: z.string().min(1, "La ville est requise"),
-  departement: z.string().length(2, "Le département doit contenir 2 caractères").optional().nullable(),
+  departement: z.string().min(2, "Le département doit contenir au moins 2 caractères").max(3, "Le département doit contenir au maximum 3 caractères").optional().nullable(),
   latitude: z.number().min(-90).max(90).optional().nullable(),
   longitude: z.number().min(-180).max(180).optional().nullable(),
 });
@@ -29,8 +29,8 @@ export const addressUpdateSchema = addressSchema.partial();
 // ============================================
 
 export const dpeSchema = z.object({
-  dpe_classe_energie: z.enum(["A", "B", "C", "D", "E", "F", "G"]).optional().nullable(),
-  dpe_classe_climat: z.enum(["A", "B", "C", "D", "E", "F", "G"]).optional().nullable(),
+  dpe_classe_energie: z.enum(["A", "B", "C", "D", "E", "F", "G", "NC"]).optional().nullable(),
+  dpe_classe_climat: z.enum(["A", "B", "C", "D", "E", "F", "G", "NC"]).optional().nullable(),
   dpe_consommation: z.number().min(0).optional().nullable(),
   dpe_emissions: z.number().min(0).optional().nullable(),
   dpe_estimation_conso_min: z.number().min(0).optional().nullable(),

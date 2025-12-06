@@ -167,14 +167,10 @@ CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, cr
 -- Index sur l'action
 CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
 
--- Index sur la table cible
-CREATE INDEX IF NOT EXISTS idx_audit_log_table ON audit_log(table_name);
-
--- Index sur l'utilisateur
-CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_id);
-
--- Index sur la date
-CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC);
+-- Note: Les index sur resource et actor_id sont déjà créés dans la migration initiale
+-- idx_audit_log_resource ON audit_log(resource, resource_id)
+-- idx_audit_log_actor ON audit_log(actor_type, actor_id)
+-- idx_audit_log_ts ON audit_log(ts)
 
 -- =====================================================
 -- COMMENTAIRES

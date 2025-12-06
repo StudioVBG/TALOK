@@ -1,12 +1,9 @@
 /**
- * AddressStep - Composant de saisie d'adresse V3 avec autocomplete animé
+ * @deprecated Ce fichier est OBSOLÈTE et n'est plus utilisé.
+ * Le wizard actif utilise: features/properties/components/v3/immersive/steps/AddressStep.tsx
+ * Ce fichier sera supprimé dans une future version.
  * 
- * Sources :
- * - Modèle V3 section 2.3 : Étape 2 - Adresse
- * - Design SOTA 2025 : Autocomplete avec suggestions animées, validation inline
- * - Composants existants : components/ui/input.tsx, components/ui/label.tsx
- * 
- * Ce composant gère l'adresse complète, complément, code postal, ville avec suggestions
+ * AddressStep - Composant de saisie d'adresse V3 avec autocomplete animé (ANCIEN)
  */
 
 "use client";

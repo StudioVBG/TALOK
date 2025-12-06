@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -25,10 +26,18 @@ function isTokenExpired(timestamp: number): boolean {
 
 /**
  * POST /api/signature/[token]/upload-cni
- * Upload de la photo CNI avec extraction OCR
+ * Upload de la photo CNI (sans OCR - vérification manuelle)
+ * 
+ * Rate limiting: 10 requêtes par minute par IP pour éviter les abus
  */
 export async function POST(request: Request, { params }: PageProps) {
   try {
+    // Rate limiting basé sur l'IP (10 uploads/minute max)
+    const rateLimitResponse = applyRateLimit(request, "upload");
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const { token } = await params;
 
     // Décoder le token
@@ -64,10 +73,21 @@ export async function POST(request: Request, { params }: PageProps) {
       );
     }
 
-    // Récupérer le fichier uploadé
+    // Récupérer le fichier uploadé et les données OCR
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const side = formData.get("side") as string; // 'recto' ou 'verso'
+    
+    // Données OCR extraites côté client (optionnelles)
+    const ocrDataRaw = formData.get("ocr_data") as string | null;
+    let ocrData: Record<string, any> = {};
+    if (ocrDataRaw) {
+      try {
+        ocrData = JSON.parse(ocrDataRaw);
+      } catch {
+        // Ignorer si JSON invalide
+      }
+    }
 
     if (!file) {
       return NextResponse.json(
@@ -103,148 +123,129 @@ export async function POST(request: Request, { params }: PageProps) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload vers Supabase Storage
-    const { data: uploadData, error: uploadError } = await serviceClient.storage
-      .from("tenant-documents")
+    // Essayer d'uploader vers le bucket "documents"
+    let uploadData;
+    let uploadError;
+    
+    // Tenter l'upload
+    const uploadResult = await serviceClient.storage
+      .from("documents")
       .upload(filePath, buffer, {
         contentType: file.type,
         upsert: true,
       });
+    
+    uploadData = uploadResult.data;
+    uploadError = uploadResult.error;
+
+    // Si le bucket n'existe pas, essayer de le créer
+    if (uploadError && uploadError.message?.includes("Bucket not found")) {
+      console.log("[Upload CNI] Bucket 'documents' non trouvé, tentative de création...");
+      
+      // Créer le bucket
+      const { error: createError } = await serviceClient.storage.createBucket("documents", {
+        public: false,
+        fileSizeLimit: 52428800, // 50 Mo
+      });
+      
+      if (createError && !createError.message?.includes("already exists")) {
+        console.error("[Upload CNI] Erreur création bucket:", createError);
+        return NextResponse.json(
+          { error: "Erreur de configuration du stockage. Contactez le support." },
+          { status: 500 }
+        );
+      }
+      
+      // Réessayer l'upload
+      const retryResult = await serviceClient.storage
+        .from("documents")
+        .upload(filePath, buffer, {
+          contentType: file.type,
+          upsert: true,
+        });
+      
+      uploadData = retryResult.data;
+      uploadError = retryResult.error;
+    }
 
     if (uploadError) {
-      console.error("Erreur upload:", uploadError);
+      console.error("[Upload CNI] Erreur upload:", uploadError);
       return NextResponse.json(
-        { error: "Erreur lors de l'upload du fichier" },
+        { error: "Erreur lors de l'upload du fichier: " + uploadError.message },
         { status: 500 }
       );
     }
 
-    // Simuler l'extraction OCR
-    // En production, utiliser un service OCR comme Google Vision, AWS Textract, ou Mindee
-    const extractedData = await performOCR(buffer, side);
+    // Données de base combinées avec OCR
+    const extractedData = {
+      document_type: "CNI",
+      side,
+      requires_manual_verification: !ocrData.date_expiration, // Si pas de date, vérif manuelle
+      uploaded_at: new Date().toISOString(),
+      file_size: file.size,
+      file_type: file.type,
+      // Données OCR extraites côté client
+      nom: ocrData.nom || null,
+      prenom: ocrData.prenom || null,
+      date_naissance: ocrData.date_naissance || null,
+      lieu_naissance: ocrData.lieu_naissance || null,
+      sexe: ocrData.sexe || null,
+      nationalite: ocrData.nationalite || null,
+      numero_cni: ocrData.numero_cni || null,
+      date_expiration: ocrData.date_expiration || null,
+      ocr_confidence: ocrData.ocr_confidence || 0,
+    };
+
+    // Parser la date d'expiration pour la colonne SQL
+    let expiryDate: string | null = null;
+    if (ocrData.date_expiration) {
+      // Format attendu: YYYY-MM-DD
+      const dateMatch = ocrData.date_expiration.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (dateMatch) {
+        expiryDate = ocrData.date_expiration;
+      }
+    }
 
     // Créer un document pour la CNI
-    await serviceClient
+    const { data: docData, error: docError } = await serviceClient
       .from("documents")
       .insert({
         type: side === "recto" ? "cni_recto" : "cni_verso",
         lease_id: lease.id,
         storage_path: filePath,
+        expiry_date: expiryDate, // Date d'expiration pour le suivi
+        verification_status: "pending", // En attente de vérification
         metadata: {
-          uploaded_at: new Date().toISOString(),
-          tenant_email: tokenData.tenantEmail,
           ...extractedData,
+          tenant_email: tokenData.tenantEmail,
         },
-      });
+      })
+      .select()
+      .single();
 
-    // Retourner les données extraites
+    if (docError) {
+      console.warn("[Upload CNI] Erreur création document DB:", docError);
+      // On continue quand même, le fichier est uploadé
+    } else {
+      console.log("[Upload CNI] Document créé:", docData?.id, "expiry_date:", expiryDate);
+    }
+
+    // Retourner les données
     return NextResponse.json({
       success: true,
       file_path: filePath,
       side,
       extracted_data: extractedData,
       message: side === "recto" 
-        ? "Photo recto analysée avec succès" 
-        : "Photo verso enregistrée",
+        ? "Photo recto enregistrée avec succès" 
+        : "Photo verso enregistrée avec succès",
     });
 
   } catch (error: any) {
-    console.error("Erreur API upload-cni:", error);
+    console.error("[Upload CNI] Erreur:", error);
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },
       { status: 500 }
     );
   }
 }
-
-/**
- * Simuler l'extraction OCR des données de la CNI
- * En production, remplacer par un vrai service OCR
- */
-async function performOCR(imageBuffer: Buffer, side: string): Promise<Record<string, any>> {
-  // Simulation d'un délai d'analyse
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  if (side === "recto") {
-    // Données extraites du recto de la CNI
-    // En production, ces données viendraient du service OCR
-    return {
-      document_type: "CNI",
-      nom: null, // À extraire via OCR
-      prenom: null,
-      date_naissance: null,
-      lieu_naissance: null,
-      sexe: null,
-      nationalite: "FRANÇAISE",
-      numero_cni: null,
-      date_delivrance: null,
-      date_expiration: null,
-      ocr_confidence: 0, // Pas de vraie extraction
-      ocr_raw_text: null,
-      requires_manual_verification: true, // Indique qu'il faut vérifier manuellement
-    };
-  } else {
-    // Données du verso (MRZ)
-    return {
-      mrz_line1: null,
-      mrz_line2: null,
-      mrz_valid: false,
-    };
-  }
-}
-
-/**
- * Intégration avec un vrai service OCR (exemple avec Mindee)
- * À décommenter et configurer en production
- */
-/*
-async function performOCRWithMindee(imageBuffer: Buffer): Promise<Record<string, any>> {
-  const mindee = require("mindee");
-  
-  const mindeeClient = new mindee.Client({ apiKey: process.env.MINDEE_API_KEY });
-  
-  const inputSource = mindeeClient.docFromBuffer(imageBuffer, "document.jpg");
-  const response = await mindeeClient.parse(
-    mindee.product.fr.IdCardV2,
-    inputSource
-  );
-  
-  const prediction = response.document.inference.prediction;
-  
-  return {
-    document_type: "CNI",
-    nom: prediction.surname?.value,
-    prenom: prediction.givenNames?.map((g: any) => g.value).join(" "),
-    date_naissance: prediction.birthDate?.value,
-    lieu_naissance: prediction.birthPlace?.value,
-    sexe: prediction.gender?.value,
-    nationalite: prediction.nationality?.value,
-    numero_cni: prediction.idNumber?.value,
-    date_delivrance: prediction.issueDate?.value,
-    date_expiration: prediction.expiryDate?.value,
-    ocr_confidence: prediction.confidence,
-    mrz_valid: prediction.mrzValid,
-  };
-}
-*/
-
-/**
- * Intégration avec Google Cloud Vision (exemple)
- */
-/*
-async function performOCRWithGoogleVision(imageBuffer: Buffer): Promise<Record<string, any>> {
-  const vision = require("@google-cloud/vision");
-  const client = new vision.ImageAnnotatorClient();
-  
-  const [result] = await client.documentTextDetection({
-    image: { content: imageBuffer.toString("base64") },
-  });
-  
-  const fullText = result.fullTextAnnotation?.text || "";
-  
-  // Parser le texte pour extraire les champs
-  // Ceci nécessite une logique spécifique selon le format de la CNI
-  return parseIDCardText(fullText);
-}
-*/
-

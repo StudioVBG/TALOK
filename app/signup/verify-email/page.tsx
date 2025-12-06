@@ -138,10 +138,11 @@ export default function VerifyEmailOnboardingPage() {
   };
 
   const goToNextStep = () => {
-    // Redirection directe vers l'onboarding spécifique du rôle (sans passer par profile)
+    // Redirection selon le rôle
     switch (role) {
       case "owner":
-        router.push("/app/owner/onboarding/profile");
+        // Les propriétaires doivent d'abord choisir leur forfait
+        router.push(`/signup/plan?role=owner`);
         break;
       case "tenant":
         router.push("/tenant/onboarding/context");

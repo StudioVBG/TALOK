@@ -57,6 +57,16 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
 
   const totalPages = Math.ceil(initialData.total / 20);
 
+  // Fonction pour générer l'URL correcte selon le type
+  const getDetailUrl = (userId: string) => {
+    // Les locataires ont leur propre section /admin/tenants/
+    if (activeTab === "tenants") {
+      return `/admin/tenants/${userId}`;
+    }
+    // Les autres restent dans /admin/people/
+    return `/admin/people/${activeTab}/${userId}`;
+  };
+
   const columns = [
     {
       header: "Nom",
@@ -73,7 +83,7 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
     {
       header: "Actions",
       cell: (user: any) => (
-        <Link href={`/admin/people/${activeTab}/${user.id}`}>
+        <Link href={getDetailUrl(user.id)}>
           <Button variant="ghost" size="sm">
             <Eye className="h-4 w-4 mr-1" />
             Voir

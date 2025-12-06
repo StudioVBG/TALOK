@@ -43,6 +43,73 @@ export function useDocuments(filters?: {
       if (!profile) throw new Error("Non authentifié");
       
       const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+      
+      // Pour les locataires, on fait plusieurs requêtes pour tout récupérer
+      if (profile.role === "tenant") {
+        // 1. Documents directement liés au profil
+        const { data: directDocs, error: directError } = await supabaseClient
+          .from("documents")
+          .select("*")
+          .eq("tenant_id", profile.id)
+          .order("created_at", { ascending: false });
+        
+        if (directError) console.error("Erreur docs directs:", directError);
+        
+        // 2. Récupérer les leases où le locataire est signataire
+        const { data: signerData } = await supabaseClient
+          .from("lease_signers")
+          .select("lease_id")
+          .eq("profile_id", profile.id);
+        
+        const leaseIds = signerData?.map(s => s.lease_id).filter(Boolean) || [];
+        
+        // 3. Documents liés aux baux
+        let leaseDocs: DocumentRow[] = [];
+        if (leaseIds.length > 0) {
+          const { data: leaseDocsData, error: leaseDocsError } = await supabaseClient
+            .from("documents")
+            .select("*")
+            .in("lease_id", leaseIds)
+            .order("created_at", { ascending: false });
+          
+          if (!leaseDocsError && leaseDocsData) {
+            leaseDocs = leaseDocsData as DocumentRow[];
+          }
+        }
+        
+        // Fusionner et dédupliquer
+        const allDocs = [...(directDocs || []), ...leaseDocs];
+        const uniqueDocs = allDocs.reduce((acc, doc) => {
+          if (!acc.find(d => d.id === doc.id)) {
+            acc.push(doc);
+          }
+          return acc;
+        }, [] as DocumentRow[]);
+        
+        // Appliquer les filtres
+        let filtered = uniqueDocs;
+        
+        if (filters?.propertyId) {
+          filtered = filtered.filter(d => d.property_id === filters.propertyId);
+        }
+        if (filters?.leaseId) {
+          filtered = filtered.filter(d => d.lease_id === filters.leaseId);
+        }
+        if (filters?.type) {
+          filtered = filtered.filter(d => d.type === filters.type);
+        }
+        
+        // Trier par date
+        filtered.sort((a, b) => {
+          const dateA = new Date(a.created_at || 0).getTime();
+          const dateB = new Date(b.created_at || 0).getTime();
+          return dateB - dateA;
+        });
+        
+        return filtered;
+      }
+      
+      // Pour les propriétaires et autres rôles
       let query = supabaseClient
         .from("documents")
         .select("*")
@@ -60,11 +127,8 @@ export function useDocuments(filters?: {
         query = query.eq("type", filters.type);
       }
       
-      // Filtrer selon le rôle
       if (profile.role === "owner") {
         query = query.eq("owner_id", profile.id);
-      } else if (profile.role === "tenant") {
-        query = query.eq("tenant_id", profile.id);
       }
       
       const { data, error } = await query;

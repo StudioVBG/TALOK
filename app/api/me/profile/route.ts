@@ -104,3 +104,10 @@ export async function PATCH(request: Request) {
     return handleApiError(error);
   }
 }
+
+/**
+ * PUT /api/me/profile - Alias pour PATCH (mise à jour du profil)
+ */
+export async function PUT(request: Request) {
+  return PATCH(request);
+}

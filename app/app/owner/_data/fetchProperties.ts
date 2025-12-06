@@ -1,10 +1,10 @@
-// @ts-nocheck
 /**
  * Data fetching pour les propriétés (Owner)
  * Server-side uniquement - utilisé dans Server Components
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import type { PropertyRow } from "@/lib/supabase/typed-client";
 
 export interface FetchPropertiesOptions {
@@ -36,7 +36,7 @@ export async function fetchProperties(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   // Vérifier que l'utilisateur est bien le propriétaire
@@ -98,7 +98,7 @@ export async function fetchProperty(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   // Vérifier les permissions

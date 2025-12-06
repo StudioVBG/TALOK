@@ -18,25 +18,10 @@ export interface LeaseDetails {
 }
 
 export async function fetchLeaseDetails(leaseId: string, ownerId: string): Promise<LeaseDetails | null> {
-  const supabase = await createClient();
-
-  // Essayer d'abord la RPC
-  try {
-    const { data, error } = await supabase.rpc("lease_details", {
-      p_lease_id: leaseId,
-      p_owner_id: ownerId,
-    });
-
-    if (!error && data) {
-      return data as LeaseDetails;
-    }
-    
-    console.warn("[fetchLeaseDetails] RPC failed, using fallback:", error?.message);
-  } catch (rpcError) {
-    console.warn("[fetchLeaseDetails] RPC exception, using fallback:", rpcError);
-  }
-
-  // Fallback: requêtes directes avec service role (contourne RLS)
+  console.log("[fetchLeaseDetails] Starting for leaseId:", leaseId, "ownerId:", ownerId);
+  
+  // Utiliser directement le fallback (plus fiable que la RPC)
+  // La RPC a des problèmes avec les baux liés à des unités
   return fetchLeaseDetailsFallback(leaseId, ownerId);
 }
 
@@ -46,6 +31,11 @@ async function fetchLeaseDetailsFallback(
 ): Promise<LeaseDetails | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  console.log("[fetchLeaseDetailsFallback] Config check:", {
+    hasUrl: !!supabaseUrl,
+    hasServiceKey: !!serviceRoleKey,
+  });
 
   let supabase: ReturnType<typeof createServiceClient> | Awaited<ReturnType<typeof createClient>>;
 
@@ -57,6 +47,7 @@ async function fetchLeaseDetailsFallback(
         persistSession: false,
       },
     });
+    console.log("[fetchLeaseDetailsFallback] Using service role client");
   } else {
     console.warn(
       "[fetchLeaseDetailsFallback] SUPABASE_SERVICE_ROLE_KEY manquant, utilisation du client standard (RLS actif)"
@@ -64,25 +55,54 @@ async function fetchLeaseDetailsFallback(
     supabase = await createClient();
   }
 
-  // 1. Récupérer le bail
+  // 1. Récupérer le bail avec la propriété en une seule requête
+  console.log("[fetchLeaseDetailsFallback] Fetching lease:", leaseId);
+  
   const { data: lease, error: leaseError } = await supabase
     .from("leases")
-    .select("*")
+    .select(`
+      *,
+      properties:property_id (
+        id,
+        adresse_complete,
+        ville,
+        code_postal,
+        type,
+        owner_id
+      )
+    `)
     .eq("id", leaseId)
     .single();
 
-  if (leaseError || !lease) {
+  if (leaseError) {
     console.error("[fetchLeaseDetailsFallback] Lease error:", leaseError);
     return null;
   }
+  
+  if (!lease) {
+    console.error("[fetchLeaseDetailsFallback] Lease not found for id:", leaseId);
+    return null;
+  }
+
+  console.log("[fetchLeaseDetailsFallback] Lease found:", {
+    id: lease.id,
+    property_id: lease.property_id,
+    unit_id: lease.unit_id,
+    has_property_join: !!lease.properties,
+  });
 
   // 2. Récupérer la propriété associée (directement ou via unit)
   let propertyRow: any | null = null;
 
-  if (lease.property_id) {
+  // Si la propriété est déjà jointe
+  if (lease.properties) {
+    propertyRow = lease.properties;
+    console.log("[fetchLeaseDetailsFallback] Property from join:", propertyRow?.id);
+  } else if (lease.property_id) {
+    // Fallback: requête séparée
     const { data, error } = await supabase
       .from("properties")
-      .select("id, adresse_complete, adresse, ville, code_postal, type, owner_id")
+      .select("id, adresse_complete, ville, code_postal, type, owner_id")
       .eq("id", lease.property_id)
       .single();
 
@@ -91,7 +111,9 @@ async function fetchLeaseDetailsFallback(
       return null;
     }
     propertyRow = data;
+    console.log("[fetchLeaseDetailsFallback] Property from separate query:", propertyRow?.id);
   } else if (lease.unit_id) {
+    console.log("[fetchLeaseDetailsFallback] Fetching unit:", lease.unit_id);
     const { data: unit, error: unitError } = await supabase
       .from("units")
       .select("id, property_id")
@@ -105,7 +127,7 @@ async function fetchLeaseDetailsFallback(
 
     const { data, error } = await supabase
       .from("properties")
-      .select("id, adresse_complete, adresse, ville, code_postal, type, owner_id")
+      .select("id, adresse_complete, ville, code_postal, type, owner_id")
       .eq("id", unit.property_id)
       .single();
 
@@ -114,6 +136,7 @@ async function fetchLeaseDetailsFallback(
       return null;
     }
     propertyRow = data;
+    console.log("[fetchLeaseDetailsFallback] Property from unit:", propertyRow?.id);
   } else {
     console.warn("[fetchLeaseDetailsFallback] Lease without property or unit", {
       leaseId,
@@ -122,6 +145,11 @@ async function fetchLeaseDetailsFallback(
   }
 
   // Vérifier l'accès propriétaire
+  console.log("[fetchLeaseDetailsFallback] Checking owner access:", {
+    expected: ownerId,
+    actual: propertyRow?.owner_id,
+  });
+  
   if (propertyRow.owner_id !== ownerId) {
     console.warn("[fetchLeaseDetailsFallback] Access denied: owner mismatch", {
       expected: ownerId,
@@ -129,6 +157,8 @@ async function fetchLeaseDetailsFallback(
     });
     return null;
   }
+  
+  console.log("[fetchLeaseDetailsFallback] Owner access verified ✓");
 
   // 2. Récupérer les signataires
   const { data: signers } = await supabase
@@ -183,7 +213,7 @@ async function fetchLeaseDetailsFallback(
   // Construire le résultat
   const property = {
     id: propertyRow.id,
-    adresse_complete: propertyRow.adresse_complete || propertyRow.adresse || "",
+    adresse_complete: propertyRow.adresse_complete || "",
     ville: propertyRow.ville || "",
     code_postal: propertyRow.code_postal || "",
     type: propertyRow.type || "",
@@ -216,11 +246,21 @@ async function fetchLeaseDetailsFallback(
     periode: p.invoices?.periode,
   }));
 
-  return {
+  const result = {
     lease: cleanLease,
     property,
     signers: formattedSigners,
     payments: formattedPayments,
     documents: documents || [],
   };
+
+  console.log("[fetchLeaseDetailsFallback] Success! Returning lease details:", {
+    leaseId: result.lease?.id,
+    propertyId: result.property?.id,
+    signersCount: result.signers?.length,
+    paymentsCount: result.payments?.length,
+    documentsCount: result.documents?.length,
+  });
+
+  return result;
 }

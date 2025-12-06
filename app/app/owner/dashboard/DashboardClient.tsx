@@ -4,7 +4,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Sparkles, AlertCircle, ArrowRight } from "lucide-react";
+import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOwnerData } from "../_data/OwnerDataProvider";
@@ -18,6 +18,9 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { UpgradeTrigger, UsageLimitBanner } from "@/components/subscription";
+import { UrgentActionsSection, type UrgentAction } from "@/components/owner/dashboard/urgent-actions-section";
+import { PushNotificationPrompt } from "@/components/notifications/push-notification-prompt";
 
 // Lazy loading des composants lourds
 const OwnerTodoSection = dynamic(
@@ -149,33 +152,76 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
      );
   }
 
+  // Construire les actions urgentes avec le nouveau format
+  const urgentActions: UrgentAction[] = [
+    // Impayés (critique)
+    ...(dashboard.invoices?.late > 0 ? [{
+      id: "invoices_late",
+      type: "payment" as const,
+      priority: "critical" as const,
+      title: `${dashboard.invoices.late} loyer(s) en retard`,
+      description: "Des paiements sont en retard et nécessitent une relance",
+      link: OWNER_ROUTES.money.path,
+      linkLabel: "Gérer les impayés",
+      metadata: { count: dashboard.invoices.late },
+    }] : []),
+    // Signatures en attente (haute)
+    ...(dashboard.leases?.pending > 0 ? [{
+      id: "leases_pending",
+      type: "signature" as const,
+      priority: "high" as const,
+      title: `${dashboard.leases.pending} signature(s) en attente`,
+      description: "Des baux attendent votre signature ou celle du locataire",
+      link: `${OWNER_ROUTES.contracts.path}?filter=pending_signature`,
+      linkLabel: "Signer",
+      metadata: { count: dashboard.leases.pending },
+    }] : []),
+    // Tickets ouverts (moyenne)
+    ...(dashboard.tickets?.open > 0 ? [{
+      id: "tickets_open",
+      type: "ticket" as const,
+      priority: "medium" as const,
+      title: `${dashboard.tickets.open} ticket(s) de maintenance`,
+      description: "Des demandes de maintenance attendent une action",
+      link: OWNER_ROUTES.tickets.path,
+      linkLabel: "Voir les tickets",
+      metadata: { count: dashboard.tickets.open },
+    }] : []),
+    // Factures en attente (moyenne)
+    ...(dashboard.invoices?.pending > 0 ? [{
+      id: "invoices_pending",
+      type: "payment" as const,
+      priority: "medium" as const,
+      title: `${dashboard.invoices.pending} facture(s) à envoyer`,
+      description: "Des factures sont prêtes à être envoyées aux locataires",
+      link: OWNER_ROUTES.money.path,
+      linkLabel: "Envoyer",
+      metadata: { count: dashboard.invoices.pending },
+    }] : []),
+    // Alertes DPE expirantes (depuis l'API)
+    ...((dashboard as any).zone3_portfolio?.compliance || [])
+      .filter((c: any) => c.type === "dpe_expiring")
+      .map((alert: any) => ({
+        id: alert.id,
+        type: "document" as const,
+        priority: alert.severity === "high" ? "high" as const : "medium" as const,
+        title: "DPE bientôt expiré",
+        description: alert.label,
+        link: alert.action_url,
+        linkLabel: "Voir le bien",
+        metadata: { type: "dpe" },
+      })),
+  ];
+
   const transformedData = {
-    zone1_tasks: [
-      ...(dashboard.invoices?.pending > 0 ? [{
-        id: "invoices_pending",
-        type: "invoice" as const,
-        title: `${dashboard.invoices.pending} facture(s) en attente`,
-        priority: "high" as const,
-        dueDate: new Date().toISOString(),
-        link: OWNER_ROUTES.money.path,
-      }] : []),
-      ...(dashboard.tickets?.open > 0 ? [{
-        id: "tickets_open",
-        type: "ticket" as const,
-        title: `${dashboard.tickets.open} ticket(s) ouvert(s)`,
-        priority: "medium" as const,
-        dueDate: new Date().toISOString(),
-        link: "/tickets",
-      }] : []),
-      ...(dashboard.leases?.pending > 0 ? [{
-        id: "leases_pending",
-        type: "lease" as const,
-        title: `${dashboard.leases.pending} bail(aux) en attente`,
-        priority: "medium" as const,
-        dueDate: new Date().toISOString(),
-        link: OWNER_ROUTES.contracts.path,
-      }] : []),
-    ],
+    zone1_tasks: urgentActions.map(action => ({
+      id: action.id,
+      type: action.type,
+      title: action.title,
+      priority: action.priority,
+      dueDate: new Date().toISOString(),
+      link: action.link,
+    })),
     zone2_finances: {
       chart_data: [],
       kpis: {
@@ -203,13 +249,20 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
           action_url: "/app/owner/properties" 
         },
       ],
-      compliance: dashboard.invoices?.late > 0 ? [{
-        id: "late-invoices",
-        type: "compliance" as const,
-        severity: "high" as const,
-        label: `${dashboard.invoices.late} facture(s) en retard de paiement`,
-        action_url: "/app/owner/money",
-      }] : [],
+      compliance: [
+        // Factures en retard
+        ...(dashboard.invoices?.late > 0 ? [{
+          id: "late-invoices",
+          type: "compliance" as const,
+          severity: "high" as const,
+          label: `${dashboard.invoices.late} facture(s) en retard de paiement`,
+          action_url: "/app/owner/money",
+        }] : []),
+        // Alertes DPE expirantes (depuis l'API)
+        ...((dashboard as any).zone3_portfolio?.compliance || []).filter(
+          (c: any) => c.type === "dpe_expiring"
+        ),
+      ],
     },
   };
 
@@ -291,11 +344,26 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
              </div>
              <div>
                 <p className="text-slate-400 text-sm font-medium">Taux d'occupation</p>
-                <p className="text-2xl font-bold mt-1 text-emerald-400">
-                   {dashboard.properties?.total > 0 
-                      ? Math.round(((dashboard.leases?.active || 0) / dashboard.properties.total) * 100) 
-                      : 0}%
-                </p>
+                {(() => {
+                  const rate = dashboard.properties?.total > 0 
+                    ? Math.round(((dashboard.leases?.active || 0) / dashboard.properties.total) * 100) 
+                    : 0;
+                  const colorClass = rate >= 80 ? "text-emerald-400" : rate >= 50 ? "text-amber-400" : "text-red-400";
+                  const barColor = rate >= 80 ? "bg-emerald-400" : rate >= 50 ? "bg-amber-400" : "bg-red-400";
+                  return (
+                    <div className="space-y-1">
+                      <p className={`text-2xl font-bold ${colorClass}`}>
+                        {rate}%
+                      </p>
+                      <div className="h-1.5 w-24 bg-slate-700 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${barColor} transition-all duration-500`}
+                          style={{ width: `${rate}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
              </div>
           </div>
         </motion.header>
@@ -311,22 +379,44 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
           </motion.section>
         )}
 
-        {/* Zone 1 - À faire maintenant */}
+        {/* Bannière notifications push */}
         <motion.section variants={itemVariants}>
-          <div className="mb-4 flex items-center justify-between">
-             <h2 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-blue-600" />
-                À traiter
-             </h2>
+          <PushNotificationPrompt variant="banner" />
+        </motion.section>
+
+        {/* Zone 1 - Actions Urgentes (SOTA 2025) */}
+        <motion.section variants={itemVariants}>
+          <UrgentActionsSection actions={urgentActions} />
+        </motion.section>
+        
+        {/* Liens rapides */}
+        <motion.section variants={itemVariants}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Link href="/app/owner/tenants">
+              <GlassCard hoverEffect className="p-4 text-center cursor-pointer">
+                <Users className="h-6 w-6 mx-auto text-blue-600 mb-2" />
+                <p className="text-sm font-medium text-slate-700">Mes locataires</p>
+              </GlassCard>
+            </Link>
+            <Link href="/app/owner/analytics">
+              <GlassCard hoverEffect className="p-4 text-center cursor-pointer">
+                <BarChart3 className="h-6 w-6 mx-auto text-emerald-600 mb-2" />
+                <p className="text-sm font-medium text-slate-700">Analytics</p>
+              </GlassCard>
+            </Link>
+            <Link href={`${OWNER_ROUTES.contracts.path}/new`}>
+              <GlassCard hoverEffect className="p-4 text-center cursor-pointer">
+                <Plus className="h-6 w-6 mx-auto text-amber-600 mb-2" />
+                <p className="text-sm font-medium text-slate-700">Nouveau bail</p>
+              </GlassCard>
+            </Link>
+            <Link href={`${OWNER_ROUTES.properties.path}/new`}>
+              <GlassCard hoverEffect className="p-4 text-center cursor-pointer">
+                <Plus className="h-6 w-6 mx-auto text-purple-600 mb-2" />
+                <p className="text-sm font-medium text-slate-700">Ajouter un bien</p>
+              </GlassCard>
+            </Link>
           </div>
-          {transformedData.zone1_tasks.length > 0 ? (
-             <OwnerTodoSection todos={transformedData.zone1_tasks} />
-          ) : (
-             <GlassCard className="p-8 text-center text-muted-foreground">
-                <Sparkles className="h-8 w-8 mx-auto text-yellow-500 mb-2" />
-                <p>Rien à signaler, tout est à jour !</p>
-             </GlassCard>
-          )}
         </motion.section>
 
         {/* Zone 2 - Vue finances détaillée */}
@@ -362,6 +452,17 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
              </div>
           </GlassCard>
         </motion.div>
+
+        {/* SOTA 2025 - Usage Limits & Upgrade Trigger */}
+        <motion.section variants={itemVariants} className="space-y-4">
+          <UsageLimitBanner 
+            resource="properties" 
+            variant="inline" 
+            threshold={70}
+            dismissible={true}
+          />
+          <UpgradeTrigger variant="prominent" />
+        </motion.section>
       </motion.div>
     </PageTransition>
   );

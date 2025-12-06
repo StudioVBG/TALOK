@@ -27,6 +27,29 @@ CREATE INDEX IF NOT EXISTS idx_api_providers_name ON api_providers(name);
 CREATE INDEX IF NOT EXISTS idx_api_providers_status ON api_providers(status);
 CREATE INDEX IF NOT EXISTS idx_api_providers_category ON api_providers(category);
 
+-- Ajouter les colonnes manquantes si elles n'existent pas
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_providers' AND column_name = 'type') THEN
+    ALTER TABLE api_providers ADD COLUMN type TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_providers' AND column_name = 'description') THEN
+    ALTER TABLE api_providers ADD COLUMN description TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_providers' AND column_name = 'documentation_url') THEN
+    ALTER TABLE api_providers ADD COLUMN documentation_url TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_providers' AND column_name = 'logo_url') THEN
+    ALTER TABLE api_providers ADD COLUMN logo_url TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_providers' AND column_name = 'config') THEN
+    ALTER TABLE api_providers ADD COLUMN config JSONB DEFAULT '{}'::jsonb;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_providers' AND column_name = 'pricing_info') THEN
+    ALTER TABLE api_providers ADD COLUMN pricing_info TEXT;
+  END IF;
+END$$;
+
 -- ============================================
 -- TABLE DES CREDENTIALS API
 -- ============================================
@@ -57,6 +80,47 @@ CREATE INDEX IF NOT EXISTS idx_api_credentials_provider ON api_credentials(provi
 CREATE INDEX IF NOT EXISTS idx_api_credentials_active ON api_credentials(is_active);
 CREATE INDEX IF NOT EXISTS idx_api_credentials_env ON api_credentials(env);
 CREATE INDEX IF NOT EXISTS idx_api_credentials_created_by ON api_credentials(created_by);
+
+-- Ajouter les colonnes manquantes à api_credentials si elles n'existent pas
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'name') THEN
+    ALTER TABLE api_credentials ADD COLUMN name TEXT NOT NULL DEFAULT '';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'key_hash') THEN
+    ALTER TABLE api_credentials ADD COLUMN key_hash TEXT NOT NULL DEFAULT '';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'encrypted_key') THEN
+    ALTER TABLE api_credentials ADD COLUMN encrypted_key TEXT NOT NULL DEFAULT '';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'permissions') THEN
+    ALTER TABLE api_credentials ADD COLUMN permissions JSONB DEFAULT '{}'::jsonb;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'is_active') THEN
+    ALTER TABLE api_credentials ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'created_by') THEN
+    ALTER TABLE api_credentials ADD COLUMN created_by UUID REFERENCES auth.users(id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'rotated_at') THEN
+    ALTER TABLE api_credentials ADD COLUMN rotated_at TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'last_used_at') THEN
+    ALTER TABLE api_credentials ADD COLUMN last_used_at TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'usage_count') THEN
+    ALTER TABLE api_credentials ADD COLUMN usage_count INTEGER DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'monthly_usage') THEN
+    ALTER TABLE api_credentials ADD COLUMN monthly_usage INTEGER DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'monthly_limit') THEN
+    ALTER TABLE api_credentials ADD COLUMN monthly_limit INTEGER;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_credentials' AND column_name = 'notes') THEN
+    ALTER TABLE api_credentials ADD COLUMN notes TEXT;
+  END IF;
+END$$;
 
 -- ============================================
 -- TABLE DE SUIVI DES USAGES API
@@ -163,10 +227,12 @@ CREATE POLICY "Service role full access to usage_logs"
 -- TRIGGERS
 -- ============================================
 
+DROP TRIGGER IF EXISTS update_api_providers_updated_at ON api_providers;
 CREATE TRIGGER update_api_providers_updated_at 
   BEFORE UPDATE ON api_providers 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_api_credentials_updated_at ON api_credentials;
 CREATE TRIGGER update_api_credentials_updated_at 
   BEFORE UPDATE ON api_credentials 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

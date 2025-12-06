@@ -114,7 +114,7 @@ export function RecapStep() {
             {photos.length > 0 ? (
               <div className="relative w-full h-24 rounded-lg overflow-hidden">
                 {mainPhoto && (
-                  <Image src={mainPhoto.url} alt="Main" fill className="object-cover" />
+                  <Image src={mainPhoto.url} alt="Main" fill sizes="(max-width: 768px) 100vw, 200px" className="object-cover" />
                 )}
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                   <p className="text-white font-bold text-lg flex items-center gap-2">

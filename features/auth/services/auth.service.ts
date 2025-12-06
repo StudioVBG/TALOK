@@ -255,6 +255,100 @@ export class AuthService {
       throw error;
     }
   }
+
+  /**
+   * Connexion OAuth avec Google
+   */
+  async signInWithGoogle() {
+    const redirectUrl = getAuthCallbackUrl();
+    console.log("[AuthService] Démarrage OAuth Google, redirect:", redirectUrl);
+    
+    const { data, error } = await this.supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
+    });
+
+    if (error) {
+      console.error("[AuthService] Erreur OAuth Google:", error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
+   * Connexion OAuth avec GitHub
+   */
+  async signInWithGitHub() {
+    const redirectUrl = getAuthCallbackUrl();
+    console.log("[AuthService] Démarrage OAuth GitHub, redirect:", redirectUrl);
+    
+    const { data, error } = await this.supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: redirectUrl,
+      },
+    });
+
+    if (error) {
+      console.error("[AuthService] Erreur OAuth GitHub:", error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
+   * Connexion OAuth avec Apple
+   */
+  async signInWithApple() {
+    const redirectUrl = getAuthCallbackUrl();
+    console.log("[AuthService] Démarrage OAuth Apple, redirect:", redirectUrl);
+    
+    const { data, error } = await this.supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: {
+        redirectTo: redirectUrl,
+        // Apple-specific options
+        scopes: "name email",
+      },
+    });
+
+    if (error) {
+      console.error("[AuthService] Erreur OAuth Apple:", error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  /**
+   * Connexion OAuth générique
+   */
+  async signInWithOAuth(provider: "google" | "github" | "azure" | "apple") {
+    const redirectUrl = getAuthCallbackUrl();
+    console.log(`[AuthService] Démarrage OAuth ${provider}, redirect:`, redirectUrl);
+    
+    const { data, error } = await this.supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: redirectUrl,
+      },
+    });
+
+    if (error) {
+      console.error(`[AuthService] Erreur OAuth ${provider}:`, error);
+      throw error;
+    }
+
+    return data;
+  }
 }
 
 export const authService = new AuthService();

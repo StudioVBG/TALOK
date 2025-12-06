@@ -5,6 +5,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export interface InvoiceRow {
   id: string;
@@ -63,7 +64,7 @@ export async function fetchInvoices(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   // Vérifier les permissions
@@ -227,7 +228,7 @@ export async function fetchInvoice(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   const { data: profile } = await supabase

@@ -30,6 +30,12 @@ const NOTIFICATION_ICONS: Record<string, typeof Bell> = {
   lease_invite: Home,
   payment: FileText,
   alert: AlertCircle,
+  // Types compteurs
+  meter_reading_required: AlertCircle,
+  meter_reading_reminder: Bell,
+  meter_reading_submitted: Check,
+  edl_scheduled: FileText,
+  edl_meter_pending: AlertCircle,
   default: Bell,
 };
 
@@ -37,6 +43,12 @@ const NOTIFICATION_COLORS: Record<string, string> = {
   lease_invite: "bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400",
   payment: "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400",
   alert: "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400",
+  // Types compteurs
+  meter_reading_required: "bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400",
+  meter_reading_reminder: "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400",
+  meter_reading_submitted: "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400",
+  edl_scheduled: "bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400",
+  edl_meter_pending: "bg-orange-100 text-orange-600 dark:bg-orange-900/50 dark:text-orange-400",
   default: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
 };
 
@@ -124,10 +136,36 @@ export function NotificationBell() {
 
   // Obtenir le lien d'action pour une notification
   const getNotificationLink = (notification: Notification): string | null => {
-    if (notification.type === "lease_invite" && notification.metadata?.lease_id) {
-      return `/app/tenant/dashboard`;
+    switch (notification.type) {
+      case "lease_invite":
+        return `/app/tenant/dashboard`;
+      
+      // Notifications compteurs - Locataire
+      case "meter_reading_required":
+      case "meter_reading_reminder":
+      case "edl_meter_pending":
+        return `/app/tenant/meters`;
+      
+      // Notifications compteurs - Propriétaire
+      case "meter_reading_submitted":
+        if (notification.metadata?.edl_id) {
+          return `/app/owner/inspections/${notification.metadata.edl_id}`;
+        }
+        if (notification.metadata?.property_id) {
+          return `/app/owner/properties/${notification.metadata.property_id}`;
+        }
+        return `/app/owner/dashboard`;
+      
+      // EDL planifié
+      case "edl_scheduled":
+        if (notification.metadata?.edl_id) {
+          return `/app/tenant/signatures`;
+        }
+        return `/app/tenant/meters`;
+      
+      default:
+        return null;
     }
-    return null;
   };
 
   return (

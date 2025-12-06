@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Home, Ruler, BedDouble, Bath, Wallet, Edit, Trash2, Share2, Plus, ImageIcon, X, Car, Building2, Warehouse } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogClose, DialogTitle } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/helpers/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -90,6 +90,9 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
       {/* Lightbox / Gallery Modal */}
       <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
         <DialogContent className="max-w-5xl w-full h-[90vh] p-0 bg-black/95 border-none text-white overflow-hidden flex flex-col">
+          {/* DialogTitle requis pour l'accessibilité (screen readers) */}
+          <DialogTitle className="sr-only">Galerie photos du bien</DialogTitle>
+          
           <div className="absolute top-4 right-4 z-50">
             <DialogClose asChild>
               <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">

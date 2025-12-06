@@ -111,3 +111,27 @@ export function useUpdateLease() {
   });
 }
 
+/**
+ * Hook pour supprimer un bail
+ * Invalide automatiquement le cache après suppression
+ */
+export function useDeleteLease() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (leaseId: string) => {
+      await leasesService.deleteLease(leaseId);
+      return leaseId;
+    },
+    onSuccess: (deletedId) => {
+      // Invalider toutes les requêtes de baux pour forcer le rafraîchissement
+      queryClient.invalidateQueries({ queryKey: ["leases"] });
+      // Supprimer le bail du cache individuel
+      queryClient.removeQueries({ queryKey: ["lease", deletedId] });
+      // Invalider aussi le dashboard car il peut afficher des stats de baux
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["owner-dashboard"] });
+    },
+  });
+}
+

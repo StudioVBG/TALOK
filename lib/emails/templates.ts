@@ -728,5 +728,161 @@ export const emailTemplates = {
       </div>
     `, 'Réinitialisez votre mot de passe Gestion Locative.'),
   }),
+
+  /**
+   * Notification de changement de tarif d'abonnement
+   */
+  priceChange: (data: {
+    userName: string;
+    planName: string;
+    oldPriceMonthly: number;
+    newPriceMonthly: number;
+    oldPriceYearly: number;
+    newPriceYearly: number;
+    effectiveDate: string;
+    grandfatheredUntil: string;
+    changeReason: string;
+    manageUrl: string;
+  }) => {
+    const priceIncrease = data.newPriceMonthly > data.oldPriceMonthly;
+    
+    return {
+      subject: `📢 Évolution de votre abonnement ${data.planName}`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge ${priceIncrease ? 'badge-warning' : 'badge-info'}">
+              MODIFICATION TARIFAIRE
+            </span>
+          </div>
+          
+          <h1>Évolution de votre abonnement</h1>
+          <p>Bonjour ${data.userName},</p>
+          <p>Conformément à l'article L121-84 du Code de la consommation, nous vous informons d'une évolution des tarifs de votre plan <strong>${data.planName}</strong>.</p>
+          
+          <div class="divider"></div>
+          
+          <h2 style="font-size: 18px; margin-bottom: 16px;">Modification tarifaire</h2>
+          
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin-bottom: 24px;">
+            <tr>
+              <td style="padding: 16px; background: ${COLORS.gray[50]}; border-radius: 8px 0 0 8px; text-align: center; width: 45%;">
+                <p style="color: ${COLORS.gray[500]}; font-size: 12px; margin: 0 0 8px 0;">ANCIEN TARIF</p>
+                <p style="text-decoration: line-through; color: ${COLORS.gray[400]}; font-size: 24px; font-weight: 600; margin: 0;">
+                  ${(data.oldPriceMonthly / 100).toFixed(2)}€
+                </p>
+                <p style="color: ${COLORS.gray[500]}; font-size: 12px; margin: 4px 0 0 0;">/mois</p>
+              </td>
+              <td style="padding: 16px; background: ${COLORS.gray[50]}; text-align: center; width: 10%;">
+                <span style="font-size: 20px;">→</span>
+              </td>
+              <td style="padding: 16px; background: ${COLORS.gray[50]}; border-radius: 0 8px 8px 0; text-align: center; width: 45%;">
+                <p style="color: ${COLORS.gray[500]}; font-size: 12px; margin: 0 0 8px 0;">NOUVEAU TARIF</p>
+                <p style="color: ${COLORS.primary}; font-size: 24px; font-weight: 700; margin: 0;">
+                  ${(data.newPriceMonthly / 100).toFixed(2)}€
+                </p>
+                <p style="color: ${COLORS.gray[500]}; font-size: 12px; margin: 4px 0 0 0;">/mois</p>
+              </td>
+            </tr>
+          </table>
+          
+          <div class="highlight-box">
+            <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">📋 Raison de ce changement</p>
+            <p style="color: ${COLORS.gray[700]}; margin: 0;">${data.changeReason}</p>
+          </div>
+          
+          <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); padding: 20px; border-radius: 12px; margin: 24px 0;">
+            <p style="font-weight: 600; color: #065f46; margin: 0 0 8px 0;">🛡️ Garantie de maintien de tarif</p>
+            <p style="color: #047857; margin: 0; font-size: 15px;">
+              Votre tarif actuel est <strong>garanti jusqu'au ${data.grandfatheredUntil}</strong>.<br>
+              Vous ne paierez le nouveau tarif qu'après cette date.
+            </p>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <h2 style="font-size: 18px; margin-bottom: 16px;">Vos options</h2>
+          
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+            <tr>
+              <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+                <span style="color: ${COLORS.success}; font-size: 18px; margin-right: 12px;">✓</span>
+                <span style="color: ${COLORS.gray[700]};">
+                  <strong>Accepter les nouvelles conditions</strong> et continuer à profiter du service
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+                <span style="color: ${COLORS.warning}; font-size: 18px; margin-right: 12px;">↩</span>
+                <span style="color: ${COLORS.gray[700]};">
+                  <strong>Résilier sans frais</strong> avant le ${data.effectiveDate}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 0;">
+                <span style="color: ${COLORS.primary}; font-size: 18px; margin-right: 12px;">💬</span>
+                <span style="color: ${COLORS.gray[700]};">
+                  <strong>Nous contacter</strong> pour toute question
+                </span>
+              </td>
+            </tr>
+          </table>
+          
+          <div style="text-align: center; margin-top: 32px;">
+            <a href="${data.manageUrl}" class="button">Gérer mon abonnement</a>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <p style="font-size: 13px; color: ${COLORS.gray[500]}; text-align: center;">
+            Conformément à l'article L121-84 du Code de la consommation, vous disposez d'un droit de résiliation 
+            sans frais en cas de modification des conditions contractuelles défavorables, exercable avant la date 
+            d'entrée en vigueur des nouvelles conditions.
+          </p>
+        </div>
+      `, `Évolution tarifaire de votre plan ${data.planName} - Action requise`),
+    };
+  },
+
+  /**
+   * Notification de mise à jour des CGU
+   */
+  cguUpdate: (data: {
+    userName: string;
+    version: string;
+    changesSummary: string;
+    effectiveDate: string;
+    acceptUrl: string;
+  }) => ({
+    subject: `📜 Mise à jour des Conditions Générales d'Utilisation`,
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span class="badge badge-info">MISE À JOUR CGU v${data.version}</span>
+        </div>
+        
+        <h1>Mise à jour de nos conditions</h1>
+        <p>Bonjour ${data.userName},</p>
+        <p>Nous avons mis à jour nos Conditions Générales d'Utilisation. Ces modifications entreront en vigueur le <strong>${data.effectiveDate}</strong>.</p>
+        
+        <div class="highlight-box">
+          <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">📋 Résumé des changements</p>
+          <p style="color: ${COLORS.gray[700]}; margin: 0;">${data.changesSummary}</p>
+        </div>
+        
+        <p>En continuant à utiliser nos services après cette date, vous acceptez les nouvelles conditions. Vous pouvez également consulter et accepter explicitement les nouvelles CGU depuis votre espace.</p>
+        
+        <div style="text-align: center;">
+          <a href="${data.acceptUrl}" class="button">Consulter les nouvelles CGU</a>
+        </div>
+        
+        <p style="font-size: 14px; color: ${COLORS.gray[500]};">
+          Si vous n'acceptez pas ces modifications, vous pouvez résilier votre compte avant la date d'entrée en vigueur sans aucun frais.
+        </p>
+      </div>
+    `, `Mise à jour de nos CGU - Version ${data.version}`),
+  }),
 };
 

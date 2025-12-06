@@ -142,7 +142,7 @@ const basePropertySchemaV3 = z.object({
   complement_adresse: z.string().optional().nullable(),
   code_postal: z.string().regex(/^[0-9]{5}$/, "Le code postal doit contenir 5 chiffres"),
   ville: z.string().min(1, "La ville est requise"),
-  departement: z.string().length(2, "Le département doit contenir 2 caractères").optional(),
+  departement: z.string().min(2, "Le département doit contenir au moins 2 caractères").max(3, "Le département doit contenir au maximum 3 caractères").optional(),
   latitude: z.number().min(-90).max(90).optional().nullable(),
   longitude: z.number().min(-180).max(180).optional().nullable(),
   loyer_hc: z.number().positive("Le loyer hors charges doit être strictement positif"),

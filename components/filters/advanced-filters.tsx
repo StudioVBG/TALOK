@@ -1,647 +1,632 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 import {
-  Filter, X, ChevronDown, Search, SlidersHorizontal,
-  Calendar, Check, RotateCcw
+  Filter,
+  X,
+  ChevronDown,
+  Building2,
+  Euro,
+  MapPin,
+  Home,
+  Bed,
+  Bath,
+  Square,
+  Thermometer,
+  Car,
+  Trees,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 
-// Types
-export type FilterType = 
-  | "text"
-  | "select"
-  | "multi-select"
-  | "range"
-  | "date"
-  | "date-range"
-  | "boolean"
-  | "number";
-
-export interface FilterOption {
-  value: string;
-  label: string;
-  count?: number;
+// Types de filtres pour les propriétés
+export interface PropertyFilters {
+  type?: string[];
+  statut?: string[];
+  surface_min?: number;
+  surface_max?: number;
+  loyer_min?: number;
+  loyer_max?: number;
+  nb_pieces_min?: number;
+  nb_pieces_max?: number;
+  nb_chambres_min?: number;
+  ville?: string;
+  dpe?: string[];
+  meuble?: boolean;
+  parking?: boolean;
+  balcon?: boolean;
+  terrasse?: boolean;
+  jardin?: boolean;
+  cave?: boolean;
+  ascenseur?: boolean;
 }
 
-export interface FilterDefinition {
-  id: string;
-  label: string;
-  type: FilterType;
-  options?: FilterOption[];
-  min?: number;
-  max?: number;
-  step?: number;
-  unit?: string;
-  placeholder?: string;
-  defaultValue?: any;
-}
-
-export interface FilterValue {
-  [key: string]: any;
+// Types de filtres pour les locataires
+export interface TenantFilters {
+  statut?: string[];
+  bail_type?: string[];
+  paiement_statut?: string[];
+  revenus_min?: number;
+  revenus_max?: number;
+  score_min?: number;
 }
 
 interface AdvancedFiltersProps {
-  filters: FilterDefinition[];
-  values: FilterValue;
-  onChange: (values: FilterValue) => void;
-  onReset?: () => void;
+  type: "properties" | "tenants";
+  filters: PropertyFilters | TenantFilters;
+  onFiltersChange: (filters: PropertyFilters | TenantFilters) => void;
   className?: string;
-  triggerLabel?: string;
-  showActiveCount?: boolean;
 }
 
-// Composant Filter Item pour chaque type
-function FilterItem({
-  filter,
-  value,
-  onChange,
-}: {
-  filter: FilterDefinition;
-  value: any;
-  onChange: (value: any) => void;
-}) {
-  switch (filter.type) {
-    case "text":
-      return (
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">{filter.label}</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={filter.placeholder || `Rechercher...`}
-              value={value || ""}
-              onChange={(e) => onChange(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </div>
-      );
+// Options pour les filtres de propriétés
+const PROPERTY_TYPES = [
+  { value: "appartement", label: "Appartement" },
+  { value: "maison", label: "Maison" },
+  { value: "studio", label: "Studio" },
+  { value: "parking", label: "Parking" },
+  { value: "local_commercial", label: "Local commercial" },
+  { value: "bureaux", label: "Bureaux" },
+];
 
-    case "select":
-      return (
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">{filter.label}</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                className="w-full justify-between"
-              >
-                {value
-                  ? filter.options?.find((o) => o.value === value)?.label
-                  : filter.placeholder || "Sélectionner..."}
-                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-full p-0" align="start">
-              <Command>
-                <CommandInput placeholder={`Rechercher...`} />
-                <CommandList>
-                  <CommandEmpty>Aucun résultat</CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem
-                      value=""
-                      onSelect={() => onChange(null)}
-                    >
-                      <span className="text-muted-foreground">Tous</span>
-                    </CommandItem>
-                    {filter.options?.map((option) => (
-                      <CommandItem
-                        key={option.value}
-                        value={option.value}
-                        onSelect={() => onChange(option.value)}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            value === option.value ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {option.label}
-                        {option.count !== undefined && (
-                          <Badge variant="secondary" className="ml-auto text-xs">
-                            {option.count}
-                          </Badge>
-                        )}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
-      );
+const PROPERTY_STATUS = [
+  { value: "libre", label: "Libre" },
+  { value: "loue", label: "Loué" },
+  { value: "travaux", label: "En travaux" },
+];
 
-    case "multi-select":
-      const selectedValues = (value as string[]) || [];
-      return (
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">{filter.label}</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full justify-between"
-              >
-                {selectedValues.length > 0
-                  ? `${selectedValues.length} sélectionné${selectedValues.length > 1 ? "s" : ""}`
-                  : filter.placeholder || "Sélectionner..."}
-                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-full p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Rechercher..." />
-                <CommandList>
-                  <CommandEmpty>Aucun résultat</CommandEmpty>
-                  <CommandGroup>
-                    {filter.options?.map((option) => {
-                      const isSelected = selectedValues.includes(option.value);
-                      return (
-                        <CommandItem
-                          key={option.value}
-                          onSelect={() => {
-                            if (isSelected) {
-                              onChange(selectedValues.filter((v) => v !== option.value));
-                            } else {
-                              onChange([...selectedValues, option.value]);
-                            }
-                          }}
-                        >
-                          <div
-                            className={cn(
-                              "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                              isSelected
-                                ? "bg-primary text-primary-foreground"
-                                : "opacity-50"
-                            )}
-                          >
-                            {isSelected && <Check className="h-3 w-3" />}
-                          </div>
-                          {option.label}
-                          {option.count !== undefined && (
-                            <Badge variant="secondary" className="ml-auto text-xs">
-                              {option.count}
-                            </Badge>
-                          )}
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-          {selectedValues.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {selectedValues.map((v) => {
-                const option = filter.options?.find((o) => o.value === v);
-                return (
-                  <Badge
-                    key={v}
-                    variant="secondary"
-                    className="cursor-pointer"
-                    onClick={() => onChange(selectedValues.filter((val) => val !== v))}
-                  >
-                    {option?.label || v}
-                    <X className="ml-1 h-3 w-3" />
-                  </Badge>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      );
+const DPE_OPTIONS = ["A", "B", "C", "D", "E", "F", "G"];
 
-    case "range":
-      const rangeValue = value || [filter.min || 0, filter.max || 100];
-      return (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">{filter.label}</Label>
-            <span className="text-sm text-muted-foreground">
-              {rangeValue[0].toLocaleString("fr-FR")} - {rangeValue[1].toLocaleString("fr-FR")}
-              {filter.unit && ` ${filter.unit}`}
-            </span>
-          </div>
-          <Slider
-            value={rangeValue}
-            onValueChange={onChange}
-            min={filter.min || 0}
-            max={filter.max || 100}
-            step={filter.step || 1}
-            className="w-full"
-          />
-        </div>
-      );
+// Options pour les filtres de locataires
+const TENANT_STATUS = [
+  { value: "actif", label: "Actif" },
+  { value: "en_attente", label: "En attente" },
+  { value: "ancien", label: "Ancien" },
+];
 
-    case "number":
-      return (
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">{filter.label}</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              placeholder={filter.placeholder}
-              value={value || ""}
-              onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-              min={filter.min}
-              max={filter.max}
-              step={filter.step}
-            />
-            {filter.unit && (
-              <span className="text-sm text-muted-foreground">{filter.unit}</span>
-            )}
-          </div>
-        </div>
-      );
+const PAYMENT_STATUS = [
+  { value: "a_jour", label: "À jour" },
+  { value: "retard", label: "En retard" },
+  { value: "impaye", label: "Impayé" },
+];
 
-    case "boolean":
-      return (
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">{filter.label}</Label>
-          <Switch
-            checked={value || false}
-            onCheckedChange={onChange}
-          />
-        </div>
-      );
-
-    case "date":
-      return (
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">{filter.label}</Label>
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="date"
-              value={value || ""}
-              onChange={(e) => onChange(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </div>
-      );
-
-    case "date-range":
-      const dateRange = value || { from: "", to: "" };
-      return (
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">{filter.label}</Label>
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              type="date"
-              placeholder="Du"
-              value={dateRange.from || ""}
-              onChange={(e) => onChange({ ...dateRange, from: e.target.value })}
-            />
-            <Input
-              type="date"
-              placeholder="Au"
-              value={dateRange.to || ""}
-              onChange={(e) => onChange({ ...dateRange, to: e.target.value })}
-            />
-          </div>
-        </div>
-      );
-
-    default:
-      return null;
-  }
-}
-
-/**
- * Composant de filtres avancés
- */
 export function AdvancedFilters({
+  type,
   filters,
-  values,
-  onChange,
-  onReset,
+  onFiltersChange,
   className,
-  triggerLabel = "Filtres",
-  showActiveCount = true,
 }: AdvancedFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [localValues, setLocalValues] = useState<FilterValue>(values);
 
-  // Mettre à jour les valeurs locales quand les valeurs externes changent
-  useEffect(() => {
-    setLocalValues(values);
-  }, [values]);
+  // Compteur de filtres actifs
+  const activeFiltersCount = Object.entries(filters).filter(([_, value]) => {
+    if (value === undefined || value === null) return false;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "boolean") return value;
+    return true;
+  }).length;
 
-  // Compter les filtres actifs
-  const activeCount = useMemo(() => {
-    let count = 0;
-    for (const [key, val] of Object.entries(localValues)) {
-      if (val === null || val === undefined || val === "") continue;
-      if (Array.isArray(val) && val.length === 0) continue;
-      if (typeof val === "object" && !Array.isArray(val)) {
-        if (val.from || val.to) count++;
-        continue;
-      }
-      count++;
+  const handleReset = () => {
+    onFiltersChange({});
+  };
+
+  const updateFilter = (key: string, value: any) => {
+    const newFilters = { ...filters, [key]: value };
+    // Supprimer les valeurs vides
+    if (value === undefined || value === null || value === "" || 
+        (Array.isArray(value) && value.length === 0)) {
+      delete (newFilters as any)[key];
     }
-    return count;
-  }, [localValues]);
+    onFiltersChange(newFilters);
+  };
 
-  const handleChange = useCallback((filterId: string, value: any) => {
-    setLocalValues((prev) => ({
-      ...prev,
-      [filterId]: value,
-    }));
-  }, []);
-
-  const handleApply = useCallback(() => {
-    onChange(localValues);
-    setIsOpen(false);
-  }, [localValues, onChange]);
-
-  const handleReset = useCallback(() => {
-    const resetValues: FilterValue = {};
-    filters.forEach((f) => {
-      resetValues[f.id] = f.defaultValue ?? null;
-    });
-    setLocalValues(resetValues);
-    onChange(resetValues);
-    onReset?.();
-  }, [filters, onChange, onReset]);
+  const toggleArrayFilter = (key: string, value: string) => {
+    const current = (filters as any)[key] || [];
+    const newValue = current.includes(value)
+      ? current.filter((v: string) => v !== value)
+      : [...current, value];
+    updateFilter(key, newValue);
+  };
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
         <Button
           variant="outline"
           className={cn("gap-2", className)}
         >
-          <SlidersHorizontal className="h-4 w-4" />
-          {triggerLabel}
-          {showActiveCount && activeCount > 0 && (
-            <Badge variant="secondary" className="ml-1">
-              {activeCount}
+          <Filter className="h-4 w-4" />
+          Filtres
+          {activeFiltersCount > 0 && (
+            <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 justify-center">
+              {activeFiltersCount}
             </Badge>
           )}
         </Button>
-      </SheetTrigger>
-      
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtres avancés
-          </SheetTitle>
-        </SheetHeader>
-
-        <div className="py-6 space-y-6">
-          {filters.map((filter, index) => (
-            <motion.div
-              key={filter.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <FilterItem
-                filter={filter}
-                value={localValues[filter.id]}
-                onChange={(value) => handleChange(filter.id, value)}
-              />
-              {index < filters.length - 1 && (
-                <Separator className="mt-6" />
-              )}
-            </motion.div>
-          ))}
-        </div>
-
-        <SheetFooter className="flex-row gap-2 sm:justify-between">
-          <Button
-            variant="ghost"
-            onClick={handleReset}
-            className="gap-2"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Réinitialiser
-          </Button>
-          <Button onClick={handleApply}>
-            Appliquer les filtres
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-// Version inline pour affichage horizontal
-export function InlineFilters({
-  filters,
-  values,
-  onChange,
-  onReset,
-  className,
-}: Omit<AdvancedFiltersProps, "triggerLabel" | "showActiveCount">) {
-  const handleChange = useCallback((filterId: string, value: any) => {
-    onChange({
-      ...values,
-      [filterId]: value,
-    });
-  }, [values, onChange]);
-
-  const hasActiveFilters = useMemo(() => {
-    for (const [, val] of Object.entries(values)) {
-      if (val === null || val === undefined || val === "") continue;
-      if (Array.isArray(val) && val.length === 0) continue;
-      return true;
-    }
-    return false;
-  }, [values]);
-
-  return (
-    <div className={cn("flex flex-wrap items-center gap-3", className)}>
-      {filters.slice(0, 4).map((filter) => (
-        <div key={filter.id} className="min-w-[150px]">
-          {filter.type === "select" && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full justify-between">
-                  <span className="truncate">
-                    {values[filter.id]
-                      ? filter.options?.find((o) => o.value === values[filter.id])?.label
-                      : filter.label}
-                  </span>
-                  <ChevronDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Rechercher..." />
-                  <CommandList>
-                    <CommandEmpty>Aucun résultat</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem onSelect={() => handleChange(filter.id, null)}>
-                        <span className="text-muted-foreground">Tous</span>
-                      </CommandItem>
-                      {filter.options?.map((option) => (
-                        <CommandItem
-                          key={option.value}
-                          onSelect={() => handleChange(filter.id, option.value)}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              values[filter.id] === option.value ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {option.label}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+      </PopoverTrigger>
+      <PopoverContent className="w-[380px] p-0" align="start">
+        <div className="p-4 border-b flex items-center justify-between">
+          <h4 className="font-semibold">Filtres avancés</h4>
+          {activeFiltersCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleReset}>
+              <X className="h-3 w-3 mr-1" />
+              Réinitialiser
+            </Button>
           )}
         </div>
-      ))}
-      
-      {hasActiveFilters && onReset && (
-        <Button variant="ghost" size="sm" onClick={onReset} className="gap-1">
-          <X className="h-3 w-3" />
-          Effacer
-        </Button>
-      )}
-    </div>
+
+        <div className="max-h-[400px] overflow-y-auto">
+          {type === "properties" ? (
+            <PropertyFiltersContent
+              filters={filters as PropertyFilters}
+              updateFilter={updateFilter}
+              toggleArrayFilter={toggleArrayFilter}
+            />
+          ) : (
+            <TenantFiltersContent
+              filters={filters as TenantFilters}
+              updateFilter={updateFilter}
+              toggleArrayFilter={toggleArrayFilter}
+            />
+          )}
+        </div>
+
+        <div className="p-4 border-t bg-muted/30">
+          <Button className="w-full" onClick={() => setIsOpen(false)}>
+            Appliquer les filtres
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
-// Configurations de filtres prédéfinies
-export const filterPresets = {
-  properties: [
-    {
-      id: "type",
-      label: "Type de bien",
-      type: "select" as const,
-      options: [
-        { value: "appartement", label: "Appartement" },
-        { value: "maison", label: "Maison" },
-        { value: "studio", label: "Studio" },
-        { value: "colocation", label: "Colocation" },
-      ],
-    },
-    {
-      id: "status",
-      label: "Statut",
-      type: "select" as const,
-      options: [
-        { value: "available", label: "Disponible" },
-        { value: "rented", label: "Loué" },
-        { value: "maintenance", label: "En travaux" },
-      ],
-    },
-    {
-      id: "rent",
-      label: "Loyer",
-      type: "range" as const,
-      min: 0,
-      max: 3000,
-      step: 50,
-      unit: "€",
-    },
-    {
-      id: "surface",
-      label: "Surface",
-      type: "range" as const,
-      min: 0,
-      max: 200,
-      step: 5,
-      unit: "m²",
-    },
-    {
-      id: "city",
-      label: "Ville",
-      type: "text" as const,
-      placeholder: "Rechercher une ville...",
-    },
-  ],
-  
-  invoices: [
-    {
-      id: "status",
-      label: "Statut",
-      type: "multi-select" as const,
-      options: [
-        { value: "draft", label: "Brouillon" },
-        { value: "sent", label: "Envoyée" },
-        { value: "paid", label: "Payée" },
-        { value: "late", label: "En retard" },
-      ],
-    },
-    {
-      id: "period",
-      label: "Période",
-      type: "date-range" as const,
-    },
-    {
-      id: "minAmount",
-      label: "Montant min",
-      type: "number" as const,
-      unit: "€",
-    },
-  ],
-  
-  tenants: [
-    {
-      id: "search",
-      label: "Recherche",
-      type: "text" as const,
-      placeholder: "Nom, email, téléphone...",
-    },
-    {
-      id: "hasLease",
-      label: "Avec bail actif",
-      type: "boolean" as const,
-    },
-    {
-      id: "paymentStatus",
-      label: "Paiements",
-      type: "select" as const,
-      options: [
-        { value: "ok", label: "À jour" },
-        { value: "late", label: "En retard" },
-      ],
-    },
-  ],
-};
+// Contenu des filtres pour les propriétés
+function PropertyFiltersContent({
+  filters,
+  updateFilter,
+  toggleArrayFilter,
+}: {
+  filters: PropertyFilters;
+  updateFilter: (key: string, value: any) => void;
+  toggleArrayFilter: (key: string, value: string) => void;
+}) {
+  return (
+    <Accordion type="multiple" defaultValue={["type", "price"]} className="px-4">
+      {/* Type de bien */}
+      <AccordionItem value="type">
+        <AccordionTrigger className="text-sm">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Type de bien
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="grid grid-cols-2 gap-2">
+            {PROPERTY_TYPES.map((option) => (
+              <Button
+                key={option.value}
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "justify-start h-8 text-xs",
+                  filters.type?.includes(option.value) && "bg-primary/10 border-primary"
+                )}
+                onClick={() => toggleArrayFilter("type", option.value)}
+              >
+                {filters.type?.includes(option.value) && (
+                  <Check className="h-3 w-3 mr-1" />
+                )}
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Statut */}
+      <AccordionItem value="status">
+        <AccordionTrigger className="text-sm">
+          <div className="flex items-center gap-2">
+            <Home className="h-4 w-4" />
+            Statut
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="flex flex-wrap gap-2">
+            {PROPERTY_STATUS.map((option) => (
+              <Button
+                key={option.value}
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-8 text-xs",
+                  filters.statut?.includes(option.value) && "bg-primary/10 border-primary"
+                )}
+                onClick={() => toggleArrayFilter("statut", option.value)}
+              >
+                {filters.statut?.includes(option.value) && (
+                  <Check className="h-3 w-3 mr-1" />
+                )}
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Prix / Loyer */}
+      <AccordionItem value="price">
+        <AccordionTrigger className="text-sm">
+          <div className="flex items-center gap-2">
+            <Euro className="h-4 w-4" />
+            Loyer
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Min (€)</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={filters.loyer_min || ""}
+                onChange={(e) => updateFilter("loyer_min", e.target.value ? Number(e.target.value) : undefined)}
+                className="h-8 mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Max (€)</Label>
+              <Input
+                type="number"
+                placeholder="5000"
+                value={filters.loyer_max || ""}
+                onChange={(e) => updateFilter("loyer_max", e.target.value ? Number(e.target.value) : undefined)}
+                className="h-8 mt-1"
+              />
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Surface */}
+      <AccordionItem value="surface">
+        <AccordionTrigger className="text-sm">
+          <div className="flex items-center gap-2">
+            <Square className="h-4 w-4" />
+            Surface
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Min (m²)</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={filters.surface_min || ""}
+                onChange={(e) => updateFilter("surface_min", e.target.value ? Number(e.target.value) : undefined)}
+                className="h-8 mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Max (m²)</Label>
+              <Input
+                type="number"
+                placeholder="500"
+                value={filters.surface_max || ""}
+                onChange={(e) => updateFilter("surface_max", e.target.value ? Number(e.target.value) : undefined)}
+                className="h-8 mt-1"
+              />
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Pièces */}
+      <AccordionItem value="rooms">
+        <AccordionTrigger className="text-sm">
+          <div className="flex items-center gap-2">
+            <Bed className="h-4 w-4" />
+            Pièces & chambres
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Pièces min</Label>
+                <Input
+                  type="number"
+                  placeholder="1"
+                  value={filters.nb_pieces_min || ""}
+                  onChange={(e) => updateFilter("nb_pieces_min", e.target.value ? Number(e.target.value) : undefined)}
+                  className="h-8 mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Pièces max</Label>
+                <Input
+                  type="number"
+                  placeholder="10"
+                  value={filters.nb_pieces_max || ""}
+                  onChange={(e) => updateFilter("nb_pieces_max", e.target.value ? Number(e.target.value) : undefined)}
+                  className="h-8 mt-1"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Chambres min</Label>
+              <Input
+                type="number"
+                placeholder="1"
+                value={filters.nb_chambres_min || ""}
+                onChange={(e) => updateFilter("nb_chambres_min", e.target.value ? Number(e.target.value) : undefined)}
+                className="h-8 mt-1"
+              />
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* DPE */}
+      <AccordionItem value="dpe">
+        <AccordionTrigger className="text-sm">
+          <div className="flex items-center gap-2">
+            <Thermometer className="h-4 w-4" />
+            DPE
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="flex gap-1">
+            {DPE_OPTIONS.map((dpe) => (
+              <Button
+                key={dpe}
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "w-8 h-8 p-0 text-xs font-bold",
+                  filters.dpe?.includes(dpe) && "bg-primary/10 border-primary",
+                  dpe === "A" && "text-green-600",
+                  dpe === "B" && "text-lime-600",
+                  dpe === "C" && "text-yellow-600",
+                  dpe === "D" && "text-orange-500",
+                  dpe === "E" && "text-orange-600",
+                  dpe === "F" && "text-red-500",
+                  dpe === "G" && "text-red-700"
+                )}
+                onClick={() => toggleArrayFilter("dpe", dpe)}
+              >
+                {dpe}
+              </Button>
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Équipements */}
+      <AccordionItem value="amenities">
+        <AccordionTrigger className="text-sm">
+          <div className="flex items-center gap-2">
+            <Car className="h-4 w-4" />
+            Équipements
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Meublé</Label>
+              <Switch
+                checked={filters.meuble || false}
+                onCheckedChange={(v) => updateFilter("meuble", v || undefined)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Parking</Label>
+              <Switch
+                checked={filters.parking || false}
+                onCheckedChange={(v) => updateFilter("parking", v || undefined)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Balcon</Label>
+              <Switch
+                checked={filters.balcon || false}
+                onCheckedChange={(v) => updateFilter("balcon", v || undefined)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Terrasse</Label>
+              <Switch
+                checked={filters.terrasse || false}
+                onCheckedChange={(v) => updateFilter("terrasse", v || undefined)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Jardin</Label>
+              <Switch
+                checked={filters.jardin || false}
+                onCheckedChange={(v) => updateFilter("jardin", v || undefined)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Cave</Label>
+              <Switch
+                checked={filters.cave || false}
+                onCheckedChange={(v) => updateFilter("cave", v || undefined)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Ascenseur</Label>
+              <Switch
+                checked={filters.ascenseur || false}
+                onCheckedChange={(v) => updateFilter("ascenseur", v || undefined)}
+              />
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Localisation */}
+      <AccordionItem value="location">
+        <AccordionTrigger className="text-sm">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Localisation
+          </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div>
+            <Label className="text-xs">Ville</Label>
+            <Input
+              placeholder="Paris, Lyon..."
+              value={filters.ville || ""}
+              onChange={(e) => updateFilter("ville", e.target.value || undefined)}
+              className="h-8 mt-1"
+            />
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
+// Contenu des filtres pour les locataires
+function TenantFiltersContent({
+  filters,
+  updateFilter,
+  toggleArrayFilter,
+}: {
+  filters: TenantFilters;
+  updateFilter: (key: string, value: any) => void;
+  toggleArrayFilter: (key: string, value: string) => void;
+}) {
+  return (
+    <Accordion type="multiple" defaultValue={["status", "payment"]} className="px-4">
+      {/* Statut */}
+      <AccordionItem value="status">
+        <AccordionTrigger className="text-sm">Statut du locataire</AccordionTrigger>
+        <AccordionContent>
+          <div className="flex flex-wrap gap-2">
+            {TENANT_STATUS.map((option) => (
+              <Button
+                key={option.value}
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-8 text-xs",
+                  filters.statut?.includes(option.value) && "bg-primary/10 border-primary"
+                )}
+                onClick={() => toggleArrayFilter("statut", option.value)}
+              >
+                {filters.statut?.includes(option.value) && (
+                  <Check className="h-3 w-3 mr-1" />
+                )}
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Statut de paiement */}
+      <AccordionItem value="payment">
+        <AccordionTrigger className="text-sm">Statut de paiement</AccordionTrigger>
+        <AccordionContent>
+          <div className="flex flex-wrap gap-2">
+            {PAYMENT_STATUS.map((option) => (
+              <Button
+                key={option.value}
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-8 text-xs",
+                  filters.paiement_statut?.includes(option.value) && "bg-primary/10 border-primary"
+                )}
+                onClick={() => toggleArrayFilter("paiement_statut", option.value)}
+              >
+                {filters.paiement_statut?.includes(option.value) && (
+                  <Check className="h-3 w-3 mr-1" />
+                )}
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Revenus */}
+      <AccordionItem value="income">
+        <AccordionTrigger className="text-sm">Revenus mensuels</AccordionTrigger>
+        <AccordionContent>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Min (€)</Label>
+              <Input
+                type="number"
+                placeholder="0"
+                value={filters.revenus_min || ""}
+                onChange={(e) => updateFilter("revenus_min", e.target.value ? Number(e.target.value) : undefined)}
+                className="h-8 mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Max (€)</Label>
+              <Input
+                type="number"
+                placeholder="10000"
+                value={filters.revenus_max || ""}
+                onChange={(e) => updateFilter("revenus_max", e.target.value ? Number(e.target.value) : undefined)}
+                className="h-8 mt-1"
+              />
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Score */}
+      <AccordionItem value="score">
+        <AccordionTrigger className="text-sm">Score minimum</AccordionTrigger>
+        <AccordionContent>
+          <div>
+            <Label className="text-xs">Score min (0-100)</Label>
+            <Input
+              type="number"
+              placeholder="0"
+              min={0}
+              max={100}
+              value={filters.score_min || ""}
+              onChange={(e) => updateFilter("score_min", e.target.value ? Number(e.target.value) : undefined)}
+              className="h-8 mt-1"
+            />
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
 
 export default AdvancedFilters;
-

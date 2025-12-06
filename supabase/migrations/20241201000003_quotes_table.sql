@@ -9,16 +9,16 @@ CREATE TABLE IF NOT EXISTS quotes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   provider_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   ticket_id UUID REFERENCES tickets(id) ON DELETE SET NULL,
-  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-  owner_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  reference TEXT NOT NULL UNIQUE,
-  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'accepted', 'rejected', 'expired')),
-  items JSONB NOT NULL DEFAULT '[]',
-  subtotal DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+  owner_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  reference TEXT UNIQUE,
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'accepted', 'rejected', 'expired', 'pending', 'approved')),
+  items JSONB DEFAULT '[]',
+  subtotal DECIMAL(10, 2) DEFAULT 0,
   tax_rate DECIMAL(5, 2) DEFAULT 20,
-  tax_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
-  total DECIMAL(10, 2) NOT NULL DEFAULT 0,
-  valid_until TIMESTAMPTZ NOT NULL,
+  tax_amount DECIMAL(10, 2) DEFAULT 0,
+  total DECIMAL(10, 2) DEFAULT 0,
+  valid_until TIMESTAMPTZ,
   notes TEXT,
   rejection_reason TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -27,12 +27,61 @@ CREATE TABLE IF NOT EXISTS quotes (
   responded_at TIMESTAMPTZ
 );
 
--- Index
+-- Ajouter les colonnes manquantes si la table existe déjà
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'owner_id') THEN
+    ALTER TABLE quotes ADD COLUMN owner_id UUID REFERENCES profiles(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'property_id') THEN
+    ALTER TABLE quotes ADD COLUMN property_id UUID REFERENCES properties(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'reference') THEN
+    ALTER TABLE quotes ADD COLUMN reference TEXT UNIQUE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'items') THEN
+    ALTER TABLE quotes ADD COLUMN items JSONB DEFAULT '[]';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'subtotal') THEN
+    ALTER TABLE quotes ADD COLUMN subtotal DECIMAL(10, 2) DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'tax_rate') THEN
+    ALTER TABLE quotes ADD COLUMN tax_rate DECIMAL(5, 2) DEFAULT 20;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'tax_amount') THEN
+    ALTER TABLE quotes ADD COLUMN tax_amount DECIMAL(10, 2) DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'total') THEN
+    ALTER TABLE quotes ADD COLUMN total DECIMAL(10, 2) DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'notes') THEN
+    ALTER TABLE quotes ADD COLUMN notes TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'rejection_reason') THEN
+    ALTER TABLE quotes ADD COLUMN rejection_reason TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'sent_at') THEN
+    ALTER TABLE quotes ADD COLUMN sent_at TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'responded_at') THEN
+    ALTER TABLE quotes ADD COLUMN responded_at TIMESTAMPTZ;
+  END IF;
+END$$;
+
+-- Index (avec vérification)
 CREATE INDEX IF NOT EXISTS idx_quotes_provider ON quotes(provider_id);
-CREATE INDEX IF NOT EXISTS idx_quotes_owner ON quotes(owner_id);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'owner_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_quotes_owner ON quotes(owner_id);
+  END IF;
+END$$;
 CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status);
 CREATE INDEX IF NOT EXISTS idx_quotes_ticket ON quotes(ticket_id);
-CREATE INDEX IF NOT EXISTS idx_quotes_reference ON quotes(reference);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'quotes' AND column_name = 'reference') THEN
+    CREATE INDEX IF NOT EXISTS idx_quotes_reference ON quotes(reference);
+  END IF;
+END$$;
 
 -- Trigger pour updated_at
 CREATE OR REPLACE FUNCTION update_quotes_updated_at()

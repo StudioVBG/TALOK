@@ -175,7 +175,7 @@ export function PropertyRoomsPhotosTab({
             ) : (
               photos.map((photo) => (
                 <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden border">
-                  <Image src={photo.url} alt="Photo" fill className="object-cover" />
+                  <Image src={photo.url} alt="Photo" fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
                 </div>
               ))
             )}
@@ -305,7 +305,7 @@ export function PropertyRoomsPhotosTab({
               <div className="grid grid-cols-2 gap-2">
                 {unclassifiedPhotos.slice(0, 4).map((photo) => (
                   <div key={photo.id} className="relative aspect-square rounded overflow-hidden border">
-                    <Image src={photo.url} alt="Photo non classée" fill className="object-cover" />
+                    <Image src={photo.url} alt="Photo non classée" fill sizes="100px" className="object-cover" />
                   </div>
                 ))}
               </div>
@@ -339,7 +339,7 @@ export function PropertyRoomsPhotosTab({
               ) : (
                 selectedRoomPhotos.map((photo) => (
                   <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden border group">
-                    <Image src={photo.url} alt="Photo" fill className="object-cover" />
+                    <Image src={photo.url} alt="Photo" fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
                     {photo.is_main && (
                       <Badge className="absolute top-2 right-2 z-10" variant="default">
                         Principale

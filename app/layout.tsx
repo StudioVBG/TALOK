@@ -1,12 +1,39 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Dancing_Script, Great_Vibes, Pacifico, Satisfy } from "next/font/google";
 import "./globals.css";
+
+// Polices cursives pour les signatures
+const dancingScript = Dancing_Script({ 
+  subsets: ["latin"], 
+  variable: "--font-dancing-script",
+  display: "swap",
+});
+const greatVibes = Great_Vibes({ 
+  weight: "400",
+  subsets: ["latin"], 
+  variable: "--font-great-vibes",
+  display: "swap",
+});
+const pacifico = Pacifico({ 
+  weight: "400",
+  subsets: ["latin"], 
+  variable: "--font-pacifico",
+  display: "swap",
+});
+const satisfy = Satisfy({ 
+  weight: "400",
+  subsets: ["latin"], 
+  variable: "--font-satisfy",
+  display: "swap",
+});
 import "@/lib/utils/console-filter"; // Filtre les erreurs d'extensions
 import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/components/layout/navbar";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { PageTransition } from "@/components/ui/page-transition";
+import { SubscriptionProvider } from "@/components/subscription/subscription-provider";
+import { PostHogProvider } from "@/components/analytics/posthog-provider";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -103,16 +130,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.className} ${dancingScript.variable} ${greatVibes.variable} ${pacifico.variable} ${satisfy.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <QueryProvider>
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <PageTransition>
-                <main className="flex-1">{children}</main>
-              </PageTransition>
-              <Toaster />
-            </div>
+            <PostHogProvider>
+              <SubscriptionProvider>
+                <div className="min-h-screen flex flex-col">
+                  <Navbar />
+                  <PageTransition>
+                    <main className="flex-1">{children}</main>
+                  </PageTransition>
+                  <Toaster />
+                </div>
+              </SubscriptionProvider>
+            </PostHogProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

@@ -34,6 +34,8 @@ import { cn } from "@/lib/utils";
 import { LeaseTypeCards, LEASE_TYPE_CONFIGS, type LeaseType } from "./LeaseTypeCards";
 import { PropertySelector } from "./PropertySelector";
 import { TenantInvite } from "./TenantInvite";
+import { ColocationConfig, DEFAULT_COLOCATION_CONFIG, type ColocationConfigData } from "./ColocationConfig";
+import { MultiTenantInvite, type Invitee } from "./MultiTenantInvite";
 
 interface Property {
   id: string;
@@ -89,6 +91,13 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   const [charges, setCharges] = useState<number>(0);
   const [depot, setDepot] = useState<number>(0);
   const [dateDebut, setDateDebut] = useState<string>(new Date().toISOString().split("T")[0]);
+  
+  // ✅ États pour la colocation
+  const [colocConfig, setColocConfig] = useState<ColocationConfigData>(DEFAULT_COLOCATION_CONFIG);
+  const [invitees, setInvitees] = useState<Invitee[]>([]);
+  
+  // Vérifier si c'est un bail colocation
+  const isColocation = selectedType === "colocation";
 
   // Propriété sélectionnée
   const selectedProperty = useMemo(
@@ -110,6 +119,25 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     if (!leaseConfig || !loyer) return null;
     return loyer * leaseConfig.maxDepositMonths;
   }, [leaseConfig, loyer]);
+
+  // ✅ Mapping type de bail → types de propriétés compatibles
+  const PROPERTY_TYPES_BY_LEASE: Record<LeaseType, string[]> = {
+    nu: ["appartement", "maison", "studio"],
+    meuble: ["appartement", "maison", "studio", "colocation"],
+    colocation: ["appartement", "maison", "colocation"],
+    saisonnier: ["appartement", "maison", "studio", "saisonnier"],
+    bail_mobilite: ["appartement", "maison", "studio"],
+    contrat_parking: ["parking", "box"],
+    commercial_3_6_9: ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"],
+    professionnel: ["bureaux", "local_commercial"],
+  };
+
+  // ✅ Filtrer les propriétés selon le type de bail sélectionné
+  const filteredProperties = useMemo(() => {
+    if (!selectedType) return properties;
+    const allowedTypes = PROPERTY_TYPES_BY_LEASE[selectedType];
+    return properties.filter((p) => allowedTypes.includes(p.type || ""));
+  }, [properties, selectedType]);
 
   // Gestion de la sélection de propriété
   const handlePropertySelect = useCallback((property: Property) => {
@@ -153,11 +181,18 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       case 2:
         return selectedPropertyId !== null && loyer > 0;
       case 3:
+        // Validation différente pour colocation vs bail standard
+        if (isColocation) {
+          const validInvitees = invitees.filter(i => 
+            i.email.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i.email)
+          );
+          return validInvitees.length > 0; // Au moins 1 colocataire valide
+        }
         return tenantEmail.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tenantEmail);
       default:
         return false;
     }
-  }, [currentStep, selectedType, selectedPropertyId, loyer, tenantEmail]);
+  }, [currentStep, selectedType, selectedPropertyId, loyer, tenantEmail, isColocation, invitees]);
 
   // Navigation
   const goNext = () => {
@@ -174,18 +209,54 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
 
   // Soumission finale
   const handleSubmit = async () => {
-    if (!selectedType || !selectedPropertyId || !tenantEmail) {
-      toast({
-        title: "Données manquantes",
-        description: "Veuillez remplir tous les champs obligatoires",
-        variant: "destructive",
-      });
-      return;
+    // Validation différente selon le type de bail
+    if (isColocation) {
+      const validInvitees = invitees.filter(i => i.email);
+      if (!selectedType || !selectedPropertyId || validInvitees.length === 0) {
+        toast({
+          title: "Données manquantes",
+          description: "Veuillez sélectionner un bien et inviter au moins un colocataire",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      if (!selectedType || !selectedPropertyId || !tenantEmail) {
+        toast({
+          title: "Données manquantes",
+          description: "Veuillez remplir tous les champs obligatoires",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
 
     try {
+      // Préparer les données de colocation si applicable
+      const colocData = isColocation ? {
+        coloc_config: {
+          nb_places: colocConfig.nbPlaces,
+          bail_type: colocConfig.bailType,
+          solidarite: colocConfig.solidarite,
+          solidarite_duration_months: colocConfig.solidariteDurationMonths,
+          split_mode: colocConfig.splitMode,
+        },
+        invitees: invitees
+          .filter(i => i.email)
+          .map(i => ({
+            email: i.email,
+            name: i.name || null,
+            role: i.role,
+            weight: i.weight || (1 / colocConfig.nbPlaces),
+            room_label: i.roomLabel || null,
+            has_guarantor: i.hasGuarantor,
+            guarantor_email: i.guarantorEmail || null,
+            guarantor_name: i.guarantorName || null,
+          })),
+      } : {};
+
       // Créer le bail et envoyer l'invitation
       const response = await fetch("/api/leases/invite", {
         method: "POST",
@@ -198,8 +269,11 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
           depot_garantie: depot,
           date_debut: dateDebut,
           date_fin: dateFin,
-          tenant_email: tenantEmail,
-          tenant_name: tenantName || null,
+          // Données standard ou colocation
+          ...(isColocation ? colocData : {
+            tenant_email: tenantEmail,
+            tenant_name: tenantName || null,
+          }),
         }),
       });
 
@@ -378,7 +452,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         </summary>
                         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                           <PropertySelector
-                            properties={properties}
+                            properties={filteredProperties}
                             selectedPropertyId={selectedPropertyId}
                             onSelect={handlePropertySelect}
                           />
@@ -388,7 +462,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                   ) : (
                     /* Sélecteur normal si pas de pré-sélection */
                     <PropertySelector
-                      properties={properties}
+                      properties={filteredProperties}
                       selectedPropertyId={selectedPropertyId}
                       onSelect={handlePropertySelect}
                     />
@@ -524,12 +598,31 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
 
               {/* Étape 3 : Invitation locataire */}
               {currentStep === 3 && (
-                <TenantInvite
-                  tenantEmail={tenantEmail}
-                  tenantName={tenantName}
-                  onEmailChange={setTenantEmail}
-                  onNameChange={setTenantName}
-                />
+                isColocation ? (
+                  <div className="space-y-8">
+                    {/* Configuration colocation */}
+                    <ColocationConfig
+                      property={selectedProperty || null}
+                      config={colocConfig}
+                      onConfigChange={setColocConfig}
+                    />
+                    
+                    {/* Invitations multiples */}
+                    <MultiTenantInvite
+                      config={colocConfig}
+                      invitees={invitees}
+                      onInviteesChange={setInvitees}
+                      totalRent={loyer + charges}
+                    />
+                  </div>
+                ) : (
+                  <TenantInvite
+                    tenantEmail={tenantEmail}
+                    tenantName={tenantName}
+                    onEmailChange={setTenantEmail}
+                    onNameChange={setTenantName}
+                  />
+                )
               )}
             </motion.div>
           </AnimatePresence>

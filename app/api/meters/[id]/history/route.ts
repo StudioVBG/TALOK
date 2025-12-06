@@ -41,19 +41,48 @@ export async function GET(
 
     const meterData = meter as any;
 
-    // Vérifier les permissions
-    const { data: roommate } = await supabase
-      .from("roommates")
-      .select("id")
-      .eq("lease_id", meterData.lease_id)
-      .eq("user_id", user.id as any)
-      .maybeSingle();
+    // Vérifier les permissions (propriétaire, locataire, ou admin)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
 
-    if (!roommate) {
-      return NextResponse.json(
-        { error: "Accès non autorisé" },
-        { status: 403 }
-      );
+    const profileData = profile as any;
+    const isAdmin = profileData?.role === "admin";
+
+    if (!isAdmin) {
+      // Vérifier si propriétaire du logement
+      const { data: property } = await supabase
+        .from("properties")
+        .select("owner_id")
+        .eq("id", meterData.property_id)
+        .single();
+
+      const isOwner = property && (property as any).owner_id === profileData?.id;
+
+      if (!isOwner) {
+        // Vérifier si locataire (via lease_signers)
+        const { data: signer } = await supabase
+          .from("lease_signers")
+          .select("id")
+          .eq("profile_id", profileData?.id)
+          .in("lease_id", 
+            supabase
+              .from("leases")
+              .select("id")
+              .eq("property_id", meterData.property_id)
+              .eq("statut", "active")
+          )
+          .maybeSingle();
+
+        if (!signer) {
+          return NextResponse.json(
+            { error: "Accès non autorisé" },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     // Construire la requête

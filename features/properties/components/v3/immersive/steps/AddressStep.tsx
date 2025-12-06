@@ -9,88 +9,378 @@ import { usePropertyWizardStore } from "@/features/properties/stores/wizard-stor
 import { MapPin, Check, Building2, HelpCircle, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { getDepartementCodeFromCP, getDepartementNameFromCP, DEPARTEMENT_NAMES } from "@/lib/helpers/address-utils";
 
-const POSTAL_CODE_TO_CITY: Record<string, string[]> = {
-  "97200": ["Fort-de-France"],
-  "97220": ["Le Robert", "La Trinité", "Le François"],
-  "97232": ["Le Lamentin"],
-  "97250": ["Sainte-Marie", "Le Marigot"],
-  "97100": ["Basse-Terre"],
-  "97400": ["Saint-Denis"],
-  "75001": ["Paris 1er"],
-  "75002": ["Paris 2e"],
-  "75000": ["Paris"],
+// Mapping QUARTIERS/LIEUX-DITS -> CODE POSTAL (Martinique principalement)
+// Permet de détecter le code postal depuis un nom de quartier
+const QUARTIER_TO_POSTAL_CODE: Record<string, string> = {
+  // Le Lamentin (97232)
+  "acajou": "97232",
+  "la lézarde": "97232",
+  "bois rouge": "97232",
+  "petit manoir": "97232",
+  "long pré": "97232",
+  "californie": "97232",
+  "pelletier": "97232",
+  "roches carrées": "97232",
+  "mangot vulcin": "97232",
+  // Fort-de-France (97200)
+  "didier": "97200",
+  "cluny": "97200",
+  "terres sainville": "97200",
+  "redoute": "97200",
+  "bellevue": "97200",
+  "saint-thérèse": "97200",
+  "dillon": "97200",
+  "floréal": "97200",
+  // Le Robert (97231)
+  "pointe lynch": "97231",
+  "mansarde": "97231",
+  "vert pré": "97231",
+  "fond d'or": "97231",
+  // Schoelcher (97233)
+  "case navire": "97233",
+  "fond lahaye": "97233",
+  "terreville": "97233",
+  // Ducos (97224)
+  "génipa": "97224",
+  "petit bourg": "97224",
+  // Autres communes
+  "basse-pointe": "97218",
+  "grand'rivière": "97218",
+  "macouba": "97218",
+  "ajoupa-bouillon": "97216",
+  "bellefontaine": "97222",
+  "fonds saint-denis": "97250",
+  "gros-morne": "97213",
+  "lorrain": "97214",
+  "marigot": "97225",
+  "morne-vert": "97226",
+  "prêcheur": "97250",
+  "rivière-pilote": "97211",
+  "rivière-salée": "97215",
+  "saint-joseph": "97212",
+  "sainte-luce": "97228",
+  "schœlcher": "97233",
 };
 
-const DEPARTEMENT_NAMES: Record<string, string> = {
-  "01": "Ain", "02": "Aisne", "03": "Allier", "04": "Alpes-de-Haute-Provence",
-  "05": "Hautes-Alpes", "06": "Alpes-Maritimes", "07": "Ardèche", "08": "Ardennes",
-  "09": "Ariège", "10": "Aube", "11": "Aude", "12": "Aveyron",
-  "13": "Bouches-du-Rhône", "14": "Calvados", "15": "Cantal", "16": "Charente",
-  "17": "Charente-Maritime", "18": "Cher", "19": "Corrèze", "2A": "Corse-du-Sud",
-  "2B": "Haute-Corse", "21": "Côte-d'Or", "22": "Côtes-d'Armor", "23": "Creuse",
-  "24": "Dordogne", "25": "Doubs", "26": "Drôme", "27": "Eure",
-  "28": "Eure-et-Loir", "29": "Finistère", "30": "Gard", "31": "Haute-Garonne",
-  "32": "Gers", "33": "Gironde", "34": "Hérault", "35": "Ille-et-Vilaine",
-  "36": "Indre", "37": "Indre-et-Loire", "38": "Isère", "39": "Jura",
-  "40": "Landes", "41": "Loir-et-Cher", "42": "Loire", "43": "Haute-Loire",
-  "44": "Loire-Atlantique", "45": "Loiret", "46": "Lot", "47": "Lot-et-Garonne",
-  "48": "Lozère", "49": "Maine-et-Loire", "50": "Manche", "51": "Marne",
-  "52": "Haute-Marne", "53": "Mayenne", "54": "Meurthe-et-Moselle", "55": "Meuse",
-  "56": "Morbihan", "57": "Moselle", "58": "Nièvre", "59": "Nord",
-  "60": "Oise", "61": "Orne", "62": "Pas-de-Calais", "63": "Puy-de-Dôme",
-  "64": "Pyrénées-Atlantiques", "65": "Hautes-Pyrénées", "66": "Pyrénées-Orientales",
-  "67": "Bas-Rhin", "68": "Haut-Rhin", "69": "Rhône", "70": "Haute-Saône",
-  "71": "Saône-et-Loire", "72": "Sarthe", "73": "Savoie", "74": "Haute-Savoie",
-  "75": "Paris", "76": "Seine-Maritime", "77": "Seine-et-Marne", "78": "Yvelines",
-  "79": "Deux-Sèvres", "80": "Somme", "81": "Tarn", "82": "Tarn-et-Garonne",
-  "83": "Var", "84": "Vaucluse", "85": "Vendée", "86": "Vienne",
-  "87": "Haute-Vienne", "88": "Vosges", "89": "Yonne", "90": "Territoire de Belfort",
-  "91": "Essonne", "92": "Hauts-de-Seine", "93": "Seine-Saint-Denis", "94": "Val-de-Marne",
-  "95": "Val-d'Oise",
-  "971": "Guadeloupe", "972": "Martinique", "973": "Guyane", 
-  "974": "La Réunion", "976": "Mayotte",
+// Mapping CORRECT code postal -> ville (1 code = 1 ville principale)
+// Sources: La Poste, INSEE - Mis à jour pour la France + DROM
+const POSTAL_CODE_TO_CITY: Record<string, string> = {
+  // === MARTINIQUE (972) ===
+  "97200": "Fort-de-France",
+  "97201": "Fort-de-France",
+  "97209": "Fort-de-France",
+  "97220": "La Trinité",        // ⚠️ CORRIGÉ: 97220 = La Trinité (pas Le Robert!)
+  "97221": "Le Carbet",
+  "97222": "Case-Pilote",
+  "97223": "Le Diamant",
+  "97224": "Ducos",
+  "97225": "Le Marigot",
+  "97226": "Le Morne-Rouge",
+  "97227": "Sainte-Anne",
+  "97228": "Sainte-Luce",
+  "97229": "Les Trois-Îlets",
+  "97230": "Sainte-Marie",
+  "97231": "Le Robert",         // Le Robert = 97231
+  "97232": "Le Lamentin",
+  "97233": "Schoelcher",
+  "97234": "Fort-de-France",    // Secteur Didier
+  "97240": "Le François",       // Le François = 97240
+  "97250": "Fonds-Saint-Denis",
+  "97260": "Le Morne-Rouge",
+  "97270": "Saint-Esprit",
+  "97280": "Le Vauclin",
+  "97290": "Le Marin",
+  // === GUADELOUPE (971) ===
+  "97100": "Basse-Terre",
+  "97110": "Pointe-à-Pitre",
+  "97111": "Morne-à-l'Eau",
+  "97112": "Grand-Bourg",
+  "97113": "Gourbeyre",
+  "97114": "Trois-Rivières",
+  "97115": "Sainte-Rose",
+  "97116": "Pointe-Noire",
+  "97117": "Port-Louis",
+  "97118": "Saint-François",
+  "97119": "Vieux-Habitants",
+  "97120": "Saint-Claude",
+  "97121": "Anse-Bertrand",
+  "97122": "Baie-Mahault",
+  "97123": "Baillif",
+  "97125": "Bouillante",
+  "97126": "Deshaies",
+  "97128": "Goyave",
+  "97129": "Lamentin",
+  "97130": "Capesterre-Belle-Eau",
+  "97131": "Petit-Canal",
+  "97134": "Saint-Louis",
+  "97139": "Les Abymes",
+  "97140": "Capesterre-de-Marie-Galante",
+  "97150": "Saint-Martin",
+  "97160": "Le Moule",
+  "97170": "Petit-Bourg",
+  "97180": "Sainte-Anne",
+  "97190": "Le Gosier",
+  // === LA RÉUNION (974) ===
+  "97400": "Saint-Denis",
+  "97410": "Saint-Pierre",
+  "97411": "Bois-de-Nèfles",
+  "97412": "Bras-Panon",
+  "97413": "Cilaos",
+  "97414": "Entre-Deux",
+  "97417": "La Montagne",
+  "97418": "La Plaine-des-Cafres",
+  "97419": "La Possession",
+  "97420": "Le Port",
+  "97421": "La Rivière",
+  "97422": "La Saline",
+  "97423": "Le Guillaume",
+  "97424": "Piton Saint-Leu",
+  "97425": "Les Avirons",
+  "97426": "Les Trois-Bassins",
+  "97427": "L'Étang-Salé",
+  "97429": "Petite-Île",
+  "97430": "Le Tampon",
+  "97431": "La Plaine-des-Palmistes",
+  "97432": "Ravine-des-Cabris",
+  "97433": "Salazie",
+  "97434": "Saint-Gilles-les-Bains",
+  "97435": "Saint-Gilles-les-Hauts",
+  "97436": "Saint-Leu",
+  "97438": "Sainte-Marie",
+  "97439": "Sainte-Rose",
+  "97440": "Saint-André",
+  "97441": "Sainte-Suzanne",
+  "97450": "Saint-Louis",
+  "97460": "Saint-Paul",
+  "97470": "Saint-Benoît",
+  "97480": "Saint-Joseph",
+  "97490": "Sainte-Clotilde",
+  // === GUYANE (973) ===
+  "97300": "Cayenne",
+  "97310": "Kourou",
+  "97320": "Saint-Laurent-du-Maroni",
+  "97351": "Matoury",
+  "97354": "Rémire-Montjoly",
+  "97355": "Macouria",
+  // === MAYOTTE (976) ===
+  "97600": "Mamoudzou",
+  "97605": "Pamandzi",
+  "97610": "Dzaoudzi",
+  "97620": "Chirongui",
+  "97630": "Dembeni",
+  "97640": "Sada",
+  "97650": "Bandraboua",
+  "97660": "Dembeni",
+  "97670": "Ouangani",
+  "97680": "Tsingoni",
+  // === PARIS & IDF ===
+  "75001": "Paris 1er",
+  "75002": "Paris 2e",
+  "75003": "Paris 3e",
+  "75004": "Paris 4e",
+  "75005": "Paris 5e",
+  "75006": "Paris 6e",
+  "75007": "Paris 7e",
+  "75008": "Paris 8e",
+  "75009": "Paris 9e",
+  "75010": "Paris 10e",
+  "75011": "Paris 11e",
+  "75012": "Paris 12e",
+  "75013": "Paris 13e",
+  "75014": "Paris 14e",
+  "75015": "Paris 15e",
+  "75016": "Paris 16e",
+  "75017": "Paris 17e",
+  "75018": "Paris 18e",
+  "75019": "Paris 19e",
+  "75020": "Paris 20e",
 };
-
-function getDepartementFromCP(codePostal: string): string | null {
-  if (!codePostal || codePostal.length < 2) return null;
-  if (codePostal.startsWith("97")) {
-    const dromCode = codePostal.substring(0, 3);
-    return DEPARTEMENT_NAMES[dromCode] ? dromCode : null;
-  }
-  if (codePostal.startsWith("20")) {
-    const cp = parseInt(codePostal, 10);
-    return cp < 20200 ? "2A" : "2B";
-  }
-  const deptCode = codePostal.substring(0, 2);
-  return DEPARTEMENT_NAMES[deptCode] ? deptCode : null;
-}
 
 export function AddressStep() {
   const { formData, updateFormData } = usePropertyWizardStore();
   const [autoFilledDept, setAutoFilledDept] = useState<string | null>(null);
   
+  // Extraire le code postal d'une chaîne d'adresse
+  const extractPostalCode = (address: string): string | null => {
+    // 1. D'abord chercher un code postal explicite (5 chiffres)
+    const matches = address.match(/\b(97\d{3}|98\d{3}|\d{5})\b/g);
+    if (matches && matches.length > 0) {
+      // Préférer les codes DOM s'il y en a plusieurs
+      const domCode = matches.find(m => m.startsWith('97') || m.startsWith('98'));
+      return domCode || matches[matches.length - 1];
+    }
+    
+    // 2. Si pas de code postal, chercher un nom de quartier connu (Martinique)
+    const normalizedAddress = address.toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Enlever accents
+    
+    for (const [quartier, cp] of Object.entries(QUARTIER_TO_POSTAL_CODE)) {
+      const normalizedQuartier = quartier.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (normalizedAddress.includes(normalizedQuartier)) {
+        return cp;
+      }
+    }
+    
+    // 3. Chercher les noms de villes directement
+    const villeToCP: Record<string, string> = {
+      "lamentin": "97232",
+      "le lamentin": "97232",
+      "fort-de-france": "97200",
+      "fort de france": "97200",
+      "schoelcher": "97233",
+      "schœlcher": "97233",
+      "robert": "97231",
+      "le robert": "97231",
+      "francois": "97240",
+      "le françois": "97240",
+      "trinite": "97220",
+      "la trinité": "97220",
+      "ducos": "97224",
+      "marin": "97290",
+      "le marin": "97290",
+      "vauclin": "97280",
+      "le vauclin": "97280",
+      "sainte-anne": "97227",
+      "sainte-luce": "97228",
+      "trois-ilets": "97229",
+      "les trois-îlets": "97229",
+      "diamant": "97223",
+      "le diamant": "97223",
+      "carbet": "97221",
+      "le carbet": "97221",
+      "sainte-marie": "97230",
+      "saint-esprit": "97270",
+    };
+    
+    for (const [ville, cp] of Object.entries(villeToCP)) {
+      const normalizedVille = ville.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (normalizedAddress.includes(normalizedVille)) {
+        return cp;
+      }
+    }
+    
+    return null;
+  };
+
   const handleChange = (field: string, value: string) => {
     updateFormData({ [field]: value });
     
-    if (field === "code_postal" && value.length === 5) {
-      const cities = POSTAL_CODE_TO_CITY[value];
-      if (cities && cities.length > 0) {
-        updateFormData({ ville: cities[0] });
+    // Si on modifie l'adresse complète, essayer d'extraire le code postal
+    if (field === "adresse_complete" && value.length > 10) {
+      const extractedCP = extractPostalCode(value);
+      if (extractedCP && extractedCP !== formData.code_postal) {
+        // Mettre à jour le code postal extrait
+        updateFormData({ code_postal: extractedCP });
+        
+        // Auto-remplir la ville correspondante
+        const city = POSTAL_CODE_TO_CITY[extractedCP];
+        if (city) {
+          updateFormData({ ville: city });
+        }
+        
+        // Stocker le département
+        const deptCode = getDepartementCodeFromCP(extractedCP);
+        if (deptCode) {
+          updateFormData({ departement: deptCode });
+          const deptName = DEPARTEMENT_NAMES[deptCode];
+          if (deptName) {
+            setAutoFilledDept(deptName);
+            setTimeout(() => setAutoFilledDept(null), 3000);
+          }
+        }
       }
-      const deptCode = getDepartementFromCP(value);
+    }
+    
+    if (field === "code_postal" && value.length === 5) {
+      // Auto-remplir la ville si le code postal est connu
+      const city = POSTAL_CODE_TO_CITY[value];
+      if (city) {
+        updateFormData({ ville: city });
+      }
+      // Stocker le CODE département (ex: "972") pas le nom
+      const deptCode = getDepartementCodeFromCP(value);
       if (deptCode) {
+        updateFormData({ departement: deptCode });
         const deptName = DEPARTEMENT_NAMES[deptCode];
-        updateFormData({ departement: deptName });
-        setAutoFilledDept(deptName);
-        setTimeout(() => setAutoFilledDept(null), 3000);
+        if (deptName) {
+          setAutoFilledDept(deptName);
+          setTimeout(() => setAutoFilledDept(null), 3000);
+        }
+      }
+    }
+    
+    // ✅ NOUVEAU: Si on modifie la ville, essayer de déduire le code postal
+    if (field === "ville" && value.length >= 3) {
+      const normalizedVille = value.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/-/g, " ")
+        .trim();
+      
+      // Mapping ville → code postal
+      const VILLE_TO_CP: Record<string, string> = {
+        // Martinique
+        "le lamentin": "97232", "lamentin": "97232",
+        "fort de france": "97200", "fort-de-france": "97200",
+        "schoelcher": "97233", "schœlcher": "97233",
+        "le robert": "97231", "robert": "97231",
+        "le francois": "97240", "francois": "97240", "le françois": "97240",
+        "la trinite": "97220", "trinite": "97220", "la trinité": "97220",
+        "ducos": "97224",
+        "le marin": "97290", "marin": "97290",
+        "le vauclin": "97280", "vauclin": "97280",
+        "sainte anne": "97227", "sainte-anne": "97227",
+        "sainte luce": "97228", "sainte-luce": "97228",
+        "les trois ilets": "97229", "trois ilets": "97229",
+        "le diamant": "97223", "diamant": "97223",
+        "le carbet": "97221", "carbet": "97221",
+        "sainte marie": "97230", "sainte-marie": "97230",
+        "saint esprit": "97270", "saint-esprit": "97270",
+        "riviere salee": "97215", "riviere-salee": "97215",
+        "saint joseph": "97212", "saint-joseph": "97212",
+        "gros morne": "97213", "gros-morne": "97213",
+        // Guadeloupe
+        "pointe a pitre": "97110", "pointe-a-pitre": "97110",
+        "les abymes": "97139", "abymes": "97139",
+        "baie mahault": "97122", "baie-mahault": "97122",
+        "le gosier": "97190", "gosier": "97190",
+        "basse terre": "97100", "basse-terre": "97100",
+        // Réunion
+        "saint denis": "97400", "saint-denis": "97400",
+        "saint pierre": "97410", "saint-pierre": "97410",
+        "le port": "97420",
+        "le tampon": "97430", "tampon": "97430",
+        "saint paul": "97460", "saint-paul": "97460",
+        // Guyane
+        "cayenne": "97300",
+        "kourou": "97310",
+      };
+      
+      // Chercher correspondance
+      const cpFromVille = VILLE_TO_CP[normalizedVille];
+      if (cpFromVille && (!formData.code_postal || formData.code_postal === "")) {
+        updateFormData({ code_postal: cpFromVille });
+        
+        // Stocker le département automatiquement
+        const deptCode = getDepartementCodeFromCP(cpFromVille);
+        if (deptCode) {
+          updateFormData({ departement: deptCode });
+          const deptName = DEPARTEMENT_NAMES[deptCode];
+          if (deptName) {
+            setAutoFilledDept(deptName);
+            setTimeout(() => setAutoFilledDept(null), 3000);
+          }
+        }
       }
     }
   };
 
   const detectedDept = useMemo(() => {
     if (!formData.code_postal || (formData.code_postal as string).length < 2) return null;
-    const code = getDepartementFromCP(formData.code_postal as string);
+    const code = getDepartementCodeFromCP(formData.code_postal as string);
     return code ? DEPARTEMENT_NAMES[code] : null;
   }, [formData.code_postal]);
 

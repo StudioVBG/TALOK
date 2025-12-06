@@ -15,10 +15,12 @@ const publicRoutes = [
   "/auth/forgot-password",
   "/auth/reset-password",
   "/signup",
+  "/pricing", // Page de tarification publique
   "/blog",
   "/invite",
   "/legal",
   "/signature", // Page de signature locataire (invitation)
+  "/demo", // Pages de démonstration
   "/api/v1/auth/register",
   "/api/v1/auth/login",
   "/api/v1/payments/webhook",
@@ -26,6 +28,7 @@ const publicRoutes = [
   "/api/webhooks",
   "/api/public",
   "/api/signature", // APIs de signature locataire
+  "/api/debug", // Endpoints de diagnostic (dev only)
 ];
 
 const roleRoutes: Record<string, string[]> = {
@@ -33,6 +36,7 @@ const roleRoutes: Record<string, string[]> = {
   owner: ["/app/owner"],
   tenant: ["/app/tenant"],
   provider: ["/app/provider"],
+  guarantor: ["/app/guarantor"],
 };
 
 // ============================================
@@ -51,12 +55,38 @@ const redirects: Record<string, string> = {
   "/owner/contracts": "/app/owner/contracts",
   "/owner/finances": "/app/owner/money",
   "/owner/money": "/app/owner/money",
+  "/owner/billing": "/app/owner/money", // Ancien nom de route
   "/owner/documents": "/app/owner/documents",
   "/owner/support": "/app/owner/support",
   "/owner/settings": "/app/owner/profile",
   "/owner/profile": "/app/owner/profile",
   "/owner/tickets": "/app/owner/tickets",
   "/owner/inspections": "/app/owner/inspections",
+  "/owner/charges": "/app/owner/money", // Charges -> Money
+
+  // =============================================
+  // FIX: Routes /app/app/* (double "app") -> /app/*
+  // Ces routes viennent d'une erreur de structure historique
+  // =============================================
+  "/app/app/owner": "/app/owner/dashboard",
+  "/app/app/owner/dashboard": "/app/owner/dashboard",
+  "/app/app/owner/properties": "/app/owner/properties",
+  "/app/app/owner/contracts": "/app/owner/contracts",
+  "/app/app/owner/money": "/app/owner/money",
+  "/app/app/owner/documents": "/app/owner/documents",
+  "/app/app/owner/tickets": "/app/owner/tickets",
+  "/app/app/owner/inspections": "/app/owner/inspections",
+  "/app/app/owner/support": "/app/owner/support",
+  "/app/app/owner/profile": "/app/owner/profile",
+  "/app/app/owner/tenants": "/app/owner/tenants",
+  "/app/app/owner/analytics": "/app/owner/analytics",
+  "/app/app/owner/end-of-lease": "/app/owner/end-of-lease",
+  "/app/app/tenant": "/app/tenant/dashboard",
+  "/app/app/tenant/dashboard": "/app/tenant/dashboard",
+  "/app/app/tenant/payments": "/app/tenant/payments",
+  "/app/app/tenant/lease": "/app/tenant/lease",
+  "/app/app/tenant/requests": "/app/tenant/requests",
+  "/app/app/tenant/documents": "/app/tenant/documents",
 
   // =============================================
   // TENANT - Redirections vers /app/tenant/*
@@ -94,9 +124,35 @@ const redirects: Record<string, string> = {
   // =============================================
   // PROVIDER - Redirections vers /app/provider/*
   // =============================================
-  "/provider": "/app/provider",
-  "/app/vendor": "/app/provider",
-  "/vendor": "/app/provider",
+  "/provider": "/app/provider/dashboard",
+  "/provider/dashboard": "/app/provider/dashboard",
+  "/provider/jobs": "/app/provider/jobs",
+  "/provider/calendar": "/app/provider/calendar",
+  "/provider/invoices": "/app/provider/invoices",
+  "/provider/reviews": "/app/provider/reviews",
+  "/provider/quotes": "/app/provider/quotes",
+  "/provider/settings": "/app/provider/settings",
+  "/provider/help": "/app/provider/help",
+  "/app/vendor": "/app/provider/dashboard",
+  "/vendor": "/app/provider/dashboard",
+  "/work-orders": "/app/provider/jobs",
+
+  // =============================================
+  // GUARANTOR - Redirections vers /app/guarantor/*
+  // =============================================
+  "/guarantor": "/app/guarantor",
+  "/guarantor/dashboard": "/app/guarantor",
+  "/guarantor/onboarding": "/app/guarantor/onboarding",
+  "/guarantor/onboarding/context": "/app/guarantor/onboarding/context",
+  "/guarantor/onboarding/financial": "/app/guarantor/onboarding/financial",
+  "/guarantor/onboarding/sign": "/app/guarantor/onboarding/sign",
+  "/guarantor/documents": "/app/guarantor/documents",
+  "/guarantor/profile": "/app/guarantor/profile",
+
+  // =============================================
+  // CHARGES - Redirect vers owner copro
+  // =============================================
+  "/charges": "/app/owner/copro/charges",
 };
 
 // ============================================
@@ -171,6 +227,8 @@ function getDashboardPath(role: string | null): string {
       return "/app/tenant/dashboard";
     case "provider":
       return "/app/provider/dashboard";
+    case "guarantor":
+      return "/app/guarantor";
     default:
       return "/dashboard";
   }

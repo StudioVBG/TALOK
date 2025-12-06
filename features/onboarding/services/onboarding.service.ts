@@ -218,6 +218,7 @@ export class OnboardingService {
           "email_verification",
           "tenant_context",
           "tenant_file",
+          "tenant_identity",  // Vérification d'identité KYC
           "tenant_payment",
         ];
       case "provider":

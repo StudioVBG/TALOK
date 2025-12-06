@@ -19,6 +19,11 @@ interface WizardState {
   formData: Partial<Property>;
   rooms: Room[];
   photos: Photo[];
+  
+  // 🆕 Photos à importer depuis scraping
+  pendingPhotoUrls: string[];
+  photoImportStatus: 'idle' | 'importing' | 'done' | 'error';
+  photoImportProgress: { imported: number; total: number };
 
   // Actions
   reset: () => void; // 🔧 Réinitialise le wizard pour une nouvelle création
@@ -29,6 +34,10 @@ interface WizardState {
   updateRoom: (id: string, updates: Partial<Room>) => void; // Optimiste
   removeRoom: (id: string) => void; // Optimiste
   setPhotos: (photos: Photo[]) => void;
+  
+  // 🆕 Import photos
+  setPendingPhotoUrls: (urls: string[]) => void;
+  importPendingPhotos: () => Promise<void>;
   
   // Navigation
   setStep: (step: WizardStep) => void;
@@ -83,7 +92,18 @@ const INITIAL_STATE = {
   formData: { etat: 'draft' } as Partial<Property>,
   rooms: [] as Room[],
   photos: [] as Photo[],
+  // 🆕 Photos import
+  pendingPhotoUrls: [] as string[],
+  photoImportStatus: 'idle' as 'idle' | 'importing' | 'done' | 'error',
+  photoImportProgress: { imported: 0, total: 0 },
 };
+
+// Compteur pour générer des IDs temporaires uniques (évite les doublons avec Date.now())
+let tempIdCounter = 0;
+function generateTempId(): string {
+  tempIdCounter += 1;
+  return `temp-${Date.now()}-${tempIdCounter}-${Math.random().toString(36).substring(2, 7)}`;
+}
 
 export const usePropertyWizardStore = create<WizardState>((set, get) => ({
   ...INITIAL_STATE,
@@ -131,40 +151,44 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
   },
 
   updateFormData: (updates) => {
-    // 1. Optimistic Update
+    const { propertyId } = get();
+    
+    // 1. Optimistic Update - ne passer à 'saving' que si on va réellement sauvegarder
     set((state) => ({ 
       formData: { ...state.formData, ...updates },
-      syncStatus: 'saving'
+      syncStatus: propertyId ? 'saving' : 'idle' // ✅ Fix: rester 'idle' si pas de propertyId
     }));
 
-    // 2. Background Sync (Debounced via un effect dans le composant ou ici si simple)
-    // Pour simplifier et éviter les race conditions complexes ici, 
-    // on déclenchera la sauvegarde serveur explicite via une fonction `save` séparée ou un debounce.
-    // Ici on fait un "Fire and Forget" intelligent.
-    const { propertyId } = get();
+    // 2. Background Sync seulement si le bien existe déjà en base
     if (propertyId) {
       propertiesService.updatePropertyGeneral(propertyId, updates as any)
         .then(() => set({ syncStatus: 'saved' }))
-        .catch((err) => set({ syncStatus: 'error', lastError: "Erreur sauvegarde" }));
+        .catch((err) => {
+          console.error('[WizardStore] Erreur sauvegarde:', err);
+          set({ syncStatus: 'error', lastError: "Erreur sauvegarde" });
+        });
     }
+    // Si pas de propertyId, les données sont stockées localement en attendant l'initialisation
   },
 
   addRoom: (roomData) => {
-    const tempId = `temp-${Date.now()}`;
+    const tempId = generateTempId();
     const newRoom = { ...roomData, id: tempId } as Room;
+    const { propertyId } = get();
     
     // Optimistic UI + calcul automatique nb_pieces/nb_chambres
+    // ✅ Fix: Ne passer à 'saving' que si propertyId existe
     set((state) => {
       const updatedRooms = [...state.rooms, newRoom];
       const counts = calculateRoomCounts(updatedRooms);
       return { 
         rooms: updatedRooms,
         formData: { ...state.formData, nb_pieces: counts.nb_pieces, nb_chambres: counts.nb_chambres },
-        syncStatus: 'saving'
+        syncStatus: propertyId ? 'saving' : 'idle'
       };
     });
 
-    const { propertyId, formData } = get();
+    const { formData } = get();
     if (propertyId) {
       propertiesService.createRoom(propertyId, {
         type_piece: roomData.type_piece as any,
@@ -200,17 +224,21 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
   },
 
   updateRoom: (id, updates) => {
+    const { propertyId } = get();
+    const isTemporary = id.startsWith('temp-');
+    
     // Optimistic
     set((state) => ({
       rooms: state.rooms.map(r => r.id === id ? { ...r, ...updates } : r),
-      syncStatus: 'saving'
+      // ✅ Fix: Si pièce temporaire ou pas de propertyId, rester 'idle'
+      syncStatus: (isTemporary || !propertyId) ? 'idle' : 'saving'
     }));
 
-    const { propertyId } = get();
-    if (propertyId && !id.startsWith('temp-')) {
+    // Sync serveur seulement si pièce synchronisée
+    if (propertyId && !isTemporary) {
       propertiesService.updateRoom(propertyId, id, updates as any)
         .then(() => set({ syncStatus: 'saved' }))
-        .catch(() => set({ syncStatus: 'error' })); // TODO: Rollback si nécessaire
+        .catch(() => set({ syncStatus: 'error' }));
     }
   },
 
@@ -218,6 +246,10 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
     // Optimistic + calcul automatique nb_pieces/nb_chambres
     const oldRooms = get().rooms;
     const oldFormData = get().formData;
+    const { propertyId } = get();
+    
+    // Vérifier si c'est une pièce temporaire (pas encore sync avec le serveur)
+    const isTemporary = id.startsWith('temp-');
     
     set((state) => {
       const updatedRooms = state.rooms.filter(r => r.id !== id);
@@ -225,12 +257,14 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
       return {
         rooms: updatedRooms,
         formData: { ...state.formData, nb_pieces: counts.nb_pieces, nb_chambres: counts.nb_chambres },
-        syncStatus: 'saving'
+        // ✅ Fix: Si pièce temporaire ou pas de propertyId, passer directement à 'idle'
+        syncStatus: (isTemporary || !propertyId) ? 'idle' : 'saving'
       };
     });
 
-    const { propertyId, formData } = get();
-    if (propertyId && !id.startsWith('temp-')) {
+    // Supprimer côté serveur seulement si pièce synchronisée
+    if (propertyId && !isTemporary) {
+      const { formData } = get();
       propertiesService.deleteRoom(propertyId, id)
         .then(() => {
           set({ syncStatus: 'saved' });
@@ -247,6 +281,59 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
   },
 
   setPhotos: (photos) => set({ photos }),
+
+  // 🆕 Actions import photos
+  setPendingPhotoUrls: (urls) => set({ 
+    pendingPhotoUrls: urls,
+    photoImportStatus: urls.length > 0 ? 'idle' : 'done',
+    photoImportProgress: { imported: 0, total: urls.length }
+  }),
+  
+  importPendingPhotos: async () => {
+    const { propertyId, pendingPhotoUrls, photos } = get();
+    
+    if (!propertyId || pendingPhotoUrls.length === 0) {
+      console.log('[WizardStore] Pas de photos à importer');
+      return;
+    }
+    
+    console.log(`[WizardStore] Import de ${pendingPhotoUrls.length} photos...`);
+    set({ photoImportStatus: 'importing' });
+    
+    try {
+      const response = await fetch(`/api/properties/${propertyId}/photos/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls: pendingPhotoUrls }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Erreur import photos');
+      }
+      
+      console.log(`[WizardStore] ✅ ${result.imported}/${result.total} photos importées`);
+      
+      // Recharger les photos depuis le serveur
+      const photosResponse = await fetch(`/api/properties/${propertyId}/photos`);
+      const { photos: newPhotos } = await photosResponse.json();
+      
+      set({
+        photos: newPhotos || [],
+        pendingPhotoUrls: [],
+        photoImportStatus: 'done',
+        photoImportProgress: { imported: result.imported, total: result.total }
+      });
+      
+    } catch (error: any) {
+      console.error('[WizardStore] Erreur import photos:', error);
+      set({ 
+        photoImportStatus: 'error',
+        lastError: error.message 
+      });
+    }
+  },
 
   // Navigation
   setStep: (step) => set({ currentStep: step }),

@@ -223,13 +223,21 @@ export const navStyles = {
 // ============================================================================
 
 export const APP_CONFIG = {
-  name: 'Lokatif',
-  tagline: 'Gestion locative simplifiée',
+  name: 'Gestion Locative',
+  shortName: 'GestLoc',
+  tagline: 'La plateforme tout-en-un pour gérer vos locations',
+  description: 'Baux automatiques, signatures électroniques, scoring locataires, paiements et quittances.',
   logo: {
     icon: 'Building2',
-    gradient: 'from-primary to-primary/60',
+    gradient: 'from-blue-600 to-indigo-600',
+  },
+  support: {
+    email: 'support@gestion-locative.fr',
   },
 } as const;
+
+// Export simple du nom pour faciliter l'import
+export const APP_NAME = APP_CONFIG.name;
 
 // ============================================================================
 // ROLE SPECIFIC COLORS

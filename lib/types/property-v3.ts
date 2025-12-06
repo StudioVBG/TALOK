@@ -397,6 +397,9 @@ export interface PropertyV3 {
   charges_mensuelles: number;
   depot_garantie: number;
   
+  // Visite virtuelle (Matterport, Nodalview, etc.)
+  visite_virtuelle_url?: string | null;
+  
   // Métadonnées (existant)
   unique_code: string;
   status?: string; // Généré par la BDD

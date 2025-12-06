@@ -284,7 +284,7 @@ export const propertySchema = z
   adresse_complete: z.string().min(1, "L'adresse est requise"),
   code_postal: z.string().regex(/^[0-9]{5}$/, "Le code postal doit contenir 5 chiffres"),
   ville: z.string().min(1, "La ville est requise"),
-  departement: z.string().length(2, "Le département doit contenir 2 caractères"),
+  departement: z.string().min(2, "Le département doit contenir au moins 2 caractères").max(3, "Le département doit contenir au maximum 3 caractères"),
   surface: z.number().min(0, "La surface ne peut pas être négative"),
   nb_pieces: z.number().int().min(0, "Le nombre de pièces ne peut pas être négatif"),
   etage: z.number().int().optional().nullable(),
@@ -306,8 +306,8 @@ export const propertySchema = z
   loyer_reference_majoré: z.number().min(0, "Le loyer de référence doit être positif").optional().nullable(),
   complement_loyer: z.number().min(0, "Le complément ne peut pas être négatif").optional().nullable(),
   complement_justification: z.string().optional().nullable(),
-  dpe_classe_energie: z.enum(["A","B","C","D","E","F","G"]).optional().nullable(),
-  dpe_classe_climat: z.enum(["A","B","C","D","E","F","G"]).optional().nullable(),
+  dpe_classe_energie: z.enum(["A","B","C","D","E","F","G","NC"]).optional().nullable(),
+  dpe_classe_climat: z.enum(["A","B","C","D","E","F","G","NC"]).optional().nullable(),
   dpe_consommation: z.number().min(0).optional().nullable(),
   dpe_emissions: z.number().min(0).optional().nullable(),
   dpe_estimation_conso_min: z.number().min(0).optional().nullable(),
@@ -385,7 +385,7 @@ export const propertyGeneralUpdateSchema = z
     complement_adresse: z.string().optional().nullable(),
     code_postal: z.string().regex(/^[0-9]{5}$/, "Le code postal doit contenir 5 chiffres").optional(),
     ville: z.string().min(1).optional(),
-    departement: z.string().length(2).optional().nullable(),
+    departement: z.string().min(2).max(3).optional().nullable(),
     latitude: z.number().min(-90).max(90).optional().nullable(),
     longitude: z.number().min(-180).max(180).optional().nullable(),
     // Surface : accepter les deux noms de champs pour compatibilité
@@ -396,6 +396,12 @@ export const propertyGeneralUpdateSchema = z
     etage: z.number().int().optional().nullable(),
     ascenseur: z.boolean().optional(),
     meuble: z.boolean().optional(),
+    // DPE (Diagnostic de Performance Énergétique)
+    dpe_classe_energie: z.enum(["A", "B", "C", "D", "E", "F", "G", "NC"]).optional().nullable(),
+    dpe_classe_climat: z.enum(["A", "B", "C", "D", "E", "F", "G", "NC"]).optional().nullable(), // GES
+    dpe_date: z.string().optional().nullable(),
+    dpe_consommation: z.number().min(0).optional().nullable(),
+    dpe_emissions: z.number().min(0).optional().nullable(),
     // Extérieurs V3
     has_balcon: z.boolean().optional(),
     has_terrasse: z.boolean().optional(),
@@ -445,6 +451,8 @@ export const propertyGeneralUpdateSchema = z
     loyer_reference_majoré: z.number().min(0).optional().nullable(),
     complement_loyer: z.number().min(0).optional().nullable(),
     complement_justification: z.string().optional().nullable(),
+    // Visite virtuelle (Matterport, Nodalview, etc.)
+    visite_virtuelle_url: z.string().url("L'URL de visite virtuelle doit être valide").optional().nullable(),
   })
   .refine(
     (data) => {
@@ -704,4 +712,40 @@ export const blogPostSchema = z.object({
   tags: z.array(z.string()),
   is_published: z.boolean(),
 });
+
+// ============================================
+// Validation des relevés de compteurs EDL
+// ============================================
+export {
+  meterTypeSchema,
+  meterUnitSchema,
+  ocrProviderSchema,
+  recorderRoleSchema,
+  createEDLMeterReadingSchema,
+  validateEDLMeterReadingSchema,
+  ocrResultSchema,
+  edlMeterReadingSchema,
+  meterInfoSchema,
+  meterConsumptionSchema,
+  validateMeterValueProgression,
+  validateMeterPhotoFile,
+} from "./edl-meters";
+
+// ============================================
+// RE-EXPORTS PROPERTY VALIDATORS
+// ============================================
+// Helpers de validation pour les propriétés (déjà exportés: propertySchemaV3, etc.)
+
+export {
+  validatePropertyData,
+  safeValidatePropertyData,
+  isPropertyV3,
+} from "./property-validator";
+
+export {
+  validateProperty,
+  validateHabitation,
+  validateParking,
+  validateCommercial,
+} from "./property-validation";
 

@@ -329,6 +329,7 @@ export interface Property {
   permis_louer_date: string | null;
   parking_details: ParkingDetails | null;
   unique_code: string; // Code unique, jamais réattribué
+  visite_virtuelle_url?: string | null; // URL externe vers visite virtuelle (Matterport, Nodalview, etc.)
   etat: "draft" | "pending" | "published" | "rejected" | "archived";
   status?: PropertyStatus;
   submitted_at: string | null;
@@ -576,4 +577,104 @@ export {
   toPropertyV3,
   isPropertyV3,
 } from "./compatibility";
+
+// ============================================
+// EXPORTS EDL - Relevés de compteurs
+// ============================================
+export type {
+  MeterType,
+  MeterUnit,
+  OCRProvider,
+  RecorderRole,
+  EDLMeterReading,
+  MeterInfo,
+  EDLMeterReadingWithDetails,
+  MeterConsumption,
+  CreateEDLMeterReadingDTO,
+  CreateEDLMeterReadingResponse,
+  ValidateEDLMeterReadingDTO,
+  GetEDLMeterReadingsDTO,
+  GetEDLMeterReadingsResponse,
+  CompareMeterConsumptionDTO,
+  CompareMeterConsumptionResponse,
+} from "./edl-meters";
+
+export {
+  METER_TYPE_CONFIG,
+  OCR_CONFIDENCE_THRESHOLDS,
+  METER_READING_HELP,
+  METER_PROVIDERS,
+} from "./edl-meters";
+
+// ============================================
+// EXPORTS GARANT - Module Garant complet
+// ============================================
+export type {
+  GuarantorRelation,
+  GuarantorSituationPro,
+  CautionType,
+  EngagementStatus,
+  GuarantorDocumentType,
+  PaymentIncidentType,
+  GuarantorProfile,
+  GuarantorEngagement,
+  GuarantorDocument,
+  GuarantorPaymentIncident,
+  CreateGuarantorProfileDTO,
+  UpdateGuarantorProfileDTO,
+  CreateEngagementDTO,
+  UploadGuarantorDocumentDTO,
+  GuarantorDashboardData,
+  GuarantorDashboardEngagement,
+  GuarantorDashboardIncident,
+  GuarantorDashboardStats,
+  GuarantorEligibilityResult,
+} from "./guarantor";
+
+export {
+  GUARANTOR_RELATION_LABELS,
+  GUARANTOR_SITUATION_LABELS,
+  CAUTION_TYPE_LABELS,
+  ENGAGEMENT_STATUS_LABELS,
+  GUARANTOR_DOCUMENT_TYPE_LABELS,
+  INCIDENT_TYPE_LABELS,
+  REQUIRED_GUARANTOR_DOCUMENTS,
+  OPTIONAL_GUARANTOR_DOCUMENTS,
+} from "./guarantor";
+
+// ============================================
+// EXPORTS FIN DE BAIL
+// ============================================
+export type {
+  DepartureInitiator,
+  DepartureReason,
+  DepartureNoticeStatus,
+  AcknowledgmentMethod,
+  SettlementStatus,
+  DeductionType,
+  PaymentMethod,
+  DepartureNotice,
+  DGSettlement,
+  DeductionItem,
+  SettlementDeductionItem,
+  CreateDepartureNoticeDTO,
+  UpdateDepartureNoticeDTO,
+  ContestDepartureDTO,
+  CreateSettlementDTO,
+  UpdateSettlementDTO,
+  AddDeductionDTO,
+  SettlementCalculation,
+  DepartureNoticeWithDetails,
+  SettlementWithDetails,
+} from "./end-of-lease";
+
+export {
+  DEPARTURE_REASON_LABELS,
+  DEPARTURE_STATUS_LABELS,
+  SETTLEMENT_STATUS_LABELS,
+  DEDUCTION_TYPE_LABELS,
+  ACKNOWLEDGMENT_METHOD_LABELS,
+  REDUCED_NOTICE_REASONS,
+  OWNER_NOTICE_REASONS,
+} from "./end-of-lease";
 

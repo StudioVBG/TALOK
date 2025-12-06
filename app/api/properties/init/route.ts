@@ -4,6 +4,30 @@ import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { generateCode } from "@/lib/helpers/code-generator";
 
+/**
+ * Extrait le code département depuis un code postal
+ * - DROM (97xxx): retourne 3 caractères (971, 972, 973, 974, 976)
+ * - Corse (20xxx): retourne 2A ou 2B selon la commune
+ * - Métropole: retourne 2 caractères
+ */
+function getDepartementFromCP(codePostal: string | null | undefined): string | null {
+  if (!codePostal || codePostal.length < 2) return null;
+  
+  // DROM: codes postaux commençant par 97
+  if (codePostal.startsWith("97")) {
+    return codePostal.substring(0, 3); // 971, 972, 973, 974, 976
+  }
+  
+  // Corse: codes postaux commençant par 20
+  if (codePostal.startsWith("20")) {
+    const cp = parseInt(codePostal, 10);
+    return cp < 20200 ? "2A" : "2B";
+  }
+  
+  // Métropole: 2 premiers chiffres
+  return codePostal.substring(0, 2);
+}
+
 // Schéma minimal pour l'initialisation
 const initSchema = z.object({
   type: z.string().min(1, "Le type de bien est requis"),
@@ -66,6 +90,8 @@ export async function POST(request: Request) {
 
     // 5. Créer le brouillon (Draft) avec un minimum de données
     // On utilise des valeurs par défaut sûres pour éviter les erreurs de contraintes
+    const departement = getDepartementFromCP(cp);
+    
     const insertData: Record<string, any> = {
       owner_id: profile.id,
       type: type, // Correspond au champ 'type' de la table properties
@@ -75,7 +101,7 @@ export async function POST(request: Request) {
       adresse_complete: adresse || "",
       code_postal: cp || "",
       ville: ville || "",
-      departement: cp ? cp.substring(0, 2) : null, // Extraire le département du code postal
+      departement: departement || "", // Valeur par défaut vide si pas de CP (évite NOT NULL constraint)
       surface: 0,
       nb_pieces: 0,
       // On initialise les compteurs à 0

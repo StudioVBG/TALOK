@@ -201,7 +201,8 @@ COMMENT ON FUNCTION property_details(UUID, UUID) IS
 
 -- Index sur owner_id pour properties (si pas déjà présent)
 CREATE INDEX IF NOT EXISTS idx_properties_owner_id ON properties(owner_id);
-CREATE INDEX IF NOT EXISTS idx_properties_statut ON properties(statut);
+-- Note: La colonne pour le statut de properties est 'etat', pas 'statut'
+-- L'index idx_properties_etat est créé dans la migration 202411140210
 
 -- Index sur property_id pour leases (si pas déjà présent)
 CREATE INDEX IF NOT EXISTS idx_leases_property_id ON leases(property_id);

@@ -105,6 +105,27 @@ export async function GET(request: Request) {
       }
     }
 
+    // Récupérer les emails depuis auth.users via l'API admin
+    const userIds = dataArray.map((p) => p.user_id).filter(Boolean);
+    const emailsMap = new Map<string, string>();
+    if (userIds.length > 0) {
+      try {
+        const { data: authUsersData } = await supabase.auth.admin.listUsers({
+          perPage: 1000,
+        });
+        
+        if (authUsersData?.users) {
+          for (const authUser of authUsersData.users) {
+            if (userIds.includes(authUser.id) && authUser.email) {
+              emailsMap.set(authUser.id, authUser.email);
+            }
+          }
+        }
+      } catch (authErr) {
+        console.error("Error fetching emails from auth.users:", authErr);
+      }
+    }
+
     // Construire les items
     const items = dataArray.map((profile) => {
       const tenantProfile = Array.isArray(profile.tenant_profiles) && profile.tenant_profiles.length > 0
@@ -126,7 +147,7 @@ export async function GET(request: Request) {
         id: profile.id,
         profile_id: profile.id,
         full_name: fullName || "Sans nom",
-        email: undefined, // Récupéré côté client si nécessaire
+        email: emailsMap.get(profile.user_id) || undefined,
         phone: profile.telephone || undefined,
         age_years: ageMap.get(profile.id) ?? null,
         property_id: property?.id || undefined,

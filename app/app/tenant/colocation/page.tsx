@@ -1,97 +1,347 @@
-// @ts-nocheck
-import { createClient } from "@/lib/supabase/server";
-import { fetchTenantLease } from "../_data/fetchTenantLease";
+"use client";
+
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, ClipboardList } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Users, 
+  Euro, 
+  ClipboardList, 
+  ScrollText,
+  Home,
+  Mail,
+  Phone,
+  CheckCircle2,
+  Clock
+} from "lucide-react";
+import { ColocExpenseSplit } from "@/features/tenant/components/coloc-expense-split";
+import { ColocChores } from "@/features/tenant/components/coloc-chores";
+import { ColocHouseRules } from "@/features/tenant/components/coloc-house-rules";
+import { PageTransition } from "@/components/ui/page-transition";
+import { GlassCard } from "@/components/ui/glass-card";
 
-export default async function TenantColocationPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!profile) return null;
-
-  const lease = await fetchTenantLease(user.id);
-  const roommates =
-    lease?.lease_signers?.filter(
-      (signer: any) =>
-        signer.profiles?.id !== profile.id && ["locataire_principal", "colocataire"].includes(signer.role)
-    ) ?? [];
-
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Colocation</h1>
-        <p className="text-muted-foreground">Vos colocataires et leurs statuts de signature.</p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Mes colocataires
-          </CardTitle>
-          <CardDescription>Personnes ajoutées comme signataires sur ce bail.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {roommates.length > 0 ? (
-            <div className="space-y-3">
-              {roommates.map((roommate: any) => (
-                <div key={roommate.id} className="flex items-center gap-4 rounded-lg border p-3">
-                  <Avatar>
-                    <AvatarImage src={roommate.profiles?.avatar_url || undefined} />
-                    <AvatarFallback>
-                      {roommate.profiles?.prenom?.[0]}
-                      {roommate.profiles?.nom?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="font-medium">
-                      {roommate.profiles?.prenom} {roommate.profiles?.nom}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{roommate.profiles?.email}</p>
-                  </div>
-                  <div className="text-sm text-muted-foreground capitalize">{roommate.role}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
-              <p className="text-muted-foreground">Vous n’avez pas de colocataire enregistré.</p>
-              <p className="text-sm text-muted-foreground">Le bail répertorie uniquement votre profil.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5" />
-            Organisation commune
-          </CardTitle>
-          <CardDescription>
-            Les fonctionnalités de partage des tâches et des dépenses arriveront très bientôt.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-muted-foreground">
-            Vous pourrez bientôt répartir automatiquement les loyers, charges et tâches ménagères depuis cette page.
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+interface Roommate {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  avatar?: string;
+  role: string;
+  signature_status: string;
+  share_percentage: number;
 }
 
+interface LeaseInfo {
+  id: string;
+  property_address: string;
+  type_bail: string;
+  loyer: number;
+  charges: number;
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+};
+
+export default function TenantColocationPage() {
+  const [loading, setLoading] = useState(true);
+  const [roommates, setRoommates] = useState<Roommate[]>([]);
+  const [lease, setLease] = useState<LeaseInfo | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [currentProfileId, setCurrentProfileId] = useState<string>("");
+  const [isMainTenant, setIsMainTenant] = useState(false);
+  const supabase = createClient();
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setCurrentUserId(user.id);
+
+      // Get current profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!profile) return;
+      setCurrentProfileId(profile.id);
+
+      // Get lease with signers
+      const { data: leaseSigners } = await supabase
+        .from("lease_signers")
+        .select(`
+          id,
+          role,
+          signature_status,
+          profiles!inner (
+            id,
+            user_id,
+            prenom,
+            nom,
+            email,
+            telephone,
+            avatar_url
+          ),
+          leases!inner (
+            id,
+            type_bail,
+            loyer,
+            charges_forfaitaires,
+            properties!inner (
+              adresse_complete,
+              ville,
+              code_postal
+            )
+          )
+        `)
+        .eq("profiles.user_id", user.id)
+        .in("role", ["locataire_principal", "colocataire"])
+        .single();
+
+      if (!leaseSigners) {
+        setLoading(false);
+        return;
+      }
+
+      const leaseData = leaseSigners.leases as any;
+      const propertyData = leaseData.properties;
+
+      setLease({
+        id: leaseData.id,
+        property_address: `${propertyData.adresse_complete}, ${propertyData.code_postal} ${propertyData.ville}`,
+        type_bail: leaseData.type_bail,
+        loyer: leaseData.loyer,
+        charges: leaseData.charges_forfaitaires,
+      });
+
+      // Check if current user is main tenant
+      setIsMainTenant(leaseSigners.role === "locataire_principal");
+
+      // Get all roommates for this lease
+      const { data: allSigners } = await supabase
+        .from("lease_signers")
+        .select(`
+          id,
+          role,
+          signature_status,
+          profiles (
+            id,
+            user_id,
+            prenom,
+            nom,
+            email,
+            telephone,
+            avatar_url
+          )
+        `)
+        .eq("lease_id", leaseData.id)
+        .in("role", ["locataire_principal", "colocataire"]);
+
+      if (allSigners) {
+        const roommatesList: Roommate[] = allSigners.map((signer: any) => ({
+          id: signer.profiles.id,
+          name: `${signer.profiles.prenom || ""} ${signer.profiles.nom || ""}`.trim() || "Non renseigné",
+          email: signer.profiles.email,
+          phone: signer.profiles.telephone,
+          avatar: signer.profiles.avatar_url,
+          role: signer.role,
+          signature_status: signer.signature_status,
+          share_percentage: 100 / allSigners.length,
+        }));
+        setRoommates(roommatesList);
+      }
+    } catch (error) {
+      console.error("Erreur chargement colocation:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-32 w-full" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
+        </div>
+      </div>
+    );
+  }
+
+  if (roommates.length <= 1) {
+    return (
+      <PageTransition>
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <Card>
+            <CardContent className="py-16 text-center">
+              <Users className="h-16 w-16 mx-auto text-muted-foreground/30 mb-6" />
+              <h2 className="text-2xl font-bold mb-2">Pas de colocation active</h2>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Vous n'avez pas de colocataires pour le moment. Cette page sera disponible 
+                lorsque vous partagerez votre logement avec d'autres personnes.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  return (
+    <PageTransition>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="container mx-auto px-4 py-8 max-w-6xl space-y-8"
+      >
+        {/* Header */}
+        <motion.div variants={itemVariants}>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Ma colocation</h1>
+              <p className="text-muted-foreground mt-1">
+                Gérez les dépenses, tâches et règles avec vos colocataires
+              </p>
+            </div>
+            {lease && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Home className="h-4 w-4" />
+                {lease.property_address}
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Roommates overview */}
+        <motion.div variants={itemVariants}>
+          <GlassCard gradient className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-indigo-600" />
+                Mes colocataires ({roommates.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-4">
+                {roommates.map((roommate) => {
+                  const isMe = roommate.id === currentProfileId;
+                  return (
+                    <div
+                      key={roommate.id}
+                      className={`flex items-center gap-3 p-4 rounded-xl bg-white/80 border ${
+                        isMe ? "border-indigo-200 ring-2 ring-indigo-100" : "border-gray-100"
+                      }`}
+                    >
+                      <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                        {roommate.avatar && <AvatarImage src={roommate.avatar} />}
+                        <AvatarFallback className={isMe ? "bg-indigo-100 text-indigo-600" : "bg-gray-100"}>
+                          {roommate.name.split(" ").map(n => n[0]).join("").toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium flex items-center gap-2">
+                          {isMe ? "Vous" : roommate.name}
+                          {roommate.role === "locataire_principal" && (
+                            <Badge variant="secondary" className="text-xs">Principal</Badge>
+                          )}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {roommate.signature_status === "signed" ? (
+                            <span className="text-xs text-emerald-600 flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Bail signé
+                            </span>
+                          ) : (
+                            <span className="text-xs text-amber-600 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Signature en attente
+                            </span>
+                          )}
+                        </div>
+                        {!isMe && roommate.email && (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {roommate.email}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </GlassCard>
+        </motion.div>
+
+        {/* Main content with tabs */}
+        <motion.div variants={itemVariants}>
+          <Tabs defaultValue="expenses" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex">
+              <TabsTrigger value="expenses" className="flex items-center gap-2">
+                <Euro className="h-4 w-4" />
+                <span className="hidden sm:inline">Dépenses</span>
+              </TabsTrigger>
+              <TabsTrigger value="chores" className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4" />
+                <span className="hidden sm:inline">Tâches</span>
+              </TabsTrigger>
+              <TabsTrigger value="rules" className="flex items-center gap-2">
+                <ScrollText className="h-4 w-4" />
+                <span className="hidden sm:inline">Règlement</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="expenses" className="mt-6">
+              <ColocExpenseSplit
+                leaseId={lease?.id || ""}
+                roommates={roommates}
+                currentUserId={currentProfileId}
+              />
+            </TabsContent>
+
+            <TabsContent value="chores" className="mt-6">
+              <ColocChores
+                leaseId={lease?.id || ""}
+                roommates={roommates}
+                currentUserId={currentProfileId}
+              />
+            </TabsContent>
+
+            <TabsContent value="rules" className="mt-6">
+              <ColocHouseRules
+                leaseId={lease?.id || ""}
+                roommates={roommates}
+                currentUserId={currentProfileId}
+                isMainTenant={isMainTenant}
+              />
+            </TabsContent>
+          </Tabs>
+        </motion.div>
+      </motion.div>
+    </PageTransition>
+  );
+}

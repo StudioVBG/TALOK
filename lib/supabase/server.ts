@@ -5,7 +5,12 @@ import { NextRequest } from "next/server";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 
 // Re-export du service client pour compatibilité
-export { getServiceClient as createServiceRoleClient } from "./service-client";
+export { createServiceRoleClient } from "./service-client";
+
+// Alias pour compatibilité avec les anciens imports (createRouteHandlerClient)
+export const createRouteHandlerClient = async () => {
+  return createClient();
+};
 
 // Alias pour compatibilité avec les anciens imports
 export { createClient as createServerClient };

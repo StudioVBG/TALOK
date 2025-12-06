@@ -16,6 +16,7 @@ import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PlanGate } from "@/components/subscription";
 
 interface Inspection {
   id: string;
@@ -139,6 +140,13 @@ export function InspectionsClient({ inspections }: Props) {
           </Button>
         </div>
 
+        {/* PlanGate SOTA 2025 - EDL Digital */}
+        <PlanGate 
+          feature="edl_digital" 
+          mode="blur"
+          message="L'EDL digital avec signature électronique nécessite un forfait supérieur. Passez à un forfait payant pour créer des états des lieux numériques."
+        >
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <GlassCard gradient={true} hoverEffect={true}>
@@ -243,6 +251,7 @@ export function InspectionsClient({ inspections }: Props) {
             } : undefined}
           />
         )}
+        </PlanGate>
       </div>
     </PageTransition>
   );

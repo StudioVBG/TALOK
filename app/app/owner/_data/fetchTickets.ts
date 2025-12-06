@@ -5,6 +5,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export interface TicketRow {
   id: string;
@@ -51,7 +52,7 @@ export async function fetchTickets(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   // Vérifier les permissions
@@ -144,7 +145,7 @@ export async function fetchTicket(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    throw new Error("Non authentifié");
+    redirect("/auth/signin");
   }
 
   // Vérifier les permissions

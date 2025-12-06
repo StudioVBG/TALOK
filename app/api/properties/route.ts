@@ -144,12 +144,13 @@ export async function GET(request: Request) {
       }
 
       // ✅ RECHERCHE: Appliquer la recherche si fournie
-      if (baseQuery && queryParams.search) {
-        const searchTerm = (queryParams.search as string).toLowerCase();
-        baseQuery = baseQuery.or(`adresse_complete.ilike.%${searchTerm}%,code_postal.ilike.%${searchTerm}%,ville.ilike.%${searchTerm}%`);
+      const searchTerm = queryParams.search || queryParams.q;
+      if (baseQuery && searchTerm) {
+        const term = String(searchTerm).toLowerCase();
+        baseQuery = baseQuery.or(`adresse_complete.ilike.%${term}%,code_postal.ilike.%${term}%,ville.ilike.%${term}%`);
       }
 
-      // ✅ FILTRES: Appliquer les filtres si fournis
+      // ✅ FILTRES BASIQUES: Appliquer les filtres si fournis
       if (baseQuery && queryParams.type) {
         baseQuery = baseQuery.eq("type", queryParams.type);
       }
@@ -158,6 +159,52 @@ export async function GET(request: Request) {
       }
       if (baseQuery && queryParams.etat) {
         baseQuery = baseQuery.eq("etat", queryParams.etat);
+      }
+      
+      // ✅ FILTRES GÉOGRAPHIQUES
+      if (baseQuery && queryParams.ville) {
+        baseQuery = baseQuery.ilike("ville", `%${queryParams.ville}%`);
+      }
+      if (baseQuery && queryParams.code_postal) {
+        baseQuery = baseQuery.eq("code_postal", queryParams.code_postal);
+      }
+      if (baseQuery && queryParams.departement) {
+        baseQuery = baseQuery.eq("departement", queryParams.departement);
+      }
+      
+      // ✅ FILTRES NUMÉRIQUES (surface, pièces, loyer)
+      if (baseQuery && queryParams.surface_min) {
+        baseQuery = baseQuery.gte("surface", Number(queryParams.surface_min));
+      }
+      if (baseQuery && queryParams.surface_max) {
+        baseQuery = baseQuery.lte("surface", Number(queryParams.surface_max));
+      }
+      if (baseQuery && queryParams.nb_pieces_min) {
+        baseQuery = baseQuery.gte("nb_pieces", Number(queryParams.nb_pieces_min));
+      }
+      if (baseQuery && queryParams.nb_pieces_max) {
+        baseQuery = baseQuery.lte("nb_pieces", Number(queryParams.nb_pieces_max));
+      }
+      if (baseQuery && queryParams.loyer_min) {
+        // Note: utilise loyer_hc si disponible, sinon fallback
+        baseQuery = baseQuery.gte("loyer_hc", Number(queryParams.loyer_min));
+      }
+      if (baseQuery && queryParams.loyer_max) {
+        baseQuery = baseQuery.lte("loyer_hc", Number(queryParams.loyer_max));
+      }
+      
+      // ✅ FILTRES BOOLÉENS
+      if (baseQuery && queryParams.meuble !== undefined) {
+        baseQuery = baseQuery.eq("meuble", queryParams.meuble);
+      }
+      if (baseQuery && queryParams.ascenseur !== undefined) {
+        baseQuery = baseQuery.eq("ascenseur", queryParams.ascenseur);
+      }
+      
+      // ✅ TRI PERSONNALISÉ
+      if (baseQuery && queryParams.sort_by) {
+        const sortOrder = queryParams.sort_order === "asc" ? true : false;
+        baseQuery = baseQuery.order(queryParams.sort_by as string, { ascending: sortOrder });
       }
 
       // ✅ PAGINATION: Appliquer la pagination

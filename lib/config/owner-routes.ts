@@ -27,6 +27,13 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "FileText",
   },
+  tenants: {
+    path: "/app/owner/tenants",
+    name: "Mes locataires",
+    component: "OwnerTenantsPage",
+    auth: ["owner"],
+    icon: "Users",
+  },
   leases: {
     path: "/app/owner/contracts",
     name: "Baux",
@@ -54,6 +61,20 @@ export const OWNER_ROUTES = {
     component: "OwnerTicketsPage",
     auth: ["owner"],
     icon: "Wrench",
+  },
+  workOrders: {
+    path: "/app/owner/work-orders",
+    name: "Interventions",
+    component: "OwnerWorkOrdersPage",
+    auth: ["owner"],
+    icon: "HardHat",
+  },
+  providers: {
+    path: "/app/owner/providers",
+    name: "Prestataires",
+    component: "OwnerProvidersPage",
+    auth: ["owner"],
+    icon: "UserCog",
   },
   documents: {
     path: "/app/owner/documents",
@@ -96,6 +117,27 @@ export const OWNER_ROUTES = {
     component: "OwnerProfilePage",
     auth: ["owner"],
     icon: "User",
+  },
+  messages: {
+    path: "/app/owner/messages",
+    name: "Messages",
+    component: "OwnerMessagesPage",
+    auth: ["owner"],
+    icon: "MessageSquare",
+  },
+  taxes: {
+    path: "/app/owner/taxes",
+    name: "Fiscalité",
+    component: "OwnerTaxesPage",
+    auth: ["owner"],
+    icon: "Calculator",
+  },
+  analytics: {
+    path: "/app/owner/analytics",
+    name: "Analytics",
+    component: "OwnerAnalyticsPage",
+    auth: ["owner"],
+    icon: "BarChart3",
   },
 } as const;
 

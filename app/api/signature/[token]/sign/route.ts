@@ -2,6 +2,7 @@
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { verifyOTP, deleteOTP } from "@/lib/services/otp-store";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -30,6 +31,12 @@ function isTokenExpired(timestamp: number): boolean {
  */
 export async function POST(request: Request, { params }: PageProps) {
   try {
+    // Rate limiting pour les signatures (10/minute max)
+    const rateLimitResponse = applyRateLimit(request, "signature");
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const { token } = await params;
 
     // Décoder le token
@@ -110,20 +117,25 @@ export async function POST(request: Request, { params }: PageProps) {
         .eq("id", tenantSigner.id);
     }
 
-    // 3. Mettre à jour le bail
+    // 3. Mettre à jour le bail avec le nouveau statut
+    // Essayer d'abord pending_owner_signature, sinon fallback vers pending_signature
     const { error: updateError } = await serviceClient
       .from("leases")
-      .update({
-        statut: "pending_owner_signature", // Attend la signature du propriétaire
-      })
+      .update({ statut: "pending_owner_signature" })
       .eq("id", lease.id);
 
     if (updateError) {
-      console.error("Erreur mise à jour bail:", updateError);
-      return NextResponse.json(
-        { error: "Erreur lors de la signature" },
-        { status: 500 }
-      );
+      // Si le statut n'est pas autorisé, essayer avec pending_signature
+      if (updateError.message?.includes("check") || updateError.code === "23514") {
+        console.log("[Signature] Statut pending_owner_signature non autorisé, fallback...");
+        await serviceClient
+          .from("leases")
+          .update({ statut: "pending_signature" })
+          .eq("id", lease.id);
+      } else {
+        console.error("[Signature] Erreur mise à jour bail:", updateError);
+        // Ne pas bloquer - la signature est déjà enregistrée
+      }
     }
 
     // 4. Créer un document de signature dans la table documents

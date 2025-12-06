@@ -1,4 +1,3 @@
-// @ts-nocheck
 export * from "./fetchProperties";
 export * from "./fetchDashboard";
 export * from "./fetchContracts";

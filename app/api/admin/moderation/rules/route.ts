@@ -3,6 +3,56 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 /**
+ * GET /api/admin/moderation/rules - Lister les règles de modération
+ */
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", user.id as any)
+      .single();
+
+    const profileData = profile as any;
+    if (profileData?.role !== "admin") {
+      return NextResponse.json(
+        { error: "Accès refusé" },
+        { status: 403 }
+      );
+    }
+
+    // Récupérer les règles depuis la table moderation_rules
+    const { data: rules, error } = await supabase
+      .from("moderation_rules")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      // Table n'existe pas encore, retourner un tableau vide
+      console.log("[GET /api/admin/moderation/rules] Table non trouvée, retour tableau vide");
+      return NextResponse.json({ rules: [] });
+    }
+
+    return NextResponse.json({ rules: rules || [] });
+  } catch (error: any) {
+    console.error("[GET /api/admin/moderation/rules] Erreur:", error);
+    return NextResponse.json(
+      { error: error.message || "Erreur serveur" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * POST /api/admin/moderation/rules - Créer une règle de modération
  */
 export async function POST(request: Request) {

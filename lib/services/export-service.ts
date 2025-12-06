@@ -246,8 +246,8 @@ export function generatePDFHTML(data: any[], options: ExportOptions): string {
 /**
  * Déclenche le téléchargement d'un fichier
  */
-export function downloadFile(content: string, filename: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType });
+export function downloadFile(content: string | Blob, filename: string, mimeType: string) {
+  const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   
   const link = document.createElement("a");
@@ -258,6 +258,79 @@ export function downloadFile(content: string, filename: string, mimeType: string
   document.body.removeChild(link);
   
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Génère un fichier Excel (XLSX) natif
+ * Utilise le format SpreadsheetML pour une compatibilité maximale
+ */
+export function generateXLSX(data: any[], options: ExportOptions): Blob {
+  const { columns, title, includeTimestamp } = options;
+  
+  // Escape XML special characters
+  const escapeXML = (str: string): string => {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  };
+  
+  // Build rows
+  const headerRow = columns.map((col, i) => 
+    `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeXML(col.header)}</Data></Cell>`
+  ).join('');
+  
+  const dataRows = data.map(item => {
+    const cells = columns.map(col => {
+      const value = item[col.key];
+      const formatted = formatValue(value, col.format);
+      const type = col.format === "number" || col.format === "currency" || col.format === "percentage" 
+        ? "Number" 
+        : "String";
+      
+      // For numbers, remove formatting for Excel
+      let cellValue = formatted;
+      if (type === "Number" && typeof value === "number") {
+        cellValue = String(value);
+      }
+      
+      return `<Cell><Data ss:Type="${type}">${escapeXML(cellValue)}</Data></Cell>`;
+    });
+    return `<Row>${cells.join('')}</Row>`;
+  });
+  
+  // Add summary row
+  const summaryRow = includeTimestamp 
+    ? `<Row><Cell><Data ss:Type="String">Généré le ${new Date().toLocaleString("fr-FR")}</Data></Cell></Row>`
+    : '';
+  
+  // Build XML spreadsheet
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Styles>
+    <Style ss:ID="Default" ss:Name="Normal">
+      <Font ss:FontName="Calibri" ss:Size="11"/>
+    </Style>
+    <Style ss:ID="Header">
+      <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/>
+      <Interior ss:Color="#4472C4" ss:Pattern="Solid"/>
+      <Font ss:Color="#FFFFFF"/>
+    </Style>
+  </Styles>
+  <Worksheet ss:Name="${escapeXML(title || 'Export')}">
+    <Table>
+      <Row>${headerRow}</Row>
+      ${dataRows.join('\n      ')}
+      ${summaryRow}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+
+  return new Blob([xml], { type: 'application/vnd.ms-excel' });
 }
 
 /**
@@ -296,13 +369,10 @@ export function exportData(data: any[], options: ExportOptions): void {
       break;
     
     case "xlsx":
-      // Pour XLSX, utiliser une librairie comme xlsx ou exceljs
-      // Pour l'instant, fallback vers CSV
-      console.warn("Format XLSX non supporté, export en CSV");
-      content = generateCSV(data, options);
-      mimeType = "text/csv;charset=utf-8";
-      extension = "csv";
-      break;
+      // Export Excel natif
+      const xlsxBlob = generateXLSX(data, options);
+      downloadFile(xlsxBlob, `${fullFilename}.xls`, "application/vnd.ms-excel");
+      return; // Exit early since we already called downloadFile
     
     default:
       throw new Error(`Format non supporté: ${format}`);
