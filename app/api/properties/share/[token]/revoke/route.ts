@@ -1,7 +1,6 @@
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-"use server";
 
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
