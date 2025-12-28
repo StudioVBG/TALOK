@@ -68,12 +68,12 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
   // Catégories disponibles pour le filtre
   const CATEGORIES = [
     { value: "all", label: "Toutes catégories" },
-    { value: "contrat", label: "📄 Contrats" },
+    { value: "contrat", label: "📄 Baux et Contrats" },
     { value: "diagnostic", label: "🔍 Diagnostics" },
-    { value: "finance", label: "💰 Finances" },
+    { value: "finance", label: "💰 Finances et Quittances" },
     { value: "edl", label: "📋 États des lieux" },
     { value: "assurance", label: "🛡️ Assurances" },
-    { value: "identite", label: "👤 Identité" },
+    { value: "identite", label: "👤 Dossier Locataire" },
     { value: "courrier", label: "✉️ Courriers" },
     { value: "autre", label: "📁 Autres" },
   ];
@@ -130,7 +130,7 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
   // Filtre par catégorie
   if (categoryFilter !== "all") {
     filteredDocuments = filteredDocuments.filter((doc: any) => {
-      const category = getDocumentCategory(doc.type || "").label.toLowerCase();
+      const category = getDocumentCategory(doc.type || "").filterValue;
       return category === categoryFilter;
     });
   }
@@ -149,39 +149,60 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
   };
 
   // Catégories de documents avec couleurs
-  const getDocumentCategory = (type: string): { label: string; color: string } => {
-    const categories: Record<string, { label: string; color: string }> = {
+  const getDocumentCategory = (type: string): { label: string; filterValue: string; color: string } => {
+    const categories: Record<string, { label: string; filterValue: string; color: string }> = {
       // Contrats
-      bail: { label: "Contrat", color: "bg-blue-100 text-blue-700 border-blue-200" },
-      avenant: { label: "Contrat", color: "bg-blue-100 text-blue-700 border-blue-200" },
+      bail: { label: "Contrat", filterValue: "contrat", color: "bg-blue-100 text-blue-700 border-blue-200" },
+      avenant: { label: "Contrat", filterValue: "contrat", color: "bg-blue-100 text-blue-700 border-blue-200" },
+      engagement_garant: { label: "Contrat", filterValue: "contrat", color: "bg-blue-100 text-blue-700 border-blue-200" },
       // Diagnostics
-      dpe: { label: "Diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
-      diagnostic_gaz: { label: "Diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
-      diagnostic_electricite: { label: "Diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
-      diagnostic_plomb: { label: "Diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
-      diagnostic_amiante: { label: "Diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
-      diagnostic_termites: { label: "Diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
-      erp: { label: "Diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
+      dpe: { label: "Diagnostic", filterValue: "diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
+      diagnostic: { label: "Diagnostic", filterValue: "diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
+      diagnostic_gaz: { label: "Diagnostic", filterValue: "diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
+      diagnostic_electricite: { label: "Diagnostic", filterValue: "diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
+      diagnostic_plomb: { label: "Diagnostic", filterValue: "diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
+      diagnostic_amiante: { label: "Diagnostic", filterValue: "diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
+      diagnostic_termites: { label: "Diagnostic", filterValue: "diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
+      erp: { label: "Diagnostic", filterValue: "diagnostic", color: "bg-orange-100 text-orange-700 border-orange-200" },
       // Finances
-      quittance: { label: "Finance", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-      facture: { label: "Finance", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-      appel_loyer: { label: "Finance", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-      releve_charges: { label: "Finance", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+      quittance: { label: "Finance", filterValue: "finance", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+      facture: { label: "Finance", filterValue: "finance", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+      appel_loyer: { label: "Finance", filterValue: "finance", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+      releve_charges: { label: "Finance", filterValue: "finance", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+      avis_imposition: { label: "Finance", filterValue: "finance", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+      bulletin_paie: { label: "Finance", filterValue: "finance", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
       // État des lieux
-      edl_entree: { label: "EDL", color: "bg-purple-100 text-purple-700 border-purple-200" },
-      edl_sortie: { label: "EDL", color: "bg-purple-100 text-purple-700 border-purple-200" },
-      inventaire: { label: "EDL", color: "bg-purple-100 text-purple-700 border-purple-200" },
+      edl_entree: { label: "EDL", filterValue: "edl", color: "bg-purple-100 text-purple-700 border-purple-200" },
+      edl_sortie: { label: "EDL", filterValue: "edl", color: "bg-purple-100 text-purple-700 border-purple-200" },
+      inventaire: { label: "EDL", filterValue: "edl", color: "bg-purple-100 text-purple-700 border-purple-200" },
       // Assurances
-      attestation_assurance: { label: "Assurance", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-      assurance_pno: { label: "Assurance", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
+      attestation_assurance: { label: "Assurance", filterValue: "assurance", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
+      assurance_pno: { label: "Assurance", filterValue: "assurance", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
       // Identité
-      piece_identite: { label: "Identité", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      justificatif_domicile: { label: "Identité", color: "bg-slate-100 text-slate-700 border-slate-200" },
+      piece_identite: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
+      cni_recto: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
+      cni_verso: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
+      passeport: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
+      justificatif_domicile: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
+      rib: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
       // Autres
-      courrier: { label: "Courrier", color: "bg-pink-100 text-pink-700 border-pink-200" },
-      photo: { label: "Photo", color: "bg-amber-100 text-amber-700 border-amber-200" },
+      courrier: { label: "Courrier", filterValue: "courrier", color: "bg-pink-100 text-pink-700 border-pink-200" },
+      photo: { label: "Photo", filterValue: "autre", color: "bg-amber-100 text-amber-700 border-amber-200" },
     };
-    return categories[type] || { label: "Autre", color: "bg-gray-100 text-gray-700 border-gray-200" };
+    return categories[type] || { label: "Autre", filterValue: "autre", color: "bg-gray-100 text-gray-700 border-gray-200" };
+  };
+
+  // Helper pour obtenir le nom du locataire
+  const getTenantName = (doc: any) => {
+    // 1. Données enrichies par la jointure
+    if (doc.tenant?.prenom || doc.tenant?.nom) {
+      return `${doc.tenant.prenom || ""} ${doc.tenant.nom || ""}`.trim();
+    }
+    // 2. Métadonnées du document (ex: CNI OCR)
+    if (doc.metadata?.prenom || doc.metadata?.nom) {
+      return `${doc.metadata.prenom || ""} ${doc.metadata.nom || ""}`.trim();
+    }
+    return null;
   };
 
   // Colonnes SOTA
@@ -190,19 +211,37 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
         header: "Document",
         cell: (doc: any) => {
             const category = getDocumentCategory(doc.type || "");
+            const typeLabel = getTypeLabel(doc.type || "");
+            const tenantName = getTenantName(doc);
+            
+            // Titre enrichi avec le nom du locataire pour les documents d'identité
+            let title = doc.title || (doc.metadata?.filename) || typeLabel;
+            if (tenantName && category.filterValue === "identite") {
+              title = `${typeLabel} - ${tenantName}`;
+            }
+            
             return (
               <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600 shadow-sm border border-indigo-100">
                       <FileText className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                      <span className="font-semibold text-slate-900 block">{doc.title || getTypeLabel(doc.type || "")}</span>
+                      <span className="font-semibold text-slate-900 block truncate max-w-[250px]" title={title}>
+                        {title}
+                      </span>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${category.color}`}>
                           <Tag className="h-2.5 w-2.5 mr-1" />
                           {category.label}
                         </Badge>
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{getTypeLabel(doc.type || "")}</span>
+                        {tenantName && category.filterValue !== "identite" && (
+                          <span className="text-[10px] text-muted-foreground">
+                            👤 {tenantName}
+                          </span>
+                        )}
+                        {!tenantName && (
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{typeLabel}</span>
+                        )}
                       </div>
                   </div>
               </div>
@@ -213,7 +252,7 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
         header: "Bien associé",
         cell: (doc: any) => (
             <span className="text-sm text-slate-600 font-medium">
-                {doc.property?.adresse_complete || "Général"}
+                {doc.properties?.adresse_complete || doc.property?.adresse_complete || "Général"}
             </span>
         )
     },

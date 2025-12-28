@@ -304,6 +304,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         await serviceClient
           .from("documents")
           .update({
+            title: `Bail - ${property?.adresse_complete || property?.ville || leaseId.slice(0, 8)}`,
             storage_path: storagePath,
             metadata: { 
               hash: dataHash, 
@@ -317,6 +318,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         // Créer nouvelle entrée
         await serviceClient.from("documents").insert({
           type: "bail",
+          title: `Bail - ${property?.adresse_complete || property?.ville || leaseId.slice(0, 8)}`,
           owner_id: property.owner_id,
           property_id: property.id,
           lease_id: leaseId,

@@ -44,18 +44,19 @@ export class DocumentsService {
       });
   }
 
+  /**
+   * @deprecated Cette méthode ne devrait pas être utilisée sans filtre.
+   * Utiliser getDocumentsByOwner, getDocumentsByTenant, ou getDocumentsByProperty à la place.
+   * 
+   * 🔒 SÉCURITÉ: Retourne un tableau vide pour éviter une fuite de données.
+   */
   async getDocuments() {
-    const useGallery = this.shouldUseGalleryEnhancements();
-    let query = this.buildDocumentsQuery({ useGallery });
-    let { data, error } = await this.orderDocumentsQuery(query, useGallery);
-
-    if (error && useGallery && this.registerGalleryFallback(error)) {
-      query = this.buildDocumentsQuery({ useGallery: false });
-      ({ data, error } = await this.orderDocumentsQuery(query, false));
-    }
-
-    if (error) throw error;
-    return this.sortDocuments(data as Document[]);
+    console.error(
+      "[SÉCURITÉ] getDocuments() appelé sans filtre. " +
+      "Utilisez getDocumentsByOwner(), getDocumentsByTenant(), ou getDocumentsByProperty() à la place."
+    );
+    // Retourner un tableau vide pour éviter d'exposer tous les documents
+    return [];
   }
 
   async getDocumentById(id: string) {

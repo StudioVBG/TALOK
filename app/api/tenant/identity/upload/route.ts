@@ -145,10 +145,12 @@ export async function POST(request: Request) {
     }
 
     // Créer le document en base
+    const sideLabel = side === "recto" ? "Recto" : "Verso";
     const { data: newDoc, error: docError } = await serviceClient
       .from("documents")
       .insert({
         type: side === "recto" ? "cni_recto" : "cni_verso",
+        title: `Carte d'Identité (${sideLabel})`,
         lease_id: leaseId,
         tenant_id: profile.id,
         storage_path: filePath,
