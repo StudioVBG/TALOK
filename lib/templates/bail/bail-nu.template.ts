@@ -563,7 +563,7 @@ export const BAIL_NU_TEMPLATE = `
           </div>
           
           <p class="article-content">
-            Soit en toutes lettres : <strong>{{LOYER_LETTRES}}</strong>
+            Soit en toutes lettres : <strong>{{LOYER_TOTAL_LETTRES}}</strong>
           </p>
           
           <table class="info-table" style="margin-top: 15px;">

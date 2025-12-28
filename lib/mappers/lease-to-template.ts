@@ -85,6 +85,23 @@ export function mapLeaseToTemplate(
   // ✅ FIX: Terme à échoir si jour ≤ 10 (paiement en début de période)
   const paiementAvance = jourPaiement <= 10;
 
+  // ✅ FIX: Calculer la durée et la date de fin COHÉRENTES
+  const dureeMois = getDureeMois(lease.type_bail, ownerProfile?.type);
+  
+  // Recalculer date_fin à partir de date_debut + duree_mois
+  // Justification : Évite l'incohérence entre "Six ans" et date_fin réelle
+  const calculateDateFin = (dateDebut: string, mois: number): string => {
+    if (!dateDebut) return "";
+    const start = new Date(dateDebut);
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + mois);
+    return end.toISOString().split("T")[0];
+  };
+  
+  const dateFinCalculee = lease.date_debut 
+    ? calculateDateFin(lease.date_debut, dureeMois)
+    : lease.date_fin || "";
+
   return {
     reference: lease.id ? lease.id.slice(0, 8).toUpperCase() : "DRAFT",
     date_signature: lease.created_at, // Ou signed_at si dispo
@@ -137,9 +154,10 @@ export function mapLeaseToTemplate(
       type_bail: lease.type_bail || "nu",
       usage: "habitation_principale",
       date_debut: lease.date_debut,
-      date_fin: lease.date_fin,
-      // ✅ FIX: Passer le type de bailleur pour calcul durée correcte
-      duree_mois: getDureeMois(lease.type_bail, ownerProfile?.type),
+      // ✅ FIX: Utiliser la date de fin CALCULÉE (cohérente avec duree_mois)
+      date_fin: dateFinCalculee,
+      // ✅ FIX: Utiliser la durée calculée (bailleur société = 6 ans)
+      duree_mois: dureeMois,
       // ✅ Utiliser les valeurs synchronisées (property pour draft, lease pour actif)
       loyer_hc: loyer,
       loyer_en_lettres: numberToWords(loyer),
@@ -162,13 +180,43 @@ export function mapLeaseToTemplate(
     
     diagnostics: {
       dpe: {
-        date_realisation: "",
-        date_validite: "",
+        // ✅ FIX: Mapper tous les champs DPE depuis properties
+        date_realisation: propAny.dpe_date || "",
+        date_validite: propAny.dpe_date_validite || "",
         classe_energie: propAny.dpe_classe_energie || propAny.energie || undefined,
         classe_ges: propAny.dpe_classe_climat || propAny.ges || undefined,
-        consommation_energie: propAny.dpe_consommation || 0,
-        emissions_ges: 0,
-      }
+        consommation_energie: propAny.dpe_consommation || propAny.consommation_energie || 0,
+        emissions_ges: propAny.dpe_emissions_ges || propAny.emissions_ges || 0,
+        // Estimations coûts annuels
+        estimation_cout_min: propAny.dpe_cout_min || propAny.estimation_cout_min || 0,
+        estimation_cout_max: propAny.dpe_cout_max || propAny.estimation_cout_max || 0,
+      },
+      // CREP (plomb) - si immeuble avant 1949
+      crep: propAny.crep_date ? {
+        date_realisation: propAny.crep_date,
+        presence_plomb: propAny.crep_plomb || false,
+      } : undefined,
+      // Électricité - si installation > 15 ans
+      electricite: propAny.elec_date ? {
+        date_realisation: propAny.elec_date,
+        anomalies_detectees: propAny.elec_anomalies || false,
+        nb_anomalies: propAny.elec_nb_anomalies || 0,
+      } : undefined,
+      // Gaz - si installation gaz présente
+      gaz: propAny.gaz_date ? {
+        date_realisation: propAny.gaz_date,
+        anomalies_detectees: propAny.gaz_anomalies || false,
+        type_anomalie: propAny.gaz_type_anomalie || "",
+      } : undefined,
+      // ERP (risques)
+      erp: propAny.erp_date ? {
+        date_realisation: propAny.erp_date,
+      } : undefined,
+      // Bruit (aéroport)
+      bruit: propAny.bruit_date ? {
+        date_realisation: propAny.bruit_date,
+        zone_exposition: propAny.bruit_zone || "",
+      } : undefined,
     },
     
     // Signatures électroniques

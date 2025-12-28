@@ -199,7 +199,7 @@ export function LeasePreview({
 
     // Méthode la plus fiable : utiliser l'impression native de l'iframe
     if (iframeRef.current?.contentWindow) {
-      toast({
+            toast({
         title: "🖨️ Impression PDF",
         description: "Choisissez 'Enregistrer au format PDF' dans la fenêtre d'impression.",
       });

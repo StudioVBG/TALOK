@@ -1,0 +1,35 @@
+# Configuration Netlify pour Next.js
+# https://docs.netlify.com/integrations/frameworks/next-js/overview/
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Plugin Next.js pour Netlify (requis)
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Variables d'environnement (à configurer dans l'UI Netlify)
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+
+# Headers de sécurité
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Redirections pour Next.js App Router
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/___netlify-handler"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/___netlify-handler"
+  status = 200
+

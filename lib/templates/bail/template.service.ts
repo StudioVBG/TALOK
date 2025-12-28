@@ -308,27 +308,39 @@ export class LeaseTemplateService {
   /**
    * Remplace les variables dans le template
    * Supporte les conditions {{#if VAR}}...{{/if}} et les boucles {{#each ARRAY}}...{{/each}}
+   * 
+   * ✅ FIX: Utilise une BOUCLE pour gérer les conditions imbriquées
+   * Chaque passe traite un niveau d'imbrication
    */
   static replaceVariables(template: string, variables: Record<string, string>): string {
     let html = template;
+    let previousHtml = '';
+    let iterations = 0;
+    const maxIterations = 10; // Sécurité contre les boucles infinies
 
-    // Traiter les conditions {{#if VAR}}...{{else}}...{{/if}}
-    html = html.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)(?:\{\{else\}\}([\s\S]*?))?\{\{\/if\}\}/g, 
-      (match, varName, ifContent, elseContent = '') => {
-        const value = variables[varName];
-        if (value && value !== '' && value !== 'false') {
-          return ifContent;
+    // ✅ FIX: Boucle jusqu'à ce qu'il n'y ait plus de changements
+    // Cela permet de gérer les conditions imbriquées niveau par niveau
+    while (html !== previousHtml && iterations < maxIterations) {
+      previousHtml = html;
+      iterations++;
+
+      // Traiter les conditions {{#if VAR}}...{{else}}...{{/if}}
+      // Pattern non-greedy pour capturer le bon niveau d'imbrication
+      html = html.replace(/\{\{#if\s+(\w+)\}\}((?:(?!\{\{#if)[\s\S])*?)(?:\{\{else\}\}((?:(?!\{\{#if)[\s\S])*?))?\{\{\/if\}\}/g, 
+        (match, varName, ifContent, elseContent = '') => {
+          const value = variables[varName];
+          if (value && value !== '' && value !== 'false') {
+            return ifContent;
+          }
+          return elseContent;
         }
-        return elseContent;
-      }
-    );
+      );
+    }
 
     // Traiter les boucles {{#each ARRAY}}...{{/each}}
     // Note: Pour les boucles, on attend que les données soient déjà formatées en HTML
-    // Cette partie est simplifiée - en production, utiliser Handlebars ou similaire
     html = html.replace(/\{\{#each\s+(\w+)\}\}([\s\S]*?)\{\{\/each\}\}/g,
       (match, arrayName, itemTemplate) => {
-        // Pour l'instant, retourner le contenu du tableau formaté s'il existe
         return variables[`${arrayName}_HTML`] || '';
       }
     );
@@ -342,6 +354,10 @@ export class LeaseTemplateService {
     html = html.replace(/\{\{this\.(\w+)\}\}/g, (match, propName) => {
       return ''; // Géré par les boucles
     });
+
+    // ✅ FIX: Validation anti-fuite - Nettoyer les tokens restants
+    // Supprimer tout {{...}} ou {{#...}} non traité
+    html = html.replace(/\{\{[#/]?\w+\}\}/g, '');
 
     return html;
   }

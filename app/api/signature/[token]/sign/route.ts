@@ -58,10 +58,17 @@ export async function POST(request: Request, { params }: PageProps) {
 
     const serviceClient = getServiceClient();
 
-    // Récupérer le bail
+    // Récupérer le bail avec owner_id
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
-      .select("id, property_id, statut")
+      .select(`
+        id, 
+        property_id, 
+        statut,
+        properties (
+          owner_id
+        )
+      `)
       .eq("id", tokenData.leaseId)
       .single();
 
@@ -210,6 +217,7 @@ export async function POST(request: Request, { params }: PageProps) {
       .from("documents")
       .insert({
         type: signerRole === "garant" ? "engagement_garant" : "bail_signe_locataire",
+        owner_id: (lease.properties as any)?.owner_id,
         property_id: lease.property_id,
         lease_id: lease.id,
         tenant_id: signerProfileId,

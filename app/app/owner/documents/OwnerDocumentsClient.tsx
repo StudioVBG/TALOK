@@ -51,10 +51,12 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const propertyIdFilter = searchParams.get("property_id");
+  const leaseIdFilter = searchParams.get("lease_id");
 
   // ✅ React Query : données réactives avec mise à jour automatique
   const { data: documents = [], isLoading } = useDocuments({
     propertyId: propertyIdFilter,
+    leaseId: leaseIdFilter,
   });
   const deleteDocumentMutation = useDeleteDocument();
   

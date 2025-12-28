@@ -62,7 +62,8 @@ export async function POST(request: Request, { params }: PageProps) {
         loyer,
         properties (
           adresse_complete,
-          ville
+          ville,
+          owner_id
         )
       `)
       .eq("id", tokenData.leaseId)
@@ -193,6 +194,7 @@ export async function POST(request: Request, { params }: PageProps) {
       .from("documents")
       .insert({
         type: "bail_signe_locataire",
+        owner_id: (lease.properties as any)?.owner_id,
         property_id: lease.property_id,
         lease_id: lease.id,
         tenant_id: tenantProfileId,
