@@ -4,8 +4,12 @@
 
 const https = require('https');
 
-const SUPABASE_PROJECT_REF = 'poeijjosocmqlhgsacud';
-const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN || 'sbp_df8531fa452fb7e02e0de86f70deb36d24608d1c';
+const SUPABASE_PROJECT_REF = process.env.SUPABASE_PROJECT_REF || 'poeijjosocmqlhgsacud';
+const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
+
+if (!SUPABASE_ACCESS_TOKEN) {
+  throw new Error("SUPABASE_ACCESS_TOKEN manquant. Renseignez la variable d'environnement (token management) avant d'exécuter ce script.");
+}
 
 const migrationSQL = `
 -- Migration: Ajouter les colonnes manquantes à la table properties

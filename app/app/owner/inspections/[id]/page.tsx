@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { Suspense } from "react";
+export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";

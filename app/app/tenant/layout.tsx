@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -16,6 +17,9 @@ export default async function TenantLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/db008224-e4e1-4d8a-b3aa-f82f98e7a371',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1',location:'app/app/tenant/layout.tsx:render',message:'Tenant layout render invoked',data:{},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const supabase = await createClient();
   
   // 1. Vérifier l'authentification

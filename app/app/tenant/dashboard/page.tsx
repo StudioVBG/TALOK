@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // @ts-nocheck
 import { redirect } from "next/navigation";
