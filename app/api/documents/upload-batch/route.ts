@@ -1,5 +1,5 @@
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 // @ts-nocheck
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
@@ -7,9 +7,6 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { documentSchema } from "@/lib/validations";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
 
-export const runtime = "nodejs";
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo
 
 function isImage(mimeType: string) {
   return mimeType.startsWith("image/");

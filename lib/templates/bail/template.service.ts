@@ -25,9 +25,6 @@ const TEMPLATES: Record<ExtendedTypeBail, string> = {
 };
 
 export class LeaseTemplateService {
-  // Alias pour assurer la compatibilité avec l'ancien nom si nécessaire
-}
-export { LeaseTemplateService as TemplateService };
   /**
    * Génère le HTML du bail à partir des données
    */
@@ -893,3 +890,4 @@ export { LeaseTemplateService as TemplateService };
   }
 }
 
+export { LeaseTemplateService as TemplateService };

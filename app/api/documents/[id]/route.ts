@@ -1,11 +1,9 @@
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 // @ts-nocheck
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
-
-export const runtime = "nodejs";
 
 export async function DELETE(
   request: Request,
