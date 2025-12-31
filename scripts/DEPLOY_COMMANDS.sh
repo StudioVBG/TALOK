@@ -25,14 +25,14 @@ git branch -M main
 git push -u origin main
 
 # ═══════════════════════════════════════════════════════════════
-# ÉTAPE 3: Déployez sur Vercel
-# → https://vercel.com/new
+# ÉTAPE 3: Déployez sur Netlify
+# → https://app.netlify.com/start
 # → Sélectionnez le dépôt gestion-locative
 # → Ajoutez les variables d'environnement
-# → Cliquez sur "Deploy"
+# → Cliquez sur "Deploy site"
 # ═══════════════════════════════════════════════════════════════
 
 echo ""
 echo "✅ Code poussé vers GitHub!"
-echo "📋 Prochaine étape: Déployez sur https://vercel.com/new"
+echo "📋 Prochaine étape: Déployez sur https://app.netlify.com/start"
 
