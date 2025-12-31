@@ -7,11 +7,12 @@ import {
   generateEDLViergeHTML,
   EDLComplet,
 } from "@/lib/templates/edl";
-import puppeteer from "puppeteer";
 
 /**
  * POST /api/edl/pdf
- * Génère et télécharge le PDF d'un état des lieux
+ * Génère le HTML d'un état des lieux pour impression côté client
+ * Note: La génération PDF côté serveur avec Puppeteer n'est pas disponible
+ * sur Netlify. Le client doit utiliser window.print() ou html2pdf.js
  */
 export async function POST(request: Request) {
   try {
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
       html = generateEDLViergeHTML(edlData as Partial<EDLComplet>, rooms);
       fileName = `edl_template_${new Date().toISOString().slice(0, 10)}.pdf`;
     } else {
-      // Générer le PDF complet
+      // Générer le HTML complet
       let fullEdlData = edlData as EDLComplet;
 
       if (edlId) {
@@ -88,88 +89,18 @@ export async function POST(request: Request) {
       }.pdf`;
     }
 
-    // Générer le PDF avec Puppeteer
-    let browser;
-    try {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-        ],
-      });
-
-      const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: "networkidle0" });
-
-      const pdfBuffer = await page.pdf({
-        format: "A4",
-        printBackground: true,
-        margin: {
-          top: "15mm",
-          right: "15mm",
-          bottom: "20mm",
-          left: "15mm",
-        },
-        displayHeaderFooter: false,
-      });
-
-      await browser.close();
-
-      // Sauvegarder dans Storage si on a un edlId
-      if (edlId && !isVierge) {
-        const storagePath = `edl/${edlId}/${fileName}`;
-        await supabase.storage
-          .from("documents")
-          .upload(storagePath, pdfBuffer, {
-            contentType: "application/pdf",
-            upsert: true,
-          });
-
-        // Créer l'entrée dans la table documents
-        await supabase.from("documents").insert({
-          type: edlData.type === "sortie" ? "EDL_sortie" : "EDL_entree",
-          owner_id: user.id,
-          lease_id: edlData.bail?.id,
-          storage_path: storagePath,
-          title: `État des lieux ${edlData.type === "sortie" ? "de sortie" : "d'entrée"}`,
-          metadata: {
-            edl_id: edlId,
-            generated_at: new Date().toISOString(),
-          },
-        });
-      }
-
-      // Retourner le PDF
-      return new NextResponse(pdfBuffer, {
-        headers: {
-          "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="${fileName}"`,
-        },
-      });
-    } catch (puppeteerError) {
-      console.error("[EDL PDF] Erreur Puppeteer:", puppeteerError);
-
-      // Fallback: retourner le HTML pour impression via le navigateur
-      return NextResponse.json(
-        {
-          error: "Génération PDF non disponible, utilisez l'impression du navigateur",
-          html,
-          fallback: true,
-        },
-        { status: 200 }
-      );
-    } finally {
-      if (browser) {
-        await browser.close();
-      }
-    }
+    // Retourner le HTML pour génération PDF côté client
+    // Le client utilisera html2pdf.js ou window.print()
+    return NextResponse.json({
+      html,
+      fileName,
+      fallback: true,
+      message: "Utilisez l'impression du navigateur ou html2pdf.js côté client"
+    });
   } catch (error: any) {
     console.error("[EDL PDF] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur lors de la génération du PDF" },
+      { error: error.message || "Erreur lors de la génération du HTML" },
       { status: 500 }
     );
   }
