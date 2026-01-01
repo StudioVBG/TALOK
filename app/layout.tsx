@@ -1,3 +1,6 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import type { Metadata, Viewport } from "next";
 import { Inter, Dancing_Script, Great_Vibes, Pacifico, Satisfy } from "next/font/google";
 import "./globals.css";

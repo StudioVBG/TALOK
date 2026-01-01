@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // Route de développement pour réinitialiser les mots de passe

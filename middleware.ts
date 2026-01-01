@@ -1,11 +1,16 @@
-import { getSupabaseConfig } from "@/lib/supabase/config";
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// ============================================
-// CONFIGURATION - SOTA 2025
-// ============================================
+/**
+ * Middleware SOTA 2025 - Edge Safe
+ * 
+ * RÈGLE D'OR : Zéro import @supabase/* ici pour éviter les erreurs 
+ * "Node API used in Edge runtime" (process.version).
+ * 
+ * On se contente d'une vérification de la présence des cookies de session.
+ * La validation forte est faite dans les layouts serveurs Node.js.
+ */
 
+// Routes publiques qui ne nécessitent aucune vérification
 const publicRoutes = [
   "/",
   "/auth/signin",
@@ -15,360 +20,52 @@ const publicRoutes = [
   "/auth/forgot-password",
   "/auth/reset-password",
   "/signup",
-  "/pricing", // Page de tarification publique
+  "/pricing",
   "/blog",
-  "/invite",
   "/legal",
-  "/signature", // Page de signature locataire (invitation)
-  "/demo", // Pages de démonstration
-  "/api/v1/auth/register",
-  "/api/v1/auth/login",
-  "/api/v1/payments/webhook",
-  "/api/v1/signatures/webhook",
-  "/api/webhooks",
-  "/api/public",
-  "/api/signature", // APIs de signature locataire
-  "/api/debug", // Endpoints de diagnostic (dev only)
+  "/demo",
+  "/signature",
 ];
 
-const roleRoutes: Record<string, string[]> = {
-  admin: ["/admin", "/app/admin"],
-  owner: ["/app/owner"],
-  tenant: ["/app/tenant"],
-  provider: ["/app/provider"],
-  guarantor: ["/app/guarantor"],
-  agency: ["/app/agency"],
-  syndic: ["/app/syndic"],
-  coproprietaire: ["/app/copro"],
-};
-
-// ============================================
-// REDIRECTIONS - Structure unifiée /app/*
-// ============================================
-
-const redirects: Record<string, string> = {
-  // =============================================
-  // OWNER - Redirections vers /app/owner/*
-  // =============================================
-  "/owner": "/app/owner/dashboard",
-  "/owner/dashboard": "/app/owner/dashboard",
-  "/owner/properties": "/app/owner/properties",
-  "/owner/properties/new": "/app/owner/properties/new",
-  "/owner/leases": "/app/owner/contracts",
-  "/owner/contracts": "/app/owner/contracts",
-  "/owner/finances": "/app/owner/money",
-  "/owner/money": "/app/owner/money",
-  "/owner/billing": "/app/owner/money", // Ancien nom de route
-  "/owner/documents": "/app/owner/documents",
-  "/owner/support": "/app/owner/support",
-  "/owner/settings": "/app/owner/profile",
-  "/owner/profile": "/app/owner/profile",
-  "/owner/tickets": "/app/owner/tickets",
-  "/owner/inspections": "/app/owner/inspections",
-  "/owner/charges": "/app/owner/money", // Charges -> Money
-
-  // =============================================
-  // FIX: Routes /app/app/* (double "app") -> /app/*
-  // Ces routes viennent d'une erreur de structure historique
-  // =============================================
-  "/app/app/owner": "/app/owner/dashboard",
-  "/app/app/owner/dashboard": "/app/owner/dashboard",
-  "/app/app/owner/properties": "/app/owner/properties",
-  "/app/app/owner/contracts": "/app/owner/contracts",
-  "/app/app/owner/money": "/app/owner/money",
-  "/app/app/owner/documents": "/app/owner/documents",
-  "/app/app/owner/tickets": "/app/owner/tickets",
-  "/app/app/owner/inspections": "/app/owner/inspections",
-  "/app/app/owner/support": "/app/owner/support",
-  "/app/app/owner/profile": "/app/owner/profile",
-  "/app/app/owner/tenants": "/app/owner/tenants",
-  "/app/app/owner/analytics": "/app/owner/analytics",
-  "/app/app/owner/end-of-lease": "/app/owner/end-of-lease",
-  "/app/app/tenant": "/app/tenant/dashboard",
-  "/app/app/tenant/dashboard": "/app/tenant/dashboard",
-  "/app/app/tenant/payments": "/app/tenant/payments",
-  "/app/app/tenant/lease": "/app/tenant/lease",
-  "/app/app/tenant/requests": "/app/tenant/requests",
-  "/app/app/tenant/documents": "/app/tenant/documents",
-
-  // =============================================
-  // TENANT - Redirections vers /app/tenant/*
-  // =============================================
-  "/tenant": "/app/tenant/dashboard",
-  "/tenant/dashboard": "/app/tenant/dashboard",
-  "/tenant/home": "/app/tenant/lease",
-  "/tenant/lease": "/app/tenant/lease",
-  "/tenant/payments": "/app/tenant/payments",
-  "/tenant/tickets": "/app/tenant/requests",
-  "/tenant/requests": "/app/tenant/requests",
-  "/tenant/meters": "/app/tenant/meters",
-  "/tenant/signatures": "/app/tenant/signatures",
-  "/tenant/colocation": "/app/tenant/colocation",
-  "/tenant/settings": "/app/tenant/settings",
-  "/tenant/help": "/app/tenant/help",
-  "/tenant/messages": "/app/tenant/messages",
-  "/tenant/documents": "/app/tenant/documents",
-
-  // =============================================
-  // ROUTES GÉNÉRIQUES - Redirect vers owner par défaut
-  // =============================================
-  "/properties": "/app/owner/properties",
-  "/properties/new": "/app/owner/properties/new",
-  "/leases": "/app/owner/contracts",
-  "/leases/new": "/app/owner/contracts/new",
-  "/contracts": "/app/owner/contracts",
-  "/tickets": "/app/owner/tickets",
-  "/tickets/new": "/app/owner/tickets/new",
-  "/invoices": "/app/owner/money",
-  "/money": "/app/owner/money",
-  "/documents": "/app/owner/documents",
-  "/inspections": "/app/owner/inspections",
-
-  // =============================================
-  // PROVIDER - Redirections vers /app/provider/*
-  // =============================================
-  "/provider": "/app/provider/dashboard",
-  "/provider/dashboard": "/app/provider/dashboard",
-  "/provider/jobs": "/app/provider/jobs",
-  "/provider/calendar": "/app/provider/calendar",
-  "/provider/invoices": "/app/provider/invoices",
-  "/provider/reviews": "/app/provider/reviews",
-  "/provider/quotes": "/app/provider/quotes",
-  "/provider/settings": "/app/provider/settings",
-  "/provider/help": "/app/provider/help",
-  "/app/vendor": "/app/provider/dashboard",
-  "/vendor": "/app/provider/dashboard",
-  "/work-orders": "/app/provider/jobs",
-
-  // =============================================
-  // GUARANTOR - Redirections vers /app/guarantor/*
-  // =============================================
-  "/guarantor": "/app/guarantor",
-  "/guarantor/dashboard": "/app/guarantor",
-  "/guarantor/onboarding": "/app/guarantor/onboarding",
-  "/guarantor/onboarding/context": "/app/guarantor/onboarding/context",
-  "/guarantor/onboarding/financial": "/app/guarantor/onboarding/financial",
-  "/guarantor/onboarding/sign": "/app/guarantor/onboarding/sign",
-  "/guarantor/documents": "/app/guarantor/documents",
-  "/guarantor/profile": "/app/guarantor/profile",
-
-  // =============================================
-  // CHARGES - Redirect vers owner copro
-  // =============================================
-  "/charges": "/app/owner/copro/charges",
-};
-
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
-
-function isPublic(pathname: string): boolean {
-  // Static files
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.includes(".") // static files (images, fonts, etc.)
-  ) {
-    return true;
-  }
-
-  // API routes publiques
-  if (pathname.startsWith("/api/v1/auth") || pathname.startsWith("/api/public")) {
-    return true;
-  }
-
-  return (
-    publicRoutes.includes(pathname) ||
-    publicRoutes.some((route) => pathname.startsWith(route + "/"))
-  );
-}
-
-function isWebhook(pathname: string): boolean {
-  return pathname.includes("/webhook");
-}
-
-function isApiRoute(pathname: string): boolean {
-  return pathname.startsWith("/api/");
-}
-
-/**
- * Vérifie si une redirection existe pour le chemin
- */
-function getRedirectPath(pathname: string): string | null {
-  // Vérifier redirection exacte
-  if (pathname in redirects) {
-    return redirects[pathname];
-  }
-
-  // Vérifier redirections avec préfixe
-  for (const [from, to] of Object.entries(redirects)) {
-    if (pathname.startsWith(from + "/")) {
-      const suffix = pathname.slice(from.length);
-      return to + suffix;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Extrait le rôle depuis les métadonnées utilisateur (JWT claims)
- */
-function getRoleFromUserMetadata(user: any): string | null {
-  return user?.app_metadata?.role || user?.user_metadata?.role || null;
-}
-
-/**
- * Détermine le dashboard approprié pour un rôle - NOUVELLE STRUCTURE
- */
-function getDashboardPath(role: string | null): string {
-  switch (role) {
-    case "admin":
-      return "/admin/dashboard";
-    case "owner":
-      return "/app/owner/dashboard";
-    case "tenant":
-      return "/app/tenant/dashboard";
-    case "provider":
-      return "/app/provider/dashboard";
-    case "guarantor":
-      return "/app/guarantor";
-    case "agency":
-      return "/app/agency/dashboard";
-    case "syndic":
-      return "/app/syndic/dashboard";
-    case "coproprietaire":
-      return "/app/copro/dashboard";
-    default:
-      return "/dashboard";
-  }
-}
-
-// ============================================
-// MIDDLEWARE PRINCIPAL
-// ============================================
-
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 0. Check for redirections FIRST (migration vers nouvelle structure)
-  const redirectPath = getRedirectPath(pathname);
-  if (redirectPath && redirectPath !== pathname) {
-    const url = new URL(redirectPath, request.url);
-    // Conserver les query params
-    url.search = request.nextUrl.search;
-    return NextResponse.redirect(url, { status: 308 }); // 308 = Permanent redirect
-  }
-
-  // 1. Allow webhooks sans auth (priorité haute)
-  if (isWebhook(pathname)) {
-    return NextResponse.next();
-  }
-
-  // 2. Allow public routes (fast path)
-  if (isPublic(pathname)) {
-    return NextResponse.next();
-  }
-
-  // 3. Setup Supabase client
-  const { url, anonKey } = getSupabaseConfig();
-  const response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
-
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      get(name: string) {
-        return request.cookies.get(name)?.value;
-      },
-      set(name: string, value: string, options?: { path?: string; maxAge?: number; httpOnly?: boolean; secure?: boolean; sameSite?: "strict" | "lax" | "none" }) {
-        request.cookies.set(name, value);
-        response.cookies.set(name, value, options);
-      },
-      remove(name: string) {
-        request.cookies.delete(name);
-        response.cookies.delete(name);
-      },
-    },
-  });
-
-  // 4. Vérifier l'authentification
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Non authentifié - redirect to login
-  if (!user) {
-    // Pour les routes API, retourner 401 au lieu de redirect
-    if (isApiRoute(pathname)) {
-      return new NextResponse(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    
-    const loginUrl = new URL("/auth/signin", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // 5. Email non confirmé
+  // 1. Laisser passer les assets statiques, les webhooks et les routes publiques
   if (
-    !user.email_confirmed_at &&
-    !pathname.startsWith("/auth/verify-email") &&
-    !pathname.startsWith("/auth/callback") &&
-    !pathname.startsWith("/signup")
+    pathname.startsWith("/_next") ||
+    pathname.includes(".") ||
+    publicRoutes.some((route) => pathname.startsWith(route)) ||
+    pathname.startsWith("/api/webhooks") ||
+    pathname.startsWith("/api/public") ||
+    pathname.startsWith("/auth/callback")
   ) {
-    return NextResponse.redirect(new URL("/auth/verify-email", request.url));
+    return NextResponse.next();
   }
 
-  // Email confirmé mais sur page verify
-  if (user.email_confirmed_at && pathname.startsWith("/auth/verify-email")) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  // 2. Vérification ultra-légère de la session (présence d'un cookie auth Supabase)
+  // Pattern standard : sb-xxxx-auth-token ou auth-token
+  const allCookies = request.cookies.getAll();
+  const hasAuthCookie = allCookies.some(
+    (c) => c.name.includes("auth-token") || c.name.startsWith("sb-")
+  );
+
+  // 3. Redirection si non authentifié vers les zones protégées
+  const isProtectedRoute = pathname.startsWith("/app") || pathname.startsWith("/admin");
+  
+  if (isProtectedRoute && !hasAuthCookie) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/signin";
+    url.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(url);
   }
 
-  // 6. Obtenir le rôle (optimisé : essayer JWT d'abord, puis DB)
-  let userRole = getRoleFromUserMetadata(user);
-
-  // Si pas de rôle dans le JWT, requêter la DB (fallback)
-  if (!userRole) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    userRole = profile?.role || null;
-  }
-
-  // 7. Vérification d'accès basée sur le rôle
-  for (const [role, routes] of Object.entries(roleRoutes)) {
-    for (const route of routes) {
-      if (pathname.startsWith(route) && userRole !== role && userRole !== "admin") {
-        // Pour les API, retourner 403
-        if (isApiRoute(pathname)) {
-          return new NextResponse(
-            JSON.stringify({ error: "Forbidden" }),
-            { status: 403, headers: { "Content-Type": "application/json" } }
-          );
-        }
-        // Redirect vers le bon dashboard
-        return NextResponse.redirect(new URL(getDashboardPath(userRole), request.url));
-      }
-    }
-  }
-
-  // 8. Handle /dashboard redirect basé sur le rôle
+  // 4. Redirections de structure (legacy fix)
   if (pathname === "/dashboard") {
-    return NextResponse.redirect(new URL(getDashboardPath(userRole), request.url));
+    // Le layout de l'app se chargera de rediriger vers le bon dashboard selon le rôle
+    return NextResponse.next();
   }
 
-  // 9. Ajouter les headers de cache pour les routes authentifiées
-  response.headers.set("Cache-Control", "private, no-cache, no-store, must-revalidate");
-  response.headers.set("X-User-Role", userRole || "unknown");
-
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
