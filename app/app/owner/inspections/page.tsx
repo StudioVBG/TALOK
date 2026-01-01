@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { InspectionsClient } from "./InspectionsClient";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const dynamic = "force-dynamic";
 
 async function fetchInspections(profileId: string) {
   const supabase = await createClient();

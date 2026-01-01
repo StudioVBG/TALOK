@@ -1,6 +1,5 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const dynamic = 'force-dynamic';
 
 // @ts-nocheck
 import { ReactNode } from "react";

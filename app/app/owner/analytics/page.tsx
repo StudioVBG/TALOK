@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { AnalyticsClient } from "./AnalyticsClient";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Analytics | Gestion Locative",

@@ -7,7 +7,6 @@ import { redirect, notFound } from "next/navigation";
 import { JobDetailClient } from "./JobDetailClient";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const dynamic = "force-dynamic";
 
 async function fetchJobDetails(jobId: string, profileId: string) {
   const supabase = await createClient();

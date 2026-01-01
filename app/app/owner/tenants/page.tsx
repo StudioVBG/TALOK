@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { TenantsClient } from "./TenantsClient";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Mes Locataires | Gestion Locative",

@@ -1,12 +1,6 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { TemplatesClient } from "./TemplatesClient";
-import { TemplatesSkeleton } from "./loading";
-
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Templates de Bail | Administration",

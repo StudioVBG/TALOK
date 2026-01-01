@@ -18,8 +18,6 @@ import {
 import { LeaseTemplateService } from '@/lib/templates/bail';
 import type { BailComplet, TypeBail } from '@/lib/templates/bail/types';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 // Types étendus pour inclure la gestion locative
