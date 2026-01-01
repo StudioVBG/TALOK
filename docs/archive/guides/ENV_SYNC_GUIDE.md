@@ -26,7 +26,7 @@ cp env.example .env.local
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=votre_anon_key_ici
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+SUPABASE_SERVICE_ROLE_KEY=PLACEHOLDER_TOKEN
 ```
 
 **Où trouver ces valeurs ?**

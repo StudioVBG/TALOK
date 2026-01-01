@@ -51,7 +51,7 @@ Le CLI Supabase nécessite une authentification interactive. Voici les méthodes
 
 2. **Exporter le token** :
    ```bash
-   export SUPABASE_ACCESS_TOKEN="votre_token_ici"
+   export SUPABASE_ACCESS_TOKEN="PLACEHOLDER_TOKEN"
    ```
 
 3. **Lier le projet** (si pas déjà fait) :

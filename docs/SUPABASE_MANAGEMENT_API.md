@@ -26,7 +26,7 @@ app/api/admin/management-api/
 Ajoutez votre Personal Access Token (PAT) dans `.env.local` :
 
 ```env
-SUPABASE_MANAGEMENT_API_TOKEN=sbp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SUPABASE_MANAGEMENT_API_TOKEN=PLACEHOLDER_TOKEN
 ```
 
 Pour créer un PAT :

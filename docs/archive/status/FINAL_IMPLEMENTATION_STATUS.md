@@ -155,7 +155,7 @@ supabase functions deploy process-outbox
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE_SERVICE_ROLE_KEY=PLACEHOLDER_TOKEN
 ```
 
 **Optionnelles (pour fonctionnalités avancées)** :

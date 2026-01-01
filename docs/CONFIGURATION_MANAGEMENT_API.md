@@ -7,7 +7,7 @@
 Créez ou modifiez le fichier `.env.local` à la racine du projet et ajoutez :
 
 ```env
-SUPABASE_MANAGEMENT_API_TOKEN=sbp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SUPABASE_MANAGEMENT_API_TOKEN=PLACEHOLDER_TOKEN
 ```
 
 ⚠️ **Important** : 

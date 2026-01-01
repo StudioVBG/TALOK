@@ -29,7 +29,7 @@ npm i -g supabase
 supabase login
 
 # Méthode non-interactive (CI/CD)
-export SUPABASE_ACCESS_TOKEN="votre_token"
+export SUPABASE_ACCESS_TOKEN="PLACEHOLDER_TOKEN"
 ```
 
 ### Lier un projet
@@ -73,7 +73,7 @@ Tous les appels API nécessitent un Personal Access Token (PAT) dans le header :
 
 ```bash
 curl https://api.supabase.com/v1/projects \
-  -H "Authorization: Bearer sbp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  -H "Authorization: Bearer PLACEHOLDER_TOKEN"
 ```
 
 ### Générer un PAT
@@ -143,11 +143,11 @@ Créez un fichier `.env.local` (non commité) :
 
 ```bash
 # Supabase CLI (optionnel si vous utilisez `supabase login`)
-SUPABASE_ACCESS_TOKEN=sbp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SUPABASE_ACCESS_TOKEN=PLACEHOLDER_TOKEN
 
 # Pour les appels Management API depuis le code
 NEXT_PUBLIC_SUPABASE_URL=https://poeijjosocmqlhgsacud.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+SUPABASE_SERVICE_ROLE_KEY=PLACEHOLDER_TOKEN
 ```
 
 ### Utilisation dans le code

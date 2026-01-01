@@ -49,7 +49,7 @@ Créez un fichier `.env.example` à la racine avec ce contenu :
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+SUPABASE_SERVICE_ROLE_KEY=PLACEHOLDER_TOKEN
 
 # Application URL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
