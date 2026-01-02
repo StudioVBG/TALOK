@@ -34,7 +34,9 @@ import {
   MapPin,
   Phone,
   ArrowUpRight,
-  Wrench
+  Wrench,
+  Gift,
+  LayoutGrid
 } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +46,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { cn } from "@/lib/utils";
+import { CreditBuilderCard } from "@/features/tenant/components/credit-builder-card";
+import { ConsumptionChart } from "@/features/tenant/components/consumption-chart";
 
 // Constantes pour le layout
 const LEASE_TYPE_LABELS: Record<string, string> = {
@@ -145,8 +149,8 @@ export function DashboardClient() {
     );
   }
     
-    return (
-      <PageTransition>
+  return (
+    <PageTransition>
       <div className="container mx-auto px-4 py-6 max-w-7xl space-y-8">
         
         {/* --- SECTION 1 : HEADER & COMMAND CENTER --- */}
@@ -187,10 +191,11 @@ export function DashboardClient() {
           </AnimatePresence>
         </div>
 
-        {/* --- SECTION 2 : BENTO GRID --- */}
+        {/* --- SECTION 2 : BENTO GRID SOTA 2026 --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* A. CARTE LOGEMENT (Principale) - 8/12 */}
+          {/* Row 1: Logement & Credit Builder */}
+          {/* A. CARTE LOGEMENT - 8/12 */}
           <motion.div 
             className="lg:col-span-8 group"
             initial={{ opacity: 0, y: 20 }}
@@ -226,7 +231,6 @@ export function DashboardClient() {
                       </Badge>
                     </div>
                     
-                    {/* Multi-logements Selector */}
                     {dashboard.leases?.length > 1 && (
                       <div className="flex gap-1.5 p-1 bg-white/10 backdrop-blur-xl rounded-lg border border-white/10">
                         {dashboard.leases.map((_, idx) => (
@@ -249,8 +253,8 @@ export function DashboardClient() {
                   <p className="text-xl text-white/70 font-medium flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-indigo-400" />
                     {currentProperty?.ville}, {currentProperty?.code_postal}
-                      </p>
-                    </div>
+                  </p>
+                </div>
 
                 <div className="mt-8 flex flex-wrap items-center gap-3 pt-6 border-t border-white/10">
                   <DocumentDownloadButton 
@@ -270,215 +274,161 @@ export function DashboardClient() {
                       <Zap className="h-4 w-4 text-amber-400" /> Relevés
                     </Link>
                   </Button>
-              </div>
+                </div>
               </CardContent>
             </GlassCard>
           </motion.div>
 
-          {/* B. CARTE FINANCE (Widget) - 4/12 */}
+          {/* B. CREDIT BUILDER - 4/12 */}
           <motion.div 
             className="lg:col-span-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <GlassCard className="h-full border-slate-200 bg-white shadow-xl flex flex-col justify-between p-8">
-              <div>
-                <div className="flex items-center justify-between mb-8">
-                  <div className="p-4 bg-indigo-50 rounded-[1.5rem] shadow-inner">
-                    <Euro className="h-7 w-7 text-indigo-600" />
-                  </div>
-                  <Badge variant="secondary" className="bg-slate-50 border-slate-100 text-[10px] font-black uppercase tracking-widest px-3 h-6">Loyer Mensuel</Badge>
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Montant total CC</p>
-                  <p className="text-5xl font-black text-slate-900 tracking-tighter">
-                    {formatCurrency((currentLease?.loyer || 0) + (currentLease?.charges_forfaitaires || 0))}
-                  </p>
-                </div>
-
-                <div className="mt-10 space-y-4">
-                  <div className="flex justify-between items-end">
-                    <span className="text-sm font-bold text-slate-500">Santé du mois</span>
-                    <span className={cn(
-                      "text-sm font-black uppercase tracking-widest",
-                      dashboard.stats?.unpaid_amount > 0 ? "text-red-600" : "text-emerald-600"
-                    )}>
-                      {dashboard.stats?.unpaid_amount > 0 ? "Retard" : "À jour"}
-                    </span>
-                  </div>
-                  <Progress 
-                    value={dashboard.stats?.unpaid_amount > 0 ? 30 : 100} 
-                    className={cn(
-                      "h-2.5 rounded-full bg-slate-100",
-                      dashboard.stats?.unpaid_amount > 0 ? "[&>div]:bg-red-500" : "[&>div]:bg-emerald-500"
-                    )}
-                  />
-                </div>
-                </div>
-
-                <Button 
-                  asChild
-                className={cn(
-                  "w-full h-14 mt-10 text-lg font-black rounded-2xl shadow-xl transition-all hover:scale-[1.02] active:scale-95",
-                  dashboard.stats?.unpaid_amount > 0 
-                    ? "bg-red-600 hover:bg-red-700 shadow-red-100" 
-                    : "bg-slate-900 hover:bg-black shadow-slate-200"
-                )}
-              >
-                <Link href="/app/tenant/payments" className="gap-3">
-                  {dashboard.stats?.unpaid_amount > 0 ? "Payer maintenant" : "Voir l'historique"}
-                    <ArrowRight className="h-5 w-5" />
-                  </Link>
-                </Button>
-            </GlassCard>
+            <CreditBuilderCard score={742} className="h-full bg-white shadow-xl border-slate-200" />
           </motion.div>
 
-          {/* C. FLUX D'ACTIVITÉ UNIFIÉ - 8/12 */}
+          {/* Row 2: Energy, Activity, Rewards */}
+          {/* C. ANALYSE ÉNERGIE - 4/12 */}
           <motion.div 
-            className="lg:col-span-8"
+            className="lg:col-span-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <div className="flex items-center justify-between mb-4 px-2">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <History className="h-5 w-5 text-indigo-600" />
-                Flux d'activité
-              </h2>
-              <Button variant="ghost" size="sm" asChild className="text-indigo-600 font-bold hover:bg-indigo-50">
-                <Link href="/app/tenant/payments">Tout voir</Link>
-              </Button>
-            </div>
-
-            <GlassCard className="p-0 overflow-hidden border-slate-200 shadow-xl bg-white">
-              {activityFeed.length > 0 ? (
-                <div className="divide-y divide-slate-100">
-                  {activityFeed.map((item) => (
-                    <div key={item.id} className="p-5 flex items-center justify-between hover:bg-slate-50/80 transition-colors group cursor-pointer">
-                    <div className="flex items-center gap-4">
-                        <div className={cn(
-                          "p-3 rounded-2xl transition-transform group-hover:scale-110",
-                          item.type === 'invoice' 
-                            ? (item.status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600')
-                            : 'bg-indigo-50 text-indigo-600'
-                        )}>
-                          {item.type === 'invoice' ? <FileText className="h-5 w-5" /> : <Wrench className="h-5 w-5" />}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900">{item.title}</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                            {new Date(item.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                            </p>
-                        </div>
-                    </div>
-                      
-                      <div className="flex items-center gap-6">
-                        {item.type === 'invoice' && (
-                          <span className="font-black text-slate-900">{formatCurrency(item.amount)}</span>
-                        )}
-                                <StatusBadge 
-                          status={item.status === 'paid' ? 'Payé' : (item.status === 'sent' ? 'À régler' : item.status)}
-                          type={item.status === 'paid' ? 'success' : (item.status === 'sent' || item.status === 'late' ? 'error' : 'info')}
-                          className="text-[10px] font-black h-6 px-3 uppercase tracking-widest"
-                        />
-                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-16 text-center">
-                  <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Sparkles className="h-10 w-10 text-slate-200" />
-                                    </div>
-                  <p className="text-slate-500 font-bold">Aucune activité récente pour le moment.</p>
-                                    </div>
-                                )}
-            </GlassCard>
+            <ConsumptionChart type="electricity" className="h-full" />
           </motion.div>
 
-          {/* D. GESTIONNAIRE & SUPPORT - 4/12 */}
+          {/* D. FLUX D'ACTIVITÉ - 4/12 */}
           <motion.div 
-            className="lg:col-span-4 space-y-6"
+            className="lg:col-span-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            {/* Notifications Section */}
-            {dashboard.notifications?.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between px-2">
-                  <h2 className="text-xl font-bold text-slate-800">Alertes</h2>
-                  <Link href="/app/tenant/notifications" className="text-xs font-bold text-indigo-600 hover:underline">Tout voir</Link>
-                </div>
-                <GlassCard className="p-0 overflow-hidden border-slate-200 bg-white shadow-lg">
-                  <div className="divide-y divide-slate-100">
-                    {dashboard.notifications.map((n: any) => (
-                      <div key={n.id} className="p-4 flex items-start gap-3 hover:bg-slate-50 transition-colors group cursor-pointer">
-                        <div className={cn(
-                          "p-2 rounded-lg shrink-0",
-                          !n.is_read ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-400"
-                        )}>
-                          <PenTool className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn("text-sm font-bold truncate", !n.is_read ? "text-slate-900" : "text-slate-500")}>{n.title}</p>
-                          <p className="text-xs text-slate-400 line-clamp-1">{n.message}</p>
-                        </div>
-                        {!n.is_read && <div className="h-2 w-2 rounded-full bg-indigo-600 mt-1.5 shrink-0" />}
-                      </div>
-                    ))}
-                  </div>
-                </GlassCard>
+            <GlassCard className="h-full p-0 overflow-hidden border-slate-200 shadow-xl bg-white">
+              <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                  <History className="h-4 w-4 text-indigo-600" /> Activité
+                </h3>
+                <Button variant="ghost" size="sm" asChild className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-50">
+                  <Link href="/app/tenant/payments">Voir tout</Link>
+                </Button>
               </div>
-            )}
-
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold text-slate-800 px-2">Support</h2>
-              <GlassCard className="p-6 border-slate-200 bg-white shadow-lg">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6">Mon Bailleur</p>
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="h-14 w-14 rounded-[1.25rem] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-indigo-100">
-                    {currentLease?.owner?.name?.[0] || "P"}
-                  </div>
-                                    <div>
-                    <p className="font-black text-slate-900 text-lg leading-tight">{currentLease?.owner?.name || "Propriétaire"}</p>
-                    <p className="text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-lg inline-block mt-1">Gérance Certifiée</p>
+              <div className="divide-y divide-slate-100 overflow-y-auto max-h-[300px]">
+                {activityFeed.length > 0 ? activityFeed.map((item) => (
+                  <div key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-50/80 transition-colors group cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "p-2 rounded-xl",
+                        item.type === 'invoice' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'
+                      )}>
+                        {item.type === 'invoice' ? <FileText className="h-4 w-4" /> : <Wrench className="h-4 w-4" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900 truncate max-w-[120px]">{item.title}</p>
+                        <p className="text-[10px] font-medium text-slate-400">{formatDateShort(item.date)}</p>
+                      </div>
                     </div>
-                </div>
-                
-                        <div className="grid grid-cols-2 gap-3">
-                  <Button variant="outline" className="h-12 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 transition-all font-bold rounded-xl shadow-sm" asChild>
-                                <Link href="/app/tenant/requests/new">
-                      <MessageCircle className="mr-2 h-4 w-4" /> Aide
-                                </Link>
-                            </Button>
-                  <Button variant="outline" className="h-12 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 transition-all font-bold rounded-xl shadow-sm">
-                    <Phone className="mr-2 h-4 w-4" /> Contact
-                            </Button>
-                </div>
-              </GlassCard>
+                    <ChevronRight className="h-3 w-3 text-slate-300 group-hover:text-indigo-600" />
+                  </div>
+                )) : (
+                  <div className="p-8 text-center text-slate-400 text-sm">Aucune activité</div>
+                )}
+              </div>
+            </GlassCard>
+          </motion.div>
 
-              {/* Tips contextuel SOTA */}
-              <motion.div whileHover={{ scale: 1.02 }} className="cursor-pointer group">
-                <GlassCard className="p-6 border-none bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-xl relative overflow-hidden">
-                  <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-white/20 rotate-12 group-hover:rotate-45 transition-transform duration-700" />
-                  <div className="relative z-10">
-                    <p className="font-black text-lg mb-2 flex items-center gap-2">
-                      <Info className="h-5 w-5" /> Le saviez-vous ?
-                    </p>
-                    <p className="text-sm text-white/90 leading-relaxed font-medium">
-                      L'attestation d'assurance doit être renouvelée chaque année. C'est obligatoire pour garantir votre protection.
-                    </p>
-                    <Link href="/app/tenant/documents" className="inline-flex items-center gap-1.5 mt-4 text-xs font-black uppercase tracking-widest hover:underline">
-                      Mettre à jour <ArrowUpRight className="h-3 w-3" />
-                    </Link>
-                        </div>
-                </GlassCard>
-            </motion.div>
-          </div>
+          {/* E. REWARDS & OFFERS - 4/12 */}
+          <motion.div 
+            className="lg:col-span-4 space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <GlassCard className="p-6 border-none bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-xl relative overflow-hidden">
+              <Gift className="absolute -right-4 -bottom-4 h-20 w-20 text-white/10 rotate-12" />
+              <div className="relative z-10">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Fidélité</p>
+                <h3 className="text-2xl font-black mb-4">1,250 <span className="text-sm opacity-70">Pts</span></h3>
+                <Button variant="secondary" className="w-full bg-white/10 hover:bg-white/20 border-white/30 text-white font-bold h-10 px-4" asChild>
+                  <Link href="/app/tenant/rewards">Boutique</Link>
+                </Button>
+              </div>
+            </GlassCard>
+
+            <GlassCard className="p-6 border-slate-200 bg-white shadow-xl">
+              <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2 text-sm">
+                <LayoutGrid className="h-4 w-4 text-indigo-600" /> Services
+              </h3>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full justify-between h-10 rounded-xl border-slate-100 text-xs" asChild>
+                  <Link href="/app/tenant/marketplace">
+                    <span className="flex items-center gap-2 font-bold text-slate-700"><Shield className="h-3.5 w-3.5 text-blue-500" /> Assurance</span>
+                    <Badge className="bg-emerald-50 text-emerald-600 border-none text-[10px]">-15%</Badge>
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full justify-between h-10 rounded-xl border-slate-100 text-xs" asChild>
+                  <Link href="/app/tenant/marketplace">
+                    <span className="flex items-center gap-2 font-bold text-slate-700"><Zap className="h-3.5 w-3.5 text-amber-500" /> Énergie</span>
+                    <Badge className="bg-indigo-50 text-indigo-600 border-none text-[10px]">Éco</Badge>
+                  </Link>
+                </Button>
+              </div>
+            </GlassCard>
+          </motion.div>
+
+          {/* Row 3: Support & AI Tips */}
+          {/* F. SUPPORT BAILLEUR - 6/12 */}
+          <motion.div 
+            className="lg:col-span-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <GlassCard className="p-6 border-slate-200 bg-white shadow-xl flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-lg">
+                  {currentLease?.owner?.name?.[0] || "P"}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Mon Bailleur</p>
+                  <p className="font-black text-slate-900 text-lg leading-tight">{currentLease?.owner?.name || "Propriétaire"}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="h-11 rounded-xl border-slate-200 font-bold" asChild>
+                  <Link href="/app/tenant/requests/new">Aide</Link>
+                </Button>
+                <Button variant="outline" className="h-11 rounded-xl border-slate-200 font-bold px-4">
+                  <Phone className="h-4 w-4" />
+                </Button>
+              </div>
+            </GlassCard>
+          </motion.div>
+
+          {/* G. IA TIP - 6/12 */}
+          <motion.div 
+            className="lg:col-span-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+          >
+            <GlassCard className="p-6 border-none bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-xl relative overflow-hidden flex items-center justify-between">
+              <div className="relative z-10 space-y-1">
+                <p className="font-black text-lg flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" /> Conseil de Tom
+                </p>
+                <p className="text-sm text-white/90 leading-relaxed font-medium max-w-sm">
+                  Votre assurance expire bientôt. Mettez-la à jour pour rester protégé.
+                </p>
+              </div>
+              <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-md h-11 px-6 rounded-xl font-bold" asChild>
+                <Link href="/app/tenant/documents">Mettre à jour</Link>
+              </Button>
+              <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-white/10 rotate-12" />
+            </GlassCard>
           </motion.div>
 
         </div>

@@ -620,6 +620,26 @@ export async function POST(request: Request) {
       throw new ApiError(403, "Seuls les propriétaires peuvent créer des propriétés");
     }
 
+    // ✅ QUOTAS: Vérifier les limites d'abonnement SOTA 2026
+    const { data: canAdd, error: quotaError } = await serviceClient.rpc("check_subscription_limit", {
+      p_owner_id: profile.id,
+      p_resource: "properties",
+      p_increment: 1
+    });
+
+    if (quotaError) {
+      console.error("[POST /api/properties] Erreur vérification quota:", quotaError);
+    } else if (canAdd === false) {
+      // Log tentative de dépassement
+      await serviceClient.from("audit_log").insert({
+        user_id: user.id,
+        action: "quota_reached",
+        entity_type: "property",
+        metadata: { resource: "properties", limit_reached: true }
+      });
+      throw new ApiError(403, "Limite de propriétés atteinte pour votre forfait actuel. Veuillez passer à l'offre supérieure.");
+    }
+
     // ✅ CRÉATION: Créer un draft ou une propriété complète
     if (draftPayload.success) {
       console.log(`[POST /api/properties] Création d'un draft avec type_bien=${draftPayload.data.type_bien}`);

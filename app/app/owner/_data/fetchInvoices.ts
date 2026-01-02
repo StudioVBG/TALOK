@@ -143,7 +143,7 @@ export async function fetchInvoices(
       
       const { data: propertiesData } = await supabase
         .from("properties")
-        .select("id, adresse_complete, ville")
+        .select("id, adresse_complete, ville, code_postal")
         .in("id", propertyIds);
 
       if (propertiesData) {
@@ -160,7 +160,8 @@ export async function fetchInvoices(
             inv.lease = {
               property: {
                 adresse_complete: prop.adresse_complete,
-                ville: prop.ville
+                ville: prop.ville,
+                code_postal: prop.code_postal
               }
             };
           }

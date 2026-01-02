@@ -146,7 +146,7 @@ Créez un fichier `.env.local` (non commité) :
 SUPABASE_ACCESS_TOKEN=PLACEHOLDER_TOKEN
 
 # Pour les appels Management API depuis le code
-NEXT_PUBLIC_SUPABASE_URL=https://poeijjosocmqlhgsacud.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=PLACEHOLDER_TOKEN
 ```
 

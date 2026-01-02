@@ -22,6 +22,8 @@ import {
   Bell,
   ChevronDown,
   ClipboardCheck,
+  Gift,
+  ShoppingBag
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -104,6 +106,16 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
       name: "Messages",
       href: "/app/tenant/messages",
       icon: MessageSquare,
+    },
+    {
+      name: "Récompenses",
+      href: "/app/tenant/rewards",
+      icon: Gift,
+    },
+    {
+      name: "Marketplace",
+      href: "/app/tenant/marketplace",
+      icon: ShoppingBag,
     },
   ];
 

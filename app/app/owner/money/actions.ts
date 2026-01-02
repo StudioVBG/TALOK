@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { calculateTaxes } from "@/lib/services/tax-engine";
 
 // ============================================
 // TYPES
@@ -159,7 +160,8 @@ export async function generateMonthlyInvoices(): Promise<ActionResult<{ count: n
       loyer,
       charges_forfaitaires,
       property_id,
-      properties!inner(owner_id)
+      tenant_id,
+      properties!inner(owner_id, code_postal)
     `)
     .eq("statut", "active");
 
@@ -186,16 +188,25 @@ export async function generateMonthlyInvoices(): Promise<ActionResult<{ count: n
   // Générer les factures manquantes
   const newInvoices = ownerLeases
     .filter((lease: any) => !existingLeaseIds.has(lease.id))
-    .map((lease: any) => ({
-      lease_id: lease.id,
-      owner_id: profile.id,
-      periode: currentPeriod,
-      montant_loyer: lease.loyer || 0,
-      montant_charges: lease.charges_forfaitaires || 0,
-      montant_total: (lease.loyer || 0) + (lease.charges_forfaitaires || 0),
-      statut: "sent",
-      date_echeance: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5).toISOString().split("T")[0],
-    }));
+    .map((lease: any) => {
+      const zipCode = lease.properties?.code_postal || "75000";
+      const taxes = calculateTaxes(lease.loyer || 0, zipCode);
+      
+      return {
+        lease_id: lease.id,
+        owner_id: profile.id,
+        tenant_id: lease.tenant_id,
+        periode: currentPeriod,
+        montant_loyer: lease.loyer || 0,
+        montant_charges: lease.charges_forfaitaires || 0,
+        montant_tva: taxes.tvaAmount,
+        tva_taux: taxes.tvaRate,
+        is_drom: taxes.isDROM,
+        montant_total: taxes.totalAmount + (lease.charges_forfaitaires || 0),
+        statut: "sent",
+        date_echeance: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5).toISOString().split("T")[0],
+      };
+    });
 
   if (newInvoices.length > 0) {
     const { error } = await supabase.from("invoices").insert(newInvoices);

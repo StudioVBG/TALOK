@@ -28,6 +28,15 @@ export interface OwnerDashboardData {
     open: number;
     in_progress: number;
   };
+  zone3_portfolio?: {
+    compliance: Array<{
+      id: string;
+      type: string;
+      severity: "low" | "medium" | "high";
+      label: string;
+      action_url: string;
+    }>;
+  };
   recentActivity: Array<{
     type: string;
     title: string;
@@ -57,6 +66,15 @@ interface OwnerDashboardRPCResponse {
     total: number;
     open: number;
     in_progress: number;
+  };
+  zone3_portfolio?: {
+    compliance: Array<{
+      id: string;
+      type: string;
+      severity: "low" | "medium" | "high";
+      label: string;
+      action_url: string;
+    }>;
   };
 }
 
@@ -108,6 +126,7 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
     leases: dashboardData?.leases_stats || { total: 0, active: 0, pending: 0 },
     invoices: dashboardData?.invoices_stats || { total: 0, paid: 0, pending: 0, late: 0 },
     tickets: dashboardData?.tickets_stats || { total: 0, open: 0, in_progress: 0 },
+    zone3_portfolio: dashboardData?.zone3_portfolio || { compliance: [] },
     recentActivity: [], // À implémenter plus tard
   };
 }

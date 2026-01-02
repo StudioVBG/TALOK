@@ -21,7 +21,7 @@ Ajoutez ces lignes à votre fichier `.env.local` :
 EMAIL_PROVIDER=resend
 
 # Clé API Resend
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxx
+RESEND_API_KEY=your_resend_api_key_here
 
 # Adresse d'expédition
 # Pour les tests, utilisez l'adresse Resend par défaut :
@@ -156,7 +156,7 @@ EMAIL_FORCE_SEND=true
 
 Ajoutez votre clé API dans `.env.local` :
 ```env
-RESEND_API_KEY=re_xxxxxxxxxx
+RESEND_API_KEY=your_resend_api_key_here
 ```
 
 ### L'email arrive dans les spams
@@ -171,7 +171,7 @@ Si vous préférez SendGrid :
 
 ```env
 EMAIL_PROVIDER=sendgrid
-EMAIL_API_KEY=SG.xxxxxxxxxx
+EMAIL_API_KEY=your_sendgrid_api_key_here
 EMAIL_FROM=Gestion Locative <noreply@votre-domaine.com>
 ```
 

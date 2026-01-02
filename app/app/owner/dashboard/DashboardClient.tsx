@@ -1,16 +1,16 @@
 "use client";
-// @ts-nocheck
 
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users } from "lucide-react";
+import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users, ShieldCheck, Zap } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOwnerData } from "../_data/OwnerDataProvider";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import type { OwnerDashboardData } from "../_data/fetchDashboard";
 import type { ProfileCompletionData } from "@/components/owner/dashboard/profile-completion-card";
+import { Badge } from "@/components/ui/badge";
 
 // SOTA Imports
 import { EmptyState } from "@/components/ui/empty-state";
@@ -201,9 +201,9 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
       metadata: { count: dashboard.invoices.pending },
     }] : []),
     // Alertes DPE expirantes (depuis l'API)
-    ...((dashboard as any).zone3_portfolio?.compliance || [])
-      .filter((c: any) => c.type === "dpe_expiring")
-      .map((alert: any) => ({
+    ...(dashboard.zone3_portfolio?.compliance || [])
+      .filter((c) => c.type === "dpe_expiring")
+      .map((alert) => ({
         id: alert.id,
         type: "document" as const,
         priority: alert.severity === "high" ? "high" as const : "medium" as const,
@@ -246,7 +246,7 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
           stats: { 
             properties_count: dashboard.properties?.total || 0, 
             active_leases: dashboard.leases?.active || 0,
-            monthly_revenue: (dashboard.invoices as any)?.total_amount || dashboard.invoices?.total || 0,
+            monthly_revenue: dashboard.invoices?.total || 0,
           },
           action_url: "/app/owner/properties" 
         },
@@ -261,8 +261,8 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
           action_url: "/app/owner/money",
         }] : []),
         // Alertes DPE expirantes (depuis l'API)
-        ...((dashboard as any).zone3_portfolio?.compliance || []).filter(
-          (c: any) => c.type === "dpe_expiring"
+        ...(dashboard.zone3_portfolio?.compliance || []).filter(
+          (c) => c.type === "dpe_expiring"
         ),
       ],
     },
@@ -286,21 +286,33 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
           
           <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
-              <motion.h1 
-                className="text-4xl font-bold tracking-tight"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                Tableau de bord
-              </motion.h1>
+              <div className="flex items-center gap-3 mb-2">
+                <motion.h1 
+                  className="text-4xl font-bold tracking-tight"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  Tableau de bord
+                </motion.h1>
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 gap-1.5 px-2.5 py-1">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    SOTA 2026 Secure
+                  </Badge>
+                </motion.div>
+              </div>
               <motion.p 
-                className="text-slate-300 mt-2 text-lg"
+                className="text-slate-300 text-lg"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
               >
-                Vue d'ensemble de votre portefeuille locatif
+                Bienvenue, vous gérez {dashboard.properties?.total || 0} biens avec succès.
               </motion.p>
             </div>
             

@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useState, useTransition, useMemo } from "react";
 import Link from "next/link";
@@ -22,12 +21,13 @@ import {
   AreaChart,
   ComposedChart,
 } from "recharts";
-import { Search, Euro, CheckCircle, AlertCircle, Building2, Loader2, Bell, Download } from "lucide-react";
+import { Search, Euro, CheckCircle, AlertCircle, Building2, Loader2, Bell, Download, Info } from "lucide-react";
 import { exportInvoices } from "@/lib/services/export-service";
 import { formatCurrency } from "@/lib/helpers/format";
-import type { InvoicesWithPagination } from "../_data/fetchInvoices";
+import type { InvoicesWithPagination, InvoiceRow } from "../_data/fetchInvoices";
 import { markInvoiceAsPaid, sendPaymentReminder, generateMonthlyInvoices } from "./actions";
 import { useToast } from "@/components/ui/use-toast";
+import { calculateTaxes } from "@/lib/services/tax-engine";
 
 // SOTA Imports
 import { PageTransition } from "@/components/ui/page-transition";
@@ -37,6 +37,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PlanGateInline, UsageLimitBanner } from "@/components/subscription";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface MoneyClientProps {
   data: InvoicesWithPagination;
@@ -49,6 +50,21 @@ export function MoneyClient({ data }: MoneyClientProps) {
   const [isPending, startTransition] = useTransition();
   const [isGenerating, startGenerateTransition] = useTransition();
   const { toast } = useToast();
+
+  // Détection des biens en DROM pour alerte fiscale SOTA 2026
+  const dromProperties = useMemo(() => {
+    const dromPrefixes = ["971", "972", "973", "974", "976"];
+    const uniqueDromPrefixes = new Set<string>();
+    
+    invoices.forEach(inv => {
+      const zip = inv.lease?.property?.code_postal;
+      if (zip && dromPrefixes.includes(zip.substring(0, 3))) {
+        uniqueDromPrefixes.add(zip.substring(0, 3));
+      }
+    });
+    
+    return Array.from(uniqueDromPrefixes);
+  }, [invoices]);
 
   // Filtrage côté client
   const filteredInvoices = invoices.filter((inv) => {
@@ -288,13 +304,24 @@ export function MoneyClient({ data }: MoneyClientProps) {
           </div>
 
           {/* Usage Limit Banner SOTA 2025 */}
-          <div className="mb-6">
+          <div className="mb-6 space-y-4">
             <UsageLimitBanner
               resource="leases"
               variant="inline"
               threshold={80}
               dismissible={true}
             />
+
+            {dromProperties.length > 0 && (
+              <Alert className="bg-blue-50 border-blue-200">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-800 font-semibold">Configuration Fiscale DROM active</AlertTitle>
+                <AlertDescription className="text-blue-700">
+                  Certains de vos biens sont situés dans les DROM ({dromProperties.join(", ")}). 
+                  Le taux de TVA réduit (8.5%) est automatiquement appliqué sur vos factures conformément au standard SOTA 2026.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           {/* KPIs */}
