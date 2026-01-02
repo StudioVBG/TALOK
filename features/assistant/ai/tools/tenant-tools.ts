@@ -374,7 +374,7 @@ export const reportProblemTool = tool(
       profile_id: lease.owner_id,
       priority: input.urgent ? "high" : "normal",
       channels: input.urgent ? ["in_app", "email", "push"] : ["in_app", "email"],
-      action_url: `/app/owner/tickets/${ticket.id}`,
+      action_url: `/owner/tickets/${ticket.id}`,
       metadata: {
         ticket_id: ticket.id,
         property_address: property?.adresse_complete,

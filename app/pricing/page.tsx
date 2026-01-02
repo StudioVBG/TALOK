@@ -380,7 +380,7 @@ export default function PricingPage() {
     // Free plan - just register
     if (slug === "gratuit") {
       if (user) {
-        router.push("/app/owner/dashboard");
+        router.push("/owner/dashboard");
       } else {
         router.push("/auth/register");
       }
@@ -389,7 +389,7 @@ export default function PricingPage() {
 
     if (slug === "starter") {
       if (user) {
-        router.push("/app/owner/dashboard");
+        router.push("/owner/dashboard");
       } else {
         router.push("/auth/register");
       }

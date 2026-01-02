@@ -13,12 +13,12 @@
 - ✅ `components/owner/cards/OwnerSectionCard.tsx` - Wrapper générique pour sections
 
 ### Pages refactorées (Server Components)
-- ✅ `app/app/owner/dashboard/page.tsx` - Server Component qui charge les données
-- ✅ `app/app/owner/dashboard/OwnerDashboardClient.tsx` - Client Component avec interactions
-- ✅ `app/app/owner/properties/page.tsx` - Server Component qui charge les données
-- ✅ `app/app/owner/properties/OwnerPropertiesClient.tsx` - Client Component avec filtres
-- ✅ `app/app/owner/contracts/page.tsx` - Server Component qui charge les données
-- ✅ `app/app/owner/money/page.tsx` - Server Component qui charge les données
+- ✅ `app/owner/dashboard/page.tsx` - Server Component qui charge les données
+- ✅ `app/owner/dashboard/OwnerDashboardClient.tsx` - Client Component avec interactions
+- ✅ `app/owner/properties/page.tsx` - Server Component qui charge les données
+- ✅ `app/owner/properties/OwnerPropertiesClient.tsx` - Client Component avec filtres
+- ✅ `app/owner/contracts/page.tsx` - Server Component qui charge les données
+- ✅ `app/owner/money/page.tsx` - Server Component qui charge les données
 
 ## 📋 Architecture mise en place
 
@@ -56,7 +56,7 @@ Tous les types sont dans `lib/owner/types.ts` :
 ## ⚠️ Notes importantes
 
 ### `OwnerDataProvider` obsolète
-Le `OwnerDataProvider` dans `app/app/owner/_data/OwnerDataProvider.tsx` n'est plus utilisé. Il peut être supprimé après vérification qu'aucun composant ne l'utilise encore.
+Le `OwnerDataProvider` dans `app/owner/_data/OwnerDataProvider.tsx` n'est plus utilisé. Il peut être supprimé après vérification qu'aucun composant ne l'utilise encore.
 
 ### Compatibilité avec les hooks existants
 Les pages utilisent toujours les hooks React Query existants (`useProperties`, `useLeases`, `useDashboard`) pour le cache et le refetch automatique. Les données initiales du Server Component servent de fallback si le cache n'est pas encore rempli.
@@ -70,7 +70,7 @@ Certaines fonctions dans `lib/owner/api.ts` ont des TODO car les API corresponda
 ## 🎯 Prochaines étapes (optionnel)
 
 1. **Supprimer `OwnerDataProvider`** si plus aucun composant ne l'utilise
-2. **Migrer les fonctions de `app/app/owner/_data/`** vers `lib/owner/api.ts` si nécessaire
+2. **Migrer les fonctions de `app/owner/_data/`** vers `lib/owner/api.ts` si nécessaire
 3. **Créer les composants de tables** manquants :
    - `components/owner/tables/OwnerInvoicesTable.tsx`
    - `components/owner/tables/OwnerIndexationsTable.tsx`

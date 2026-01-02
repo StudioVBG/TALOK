@@ -3,7 +3,7 @@
 ## 📁 Structure des fichiers
 
 ```
-app/app/owner/
+app/owner/
 ├── layout.tsx                    # Layout global (OwnerAppLayout)
 ├── dashboard/
 │   ├── page.tsx                 # Server Component

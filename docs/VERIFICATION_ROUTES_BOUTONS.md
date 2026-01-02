@@ -3,27 +3,27 @@
 ## 🔍 Routes vérifiées
 
 ### ✅ Routes principales (OK)
-- `/app/owner/dashboard` ✅
-- `/app/owner/properties` ✅
-- `/app/owner/properties/[id]` ✅
-- `/app/owner/properties/[id]/edit` ✅
-- `/app/owner/contracts` ✅
-- `/app/owner/contracts/[id]` ✅
-- `/app/owner/money` ✅
-- `/app/owner/documents` ✅
-- `/app/owner/support` ✅
-- `/app/owner/profile` ✅
+- `/owner/dashboard` ✅
+- `/owner/properties` ✅
+- `/owner/properties/[id]` ✅
+- `/owner/properties/[id]/edit` ✅
+- `/owner/contracts` ✅
+- `/owner/contracts/[id]` ✅
+- `/owner/money` ✅
+- `/owner/documents` ✅
+- `/owner/support` ✅
+- `/owner/profile` ✅
 
 ### ⚠️ Routes à vérifier/corriger
 
 #### 1. Création d'un bien
 **Routes existantes :**
-- `/app/owner/properties/new` ✅ (utilise PropertyWizardV3 - RECOMMANDÉ)
-- `/app/owner/property/new` ⚠️ (ancien wizard - à supprimer ou rediriger)
+- `/owner/properties/new` ✅ (utilise PropertyWizardV3 - RECOMMANDÉ)
+- `/owner/property/new` ⚠️ (ancien wizard - à supprimer ou rediriger)
 
-**Boutons pointent vers :** `/app/owner/properties/new` ✅ (CORRECT)
+**Boutons pointent vers :** `/owner/properties/new` ✅ (CORRECT)
 
-**Action recommandée :** Rediriger `/app/owner/property/new` vers `/app/owner/properties/new`
+**Action recommandée :** Rediriger `/owner/property/new` vers `/owner/properties/new`
 
 #### 2. Création d'un bail
 **Route existante :**
@@ -40,7 +40,7 @@
 - Il existe une page `/documents` mais pas de page `/documents/upload`
 
 **Action requise :** 
-- Créer une page `/app/owner/documents/upload/page.tsx` OU
+- Créer une page `/owner/documents/upload/page.tsx` OU
 - Rediriger vers une page existante OU
 - Modifier les boutons pour utiliser un modal/component d'upload
 
@@ -58,13 +58,13 @@
 ## 📋 Liste des corrections nécessaires
 
 ### 1. Rediriger l'ancien wizard vers le nouveau
-**Fichier :** `app/app/owner/property/new/page.tsx`
-**Action :** Rediriger vers `/app/owner/properties/new`
+**Fichier :** `app/owner/property/new/page.tsx`
+**Action :** Rediriger vers `/owner/properties/new`
 
 ### 2. Corriger les routes d'upload de documents
 **Fichiers concernés :**
-- `app/app/owner/documents/OwnerDocumentsClient.tsx` (2 occurrences)
-**Action :** Créer une page `/app/owner/documents/upload/page.tsx` ou utiliser un modal
+- `app/owner/documents/OwnerDocumentsClient.tsx` (2 occurrences)
+**Action :** Créer une page `/owner/documents/upload/page.tsx` ou utiliser un modal
 
 ### 3. Vérifier la route de détail de document
 **Action :** Vérifier si `/documents/[id]` existe, sinon créer ou rediriger
@@ -77,7 +77,7 @@ Utiliser les constantes de `lib/config/owner-routes.ts` pour garantir la cohére
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 
 // Au lieu de :
-<Link href="/app/owner/properties/new">
+<Link href="/owner/properties/new">
 
 // Utiliser :
 <Link href={`${OWNER_ROUTES.properties.path}/new`}>
@@ -85,16 +85,16 @@ import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 
 ## ✅ Routes validées et fonctionnelles
 
-- ✅ `/app/owner/dashboard`
-- ✅ `/app/owner/properties`
-- ✅ `/app/owner/properties/new`
-- ✅ `/app/owner/properties/[id]`
-- ✅ `/app/owner/properties/[id]/edit`
-- ✅ `/app/owner/contracts`
-- ✅ `/app/owner/contracts/[id]`
-- ✅ `/app/owner/money`
-- ✅ `/app/owner/documents`
-- ✅ `/app/owner/support`
+- ✅ `/owner/dashboard`
+- ✅ `/owner/properties`
+- ✅ `/owner/properties/new`
+- ✅ `/owner/properties/[id]`
+- ✅ `/owner/properties/[id]/edit`
+- ✅ `/owner/contracts`
+- ✅ `/owner/contracts/[id]`
+- ✅ `/owner/money`
+- ✅ `/owner/documents`
+- ✅ `/owner/support`
 - ✅ `/leases/new` (avec query params)
 - ✅ `/invoices/[id]`
 

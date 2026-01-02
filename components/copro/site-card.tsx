@@ -136,7 +136,7 @@ export function SiteCard({ site, showActions = true, onEdit, onDelete }: SiteCar
           </div>
           
           {/* CTA */}
-          <Link href={`/app/syndic/sites/${site.id}`}>
+          <Link href={`/syndic/sites/${site.id}`}>
             <Button 
               variant="ghost" 
               className="w-full text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 group/btn"

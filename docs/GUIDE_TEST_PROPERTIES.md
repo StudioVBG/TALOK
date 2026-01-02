@@ -15,7 +15,7 @@
 ### Test manuel via navigateur
 
 1. **Ouvrir la console du navigateur** (F12)
-2. **Aller sur** `/app/owner/properties`
+2. **Aller sur** `/owner/properties`
 3. **Vérifier les logs dans la console** :
    ```
    [api-client] Request: GET /api/properties
@@ -205,7 +205,7 @@ console.log("[PropertiesPageClient] state", {
 
 **Comment tester :**
 - Se déconnecter
-- Essayer d'accéder à `/app/owner/properties`
+- Essayer d'accéder à `/owner/properties`
 - Vérifier la redirection vers `/auth/signin`
 
 ### Erreur 404 (Profil non trouvé)
@@ -290,14 +290,14 @@ console.log("[PropertiesPageClient] state", {
 ### Test du Bouton "Voir la fiche"
 
 1. **Cliquer** sur "Voir la fiche" d'une propriété
-2. **Vérifier** la redirection vers `/app/owner/properties/[id]`
+2. **Vérifier** la redirection vers `/owner/properties/[id]`
 3. **Revenir** en arrière
 4. **Vérifier** que les propriétés sont toujours en cache (pas de rechargement)
 
 ### Test du Bouton "Ajouter un bien"
 
 1. **Cliquer** sur "Ajouter un bien"
-2. **Vérifier** la redirection vers `/app/owner/properties/new`
+2. **Vérifier** la redirection vers `/owner/properties/new`
 3. **Créer** une nouvelle propriété
 4. **Revenir** à la liste
 5. **Vérifier** que la nouvelle propriété apparaît (avec invalidation du cache)

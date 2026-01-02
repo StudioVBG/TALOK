@@ -35,7 +35,7 @@ const ownerActions: QuickAction[] = [
   {
     icon: FileText,
     label: "Nouveau bail",
-    href: "/app/owner/contracts/new",
+    href: "/owner/contracts/new",
     color: "text-emerald-600 dark:text-emerald-400",
   },
   {
@@ -56,25 +56,25 @@ const tenantActions: QuickAction[] = [
   {
     icon: CreditCard,
     label: "Payer mon loyer",
-    href: "/app/tenant/payments",
+    href: "/tenant/payments",
     color: "text-blue-600 dark:text-blue-400",
   },
   {
     icon: FileText,
     label: "Mes quittances",
-    href: "/app/tenant/receipts",
+    href: "/tenant/receipts",
     color: "text-emerald-600 dark:text-emerald-400",
   },
   {
     icon: Wrench,
     label: "Signaler problème",
-    href: "/app/tenant/requests/new",
+    href: "/tenant/requests/new",
     color: "text-amber-600 dark:text-amber-400",
   },
   {
     icon: Gauge,
     label: "Relevé compteur",
-    href: "/app/tenant/meters",
+    href: "/tenant/meters",
     color: "text-violet-600 dark:text-violet-400",
   },
 ];

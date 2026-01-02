@@ -117,7 +117,7 @@ export function ProviderCard({
             </Avatar>
             <div>
               <Link 
-                href={`/app/owner/providers/${provider.id}`}
+                href={`/owner/providers/${provider.id}`}
                 className="font-semibold text-lg hover:text-primary transition-colors"
               >
                 {provider.name}
@@ -253,7 +253,7 @@ export function ProviderCard({
         )}
         
         <Button variant="outline" asChild>
-          <Link href={`/app/owner/providers/${provider.id}`}>
+          <Link href={`/owner/providers/${provider.id}`}>
             Voir le profil
             <ChevronRight className="h-4 w-4 ml-1" />
           </Link>
@@ -302,7 +302,7 @@ export function ProviderCardCompact({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <Link 
-            href={`/app/owner/providers/${provider.id}`}
+            href={`/owner/providers/${provider.id}`}
             className="font-medium hover:text-primary truncate"
           >
             {provider.name}

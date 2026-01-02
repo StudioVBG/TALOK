@@ -25,8 +25,8 @@ Après le redéploiement, vérifier :
    - Vérifier qu'il n'y a plus d'erreurs 404 pour les chunks JS
 
 2. **Les pages fonctionnent** :
-   - `/app/owner/properties` doit se charger correctement
-   - `/app/owner/dashboard` doit fonctionner
+   - `/owner/properties` doit se charger correctement
+   - `/owner/dashboard` doit fonctionner
    - Toutes les autres pages owner doivent être accessibles
 
 3. **Les routes API fonctionnent** :

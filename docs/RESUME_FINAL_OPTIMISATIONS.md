@@ -151,7 +151,7 @@
    - Optimisation `generateUniquePropertyCode()` avec RPC PostgreSQL
    - Fallback automatique si RPC indisponible
 
-2. ✅ `app/app/owner/property/new/_steps/SummaryStep.tsx`
+2. ✅ `app/owner/property/new/_steps/SummaryStep.tsx`
    - Barre de progression globale (7 étapes)
    - Progression détaillée pour les photos
    - États de progression typés avec TypeScript

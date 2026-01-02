@@ -66,7 +66,7 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
             <p className="text-sm text-muted-foreground mb-4">Ajoutez des photos pour mettre en valeur votre bien</p>
             {propertyId && (
               <Button 
-                onClick={() => router.push(`/app/owner/properties/${propertyId}/edit`)}
+                onClick={() => router.push(`/owner/properties/${propertyId}/edit`)}
                 variant="default"
                 className="gap-2"
               >

@@ -25,7 +25,7 @@ test.describe("Flux Bail - Propriétaire", () => {
   });
 
   test("peut accéder à la liste des baux", async ({ page }) => {
-    await page.goto("/app/owner/contracts");
+    await page.goto("/owner/contracts");
     await page.waitForLoadState("networkidle");
 
     // Vérifier que la page charge
@@ -46,7 +46,7 @@ test.describe("Flux Bail - Propriétaire", () => {
     // Si pas de formulaire direct, on peut être redirigé ou avoir une modal
     if (!formExists) {
       // Essayer de trouver un bouton pour créer un bail
-      await page.goto("/app/owner/contracts");
+      await page.goto("/owner/contracts");
       await page.waitForLoadState("networkidle");
       
       const createButton = page.locator('button:has-text("Nouveau"), button:has-text("Créer"), a:has-text("Ajouter")');
@@ -63,7 +63,7 @@ test.describe("Flux Bail - Propriétaire", () => {
 
   test("peut voir les détails d'un bail existant", async ({ page }) => {
     // D'abord, récupérer un bail existant
-    await page.goto("/app/owner/contracts");
+    await page.goto("/owner/contracts");
     await page.waitForLoadState("networkidle");
 
     // Cliquer sur le premier bail s'il existe
@@ -93,7 +93,7 @@ test.describe("Flux Invitation Locataire", () => {
 
   test("peut générer un code d'invitation pour un bien", async ({ page }) => {
     // Aller sur la liste des biens
-    await page.goto("/app/owner/properties");
+    await page.goto("/owner/properties");
     await page.waitForLoadState("networkidle");
 
     // Cliquer sur le premier bien
@@ -129,7 +129,7 @@ test.describe("Flux Signatures", () => {
   });
 
   test("page de signature accessible depuis un bail", async ({ page }) => {
-    await page.goto("/app/owner/contracts");
+    await page.goto("/owner/contracts");
     await page.waitForLoadState("networkidle");
 
     const firstLease = page.locator('[data-testid="lease-card"], a[href*="contracts/"]').first();
@@ -158,7 +158,7 @@ test.describe("Flux Facturation", () => {
   });
 
   test("peut accéder à la section loyers", async ({ page }) => {
-    await page.goto("/app/owner/money");
+    await page.goto("/owner/money");
     await page.waitForLoadState("networkidle");
 
     // Vérifier les éléments principaux
@@ -166,7 +166,7 @@ test.describe("Flux Facturation", () => {
   });
 
   test("peut générer une facture", async ({ page }) => {
-    await page.goto("/app/owner/money");
+    await page.goto("/owner/money");
     await page.waitForLoadState("networkidle");
 
     // Chercher un bouton de génération

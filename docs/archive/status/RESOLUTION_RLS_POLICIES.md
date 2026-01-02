@@ -59,7 +59,7 @@ Après cette migration, l'endpoint `/api/debug/properties` devrait maintenant re
 - `directQueryCount = 6` ✅
 - `apiQueryCount = 6` ✅
 
-Et la page `/app/owner/properties` devrait afficher les 6 propriétés.
+Et la page `/owner/properties` devrait afficher les 6 propriétés.
 
 ---
 
@@ -76,7 +76,7 @@ Et la page `/app/owner/properties` devrait afficher les 6 propriétés.
 
 ### 2. Recharger la Page
 
-**Recharger :** `/app/owner/properties`
+**Recharger :** `/owner/properties`
 
 **Vérifier :**
 - Les logs console doivent montrer `propertiesCount = 6`
@@ -97,7 +97,7 @@ Et la page `/app/owner/properties` devrait afficher les 6 propriétés.
 - [x] Migration SQL appliquée avec succès
 - [x] Policies RLS créées et vérifiées
 - [ ] Tester `/api/debug/properties` pour confirmer que les propriétés sont retournées
-- [ ] Recharger `/app/owner/properties` pour vérifier l'affichage
+- [ ] Recharger `/owner/properties` pour vérifier l'affichage
 
 ---
 

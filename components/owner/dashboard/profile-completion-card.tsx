@@ -70,7 +70,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Votre prénom",
     description: "Pour personnaliser votre expérience et vos documents",
     icon: User,
-    href: "/app/owner/profile",
+    href: "/owner/profile",
     priority: "high",
     reward: "+10%",
     category: "identity",
@@ -80,7 +80,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Votre nom de famille",
     description: "Essentiel pour vos baux et quittances officiels",
     icon: User,
-    href: "/app/owner/profile",
+    href: "/owner/profile",
     priority: "high",
     reward: "+10%",
     category: "identity",
@@ -90,7 +90,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Numéro de téléphone",
     description: "Pour que vos locataires puissent vous joindre en urgence",
     icon: Phone,
-    href: "/app/owner/profile",
+    href: "/owner/profile",
     priority: "high",
     reward: "+10%",
     category: "identity",
@@ -100,7 +100,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Photo de profil",
     description: "Instaurez la confiance avec une photo professionnelle",
     icon: Camera,
-    href: "/app/owner/profile",
+    href: "/owner/profile",
     priority: "medium",
     reward: "+5%",
     category: "identity",
@@ -110,7 +110,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Date de naissance",
     description: "Obligatoire pour la conformité légale des baux",
     icon: User,
-    href: "/app/owner/profile",
+    href: "/owner/profile",
     priority: "medium",
     reward: "+5%",
     category: "identity",
@@ -120,7 +120,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Statut juridique",
     description: "Particulier ou société ? Définissez votre cadre fiscal",
     icon: Building2,
-    href: "/app/owner/profile/business",
+    href: "/owner/profile/business",
     priority: "high",
     reward: "+10%",
     category: "business",
@@ -130,7 +130,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Numéro SIRET",
     description: "Requis pour la facturation professionnelle",
     icon: FileText,
-    href: "/app/owner/profile/business",
+    href: "/owner/profile/business",
     priority: "high",
     reward: "+5%",
     category: "business",
@@ -140,7 +140,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Coordonnées bancaires",
     description: "Recevez vos loyers directement sur votre compte",
     icon: CreditCard,
-    href: "/app/owner/profile/banking",
+    href: "/owner/profile/banking",
     priority: "high",
     reward: "+15%",
     category: "business",
@@ -150,7 +150,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Adresse de facturation",
     description: "Pour vos quittances et documents officiels",
     icon: MapPin,
-    href: "/app/owner/profile/business",
+    href: "/owner/profile/business",
     priority: "medium",
     reward: "+5%",
     category: "business",
@@ -160,7 +160,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Pièce d'identité",
     description: "Vérifiez votre identité pour sécuriser vos transactions",
     icon: Shield,
-    href: "/app/owner/profile/identity",
+    href: "/owner/profile/identity",
     priority: "high",
     reward: "+10%",
     category: "security",
@@ -170,7 +170,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Ajouter votre premier bien",
     description: "Commencez à gérer votre patrimoine immobilier",
     icon: Building2,
-    href: "/app/owner/properties/new",
+    href: "/owner/properties/new",
     priority: "high",
     reward: "+10%",
     category: "property",
@@ -180,7 +180,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Créer votre premier bail",
     description: "Officialisez la location de votre bien",
     icon: FileText,
-    href: "/app/owner/contracts/new",
+    href: "/owner/contracts/new",
     priority: "medium",
     reward: "+5%",
     category: "property",
@@ -521,7 +521,7 @@ export function ProfileCompletionCard({ data, className }: ProfileCompletionCard
                 className="text-center py-2"
               >
                 <Button variant="ghost" size="sm" asChild>
-                  <Link href="/app/owner/profile" className="text-blue-600">
+                  <Link href="/owner/profile" className="text-blue-600">
                     Voir toutes les tâches ({incompleteTasks.length - 4} de plus)
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Link>
@@ -558,7 +558,7 @@ export function ProfileCompletionCard({ data, className }: ProfileCompletionCard
             </span>
           </div>
           <Button size="sm" asChild className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
-            <Link href="/app/owner/profile">
+            <Link href="/owner/profile">
               Compléter
               <ChevronRight className="w-4 h-4 ml-1" />
             </Link>

@@ -136,7 +136,7 @@ mcp_supabase_immo_apply_migration({
 
 ## 🚀 Prochaines Étapes
 
-1. ✅ **Vérifier que les propriétés s'affichent** (localStorage:3000/app/owner/properties)
+1. ✅ **Vérifier que les propriétés s'affichent** (localStorage:3000/owner/properties)
 2. ⚠️ **Finaliser les corrections search_path** pour les autres fonctions
 3. ⚠️ **Activer Leaked Password Protection** dans Supabase Dashboard
 4. ⚠️ **Déplacer pg_trgm** dans un schema séparé (optionnel)

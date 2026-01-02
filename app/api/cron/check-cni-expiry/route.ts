@@ -341,7 +341,7 @@ async function sendCniExpiryEmail(params: {
           </p>
         </div>
         
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://gestion-locative.app"}/app/tenant/identity" 
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://gestion-locative.app"}/tenant/identity" 
            style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px;">
           Mettre à jour ma CNI
         </a>

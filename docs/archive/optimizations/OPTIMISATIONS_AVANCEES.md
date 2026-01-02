@@ -160,7 +160,7 @@ pour créer toutes les tailles d'icônes PNG à partir du SVG.
 import { SmartLink } from "@/components/ui/smart-link";
 
 <SmartLink 
-  href={`/app/owner/properties/${id}`}
+  href={`/owner/properties/${id}`}
   prefetchType="property"
   prefetchId={id}
   className="text-blue-500 hover:underline"

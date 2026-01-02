@@ -111,37 +111,37 @@ export function useOwnerShortcuts() {
     {
       key: "d",
       modifiers: { meta: true },
-      action: () => router.push("/app/owner/dashboard"),
+      action: () => router.push("/owner/dashboard"),
       description: "Aller au tableau de bord",
     },
     {
       key: "b",
       modifiers: { meta: true },
-      action: () => router.push("/app/owner/properties"),
+      action: () => router.push("/owner/properties"),
       description: "Voir mes biens",
     },
     {
       key: "l",
       modifiers: { meta: true },
-      action: () => router.push("/app/owner/tenants"),
+      action: () => router.push("/owner/tenants"),
       description: "Voir mes locataires",
     },
     {
       key: "c",
       modifiers: { meta: true },
-      action: () => router.push("/app/owner/contracts"),
+      action: () => router.push("/owner/contracts"),
       description: "Voir mes contrats",
     },
     {
       key: "m",
       modifiers: { meta: true },
-      action: () => router.push("/app/owner/money"),
+      action: () => router.push("/owner/money"),
       description: "Voir mes finances",
     },
     {
       key: "n",
       modifiers: { meta: true, shift: true },
-      action: () => router.push("/app/owner/properties/new"),
+      action: () => router.push("/owner/properties/new"),
       description: "Ajouter un bien",
     },
   ];

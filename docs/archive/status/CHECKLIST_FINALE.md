@@ -1,7 +1,7 @@
 # ✅ Checklist Finale - Résolution propertiesCount = 0
 
 ## 🎯 Objectif
-Faire en sorte que `/app/owner/properties` affiche les biens du propriétaire connecté.
+Faire en sorte que `/owner/properties` affiche les biens du propriétaire connecté.
 
 ---
 
@@ -44,7 +44,7 @@ GROUP BY p.id, p.user_id;
 - Si `properties_count = 0` → Aucune propriété créée
 
 ### Test 2 : Créer un Nouveau Bien
-1. Aller sur `/app/owner/properties/new`
+1. Aller sur `/owner/properties/new`
 2. Créer un bien (même minimal)
 3. Vérifier les logs serveur :
    ```
@@ -55,7 +55,7 @@ GROUP BY p.id, p.user_id;
 4. Vérifier dans Supabase que la propriété existe avec le bon `owner_id`
 
 ### Test 3 : Vérifier la Lecture
-1. Recharger `/app/owner/properties`
+1. Recharger `/owner/properties`
 2. Vérifier les logs serveur :
    ```
    [api/properties] DEBUG: profile.id = "..."
@@ -87,7 +87,7 @@ WHERE pr.owner_id = p.user_id
 
 ## ✅ Résultat Final Attendu
 
-- ✅ La page `/app/owner/properties` affiche les biens
+- ✅ La page `/owner/properties` affiche les biens
 - ✅ Les logs montrent `owner_id = profile.id` partout
 - ✅ Les nouveaux biens créés sont visibles immédiatement
 

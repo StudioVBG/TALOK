@@ -54,49 +54,49 @@ interface CommandPaletteProps {
 // Définition des commandes pour chaque rôle
 const ownerCommands = {
   navigation: [
-    { icon: LayoutDashboard, label: "Tableau de bord", href: "/app/owner/dashboard", shortcut: "⌘D" },
-    { icon: Building2, label: "Mes biens", href: "/app/owner/properties", shortcut: "⌘B" },
-    { icon: Users, label: "Mes locataires", href: "/app/owner/tenants", shortcut: "⌘L" },
-    { icon: FileText, label: "Baux & contrats", href: "/app/owner/contracts", shortcut: "⌘C" },
-    { icon: Euro, label: "Loyers & revenus", href: "/app/owner/money", shortcut: "⌘M" },
-    { icon: Wrench, label: "Tickets maintenance", href: "/app/owner/tickets" },
-    { icon: ClipboardCheck, label: "États des lieux", href: "/app/owner/inspections" },
-    { icon: FileCheck, label: "Documents", href: "/app/owner/documents" },
-    { icon: MessageSquare, label: "Messages", href: "/app/owner/messages" },
-    { icon: Calculator, label: "Fiscalité", href: "/app/owner/taxes" },
+    { icon: LayoutDashboard, label: "Tableau de bord", href: "/owner/dashboard", shortcut: "⌘D" },
+    { icon: Building2, label: "Mes biens", href: "/owner/properties", shortcut: "⌘B" },
+    { icon: Users, label: "Mes locataires", href: "/owner/tenants", shortcut: "⌘L" },
+    { icon: FileText, label: "Baux & contrats", href: "/owner/contracts", shortcut: "⌘C" },
+    { icon: Euro, label: "Loyers & revenus", href: "/owner/money", shortcut: "⌘M" },
+    { icon: Wrench, label: "Tickets maintenance", href: "/owner/tickets" },
+    { icon: ClipboardCheck, label: "États des lieux", href: "/owner/inspections" },
+    { icon: FileCheck, label: "Documents", href: "/owner/documents" },
+    { icon: MessageSquare, label: "Messages", href: "/owner/messages" },
+    { icon: Calculator, label: "Fiscalité", href: "/owner/taxes" },
   ],
   actions: [
-    { icon: Plus, label: "Ajouter un bien", href: "/app/owner/properties/new", accent: true },
-    { icon: Plus, label: "Créer un bail", href: "/app/owner/contracts/new", accent: true },
-    { icon: Plus, label: "Nouveau ticket", href: "/app/owner/tickets/new" },
-    { icon: Plus, label: "Nouvel état des lieux", href: "/app/owner/inspections/new" },
-    { icon: CreditCard, label: "Générer les factures", href: "/app/owner/money?action=generate" },
+    { icon: Plus, label: "Ajouter un bien", href: "/owner/properties/new", accent: true },
+    { icon: Plus, label: "Créer un bail", href: "/owner/contracts/new", accent: true },
+    { icon: Plus, label: "Nouveau ticket", href: "/owner/tickets/new" },
+    { icon: Plus, label: "Nouvel état des lieux", href: "/owner/inspections/new" },
+    { icon: CreditCard, label: "Générer les factures", href: "/owner/money?action=generate" },
   ],
   settings: [
-    { icon: UserCircle, label: "Mon profil", href: "/app/owner/profile" },
-    { icon: CreditCard, label: "Abonnement & facturation", href: "/app/owner/settings/billing" },
-    { icon: Bell, label: "Notifications", href: "/app/owner/settings/notifications" },
-    { icon: HelpCircle, label: "Aide & support", href: "/app/owner/support" },
+    { icon: UserCircle, label: "Mon profil", href: "/owner/profile" },
+    { icon: CreditCard, label: "Abonnement & facturation", href: "/owner/settings/billing" },
+    { icon: Bell, label: "Notifications", href: "/owner/settings/notifications" },
+    { icon: HelpCircle, label: "Aide & support", href: "/owner/support" },
   ],
 };
 
 const tenantCommands = {
   navigation: [
-    { icon: LayoutDashboard, label: "Tableau de bord", href: "/app/tenant/dashboard", shortcut: "⌘D" },
-    { icon: Home, label: "Mon logement", href: "/app/tenant/lease" },
-    { icon: CreditCard, label: "Mes paiements", href: "/app/tenant/payments", shortcut: "⌘P" },
-    { icon: FileText, label: "Mes documents", href: "/app/tenant/documents" },
-    { icon: Wrench, label: "Mes demandes", href: "/app/tenant/requests" },
-    { icon: MessageSquare, label: "Messages", href: "/app/tenant/messages" },
+    { icon: LayoutDashboard, label: "Tableau de bord", href: "/tenant/dashboard", shortcut: "⌘D" },
+    { icon: Home, label: "Mon logement", href: "/tenant/lease" },
+    { icon: CreditCard, label: "Mes paiements", href: "/tenant/payments", shortcut: "⌘P" },
+    { icon: FileText, label: "Mes documents", href: "/tenant/documents" },
+    { icon: Wrench, label: "Mes demandes", href: "/tenant/requests" },
+    { icon: MessageSquare, label: "Messages", href: "/tenant/messages" },
   ],
   actions: [
-    { icon: Plus, label: "Nouvelle demande", href: "/app/tenant/requests/new", accent: true },
-    { icon: CreditCard, label: "Payer mon loyer", href: "/app/tenant/payments/pay", accent: true },
+    { icon: Plus, label: "Nouvelle demande", href: "/tenant/requests/new", accent: true },
+    { icon: CreditCard, label: "Payer mon loyer", href: "/tenant/payments/pay", accent: true },
   ],
   settings: [
-    { icon: UserCircle, label: "Mon profil", href: "/app/tenant/settings/profile" },
-    { icon: Bell, label: "Notifications", href: "/app/tenant/settings/notifications" },
-    { icon: HelpCircle, label: "Aide", href: "/app/tenant/help" },
+    { icon: UserCircle, label: "Mon profil", href: "/tenant/settings/profile" },
+    { icon: Bell, label: "Notifications", href: "/tenant/settings/notifications" },
+    { icon: HelpCircle, label: "Aide", href: "/tenant/help" },
   ],
 };
 
@@ -183,7 +183,7 @@ export function CommandPalette({ role = "owner" }: CommandPaletteProps) {
                       type: "property",
                       title: p.adresse_complete || p.nom || "Bien immobilier",
                       subtitle: p.ville ? `${p.type} - ${p.ville}` : p.type,
-                      href: `/app/owner/properties/${p.id}`,
+                      href: `/owner/properties/${p.id}`,
                     });
                   });
                 }
@@ -207,7 +207,7 @@ export function CommandPalette({ role = "owner" }: CommandPaletteProps) {
                     type: "tenant",
                     title: `${t.prenom || ""} ${t.nom || ""}`.trim() || "Locataire",
                     subtitle: t.email,
-                    href: `/app/owner/tenants/${t.id}`,
+                    href: `/owner/tenants/${t.id}`,
                   });
                 });
               }

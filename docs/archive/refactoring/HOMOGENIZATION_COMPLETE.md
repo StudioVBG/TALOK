@@ -7,26 +7,26 @@ Homogénéiser toutes les pages de l'application pour qu'elles utilisent le bon 
 ## ✅ Modifications Effectuées
 
 ### 1. Page Profil Owner Dédiée
-- **Créé** : `/app/app/owner/profile/page.tsx`
+- **Créé** : `/app/owner/profile/page.tsx`
   - Page profil intégrée dans le layout owner
   - Utilise `OwnerAppLayout` avec sidebar
   - Affiche `ProfileGeneralForm` et `OwnerProfileForm`
 
 ### 2. Redirection Automatique
 - **Modifié** : `/app/profile/page.tsx`
-  - Redirection automatique des owners vers `/app/owner/profile`
+  - Redirection automatique des owners vers `/owner/profile`
   - Affichage d'un loader pendant la redirection
   - Conservation de la fonctionnalité pour tenant/provider
 
 ### 3. Masquage de la Navbar
 - **Modifié** : `components/layout/navbar.tsx`
-  - Masquage de la navbar pour `/app/owner/*` (déjà fait)
+  - Masquage de la navbar pour `/owner/*` (déjà fait)
   - Masquage également pour `/profile` si l'utilisateur est owner
   - Évite le doublon de navigation
 
 ### 4. Mise à Jour des Liens
 - **Modifié** : `components/layout/owner-app-layout.tsx`
-  - Lien "Mon profil" dans le menu utilisateur pointe maintenant vers `/app/owner/profile`
+  - Lien "Mon profil" dans le menu utilisateur pointe maintenant vers `/owner/profile`
   - Cohérence avec le reste de la navigation owner
 
 ### 5. Configuration des Routes
@@ -37,23 +37,23 @@ Homogénéiser toutes les pages de l'application pour qu'elles utilisent le bon 
 ## 📊 Résultat
 
 ### Routes Owner Maintenant Disponibles
-- ✅ `/app/owner/dashboard` - Tableau de bord
-- ✅ `/app/owner/properties` - Mes biens
-- ✅ `/app/owner/contracts` - Baux & locataires
-- ✅ `/app/owner/money` - Loyers & revenus
-- ✅ `/app/owner/documents` - Documents
-- ✅ `/app/owner/support` - Aide & services
-- ✅ `/app/owner/profile` - **Mon profil** (nouveau)
+- ✅ `/owner/dashboard` - Tableau de bord
+- ✅ `/owner/properties` - Mes biens
+- ✅ `/owner/contracts` - Baux & locataires
+- ✅ `/owner/money` - Loyers & revenus
+- ✅ `/owner/documents` - Documents
+- ✅ `/owner/support` - Aide & services
+- ✅ `/owner/profile` - **Mon profil** (nouveau)
 
 ### Comportement
 - **Pages Owner** : Utilisent toutes le layout avec sidebar (`OwnerAppLayout`)
 - **Navbar** : Masquée pour toutes les pages owner et `/profile` si owner
-- **Redirection** : Les owners accédant à `/profile` sont automatiquement redirigés vers `/app/owner/profile`
+- **Redirection** : Les owners accédant à `/profile` sont automatiquement redirigés vers `/owner/profile`
 
 ## ✅ Build & Déploiement
 
 - ✅ Build réussi sans erreurs
-- ✅ Route `/app/owner/profile` générée correctement
+- ✅ Route `/owner/profile` générée correctement
 - ✅ Déploiement sur Vercel en cours
 
 ## 🎯 Prochaines Étapes Recommandées

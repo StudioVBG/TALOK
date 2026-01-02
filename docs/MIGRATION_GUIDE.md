@@ -129,7 +129,7 @@ WHERE tablename = 'lease_end_processes';
 ### Via l'application :
 
 1. **Test API** : `GET /api/end-of-lease` doit fonctionner sans erreur
-2. **Test UI** : `/app/owner/end-of-lease` doit afficher la liste des processus
+2. **Test UI** : `/owner/end-of-lease` doit afficher la liste des processus
 
 ---
 

@@ -56,7 +56,7 @@ export function AssemblyCard({ assembly, compact = false }: AssemblyCardProps) {
 
   if (compact) {
     return (
-      <Link href={`/app/syndic/assemblies/${assembly.id}`}>
+      <Link href={`/syndic/assemblies/${assembly.id}`}>
         <motion.div
           whileHover={{ x: 4 }}
           className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
@@ -201,7 +201,7 @@ export function AssemblyCard({ assembly, compact = false }: AssemblyCardProps) {
           )}
 
           {/* CTA */}
-          <Link href={`/app/syndic/assemblies/${assembly.id}`}>
+          <Link href={`/syndic/assemblies/${assembly.id}`}>
             <Button 
               variant="ghost" 
               className="w-full text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"

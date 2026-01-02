@@ -26,10 +26,10 @@
 #### **Pages**
 | Fichier | Convention attendue | Statut |
 |---------|---------------------|--------|
-| `app/app/owner/properties/page.tsx` | `owner-properties.tsx` | ⚠️ **À RENOMMER** |
-| `app/app/owner/properties/new/page.tsx` | `owner-properties-new.tsx` ou `property-wizard.tsx` | ⚠️ **À VÉRIFIER** |
-| `app/app/owner/properties/[id]/page.tsx` | `owner-property-detail.tsx` | ⚠️ **À RENOMMER** |
-| `app/app/owner/properties/[id]/edit/page.tsx` | `owner-property-edit.tsx` | ⚠️ **À RENOMMER** |
+| `app/owner/properties/page.tsx` | `owner-properties.tsx` | ⚠️ **À RENOMMER** |
+| `app/owner/properties/new/page.tsx` | `owner-properties-new.tsx` ou `property-wizard.tsx` | ⚠️ **À VÉRIFIER** |
+| `app/owner/properties/[id]/page.tsx` | `owner-property-detail.tsx` | ⚠️ **À RENOMMER** |
+| `app/owner/properties/[id]/edit/page.tsx` | `owner-property-edit.tsx` | ⚠️ **À RENOMMER** |
 
 **Note** : Next.js App Router utilise des dossiers pour les routes, donc les noms de fichiers peuvent rester `page.tsx` mais les dossiers devraient suivre les conventions.
 
@@ -92,8 +92,8 @@ Certains fichiers utilisent `kebab-case` au lieu de `PascalCase` :
 
 #### **3. Routes Next.js**
 Les routes Next.js App Router utilisent des dossiers :
-- ✅ `app/app/owner/properties/` → Structure correcte
-- ✅ `app/app/owner/properties/new/` → Structure correcte
+- ✅ `app/owner/properties/` → Structure correcte
+- ✅ `app/owner/properties/new/` → Structure correcte
 - Les fichiers `page.tsx` peuvent rester en `kebab-case` car ce sont des routes
 
 ---

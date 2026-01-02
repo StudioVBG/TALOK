@@ -4,15 +4,15 @@
 
 ---
 
-## 🔧 PROBLÈME 1 : PUT /app/owner/property/undefined
+## 🔧 PROBLÈME 1 : PUT /owner/property/undefined
 
 ### Cause identifiée
 
-L'API `/api/properties/[id]/photos/upload-url` retourne `upload_url` (snake_case) mais le code TypeScript attend `uploadURL` (camelCase), ce qui cause `response.uploadURL` = `undefined` et génère l'URL `/app/owner/property/undefined`.
+L'API `/api/properties/[id]/photos/upload-url` retourne `upload_url` (snake_case) mais le code TypeScript attend `uploadURL` (camelCase), ce qui cause `response.uploadURL` = `undefined` et génère l'URL `/owner/property/undefined`.
 
 ### Patch appliqué
 
-**Fichier** : `app/app/owner/property/new/_steps/SummaryStep.tsx`
+**Fichier** : `app/owner/property/new/_steps/SummaryStep.tsx`
 
 ```diff
 - .post<{ uploadURL: string; key: string }>(
@@ -118,7 +118,7 @@ $$;
 
 #### Patch 2.2 : Utilisation service_role pour médias
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 ```diff
   // Charger les médias (cover_url) de manière optimisée avec fallback
@@ -149,7 +149,7 @@ $$;
 
 #### Patch 2.3 : Logs de diagnostic améliorés
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 ```diff
       } else {
@@ -181,12 +181,12 @@ $$;
 
 ### Fichiers modifiés
 
-1. ✅ `app/app/owner/property/new/_steps/SummaryStep.tsx`
+1. ✅ `app/owner/property/new/_steps/SummaryStep.tsx`
    - Correction mapping `upload_url` → `uploadURL`
    - Validation URL avant utilisation
    - Gestion d'erreur améliorée
 
-2. ✅ `app/app/owner/_data/fetchProperties.ts`
+2. ✅ `app/owner/_data/fetchProperties.ts`
    - Utilisation `service_role` pour médias (bypass RLS)
    - Logs de diagnostic améliorés
    - Vérification `owner_id` vs propriétés en base
@@ -201,11 +201,11 @@ $$;
 
 Après application des patches :
 
-1. ✅ Plus d'erreur `PUT /app/owner/property/undefined`
+1. ✅ Plus d'erreur `PUT /owner/property/undefined`
 2. ✅ Les photos s'uploadent correctement avec l'URL signée Supabase
 3. ✅ `fetchProperties` retourne les propriétés correctement
 4. ✅ `OwnerDataProvider` reçoit `propertiesCount > 0`
-5. ✅ Les propriétés apparaissent dans `/app/owner/properties`
+5. ✅ Les propriétés apparaissent dans `/owner/properties`
 
 ---
 
@@ -217,7 +217,7 @@ Après application des patches :
    ```
 
 2. **Créer un bien avec photos** :
-   - Vérifier qu'il n'y a plus d'erreur `PUT /app/owner/property/undefined`
+   - Vérifier qu'il n'y a plus d'erreur `PUT /owner/property/undefined`
    - Vérifier que les photos s'uploadent correctement
 
 3. **Vérifier les logs serveur** :
@@ -225,7 +225,7 @@ Après application des patches :
    - `[OwnerLayout] ✅ Propriétés chargées: X`
    - `[OwnerDataProvider] Données reçues: { propertiesCount: X, ... }`
 
-4. **Vérifier la page `/app/owner/properties`** :
+4. **Vérifier la page `/owner/properties`** :
    - Les propriétés doivent apparaître sans toucher aux filtres
 
 ---

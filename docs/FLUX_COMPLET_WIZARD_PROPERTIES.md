@@ -12,7 +12,7 @@ Wizard (Frontend) → API Routes → Supabase Postgres → Affichage
 
 ### État React (Zustand Store)
 
-**Fichier :** `app/app/owner/property/new/_store/useNewProperty.ts`
+**Fichier :** `app/owner/property/new/_store/useNewProperty.ts`
 
 **Stockage local :**
 - Les données sont stockées dans le state React (Zustand avec persist)
@@ -50,7 +50,7 @@ interface Draft {
 
 ### Étape 1 : Créer le Draft
 
-**Fichier :** `app/app/owner/property/new/_steps/SummaryStep.tsx` (ligne 103)
+**Fichier :** `app/owner/property/new/_steps/SummaryStep.tsx` (ligne 103)
 
 **Appel API :**
 ```typescript
@@ -132,7 +132,7 @@ draft.property_id = draftResponse.property_id;  // ← Stocké pour les PATCH su
 
 ### Étape 2 : Mettre à Jour avec les Détails
 
-**Fichier :** `app/app/owner/property/new/_steps/SummaryStep.tsx` (ligne 162)
+**Fichier :** `app/owner/property/new/_steps/SummaryStep.tsx` (ligne 162)
 
 **Appel API :**
 ```typescript
@@ -157,7 +157,7 @@ await apiClient.patch(`/properties/${propertyId}`, {
 
 ### Étape 3 : Upload des Photos
 
-**Fichier :** `app/app/owner/property/new/_steps/SummaryStep.tsx` (ligne 198)
+**Fichier :** `app/owner/property/new/_steps/SummaryStep.tsx` (ligne 198)
 
 **Flux :**
 1. **Obtenir URL signée :**
@@ -238,9 +238,9 @@ await apiClient.patch(`/properties/${propertyId}`, {
 
 ## 4️⃣ UTILISATION DES PROPRIÉTÉS
 
-### Page "Mes biens" (`/app/owner/properties`)
+### Page "Mes biens" (`/owner/properties`)
 
-**Fichier :** `app/app/owner/properties/page.tsx`
+**Fichier :** `app/owner/properties/page.tsx`
 
 **Hook utilisé :**
 ```typescript
@@ -267,7 +267,7 @@ return response.properties;  // Extrait le tableau properties
 
 ---
 
-### Dashboard Propriétaire (`/app/owner/dashboard`)
+### Dashboard Propriétaire (`/owner/dashboard`)
 
 **Route :** `GET /api/owner/dashboard`
 
@@ -443,7 +443,7 @@ PATCH /api/properties/:id → 200
 - [ ] `GET /api/properties` retourne `200`
 - [ ] Les logs montrent `owner_id filter = profile.id`
 - [ ] Les logs montrent `Nombre de propriétés trouvées: X` (X > 0 si propriétés existent)
-- [ ] La page `/app/owner/properties` affiche les biens
+- [ ] La page `/owner/properties` affiche les biens
 - [ ] Les baux sont correctement associés (si présents)
 
 ---

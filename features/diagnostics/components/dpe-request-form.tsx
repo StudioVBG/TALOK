@@ -144,7 +144,7 @@ export function DpeRequestForm({ property }: DpeRequestFormProps) {
               Votre demande pour le logement au <strong>{property.adresse_complete}</strong> a été transmise. Un diagnostiqueur vous contactera prochainement pour confirmer l&apos;un de vos créneaux.
             </p>
           </div>
-          <Button onClick={() => router.push(`/app/owner/properties/${property.id}/diagnostics`)} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={() => router.push(`/owner/properties/${property.id}/diagnostics`)} className="bg-emerald-600 hover:bg-emerald-700">
             Retour aux diagnostics
           </Button>
         </CardContent>

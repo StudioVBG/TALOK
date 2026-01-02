@@ -356,7 +356,7 @@ export async function notifyPaymentReceived(
     title: "Paiement reçu",
     message: `${tenantName} a payé ${amount.toLocaleString("fr-FR")} € pour ${period}`,
     recipientId: ownerId,
-    actionUrl: `/app/owner/money?invoice=${invoiceId}`,
+    actionUrl: `/owner/money?invoice=${invoiceId}`,
     actionLabel: "Voir le paiement",
     metadata: { tenantName, amount, period, invoiceId },
   });
@@ -377,7 +377,7 @@ export async function notifyPaymentLate(
     title: "Loyer en retard",
     message: `Votre loyer de ${amount.toLocaleString("fr-FR")} € est en retard de ${daysLate} jours`,
     recipientId: tenantId,
-    actionUrl: `/app/tenant/payments?invoice=${invoiceId}`,
+    actionUrl: `/tenant/payments?invoice=${invoiceId}`,
     actionLabel: "Payer maintenant",
     metadata: { amount, daysLate, invoiceId },
   });
@@ -398,8 +398,8 @@ export async function notifyLeaseSigned(
     message: `Le bail pour ${propertyAddress} a été signé par toutes les parties`,
     recipientId,
     actionUrl: isOwner 
-      ? `/app/owner/contracts/${leaseId}` 
-      : `/app/tenant/lease`,
+      ? `/owner/contracts/${leaseId}` 
+      : `/tenant/lease`,
     actionLabel: "Voir le bail",
     metadata: { propertyAddress, leaseId },
   });
@@ -420,7 +420,7 @@ export async function notifyTicketCreated(
     title: "Nouvelle demande",
     message: `${tenantName} a créé une demande : "${ticketTitle}" pour ${propertyAddress}`,
     recipientId: ownerId,
-    actionUrl: `/app/owner/tickets/${ticketId}`,
+    actionUrl: `/owner/tickets/${ticketId}`,
     actionLabel: "Voir la demande",
     metadata: { ticketTitle, propertyAddress, ticketId, tenantName },
   });

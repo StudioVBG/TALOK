@@ -7,8 +7,8 @@
 
 L'application présente des **problèmes architecturaux critiques** qui causent les erreurs 404 et les dysfonctionnements signalés. Les problèmes principaux sont :
 
-1. **Double structure de routes** : `/owner/` vs `/app/owner/` vs `/app/app/owner/`
-2. **Configuration de routes incohérente** : `OWNER_ROUTES` pointe vers `/owner/*` mais les pages sont dans `/app/app/owner/*`
+1. **Double structure de routes** : `/owner/` vs `/owner/` vs `/app/owner/`
+2. **Configuration de routes incohérente** : `OWNER_ROUTES` pointe vers `/owner/*` mais les pages sont dans `/app/owner/*`
 3. **Récursion RLS Supabase** : Politiques de sécurité qui causent des boucles infinies
 4. **Doublons massifs** : Deux versions de chaque page owner et tenant
 
@@ -34,7 +34,7 @@ app/
 │   │   └── ...
 │   └── guarantor/      # Garant
 ├── owner/               # 🟡 ANCIENNE STRUCTURE (DOUBLON)
-│   ├── _data/          # Moins complet que app/app/owner/_data
+│   ├── _data/          # Moins complet que app/owner/_data
 │   ├── dashboard/
 │   ├── properties/
 │   ├── billing/
@@ -48,12 +48,12 @@ app/
 
 | Route URL exposée | Fichier source | Type | Statut |
 |-------------------|----------------|------|--------|
-| `/app/owner/dashboard` | `app/app/owner/dashboard/page.tsx` | Page | ✅ Existe |
-| `/app/owner/properties` | `app/app/owner/properties/page.tsx` | Page | ✅ Existe |
-| `/app/owner/properties/new` | `app/app/owner/properties/new/page.tsx` | Page | ✅ Existe |
-| `/app/owner/contracts` | `app/app/owner/contracts/page.tsx` | Page | ✅ Existe |
-| `/app/owner/money` | `app/app/owner/money/page.tsx` | Page | ✅ Existe |
-| `/app/owner/documents` | `app/app/owner/documents/page.tsx` | Page | ✅ Existe |
+| `/owner/dashboard` | `app/owner/dashboard/page.tsx` | Page | ✅ Existe |
+| `/owner/properties` | `app/owner/properties/page.tsx` | Page | ✅ Existe |
+| `/owner/properties/new` | `app/owner/properties/new/page.tsx` | Page | ✅ Existe |
+| `/owner/contracts` | `app/owner/contracts/page.tsx` | Page | ✅ Existe |
+| `/owner/money` | `app/owner/money/page.tsx` | Page | ✅ Existe |
+| `/owner/documents` | `app/owner/documents/page.tsx` | Page | ✅ Existe |
 | `/owner/dashboard` | `app/owner/dashboard/page.tsx` | Page | ⚠️ DOUBLON |
 | `/owner/properties` | `app/owner/properties/page.tsx` | Page | ⚠️ DOUBLON |
 | `/owner/inspections` | `app/owner/inspections/page.tsx` | Page | ⚠️ Unique ici |
@@ -74,9 +74,9 @@ export const OWNER_ROUTES = {
 };
 ```
 
-**Problème** : Le middleware redirige `/owner/*` vers `/app/owner/*`, mais :
+**Problème** : Le middleware redirige `/owner/*` vers `/owner/*`, mais :
 - Les liens utilisent `/owner/*` (via `OWNER_ROUTES`)
-- Les pages sont dans `/app/app/owner/*`
+- Les pages sont dans `/app/owner/*`
 - Cela crée des **redirections en cascade** ou des **404**
 
 ### 1.4 Flux de redirection actuel (problématique)
@@ -84,9 +84,9 @@ export const OWNER_ROUTES = {
 ```
 1. Utilisateur clique sur "Mes biens"
 2. Lien : href="/owner/properties" (depuis OWNER_ROUTES)
-3. Middleware intercepte et redirige vers "/app/owner/properties"
-4. Next.js cherche : app/app/owner/properties/page.tsx
-5. ✅ La page existe mais le chemin du dossier est app/app/owner (double "app")
+3. Middleware intercepte et redirige vers "/owner/properties"
+4. Next.js cherche : app/owner/properties/page.tsx
+5. ✅ La page existe mais le chemin du dossier est app/owner (double "app")
 ```
 
 ---
@@ -96,13 +96,13 @@ export const OWNER_ROUTES = {
 ### 2.1 Parcours de création de propriété
 
 ```
-[Utilisateur] → [Page /app/owner/properties/new] 
+[Utilisateur] → [Page /owner/properties/new] 
       ↓
 [PropertyWizardV3] → POST /api/properties (type_bien)
       ↓
 [API creates draft] → INSERT properties (owner_id, unique_code, ...)
       ↓
-[Redirect to /app/owner/properties/:id]
+[Redirect to /owner/properties/:id]
       ↓
 [Page détail pour compléter]
 ```
@@ -111,7 +111,7 @@ export const OWNER_ROUTES = {
 
 | Étape | Fichier | Rôle |
 |-------|---------|------|
-| Page création | `app/app/owner/properties/new/page.tsx` | Point d'entrée |
+| Page création | `app/owner/properties/new/page.tsx` | Point d'entrée |
 | Wizard V3 | `features/properties/components/v3/property-wizard-v3.tsx` | Interface stepper |
 | API POST | `app/api/properties/route.ts` | Création en DB |
 | Hook fetch | `lib/hooks/use-properties.ts` | Récupération via React Query |
@@ -122,7 +122,7 @@ export const OWNER_ROUTES = {
 
 | # | Point | Problème | Impact |
 |---|-------|----------|--------|
-| 1 | `OWNER_ROUTES.properties.path` | Pointe vers `/owner/properties` au lieu de `/app/owner/properties` | Redirection | 
+| 1 | `OWNER_ROUTES.properties.path` | Pointe vers `/owner/properties` au lieu de `/owner/properties` | Redirection | 
 | 2 | RLS `lease_signers` | Récursion infinie | Erreur 500 sur documents |
 | 3 | `owner_id` validation | Le profil utilise `profile.id`, la propriété utilise `owner_id` | Potentiel mismatch |
 | 4 | Wizard V3/V4 | Deux versions coexistent (`v3/`, `v4/`) | Confusion, maintenance |
@@ -168,10 +168,10 @@ lease_signers (
 
 | Type | Fichiers | Problème | Action recommandée |
 |------|----------|----------|-------------------|
-| Dashboard Owner | `app/owner/dashboard/DashboardClient.tsx` + `app/app/owner/dashboard/DashboardClient.tsx` | 2 versions différentes | Supprimer `app/owner/` |
-| Properties Owner | `app/owner/properties/PropertiesClient.tsx` + `app/app/owner/properties/page.tsx` | Logique dupliquée | Supprimer `app/owner/` |
-| Layout Owner | `app/owner/layout.tsx` + `app/app/owner/layout.tsx` | Props différentes | Unifier vers `app/app/` |
-| Data fetching | `app/owner/_data/` + `app/app/owner/_data/` | 2 implémentations | Supprimer `app/owner/_data/` |
+| Dashboard Owner | `app/owner/dashboard/DashboardClient.tsx` + `app/owner/dashboard/DashboardClient.tsx` | 2 versions différentes | Supprimer `app/owner/` |
+| Properties Owner | `app/owner/properties/PropertiesClient.tsx` + `app/owner/properties/page.tsx` | Logique dupliquée | Supprimer `app/owner/` |
+| Layout Owner | `app/owner/layout.tsx` + `app/owner/layout.tsx` | Props différentes | Unifier vers `app/app/` |
+| Data fetching | `app/owner/_data/` + `app/owner/_data/` | 2 implémentations | Supprimer `app/owner/_data/` |
 
 ### 3.2 Composants Wizard dupliqués
 
@@ -179,7 +179,7 @@ lease_signers (
 |-----------|----------|------------|
 | Wizard V3 | `features/properties/components/v3/property-wizard-v3.tsx` | Version principale |
 | Wizard V4 | `features/properties/components/v4/PropertyWizardV4.tsx` | En développement, vide |
-| New Property Steps | `app/app/owner/property/new/_steps/*` | 8 composants d'étapes |
+| New Property Steps | `app/owner/property/new/_steps/*` | 8 composants d'étapes |
 | V3 Steps | `features/properties/components/v3/*` | Steps différents |
 
 ### 3.3 Hooks et services dupliqués
@@ -194,13 +194,13 @@ lease_signers (
 
 ```
 P1 - CRITIQUE (faire maintenant) :
-  ├── Supprimer /app/owner/* (garder uniquement /app/app/owner/*)
-  ├── Mettre à jour OWNER_ROUTES vers /app/owner/*
+  ├── Supprimer /owner/* (garder uniquement /app/owner/*)
+  ├── Mettre à jour OWNER_ROUTES vers /owner/*
   └── Supprimer doublons _data/
 
 P2 - IMPORTANT (après P1) :
   ├── Unifier PropertyWizard (garder V3 ou migrer vers V4)
-  ├── Déplacer inspections et billing vers /app/app/owner/
+  ├── Déplacer inspections et billing vers /app/owner/
   └── Centraliser les types Property
 
 P3 - AMÉLIORATION :
@@ -216,7 +216,7 @@ P3 - AMÉLIORATION :
 
 | Route | Cause | Fichier concerné | Solution |
 |-------|-------|------------------|----------|
-| `/app/owner/properties` | Double "app" dans path | Next.js routing | ⚠️ Vérifier structure |
+| `/owner/properties` | Double "app" dans path | Next.js routing | ⚠️ Vérifier structure |
 | `/owner/properties` | Redirigé mais ancien lien | `OWNER_ROUTES` | Mettre à jour config |
 | `/owner/leases` | Route inexistante | Middleware redirect | Ajouter page ou redirect |
 | `/owner/finances` | Route inexistante | Middleware redirect | Ajouter page ou redirect |
@@ -288,7 +288,7 @@ profiles.id → lease_signers.profile_id (1:N)
 
 ### 6.1 Page Dashboard Owner
 
-**Fichier** : `app/app/owner/dashboard/DashboardClient.tsx`
+**Fichier** : `app/owner/dashboard/DashboardClient.tsx`
 
 | Problème | Impact | Solution |
 |----------|--------|----------|
@@ -313,7 +313,7 @@ profiles.id → lease_signers.profile_id (1:N)
 // Reçoit des props différentes selon la source
 interface OwnerAppLayoutProps {
   children: React.ReactNode;
-  profile?: { ... } | null;  // Depuis app/app/owner/layout.tsx
+  profile?: { ... } | null;  // Depuis app/owner/layout.tsx
   // OU
   profileId?: string;        // Depuis app/owner/layout.tsx
   ownerProfile?: ...;
@@ -327,7 +327,7 @@ interface OwnerAppLayoutProps {
 **Fichier** : `components/layout/owner-bottom-nav.tsx`
 
 - Utilise `OWNER_ROUTES` qui pointe vers `/owner/*`
-- Devrait utiliser `/app/owner/*`
+- Devrait utiliser `/owner/*`
 
 ---
 
@@ -337,10 +337,10 @@ interface OwnerAppLayoutProps {
 
 | # | Action | Fichiers | Effort |
 |---|--------|----------|--------|
-| 1.1 | Mettre à jour `OWNER_ROUTES` vers `/app/owner/*` | `lib/config/owner-routes.ts` | 30min |
+| 1.1 | Mettre à jour `OWNER_ROUTES` vers `/owner/*` | `lib/config/owner-routes.ts` | 30min |
 | 1.2 | Supprimer redirections obsolètes du middleware | `middleware.ts` | 30min |
-| 1.3 | Supprimer `/app/owner/` (ancienne structure) | `app/owner/*` | 1h |
-| 1.4 | Déplacer inspections/billing vers `/app/app/owner/` | Nouveaux fichiers | 2h |
+| 1.3 | Supprimer `/owner/` (ancienne structure) | `app/owner/*` | 1h |
+| 1.4 | Déplacer inspections/billing vers `/app/owner/` | Nouveaux fichiers | 2h |
 | 1.5 | Vérifier tous les `href` pointant vers `/owner/` | Grep global | 1h |
 
 ### P2 - DETTE TECHNIQUE (Semaine 2)
@@ -387,7 +387,7 @@ app/
 ├── (auth)/             # Routes publiques auth
 ├── (dashboard)/        # Routes protégées
 │   ├── admin/
-│   ├── owner/          # Renommer app/app/owner → app/owner
+│   ├── owner/          # Renommer app/owner → app/owner
 │   │   ├── _data/
 │   │   ├── dashboard/
 │   │   ├── properties/
@@ -402,10 +402,10 @@ app/
 
 ### C. Checklist de validation post-refactor
 
-- [ ] `/app/owner/dashboard` charge sans erreur
-- [ ] `/app/owner/properties` affiche la liste des biens
+- [ ] `/owner/dashboard` charge sans erreur
+- [ ] `/owner/properties` affiche la liste des biens
 - [ ] Création de bien fonctionne et le bien apparaît dans la liste
-- [ ] `/app/owner/documents` ne génère pas d'erreur RLS
+- [ ] `/owner/documents` ne génère pas d'erreur RLS
 - [ ] Navigation mobile fonctionne
 - [ ] Aucun lien vers `/owner/` (sans `/app/` prefix)
 

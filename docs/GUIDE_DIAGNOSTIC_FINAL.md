@@ -36,7 +36,7 @@
 
 **Où** : Terminal où tourne `npm run dev`
 
-**Logs à chercher après rechargement de `/app/owner/properties`** :
+**Logs à chercher après rechargement de `/owner/properties`** :
 
 #### ✅ Si ça fonctionne :
 ```
@@ -192,7 +192,7 @@ ORDER BY created_at DESC;
 
 ## 🚀 ACTIONS IMMÉDIATES
 
-1. **Copier TOUS les logs SERVEUR** (terminal `npm run dev`) après rechargement de `/app/owner/properties`
+1. **Copier TOUS les logs SERVEUR** (terminal `npm run dev`) après rechargement de `/owner/properties`
 2. **Exécuter le script de test** : `npx tsx scripts/test-fetch-properties-server.ts`
 3. **Partager les résultats** pour diagnostic précis
 

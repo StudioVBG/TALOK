@@ -117,7 +117,7 @@ class MeterNotificationsService {
       message: `L'état des lieux ${typeLabel}${dateStr} pour ${propertyAddress} nécessite vos relevés de compteurs. Veuillez les effectuer dès que possible.`,
       property_id: propertyId,
       lease_id: leaseId,
-      action_url: "/app/tenant/meters",
+      action_url: "/tenant/meters",
       priority: "high",
       metadata: {
         edl_id: edlId,
@@ -143,7 +143,7 @@ class MeterNotificationsService {
       message: `N'oubliez pas d'effectuer vos relevés de compteurs mensuels pour ${propertyAddress}.`,
       property_id: propertyId,
       lease_id: leaseId,
-      action_url: "/app/tenant/meters",
+      action_url: "/tenant/meters",
       priority: "normal",
       metadata: {
         reminder_type: "monthly",
@@ -176,7 +176,7 @@ class MeterNotificationsService {
       title: "Nouveau relevé de compteur",
       message: `Un relevé de compteur ${meterLabels[meterType] || meterType} (${readingValue.toLocaleString("fr-FR")} ${unit}) a été soumis pour ${propertyAddress}.`,
       property_id: propertyId,
-      action_url: edlId ? `/app/owner/inspections/${edlId}` : `/app/owner/properties/${propertyId}`,
+      action_url: edlId ? `/owner/inspections/${edlId}` : `/owner/properties/${propertyId}`,
       priority: "normal",
       metadata: {
         meter_type: meterType,
@@ -210,7 +210,7 @@ class MeterNotificationsService {
       title: "⚠️ Anomalie de consommation détectée",
       message: `Une variation importante (+${percentChange}%) a été détectée sur le compteur ${meterType} de ${propertyAddress}. Valeur actuelle: ${currentValue} ${unit}, précédente: ${previousValue} ${unit}.`,
       property_id: propertyId,
-      action_url: `/app/owner/properties/${propertyId}`,
+      action_url: `/owner/properties/${propertyId}`,
       priority: "high",
       metadata: {
         meter_type: meterType,

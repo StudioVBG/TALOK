@@ -57,7 +57,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          redirect: `${req.headers.get("origin")}/app/owner/finance/callback`,
+          redirect: `${req.headers.get("origin")}/owner/finance/callback`,
           institution_id: institutionId,
           reference: user.id,
         }),

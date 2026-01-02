@@ -36,7 +36,7 @@
 
 ### ✅ 5. Wrapper Suspense
 - **Fichiers modifiés** :
-  - `app/app/owner/properties/new/page.tsx`
+  - `app/owner/properties/new/page.tsx`
   - `app/properties/new/page.tsx`
 - **Raison** : Support de `useSearchParams()` dans Next.js App Router
 
@@ -68,7 +68,7 @@
    - Micro-copies contextuelles
    - Badge mode visuel
 
-2. ✅ `app/app/owner/properties/new/page.tsx`
+2. ✅ `app/owner/properties/new/page.tsx`
    - Ajout wrapper Suspense
 
 3. ✅ `app/properties/new/page.tsx`
@@ -101,13 +101,13 @@ Dans Supabase Dashboard :
 **Mode FAST** :
 ```bash
 # Ouvrir dans le navigateur
-http://localhost:3000/app/owner/properties/new?mode=fast
+http://localhost:3000/owner/properties/new?mode=fast
 ```
 
 **Mode FULL** :
 ```bash
 # Ouvrir dans le navigateur
-http://localhost:3000/app/owner/properties/new?mode=full
+http://localhost:3000/owner/properties/new?mode=full
 ```
 
 ### 4. Exécuter les tests

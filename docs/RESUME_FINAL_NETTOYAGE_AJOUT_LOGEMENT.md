@@ -9,9 +9,9 @@ Tous les doublons, superpositions et incohérences du flux "Ajout de logement" o
 ## 📊 STATISTIQUES
 
 ### ✅ AVANT
-- ❌ **2 routes** d'ajout (`/properties/new` + `/app/owner/properties/new`)
-- ❌ **2 routes** de liste (`/properties` + `/app/owner/properties`)
-- ❌ **2 routes** de détail (`/properties/[id]` + `/app/owner/properties/[id]`)
+- ❌ **2 routes** d'ajout (`/properties/new` + `/owner/properties/new`)
+- ❌ **2 routes** de liste (`/properties` + `/owner/properties`)
+- ❌ **2 routes** de détail (`/properties/[id]` + `/owner/properties/[id]`)
 - ❌ **1 route** d'édition incohérente (`/properties/[id]/edit`)
 - ❌ **Navigation dupliquée** dans le wizard (superpositions)
 - ❌ **MicroCopy dupliqué** (affiché 2 fois)
@@ -19,10 +19,10 @@ Tous les doublons, superpositions et incohérences du flux "Ajout de logement" o
 - ⚠️ **Code mort** dans `_actions.ts` (fonctions non utilisées)
 
 ### ✅ APRÈS
-- ✅ **1 route** d'ajout canonique : `/app/owner/properties/new`
-- ✅ **1 route** de liste canonique : `/app/owner/properties`
-- ✅ **1 route** de détail canonique : `/app/owner/properties/[id]`
-- ✅ **1 route** d'édition canonique : `/app/owner/properties/[id]/edit`
+- ✅ **1 route** d'ajout canonique : `/owner/properties/new`
+- ✅ **1 route** de liste canonique : `/owner/properties`
+- ✅ **1 route** de détail canonique : `/owner/properties/[id]`
+- ✅ **1 route** d'édition canonique : `/owner/properties/[id]/edit`
 - ✅ **Routes legacy** redirigent automatiquement
 - ✅ **Navigation unifiée** (StickyFooter uniquement)
 - ✅ **MicroCopy unique** (affiché une seule fois)
@@ -40,13 +40,13 @@ Tous les doublons, superpositions et incohérences du flux "Ajout de logement" o
 2. ✅ `app/properties/new-v3/` (dossier vide supprimé)
 
 #### **Redirections créées**
-1. ✅ `app/properties/new/page.tsx` → Redirige vers `/app/owner/properties/new`
-2. ✅ `app/properties/page.tsx` → Redirige vers `/app/owner/properties`
-3. ✅ `app/properties/[id]/page.tsx` → Redirige vers `/app/owner/properties/[id]`
-4. ✅ `app/properties/[id]/edit/page.tsx` → Redirige vers `/app/owner/properties/[id]/edit`
+1. ✅ `app/properties/new/page.tsx` → Redirige vers `/owner/properties/new`
+2. ✅ `app/properties/page.tsx` → Redirige vers `/owner/properties`
+3. ✅ `app/properties/[id]/page.tsx` → Redirige vers `/owner/properties/[id]`
+4. ✅ `app/properties/[id]/edit/page.tsx` → Redirige vers `/owner/properties/[id]/edit`
 
 #### **Route canonique créée**
-1. ✅ `app/app/owner/properties/[id]/edit/page.tsx` → Route d'édition manquante créée
+1. ✅ `app/owner/properties/[id]/edit/page.tsx` → Route d'édition manquante créée
 
 #### **Liens internes mis à jour**
 1. ✅ `app/properties/[id]/preview/page.tsx` → Liens mis à jour
@@ -93,10 +93,10 @@ Tous les doublons, superpositions et incohérences du flux "Ajout de logement" o
 ### ✅ Routes Canoniques
 
 ```
-/app/owner/properties              → Liste des logements
-/app/owner/properties/new          → Ajout de logement (wizard)
-/app/owner/properties/[id]         → Détail d'un logement
-/app/owner/properties/[id]/edit    → Édition d'un logement (wizard)
+/owner/properties              → Liste des logements
+/owner/properties/new          → Ajout de logement (wizard)
+/owner/properties/[id]         → Détail d'un logement
+/owner/properties/[id]/edit    → Édition d'un logement (wizard)
 ```
 
 ### ✅ Composants
@@ -149,12 +149,12 @@ npm run lint
 
 ### ✅ Tests Recommandés
 
-1. ✅ Tester la redirection `/properties/new` → `/app/owner/properties/new`
-2. ✅ Tester la redirection `/properties` → `/app/owner/properties`
-3. ✅ Tester la redirection `/properties/[id]` → `/app/owner/properties/[id]`
-4. ✅ Tester la redirection `/properties/[id]/edit` → `/app/owner/properties/[id]/edit`
-5. ✅ Tester la création d'un logement via `/app/owner/properties/new`
-6. ✅ Tester l'édition d'un logement via `/app/owner/properties/[id]/edit`
+1. ✅ Tester la redirection `/properties/new` → `/owner/properties/new`
+2. ✅ Tester la redirection `/properties` → `/owner/properties`
+3. ✅ Tester la redirection `/properties/[id]` → `/owner/properties/[id]`
+4. ✅ Tester la redirection `/properties/[id]/edit` → `/owner/properties/[id]/edit`
+5. ✅ Tester la création d'un logement via `/owner/properties/new`
+6. ✅ Tester l'édition d'un logement via `/owner/properties/[id]/edit`
 7. ✅ Vérifier qu'il n'y a pas de superpositions visuelles
 8. ✅ Vérifier que le bouton "Suivant" est actif à l'étape photos
 
@@ -199,7 +199,7 @@ npm run lint
 
 ```
 1. Utilisateur clique sur "Ajouter un bien"
-   → Route : /app/owner/properties/new
+   → Route : /owner/properties/new
 
 2. Wizard PropertyWizardV3 s'affiche
    → Composant unique, navigation StickyFooter
@@ -211,7 +211,7 @@ npm run lint
    → POST /api/properties/[id]/submit
 
 5. Redirection vers détail
-   → /app/owner/properties/[id]
+   → /owner/properties/[id]
 ```
 
 ---

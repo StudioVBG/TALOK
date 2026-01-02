@@ -7,7 +7,7 @@
 
 ## ✅ CE QUI A ÉTÉ FAIT
 
-1. ✅ Bug `PUT /app/owner/property/undefined` corrigé
+1. ✅ Bug `PUT /owner/property/undefined` corrigé
 2. ✅ `fetchProperties.ts` refactorisé (version canonical SOTA 2025)
 3. ✅ Migration SQL appliquée (`202502180003_ensure_user_profile_id_works.sql`)
 4. ✅ Outils de diagnostic créés
@@ -44,7 +44,7 @@ http://localhost:3000/api/debug/properties
 
 ### Action 2 : Vérifier les Logs Serveur (1 minute)
 
-**Recharger** : `/app/owner/properties` (hard refresh: `Cmd+Shift+R`)
+**Recharger** : `/owner/properties` (hard refresh: `Cmd+Shift+R`)
 
 **Vérifier dans le terminal `npm run dev`** :
 
@@ -100,7 +100,7 @@ SELECT * FROM pg_policies WHERE tablename = 'properties';
 - `[fetchProperties] Result: { count: X }` avec X > 0
 - `/api/debug/properties` montre `has_properties: true`
 
-**Résultat** : Les propriétés s'affichent dans `/app/owner/properties` ✅
+**Résultat** : Les propriétés s'affichent dans `/owner/properties` ✅
 
 ---
 
@@ -134,7 +134,7 @@ SELECT * FROM pg_policies WHERE tablename = 'properties';
 ## 🎯 CHECKLIST RAPIDE
 
 - [ ] Testé `/api/debug/properties` → Résultat ?
-- [ ] Rechargé `/app/owner/properties` → Logs serveur ?
+- [ ] Rechargé `/owner/properties` → Logs serveur ?
 - [ ] Identifié le scénario (A/B/C) → Solution appliquée ?
 
 ---

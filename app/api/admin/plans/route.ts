@@ -207,7 +207,7 @@ export async function PUT(request: Request) {
               type: "price_change",
               title: "📢 Modification de votre abonnement",
               body: `Les tarifs du plan ${oldPlan.name} évoluent à partir du ${finalEffectiveDate.toLocaleDateString('fr-FR')}. Votre tarif actuel est maintenu jusqu'au ${grandfatheredUntil.toLocaleDateString('fr-FR')}. Vous pouvez accepter les nouvelles conditions ou résilier sans frais.`,
-              link: "/app/settings/billing",
+              link: "/settings/billing",
               metadata: {
                 plan_id: id,
                 plan_name: oldPlan.name,

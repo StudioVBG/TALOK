@@ -1,7 +1,7 @@
 # 🐛 Correctif : Chargement infini sur la page "Mes biens"
 
 **Date** : 2025-02-15  
-**Problème** : La page `/app/owner/properties` reste bloquée sur "Chargement..." indéfiniment
+**Problème** : La page `/owner/properties` reste bloquée sur "Chargement..." indéfiniment
 
 ---
 
@@ -20,7 +20,7 @@
 
 ### 1. Gestion d'erreur dans la page
 
-**Fichier** : `app/app/owner/properties/page.tsx`
+**Fichier** : `app/owner/properties/page.tsx`
 
 **Changements** :
 - Ajout de `error` et `refetch` depuis `useProperties()`
@@ -148,7 +148,7 @@ try {
 
 ## 📝 Fichiers modifiés
 
-1. ✅ `app/app/owner/properties/page.tsx` - Gestion d'erreur UI
+1. ✅ `app/owner/properties/page.tsx` - Gestion d'erreur UI
 2. ✅ `lib/hooks/use-properties.ts` - Amélioration hook
 3. ✅ `lib/hooks/use-leases.ts` - Amélioration hook
 4. ✅ `lib/api-client.ts` - Timeout côté client

@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
         {
           error: "premium_required",
           message: "Cette fonctionnalité nécessite un plan Confort ou supérieur",
-          upgrade_url: "/app/owner/settings/subscription",
+          upgrade_url: "/owner/settings/subscription",
         },
         { status: 403 }
       );

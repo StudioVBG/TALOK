@@ -5,7 +5,7 @@
 1. **Route `/api/properties/new` n'existait pas** - Requête GET vers une route inexistante
 2. **Route `/api/leases?property_id=new`** - "new" n'est pas un ID valide
 3. **Route `/documents/upload` retournait 404** - Route manquante
-4. **Page "Ajouter un bien" pas dans le layout owner** - Pointait vers `/properties/new` au lieu de `/app/owner/properties/new`
+4. **Page "Ajouter un bien" pas dans le layout owner** - Pointait vers `/properties/new` au lieu de `/owner/properties/new`
 5. **Performance lente** - Trop de timeouts et vérifications dans `/api/properties`
 6. **Logs verbeux** - Logs détaillés ralentissaient les requêtes
 
@@ -13,12 +13,12 @@
 
 ### 1. Page "Ajouter un bien" dans le Layout Owner
 
-**Créé** : `/app/app/owner/properties/new/page.tsx`
+**Créé** : `/app/owner/properties/new/page.tsx`
 - Page intégrée dans le layout owner avec sidebar
 - Utilise `PropertyWizardV3` pour la création de propriété
 
-**Modifié** : `app/app/owner/properties/page.tsx`
-- Liens "Ajouter un bien" pointent maintenant vers `/app/owner/properties/new`
+**Modifié** : `app/owner/properties/page.tsx`
+- Liens "Ajouter un bien" pointent maintenant vers `/owner/properties/new`
 
 ### 2. Optimisation de `/api/properties`
 

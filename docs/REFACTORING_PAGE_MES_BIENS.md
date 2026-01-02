@@ -1,4 +1,4 @@
-# ✅ REFACTORING - Page "Mes biens" (`/app/owner/properties`)
+# ✅ REFACTORING - Page "Mes biens" (`/owner/properties`)
 
 **Date** : 19 novembre 2025  
 **Objectif** : Stabiliser et nettoyer la page en utilisant `/api/owner/properties`
@@ -36,7 +36,7 @@ export interface OwnerPropertiesResponse {
 
 ---
 
-### 2. Refactorisation : `app/app/owner/properties/page.tsx`
+### 2. Refactorisation : `app/owner/properties/page.tsx`
 
 **Avant** :
 - Simple wrapper qui retournait `<PropertiesPageClient />`
@@ -61,7 +61,7 @@ export default async function OwnerPropertiesPage() {
 
 ---
 
-### 3. Nettoyage : `app/app/owner/properties/properties-client.tsx`
+### 3. Nettoyage : `app/owner/properties/properties-client.tsx`
 
 **Avant** :
 - Utilisait `useOwnerDataOptional()` + hooks `useProperties()` et `useLeases()`

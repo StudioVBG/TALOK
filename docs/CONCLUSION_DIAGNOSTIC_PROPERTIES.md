@@ -52,7 +52,7 @@ npm run dev
 
 **Symptôme** : Les logs serveur montrent `[fetchProperties] ✅ Requête directe réussie: 0 propriétés trouvées`.
 
-**Vérification** : Vérifier les logs serveur lors du rechargement de `/app/owner/properties` :
+**Vérification** : Vérifier les logs serveur lors du rechargement de `/owner/properties` :
 - `[OwnerLayout] Profile ID utilisé pour charger les données: <UUID>`
 - `[fetchProperties] ✅ Requête directe réussie: X propriétés trouvées`
 
@@ -64,7 +64,7 @@ npm run dev
 
 ### Étape 1 : Vérifier les logs serveur
 
-1. Recharger `/app/owner/properties`
+1. Recharger `/owner/properties`
 2. Chercher dans les logs serveur :
    ```
    [OwnerLayout] Profile ID utilisé pour charger les données: <UUID>
@@ -102,7 +102,7 @@ npm run dev
 
 ## 🎯 PROCHAINES ÉTAPES
 
-1. **Vérifier les logs serveur** lors du rechargement de `/app/owner/properties`
+1. **Vérifier les logs serveur** lors du rechargement de `/owner/properties`
 2. **Comparer le `profile.id` utilisé** avec `3b9280bc-061b-4880-a5e1-57d3f7ab06e5`
 3. **Vider le cache** si nécessaire : `rm -rf .next && npm run dev`
 4. **Se connecter avec le bon compte** si le profil ne correspond pas

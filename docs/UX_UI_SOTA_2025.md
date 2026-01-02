@@ -157,7 +157,7 @@ border border-white/20 dark:border-slate-700/50
 
 ## 📱 Intégration dans les pages
 
-### `app/app/owner/properties/OwnerPropertiesClient.tsx`
+### `app/owner/properties/OwnerPropertiesClient.tsx`
 
 **Avant** :
 - Cards basiques
@@ -170,7 +170,7 @@ border border-white/20 dark:border-slate-700/50
 - ✅ `SkeletonPropertyCard` avec shimmer
 - ✅ Cards avec glassmorphism
 
-### `app/app/owner/properties/[id]/OwnerPropertyDetailClient.tsx`
+### `app/owner/properties/[id]/OwnerPropertyDetailClient.tsx`
 
 **Améliorations** :
 - ✅ `OwnerPropertyPhotosEnhanced` au lieu de `OwnerPropertyPhotos`

@@ -115,12 +115,12 @@ ORDER BY policyname;
 
 ### Test 2 : Créer un nouveau bien
 1. Se connecter en tant que propriétaire
-2. Créer un nouveau bien via `/app/owner/property/new`
-3. Vérifier que le bien apparaît dans `/app/owner/properties`
+2. Créer un nouveau bien via `/owner/property/new`
+3. Vérifier que le bien apparaît dans `/owner/properties`
 
 ### Test 3 : Vérifier la visibilité
 1. Se connecter en tant que propriétaire
-2. Accéder à `/app/owner/properties`
+2. Accéder à `/owner/properties`
 3. Vérifier que les 4 propriétés existantes sont visibles (si elles appartiennent au propriétaire)
 
 ---
@@ -129,7 +129,7 @@ ORDER BY policyname;
 
 1. **Migration appliquée automatiquement** via MCP Supabase
 2. **Pas de redémarrage nécessaire** : Les changements RLS sont immédiats
-3. **Vérifier les logs serveur** après rechargement de `/app/owner/properties`
+3. **Vérifier les logs serveur** après rechargement de `/owner/properties`
 4. **Si le problème persiste** : Vérifier que `user_profile_id()` retourne bien le bon ID pour l'utilisateur connecté
 
 ---

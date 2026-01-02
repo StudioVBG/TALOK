@@ -34,7 +34,9 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/_next") ||
     pathname.includes(".") ||
-    publicRoutes.some((route) => pathname.startsWith(route)) ||
+    publicRoutes.some((route) => 
+      route === "/" ? pathname === "/" : pathname.startsWith(route)
+    ) ||
     pathname.startsWith("/api/webhooks") ||
     pathname.startsWith("/api/public") ||
     pathname.startsWith("/auth/callback")
@@ -42,24 +44,50 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Vérification ultra-légère de la session (présence d'un cookie auth Supabase)
+  // 3. Redirections de structure (legacy fix)
+  if (pathname.startsWith("/app/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace("/app/", "/");
+    return NextResponse.redirect(url);
+  }
+
+  if (pathname === "/tenant/home") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/tenant/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  // 4. Vérification ultra-légère de la session (présence d'un cookie auth Supabase)
   // Pattern standard : sb-xxxx-auth-token ou auth-token
   const allCookies = request.cookies.getAll();
   const hasAuthCookie = allCookies.some(
     (c) => c.name.includes("auth-token") || c.name.startsWith("sb-")
   );
 
-  // 3. Redirection si non authentifié vers les zones protégées
-  const isProtectedRoute = pathname.startsWith("/app") || pathname.startsWith("/admin");
+  // 5. Redirection si non authentifié vers les zones protégées
+  const protectedPaths = [
+    "/tenant",
+    "/owner",
+    "/provider",
+    "/agency",
+    "/guarantor",
+    "/copro",
+    "/syndic",
+    "/admin",
+    "/messages",
+    "/notifications",
+    "/settings"
+  ];
   
-  if (isProtectedRoute && !hasAuthCookie) {
+  const isProtected = protectedPaths.some(p => pathname === p || pathname.startsWith(`${p}/`)) || pathname.startsWith("/app");
+
+  if (isProtected && !hasAuthCookie) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/signin";
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
-  // 4. Redirections de structure (legacy fix)
   if (pathname === "/dashboard") {
     // Le layout de l'app se chargera de rediriger vers le bon dashboard selon le rôle
     return NextResponse.next();

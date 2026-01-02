@@ -122,7 +122,7 @@ GET /rest/v1/leases?select=*&order=created_at.desc&property_id=in.(...)
 
 L'utilisateur essaie d'accéder à :
 ```
-/app/owner/properties/23aa5434-6543-4581-952e-2d176b6ff4c3
+/owner/properties/23aa5434-6543-4581-952e-2d176b6ff4c3
 ```
 
 Cette page appelle `fetchPropertyDetails()` qui essaie de :
@@ -135,9 +135,9 @@ Cette page appelle `fetchPropertyDetails()` qui essaie de :
 
 ---
 
-### ⚠️ PROBLÈME #4 : Liste des propriétés (`/app/owner/properties`)
+### ⚠️ PROBLÈME #4 : Liste des propriétés (`/owner/properties`)
 
-La page `/app/owner/properties` (liste de tous les biens) devrait afficher les 10 propriétés mais :
+La page `/owner/properties` (liste de tous les biens) devrait afficher les 10 propriétés mais :
 - ✅ Les propriétés sont récupérées via `/api/owner/properties`
 - ✅ Les photos sont récupérées
 - ❌ Les baux (`leases`) retournent une erreur 500
@@ -151,7 +151,7 @@ La page `/app/owner/properties` (liste de tous les biens) devrait afficher les 1
 
 ### ✅ SOLUTION #1 : Corriger les colonnes dans `fetchPropertyDetails.ts`
 
-**Fichier** : `/app/app/owner/_data/fetchPropertyDetails.ts`
+**Fichier** : `/app/owner/_data/fetchPropertyDetails.ts`
 
 **Ligne 22** - Remplacer :
 ```typescript
@@ -167,7 +167,7 @@ const essentialColumns = "id, owner_id, type, adresse_complete, code_postal, vil
 
 ### ✅ SOLUTION #2 : Supprimer la récupération des documents avec colonnes inexistantes
 
-**Fichier** : `/app/app/owner/_data/fetchPropertyDetails.ts`
+**Fichier** : `/app/owner/_data/fetchPropertyDetails.ts`
 
 **Lignes 55-56** - Commenter ou supprimer :
 ```typescript
@@ -231,8 +231,8 @@ UPDATE public.properties SET dpe_classe_energie = energie, dpe_classe_climat = g
 
 | # | Action | Fichier | Priorité | Impact |
 |---|--------|---------|----------|--------|
-| 1 | Remplacer `dpe_classe_energie, dpe_classe_climat` par `energie, ges` | `app/app/owner/_data/fetchPropertyDetails.ts` ligne 22 | 🔴 CRITIQUE | Corrige l'erreur 400 sur la page de détail |
-| 2 | Supprimer ou corriger la requête `documents` avec `preview_url`, `is_cover`, `collection` | `app/app/owner/_data/fetchPropertyDetails.ts` lignes 55-56 | 🔴 CRITIQUE | Corrige l'erreur 400 sur les documents |
+| 1 | Remplacer `dpe_classe_energie, dpe_classe_climat` par `energie, ges` | `app/owner/_data/fetchPropertyDetails.ts` ligne 22 | 🔴 CRITIQUE | Corrige l'erreur 400 sur la page de détail |
+| 2 | Supprimer ou corriger la requête `documents` avec `preview_url`, `is_cover`, `collection` | `app/owner/_data/fetchPropertyDetails.ts` lignes 55-56 | 🔴 CRITIQUE | Corrige l'erreur 400 sur les documents |
 | 3 | Diagnostiquer l'erreur 500 sur `leases` | Base de données Supabase | 🔴 CRITIQUE | Permet de récupérer les baux |
 | 4 | Ajouter les colonnes manquantes à `documents` (optionnel) | Migration SQL | 🟡 MOYEN | Permet de réutiliser les documents comme fallback |
 | 5 | Ajouter les colonnes DPE (optionnel) | Migration SQL | 🟢 FAIBLE | Alignement du code avec le schéma |
@@ -243,13 +243,13 @@ UPDATE public.properties SET dpe_classe_energie = energie, dpe_classe_climat = g
 
 ### Test 1 : Page de détail d'une propriété
 ```
-URL : http://localhost:3000/app/owner/properties/23aa5434-6543-4581-952e-2d176b6ff4c3
+URL : http://localhost:3000/owner/properties/23aa5434-6543-4581-952e-2d176b6ff4c3
 Résultat attendu : Affichage des détails de la propriété (pas "Propriété non trouvée")
 ```
 
 ### Test 2 : Liste des propriétés
 ```
-URL : http://localhost:3000/app/owner/properties
+URL : http://localhost:3000/owner/properties
 Résultat attendu : Affichage des 10 propriétés avec leurs photos
 ```
 

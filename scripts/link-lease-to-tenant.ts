@@ -116,7 +116,7 @@ async function linkLease() {
   console.log("📧 Email:", TENANT_EMAIL);
   console.log("");
   console.log("🔗 URL de signature: http://localhost:3000/signature/" + leaseToLink.id);
-  console.log("🔗 Dashboard tenant: http://localhost:3000/app/tenant");
+  console.log("🔗 Dashboard tenant: http://localhost:3000/tenant");
   console.log("═══════════════════════════════════════════");
 }
 

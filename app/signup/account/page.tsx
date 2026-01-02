@@ -122,7 +122,7 @@ export default function AccountCreationPage() {
   }, [role]);
 
   const nextStepByRole: Record<UserRole, string> = {
-    owner: "/app/owner/onboarding/profile",
+    owner: "/owner/onboarding/profile",
     tenant: inviteToken ? `/tenant/onboarding/context?invite=${inviteToken}` : "/tenant/onboarding/context",
     provider: "/provider/onboarding/profile",
     guarantor: inviteToken ? `/guarantor/onboarding/context?invite=${inviteToken}` : "/guarantor/onboarding/context",

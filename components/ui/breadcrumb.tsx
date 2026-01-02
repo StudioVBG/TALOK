@@ -108,7 +108,7 @@ function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
  * @example
  * // Items personnalisés
  * <Breadcrumb items={[
- *   { label: "Mes biens", href: "/app/owner/properties" },
+ *   { label: "Mes biens", href: "/owner/properties" },
  *   { label: "Appartement Paris" }
  * ]} />
  */

@@ -25,14 +25,14 @@ function NewTicketPageContent() {
 
   // Rediriger vers la bonne page selon le rôle
   const getTicketsUrl = () => {
-    if (profile?.role === "owner") return "/app/owner/tickets";
-    if (profile?.role === "tenant") return "/app/tenant/requests";
+    if (profile?.role === "owner") return "/owner/tickets";
+    if (profile?.role === "tenant") return "/tenant/requests";
     return "/dashboard";
   };
 
   const handleSuccess = () => {
     if (propertyId) {
-      router.push(`/app/owner/properties/${propertyId}`);
+      router.push(`/owner/properties/${propertyId}`);
     } else {
       router.push(getTicketsUrl());
     }
@@ -40,7 +40,7 @@ function NewTicketPageContent() {
 
   const handleCancel = () => {
     if (propertyId) {
-      router.push(`/app/owner/properties/${propertyId}`);
+      router.push(`/owner/properties/${propertyId}`);
     } else {
       router.push(getTicketsUrl());
     }

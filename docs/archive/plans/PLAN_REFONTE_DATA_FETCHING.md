@@ -9,7 +9,7 @@
 
 ### Phase 1 : Structure `/_data` (EN COURS)
 
-- ✅ Créé `/app/app/owner/_data/`
+- ✅ Créé `/app/owner/_data/`
 - ✅ Créé `fetchProperties.ts`
 - ✅ Créé `fetchDashboard.ts`
 - ✅ Créé `fetchContracts.ts`
@@ -31,7 +31,7 @@
 - [ ] `fetchProfile.ts` - Profil propriétaire
 
 **Pour Tenant:**
-- [ ] Créer `/app/app/tenant/_data/`
+- [ ] Créer `/app/tenant/_data/`
 - [ ] `fetchTenantDashboard.ts`
 - [ ] `fetchTenantLeases.ts`
 - [ ] `fetchTenantInvoices.ts`
@@ -58,7 +58,7 @@
 
 #### 2.1 Layout Owner
 
-**Fichier:** `app/app/owner/layout.tsx`
+**Fichier:** `app/owner/layout.tsx`
 
 **Avant (Client Component):**
 ```typescript
@@ -109,7 +109,7 @@ export default async function OwnerLayout({ children }) {
 
 #### 2.2 Layout Tenant
 
-**Fichier:** `app/app/tenant/layout.tsx` (à créer)
+**Fichier:** `app/tenant/layout.tsx` (à créer)
 
 #### 2.3 Layout Admin
 
@@ -122,15 +122,15 @@ export default async function OwnerLayout({ children }) {
 #### 3.1 Pages Owner
 
 **Priorité 1:**
-- [ ] `app/app/owner/dashboard/page.tsx`
-- [ ] `app/app/owner/properties/page.tsx`
-- [ ] `app/app/owner/contracts/page.tsx`
+- [ ] `app/owner/dashboard/page.tsx`
+- [ ] `app/owner/properties/page.tsx`
+- [ ] `app/owner/contracts/page.tsx`
 
 **Priorité 2:**
-- [ ] `app/app/owner/properties/[id]/page.tsx`
-- [ ] `app/app/owner/contracts/[id]/page.tsx`
-- [ ] `app/app/owner/money/page.tsx`
-- [ ] `app/app/owner/documents/page.tsx`
+- [ ] `app/owner/properties/[id]/page.tsx`
+- [ ] `app/owner/contracts/[id]/page.tsx`
+- [ ] `app/owner/money/page.tsx`
+- [ ] `app/owner/documents/page.tsx`
 
 **Exemple de conversion:**
 
@@ -158,9 +158,9 @@ export default async function PropertiesPage() {
 
 #### 3.2 Pages Tenant
 
-- [ ] `app/app/tenant/page.tsx`
-- [ ] `app/app/tenant/leases/page.tsx`
-- [ ] `app/app/tenant/invoices/page.tsx`
+- [ ] `app/tenant/page.tsx`
+- [ ] `app/tenant/leases/page.tsx`
+- [ ] `app/tenant/invoices/page.tsx`
 
 #### 3.3 Pages Admin
 

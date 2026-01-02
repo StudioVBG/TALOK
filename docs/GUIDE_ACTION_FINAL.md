@@ -65,7 +65,7 @@ LIMIT 20;
 
 ### Étape 2 : Créer un Nouveau Bien (5 minutes)
 
-1. **Ouvrir** `/app/owner/properties/new`
+1. **Ouvrir** `/owner/properties/new`
 2. **Créer un bien** (même minimal)
 3. **Vérifier les logs serveur** dans le terminal :
 
@@ -89,7 +89,7 @@ LIMIT 20;
 
 ### Étape 3 : Vérifier la Lecture (2 minutes)
 
-1. **Recharger** `/app/owner/properties`
+1. **Recharger** `/owner/properties`
 2. **Vérifier les logs serveur** :
 
 ```
@@ -187,10 +187,10 @@ WHERE p.role = 'owner';
 - [ ] Résultats analysés (propriétés existantes ? owner_id correct ?)
 - [ ] Nouveau bien créé et logs vérifiés
 - [ ] Propriété visible dans Supabase avec bon `owner_id`
-- [ ] Page `/app/owner/properties` rechargée
+- [ ] Page `/owner/properties` rechargée
 - [ ] Logs de lecture vérifiés (`owner_id filter = profile.id`)
 - [ ] Si problème détecté, migration de correction exécutée
-- [ ] Page `/app/owner/properties` affiche les biens ✅
+- [ ] Page `/owner/properties` affiche les biens ✅
 
 ---
 

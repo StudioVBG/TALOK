@@ -206,7 +206,7 @@ export async function middleware(request: NextRequest) {
       .single();
     
     if (profile?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/app/owner', request.url));
+      return NextResponse.redirect(new URL('/owner', request.url));
     }
   }
   

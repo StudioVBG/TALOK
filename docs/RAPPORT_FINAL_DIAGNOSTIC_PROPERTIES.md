@@ -145,7 +145,7 @@ Quand vous accédez à `/api/properties`, vous devriez voir dans le terminal où
 
 **Comment faire** :
 1. Ouvrir le terminal où `npm run dev` tourne
-2. Accéder à `http://localhost:3000/app/owner/properties` dans le navigateur
+2. Accéder à `http://localhost:3000/owner/properties` dans le navigateur
 3. Copier TOUS les logs qui commencent par `[api/properties]`
 4. Partager ces logs
 

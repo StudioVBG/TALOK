@@ -118,7 +118,7 @@ Après application de la migration :
 1. ✅ `user_profile_id()` fonctionne correctement (ne retourne plus NULL)
 2. ✅ `fetchProperties` retourne les propriétés (X > 0)
 3. ✅ `OwnerDataProvider` reçoit `propertiesCount > 0`
-4. ✅ Les propriétés apparaissent dans `/app/owner/properties`
+4. ✅ Les propriétés apparaissent dans `/owner/properties`
 
 ---
 
@@ -161,5 +161,5 @@ Si après la migration, `fetchProperties` retourne toujours 0 :
 
 ---
 
-**Une fois la migration appliquée, recharger `/app/owner/properties` et vérifier les logs serveur.**
+**Une fois la migration appliquée, recharger `/owner/properties` et vérifier les logs serveur.**
 

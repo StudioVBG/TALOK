@@ -95,13 +95,13 @@ app/(dashboard)/
 
 | Ancienne Route | Nouvelle Route |
 |---------------|----------------|
-| `/app/owner/dashboard` | `/owner` |
-| `/app/owner/properties` | `/owner/properties` |
-| `/app/owner/contracts` | `/owner/leases` |
-| `/app/owner/money` | `/owner/finances` |
-| `/app/tenant/dashboard` | `/tenant` |
-| `/app/tenant/payments` | `/tenant/payments` |
-| `/app/tenant/requests` | `/tenant/tickets` |
+| `/owner/dashboard` | `/owner` |
+| `/owner/properties` | `/owner/properties` |
+| `/owner/contracts` | `/owner/leases` |
+| `/owner/money` | `/owner/finances` |
+| `/tenant/dashboard` | `/tenant` |
+| `/tenant/payments` | `/tenant/payments` |
+| `/tenant/requests` | `/tenant/tickets` |
 | `/properties` | `/owner/properties` |
 | `/leases` | `/owner/leases` |
 | `/tickets` | `/owner/tickets` |
@@ -178,7 +178,7 @@ lib/hooks/index.ts (modifié)
 ## 🚀 Prochaines Étapes Recommandées
 
 ### Priorité Haute
-1. **Supprimer le code mort** - Les anciennes routes dans `/app/owner`, `/app/tenant`, `/app/app/`
+1. **Supprimer le code mort** - Les anciennes routes dans `/owner`, `/tenant`, `/app/app/`
 2. **Ajouter les pages manquantes** - properties, leases, finances, etc. dans la nouvelle structure
 3. **Tester avec authentification réelle** - Vérifier les dashboards complets
 

@@ -36,12 +36,12 @@ npm run dev
 
 **Mode FAST** :
 ```
-http://localhost:3000/app/owner/properties/new?mode=fast
+http://localhost:3000/owner/properties/new?mode=fast
 ```
 
 **Mode FULL** :
 ```
-http://localhost:3000/app/owner/properties/new?mode=full
+http://localhost:3000/owner/properties/new?mode=full
 ```
 
 ### 5. Vérifications visuelles

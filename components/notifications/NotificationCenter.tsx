@@ -309,7 +309,7 @@ export function NotificationCenter() {
               className="h-7 w-7"
               asChild
             >
-              <Link href="/app/owner/settings/notifications">
+              <Link href="/owner/settings/notifications">
                 <Settings className="h-3.5 w-3.5" />
               </Link>
             </Button>
@@ -384,7 +384,7 @@ export function NotificationCenter() {
                 className="text-xs text-slate-500 h-auto p-0"
                 asChild
               >
-                <Link href="/app/owner/notifications">
+                <Link href="/owner/notifications">
                   Voir toutes les notifications
                 </Link>
               </Button>

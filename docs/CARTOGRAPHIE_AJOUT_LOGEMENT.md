@@ -12,13 +12,13 @@ Identifier tous les fichiers, routes et composants liés à l'ajout de logement 
 | Fichier | Rôle | Route associée | Doublon/Redondant ? | Notes |
 |---------|------|----------------|---------------------|-------|
 | **PAGES / ROUTES FRONTEND** |
-| `app/app/owner/properties/new/page.tsx` | Page d'ajout (Owner) | `/app/owner/properties/new` | ⚠️ **DOUBLON** | Utilise `PropertyWizardV3`, rôle `owner` uniquement |
+| `app/owner/properties/new/page.tsx` | Page d'ajout (Owner) | `/owner/properties/new` | ⚠️ **DOUBLON** | Utilise `PropertyWizardV3`, rôle `owner` uniquement |
 | `app/properties/new/page.tsx` | Page d'ajout (Admin/Owner) | `/properties/new` | ⚠️ **DOUBLON** | Utilise `PropertyWizardV3`, rôles `admin` et `owner` |
 | `app/properties/new-v3/` | Dossier vide | N/A | ✅ **À SUPPRIMER** | Dossier vide, probablement ancienne version |
-| `app/properties/[id]/edit/page.tsx` | Page d'édition | `/properties/[id]/edit` | ⚠️ **INCOHÉRENT** | Utilise `PropertyWizardV3` mais route `/properties` au lieu de `/app/owner/properties` |
-| `app/app/owner/properties/[id]/page.tsx` | Page détail | `/app/owner/properties/[id]` | ✅ **OK** | Route canonique pour détail |
+| `app/properties/[id]/edit/page.tsx` | Page d'édition | `/properties/[id]/edit` | ⚠️ **INCOHÉRENT** | Utilise `PropertyWizardV3` mais route `/properties` au lieu de `/owner/properties` |
+| `app/owner/properties/[id]/page.tsx` | Page détail | `/owner/properties/[id]` | ✅ **OK** | Route canonique pour détail |
 | `app/properties/[id]/page.tsx` | Page détail (legacy) | `/properties/[id]` | ⚠️ **DOUBLON** | Route alternative, utilisée dans certains liens |
-| `app/app/owner/properties/page.tsx` | Liste des biens | `/app/owner/properties` | ✅ **OK** | Route canonique pour liste |
+| `app/owner/properties/page.tsx` | Liste des biens | `/owner/properties` | ✅ **OK** | Route canonique pour liste |
 | `app/properties/page.tsx` | Liste (legacy) | `/properties` | ⚠️ **DOUBLON** | Route alternative |
 | **COMPOSANTS WIZARD** |
 | `features/properties/components/v3/property-wizard-v3.tsx` | Wizard principal | N/A | ✅ **RÉFÉRENCE** | Composant principal utilisé par toutes les pages |
@@ -32,7 +32,7 @@ Identifier tous les fichiers, routes et composants liés à l'ajout de logement 
 | `features/properties/components/v3/dynamic-field.tsx` | Champ dynamique | N/A | ✅ **OK** | Utilitaire pour les champs |
 | **SERVICES / HOOKS** |
 | `features/properties/services/properties.service.ts` | Service API | N/A | ✅ **RÉFÉRENCE** | Service centralisé pour toutes les opérations |
-| `app/app/owner/properties/_actions.ts` | Server Actions | N/A | ⚠️ **À VÉRIFIER** | Possible doublon avec service |
+| `app/owner/properties/_actions.ts` | Server Actions | N/A | ⚠️ **À VÉRIFIER** | Possible doublon avec service |
 | **API ROUTES BACKEND** |
 | `app/api/properties/route.ts` | POST: Création | `POST /api/properties` | ✅ **RÉFÉRENCE** | Crée draft ou propriété complète |
 | `app/api/properties/[id]/route.ts` | GET/PUT: Détail/Update | `GET/PUT /api/properties/[id]` | ✅ **OK** | Route canonique |
@@ -49,35 +49,35 @@ Identifier tous les fichiers, routes et composants liés à l'ajout de logement 
 ### ❌ DOUBLONS CRITIQUES IDENTIFIÉS
 
 #### 1. **Routes d'ajout dupliquées**
-- ✅ **CANONIQUE** : `/app/owner/properties/new` (Owner uniquement)
+- ✅ **CANONIQUE** : `/owner/properties/new` (Owner uniquement)
 - ❌ **DOUBLON** : `/properties/new` (Admin + Owner)
 - **Impact** : Confusion sur quelle route utiliser, maintenance dupliquée
 
 #### 2. **Routes de liste dupliquées**
-- ✅ **CANONIQUE** : `/app/owner/properties` (Owner)
+- ✅ **CANONIQUE** : `/owner/properties` (Owner)
 - ❌ **DOUBLON** : `/properties` (Legacy, utilisé dans certains liens)
 
 #### 3. **Routes de détail dupliquées**
-- ✅ **CANONIQUE** : `/app/owner/properties/[id]` (Owner)
+- ✅ **CANONIQUE** : `/owner/properties/[id]` (Owner)
 - ❌ **DOUBLON** : `/properties/[id]` (Legacy, utilisé dans certains liens)
 
 #### 4. **Route d'édition incohérente**
-- ⚠️ **INCOHÉRENT** : `/properties/[id]/edit` (devrait être `/app/owner/properties/[id]/edit`)
+- ⚠️ **INCOHÉRENT** : `/properties/[id]/edit` (devrait être `/owner/properties/[id]/edit`)
 
 ### ⚠️ INCOHÉRENCES DÉTECTÉES
 
 1. **Permissions différentes** :
-   - `/app/owner/properties/new` : `allowedRoles={["owner"]}`
+   - `/owner/properties/new` : `allowedRoles={["owner"]}`
    - `/properties/new` : `allowedRoles={["admin", "owner"]}`
 
 2. **Wrappers différents** :
-   - `/app/owner/properties/new` : Wrapper simple avec Suspense
+   - `/owner/properties/new` : Wrapper simple avec Suspense
    - `/properties/new` : Wrapper avec vérification `canManageProperties` + redirection
 
 3. **Liens de navigation incohérents** :
-   - Certains fichiers utilisent `/app/owner/properties/new`
+   - Certains fichiers utilisent `/owner/properties/new`
    - D'autres utilisent `/properties/new`
-   - Certains utilisent `/properties/[id]` au lieu de `/app/owner/properties/[id]`
+   - Certains utilisent `/properties/[id]` au lieu de `/owner/properties/[id]`
 
 ---
 
@@ -87,10 +87,10 @@ Identifier tous les fichiers, routes et composants liés à l'ajout de logement 
 
 #### **Frontend Routes**
 ```
-✅ Liste des logements :     /app/owner/properties
-✅ Ajout (wizard) :          /app/owner/properties/new
-✅ Détail :                  /app/owner/properties/[propertyId]
-✅ Édition :                 /app/owner/properties/[propertyId]/edit
+✅ Liste des logements :     /owner/properties
+✅ Ajout (wizard) :          /owner/properties/new
+✅ Détail :                  /owner/properties/[propertyId]
+✅ Édition :                 /owner/properties/[propertyId]/edit
 ```
 
 #### **Backend API Routes**
@@ -107,10 +107,10 @@ Identifier tous les fichiers, routes et composants liés à l'ajout de logement 
 
 | Route Legacy | Route Canonique | Action |
 |-------------|-----------------|--------|
-| `/properties/new` | `/app/owner/properties/new` | Rediriger (301) |
-| `/properties` | `/app/owner/properties` | Rediriger (301) |
-| `/properties/[id]` | `/app/owner/properties/[id]` | Rediriger (301) |
-| `/properties/[id]/edit` | `/app/owner/properties/[id]/edit` | Rediriger (301) |
+| `/properties/new` | `/owner/properties/new` | Rediriger (301) |
+| `/properties` | `/owner/properties` | Rediriger (301) |
+| `/properties/[id]` | `/owner/properties/[id]` | Rediriger (301) |
+| `/properties/[id]/edit` | `/owner/properties/[id]/edit` | Rediriger (301) |
 
 ---
 
@@ -120,23 +120,23 @@ Identifier tous les fichiers, routes et composants liés à l'ajout de logement 
 
 1. ✅ `app/properties/new/page.tsx` → **SUPPRIMER** (doublon)
 2. ✅ `app/properties/new-v3/` → **SUPPRIMER** (dossier vide)
-3. ⚠️ `app/properties/[id]/edit/page.tsx` → **DÉPLACER** vers `/app/owner/properties/[id]/edit/page.tsx`
+3. ⚠️ `app/properties/[id]/edit/page.tsx` → **DÉPLACER** vers `/owner/properties/[id]/edit/page.tsx`
 
 ### 📝 FICHIERS À MODIFIER
 
 #### **1. Créer redirections**
-- Créer `app/properties/new/page.tsx` → Redirection vers `/app/owner/properties/new`
-- Créer `app/properties/page.tsx` → Redirection vers `/app/owner/properties`
-- Créer `app/properties/[id]/page.tsx` → Redirection vers `/app/owner/properties/[id]`
-- Créer `app/properties/[id]/edit/page.tsx` → Redirection vers `/app/owner/properties/[id]/edit`
+- Créer `app/properties/new/page.tsx` → Redirection vers `/owner/properties/new`
+- Créer `app/properties/page.tsx` → Redirection vers `/owner/properties`
+- Créer `app/properties/[id]/page.tsx` → Redirection vers `/owner/properties/[id]`
+- Créer `app/properties/[id]/edit/page.tsx` → Redirection vers `/owner/properties/[id]/edit`
 
 #### **2. Mettre à jour les liens**
-- `app/app/owner/dashboard/DashboardPageClient.tsx` : Vérifier liens
-- `app/app/owner/properties/PropertiesPageClient.tsx` : Vérifier liens
-- Tous les fichiers avec `href="/properties"` → Remplacer par `/app/owner/properties`
+- `app/owner/dashboard/DashboardPageClient.tsx` : Vérifier liens
+- `app/owner/properties/PropertiesPageClient.tsx` : Vérifier liens
+- Tous les fichiers avec `href="/properties"` → Remplacer par `/owner/properties`
 
 #### **3. Unifier les permissions**
-- Garder uniquement `allowedRoles={["owner"]}` pour `/app/owner/properties/new`
+- Garder uniquement `allowedRoles={["owner"]}` pour `/owner/properties/new`
 - Les admins peuvent accéder via une route séparée si nécessaire (`/app/admin/properties/new`)
 
 ---
@@ -147,7 +147,7 @@ Identifier tous les fichiers, routes et composants liés à l'ajout de logement 
 
 ```
 📦 Flux Ajout de Logement
-├── 🎯 Page unique : /app/owner/properties/new
+├── 🎯 Page unique : /owner/properties/new
 │   └── PropertyWizardV3 (composant principal)
 │       ├── Step 1: PropertyTypeSelection
 │       ├── Step 2: AddressStep (via DynamicStep)
@@ -170,7 +170,7 @@ Identifier tous les fichiers, routes et composants liés à l'ajout de logement 
 
 ### ✅ PRINCIPES
 
-1. **Un seul point d'entrée** : `/app/owner/properties/new`
+1. **Un seul point d'entrée** : `/owner/properties/new`
 2. **Un seul composant wizard** : `PropertyWizardV3`
 3. **Un seul service** : `PropertiesService`
 4. **Routes API cohérentes** : Toutes sous `/api/properties`
@@ -229,12 +229,12 @@ npm run build
 ### 🎯 PHASE 2 : UNIFICATION DES PERMISSIONS (Priorité MOYENNE)
 
 **Actions** :
-1. ✅ Garder uniquement `/app/owner/properties/new` pour les owners
+1. ✅ Garder uniquement `/owner/properties/new` pour les owners
 2. ✅ Créer `/app/admin/properties/new` si nécessaire pour les admins
 3. ✅ Unifier les vérifications de permissions
 
 **Fichiers à modifier** :
-- `app/app/owner/properties/new/page.tsx` → Vérifier permissions
+- `app/owner/properties/new/page.tsx` → Vérifier permissions
 - Créer `app/app/admin/properties/new/page.tsx` si nécessaire
 
 **Impact** : Minimal (ajout route admin si nécessaire)
@@ -244,12 +244,12 @@ npm run build
 ### 🎯 PHASE 3 : VÉRIFICATION DES SERVICES (Priorité BASSE)
 
 **Actions** :
-1. ✅ Vérifier `app/app/owner/properties/_actions.ts`
+1. ✅ Vérifier `app/owner/properties/_actions.ts`
 2. ✅ S'assurer qu'il n'y a pas de duplication avec `PropertiesService`
 3. ✅ Fusionner ou supprimer si doublon
 
 **Fichiers à vérifier** :
-- `app/app/owner/properties/_actions.ts`
+- `app/owner/properties/_actions.ts`
 - `features/properties/services/properties.service.ts`
 
 **Impact** : Minimal (optimisation)
@@ -276,7 +276,7 @@ npm run build
 
 ### 📈 RÉSULTAT ATTENDU
 
-- ✅ **1 seule route** d'ajout : `/app/owner/properties/new`
+- ✅ **1 seule route** d'ajout : `/owner/properties/new`
 - ✅ **1 seul composant** wizard : `PropertyWizardV3`
 - ✅ **1 seul service** : `PropertiesService`
 - ✅ **Routes API** cohérentes et documentées

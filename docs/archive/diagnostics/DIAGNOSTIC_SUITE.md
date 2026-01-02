@@ -52,7 +52,7 @@ WHERE owner_id = '3b9280bc-061b-4880-a5e1-57d3f7ab06e5';
 
 ## 🎯 Actions Immédiates
 
-1. **Ouvrir `/app/owner/properties` dans le navigateur**
+1. **Ouvrir `/owner/properties` dans le navigateur**
 2. **Ouvrir la console navigateur** (F12)
 3. **Vérifier les logs** :
    - `[useProperties] Response received:` doit montrer `propertiesCount: 6`

@@ -37,6 +37,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { PageTransition } from "@/components/ui/page-transition";
 import { SubscriptionProvider } from "@/components/subscription/subscription-provider";
 import { PostHogProvider } from "@/components/analytics/posthog-provider";
+import { AIProvider } from "@/components/providers/ai-provider";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -138,13 +139,15 @@ export default function RootLayout({
           <QueryProvider>
             <PostHogProvider>
               <SubscriptionProvider>
-                <div className="min-h-screen flex flex-col">
-                  <Navbar />
-                  <PageTransition>
-                    <main className="flex-1">{children}</main>
-                  </PageTransition>
-                  <Toaster />
-                </div>
+                <AIProvider showCopilotButton={true}>
+                  <div className="min-h-screen flex flex-col">
+                    <Navbar />
+                    <PageTransition>
+                      <main className="flex-1">{children}</main>
+                    </PageTransition>
+                    <Toaster />
+                  </div>
+                </AIProvider>
               </SubscriptionProvider>
             </PostHogProvider>
           </QueryProvider>

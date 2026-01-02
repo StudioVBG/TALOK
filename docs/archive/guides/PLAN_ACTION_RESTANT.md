@@ -27,7 +27,7 @@
 
 ### 2. Implémenter la page `/arrears` (Impayés)
 
-**Problème** : Lien cassé dans le dashboard owner (`app/app/owner/page.tsx` ligne 502).
+**Problème** : Lien cassé dans le dashboard owner (`app/owner/page.tsx` ligne 502).
 
 **Actions** :
 - [ ] Créer la page `/app/arrears/page.tsx`

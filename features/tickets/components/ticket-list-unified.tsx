@@ -45,9 +45,9 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
     }
   };
 
-  const basePath = variant === 'owner' ? '/app/owner/tickets' 
-                 : variant === 'tenant' ? '/app/tenant/requests' 
-                 : '/app/provider/jobs';
+  const basePath = variant === 'owner' ? '/owner/tickets' 
+                 : variant === 'tenant' ? '/tenant/requests' 
+                 : '/provider/jobs';
 
   if (tickets.length === 0) {
     return (

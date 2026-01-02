@@ -96,7 +96,7 @@ export default function SignupPlanPage() {
         body: JSON.stringify({
           plan_slug: selectedPlan,
           billing_cycle: billing,
-          success_url: `${window.location.origin}/app/owner/onboarding/profile?subscription=success`,
+          success_url: `${window.location.origin}/owner/onboarding/profile?subscription=success`,
           cancel_url: `${window.location.origin}/signup/plan?role=${role}&canceled=true`,
         }),
       });

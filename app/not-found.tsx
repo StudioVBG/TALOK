@@ -48,7 +48,7 @@ export default function NotFound() {
         {/* Help */}
         <p className="mt-8 text-sm text-slate-500 dark:text-slate-500">
           Besoin d&apos;aide ?{" "}
-          <Link href="/app/owner/support" className="text-primary hover:underline">
+          <Link href="/owner/support" className="text-primary hover:underline">
             Contactez le support
           </Link>
         </p>

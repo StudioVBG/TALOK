@@ -6,7 +6,7 @@
 
 **Fichiers modifiés :**
 - `lib/hooks/use-properties.ts`
-- `app/app/owner/properties/page.tsx`
+- `app/owner/properties/page.tsx`
 
 **Changements :**
 - Les logs utilisent maintenant `JSON.stringify()` pour afficher le contenu réel des objets
@@ -34,7 +34,7 @@ console.log("[useProperties] Response received:", JSON.stringify({
 ### 2. Correction de l'Erreur `useOwnerData`
 
 **Fichier modifié :**
-- `app/app/owner/contracts/OwnerContractsClient.tsx`
+- `app/owner/contracts/OwnerContractsClient.tsx`
 
 **Problème :**
 - `OwnerContractsClient` utilisait `useOwnerData()` mais le `OwnerDataProvider` n'était pas présent dans le layout
@@ -63,7 +63,7 @@ const { data: leases = [] } = useLeases();
 
 ### 1. Recharger la Page
 
-Recharger `/app/owner/properties` dans le navigateur pour voir les nouveaux logs.
+Recharger `/owner/properties` dans le navigateur pour voir les nouveaux logs.
 
 ### 2. Vérifier les Logs dans la Console
 

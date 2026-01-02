@@ -61,7 +61,7 @@ const property = await createDraftProperty({
 
 ### 2. Vérifier le `owner_id` utilisé lors du fetch
 
-**Fichier** : `app/app/owner/layout.tsx`
+**Fichier** : `app/owner/layout.tsx`
 
 ```typescript
 const profile = await getOwnerProfile();
@@ -78,7 +78,7 @@ const propertiesResult = await getCachedProperties(profile.id);  // ← ownerId 
 
 ### 3. Vérifier la requête DB effective
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 ```typescript
 const { data: directData, error: directError, count } = await serviceClient
@@ -155,7 +155,7 @@ LIMIT 10;
    [POST /api/properties] Draft créé avec succès: id=..., owner_id=...
    ```
 
-2. **Recharger `/app/owner/properties`** et vérifier les logs :
+2. **Recharger `/owner/properties`** et vérifier les logs :
    ```
    [OwnerLayout] Profile ID utilisé: ...
    [fetchProperties] Début - ownerId: ...

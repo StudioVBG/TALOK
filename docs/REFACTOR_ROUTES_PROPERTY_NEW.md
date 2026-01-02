@@ -9,50 +9,50 @@ Normaliser les routes d'ajout de bien : `/owner/property/new` (singulier) au lie
 ## 📦 STRUCTURE CRÉÉE
 
 ### Store Zustand
-- ✅ `app/app/owner/property/new/_store/useNewProperty.ts`
+- ✅ `app/owner/property/new/_store/useNewProperty.ts`
   - Gestion de l'état global du wizard
   - Mode FAST (4 étapes) / FULL (8 étapes)
   - Persistance locale avec Zustand persist
 
 ### Composants
-- ✅ `app/app/owner/property/new/_components/WizardProgress.tsx`
+- ✅ `app/owner/property/new/_components/WizardProgress.tsx`
   - Barre de progression animée avec Framer Motion
   - Affichage "Étape X sur Y"
   - Calcul automatique selon le mode (FAST/FULL)
 
-- ✅ `app/app/owner/property/new/_components/WizardFooter.tsx`
+- ✅ `app/owner/property/new/_components/WizardFooter.tsx`
   - Footer sticky avec safe-area iOS (`pb-[env(safe-area-inset-bottom)]`)
   - Backdrop blur pour l'effet glassmorphism
   - Boutons Précédent / Continuer
 
-- ✅ `app/app/owner/property/new/_components/ModeSwitch.tsx`
+- ✅ `app/owner/property/new/_components/ModeSwitch.tsx`
   - Toggle FAST/FULL dans le header
   - Design segmented control avec icônes Lucide
 
-- ✅ `app/app/owner/property/new/_components/StepFrame.tsx`
+- ✅ `app/owner/property/new/_components/StepFrame.tsx`
   - Wrapper générique pour chaque étape
 
 ### Steps
-- ✅ `app/app/owner/property/new/_steps/TypeStep.tsx`
+- ✅ `app/owner/property/new/_steps/TypeStep.tsx`
   - **Navigation clavier complète** : ↑↓←→ + Entrée
   - **ARIA** : `role="listbox"`, `aria-pressed`, `aria-label`
-  - **Prefetch** : `/app/owner/property/new` à la sélection
+  - **Prefetch** : `/owner/property/new` à la sélection
   - **Filtres sticky** : Tous / Habitation / Parking & Box / Commercial
   - **Recherche** : Input avec icône Search
   - **Empty state** : Message + bouton "Effacer le filtre"
   - **Animations** : Framer Motion avec support `reduced motion`
   - **CTA dynamique** : "Continuer — Adresse"
 
-- ✅ `app/app/owner/property/new/_steps/AddressStep.tsx` (placeholder)
-- ✅ `app/app/owner/property/new/_steps/DetailsStep.tsx` (placeholder)
-- ✅ `app/app/owner/property/new/_steps/RoomsStep.tsx` (placeholder)
-- ✅ `app/app/owner/property/new/_steps/PhotosStep.tsx` (placeholder)
-- ✅ `app/app/owner/property/new/_steps/FeaturesStep.tsx` (placeholder)
-- ✅ `app/app/owner/property/new/_steps/PublishStep.tsx` (placeholder)
-- ✅ `app/app/owner/property/new/_steps/SummaryStep.tsx` (placeholder)
+- ✅ `app/owner/property/new/_steps/AddressStep.tsx` (placeholder)
+- ✅ `app/owner/property/new/_steps/DetailsStep.tsx` (placeholder)
+- ✅ `app/owner/property/new/_steps/RoomsStep.tsx` (placeholder)
+- ✅ `app/owner/property/new/_steps/PhotosStep.tsx` (placeholder)
+- ✅ `app/owner/property/new/_steps/FeaturesStep.tsx` (placeholder)
+- ✅ `app/owner/property/new/_steps/PublishStep.tsx` (placeholder)
+- ✅ `app/owner/property/new/_steps/SummaryStep.tsx` (placeholder)
 
 ### Page principale
-- ✅ `app/app/owner/property/new/page.tsx`
+- ✅ `app/owner/property/new/page.tsx`
   - Wrapper avec `ProtectedRoute`
   - Gestion du mode via query params (`?mode=FAST` ou `?mode=FULL`)
   - Rendu conditionnel des steps selon le mode
@@ -63,11 +63,11 @@ Normaliser les routes d'ajout de bien : `/owner/property/new` (singulier) au lie
 ## 🔄 ROUTES MODIFIÉES
 
 ### Redirections créées
-- ✅ `app/app/owner/properties/new/page.tsx` → Redirige vers `/app/owner/property/new`
-- ✅ `app/properties/new/page.tsx` → Redirige vers `/app/owner/property/new`
+- ✅ `app/owner/properties/new/page.tsx` → Redirige vers `/owner/property/new`
+- ✅ `app/properties/new/page.tsx` → Redirige vers `/owner/property/new`
 
 ### Liens mis à jour
-- ✅ `app/app/owner/properties/PropertiesPageClient.tsx` (2 occurrences)
+- ✅ `app/owner/properties/PropertiesPageClient.tsx` (2 occurrences)
 - ✅ `components/owner/dashboard/owner-portfolio-by-module.tsx`
 - ✅ `features/properties/components/v3/property-type-selection.tsx` (prefetch)
 - ✅ `features/properties/components/properties-list.tsx` (3 occurrences)
@@ -84,7 +84,7 @@ Normaliser les routes d'ajout de bien : `/owner/property/new` (singulier) au lie
   - `ArrowRight` / `ArrowLeft` : Navigation horizontale
   - `ArrowDown` / `ArrowUp` : Navigation verticale (avec `computeCols()`)
   - `Enter` : Valide et passe à l'étape suivante
-- ✅ **Prefetch** : `/app/owner/property/new` à la sélection d'un type
+- ✅ **Prefetch** : `/owner/property/new` à la sélection d'un type
 - ✅ **CTA dynamique** : "Continuer — Adresse" (désactivé si aucun type sélectionné)
 - ✅ **Filtres sticky** : Pills avec recherche instantanée
 - ✅ **Empty state** : Message + bouton "Effacer le filtre"
@@ -122,7 +122,7 @@ Normaliser les routes d'ajout de bien : `/owner/property/new` (singulier) au lie
 
 ### Routes
 - ✅ Aucune occurrence restante de `/owner/properties/new` dans `app/`, `components/`, `features/`
-- ✅ Tous les liens pointent vers `/app/owner/property/new`
+- ✅ Tous les liens pointent vers `/owner/property/new`
 - ✅ Redirections créées pour les routes legacy
 
 ### Superpositions
@@ -138,7 +138,7 @@ Normaliser les routes d'ajout de bien : `/owner/property/new` (singulier) au lie
 - ✅ **Reduced motion** : Support complet via `useReducedMotion()`
 
 ### Performance
-- ✅ **Prefetch** : `/app/owner/property/new` à la sélection d'un type
+- ✅ **Prefetch** : `/owner/property/new` à la sélection d'un type
 - ✅ **Animations optimisées** : Durées réduites si `reduced motion` activé
 - ✅ **Code-split** : Steps chargés conditionnellement selon le mode
 
@@ -147,24 +147,24 @@ Normaliser les routes d'ajout de bien : `/owner/property/new` (singulier) au lie
 ## 📝 FICHIERS CRÉÉS/MODIFIÉS
 
 ### Nouveaux fichiers (14)
-1. `app/app/owner/property/new/_store/useNewProperty.ts`
-2. `app/app/owner/property/new/_components/WizardProgress.tsx`
-3. `app/app/owner/property/new/_components/WizardFooter.tsx`
-4. `app/app/owner/property/new/_components/ModeSwitch.tsx`
-5. `app/app/owner/property/new/_components/StepFrame.tsx`
-6. `app/app/owner/property/new/page.tsx`
-7. `app/app/owner/property/new/_steps/TypeStep.tsx`
-8. `app/app/owner/property/new/_steps/AddressStep.tsx`
-9. `app/app/owner/property/new/_steps/DetailsStep.tsx`
-10. `app/app/owner/property/new/_steps/RoomsStep.tsx`
-11. `app/app/owner/property/new/_steps/PhotosStep.tsx`
-12. `app/app/owner/property/new/_steps/FeaturesStep.tsx`
-13. `app/app/owner/property/new/_steps/PublishStep.tsx`
-14. `app/app/owner/property/new/_steps/SummaryStep.tsx`
+1. `app/owner/property/new/_store/useNewProperty.ts`
+2. `app/owner/property/new/_components/WizardProgress.tsx`
+3. `app/owner/property/new/_components/WizardFooter.tsx`
+4. `app/owner/property/new/_components/ModeSwitch.tsx`
+5. `app/owner/property/new/_components/StepFrame.tsx`
+6. `app/owner/property/new/page.tsx`
+7. `app/owner/property/new/_steps/TypeStep.tsx`
+8. `app/owner/property/new/_steps/AddressStep.tsx`
+9. `app/owner/property/new/_steps/DetailsStep.tsx`
+10. `app/owner/property/new/_steps/RoomsStep.tsx`
+11. `app/owner/property/new/_steps/PhotosStep.tsx`
+12. `app/owner/property/new/_steps/FeaturesStep.tsx`
+13. `app/owner/property/new/_steps/PublishStep.tsx`
+14. `app/owner/property/new/_steps/SummaryStep.tsx`
 
 ### Fichiers modifiés (6)
-1. `app/app/owner/properties/new/page.tsx` → Redirection
-2. `app/app/owner/properties/PropertiesPageClient.tsx` → Liens mis à jour
+1. `app/owner/properties/new/page.tsx` → Redirection
+2. `app/owner/properties/PropertiesPageClient.tsx` → Liens mis à jour
 3. `components/owner/dashboard/owner-portfolio-by-module.tsx` → Lien mis à jour
 4. `features/properties/components/v3/property-type-selection.tsx` → Prefetch mis à jour
 5. `features/properties/components/properties-list.tsx` → Liens mis à jour
@@ -179,7 +179,7 @@ Normaliser les routes d'ajout de bien : `/owner/property/new` (singulier) au lie
 - ✅ **Footer sticky** : Jamais en chevauchement (safe-area iOS ok)
 - ✅ **Toggle unique** : FAST/FULL dans le header uniquement
 - ✅ **Cartes Type** : Full-click + states harmonisés + ARIA + clavier
-- ✅ **Prefetch** : `/app/owner/property/new` à la sélection
+- ✅ **Prefetch** : `/owner/property/new` à la sélection
 - ✅ **CTA dynamique** : "Continuer — Adresse" (désactivé si aucun type)
 - ✅ **Navigation clavier** : ↑↓←→ + Entrée fonctionnelle
 - ✅ **A11y** : ARIA complet, focus rings, min touch target

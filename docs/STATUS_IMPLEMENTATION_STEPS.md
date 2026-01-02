@@ -24,7 +24,7 @@
 **Fonctionnalités** :
 - ✅ Navigation clavier complète (↑↓←→ + Entrée)
 - ✅ ARIA complet (`role="listbox"`, `aria-pressed`)
-- ✅ Prefetch `/app/owner/property/new`
+- ✅ Prefetch `/owner/property/new`
 - ✅ Filtres sticky (Tous / Habitation / Parking & Box / Commercial)
 - ✅ Recherche instantanée
 - ✅ Empty state avec bouton "Effacer le filtre"

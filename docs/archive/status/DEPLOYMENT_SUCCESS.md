@@ -58,7 +58,7 @@ Si votre projet Vercel est connecté à GitHub (ce qui semble être le cas), **l
 
 ### Fichiers modifiés
 - ✅ `features/properties/components/v3/property-wizard-v3.tsx`
-- ✅ `app/app/owner/properties/new/page.tsx`
+- ✅ `app/owner/properties/new/page.tsx`
 - ✅ `app/properties/new/page.tsx`
 
 ---
@@ -80,12 +80,12 @@ Si votre projet Vercel est connecté à GitHub (ce qui semble être le cas), **l
 
 **Mode FAST** :
 ```
-https://votre-domaine.vercel.app/app/owner/properties/new?mode=fast
+https://votre-domaine.vercel.app/owner/properties/new?mode=fast
 ```
 
 **Mode FULL** :
 ```
-https://votre-domaine.vercel.app/app/owner/properties/new?mode=full
+https://votre-domaine.vercel.app/owner/properties/new?mode=full
 ```
 
 ### 3. Vérifications

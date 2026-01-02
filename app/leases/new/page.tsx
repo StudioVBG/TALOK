@@ -27,9 +27,9 @@ function NewLeasePageContent() {
 
   const redirectAfterAction = () => {
     if (propertyId) {
-      router.push(`/app/owner/properties/${propertyId}`);
+      router.push(`/owner/properties/${propertyId}`);
     } else {
-      router.push("/app/owner/contracts");
+      router.push("/owner/contracts");
     }
   };
 

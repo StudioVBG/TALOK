@@ -77,8 +77,8 @@ export async function createTicketAction(formData: z.infer<typeof createTicketSc
     return { error: "Erreur lors de la création" };
   }
 
-  revalidatePath("/app/tenant/requests");
-  revalidatePath("/app/owner/tickets");
+  revalidatePath("/tenant/requests");
+  revalidatePath("/owner/tickets");
 
   return { success: true, ticket };
 }
@@ -92,9 +92,9 @@ export async function updateTicketStatusAction(id: string, statut: string) {
 
   if (error) return { error: "Erreur mise à jour statut" };
 
-  revalidatePath("/app/owner/tickets");
-  revalidatePath("/app/tenant/requests");
-  revalidatePath(`/app/owner/tickets/${id}`);
+  revalidatePath("/owner/tickets");
+  revalidatePath("/tenant/requests");
+  revalidatePath(`/owner/tickets/${id}`);
   
   return { success: true };
 }
@@ -121,8 +121,8 @@ export async function sendMessageAction(ticketId: string, content: string) {
 
   if (error) return { error: "Erreur envoi message" };
 
-  revalidatePath(`/app/owner/tickets/${ticketId}`);
-  revalidatePath(`/app/tenant/requests/${ticketId}`);
+  revalidatePath(`/owner/tickets/${ticketId}`);
+  revalidatePath(`/tenant/requests/${ticketId}`);
 
   return { success: true };
 }

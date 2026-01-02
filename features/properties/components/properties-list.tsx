@@ -82,7 +82,7 @@ export function PropertiesList() {
         </div>
         <div className="flex gap-2 justify-center">
           <Button onClick={() => window.location.reload()}>Réessayer</Button>
-          <Link href="/app/owner/property/new">
+          <Link href="/owner/property/new">
             <Button variant="outline">Créer un logement</Button>
           </Link>
         </div>
@@ -100,7 +100,7 @@ export function PropertiesList() {
           </p>
         </div>
         <div className="flex gap-4 justify-center">
-          <Link href="/app/owner/property/new">
+          <Link href="/owner/property/new">
             <Button size="lg" className="gap-2">
               <span>+</span>
               Ajouter mon premier logement

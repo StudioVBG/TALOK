@@ -1,7 +1,7 @@
 # 🔍 GUIDE DE DIAGNOSTIC - Propriétés non visibles
 
 ## Problème
-Les propriétés créées n'apparaissent pas dans `/app/owner/properties` malgré une création réussie.
+Les propriétés créées n'apparaissent pas dans `/owner/properties` malgré une création réussie.
 
 ---
 
@@ -9,7 +9,7 @@ Les propriétés créées n'apparaissent pas dans `/app/owner/properties` malgr�
 
 ### 1. Vérifier les logs SERVEUR (Terminal Next.js)
 
-**Action** : Ouvrir le terminal où tourne `npm run dev` et recharger `/app/owner/properties`
+**Action** : Ouvrir le terminal où tourne `npm run dev` et recharger `/owner/properties`
 
 **Logs à chercher** :
 
@@ -203,7 +203,7 @@ npm run dev
 ## 🚨 ACTION IMMÉDIATE
 
 1. **Ouvrir le terminal serveur** (où tourne `npm run dev`)
-2. **Recharger la page** `/app/owner/properties`
+2. **Recharger la page** `/owner/properties`
 3. **Copier tous les logs** qui commencent par `[fetchProperties]` et `[OwnerLayout]`
 4. **Exécuter le script SQL** `scripts/diagnose-properties-complete.sql` dans Supabase SQL Editor
 5. **Partager les résultats** pour diagnostic précis

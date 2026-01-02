@@ -24,7 +24,7 @@ test.describe("Flux d'ajout de logement", () => {
   });
 
   test("Mode FAST - Affichage et navigation", async ({ page }) => {
-    await page.goto(`${BASE_URL}/app/owner/properties/new?mode=fast`);
+    await page.goto(`${BASE_URL}/owner/properties/new?mode=fast`);
 
     // Vérifier que le badge "Mode rapide" est visible
     await expect(page.locator('text=Mode rapide')).toBeVisible();
@@ -40,7 +40,7 @@ test.describe("Flux d'ajout de logement", () => {
   });
 
   test("Mode FULL - Affichage et navigation", async ({ page }) => {
-    await page.goto(`${BASE_URL}/app/owner/properties/new?mode=full`);
+    await page.goto(`${BASE_URL}/owner/properties/new?mode=full`);
 
     // Vérifier que le badge "Mode complet" est visible
     await expect(page.locator('text=Mode complet')).toBeVisible();
@@ -50,7 +50,7 @@ test.describe("Flux d'ajout de logement", () => {
   });
 
   test("Sélection du type de bien", async ({ page }) => {
-    await page.goto(`${BASE_URL}/app/owner/properties/new`);
+    await page.goto(`${BASE_URL}/owner/properties/new`);
 
     // Attendre que le composant soit chargé
     await page.waitForSelector('h1:has-text("Ajouter un bien")');
@@ -64,7 +64,7 @@ test.describe("Flux d'ajout de logement", () => {
   });
 
   test("Animations entre étapes", async ({ page }) => {
-    await page.goto(`${BASE_URL}/app/owner/properties/new`);
+    await page.goto(`${BASE_URL}/owner/properties/new`);
 
     // Vérifier que les transitions sont fluides
     // (Les animations Framer Motion sont difficiles à tester directement,
@@ -77,7 +77,7 @@ test.describe("Flux d'ajout de logement", () => {
   });
 
   test("Micro-copies contextuelles", async ({ page }) => {
-    await page.goto(`${BASE_URL}/app/owner/properties/new`);
+    await page.goto(`${BASE_URL}/owner/properties/new`);
 
     // Vérifier que les micro-copies sont présentes
     // (Elles peuvent être cachées sur mobile, donc vérifier seulement sur desktop)
@@ -93,7 +93,7 @@ test.describe("Flux d'ajout de logement", () => {
   });
 
   test("Barre de progression", async ({ page }) => {
-    await page.goto(`${BASE_URL}/app/owner/properties/new`);
+    await page.goto(`${BASE_URL}/owner/properties/new`);
 
     // Vérifier que la barre de progression est présente
     const progressBar = page.locator('[role="progressbar"], [class*="progress"]');
@@ -101,7 +101,7 @@ test.describe("Flux d'ajout de logement", () => {
   });
 
   test("Badge auto-save", async ({ page }) => {
-    await page.goto(`${BASE_URL}/app/owner/properties/new`);
+    await page.goto(`${BASE_URL}/owner/properties/new`);
 
     // Après sélection d'un type, vérifier que le badge auto-save apparaît
     // (Cela nécessite une interaction utilisateur)
@@ -110,7 +110,7 @@ test.describe("Flux d'ajout de logement", () => {
   });
 
   test("Navigation Précédent/Suivant", async ({ page }) => {
-    await page.goto(`${BASE_URL}/app/owner/properties/new`);
+    await page.goto(`${BASE_URL}/owner/properties/new`);
 
     // Vérifier que le bouton "Précédent" est désactivé sur la première étape
     const prevButton = page.locator('button:has-text("Précédent")');

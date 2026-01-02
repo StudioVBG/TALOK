@@ -188,7 +188,7 @@ function StickyFooter({
   // Prefetch next step on hover/focus of Continue button
   const handleContinueHover = () => {
     if (typeof window !== "undefined" && canGoNext) {
-      router.prefetch("/app/owner/properties/new?step=adresse");
+      router.prefetch("/owner/properties/new?step=adresse");
     }
   };
 

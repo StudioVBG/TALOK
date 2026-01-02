@@ -108,7 +108,7 @@ profiles          | 3
 npm run dev
 
 # Ouvrir
-http://localhost:3000/app/owner/properties
+http://localhost:3000/owner/properties
 ```
 
 **Attendu** :

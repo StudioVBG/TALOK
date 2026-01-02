@@ -84,7 +84,7 @@ export default function EDLSignatureClient({
         throw new Error(err.error || "Erreur lors de la signature");
       }
 
-      router.push(`/app/tenant/inspections/${edl.id}`);
+      router.push(`/tenant/inspections/${edl.id}`);
     } catch (error: any) {
       console.error("Erreur signature:", error);
       alert(error.message);

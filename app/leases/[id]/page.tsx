@@ -44,7 +44,7 @@ function LeaseDetailPageContent() {
         description: error.message || "Impossible de charger le bail.",
         variant: "destructive",
       });
-      router.push("/app/owner/contracts");
+      router.push("/owner/contracts");
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ function LeaseDetailPageContent() {
           <Link href={`/leases/${lease.id}/edit`}>
             <Button variant="outline">Modifier</Button>
           </Link>
-          <Link href="/app/owner/contracts">
+          <Link href="/owner/contracts">
             <Button variant="ghost">Retour</Button>
           </Link>
         </div>

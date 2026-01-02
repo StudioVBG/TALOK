@@ -51,7 +51,7 @@ export function QuickStatsWidget({ className, compact = false }: QuickStatsWidge
               label: "Biens",
               value: data.properties?.total || 0,
               icon: Building2,
-              href: "/app/owner/properties",
+              href: "/owner/properties",
               status: "neutral",
             },
             {
@@ -59,7 +59,7 @@ export function QuickStatsWidget({ className, compact = false }: QuickStatsWidge
               label: "Locataires",
               value: data.tenants?.active || 0,
               icon: Users,
-              href: "/app/owner/tenants",
+              href: "/owner/tenants",
               status: "neutral",
             },
             {
@@ -69,7 +69,7 @@ export function QuickStatsWidget({ className, compact = false }: QuickStatsWidge
               change: data.finance?.revenue_change,
               changeLabel: "vs mois précédent",
               icon: Euro,
-              href: "/app/owner/money",
+              href: "/owner/money",
               status: (data.finance?.revenue_change || 0) >= 0 ? "success" : "warning",
             },
             {
@@ -77,7 +77,7 @@ export function QuickStatsWidget({ className, compact = false }: QuickStatsWidge
               label: "Impayés",
               value: data.finance?.unpaid_count || 0,
               icon: AlertCircle,
-              href: "/app/owner/money?filter=unpaid",
+              href: "/owner/money?filter=unpaid",
               status: (data.finance?.unpaid_count || 0) > 0 ? "danger" : "success",
             },
           ]);

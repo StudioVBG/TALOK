@@ -133,7 +133,7 @@ const deleteProperty = useMutationWithToast({
 
 ### 6. **Lazy Loading des Composants Lourds** ✅
 
-**Fichier modifié :** `app/app/owner/dashboard/page.tsx`
+**Fichier modifié :** `app/owner/dashboard/page.tsx`
 
 **Améliorations :**
 - Composants dashboard chargés dynamiquement

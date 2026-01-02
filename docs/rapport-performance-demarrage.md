@@ -12,7 +12,7 @@
 #### Framer Motion (28 fichiers)
 - **Impact** : ~150KB+ de JavaScript chargé même si non utilisé immédiatement
 - **Fichiers affectés** :
-  - `app/app/owner/dashboard/page.tsx` (importé au top-level)
+  - `app/owner/dashboard/page.tsx` (importé au top-level)
   - `components/owner/dashboard/owner-finance-summary.tsx`
   - `lib/design-system/wizard-layout.tsx`
   - Et 25 autres fichiers...

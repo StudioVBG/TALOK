@@ -81,7 +81,7 @@ fb0946d - fix: Utiliser NEXT_PUBLIC_APP_URL pour les redirections d'email
 npm run dev
 
 # Tester l'accès aux propriétés
-# URL: http://localhost:3000/app/owner/properties
+# URL: http://localhost:3000/owner/properties
 ```
 
 **Résultat attendu** :
@@ -97,7 +97,7 @@ npm run dev
 
 **Test** :
 ```
-# URL: https://gestion-immo-nine.vercel.app/app/owner/properties
+# URL: https://gestion-immo-nine.vercel.app/owner/properties
 ```
 
 **Résultat attendu** :

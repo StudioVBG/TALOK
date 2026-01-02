@@ -12,7 +12,7 @@ Nous avons mené à bien une refonte structurelle majeure pour aligner le projet
 ### ✅ Ce qui est Fait et Validé
 1.  **Architecture Unifiée** :
     *   Tout le code applicatif authentifié vit sous `/app/app/{role}`.
-    *   Suppression de 100% du code mort et des routes dupliquées (`/app/owner`, `/app/tenant`, `/app/vendor`).
+    *   Suppression de 100% du code mort et des routes dupliquées (`/owner`, `/tenant`, `/app/vendor`).
     *   Middleware et Navbar synchronisés avec la nouvelle structure.
 
 2.  **Portail Locataire (Tenant) 🚀** :
@@ -21,7 +21,7 @@ Nous avons mené à bien une refonte structurelle majeure pour aligner le projet
     *   Onboarding : Flux fluide et contextuel.
 
 3.  **Portail Prestataire (Provider) 👷** :
-    *   Migration de `/vendor` vers `/app/app/provider`.
+    *   Migration de `/vendor` vers `/app/provider`.
     *   Onboarding fonctionnel avec redirection correcte vers le dashboard.
     *   Structure prête pour recevoir les missions (Work Orders).
 
@@ -65,7 +65,7 @@ Pour garantir la stabilité sans y passer des semaines, je recommande cette stra
 **Scénario 2 : Onboarding Prestataire**
 1.  **Visiteur** : S'inscrire avec rôle "Prestataire".
 2.  **Prestataire** : Remplir profil, services, zones, IBAN.
-3.  **Système** : Vérifier la redirection finale vers `/app/provider/dashboard`.
+3.  **Système** : Vérifier la redirection finale vers `/provider/dashboard`.
 
 ### B. Tests Automatisés (Playwright)
 
@@ -80,7 +80,7 @@ test('Tenant can pay rent', async ({ page }) => {
   
   // 2. Go to Payments
   await page.click('text=Paiements');
-  await expect(page).toHaveURL('/app/tenant/payments');
+  await expect(page).toHaveURL('/tenant/payments');
   
   // 3. Check Invoice
   await expect(page.locator('text=À régler')).toBeVisible();

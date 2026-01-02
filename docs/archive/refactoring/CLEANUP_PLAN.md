@@ -5,9 +5,9 @@
 ### Pages Vendor non liées dans la navigation
 - ❌ `app/vendor/invoices/page.tsx` - Pas de route API, pas de lien dans navigation
 - ❌ `app/vendor/jobs/page.tsx` - Pas de lien dans navigation (utilise `/work-orders` à la place)
-- ⚠️ `app/vendor/dashboard/page.tsx` - Pas de lien dans navigation (utilise `/app/provider` à la place)
+- ⚠️ `app/vendor/dashboard/page.tsx` - Pas de lien dans navigation (utilise `/provider` à la place)
 
-**Note**: Les pages vendor semblent être des versions obsolètes. La navigation utilise `/app/provider` pour les prestataires.
+**Note**: Les pages vendor semblent être des versions obsolètes. La navigation utilise `/provider` pour les prestataires.
 
 ### Routes API de test temporaires
 - ❌ `app/api/properties/test/route.ts` - Endpoint de test temporaire mentionné dans plusieurs docs mais non utilisé en production

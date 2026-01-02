@@ -9,7 +9,7 @@
 
 ### 1. Version Canonical de `fetchProperties.ts`
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 **Améliorations** :
 - ✅ Utilise RLS correctement (pas de bypass service_role pour la requête principale)
@@ -27,7 +27,7 @@
 
 ### 2. Logs de Diagnostic dans `OwnerLayout`
 
-**Fichier** : `app/app/owner/layout.tsx`
+**Fichier** : `app/owner/layout.tsx`
 
 **Ajouts** :
 - ✅ Diagnostic complet du profil (ID, user_id, role)
@@ -126,7 +126,7 @@ Après application de ce refactoring :
    Ouvrir `http://localhost:3000/api/debug/properties`
    → Cela dira exactement quel est le problème
 
-3. **Recharger `/app/owner/properties`** :
+3. **Recharger `/owner/properties`** :
    → Vérifier les logs serveur pour le diagnostic complet
 
 4. **Suivre le protocole** :

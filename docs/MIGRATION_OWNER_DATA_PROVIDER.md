@@ -6,12 +6,12 @@ Toutes les pages du Compte Propriétaire ont été migrées pour utiliser les no
 
 ## 📋 Fichiers obsolètes (peuvent être supprimés)
 
-### `app/app/owner/_data/OwnerDataProvider.tsx`
+### `app/owner/_data/OwnerDataProvider.tsx`
 - **Status** : Plus utilisé
 - **Raison** : Remplacé par React Query hooks (`useProperties`, `useLeases`, `useDashboard`)
 - **Action** : Peut être supprimé après vérification qu'aucun autre composant ne l'utilise
 
-### Fonctions dans `app/app/owner/_data/`
+### Fonctions dans `app/owner/_data/`
 Ces fonctions peuvent être migrées vers `lib/owner/api.ts` si elles sont encore utilisées ailleurs :
 - `fetchProperties.ts` → Utilisé par `lib/owner/api.ts` via `fetchOwnerProperties`
 - `fetchDashboard.ts` → Utilisé par `lib/owner/api.ts` via `fetchOwnerDashboard`

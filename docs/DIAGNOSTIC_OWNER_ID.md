@@ -56,7 +56,7 @@ CREATE TABLE properties (
 
 ### 3. Helper fetchProperties
 
-**Fichier :** `app/app/owner/_data/fetchProperties.ts`
+**Fichier :** `app/owner/_data/fetchProperties.ts`
 
 **Ligne 30 :** `.eq("owner_id", ownerId)` où `ownerId` est passé en paramètre
 
@@ -219,7 +219,7 @@ if (properties && properties.length > 0) {
 4. **Créer un nouveau bien** via le wizard et vérifier :
    - Les logs de création dans le terminal serveur
    - La propriété apparaît dans Supabase avec le bon `owner_id`
-   - La propriété apparaît dans `/app/owner/properties`
+   - La propriété apparaît dans `/owner/properties`
 
 ---
 
@@ -228,14 +228,14 @@ if (properties && properties.length > 0) {
 1. **Exécuter les scripts SQL de diagnostic** pour identifier le problème exact
 2. **Créer un nouveau bien** et vérifier les logs pour confirmer que `owner_id` est correct
 3. **Si des propriétés existantes ont un mauvais owner_id**, exécuter la migration de correction
-4. **Vérifier que la page `/app/owner/properties` affiche bien les biens**
+4. **Vérifier que la page `/owner/properties` affiche bien les biens**
 
 ---
 
 **Date de création :** $(date)
 **Fichiers modifiés :**
 - `app/api/properties/route.ts` - Logs de debug ajoutés
-- `app/app/owner/_data/fetchProperties.ts` - Logs de debug améliorés
+- `app/owner/_data/fetchProperties.ts` - Logs de debug améliorés
 - `supabase/migrations/202502190000_diagnostic_owner_id.sql` - Scripts de diagnostic
 - `supabase/migrations/202502190001_fix_owner_id_mismatch.sql` - Migration de correction
 

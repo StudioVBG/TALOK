@@ -37,7 +37,7 @@ Ajouter une vue "Liste" (Tableau) à la page "Mes biens" du dashboard Propriéta
 
 ## 📁 Fichiers modifiés
 
-### `app/app/owner/properties/page.tsx`
+### `app/owner/properties/page.tsx`
 - Import de `ResponsiveTable`, `StatusBadge`, `LayoutGrid`, `LayoutList`.
 - Ajout de l'état `viewMode`.
 - Définition des colonnes du tableau (`columns`).

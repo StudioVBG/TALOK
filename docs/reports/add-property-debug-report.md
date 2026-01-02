@@ -61,9 +61,9 @@ Le processus d'ajout de logement était fonctionnel mais présentait plusieurs p
 - Description adaptée selon le mode
 
 **Routes disponibles** :
-- `/app/owner/properties/new` → Mode FULL (par défaut)
-- `/app/owner/properties/new?mode=fast` → Mode FAST
-- `/app/owner/properties/new?mode=full` → Mode FULL explicite
+- `/owner/properties/new` → Mode FULL (par défaut)
+- `/owner/properties/new?mode=fast` → Mode FAST
+- `/owner/properties/new?mode=full` → Mode FULL explicite
 
 ### 3. Animations SOTA 2025 ✅
 
@@ -91,7 +91,7 @@ Le processus d'ajout de logement était fonctionnel mais présentait plusieurs p
 ### 5. Wrapper Suspense ✅
 
 **Fichiers modifiés** :
-- `app/app/owner/properties/new/page.tsx`
+- `app/owner/properties/new/page.tsx`
 - `app/properties/new/page.tsx`
 
 **Changements** :
@@ -119,7 +119,7 @@ Le processus d'ajout de logement était fonctionnel mais présentait plusieurs p
    - Badge mode visuel
    - Micro-copies sous les boutons
 
-2. **`app/app/owner/properties/new/page.tsx`**
+2. **`app/owner/properties/new/page.tsx`**
    - Ajout de `<Suspense>` wrapper
 
 3. **`app/properties/new/page.tsx`**
@@ -137,13 +137,13 @@ Expected: 201 avec property.id
 ```
 
 ### Test 2 : Mode FAST
-1. Naviguer vers `/app/owner/properties/new?mode=fast`
+1. Naviguer vers `/owner/properties/new?mode=fast`
 2. Vérifier que le badge "Mode rapide" s'affiche
 3. Vérifier que ≤4 étapes sont affichées
 4. Compléter le wizard et vérifier la création
 
 ### Test 3 : Mode FULL
-1. Naviguer vers `/app/owner/properties/new` ou `/app/owner/properties/new?mode=full`
+1. Naviguer vers `/owner/properties/new` ou `/owner/properties/new?mode=full`
 2. Vérifier que le badge "Mode complet" s'affiche
 3. Vérifier que toutes les étapes sont affichées selon le type de bien
 4. Compléter le wizard et vérifier la création

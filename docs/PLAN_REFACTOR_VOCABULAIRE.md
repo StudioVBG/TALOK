@@ -28,24 +28,24 @@ Le code respecte **100%** les conventions de nommage :
 #### **Option A : Route `/contracts` → `/leases`** (Optionnel)
 
 **Contexte** :
-- Route actuelle : `/app/owner/contracts/`
+- Route actuelle : `/owner/contracts/`
 - Lexique canonique : `Lease` = Bail
 - Incohérence : Route utilise `contracts` au lieu de `leases`
 
 **Fichiers concernés** :
-1. `app/app/owner/contracts/page.tsx` → Renommer en `app/app/owner/leases/page.tsx`
-2. `app/app/owner/contracts/[id]/page.tsx` → Renommer en `app/app/owner/leases/[id]/page.tsx`
-3. `app/app/owner/contracts/[id]/ContractDetailPageClient.tsx` → Renommer en `app/app/owner/leases/[id]/LeaseDetailPageClient.tsx`
-4. `app/app/owner/contracts/ContractsPageClient.tsx` → Renommer en `app/app/owner/leases/LeasesPageClient.tsx`
+1. `app/owner/contracts/page.tsx` → Renommer en `app/owner/leases/page.tsx`
+2. `app/owner/contracts/[id]/page.tsx` → Renommer en `app/owner/leases/[id]/page.tsx`
+3. `app/owner/contracts/[id]/ContractDetailPageClient.tsx` → Renommer en `app/owner/leases/[id]/LeaseDetailPageClient.tsx`
+4. `app/owner/contracts/ContractsPageClient.tsx` → Renommer en `app/owner/leases/LeasesPageClient.tsx`
 
 **Liens à mettre à jour** :
-- Tous les `href="/app/owner/contracts"` → `href="/app/owner/leases"`
-- Tous les `router.push("/app/owner/contracts")` → `router.push("/app/owner/leases")`
-- Tous les `revalidatePath("/app/owner/contracts")` → `revalidatePath("/app/owner/leases")`
+- Tous les `href="/owner/contracts"` → `href="/owner/leases"`
+- Tous les `router.push("/owner/contracts")` → `router.push("/owner/leases")`
+- Tous les `revalidatePath("/owner/contracts")` → `revalidatePath("/owner/leases")`
 
 **Redirection à créer** :
-- `app/app/owner/contracts/page.tsx` → Redirection vers `/app/owner/leases`
-- `app/app/owner/contracts/[id]/page.tsx` → Redirection vers `/app/owner/leases/[id]`
+- `app/owner/contracts/page.tsx` → Redirection vers `/owner/leases`
+- `app/owner/contracts/[id]/page.tsx` → Redirection vers `/owner/leases/[id]`
 
 **Impact** : Moyen (redirections + liens + renommage fichiers)
 

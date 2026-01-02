@@ -135,7 +135,7 @@ value: "frame-ancestors 'self'; default-src 'self' 'unsafe-inline' 'unsafe-eval'
 ## 🧪 TESTS À EFFECTUER
 
 ### Test 1 : Création d'un bien
-1. Aller sur `/app/owner/property/new`
+1. Aller sur `/owner/property/new`
 2. Remplir le formulaire (mode "Rapide" ou "Complet")
 3. Cliquer sur "Créer le bien"
 4. ✅ Vérifier qu'il n'y a plus d'erreur `{"error":"Auth session missing!"}`

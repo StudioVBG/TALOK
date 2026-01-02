@@ -3,13 +3,13 @@
 ## Problème Identifié
 
 Les pages owner étaient dans `app/owner/`, ce qui les exposait sous `/owner/*` dans Next.js App Router.
-Cependant, tous les liens et la configuration pointaient vers `/app/owner/*`, causant des erreurs 404.
+Cependant, tous les liens et la configuration pointaient vers `/owner/*`, causant des erreurs 404.
 
 ## Solution Appliquée
 
-**Déplacement des fichiers** : `app/owner/` → `app/app/owner/`
+**Déplacement des fichiers** : `app/owner/` → `app/owner/`
 
-Cela permet aux routes d'être accessibles sous `/app/owner/*` comme prévu dans la configuration.
+Cela permet aux routes d'être accessibles sous `/owner/*` comme prévu dans la configuration.
 
 ## Structure Corrigée
 
@@ -38,14 +38,14 @@ app/
 
 ## Routes Maintenant Accessibles
 
-- ✅ `/app/owner/dashboard`
-- ✅ `/app/owner/properties`
-- ✅ `/app/owner/properties/[id]`
-- ✅ `/app/owner/contracts`
-- ✅ `/app/owner/contracts/[id]`
-- ✅ `/app/owner/money`
-- ✅ `/app/owner/documents`
-- ✅ `/app/owner/support`
+- ✅ `/owner/dashboard`
+- ✅ `/owner/properties`
+- ✅ `/owner/properties/[id]`
+- ✅ `/owner/contracts`
+- ✅ `/owner/contracts/[id]`
+- ✅ `/owner/money`
+- ✅ `/owner/documents`
+- ✅ `/owner/support`
 
 ## Note
 

@@ -42,12 +42,12 @@
 
 ### 4. Helper fetchProperties
 
-**Fichier :** `app/app/owner/_data/fetchProperties.ts`
+**Fichier :** `app/owner/_data/fetchProperties.ts`
 
 - ✅ Ligne 38 : `.eq("owner_id", ownerId)` où `ownerId` est passé en paramètre
 - ⚠️ **À VÉRIFIER :** S'assurer que l'appelant passe `profile.id` et non `user.id`
 
-**Note :** `fetchProperties` n'est pas utilisé dans `/app/owner/properties` qui utilise directement `useProperties()` → `/api/properties`.
+**Note :** `fetchProperties` n'est pas utilisé dans `/owner/properties` qui utilise directement `useProperties()` → `/api/properties`.
 
 ---
 
@@ -194,7 +194,7 @@ WHERE pr.owner_id = p.user_id
 
 1. **Exécuter les scripts SQL de diagnostic** dans Supabase SQL Editor
 2. **Créer un nouveau bien** et vérifier les logs serveur
-3. **Vérifier les logs de lecture** lors du chargement de `/app/owner/properties`
+3. **Vérifier les logs de lecture** lors du chargement de `/owner/properties`
 4. **Si problème détecté**, exécuter la migration de correction
 5. **Vérifier que la page affiche bien les biens**
 
@@ -203,7 +203,7 @@ WHERE pr.owner_id = p.user_id
 ## 📝 Fichiers Modifiés
 
 1. ✅ `app/api/properties/route.ts` - Logs de debug ajoutés dans création et lecture
-2. ✅ `app/app/owner/_data/fetchProperties.ts` - Logs de debug améliorés
+2. ✅ `app/owner/_data/fetchProperties.ts` - Logs de debug améliorés
 3. ✅ `supabase/migrations/202502190000_diagnostic_owner_id.sql` - Scripts SQL de diagnostic
 4. ✅ `supabase/migrations/202502190001_fix_owner_id_mismatch.sql` - Migration de correction
 
@@ -216,7 +216,7 @@ Après vérification et correction :
 - ✅ Les logs montrent que `owner_id = profile.id` partout
 - ✅ Les propriétés créées ont le bon `owner_id`
 - ✅ Les propriétés sont trouvées lors de la lecture
-- ✅ La page `/app/owner/properties` affiche les biens
+- ✅ La page `/owner/properties` affiche les biens
 
 ---
 

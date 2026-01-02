@@ -40,13 +40,13 @@ const navigation = [
   { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard },
   { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2 },
   { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText },
-  { name: "États des lieux", href: "/app/owner/inspections", icon: ClipboardCheck },
+  { name: "États des lieux", href: "/owner/inspections", icon: ClipboardCheck },
   { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro },
-  { name: "Fin de bail", href: "/app/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
+  { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
   { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench },
   { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck },
-  { name: "Protocoles juridiques", href: "/app/owner/legal-protocols", icon: Shield },
-  { name: "Facturation", href: "/app/settings/billing", icon: CreditCard },
+  { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
+  { name: "Facturation", href: "/settings/billing", icon: CreditCard },
   { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle },
 ];
 
@@ -74,7 +74,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
   useEffect(() => {
     if (!serverProfile && !loading && clientProfile?.role !== "owner") {
       if (clientProfile?.role === "tenant") {
-        router.replace("/app/tenant");
+        router.replace("/tenant");
       } else {
         router.replace("/dashboard");
       }
@@ -256,7 +256,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                       <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
                       <div className="absolute right-0 z-50 mt-2 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
                         <Link
-                          href="/app/owner/profile"
+                          href="/owner/profile"
                           className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
                           onClick={() => setUserMenuOpen(false)}
                         >

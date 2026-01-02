@@ -34,7 +34,7 @@ Dans Supabase Dashboard :
 
 #### Mode FAST
 ```
-http://localhost:3000/app/owner/properties/new?mode=fast
+http://localhost:3000/owner/properties/new?mode=fast
 ```
 - Badge "Mode rapide" visible
 - ≤4 étapes affichées
@@ -42,9 +42,9 @@ http://localhost:3000/app/owner/properties/new?mode=fast
 
 #### Mode FULL
 ```
-http://localhost:3000/app/owner/properties/new
+http://localhost:3000/owner/properties/new
 ou
-http://localhost:3000/app/owner/properties/new?mode=full
+http://localhost:3000/owner/properties/new?mode=full
 ```
 - Badge "Mode complet" visible
 - Toutes les étapes selon le type de bien

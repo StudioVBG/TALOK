@@ -249,7 +249,7 @@ async function sendReminder(
       montant: invoice.montant_total,
       daysLate: invoice.days_late,
       level,
-      paymentLink: `${process.env.NEXT_PUBLIC_APP_URL}/app/tenant/payments?invoice=${invoice.id}`,
+      paymentLink: `${process.env.NEXT_PUBLIC_APP_URL}/tenant/payments?invoice=${invoice.id}`,
     });
   }
 

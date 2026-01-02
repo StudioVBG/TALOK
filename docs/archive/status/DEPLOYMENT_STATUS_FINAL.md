@@ -16,7 +16,7 @@
 ### 2. Fichiers déployés
 - ✅ Migration Storage : `supabase/migrations/202502150000_property_photos_storage_policies.sql`
 - ✅ Wizard amélioré : `features/properties/components/v3/property-wizard-v3.tsx`
-- ✅ Pages wrapper : `app/app/owner/properties/new/page.tsx`
+- ✅ Pages wrapper : `app/owner/properties/new/page.tsx`
 - ✅ Scripts de test : `scripts/test-add-property-flow.sh`
 - ✅ Documentation : Tous les fichiers MD
 

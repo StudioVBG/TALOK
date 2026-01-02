@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap,
   Flame,
-  Droplets,
+  Droplet,
   Plus,
   Trash2,
   Edit2,
@@ -113,7 +113,7 @@ const METER_CONFIG: Record<string, {
   },
   water: {
     label: "Eau",
-    icon: Droplets,
+    icon: Droplet,
     color: "text-blue-600",
     bgColor: "bg-blue-100 dark:bg-blue-900/30",
     unit: "m³",

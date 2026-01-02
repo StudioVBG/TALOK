@@ -448,7 +448,7 @@ Application SaaS complète de gestion locative pour la France métropolitaine et
 #### Pages
 - `/tenant/onboarding/context` - Contexte colocation
 - `/tenant/onboarding/sign` - Signature
-- `/app/tenant` - Dashboard locataire
+- `/tenant` - Dashboard locataire
 
 #### Composants
 - `ColocBoard` - Tableau de bord colocation

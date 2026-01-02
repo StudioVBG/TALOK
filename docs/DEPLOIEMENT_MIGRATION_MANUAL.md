@@ -140,12 +140,12 @@ ORDER BY policyname;
 ### Test création bien
 
 1. Se connecter à l'application
-2. Aller sur `/app/owner/property/new`
+2. Aller sur `/owner/property/new`
 3. Créer un bien (mode FAST ou FULL)
 4. **Vérifier** :
    - ✅ Le bien est créé avec succès
    - ✅ `property_id` et `unit_id` sont retournés
-   - ✅ Le bien apparaît dans `/app/owner/properties` sans refresh
+   - ✅ Le bien apparaît dans `/owner/properties` sans refresh
    - ✅ Aucune erreur dans la console
 
 ---

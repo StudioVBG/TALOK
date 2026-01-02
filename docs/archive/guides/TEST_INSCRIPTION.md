@@ -84,7 +84,7 @@ Le problème de validation du profil lors de la création du compte a été corr
 #### Étape 10 : Invitations
 - [ ] Optionnel : Ajouter des emails à inviter
 - [ ] Cliquer sur "Envoyer les invitations" ou "Passer cette étape"
-- [ ] Vérifier la redirection vers `/app/owner`
+- [ ] Vérifier la redirection vers `/owner`
 - [ ] Vérifier l'affichage du dashboard propriétaire
 
 ---
@@ -130,7 +130,7 @@ Le problème de validation du profil lors de la création du compte a été corr
 #### Étape 9 : Signature du bail
 - [ ] Cliquer sur "Signer le bail"
 - [ ] Vérifier le message de confirmation
-- [ ] Vérifier la redirection vers `/app/tenant`
+- [ ] Vérifier la redirection vers `/tenant`
 - [ ] Vérifier l'affichage du dashboard locataire
 
 ---
@@ -174,7 +174,7 @@ Le problème de validation du profil lors de la création du compte a été corr
 - [ ] Vérifier le récapitulatif
 - [ ] Cliquer sur "Soumettre mon profil"
 - [ ] Vérifier le message "En attente de validation"
-- [ ] Vérifier la redirection vers `/app/provider`
+- [ ] Vérifier la redirection vers `/provider`
 - [ ] Vérifier le banner "Profil en attente de validation"
 
 ---
@@ -211,7 +211,7 @@ Le problème de validation du profil lors de la création du compte a été corr
 #### Étape 8 : Signature
 - [ ] Cliquer sur "Signer l'acte"
 - [ ] Vérifier le message de confirmation
-- [ ] Vérifier la redirection vers `/app/guarantor`
+- [ ] Vérifier la redirection vers `/guarantor`
 - [ ] Vérifier l'affichage du dashboard garant (lecture seule)
 
 ---

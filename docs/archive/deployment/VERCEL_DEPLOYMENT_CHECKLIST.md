@@ -43,7 +43,7 @@ Ce document liste toutes les vérifications nécessaires pour garantir que l'app
 - [ ] L'inscription fonctionne et crée bien un profil
 - [ ] Les emails de confirmation arrivent et redirigent vers Vercel (pas localhost)
 - [ ] La réinitialisation de mot de passe fonctionne
-- [ ] Les redirections selon le rôle fonctionnent (owner → /app/owner/dashboard, etc.)
+- [ ] Les redirections selon le rôle fonctionnent (owner → /owner/dashboard, etc.)
 
 ## 🔧 Commandes utiles
 

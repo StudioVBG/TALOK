@@ -20,7 +20,7 @@ function ProfilePageContent() {
   // Rediriger les owners vers leur page profil dédiée
   useEffect(() => {
     if (profile?.role === "owner") {
-      router.replace("/app/owner/profile");
+      router.replace("/owner/profile");
     }
   }, [profile, router]);
 

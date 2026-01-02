@@ -7,7 +7,7 @@
 1. **Pages vendor obsolètes** (3 fichiers)
    - ✅ `app/vendor/invoices/page.tsx` - Page non liée dans la navigation, pas de route API associée
    - ✅ `app/vendor/jobs/page.tsx` - Page non liée dans la navigation (utilise `/work-orders` à la place)
-   - ✅ `app/vendor/dashboard/page.tsx` - Page non liée dans la navigation (utilise `/app/provider` à la place)
+   - ✅ `app/vendor/dashboard/page.tsx` - Page non liée dans la navigation (utilise `/provider` à la place)
 
 2. **Route API de test temporaire** (1 fichier)
    - ✅ `app/api/properties/test/route.ts` - Endpoint de test temporaire non utilisé en production
@@ -33,7 +33,7 @@
 
 ## 📝 Notes
 
-- Les pages vendor étaient des versions obsolètes. La navigation utilise maintenant `/app/provider` pour les prestataires.
+- Les pages vendor étaient des versions obsolètes. La navigation utilise maintenant `/provider` pour les prestataires.
 - La route `/api/properties/test` était un endpoint de test temporaire mentionné dans plusieurs documents mais non utilisé en production.
 - Les fichiers markdown de documentation (123 fichiers) n'ont pas été supprimés automatiquement pour éviter de perdre des informations importantes. Un nettoyage manuel est recommandé.
 

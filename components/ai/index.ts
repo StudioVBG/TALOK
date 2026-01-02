@@ -1,8 +1,8 @@
-// AI Components - Export centralisé
-// SOTA Décembre 2025
+/**
+ * Composants AI - Index
+ * SOTA 2026 - Architecture AI-First
+ */
 
-export * from "./tom-assistant";
-export * from "./tom-onboarding";
-export * from "./tom-ticket-creator";
-export * from "./assistant-panel";
-
+export { AICommandPalette } from "./ai-command-palette";
+export { AIVoiceRecorder } from "./ai-voice-recorder";
+export { AICopilotButton } from "./ai-copilot-button";

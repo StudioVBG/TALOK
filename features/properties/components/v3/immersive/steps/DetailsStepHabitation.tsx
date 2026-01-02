@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
 import { 
   Euro, Ruler, Coins, ArrowUpDown, Sofa, HelpCircle, 
-  Flame, Droplets, Snowflake, Zap, Home, ThermometerSun,
+  Flame, Droplet, Snowflake, Zap, Home, ThermometerSun,
   Building2
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -251,7 +251,7 @@ export function DetailsStepHabitation() {
             <div className="bg-card p-4 rounded-xl border">
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-8 w-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
-                  <Droplets className="h-4 w-4" />
+                  <Droplet className="h-4 w-4" />
                 </div>
                 <Label className="text-sm font-medium">Eau chaude</Label>
                 <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Obligatoire</Badge>

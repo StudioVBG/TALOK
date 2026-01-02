@@ -84,7 +84,7 @@ app/
 lib/
 └── api.ts                                 # ✅ NOUVEAU - Client API centralisé
 
-app/app/owner/property/new/
+app/owner/property/new/
 ├── _store/
 │   └── useNewProperty.ts                  # ✅ MODIFIÉ - Ajout property_id/unit_id
 └── _steps/
@@ -106,7 +106,7 @@ supabase/migrations/
    - POST features (si présentes)
    - `UnitAPI.createCode()` → Génère code unique
    - `PropertyAPI.activate()` → Active la propriété
-   - Redirection vers `/app/owner/properties/${propertyId}`
+   - Redirection vers `/owner/properties/${propertyId}`
 
 ## Critères d'acceptation
 

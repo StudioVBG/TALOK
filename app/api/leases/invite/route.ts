@@ -486,9 +486,9 @@ export async function POST(request: Request) {
     }
 
     // ✅ Invalider les caches pour forcer le rechargement des pages
-    revalidatePath(`/app/owner/properties/${validated.property_id}`);
-    revalidatePath("/app/owner/properties");
-    revalidatePath("/app/owner/contracts");
+    revalidatePath(`/owner/properties/${validated.property_id}`);
+    revalidatePath("/owner/properties");
+    revalidatePath("/owner/contracts");
 
     return NextResponse.json({
       success: true,

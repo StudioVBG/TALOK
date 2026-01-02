@@ -4,8 +4,8 @@
 
 Le module Syndic/Copro permet de gérer les copropriétés avec deux interfaces distinctes :
 
-1. **Syndic** (`/app/syndic/`) - Interface de gestion pour les syndics professionnels
-2. **Copropriétaire** (`/app/copro/`) - Extranet pour les copropriétaires
+1. **Syndic** (`/syndic/`) - Interface de gestion pour les syndics professionnels
+2. **Copropriétaire** (`/copro/`) - Extranet pour les copropriétaires
 
 ---
 
@@ -22,8 +22,8 @@ Le module Syndic/Copro permet de gérer les copropriétés avec deux interfaces 
 ### Relation avec la gestion locative
 
 Les **copropriétaires bailleurs** ont accès aux deux interfaces :
-- Interface propriétaire standard (`/app/owner/`)
-- Interface copropriétaire (`/app/copro/`)
+- Interface propriétaire standard (`/owner/`)
+- Interface copropriétaire (`/copro/`)
 
 Cela permet de :
 - Gérer les locations dans les lots de copropriété
@@ -34,10 +34,10 @@ Cela permet de :
 
 ## Structure des pages
 
-### Module Syndic (`/app/syndic/`)
+### Module Syndic (`/syndic/`)
 
 ```
-/app/syndic/
+/syndic/
 ├── dashboard/          # Tableau de bord syndic
 ├── sites/              # Liste des copropriétés gérées
 │   ├── [id]/           # Détail d'une copropriété
@@ -61,10 +61,10 @@ Cela permet de :
     └── complete/       # Finalisation
 ```
 
-### Module Copropriétaire (`/app/copro/`)
+### Module Copropriétaire (`/copro/`)
 
 ```
-/app/copro/
+/copro/
 ├── dashboard/          # Tableau de bord copropriétaire
 ├── assemblies/         # Assemblées générales
 │   └── [id]/           # Détail AG + vote

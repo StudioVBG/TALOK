@@ -113,13 +113,13 @@ SELECT id FROM properties WHERE owner_id != public.user_profile_id();
 ### Test 1 : Création d'un bien
 
 1. Se connecter en tant que propriétaire
-2. Aller sur `/app/owner/property/new`
+2. Aller sur `/owner/property/new`
 3. Compléter le wizard (mode FAST ou FULL)
 4. Cliquer sur "Créer le bien"
 5. **Vérifier** :
    - ✅ Le bien est créé avec `property_id` et `unit_id`
    - ✅ Le code unique est généré rapidement (< 200ms)
-   - ✅ Le bien apparaît dans `/app/owner/properties` sans refresh
+   - ✅ Le bien apparaît dans `/owner/properties` sans refresh
    - ✅ Aucune erreur 404/500 dans la console
 
 ### Test 2 : Vérification RLS

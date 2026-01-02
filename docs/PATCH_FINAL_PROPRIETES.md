@@ -28,7 +28,7 @@
 
 ### 1. Colonne `loyer_base` → `loyer_hc` ✅
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 **Lignes** : 125 et 174
 
@@ -57,7 +57,7 @@
 
 ### 3. Cache Next.js ajusté ✅
 
-**Fichier** : `app/app/owner/layout.tsx`
+**Fichier** : `app/owner/layout.tsx`
 
 **Changement** :
 ```typescript
@@ -73,8 +73,8 @@ revalidate: 60, // Revalidation automatique toutes les 60 secondes (temporaire)
 ### 4. Logs de debug ajoutés ✅
 
 **Fichiers** :
-- `app/app/owner/layout.tsx` : Logs `[OwnerLayout] Données passées au OwnerDataProvider`
-- `app/app/owner/_data/OwnerDataProvider.tsx` : Logs `[OwnerDataProvider] Données reçues`
+- `app/owner/layout.tsx` : Logs `[OwnerLayout] Données passées au OwnerDataProvider`
+- `app/owner/_data/OwnerDataProvider.tsx` : Logs `[OwnerDataProvider] Données reçues`
 
 ---
 
@@ -89,7 +89,7 @@ npm run dev
 
 ### Action 2 : Vérifier les logs serveur
 
-**Chercher dans le terminal `npm run dev`** après rechargement de `/app/owner/properties` :
+**Chercher dans le terminal `npm run dev`** après rechargement de `/owner/properties` :
 
 ```
 [fetchProperties] Début - ownerId: 3b9280bc-061b-4880-a5e1-57d3f7ab06e5
@@ -175,7 +175,7 @@ npx tsx scripts/test-fetch-properties-server.ts
 - [ ] Cache Next.js vidé (`rm -rf .next`)
 - [ ] Serveur redémarré (`npm run dev`)
 - [ ] Logs serveur vérifiés
-- [ ] Propriétés apparaissent dans `/app/owner/properties`
+- [ ] Propriétés apparaissent dans `/owner/properties`
 
 ---
 
@@ -195,7 +195,7 @@ Après avoir vidé le cache et redémarré :
 [PropertiesPageClient] ✅ Après tous les filtres: 4 propriétés affichées
 ```
 
-**Interface** : Les 4 propriétés apparaissent dans `/app/owner/properties`
+**Interface** : Les 4 propriétés apparaissent dans `/owner/properties`
 
 ---
 

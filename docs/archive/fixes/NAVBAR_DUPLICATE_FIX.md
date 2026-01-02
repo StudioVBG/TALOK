@@ -10,25 +10,25 @@ Cela créait une duplication de la navigation avec deux barres de navigation vis
 
 ## ✅ Solution Appliquée
 
-**Modification du composant `Navbar`** : Ajout d'une condition pour masquer la navbar sur les routes `/app/owner/*`.
+**Modification du composant `Navbar`** : Ajout d'une condition pour masquer la navbar sur les routes `/owner/*`.
 
 ```typescript
 // Masquer la navbar pour les pages owner (elles ont leur propre layout avec sidebar)
-if (pathname?.startsWith("/app/owner")) {
+if (pathname?.startsWith("/owner")) {
   return null;
 }
 ```
 
 ## 📊 Résultat
 
-- ✅ Le `Navbar` ne s'affiche plus sur les routes `/app/owner/*`
+- ✅ Le `Navbar` ne s'affiche plus sur les routes `/owner/*`
 - ✅ Seule la sidebar de `OwnerAppLayout` est visible pour les pages owner
 - ✅ Les autres pages (tenant, provider, admin) conservent leur navbar
 - ✅ Build réussi sans erreurs
 
 ## 🎯 Comportement Final
 
-- **Pages Owner** (`/app/owner/*`) : Sidebar uniquement (via `OwnerAppLayout`)
+- **Pages Owner** (`/owner/*`) : Sidebar uniquement (via `OwnerAppLayout`)
 - **Autres pages** : Navbar horizontale (via `RootLayout`)
 
 ## ✅ Déploiement

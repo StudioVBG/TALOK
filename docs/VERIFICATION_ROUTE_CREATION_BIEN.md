@@ -156,7 +156,7 @@ PATCH /api/properties/[id]
 ### Fichiers existants
 - ✅ `app/api/properties/route.ts` (24 378 octets)
 - ✅ `lib/helpers/code-generator.ts` (fonction `generateCode`)
-- ✅ `app/app/owner/property/new/_steps/SummaryStep.tsx` (appels API)
+- ✅ `app/owner/property/new/_steps/SummaryStep.tsx` (appels API)
 
 ### Fonctions vérifiées
 - ✅ `POST /api/properties` (ligne 569)

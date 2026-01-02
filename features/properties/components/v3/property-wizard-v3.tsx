@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import dynamic from "next/dynamic";
-import { usePropertyWizardStore, WizardStep } from "@/features/properties/stores/wizard-store";
+import { usePropertyWizardStore, WizardStep, WizardMode } from "@/features/properties/stores/wizard-store";
 import { ImmersiveWizardLayout } from "./immersive/ImmersiveWizardLayout";
 import { StepSkeleton } from "./step-skeleton";
 import { Confetti } from "@/components/ui/confetti";
@@ -33,6 +33,14 @@ const PhotosStep = dynamic(() => import("./immersive/steps/PhotosStep").then((mo
   loading: () => <StepSkeleton />,
   ssr: false,
 });
+const FeaturesStep = dynamic(() => import("./immersive/steps/FeaturesStep").then((mod) => ({ default: mod.FeaturesStep })), {
+  loading: () => <StepSkeleton />,
+  ssr: false,
+});
+const PublishStep = dynamic(() => import("./immersive/steps/PublishStep").then((mod) => ({ default: mod.PublishStep })), {
+  loading: () => <StepSkeleton />,
+  ssr: false,
+});
 const RecapStep = dynamic(() => import("./immersive/steps/RecapStep").then((mod) => ({ default: mod.RecapStep })), {
   loading: () => <StepSkeleton />,
   ssr: false,
@@ -44,6 +52,8 @@ const stepComponents: Record<WizardStep, React.ElementType> = {
   details: DetailsStep,
   rooms: RoomsStep,
   photos: PhotosStep,
+  features: FeaturesStep,
+  publish: PublishStep,
   recap: RecapStep,
 };
 
@@ -70,6 +80,8 @@ function getStepTitle(step: WizardStep, propertyType: string): string {
         : "Quelques détails sur le logement",
     rooms: "Organisez les pièces",
     photos: "Ajoutez les photos de votre bien",
+    features: "Équipements & caractéristiques",
+    publish: "Disponibilité & visibilité",
     recap: "Récapitulatif et publication",
   };
   return titles[step];
@@ -86,26 +98,11 @@ function getStepDescription(step: WizardStep, propertyType: string): string {
         : "Ces informations nous aident à mieux présenter votre bien.",
     rooms: "Décrivez l'agencement intérieur de votre logement.",
     photos: "Mettez en valeur votre bien avec de belles images.",
+    features: "Quels sont les atouts et équipements de votre bien ?",
+    publish: "Définissez quand et comment votre annonce sera visible.",
     recap: "Vérifiez tout avant de publier votre annonce.",
   };
   return descriptions[step];
-}
-
-// Fonction pour obtenir le nombre total d'étapes selon le type de bien
-function getTotalSteps(propertyType: string): number {
-  if (TYPES_WITHOUT_ROOMS_STEP.includes(propertyType)) {
-    return 5; // Sans l'étape rooms
-  }
-  return 6;
-}
-
-// Fonction pour obtenir l'index actuel ajusté
-function getAdjustedStepIndex(currentStep: WizardStep, propertyType: string): number {
-  const stepsOrder: WizardStep[] = ['type_bien', 'address', 'details', 'rooms', 'photos', 'recap'];
-  const applicableSteps = TYPES_WITHOUT_ROOMS_STEP.includes(propertyType)
-    ? stepsOrder.filter(step => step !== 'rooms')
-    : stepsOrder;
-  return applicableSteps.indexOf(currentStep) + 1;
 }
 
 interface PropertyWizardV3Props {
@@ -117,7 +114,13 @@ interface PropertyWizardV3Props {
 
 export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel }: PropertyWizardV3Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+  
+  // Mapping interne des étapes pour calculs (doit correspondre à wizard-store.ts)
+  const STEPS_ORDER: WizardStep[] = ['type_bien', 'address', 'details', 'rooms', 'photos', 'features', 'publish', 'recap'];
+  const FAST_STEPS: WizardStep[] = ['type_bien', 'address', 'photos', 'recap'];
+
   const { 
     currentStep, 
     propertyId: storePropertyId, 
@@ -126,12 +129,31 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
     formData, 
     syncStatus, 
     setStep, 
+    mode,
+    setMode,
     reset,
     pendingPhotoUrls,
     photoImportStatus,
     importPendingPhotos,
-    initializeDraft, // 🆕 Pour créer le draft après import
+    initializeDraft,
   } = usePropertyWizardStore();
+
+  const getApplicableSteps = useCallback((type: string, currentMode: WizardMode) => {
+    let steps = currentMode === 'fast' ? FAST_STEPS : STEPS_ORDER;
+    if (type && TYPES_WITHOUT_ROOMS_STEP.includes(type)) {
+      return steps.filter(s => s !== 'rooms');
+    }
+    return steps;
+  }, []);
+
+  const totalSteps = useMemo(() => {
+    return getApplicableSteps(formData.type as string || "", mode).length;
+  }, [formData.type, mode, getApplicableSteps]);
+
+  const currentStepIndex = useMemo(() => {
+    const applicableSteps = getApplicableSteps(formData.type as string || "", mode);
+    return applicableSteps.indexOf(currentStep) + 1;
+  }, [currentStep, formData.type, mode, getApplicableSteps]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showImportStep, setShowImportStep] = useState(!propertyId); // Afficher import step seulement si création
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -405,14 +427,6 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
   // Type de bien actuel
   const propertyType = (formData.type as string) || "";
   
-  const currentStepIndex = useMemo(() => {
-    return getAdjustedStepIndex(currentStep, propertyType);
-  }, [currentStep, propertyType]);
-
-  const totalSteps = useMemo(() => {
-    return getTotalSteps(propertyType);
-  }, [propertyType]);
-
   // En mode édition (propertyId présent), masquer la sidebar des étapes
   const isEditMode = !!propertyId;
 

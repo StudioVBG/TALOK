@@ -45,7 +45,7 @@ async function testLogin() {
     console.log("👤 Profil:", JSON.stringify(profile, null, 2));
     console.log("\n═══════════════════════════════════════════");
     console.log("🔗 Après connexion, le locataire sera redirigé vers:");
-    console.log("   /app/tenant/dashboard");
+    console.log("   /tenant/dashboard");
     console.log("");
     console.log("🔗 URL de signature du bail:");
     console.log("   http://localhost:3000/signature/1fe555d5-033c-437d-bcc4-45f8edd4b771");

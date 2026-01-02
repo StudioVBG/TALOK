@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
           p_type: "reminder",
           p_title: "Quittance générée",
           p_message: `La quittance de ${montantTotal}€ pour ${lease.properties.adresse_complete} a été générée.`,
-          p_link: `/app/owner/money?invoice=${newInvoice.id}`,
+          p_link: `/owner/money?invoice=${newInvoice.id}`,
           p_related_id: newInvoice.id,
           p_related_type: "invoice",
         });

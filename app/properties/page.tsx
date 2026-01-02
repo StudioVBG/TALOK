@@ -12,11 +12,11 @@ import { useEffect } from "react";
  * Page générique des propriétés
  * 
  * Cette page sert de point d'entrée et redirige :
- * - Les propriétaires vers /app/owner/properties (page dédiée avec layout)
+ * - Les propriétaires vers /owner/properties (page dédiée avec layout)
  * - Les admins vers cette page (liste générique)
  * 
  * ⚠️ NE PAS UTILISER CETTE PAGE POUR LES PROPRIÉTAIRES
- * Utiliser /app/owner/properties à la place
+ * Utiliser /owner/properties à la place
  */
 function PropertiesPageContent() {
   const { profile, loading } = useAuth();
@@ -27,7 +27,7 @@ function PropertiesPageContent() {
     
     // Rediriger les propriétaires vers leur page dédiée
     if (profile?.role === "owner") {
-      router.replace("/app/owner/properties");
+      router.replace("/owner/properties");
       return;
     }
 

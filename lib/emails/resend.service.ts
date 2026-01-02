@@ -109,7 +109,7 @@ export async function sendInvoiceNotification(data: {
     period: data.period,
     amount: data.amount,
     dueDate: data.dueDate,
-    invoiceUrl: `${process.env.NEXT_PUBLIC_APP_URL}/app/tenant/payments?invoice=${data.invoiceId}`,
+    invoiceUrl: `${process.env.NEXT_PUBLIC_APP_URL}/tenant/payments?invoice=${data.invoiceId}`,
   });
 
   return sendEmail({
@@ -171,7 +171,7 @@ export async function sendPaymentReminder(data: {
     amount: data.amount,
     dueDate: data.dueDate,
     daysLate: data.daysLate,
-    invoiceUrl: `${process.env.NEXT_PUBLIC_APP_URL}/app/tenant/payments?invoice=${data.invoiceId}`,
+    invoiceUrl: `${process.env.NEXT_PUBLIC_APP_URL}/tenant/payments?invoice=${data.invoiceId}`,
   });
 
   return sendEmail({
@@ -300,7 +300,7 @@ export async function sendLeaseSignedNotification(data: {
     signerRole: data.signerRole,
     propertyAddress: data.propertyAddress,
     allSigned: data.allSigned,
-    leaseUrl: `${process.env.NEXT_PUBLIC_APP_URL}/app/owner/contracts/${data.leaseId}`,
+    leaseUrl: `${process.env.NEXT_PUBLIC_APP_URL}/owner/contracts/${data.leaseId}`,
   });
 
   return sendEmail({

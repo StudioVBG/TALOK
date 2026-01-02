@@ -1,139 +1,139 @@
 /**
  * Configuration des routes pour le compte propriétaire - SOTA 2025
- * Structure unifiée : toutes les routes utilisent /app/owner/*
+ * Structure unifiée : toutes les routes utilisent /owner/*
  */
 
-export const OWNER_BASE_PATH = "/app/owner";
+export const OWNER_BASE_PATH = "/owner";
 
 export const OWNER_ROUTES = {
   dashboard: {
-    path: "/app/owner/dashboard",
+    path: "/owner/dashboard",
     name: "Tableau de bord",
     component: "OwnerDashboardPage",
     auth: ["owner"],
     icon: "LayoutDashboard",
   },
   properties: {
-    path: "/app/owner/properties",
+    path: "/owner/properties",
     name: "Mes biens",
     component: "OwnerPropertiesPage",
     auth: ["owner"],
     icon: "Building2",
   },
   contracts: {
-    path: "/app/owner/contracts",
+    path: "/owner/contracts",
     name: "Baux & locataires",
     component: "OwnerContractsPage",
     auth: ["owner"],
     icon: "FileText",
   },
   tenants: {
-    path: "/app/owner/tenants",
+    path: "/owner/tenants",
     name: "Mes locataires",
     component: "OwnerTenantsPage",
     auth: ["owner"],
     icon: "Users",
   },
   leases: {
-    path: "/app/owner/contracts",
+    path: "/owner/contracts",
     name: "Baux",
     component: "OwnerContractsPage",
     auth: ["owner"],
     icon: "FileText",
   },
   money: {
-    path: "/app/owner/money",
+    path: "/owner/money",
     name: "Loyers & revenus",
     component: "OwnerMoneyPage",
     auth: ["owner"],
     icon: "Euro",
   },
   finances: {
-    path: "/app/owner/money",
+    path: "/owner/money",
     name: "Finances",
     component: "OwnerMoneyPage",
     auth: ["owner"],
     icon: "Euro",
   },
   tickets: {
-    path: "/app/owner/tickets",
+    path: "/owner/tickets",
     name: "Tickets",
     component: "OwnerTicketsPage",
     auth: ["owner"],
     icon: "Wrench",
   },
   workOrders: {
-    path: "/app/owner/work-orders",
+    path: "/owner/work-orders",
     name: "Interventions",
     component: "OwnerWorkOrdersPage",
     auth: ["owner"],
     icon: "HardHat",
   },
   providers: {
-    path: "/app/owner/providers",
+    path: "/owner/providers",
     name: "Prestataires",
     component: "OwnerProvidersPage",
     auth: ["owner"],
     icon: "UserCog",
   },
   documents: {
-    path: "/app/owner/documents",
+    path: "/owner/documents",
     name: "Documents",
     component: "OwnerDocumentsPage",
     auth: ["owner"],
     icon: "FileCheck",
   },
   inspections: {
-    path: "/app/owner/inspections",
+    path: "/owner/inspections",
     name: "États des lieux",
     component: "OwnerInspectionsPage",
     auth: ["owner"],
     icon: "ClipboardCheck",
   },
   endOfLease: {
-    path: "/app/owner/end-of-lease",
+    path: "/owner/end-of-lease",
     name: "Fin de bail",
     component: "EndOfLeasePage",
     auth: ["owner"],
     icon: "CalendarClock",
   },
   support: {
-    path: "/app/owner/support",
+    path: "/owner/support",
     name: "Aide & services",
     component: "OwnerSupportPage",
     auth: ["owner"],
     icon: "HelpCircle",
   },
   settings: {
-    path: "/app/owner/profile",
+    path: "/owner/profile",
     name: "Paramètres",
     component: "OwnerSettingsPage",
     auth: ["owner"],
     icon: "Settings",
   },
   profile: {
-    path: "/app/owner/profile",
+    path: "/owner/profile",
     name: "Mon profil",
     component: "OwnerProfilePage",
     auth: ["owner"],
     icon: "User",
   },
   messages: {
-    path: "/app/owner/messages",
+    path: "/owner/messages",
     name: "Messages",
     component: "OwnerMessagesPage",
     auth: ["owner"],
     icon: "MessageSquare",
   },
   taxes: {
-    path: "/app/owner/taxes",
+    path: "/owner/taxes",
     name: "Fiscalité",
     component: "OwnerTaxesPage",
     auth: ["owner"],
     icon: "Calculator",
   },
   analytics: {
-    path: "/app/owner/analytics",
+    path: "/owner/analytics",
     name: "Analytics",
     component: "OwnerAnalyticsPage",
     auth: ["owner"],
@@ -145,85 +145,85 @@ export type OwnerRouteKey = keyof typeof OWNER_ROUTES;
 
 /**
  * Configuration des routes pour le compte locataire - SOTA 2025
- * Structure unifiée : toutes les routes utilisent /app/tenant/*
+ * Structure unifiée : toutes les routes utilisent /tenant/*
  */
-export const TENANT_BASE_PATH = "/app/tenant";
+export const TENANT_BASE_PATH = "/tenant";
 
 export const TENANT_ROUTES = {
   dashboard: {
-    path: "/app/tenant/dashboard",
+    path: "/tenant/dashboard",
     name: "Tableau de bord",
     auth: ["tenant"],
     icon: "LayoutDashboard",
   },
   home: {
-    path: "/app/tenant/lease",
+    path: "/tenant/lease",
     name: "Mon logement",
     auth: ["tenant"],
     icon: "Home",
   },
   lease: {
-    path: "/app/tenant/lease",
+    path: "/tenant/lease",
     name: "Mon bail",
     auth: ["tenant"],
     icon: "FileText",
   },
   payments: {
-    path: "/app/tenant/payments",
+    path: "/tenant/payments",
     name: "Paiements",
     auth: ["tenant"],
     icon: "CreditCard",
   },
   documents: {
-    path: "/app/tenant/documents",
+    path: "/tenant/documents",
     name: "Documents",
     auth: ["tenant"],
     icon: "FileText",
   },
   tickets: {
-    path: "/app/tenant/requests",
+    path: "/tenant/requests",
     name: "Demandes",
     auth: ["tenant"],
     icon: "Wrench",
   },
   requests: {
-    path: "/app/tenant/requests",
+    path: "/tenant/requests",
     name: "Demandes",
     auth: ["tenant"],
     icon: "Wrench",
   },
   meters: {
-    path: "/app/tenant/meters",
+    path: "/tenant/meters",
     name: "Compteurs",
     auth: ["tenant"],
     icon: "Gauge",
   },
   signatures: {
-    path: "/app/tenant/signatures",
+    path: "/tenant/signatures",
     name: "Signatures",
     auth: ["tenant"],
     icon: "FileSignature",
   },
   messages: {
-    path: "/app/tenant/messages",
+    path: "/tenant/messages",
     name: "Messages",
     auth: ["tenant"],
     icon: "MessageSquare",
   },
   colocation: {
-    path: "/app/tenant/colocation",
+    path: "/tenant/colocation",
     name: "Colocation",
     auth: ["tenant"],
     icon: "Users",
   },
   help: {
-    path: "/app/tenant/help",
+    path: "/tenant/help",
     name: "Aide",
     auth: ["tenant"],
     icon: "HelpCircle",
   },
   settings: {
-    path: "/app/tenant/settings",
+    path: "/tenant/settings",
     name: "Paramètres",
     auth: ["tenant"],
     icon: "Settings",

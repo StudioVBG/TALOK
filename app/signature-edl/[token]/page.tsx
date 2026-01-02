@@ -90,7 +90,7 @@ export default async function EDLSignaturePage({ params }: { params: { token: st
   }
 
   if (data.alreadySigned) {
-    redirect(`/app/tenant/inspections/${data.edlId}`);
+    redirect(`/tenant/inspections/${data.edlId}`);
   }
 
   return (

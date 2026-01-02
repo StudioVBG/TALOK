@@ -73,13 +73,13 @@ L'application a **TROIS structures de routes parallèles** qui créent une confu
 
 | Fonctionnalité | Chemin 1 | Chemin 2 | Chemin 3 |
 |---------------|----------|----------|----------|
-| Dashboard Propriétaire | `/owner/dashboard` | `/app/owner/dashboard` | - |
-| Dashboard Locataire | `/tenant/dashboard` | `/app/tenant/dashboard` | - |
-| Properties | `/properties` | `/owner/properties` | `/app/owner/properties` |
-| Leases/Contracts | `/leases` | `/app/owner/contracts` | - |
-| Invoices | `/invoices` | `/owner/billing` | `/app/owner/money` |
-| Tickets | `/tickets` | `/app/tenant/requests` | - |
-| Documents | `/documents` | `/app/owner/documents` | - |
+| Dashboard Propriétaire | `/owner/dashboard` | `/owner/dashboard` | - |
+| Dashboard Locataire | `/tenant/dashboard` | `/tenant/dashboard` | - |
+| Properties | `/properties` | `/owner/properties` | `/owner/properties` |
+| Leases/Contracts | `/leases` | `/owner/contracts` | - |
+| Invoices | `/invoices` | `/owner/billing` | `/owner/money` |
+| Tickets | `/tickets` | `/tenant/requests` | - |
+| Documents | `/documents` | `/owner/documents` | - |
 | Charges | `/charges` | `/owner/charges` | - |
 
 ### 1.3 Conséquences des Doublons
@@ -95,7 +95,7 @@ L'application a **TROIS structures de routes parallèles** qui créent une confu
 
 ### 2.1 Exemples de Liens Problématiques
 
-Dans `/app/owner/dashboard/DashboardClient.tsx` :
+Dans `/owner/dashboard/DashboardClient.tsx` :
 
 ```typescript
 // ❌ MAUVAIS - Lien vers ancienne structure
@@ -103,8 +103,8 @@ href="/owner/billing"   // Ne devrait pas exister
 href="/tickets/new"     // Version générique au lieu de contextuelle
 
 // ✅ Ce qui devrait être utilisé
-href="/app/owner/money"
-href="/app/owner/tickets/new"
+href="/owner/money"
+href="/owner/tickets/new"
 ```
 
 ### 2.2 Incohérence des Noms de Routes
@@ -173,7 +173,7 @@ className="bg-gray-200"             // Incohérent avec slate
 
 ## 🔴 SECTION 4 : Complexité Excessive des Dashboards
 
-### 4.1 Dashboard Owner v2 (`/app/app/owner/dashboard/DashboardClient.tsx`)
+### 4.1 Dashboard Owner v2 (`/app/owner/dashboard/DashboardClient.tsx`)
 
 **390 lignes** avec :
 - 5 composants lazy-loaded
@@ -186,7 +186,7 @@ className="bg-gray-200"             // Incohérent avec slate
 2. Temps de chargement important
 3. Accessibilité compromise par les animations
 
-### 4.2 Dashboard Tenant v1 (`/app/tenant/dashboard/TenantDashboardClient.tsx`)
+### 4.2 Dashboard Tenant v1 (`/tenant/dashboard/TenantDashboardClient.tsx`)
 
 **874 lignes** dans un seul fichier ! 
 
@@ -439,16 +439,16 @@ export function OwnerDashboard({ data }) {
 const redirects = {
   '/owner/dashboard': '/owner',
   '/owner/billing': '/owner/finances',
-  '/app/owner/money': '/owner/finances',
+  '/owner/money': '/owner/finances',
   '/tenant/dashboard': '/tenant',
-  '/app/tenant/payments': '/tenant/payments',
+  '/tenant/payments': '/tenant/payments',
   // ...
 }
 ```
 
 2. **Supprimer le code mort** :
-   - `/app/owner/` (ancienne version)
-   - `/app/tenant/` (ancienne version)  
+   - `/owner/` (ancienne version)
+   - `/tenant/` (ancienne version)  
    - `/app/app/` (répertoire inutile)
    - Pages génériques dupliquées
 

@@ -304,14 +304,14 @@ const { data } = await supabase.rpc("owner_dashboard", { owner_id });
 
 **Chaque page fetch ses données:**
 ```typescript
-// app/app/owner/dashboard/page.tsx
+// app/owner/dashboard/page.tsx
 export default function Page() {
   useEffect(() => {
     fetchDashboard(); // ❌ Fetch à chaque visite
   }, []);
 }
 
-// app/app/owner/properties/page.tsx
+// app/owner/properties/page.tsx
 export default function Page() {
   useEffect(() => {
     fetchProperties(); // ❌ Refetch même si déjà chargé
@@ -321,7 +321,7 @@ export default function Page() {
 
 **Devrait être:**
 ```typescript
-// app/app/owner/layout.tsx
+// app/owner/layout.tsx
 export default async function Layout({ children }) {
   const [properties, dashboard] = await Promise.all([
     fetchProperties(),
@@ -335,7 +335,7 @@ export default async function Layout({ children }) {
   );
 }
 
-// app/app/owner/dashboard/page.tsx
+// app/owner/dashboard/page.tsx
 export default function Page() {
   const { dashboard } = useOwnerData(); // ✅ Données déjà chargées
   return <DashboardUI data={dashboard} />;
@@ -358,7 +358,7 @@ export default function Page() {
 - `lib/hooks/use-properties.ts`
 - `features/properties/services/properties.service.ts`
 - `app/api/properties/route.ts`
-- `app/app/owner/properties/page.tsx`
+- `app/owner/properties/page.tsx`
 - `app/properties/page.tsx`
 - Etc.
 
@@ -396,7 +396,7 @@ if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 **Devrait être:**
 ```typescript
-// app/app/owner/layout.tsx
+// app/owner/layout.tsx
 const OwnerDataContext = createContext();
 
 export function OwnerDataProvider({ children, data }) {
@@ -474,8 +474,8 @@ export function useOwnerData() {
 
 ### Phase 1 : Structure `/_data` (Priorité 1)
 
-1. Créer `/app/app/owner/_data/`
-2. Créer `/app/app/tenant/_data/`
+1. Créer `/app/owner/_data/`
+2. Créer `/app/tenant/_data/`
 3. Créer `/app/admin/_data/`
 4. Migrer tous les fetchs vers `/_data`
 

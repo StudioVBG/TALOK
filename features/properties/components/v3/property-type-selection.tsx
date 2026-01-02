@@ -435,7 +435,7 @@ export function PropertyTypeSelection({
   // Prefetch next step when type is selected
   useEffect(() => {
     if (selectedType) {
-      router.prefetch("/app/owner/property/new?step=address");
+      router.prefetch("/owner/property/new?step=address");
     }
   }, [selectedType, router]);
 

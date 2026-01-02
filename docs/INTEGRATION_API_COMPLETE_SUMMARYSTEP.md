@@ -131,7 +131,7 @@ PATCH /api/properties/[id]
    ↓
 7. Activation (si pas publié)
    ↓
-8. Redirection vers /app/owner/properties/[id]
+8. Redirection vers /owner/properties/[id]
 ```
 
 ---

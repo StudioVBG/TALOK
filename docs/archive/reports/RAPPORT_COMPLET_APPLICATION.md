@@ -164,7 +164,7 @@
 
 ## 🏠 Pages Propriétaire (Owner)
 
-### `/app/owner` - Dashboard propriétaire ✅
+### `/owner` - Dashboard propriétaire ✅
 **Statut** : ✅ V2.5 implémenté avec données réelles  
 **Fonctionnalités** :
 - **Header** : Scope selector, view mode, period selector, search, quick actions
@@ -267,7 +267,7 @@
 
 ## 🏢 Pages Locataire (Tenant)
 
-### `/app/tenant` - Dashboard locataire ✅
+### `/tenant` - Dashboard locataire ✅
 **Statut** : ✅ Fonctionnel  
 **Fonctionnalités** :
 - Vue d'ensemble des baux
@@ -375,7 +375,7 @@
 
 ## 🔧 Pages Prestataire (Provider)
 
-### `/app/provider` - Dashboard prestataire ✅
+### `/provider` - Dashboard prestataire ✅
 **Statut** : ✅ Fonctionnel  
 **Fonctionnalités** :
 - Vue d'ensemble des interventions
@@ -663,7 +663,7 @@
 
 ### Navigation principale (Navbar)
 - ✅ Logo → `/` ou `/dashboard`
-- ✅ "Tableau de bord" → `/app/owner`, `/app/tenant`, `/app/provider`
+- ✅ "Tableau de bord" → `/owner`, `/tenant`, `/provider`
 - ✅ "Mes logements" → `/properties` (owners)
 - ✅ "Mes baux" → `/leases` (tous)
 - ✅ "Factures" → `/invoices` (owners/tenants)
@@ -833,17 +833,17 @@
 
 ### Flux propriétaire
 ```
-/app/owner → /properties → /properties/new → /properties/[id] → /leases/new → /leases/[id]
+/owner → /properties → /properties/new → /properties/[id] → /leases/new → /leases/[id]
 ```
 
 ### Flux locataire
 ```
-/app/tenant → /leases → /leases/[id] → /invoices → /tickets → /tickets/new
+/tenant → /leases → /leases/[id] → /invoices → /tickets → /tickets/new
 ```
 
 ### Flux prestataire
 ```
-/app/provider → /work-orders → /work-orders/[id]
+/provider → /work-orders → /work-orders/[id]
 ```
 
 ### Flux admin

@@ -25,7 +25,7 @@ import {
   Eye,
   Zap,
   Flame,
-  Droplets,
+  Droplet,
   RefreshCw,
   ChevronRight,
   ImagePlus,
@@ -91,7 +91,7 @@ interface OCRResult {
 const METER_ICONS: Record<MeterType, typeof Zap> = {
   electricity: Zap,
   gas: Flame,
-  water: Droplets,
+  water: Droplet,
 };
 
 const METER_COLORS: Record<MeterType, string> = {

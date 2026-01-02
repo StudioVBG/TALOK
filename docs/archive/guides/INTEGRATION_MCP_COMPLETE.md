@@ -89,7 +89,7 @@
 - ✅ Utilisation des états `isPending` de React Query
 - ✅ Suppression des états locaux `deleting` et `submitting`
 
-#### `app/app/owner/page.tsx`
+#### `app/owner/page.tsx`
 - ✅ Intégration de `useProperties()`, `useLeases()`, `useInvoices()`
 - ✅ Calcul des KPIs depuis les données réelles
 - ✅ Charts alimentés par les factures réelles
@@ -318,7 +318,7 @@ await updateProperty.mutateAsync({
 - ✅ `app/layout.tsx` - Ajout `QueryProvider`
 - ✅ `features/properties/components/properties-list.tsx` - Utilise hooks
 - ✅ `features/properties/components/property-card.tsx` - Utilise hooks
-- ✅ `app/app/owner/page.tsx` - Intégration hooks + données réelles
+- ✅ `app/owner/page.tsx` - Intégration hooks + données réelles
 
 ### Packages installés
 - ✅ `@tanstack/react-query` - React Query pour state management

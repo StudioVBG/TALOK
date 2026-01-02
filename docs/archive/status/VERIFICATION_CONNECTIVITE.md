@@ -30,9 +30,9 @@ Vérifier que tous les éléments de l'application sont connectés à 100% :
 - ✅ `DELETE /api/properties/[id]` - Supprimer une propriété
 
 #### Pages
-- ✅ `/app/owner/properties` → `useProperties()` → API ✅
-- ✅ `/app/owner/properties/[id]` → `useProperty()` → API ✅
-- ✅ `/app/owner/properties/new` → `useCreateProperty()` → API ✅
+- ✅ `/owner/properties` → `useProperties()` → API ✅
+- ✅ `/owner/properties/[id]` → `useProperty()` → API ✅
+- ✅ `/owner/properties/new` → `useCreateProperty()` → API ✅
 
 #### Composants
 - ✅ `PropertyCard` → Utilise les données de `useProperties()` ✅
@@ -63,8 +63,8 @@ Vérifier que tous les éléments de l'application sont connectés à 100% :
 - ✅ `GET /api/leases/[id]/signers` - Liste des signataires
 
 #### Pages
-- ✅ `/app/owner/contracts` → `useLeases()` → API ✅
-- ✅ `/app/owner/contracts/[id]` → `useLease()` → API ✅
+- ✅ `/owner/contracts` → `useLeases()` → API ✅
+- ✅ `/owner/contracts/[id]` → `useLease()` → API ✅
 
 **Status : ✅ 100% CONNECTÉ**
 
@@ -90,7 +90,7 @@ Vérifier que tous les éléments de l'application sont connectés à 100% :
 - ✅ `POST /api/invoices/generate-monthly` - Générer facture mensuelle
 
 #### Pages
-- ✅ `/app/owner/money` → `useInvoices()` → API ✅
+- ✅ `/owner/money` → `useInvoices()` → API ✅
 
 **Status : ✅ 100% CONNECTÉ**
 
@@ -116,7 +116,7 @@ Vérifier que tous les éléments de l'application sont connectés à 100% :
 - ✅ `PATCH /api/tickets/[id]/status` - Changer le statut
 
 #### Pages
-- ✅ `/app/owner/support` → `useTickets()` → API ✅
+- ✅ `/owner/support` → `useTickets()` → API ✅
 
 **Status : ✅ 100% CONNECTÉ**
 
@@ -137,7 +137,7 @@ Vérifier que tous les éléments de l'application sont connectés à 100% :
 - ✅ `OwnerRiskSection` → Exporté correctement ✅
 
 #### Pages
-- ✅ `/app/owner/dashboard` → `useDashboard()` → API ✅
+- ✅ `/owner/dashboard` → `useDashboard()` → API ✅
 - ✅ Composants chargés dynamiquement avec lazy loading ✅
 
 **Status : ✅ 100% CONNECTÉ**
@@ -153,7 +153,7 @@ Vérifier que tous les éléments de l'application sont connectés à 100% :
 - ✅ `DELETE /api/documents/[id]` - Supprimer un document
 
 #### Pages
-- ✅ `/app/owner/documents` → Utilise les routes API ✅
+- ✅ `/owner/documents` → Utilise les routes API ✅
 
 **Status : ✅ 100% CONNECTÉ**
 
@@ -164,7 +164,7 @@ Vérifier que tous les éléments de l'application sont connectés à 100% :
 ### Exemple : Suppression d'une propriété
 
 ```
-Page: app/app/owner/properties/[id]/page.tsx
+Page: app/owner/properties/[id]/page.tsx
   ↓
 Hook: useMutationWithToast()
   ↓

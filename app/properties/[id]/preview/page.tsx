@@ -84,7 +84,7 @@ function PreviewContent() {
           description: error?.message ?? "Vérifiez que le logement existe toujours.",
           variant: "destructive",
         });
-        router.push("/app/owner/properties");
+        router.push("/owner/properties");
       } finally {
         setLoading(false);
       }
@@ -233,7 +233,7 @@ function PreviewContent() {
             <Button
               variant="outline"
               className="border-white/20 text-white hover:bg-white/10"
-              onClick={() => router.push("/app/owner/properties")}
+              onClick={() => router.push("/owner/properties")}
             >
               <ArrowLeftCircle className="mr-2 h-4 w-4" />
               Retour à la liste

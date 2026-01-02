@@ -69,7 +69,7 @@ npm run diagnose:properties
    ```
 
 2. **Ouvrir la page problématique :**
-   - Naviguez vers `/app/owner/properties`
+   - Naviguez vers `/owner/properties`
    - Ou utilisez la console navigateur pour déclencher la requête
 
 3. **Vérifier les logs dans le terminal :**

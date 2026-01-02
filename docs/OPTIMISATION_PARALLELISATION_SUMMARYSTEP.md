@@ -207,7 +207,7 @@ await apiClient.patch(`/properties/${propertyId}`, finalPayload);
 ## 📝 FICHIERS MODIFIÉS
 
 ### Modifiés
-1. ✅ `app/app/owner/property/new/_steps/SummaryStep.tsx`
+1. ✅ `app/owner/property/new/_steps/SummaryStep.tsx`
    - Parallélisation des rooms
    - Parallélisation des URLs signées
    - Uploads en batches parallèles

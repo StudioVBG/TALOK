@@ -80,9 +80,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const result = data[0];
       
       // Déterminer la redirection
-      let redirect_url = '/app/copro/dashboard';
+      let redirect_url = '/copro/dashboard';
       if (result.role_assigned === 'syndic') {
-        redirect_url = '/app/syndic/dashboard';
+        redirect_url = '/syndic/dashboard';
       }
       
       return NextResponse.json({

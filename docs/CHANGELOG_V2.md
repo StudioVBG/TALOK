@@ -29,7 +29,7 @@ Ce document récapitule toutes les nouvelles fonctionnalités implémentées pou
    - Historique des acceptations
 
 ### Routes
-- `/app/tenant/colocation` - Dashboard colocation complet avec onglets
+- `/tenant/colocation` - Dashboard colocation complet avec onglets
 
 ---
 
@@ -56,8 +56,8 @@ Ce document récapitule toutes les nouvelles fonctionnalités implémentées pou
    - RLS pour sécurité
 
 ### Routes
-- `/app/tenant/messages` - Messagerie locataire
-- `/app/owner/messages` - Messagerie propriétaire (à ajouter au layout)
+- `/tenant/messages` - Messagerie locataire
+- `/owner/messages` - Messagerie propriétaire (à ajouter au layout)
 
 ---
 
@@ -65,7 +65,7 @@ Ce document récapitule toutes les nouvelles fonctionnalités implémentées pou
 
 ### Fonctionnalités
 
-1. **Gestion des factures** (`app/app/provider/invoices/page.tsx`)
+1. **Gestion des factures** (`app/provider/invoices/page.tsx`)
    - Création de factures avec lignes multiples
    - Calcul automatique TVA (20%)
    - Liaison aux interventions (work_orders)
@@ -79,7 +79,7 @@ Ce document récapitule toutes les nouvelles fonctionnalités implémentées pou
    - Calcul automatique des totaux
 
 ### Routes
-- `/app/provider/invoices` - Liste et création des factures
+- `/provider/invoices` - Liste et création des factures
 
 ---
 
@@ -87,7 +87,7 @@ Ce document récapitule toutes les nouvelles fonctionnalités implémentées pou
 
 ### Fonctionnalités
 
-1. **Calendrier visuel** (`app/app/provider/calendar/page.tsx`)
+1. **Calendrier visuel** (`app/provider/calendar/page.tsx`)
    - Vue mensuelle avec interventions
    - Vue liste avec filtres
    - Interventions à planifier (alerte)
@@ -95,7 +95,7 @@ Ce document récapitule toutes les nouvelles fonctionnalités implémentées pou
    - Changement de statut
 
 ### Routes
-- `/app/provider/calendar` - Calendrier des interventions
+- `/provider/calendar` - Calendrier des interventions
 
 ---
 
@@ -125,7 +125,7 @@ Ce document récapitule toutes les nouvelles fonctionnalités implémentées pou
 
 ### Fonctionnalités
 
-1. **Simulateur fiscal** (`app/app/owner/taxes/page.tsx`)
+1. **Simulateur fiscal** (`app/owner/taxes/page.tsx`)
    - Comparaison micro-foncier vs régime réel
    - Calcul automatique des revenus depuis les factures
    - Saisie des charges déductibles
@@ -133,7 +133,7 @@ Ce document récapitule toutes les nouvelles fonctionnalités implémentées pou
    - Export PDF (à implémenter)
 
 ### Routes
-- `/app/owner/taxes` - Déclaration fiscale
+- `/owner/taxes` - Déclaration fiscale
 
 ---
 
@@ -168,16 +168,16 @@ Ce document récapitule toutes les nouvelles fonctionnalités implémentées pou
 
 ### Fonctionnalités améliorées
 
-1. **Assemblées Générales** (`app/app/syndic/assemblies/page.tsx`)
+1. **Assemblées Générales** (`app/syndic/assemblies/page.tsx`)
    - Création d'AG ordinaires et extraordinaires
    - Ordre du jour avec types de votes
    - Convocation des copropriétaires
    - Suivi des statuts
 
 ### Routes existantes
-- `/app/syndic/dashboard` - Tableau de bord
-- `/app/syndic/sites` - Gestion des copropriétés
-- `/app/syndic/assemblies` - Assemblées Générales
+- `/syndic/dashboard` - Tableau de bord
+- `/syndic/sites` - Gestion des copropriétés
+- `/syndic/assemblies` - Assemblées Générales
 
 ---
 
@@ -295,15 +295,15 @@ CRON_SECRET=your-secure-cron-secret
 
 ### Nouvelles pages ajoutées
 
-1. **Messagerie Propriétaire** (`app/app/owner/messages/page.tsx`)
+1. **Messagerie Propriétaire** (`app/owner/messages/page.tsx`)
    - Interface identique à celle du locataire
    - Conversations avec tous les locataires
 
-2. **Page Avis Prestataire** (`app/app/provider/reviews/page.tsx`)
+2. **Page Avis Prestataire** (`app/provider/reviews/page.tsx`)
    - Affichage des avis reçus
    - Possibilité de répondre aux avis
 
-3. **Paramètres Notifications** (`app/app/settings/notifications/page.tsx`)
+3. **Paramètres Notifications** (`app/settings/notifications/page.tsx`)
    - Préférences par type de notification
    - Choix email/push
    - Heures calmes

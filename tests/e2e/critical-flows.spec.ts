@@ -34,7 +34,7 @@ test.describe("Flux Propriétaire - Création de bien", () => {
 
   test("peut créer un appartement via le wizard", async ({ page }) => {
     // Aller à la page de création
-    await page.goto("/app/owner/properties/new");
+    await page.goto("/owner/properties/new");
     await page.waitForLoadState("networkidle");
 
     // Étape 1: Sélectionner le type de bien
@@ -67,7 +67,7 @@ test.describe("Flux Propriétaire - Création de bien", () => {
   });
 
   test("peut voir la liste des biens", async ({ page }) => {
-    await page.goto("/app/owner/properties");
+    await page.goto("/owner/properties");
     await page.waitForLoadState("networkidle");
 
     // La page devrait charger sans erreur
@@ -88,7 +88,7 @@ test.describe("Dashboard Propriétaire", () => {
   });
 
   test("affiche le dashboard avec les KPIs", async ({ page }) => {
-    await page.goto("/app/owner/dashboard");
+    await page.goto("/owner/dashboard");
     await page.waitForLoadState("networkidle");
 
     // Vérifier les éléments clés
@@ -102,7 +102,7 @@ test.describe("Dashboard Propriétaire", () => {
   });
 
   test("la complétion du profil se met à jour", async ({ page }) => {
-    await page.goto("/app/owner/dashboard");
+    await page.goto("/owner/dashboard");
     await page.waitForLoadState("networkidle");
 
     // Noter le pourcentage actuel
@@ -110,7 +110,7 @@ test.describe("Dashboard Propriétaire", () => {
     const initialPercentage = parseInt(completionText?.match(/\\d+/)?.[0] || "0");
 
     // Aller compléter le profil
-    await page.goto("/app/owner/profile");
+    await page.goto("/owner/profile");
     await page.waitForLoadState("networkidle");
 
     // Remplir un champ manquant si possible
@@ -125,7 +125,7 @@ test.describe("Dashboard Propriétaire", () => {
     }
 
     // Retourner au dashboard
-    await page.goto("/app/owner/dashboard");
+    await page.goto("/owner/dashboard");
     await page.waitForLoadState("networkidle");
 
     // Le pourcentage devrait être identique ou plus élevé
@@ -141,7 +141,7 @@ test.describe("Dashboard Propriétaire", () => {
 // ============================================
 test.describe("Authentification", () => {
   test("redirige vers login si non authentifié", async ({ page }) => {
-    await page.goto("/app/owner/dashboard");
+    await page.goto("/owner/dashboard");
     
     // Devrait rediriger vers signin
     await expect(page).toHaveURL(/auth\/signin/, { timeout: 10000 });
@@ -183,7 +183,7 @@ test.describe("Navigation", () => {
   });
 
   test("sidebar navigation fonctionne", async ({ page }) => {
-    await page.goto("/app/owner/dashboard");
+    await page.goto("/owner/dashboard");
     await page.waitForLoadState("networkidle");
 
     // Cliquer sur "Mes biens"
@@ -200,7 +200,7 @@ test.describe("Navigation", () => {
   });
 
   test("pages 404 sont gérées", async ({ page }) => {
-    await page.goto("/app/owner/route-inexistante-12345");
+    await page.goto("/owner/route-inexistante-12345");
     
     // Devrait afficher une page 404 ou rediriger
     const is404 = await page.locator('text="404", text="introuvable", text="not found"').isVisible();
@@ -224,7 +224,7 @@ test.describe("Gestion des erreurs", () => {
       errors.push(error.message);
     });
 
-    await page.goto("/app/owner/dashboard");
+    await page.goto("/owner/dashboard");
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(2000); // Attendre les effets asynchrones
 
@@ -246,7 +246,7 @@ test.describe("Gestion des erreurs", () => {
       }
     });
 
-    await page.goto("/app/owner/properties/new");
+    await page.goto("/owner/properties/new");
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(3000);
 

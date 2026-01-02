@@ -81,8 +81,8 @@ console.log('Résultat:', data, error);
 
 Selon votre rôle, vous serez redirigé vers :
 - **Admin** → `/admin/dashboard`
-- **Owner** → `/app/owner/dashboard`
-- **Tenant** → `/app/tenant`
+- **Owner** → `/owner/dashboard`
+- **Tenant** → `/tenant`
 - **Autres** → `/dashboard`
 
 Si vous êtes redirigé vers `/dashboard`, cela signifie que votre profil n'a pas de rôle défini ou n'existe pas.

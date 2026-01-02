@@ -59,7 +59,7 @@ npm run dev
 
 ### Solution 2 : Modifier le cache pour avoir un revalidate par défaut
 
-**Fichier** : `app/app/owner/layout.tsx`
+**Fichier** : `app/owner/layout.tsx`
 
 **Changement** :
 ```typescript
@@ -72,7 +72,7 @@ revalidate: 60, // Revalidation automatique toutes les 60 secondes
 
 ### Solution 3 : Désactiver le cache temporairement pour debug
 
-**Fichier** : `app/app/owner/layout.tsx`
+**Fichier** : `app/owner/layout.tsx`
 
 **Changement** :
 ```typescript
@@ -106,7 +106,7 @@ const getCachedProperties = async (ownerId: string) => {
    npm run dev
    ```
 
-2. **Recharger** `/app/owner/properties`
+2. **Recharger** `/owner/properties`
 
 3. **Vérifier les logs serveur** :
    ```
@@ -162,7 +162,7 @@ Après avoir vidé le cache et redémarré :
    [PropertiesPageClient] ✅ Après tous les filtres: 4 propriétés affichées
    ```
 
-3. **Interface** : Les 4 propriétés apparaissent dans `/app/owner/properties`
+3. **Interface** : Les 4 propriétés apparaissent dans `/owner/properties`
 
 ---
 

@@ -27,17 +27,17 @@ WHERE p.role = 'owner'
 GROUP BY p.id, p.user_id;
 ```
 
-2. **Créer un bien** via `/app/owner/properties/new`
+2. **Créer un bien** via `/owner/properties/new`
 
-3. **Vérifier** que `/app/owner/properties` l'affiche
+3. **Vérifier** que `/owner/properties` l'affiche
 
 ---
 
 ## 📁 Fichiers Modifiés
 
 - `app/api/properties/route.ts`
-- `app/app/owner/_data/fetchProperties.ts`
-- `app/app/owner/properties/page.tsx`
+- `app/owner/_data/fetchProperties.ts`
+- `app/owner/properties/page.tsx`
 - `lib/hooks/use-properties.ts`
 
 ---

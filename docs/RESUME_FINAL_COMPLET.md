@@ -93,8 +93,8 @@
 2. `app/api/properties/[id]/route.ts` - PATCH avec revalidateTag
 
 **Wizard** :
-3. `app/app/owner/property/new/_store/useNewProperty.ts` - Ajout property_id/unit_id
-4. `app/app/owner/property/new/_steps/SummaryStep.tsx` - Utilise PropertyAPI/UnitAPI
+3. `app/owner/property/new/_store/useNewProperty.ts` - Ajout property_id/unit_id
+4. `app/owner/property/new/_steps/SummaryStep.tsx` - Utilise PropertyAPI/UnitAPI
 
 ---
 
@@ -148,7 +148,7 @@
 
 ### Test 1 : Création bien (Mode FAST)
 
-1. Aller sur `/app/owner/property/new`
+1. Aller sur `/owner/property/new`
 2. Sélectionner un type (ex: Appartement)
 3. Entrer une adresse
 4. Ajouter des photos (optionnel)
@@ -156,12 +156,12 @@
 6. **Vérifier** :
    - ✅ Temps création < 5s
    - ✅ `property_id` et `unit_id` retournés
-   - ✅ Bien apparaît dans `/app/owner/properties` sans refresh
+   - ✅ Bien apparaît dans `/owner/properties` sans refresh
    - ✅ Code unique généré (< 200ms)
 
 ### Test 2 : Création bien (Mode FULL)
 
-1. Aller sur `/app/owner/property/new`
+1. Aller sur `/owner/property/new`
 2. Compléter toutes les étapes (8 steps)
 3. Cliquer sur "Créer le bien"
 4. **Vérifier** :

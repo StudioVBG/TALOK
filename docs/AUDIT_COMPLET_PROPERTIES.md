@@ -152,9 +152,9 @@ console.log("[useProperties] Response received:", {
 
 ---
 
-### Page `/app/owner/properties`
+### Page `/owner/properties`
 
-**Fichier :** `app/app/owner/properties/page.tsx` (ligne 51)
+**Fichier :** `app/owner/properties/page.tsx` (ligne 51)
 
 **Flux :**
 1. Utilise `useProperties()` pour récupérer les données
@@ -270,7 +270,7 @@ WHERE p.owner_id = pr.user_id
 
 **Test :**
 1. Se connecter en tant que propriétaire A
-2. Aller sur `/app/owner/properties`
+2. Aller sur `/owner/properties`
 3. `GET /api/properties` doit retourner les biens de A
 
 **Vérification :**
@@ -301,7 +301,7 @@ WHERE p.owner_id = pr.user_id
 
 **Test :**
 1. Se connecter en tant que propriétaire B
-2. Aller sur `/app/owner/properties`
+2. Aller sur `/owner/properties`
 3. `GET /api/properties` ne doit PAS retourner les biens de A
 
 **Vérification :**
@@ -319,7 +319,7 @@ WHERE p.owner_id = pr.user_id
 1. ✅ `app/api/properties/route.ts` - Utilise `profile.id` partout
 2. ✅ `app/api/properties/[id]/route.ts` - Vérifie `owner_id === profile.id`
 3. ✅ `lib/hooks/use-properties.ts` - Parse correctement la réponse
-4. ✅ `app/app/owner/properties/page.tsx` - Gère correctement les états
+4. ✅ `app/owner/properties/page.tsx` - Gère correctement les états
 5. ✅ `supabase/migrations/202502180000_rls_properties_units.sql` - Policies correctes
 
 ### Fichiers à Créer
@@ -333,7 +333,7 @@ WHERE p.owner_id = pr.user_id
 1. **Exécuter la migration SQL** pour corriger les données existantes
 2. **Créer un nouveau bien** et vérifier les logs serveur
 3. **Vérifier dans Supabase** que le bien existe avec le bon `owner_id`
-4. **Recharger `/app/owner/properties`** et vérifier que les biens s'affichent
+4. **Recharger `/owner/properties`** et vérifier que les biens s'affichent
 
 ---
 

@@ -9,8 +9,8 @@
 
 | Tâche | Statut | Fichiers |
 |-------|--------|----------|
-| Routes Owner corrigées | ✅ | `/app/owner/` (6 pages) |
-| Routes Tenant créées | ✅ | `/app/tenant/` (3 pages) |
+| Routes Owner corrigées | ✅ | `/owner/` (6 pages) |
+| Routes Tenant créées | ✅ | `/tenant/` (3 pages) |
 | Routes Vendor créées | ✅ | `/app/vendor/` (3 pages) |
 | Page 404 | ✅ | `/app/not-found.tsx` |
 | Page Error | ✅ | `/app/error.tsx` |
@@ -75,8 +75,8 @@
 
 | Module | Fichiers |
 |--------|----------|
-| Owner Data | `/app/owner/_data/` (6 fichiers) |
-| Tenant Data | `/app/tenant/dashboard/` (server fetch) |
+| Owner Data | `/owner/_data/` (6 fichiers) |
+| Tenant Data | `/tenant/dashboard/` (server fetch) |
 | Vendor Data | `/app/vendor/dashboard/` (server fetch) |
 
 ### Pattern implémenté:
@@ -102,7 +102,7 @@ page.tsx (Server) → fetchData() → Client.tsx (avec props)
 
 | Issue | Fix |
 |-------|-----|
-| 404 sur `/app/owner/**` | Routes déplacées vers `/owner/` |
+| 404 sur `/owner/**` | Routes déplacées vers `/owner/` |
 | PropertiesPageClient empty | Server-side fetch |
 | Missing 404/500 pages | Créées |
 | Middleware role routing | Corrigé |
@@ -132,7 +132,7 @@ page.tsx (Server) → fetchData() → Client.tsx (avec props)
 ## 📁 FICHIERS CRÉÉS
 
 ```
-/app/owner/
+/owner/
 ├── layout.tsx
 ├── dashboard/
 │   ├── page.tsx
@@ -159,7 +159,7 @@ page.tsx (Server) → fetchData() → Client.tsx (avec props)
     ├── fetchInvoices.ts
     └── fetchTickets.ts
 
-/app/tenant/
+/tenant/
 ├── layout.tsx
 ├── dashboard/
 │   ├── page.tsx

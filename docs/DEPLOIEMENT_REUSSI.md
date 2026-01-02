@@ -72,7 +72,7 @@ La migration SQL a été appliquée avec succès sur la base de données Supabas
 ### Test 1 : Création de bien
 ```bash
 # Via l'interface web
-1. Aller sur /app/owner/property/new
+1. Aller sur /owner/property/new
 2. Créer un bien
 3. Vérifier que property_id et unit_id sont retournés
 4. Vérifier que le bien apparaît dans la liste sans refresh

@@ -7,13 +7,13 @@
 - `/provider/onboarding/services` - Services & zones d'intervention
 - `/provider/onboarding/ops` - Disponibilités & paiements (jours, horaires, SLA, IBAN)
 - `/provider/onboarding/review` - Validation et soumission (modération admin)
-- `/app/provider` - Dashboard prestataire avec banner de validation
+- `/provider` - Dashboard prestataire avec banner de validation
 
 ### ✅ Parcours Garant (3 étapes)
 - `/guarantor/onboarding/context` - Contexte & identité (via invitation uniquement)
 - `/guarantor/onboarding/financial` - Capacité financière (revenus, type de garantie, pièces)
 - `/guarantor/onboarding/sign` - Signature de l'acte de garantie
-- `/app/guarantor` - Dashboard garant (lecture seule)
+- `/guarantor` - Dashboard garant (lecture seule)
 
 ### ✅ Cas limites avancés
 

@@ -48,7 +48,7 @@ FROM (
 ```
 
 #### 1.2 Interface TypeScript mise à jour
-**Fichier** : `app/app/tenant/_data/fetchTenantDashboard.ts`
+**Fichier** : `app/tenant/_data/fetchTenantDashboard.ts`
 
 ```typescript
 export interface TenantDashboardData {
@@ -71,7 +71,7 @@ export interface TenantDashboardData {
 ```
 
 #### 1.3 Dashboard Locataire multi-baux
-**Fichier** : `app/app/tenant/dashboard/DashboardClient.tsx`
+**Fichier** : `app/tenant/dashboard/DashboardClient.tsx`
 
 **Avant** : Affiche un seul logement
 **Après** : 
@@ -87,7 +87,7 @@ export interface TenantDashboardData {
 ### 2. Correction "? pièces" pour Parkings
 
 #### 2.1 Page Mes Biens (Propriétaire)
-**Fichier** : `app/app/owner/properties/page.tsx`
+**Fichier** : `app/owner/properties/page.tsx`
 
 **Problème** : Tous les biens affichaient "? pièces" même les parkings
 
@@ -172,7 +172,7 @@ if (data.adresse) {
 ### 4. Types de Baux alignés avec BDD
 
 #### 4.1 LeaseTypeCards.tsx
-**Fichier** : `app/app/owner/contracts/new/LeaseTypeCards.tsx`
+**Fichier** : `app/owner/contracts/new/LeaseTypeCards.tsx`
 
 | Ancien ID | Nouveau ID (BDD) |
 |-----------|------------------|
@@ -181,7 +181,7 @@ if (data.adresse) {
 | `commercial` | `commercial_3_6_9` |
 
 #### 4.2 ContractsClient.tsx
-**Fichier** : `app/app/owner/contracts/ContractsClient.tsx`
+**Fichier** : `app/owner/contracts/ContractsClient.tsx`
 
 Labels et filtres mis à jour pour correspondre aux IDs BDD.
 
@@ -213,13 +213,13 @@ Quand l'utilisateur tape une adresse, le code postal et la ville sont automatiqu
 | Fichier | Type | Description |
 |---------|------|-------------|
 | `supabase/migrations/20251202100000_tenant_multi_leases.sql` | 🆕 Nouveau | RPC multi-baux |
-| `app/app/tenant/_data/fetchTenantDashboard.ts` | ✏️ Modifié | Interface TypeScript |
-| `app/app/tenant/dashboard/DashboardClient.tsx` | ✏️ Modifié | UI multi-baux |
-| `app/app/owner/properties/page.tsx` | ✏️ Modifié | Badges dynamiques |
+| `app/tenant/_data/fetchTenantDashboard.ts` | ✏️ Modifié | Interface TypeScript |
+| `app/tenant/dashboard/DashboardClient.tsx` | ✏️ Modifié | UI multi-baux |
+| `app/owner/properties/page.tsx` | ✏️ Modifié | Badges dynamiques |
 | `app/api/scrape/route.ts` | ✏️ Modifié | Extraction améliorée |
 | `features/properties/components/v3/property-wizard-v3.tsx` | ✏️ Modifié | Import corrigé |
-| `app/app/owner/contracts/new/LeaseTypeCards.tsx` | ✏️ Modifié | IDs types baux |
-| `app/app/owner/contracts/ContractsClient.tsx` | ✏️ Modifié | Labels/filtres |
+| `app/owner/contracts/new/LeaseTypeCards.tsx` | ✏️ Modifié | IDs types baux |
+| `app/owner/contracts/ContractsClient.tsx` | ✏️ Modifié | Labels/filtres |
 | `features/properties/components/v3/immersive/steps/AddressStep.tsx` | ✏️ Modifié | Extraction CP |
 | `scripts/fix_all_rls_and_meters.sql` | 🆕 Nouveau | Script correctifs BDD |
 

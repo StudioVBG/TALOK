@@ -412,7 +412,7 @@
 **Problème:** Deux structures de pages
 
 - `/app/properties/` - Pages legacy
-- `/app/app/owner/properties/` - Pages nouvelles
+- `/app/owner/properties/` - Pages nouvelles
 
 **Recommandation:** Consolider dans une seule structure
 

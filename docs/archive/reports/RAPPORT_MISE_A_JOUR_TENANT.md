@@ -9,7 +9,7 @@
 
 L'espace locataire est désormais complet et fonctionnel :
 
-- **Routes** : `app/app/tenant/*` (Dashboard, Bail, Demandes, Paiements).
+- **Routes** : `app/tenant/*` (Dashboard, Bail, Demandes, Paiements).
 - **Paiements** : Le module a été activé.
   - Le locataire peut voir ses factures (loyers).
   - Un bouton **"Payer"** déclenche un flux Stripe sécurisé via une modale.
@@ -20,7 +20,7 @@ L'espace locataire est désormais complet et fonctionnel :
 La cartographie du flux est implémentée :
 
 1.  **Génération** : Le propriétaire (ou l'auto-job) génère une facture via `POST /api/invoices/generate-monthly`.
-2.  **Consultation** : Le locataire voit la facture dans `/app/tenant/payments`.
+2.  **Consultation** : Le locataire voit la facture dans `/tenant/payments`.
 3.  **Paiement** :
     - UI : `TenantPaymentsClient` appelle `PaymentCheckout`.
     - API : `POST /api/payments/create-intent` crée l'intention Stripe et l'enregistrement DB `pending`.
@@ -46,12 +46,12 @@ Pour valider le "MVP SOTA", il faut exécuter ces tests manuels ou automatisés 
 
 1.  **Flow Locataire** :
     - Se connecter en tant que tenant.
-    - Aller sur `/app/tenant/payments`.
+    - Aller sur `/tenant/payments`.
     - Cliquer sur "Payer" (utiliser carte test Stripe 4242...).
     - Vérifier que le statut passe à "Payé".
 
 2.  **Flow Propriétaire** :
-    - Aller sur `/app/owner/money`.
+    - Aller sur `/owner/money`.
     - Vérifier que le montant encaissé a augmenté.
 
 3.  **Flow Prestataire** :

@@ -70,8 +70,8 @@ export function Navbar() {
 
   // Masquer la navbar pour les dashboards (elles ont leur propre layout avec sidebar)
   // Nouvelle structure SOTA 2025: /owner, /tenant, /provider, /admin
-  // Ancien format: /app/owner, /app/tenant pour la compatibilité
-  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/app/owner", "/app/tenant", "/app/provider", "/app/vendor", "/admin"];
+  // Ancien format: /owner, /tenant pour la compatibilité
+  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/owner", "/tenant", "/provider", "/app/vendor", "/admin"];
   if (hiddenPaths.some(path => pathname?.startsWith(path))) {
     return null;
   }
@@ -119,8 +119,8 @@ export function Navbar() {
     } else if (profile.role === "provider") {
       // Nouvelle structure SOTA 2025
       items.push(
-        { href: "/app/provider", label: "Tableau de bord", icon: <Home className="h-4 w-4" /> },
-        { href: "/app/provider/work-orders", label: "Interventions", icon: <Wrench className="h-4 w-4" /> }
+        { href: "/provider", label: "Tableau de bord", icon: <Home className="h-4 w-4" /> },
+        { href: "/provider/work-orders", label: "Interventions", icon: <Wrench className="h-4 w-4" /> }
       );
     }
 

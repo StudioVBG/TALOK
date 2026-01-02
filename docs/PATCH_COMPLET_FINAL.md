@@ -9,7 +9,7 @@
 
 ### Problème 1 : Activation automatique supprimée ✅
 
-**Fichier** : `app/app/owner/property/new/_steps/SummaryStep.tsx`
+**Fichier** : `app/owner/property/new/_steps/SummaryStep.tsx`
 
 **Avant** :
 ```typescript
@@ -34,7 +34,7 @@ if (!draft.is_published && !finalPayload.etat) {
 
 ### Problème 2 : Gestion d'erreur photos améliorée ✅
 
-**Fichier** : `app/app/owner/property/new/_steps/SummaryStep.tsx`
+**Fichier** : `app/owner/property/new/_steps/SummaryStep.tsx`
 
 **Changements** :
 1. Variable `photoUploadErrors` déclarée au bon scope
@@ -79,9 +79,9 @@ toast({
 const { revalidateTag, revalidatePath } = await import("next/cache");
 revalidateTag("owner:properties");
 revalidateTag("admin:properties");
-revalidatePath("/app/owner/properties");
-revalidatePath("/app/owner/dashboard");
-revalidatePath("/app/owner");
+revalidatePath("/owner/properties");
+revalidatePath("/owner/dashboard");
+revalidatePath("/owner");
 ```
 
 **Résultat** : Le cache Next.js est invalidé après chaque mise à jour, garantissant que les nouvelles données sont visibles
@@ -91,9 +91,9 @@ revalidatePath("/app/owner");
 ### Problème 4 : Attributs name/id manquants ✅
 
 **Fichiers corrigés** :
-- `app/app/owner/property/new/_steps/PublishStep.tsx`
-- `app/app/owner/property/new/_steps/PhotosStep.tsx`
-- `app/app/owner/property/new/_steps/DetailsStep.tsx`
+- `app/owner/property/new/_steps/PublishStep.tsx`
+- `app/owner/property/new/_steps/PhotosStep.tsx`
+- `app/owner/property/new/_steps/DetailsStep.tsx`
 
 **Champs corrigés** :
 - Input radio `visibility-public` : `id`, `name="visibility"`, `value="public"`
@@ -128,7 +128,7 @@ const property = await createDraftProperty({
 
 ### 2. SELECT utilise `owner_id = profile.id` ✅
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 ```typescript
 const { data: directData } = await serviceClient
@@ -157,7 +157,7 @@ POST /api/properties
   ↓ Crée property avec owner_id = profile.id, etat = "draft"
   ↓ Crée unit par défaut
   ↓ revalidateTag("owner:properties")
-  ↓ revalidatePath("/app/owner/properties")
+  ↓ revalidatePath("/owner/properties")
   ↓ Retourne { property_id, unit_id }
 ```
 
@@ -167,7 +167,7 @@ POST /api/properties
 PATCH /api/properties/[id]
   ↓ Met à jour adresse, surface, etc.
   ↓ revalidateTag("owner:properties")
-  ↓ revalidatePath("/app/owner/properties")
+  ↓ revalidatePath("/owner/properties")
 ```
 
 ### 3. Upload des photos (NON-BLOQUANT)
@@ -200,7 +200,7 @@ Après création d'un bien :
 2. ✅ Les détails sont mis à jour via PATCH
 3. ✅ Les photos sont uploadées (ou ignorées si erreur)
 4. ✅ Le cache Next.js est invalidé
-5. ✅ Le bien apparaît dans `/app/owner/properties`
+5. ✅ Le bien apparaît dans `/owner/properties`
 6. ✅ `OwnerDataProvider` reçoit `propertiesCount > 0`
 
 ---

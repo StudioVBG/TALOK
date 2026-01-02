@@ -34,7 +34,7 @@
 
 ---
 
-### 2. Helper `fetchProperties()` (`app/app/owner/_data/fetchProperties.ts`)
+### 2. Helper `fetchProperties()` (`app/owner/_data/fetchProperties.ts`)
 
 **Problèmes corrigés :**
 - ✅ Logs de debug ajoutés pour tracer chaque étape
@@ -74,7 +74,7 @@
 
 ---
 
-### 4. Composant `PropertiesPageClient` (`app/app/owner/properties/page.tsx`)
+### 4. Composant `PropertiesPageClient` (`app/owner/properties/page.tsx`)
 
 **Problèmes corrigés :**
 - ✅ Gestion claire des 4 états (Loading, Error, Empty, Success)
@@ -130,7 +130,7 @@
 ## 🧪 Tests à Effectuer
 
 1. **Test du chargement initial**
-   - Ouvrir `/app/owner/properties`
+   - Ouvrir `/owner/properties`
    - Vérifier que le skeleton s'affiche pendant le chargement
    - Vérifier que les propriétés s'affichent une fois chargées
 
@@ -159,7 +159,7 @@
 
 ## 📝 Prochaines Étapes
 
-1. **Tester la page** `/app/owner/properties` avec un compte propriétaire
+1. **Tester la page** `/owner/properties` avec un compte propriétaire
 2. **Vérifier les logs** dans la console navigateur et le terminal serveur
 3. **Vérifier que les biens s'affichent** correctement
 4. **Tester les filtres** et la recherche
@@ -207,6 +207,6 @@ Si les propriétés ne s'affichent pas :
 **Fichiers modifiés :**
 - `app/api/properties/route.ts`
 - `lib/hooks/use-properties.ts`
-- `app/app/owner/properties/page.tsx`
-- `app/app/owner/_data/fetchProperties.ts`
+- `app/owner/properties/page.tsx`
+- `app/owner/_data/fetchProperties.ts`
 

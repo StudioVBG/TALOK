@@ -24,7 +24,7 @@ Cette convention est déjà respectée dans tout le code. ✅
    - Parse correctement `response.properties` (ligne 50-51)
    - Gère les erreurs proprement
 
-4. ✅ `app/app/owner/properties/page.tsx`
+4. ✅ `app/owner/properties/page.tsx`
    - Gère 4 états : Loading, Error, Empty, Success
    - Affiche correctement les propriétés
 
@@ -77,7 +77,7 @@ supabase db push
 
 ### 2. Tester la Création d'un Bien
 
-1. Aller sur `/app/owner/properties/new`
+1. Aller sur `/owner/properties/new`
 2. Créer un nouveau bien via le wizard
 3. **Vérifier les logs serveur :**
    ```
@@ -107,7 +107,7 @@ supabase db push
 
 ### 3. Vérifier l'Affichage
 
-1. Recharger `/app/owner/properties`
+1. Recharger `/owner/properties`
 2. **Vérifier les logs serveur :**
    ```
    [api/properties] DEBUG: profile.id = "..."

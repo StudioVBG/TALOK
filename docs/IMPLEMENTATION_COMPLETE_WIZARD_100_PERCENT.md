@@ -13,7 +13,7 @@
 ## 📋 RÉCAPITULATIF DES STEPS
 
 ### ✅ Step 1 : TypeStep
-**Fichier** : `app/app/owner/property/new/_steps/TypeStep.tsx`  
+**Fichier** : `app/owner/property/new/_steps/TypeStep.tsx`  
 **Fonctionnalités** :
 - Filtres sticky (Tous, Habitation, Parking & Box, Commercial)
 - Recherche instantanée avec debounce
@@ -29,7 +29,7 @@
 ---
 
 ### ✅ Step 2 : AddressStep
-**Fichier** : `app/app/owner/property/new/_steps/AddressStep.tsx`  
+**Fichier** : `app/owner/property/new/_steps/AddressStep.tsx`  
 **Fonctionnalités** :
 - Validation Zod complète
 - Auto-complétion d'adresse (prêt pour intégration API)
@@ -43,7 +43,7 @@
 ---
 
 ### ✅ Step 3 : DetailsStep
-**Fichier** : `app/app/owner/property/new/_steps/DetailsStep.tsx`  
+**Fichier** : `app/owner/property/new/_steps/DetailsStep.tsx`  
 **Fonctionnalités** :
 - Surface habitable (m²)
 - Nombre de pièces
@@ -59,7 +59,7 @@
 ---
 
 ### ✅ Step 4 : RoomsStep
-**Fichier** : `app/app/owner/property/new/_steps/RoomsStep.tsx`  
+**Fichier** : `app/owner/property/new/_steps/RoomsStep.tsx`  
 **Fonctionnalités** :
 - Templates rapides : Studio, T2, T3, T4
 - Ajout/Suppression de pièces avec animations
@@ -75,7 +75,7 @@
 ---
 
 ### ✅ Step 5 : PhotosStep
-**Fichier** : `app/app/owner/property/new/_steps/PhotosStep.tsx`  
+**Fichier** : `app/owner/property/new/_steps/PhotosStep.tsx`  
 **Fonctionnalités** :
 - Drag & drop pour upload
 - Validation des fichiers (type, taille)
@@ -90,7 +90,7 @@
 ---
 
 ### ✅ Step 6 : FeaturesStep
-**Fichier** : `app/app/owner/property/new/_steps/FeaturesStep.tsx`  
+**Fichier** : `app/owner/property/new/_steps/FeaturesStep.tsx`  
 **Fonctionnalités** :
 - 5 groupes de caractéristiques :
   - **Extérieur** : balcon, terrasse, jardin, parking, box, cave, grenier
@@ -106,7 +106,7 @@
 ---
 
 ### ✅ Step 7 : PublishStep
-**Fichier** : `app/app/owner/property/new/_steps/PublishStep.tsx`  
+**Fichier** : `app/owner/property/new/_steps/PublishStep.tsx`  
 **Fonctionnalités** :
 - Toggle publication (Switch)
 - Visibilité : Public / Privé (radio buttons)
@@ -119,7 +119,7 @@
 ---
 
 ### ✅ Step 8 : SummaryStep
-**Fichier** : `app/app/owner/property/new/_steps/SummaryStep.tsx`  
+**Fichier** : `app/owner/property/new/_steps/SummaryStep.tsx`  
 **Fonctionnalités** :
 - Récapitulatif complet par sections :
   - Type de bien
@@ -130,7 +130,7 @@
   1. Création du draft via `POST /api/properties`
   2. Mise à jour avec données complètes via `PATCH /api/properties/[id]`
   3. Activation du bien (état: "active")
-  4. Redirection vers `/app/owner/properties/[id]`
+  4. Redirection vers `/owner/properties/[id]`
 - Gestion d'erreurs complète
 - Toast notifications
 - Reset du store après création
@@ -142,7 +142,7 @@
 ## 🏗️ ARCHITECTURE
 
 ### Store Zustand
-**Fichier** : `app/app/owner/property/new/_store/useNewProperty.ts`
+**Fichier** : `app/owner/property/new/_store/useNewProperty.ts`
 
 **Interfaces** :
 - `Address` : adresse_complete, complement_adresse, code_postal, ville, departement, latitude, longitude
@@ -166,25 +166,25 @@
 ### Composants réutilisables
 
 #### WizardProgress
-**Fichier** : `app/app/owner/property/new/_components/WizardProgress.tsx`  
+**Fichier** : `app/owner/property/new/_components/WizardProgress.tsx`  
 - Barre de progression animée
 - Label "Étape X sur Y"
 - Calcul automatique selon le mode (FAST/FULL)
 
 #### WizardFooter
-**Fichier** : `app/app/owner/property/new/_components/WizardFooter.tsx`  
+**Fichier** : `app/owner/property/new/_components/WizardFooter.tsx`  
 - Footer sticky avec safe-area iOS
 - Boutons "Précédent" et "Continuer"
 - Helper text personnalisable
 - Backdrop blur
 
 #### ModeSwitch
-**Fichier** : `app/app/owner/property/new/_components/ModeSwitch.tsx`  
+**Fichier** : `app/owner/property/new/_components/ModeSwitch.tsx`  
 - Toggle FAST/FULL en header
 - Segmented control design
 
 #### StepFrame
-**Fichier** : `app/app/owner/property/new/_components/StepFrame.tsx`  
+**Fichier** : `app/owner/property/new/_components/StepFrame.tsx`  
 - Wrapper générique pour tous les steps
 - Gestion des animations
 - Support `reduced motion`
@@ -248,7 +248,7 @@ PATCH /api/properties/[id]
 
 **Étape 4 : Redirection**
 ```typescript
-router.push(`/app/owner/properties/${propertyId}`)
+router.push(`/owner/properties/${propertyId}`)
 ```
 
 ---

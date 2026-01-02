@@ -1,7 +1,7 @@
 # 🔧 CORRECTION COMPLÈTE - Visibilité des propriétés
 
 **Date** : 2025-02-18  
-**Problème** : Les biens créés n'apparaissent pas dans `/app/owner/properties` et `/app/owner/dashboard`  
+**Problème** : Les biens créés n'apparaissent pas dans `/owner/properties` et `/owner/dashboard`  
 **Statut** : ✅ Corrections appliquées - Tests requis
 
 ---
@@ -10,17 +10,17 @@
 
 ### Étape 1 : Localisation de la page et composants ✅
 
-**Page** : `app/app/owner/properties/page.tsx`
+**Page** : `app/owner/properties/page.tsx`
 - Server Component qui utilise `PropertiesPageClient`
 - Message "Aucun bien ne correspond à vos critères" : ligne 398
 
-**Composant Client** : `app/app/owner/properties/PropertiesPageClient.tsx`
+**Composant Client** : `app/owner/properties/PropertiesPageClient.tsx`
 - Utilise `useOwnerData()` pour récupérer les données du Context
 - Filtres : `searchQuery`, `typeFilter`, `statusFilter`
 - Valeurs par défaut : `"all"` ✅ (correct)
 
-**Fetch** : `app/app/owner/_data/fetchProperties.ts`
-- Appelé depuis `app/app/owner/layout.tsx`
+**Fetch** : `app/owner/_data/fetchProperties.ts`
+- Appelé depuis `app/owner/layout.tsx`
 - Utilise `unstable_cache` avec tag `owner:properties`
 
 ### Étape 2 : Inspection du code de récupération ✅
@@ -104,9 +104,9 @@ return p.type === "commercial" || p.type === "local_commercial" ||
 ### 1. Logs de diagnostic complets
 
 **Fichiers modifiés** :
-- `app/app/owner/_data/fetchProperties.ts`
-- `app/app/owner/layout.tsx`
-- `app/app/owner/properties/PropertiesPageClient.tsx`
+- `app/owner/_data/fetchProperties.ts`
+- `app/owner/layout.tsx`
+- `app/owner/properties/PropertiesPageClient.tsx`
 
 **Ajouts** :
 - Logs à chaque étape de `fetchProperties`
@@ -117,7 +117,7 @@ return p.type === "commercial" || p.type === "local_commercial" ||
 
 ### 2. Correction du filtre commercial
 
-**Fichier** : `app/app/owner/properties/PropertiesPageClient.tsx`
+**Fichier** : `app/owner/properties/PropertiesPageClient.tsx`
 
 **Problème** : Le filtre `moduleFilter === "pro"` ne matchait pas `"local_commercial"` et `"bureaux"`.
 
@@ -134,9 +134,9 @@ return p.type === "commercial" || p.type === "local_commercial" ||
 - Appelée depuis le client après création
 
 **b) `revalidatePath` dans POST /api/properties**
-- Ajout de `revalidatePath("/app/owner/properties")`
-- Ajout de `revalidatePath("/app/owner/dashboard")`
-- Ajout de `revalidatePath("/app/owner")`
+- Ajout de `revalidatePath("/owner/properties")`
+- Ajout de `revalidatePath("/owner/dashboard")`
+- Ajout de `revalidatePath("/owner")`
 
 **c) Appel côté client après création**
 - `router.refresh()`
@@ -174,7 +174,7 @@ npm run dev
 
 ### 3. Tester le flux complet
 
-1. **Créer un nouveau bien** via `/app/owner/property/new`
+1. **Créer un nouveau bien** via `/owner/property/new`
 2. **Vérifier les logs serveur** :
    - Chercher `[fetchProperties]` dans la console serveur
    - Vérifier que les propriétés sont trouvées
@@ -237,10 +237,10 @@ npm run dev
 ## 📊 FICHIERS MODIFIÉS
 
 ### Code modifié
-- ✅ `app/app/owner/_data/fetchProperties.ts` - Logs détaillés + diagnostic RLS
-- ✅ `app/app/owner/layout.tsx` - Logs d'erreur améliorés
-- ✅ `app/app/owner/properties/PropertiesPageClient.tsx` - Logs + correction filtre
-- ✅ `app/app/owner/property/new/_steps/SummaryStep.tsx` - Revalidation améliorée
+- ✅ `app/owner/_data/fetchProperties.ts` - Logs détaillés + diagnostic RLS
+- ✅ `app/owner/layout.tsx` - Logs d'erreur améliorés
+- ✅ `app/owner/properties/PropertiesPageClient.tsx` - Logs + correction filtre
+- ✅ `app/owner/property/new/_steps/SummaryStep.tsx` - Revalidation améliorée
 - ✅ `app/api/properties/route.ts` - `revalidatePath` ajouté
 - ✅ `app/api/revalidate/route.ts` - **NOUVEAU** - Route de revalidation
 

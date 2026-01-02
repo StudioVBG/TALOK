@@ -20,7 +20,7 @@
 
 ### 1. Cache Next.js désactivé temporairement ✅
 
-**Fichier** : `app/app/owner/layout.tsx`
+**Fichier** : `app/owner/layout.tsx`
 
 **Changement** :
 ```typescript

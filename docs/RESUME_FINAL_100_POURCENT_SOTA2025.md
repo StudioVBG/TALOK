@@ -85,7 +85,7 @@ const DynamicStep = dynamic(
 4. **`app/api/owner/dashboard/route.ts`**
    - ✅ Correction de `annual_yield` → `annualYield`
 
-5. **`app/app/owner/properties/PropertiesPageClient.tsx`**
+5. **`app/owner/properties/PropertiesPageClient.tsx`**
    - ✅ Ajout de `cover_url?: string | null` à l'interface `PropertyWithStatus`
 
 ---
@@ -149,7 +149,7 @@ const DynamicStep = dynamic(
 5. ✅ `app/api/owner/dashboard/route.ts`
    - Corrections TypeScript
 
-6. ✅ `app/app/owner/properties/PropertiesPageClient.tsx`
+6. ✅ `app/owner/properties/PropertiesPageClient.tsx`
    - Ajout de `cover_url` à l'interface
 
 ---

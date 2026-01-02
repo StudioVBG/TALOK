@@ -85,7 +85,7 @@ grep -r "/owner/properties/new" app
 
 ## ✅ 5. Wizard mis à jour
 
-### Fichier : `app/app/owner/property/new/_steps/SummaryStep.tsx`
+### Fichier : `app/owner/property/new/_steps/SummaryStep.tsx`
 
 - ✅ Utilise `PropertyAPI.createDraft()` au lieu de `apiClient.post()`
 - ✅ Stocke `property_id` et `unit_id` dans le store
@@ -93,7 +93,7 @@ grep -r "/owner/properties/new" app
 - ✅ Active la propriété via `PropertyAPI.activate()`
 - ✅ Continue d'utiliser `apiClient` pour les routes non-canon (rooms, photos, features) - **Normal**
 
-### Fichier : `app/app/owner/property/new/_store/useNewProperty.ts`
+### Fichier : `app/owner/property/new/_store/useNewProperty.ts`
 
 - ✅ Ajout de `property_id` et `unit_id` dans le Draft interface
 - ✅ Stockage persistant via Zustand persist

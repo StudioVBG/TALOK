@@ -134,7 +134,7 @@ export function DpeUploadForm({ propertyId, requestId }: DpeUploadFormProps) {
               Les données ont été extraites et la validité a été calculée automatiquement. Le logement est désormais à jour.
             </p>
           </div>
-          <Button onClick={() => router.push(`/app/owner/properties/${propertyId}/diagnostics`)} className="bg-emerald-600 hover:bg-emerald-700">
+          <Button onClick={() => router.push(`/owner/properties/${propertyId}/diagnostics`)} className="bg-emerald-600 hover:bg-emerald-700">
             Voir le statut DPE
           </Button>
         </CardContent>

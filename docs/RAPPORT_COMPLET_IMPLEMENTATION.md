@@ -60,7 +60,7 @@ const { data } = await insertPropertyRecord(serviceClient, insertPayload);
 ### 2. FLUX DE RÉCUPÉRATION (SELECT)
 
 #### ✅ Fonction : `fetchProperties()`
-**Fichier** : `app/app/owner/_data/fetchProperties.ts` (lignes 123-128)
+**Fichier** : `app/owner/_data/fetchProperties.ts` (lignes 123-128)
 
 **Code SELECT** :
 ```typescript
@@ -122,7 +122,7 @@ const { data: directData, error: directError, count } = await supabase
 
 #### ⚠️ Configuration actuelle
 
-**Fichier** : `app/app/owner/layout.tsx` (lignes 23-31)
+**Fichier** : `app/owner/layout.tsx` (lignes 23-31)
 
 **Code** :
 ```typescript
@@ -140,7 +140,7 @@ const getCachedProperties = unstable_cache(
 
 **Invalidation** :
 - `revalidateTag("owner:properties")` appelé après création ✅
-- `revalidatePath("/app/owner/properties")` appelé après création ✅
+- `revalidatePath("/owner/properties")` appelé après création ✅
 
 **Statut** : ⚠️ **CONFIGURÉ MAIS PEUT RETOURNER CACHE VIDE** (80% fonctionnel)
 
@@ -150,7 +150,7 @@ const getCachedProperties = unstable_cache(
 
 ### Problème 1 : Colonne `loyer_base` manquante
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts` ligne 125
+**Fichier** : `app/owner/_data/fetchProperties.ts` ligne 125
 
 **Erreur** :
 ```sql
@@ -202,7 +202,7 @@ SELECT ... loyer_base ... FROM properties
 
 ### Correction 1 : Remplacer `loyer_base` par `loyer_hc`
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 **Ligne 125** :
 ```typescript
@@ -226,7 +226,7 @@ SELECT ... loyer_base ... FROM properties
 
 ### Correction 2 : Vérifier les logs serveur
 
-**Action** : Recharger `/app/owner/properties` et vérifier les logs :
+**Action** : Recharger `/owner/properties` et vérifier les logs :
 
 ```
 [fetchProperties] Début - ownerId: ...

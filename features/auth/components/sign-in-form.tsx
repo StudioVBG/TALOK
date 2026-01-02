@@ -133,11 +133,11 @@ export function SignInForm() {
         console.log("[SignIn] Redirection vers /admin/dashboard");
         router.push("/admin/dashboard");
       } else if (profileData?.role === "owner") {
-        console.log("[SignIn] Redirection vers /app/owner/dashboard");
-        router.push("/app/owner/dashboard");
+        console.log("[SignIn] Redirection vers /owner/dashboard");
+        router.push("/owner/dashboard");
       } else if (profileData?.role === "tenant") {
-        console.log("[SignIn] Redirection vers /app/tenant/dashboard");
-        router.push("/app/tenant/dashboard");
+        console.log("[SignIn] Redirection vers /tenant/dashboard");
+        router.push("/tenant/dashboard");
       } else if (profileData?.role === "provider") {
         console.log("[SignIn] Redirection vers /vendor/dashboard");
         router.push("/vendor/dashboard");

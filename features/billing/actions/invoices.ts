@@ -87,8 +87,8 @@ export async function createInvoiceAction(formData: z.infer<typeof createInvoice
   }
 
   // 5. Revalidation du cache Next.js
-  revalidatePath("/app/owner/money");
-  revalidatePath(`/app/owner/contracts/${lease_id}`);
+  revalidatePath("/owner/money");
+  revalidatePath(`/owner/contracts/${lease_id}`);
 
   return { success: true, invoice };
 }
@@ -103,8 +103,8 @@ export async function updateInvoiceStatusAction(id: string, statut: string) {
 
   if (error) return { error: "Impossible de mettre à jour le statut" };
 
-  revalidatePath("/app/owner/money");
-  revalidatePath("/app/tenant/payments");
+  revalidatePath("/owner/money");
+  revalidatePath("/tenant/payments");
   
   return { success: true };
 }

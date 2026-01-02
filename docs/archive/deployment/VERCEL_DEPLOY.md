@@ -85,7 +85,7 @@ vercel --prod
 
 2. **Testez le dashboard**
    - Allez sur votre URL de production
-   - Accédez à `/app/tenant`
+   - Accédez à `/tenant`
    - Videz le cache du navigateur (`Cmd+Shift+R` sur Mac)
    - Vérifiez que le nouveau dashboard V2 s'affiche
 
@@ -104,7 +104,7 @@ vercel --prod
 
 ### Le dashboard n'affiche toujours pas la V2 ?
 - Videz le cache du navigateur (`Cmd+Shift+R`)
-- Vérifiez l'URL : doit être `/app/tenant` (pas `/tenant`)
+- Vérifiez l'URL : doit être `/tenant` (pas `/tenant`)
 - Vérifiez dans les DevTools (F12) quelle version du code est chargée
 - Vérifiez les logs Vercel pour des erreurs de build
 

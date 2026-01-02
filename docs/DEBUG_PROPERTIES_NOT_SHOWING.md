@@ -1,7 +1,7 @@
 # 🔍 DEBUG - Biens créés n'apparaissent pas dans la liste
 
 **Date** : 2025-02-18  
-**Problème** : Après création d'un bien, il n'apparaît pas dans la liste `/app/owner/properties`
+**Problème** : Après création d'un bien, il n'apparaît pas dans la liste `/owner/properties`
 
 ---
 
@@ -21,7 +21,7 @@ const essentialColumns = "id, owner_id, type, type_bien, adresse_complete, ...";
 const essentialColumns = "id, owner_id, type, adresse_complete, ...";
 ```
 
-### 2. Cache Next.js non invalidé (`app/app/owner/layout.tsx`)
+### 2. Cache Next.js non invalidé (`app/owner/layout.tsx`)
 
 **Problème** : Le layout charge les données via Server Components et les met en cache. Après création, le cache n'était pas invalidé.
 
@@ -40,7 +40,7 @@ const getCachedProperties = unstable_cache(
 );
 ```
 
-### 3. Rafraîchissement après création (`app/app/owner/property/new/_steps/SummaryStep.tsx`)
+### 3. Rafraîchissement après création (`app/owner/property/new/_steps/SummaryStep.tsx`)
 
 **Problème** : Après création, la redirection ne rafraîchissait pas le cache.
 
@@ -57,12 +57,12 @@ router.refresh();
 await new Promise((resolve) => setTimeout(resolve, 100));
 
 // Rediriger vers la liste des propriétés pour voir le nouveau bien
-router.push(`/app/owner/properties`);
+router.push(`/owner/properties`);
 ```
 
-### 4. Redirection vers la liste (`app/app/owner/property/new/_steps/SummaryStep.tsx`)
+### 4. Redirection vers la liste (`app/owner/property/new/_steps/SummaryStep.tsx`)
 
-**Changement** : Redirection vers `/app/owner/properties` (liste) au lieu de `/app/owner/properties/${propertyId}` (détail) pour voir immédiatement le nouveau bien.
+**Changement** : Redirection vers `/owner/properties` (liste) au lieu de `/owner/properties/${propertyId}` (détail) pour voir immédiatement le nouveau bien.
 
 ---
 
@@ -88,9 +88,9 @@ router.push(`/app/owner/properties`);
 ## 🧪 TESTS À EFFECTUER
 
 ### Test 1 : Création d'un bien
-1. Aller sur `/app/owner/property/new`
+1. Aller sur `/owner/property/new`
 2. Créer un bien (mode "Rapide" ou "Complet")
-3. Vérifier que la redirection se fait vers `/app/owner/properties`
+3. Vérifier que la redirection se fait vers `/owner/properties`
 4. ✅ **Vérifier que le nouveau bien apparaît dans la liste**
 
 ### Test 2 : Vérification de la RPC
@@ -135,7 +135,7 @@ const { data: properties, error } = await supabase
 Si le cache persiste, ajouter un paramètre de query pour forcer le rechargement :
 
 ```typescript
-router.push(`/app/owner/properties?refresh=${Date.now()}`);
+router.push(`/owner/properties?refresh=${Date.now()}`);
 ```
 
 ### Option C : Utiliser `revalidatePath` au lieu de `revalidateTag`
@@ -146,8 +146,8 @@ Dans `app/api/properties/route.ts`, ajouter :
 import { revalidatePath } from "next/cache";
 
 // Après création
-revalidatePath("/app/owner/properties");
-revalidatePath("/app/owner");
+revalidatePath("/owner/properties");
+revalidatePath("/owner");
 ```
 
 ---

@@ -2,30 +2,30 @@
 
 ## 🎯 Problème Résolu
 
-**Problème initial** : Les pages `/app/owner/*` retournaient des erreurs 404 car elles étaient dans `app/owner/` (exposées sous `/owner/*`) alors que les liens pointaient vers `/app/owner/*`.
+**Problème initial** : Les pages `/owner/*` retournaient des erreurs 404 car elles étaient dans `app/owner/` (exposées sous `/owner/*`) alors que les liens pointaient vers `/owner/*`.
 
-**Solution** : Déplacement des fichiers vers `app/app/owner/` pour que les routes soient accessibles sous `/app/owner/*`.
+**Solution** : Déplacement des fichiers vers `app/owner/` pour que les routes soient accessibles sous `/owner/*`.
 
 ## ✅ Actions Effectuées
 
-1. ✅ Création du dossier `app/app/owner/`
-2. ✅ Copie de tous les fichiers de `app/owner/` vers `app/app/owner/`
-3. ✅ Build réussi avec toutes les routes `/app/owner/*` générées
+1. ✅ Création du dossier `app/owner/`
+2. ✅ Copie de tous les fichiers de `app/owner/` vers `app/owner/`
+3. ✅ Build réussi avec toutes les routes `/owner/*` générées
 4. ✅ Déploiement sur Vercel terminé (statut: Ready)
 
 ## 📊 Routes Générées
 
 Toutes les routes owner sont maintenant accessibles :
 
-- ✅ `/app/owner/dashboard` (2.17 kB)
-- ✅ `/app/owner/properties` (3.96 kB)
-- ✅ `/app/owner/properties/[id]` (4.52 kB)
-- ✅ `/app/owner/contracts` (6.36 kB)
-- ✅ `/app/owner/contracts/[id]` (4.14 kB)
-- ✅ `/app/owner/money` (5.76 kB)
-- ✅ `/app/owner/documents` (3.6 kB)
-- ✅ `/app/owner/support` (1.9 kB)
-- ✅ Routes onboarding (`/app/owner/onboarding/*`)
+- ✅ `/owner/dashboard` (2.17 kB)
+- ✅ `/owner/properties` (3.96 kB)
+- ✅ `/owner/properties/[id]` (4.52 kB)
+- ✅ `/owner/contracts` (6.36 kB)
+- ✅ `/owner/contracts/[id]` (4.14 kB)
+- ✅ `/owner/money` (5.76 kB)
+- ✅ `/owner/documents` (3.6 kB)
+- ✅ `/owner/support` (1.9 kB)
+- ✅ Routes onboarding (`/owner/onboarding/*`)
 
 ## 🔗 URLs
 
@@ -42,7 +42,7 @@ Toutes les routes owner sont maintenant accessibles :
 ## 📝 Notes
 
 - Les fichiers dans `app/owner/` peuvent être supprimés après vérification que tout fonctionne
-- Toutes les pages owner sont maintenant accessibles sous `/app/owner/*`
+- Toutes les pages owner sont maintenant accessibles sous `/owner/*`
 - La navigation et les liens fonctionnent correctement
 
 ## 🚀 Prochaines Étapes

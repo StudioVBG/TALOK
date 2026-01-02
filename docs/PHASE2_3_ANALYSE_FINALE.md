@@ -5,8 +5,8 @@
 ### ✅ ANALYSE
 
 **Routes actuelles** :
-- `/app/owner/properties/new` : `allowedRoles={["owner"]}` ✅
-- `/app/owner/properties/[id]/edit` : `allowedRoles={["owner"]}` ✅
+- `/owner/properties/new` : `allowedRoles={["owner"]}` ✅
+- `/owner/properties/[id]/edit` : `allowedRoles={["owner"]}` ✅
 
 **Conclusion** : 
 - ✅ Les routes sont déjà unifiées pour les owners uniquement
@@ -21,7 +21,7 @@
 
 ### ✅ ANALYSE DES DOUBLONS
 
-#### **1. Server Actions (`app/app/owner/properties/_actions.ts`)**
+#### **1. Server Actions (`app/owner/properties/_actions.ts`)**
 
 **Fonctions** :
 - `createProperty()` : ❌ **NON UTILISÉE**
@@ -63,7 +63,7 @@
 
 ### ✅ DOUBLONS SUPPRIMÉS
 
-1. ✅ Route `/properties/new` → Redirigée vers `/app/owner/properties/new`
+1. ✅ Route `/properties/new` → Redirigée vers `/owner/properties/new`
 2. ✅ Dossier `app/properties/new-v3/` → Supprimé
 3. ✅ Routes legacy → Toutes redirigent vers routes canoniques
 
@@ -71,10 +71,10 @@
 
 #### **Routes Canoniques**
 ```
-✅ /app/owner/properties              → Liste
-✅ /app/owner/properties/new          → Ajout (wizard)
-✅ /app/owner/properties/[id]        → Détail
-✅ /app/owner/properties/[id]/edit   → Édition (wizard)
+✅ /owner/properties              → Liste
+✅ /owner/properties/new          → Ajout (wizard)
+✅ /owner/properties/[id]        → Détail
+✅ /owner/properties/[id]/edit   → Édition (wizard)
 ```
 
 #### **Composants**
@@ -116,7 +116,7 @@
 
 ### ⚠️ NETTOYAGE OPTIONNEL
 
-**Fichier** : `app/app/owner/properties/_actions.ts`
+**Fichier** : `app/owner/properties/_actions.ts`
 
 **Actions** :
 - Supprimer `createProperty()` (non utilisée)
@@ -132,7 +132,7 @@
 ## ✅ VALIDATION FINALE
 
 ### ✅ Routes
-- ✅ 1 seule route d'ajout : `/app/owner/properties/new`
+- ✅ 1 seule route d'ajout : `/owner/properties/new`
 - ✅ Routes legacy redirigent automatiquement
 - ✅ Tous les liens internes cohérents
 

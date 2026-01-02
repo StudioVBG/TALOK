@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 
 /**
  * Redirection vers la route canonique d'ajout de logement
- * Route legacy : /properties/new → /app/owner/properties/new
+ * Route legacy : /properties/new → /owner/properties/new
  */
 export default function LegacyNewPropertyPage() {
-  redirect("/app/owner/properties/new");
+  redirect("/owner/properties/new");
 }
 

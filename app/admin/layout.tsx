@@ -30,8 +30,8 @@ export default async function AdminLayout({
     .single();
 
   if (profileError || !profile || profile.role !== "admin") {
-    if (profile?.role === "owner") redirect("/app/owner/dashboard");
-    if (profile?.role === "tenant") redirect("/app/tenant/dashboard");
+    if (profile?.role === "owner") redirect("/owner/dashboard");
+    if (profile?.role === "tenant") redirect("/tenant/dashboard");
     redirect("/");
   }
 

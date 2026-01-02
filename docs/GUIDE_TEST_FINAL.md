@@ -7,7 +7,7 @@
 
 ## ✅ CE QUI A ÉTÉ FAIT
 
-1. ✅ Bug `PUT /app/owner/property/undefined` corrigé
+1. ✅ Bug `PUT /owner/property/undefined` corrigé
 2. ✅ `fetchProperties.ts` refactorisé (version canonical SOTA 2025)
 3. ✅ Migration SQL appliquée (`202502180003_ensure_user_profile_id_works.sql`)
 4. ✅ Outils de diagnostic créés
@@ -49,7 +49,7 @@ http://localhost:3000/api/debug/properties
 
 ### Test 2 : Logs Serveur
 
-**Action** : Recharger `/app/owner/properties` (hard refresh: `Cmd+Shift+R`)
+**Action** : Recharger `/owner/properties` (hard refresh: `Cmd+Shift+R`)
 
 **Vérifier dans le terminal `npm run dev`** :
 
@@ -159,14 +159,14 @@ supabase db push
 - `[fetchProperties] Result: { count: X }` avec X > 0
 - `[OwnerDataProvider] Données reçues: { propertiesCount: X }` avec X > 0
 
-**Résultat** : Les propriétés devraient s'afficher dans `/app/owner/properties` ✅
+**Résultat** : Les propriétés devraient s'afficher dans `/owner/properties` ✅
 
 ---
 
 ## 🎯 CHECKLIST FINALE
 
 - [ ] Testé `/api/debug/properties` → Résultat ?
-- [ ] Rechargé `/app/owner/properties` → Logs serveur ?
+- [ ] Rechargé `/owner/properties` → Logs serveur ?
 - [ ] Vérifié SQL brut → Propriétés trouvées ?
 - [ ] Vérifié `user_profile_id()` → Retourne bien le profil ?
 - [ ] Identifié le scénario (A/B/C/D) → Solution appliquée ?

@@ -316,9 +316,9 @@ describe('RBAC', () => {
   describe('getDefaultRouteForRole', () => {
     it('retourne les bonnes routes', () => {
       expect(getDefaultRouteForRole('platform_admin')).toBe('/admin/dashboard');
-      expect(getDefaultRouteForRole('syndic')).toBe('/app/syndic/dashboard');
-      expect(getDefaultRouteForRole('coproprietaire_occupant')).toBe('/app/copro/dashboard');
-      expect(getDefaultRouteForRole('locataire')).toBe('/app/tenant/dashboard');
+      expect(getDefaultRouteForRole('syndic')).toBe('/syndic/dashboard');
+      expect(getDefaultRouteForRole('coproprietaire_occupant')).toBe('/copro/dashboard');
+      expect(getDefaultRouteForRole('locataire')).toBe('/tenant/dashboard');
     });
   });
 

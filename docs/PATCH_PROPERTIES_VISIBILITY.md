@@ -10,7 +10,7 @@
 
 ### 1. Logs détaillés dans `fetchProperties.ts`
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 **Ajouts** :
 - ✅ Logs à chaque étape (début, auth, profil, requête)
@@ -31,7 +31,7 @@
 
 ### 2. Amélioration de la gestion d'erreur dans `layout.tsx`
 
-**Fichier** : `app/app/owner/layout.tsx`
+**Fichier** : `app/owner/layout.tsx`
 
 **Ajouts** :
 - ✅ Logs d'erreur détaillés avec stack trace
@@ -68,7 +68,7 @@
    npm run dev
    ```
 
-2. **Aller sur `/app/owner/properties`**
+2. **Aller sur `/owner/properties`**
 
 3. **Vérifier les logs serveur** :
    - Chercher `[fetchProperties]` dans la console

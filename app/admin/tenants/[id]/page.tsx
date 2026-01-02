@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { TenantProfileClient } from "@/app/app/owner/tenants/[id]/TenantProfileClient";
+import { TenantProfileClient } from "@/app/owner/tenants/[id]/TenantProfileClient";
 
 interface PageProps {
   params: Promise<{ id: string }>;

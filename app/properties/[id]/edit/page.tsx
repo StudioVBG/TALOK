@@ -8,7 +8,7 @@ import { useRouter, useParams } from "next/navigation";
  * Redirection vers la page de détails du bien
  * 
  * Route legacy : /properties/[id]/edit
- * Route canonique : /app/owner/properties/[id]
+ * Route canonique : /owner/properties/[id]
  * 
  * L'édition se fait maintenant directement sur la page de détails
  */
@@ -18,7 +18,7 @@ export default function LegacyEditPropertyPage() {
 
   useEffect(() => {
     if (params.id && typeof params.id === "string") {
-      router.replace(`/app/owner/properties/${params.id}`);
+      router.replace(`/owner/properties/${params.id}`);
     }
   }, [router, params.id]);
 

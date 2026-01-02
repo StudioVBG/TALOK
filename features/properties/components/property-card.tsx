@@ -346,7 +346,7 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
         </div>
 
         <div className="flex gap-2 mt-4">
-          <Link href={`/app/owner/properties/${property.id}`} className="flex-1">
+          <Link href={`/owner/properties/${property.id}`} className="flex-1">
             <Button variant="outline" className="w-full">
               Voir / Modifier
             </Button>

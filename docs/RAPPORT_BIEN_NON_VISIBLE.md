@@ -8,7 +8,7 @@
 
 ## ✅ CORRECTIONS APPLIQUÉES
 
-### 1. Fallback pour colonnes manquantes (`app/app/owner/_data/fetchProperties.ts`)
+### 1. Fallback pour colonnes manquantes (`app/owner/_data/fetchProperties.ts`)
 
 **Problème** : La requête utilisait `is_cover` et `collection` qui peuvent ne pas exister si la migration n'a pas été appliquée.
 
@@ -46,7 +46,7 @@ try {
 }
 ```
 
-### 2. Logs de diagnostic (`app/app/owner/layout.tsx`)
+### 2. Logs de diagnostic (`app/owner/layout.tsx`)
 
 **Ajout** : Logs pour diagnostiquer les erreurs lors du chargement des données :
 
@@ -72,18 +72,18 @@ GET http://localhost:3000/api/properties 500 (Internal Server Error)
 
 ### Flux de données
 
-1. **Layout Server Component** (`app/app/owner/layout.tsx`)
+1. **Layout Server Component** (`app/owner/layout.tsx`)
    - Appelle `fetchProperties(profile.id)`
    - Utilise `unstable_cache` avec tag `owner:properties`
    - Propage les données via `OwnerDataProvider` (Context)
 
-2. **Page Client** (`app/app/owner/properties/PropertiesPageClient.tsx`)
+2. **Page Client** (`app/owner/properties/PropertiesPageClient.tsx`)
    - Utilise `useOwnerData()` pour récupérer les données du Context
    - Affiche la liste des propriétés
 
 ### Point de défaillance identifié
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`  
+**Fichier** : `app/owner/_data/fetchProperties.ts`  
 **Ligne** : 120-128 (avant correction)
 
 La requête utilisait les colonnes `is_cover` et `collection` qui peuvent ne pas exister si la migration `202411140230_documents_gallery.sql` n'a pas été appliquée.
@@ -142,7 +142,7 @@ Les erreurs sont maintenant loggées dans la console serveur pour faciliter le d
    - Vérifier qu'il n'y a plus d'erreur 500
 
 3. **Vérifier l'affichage** :
-   - Aller sur `/app/owner/properties`
+   - Aller sur `/owner/properties`
    - Vérifier que les biens apparaissent
 
 4. **Vérifier la migration** (si problème persiste) :
@@ -169,8 +169,8 @@ Après application des corrections :
 
 ## 📊 FICHIERS MODIFIÉS
 
-- ✅ `app/app/owner/_data/fetchProperties.ts` - Fallback ajouté
-- ✅ `app/app/owner/layout.tsx` - Logs de diagnostic ajoutés
+- ✅ `app/owner/_data/fetchProperties.ts` - Fallback ajouté
+- ✅ `app/owner/layout.tsx` - Logs de diagnostic ajoutés
 
 ---
 
@@ -178,7 +178,7 @@ Après application des corrections :
 
 1. **Redémarrer le serveur** : `npm run dev`
 2. **Vérifier les logs** : Regarder la console serveur pour voir si le fallback est utilisé
-3. **Tester l'affichage** : Aller sur `/app/owner/properties` et vérifier que les biens apparaissent
+3. **Tester l'affichage** : Aller sur `/owner/properties` et vérifier que les biens apparaissent
 4. **Si problème persiste** : Vérifier les logs pour voir l'erreur exacte
 
 ---

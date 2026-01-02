@@ -26,7 +26,7 @@ Le serveur Next.js tourne dans un terminal. Vous devez voir les logs dans ce ter
 
 ### **Étape 2 : Déclencher la requête**
 
-1. Ouvrez `http://localhost:3000/app/owner/properties` dans votre navigateur
+1. Ouvrez `http://localhost:3000/owner/properties` dans votre navigateur
 2. OU faites une requête à `http://localhost:3000/api/properties` (avec authentification)
 
 ### **Étape 3 : Capturer les logs**
@@ -60,7 +60,7 @@ Copiez TOUS les logs `[api/properties]` et partagez-les.
 npm run dev 2>&1 | tee server-logs.txt
 ```
 
-Ensuite, accédez à `/app/owner/properties` et les logs seront dans `server-logs.txt`.
+Ensuite, accédez à `/owner/properties` et les logs seront dans `server-logs.txt`.
 
 ### **Option B : Utiliser le script de diagnostic**
 

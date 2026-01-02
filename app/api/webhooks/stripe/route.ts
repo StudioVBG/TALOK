@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
               p_type: "payment_received",
               p_title: "Paiement reçu !",
               p_message: `Paiement de ${((session.amount_total || 0) / 100).toFixed(2)}€ reçu pour ${invoice.lease.property.adresse_complete}`,
-              p_link: `/app/owner/money`,
+              p_link: `/owner/money`,
               p_related_id: invoiceId,
               p_related_type: "invoice",
             });
@@ -330,7 +330,7 @@ export async function POST(request: NextRequest) {
                 invoice.lease.property.adresse_complete,
                 invoice.periode,
                 new Date().toLocaleDateString("fr-FR"),
-                `${process.env.NEXT_PUBLIC_APP_URL}/app/owner/money`
+                `${process.env.NEXT_PUBLIC_APP_URL}/owner/money`
               );
             }
           }
@@ -516,7 +516,7 @@ export async function POST(request: NextRequest) {
               p_type: "alert",
               p_title: "Abonnement annulé",
               p_message: "Votre abonnement a été annulé. Vos données seront conservées.",
-              p_link: "/app/settings/billing",
+              p_link: "/settings/billing",
             });
           }
 

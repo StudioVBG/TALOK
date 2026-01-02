@@ -38,7 +38,7 @@
 /app                    # Pages Next.js (App Router)
   /api                  # Routes API (146 fichiers)
   /admin                # Pages admin
-  /app/owner            # Pages propriétaire
+  /owner            # Pages propriétaire
   /auth                 # Pages authentification
   /properties           # Pages logements
   /leases               # Pages baux

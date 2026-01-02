@@ -221,7 +221,7 @@ export async function GET(request: Request) {
         label: `Relancer ${uniqueLeases.size} locataire${uniqueLeases.size > 1 ? "s" : ""}`,
         count: uniqueLeases.size,
         total_amount: totalUnpaid,
-        action_url: "/app/owner/money?filter=arrears",
+        action_url: "/owner/money?filter=arrears",
       });
     }
 
@@ -234,7 +234,7 @@ export async function GET(request: Request) {
         priority: "high",
         label: `Signer ${uniqueLeases.size} bail${uniqueLeases.size > 1 ? "x" : ""} en attente`,
         count: uniqueLeases.size,
-        action_url: "/app/owner/contracts?filter=status:draft_or_to_sign",
+        action_url: "/owner/contracts?filter=status:draft_or_to_sign",
       });
     }
 
@@ -253,7 +253,7 @@ export async function GET(request: Request) {
         priority: "medium",
         label: `Préparer ${endingLeases.length} fin${endingLeases.length > 1 ? "s" : ""} de bail à venir`,
         count: endingLeases.length,
-        action_url: "/app/owner/contracts?filter=lease_end:3months",
+        action_url: "/owner/contracts?filter=lease_end:3months",
       });
     }
 
@@ -308,7 +308,7 @@ export async function GET(request: Request) {
           occupancy_rate: occupancyRate,
           properties_count: habitationProperties.length,
         },
-        action_url: "/app/owner/properties?module=habitation",
+        action_url: "/owner/properties?module=habitation",
       });
     }
 
@@ -340,7 +340,7 @@ export async function GET(request: Request) {
           nights_sold: 0, // TODO: Calculer depuis les réservations si table existe
           revenue: totalRevenue,
         },
-        action_url: "/app/owner/properties?module=lcd",
+        action_url: "/owner/properties?module=lcd",
       });
     }
 
@@ -370,7 +370,7 @@ export async function GET(request: Request) {
           monthly_revenue: totalRent,
           properties_count: proProperties.length,
         },
-        action_url: "/app/owner/properties?module=pro",
+        action_url: "/owner/properties?module=pro",
       });
     }
 
@@ -397,7 +397,7 @@ export async function GET(request: Request) {
           monthly_revenue: totalRent,
           properties_count: parkingProperties.length,
         },
-        action_url: "/app/owner/properties?module=parking",
+        action_url: "/owner/properties?module=parking",
       });
     }
 
@@ -421,7 +421,7 @@ export async function GET(request: Request) {
         type: "lease_end",
         severity: daysUntilEnd < 30 ? "high" : daysUntilEnd < 90 ? "medium" : "low",
         label: `Fin de bail ${lease.properties?.adresse_complete || ""} dans ${Math.ceil(daysUntilEnd / 30)} mois`,
-        action_url: `/app/owner/contracts/${lease.id}`,
+        action_url: `/owner/contracts/${lease.id}`,
       });
     });
 
@@ -451,7 +451,7 @@ export async function GET(request: Request) {
                 type: "dpe_expiring",
                 severity: daysUntilExpiration < 90 ? "high" : daysUntilExpiration < 180 ? "medium" : "low",
                 label: `DPE expirant dans ${Math.ceil(daysUntilExpiration / 30)} mois`,
-                action_url: `/app/owner/properties/${p.id}`,
+                action_url: `/owner/properties/${p.id}`,
               });
             }
           }

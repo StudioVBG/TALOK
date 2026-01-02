@@ -23,7 +23,7 @@
 
 ### 1. Suppression du filtre sur `etat/status` dans `fetchProperties`
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 **Changements** :
 - ✅ Ajout de logs pour diagnostiquer les filtres appliqués
@@ -54,7 +54,7 @@ const { data: directData, error: directError, count } = await serviceClient
 
 ### 2. Gestion d'erreur améliorée pour l'upload de photos
 
-**Fichier** : `app/app/owner/property/new/_steps/SummaryStep.tsx`
+**Fichier** : `app/owner/property/new/_steps/SummaryStep.tsx`
 
 **Changements** :
 - ✅ Ajout d'un tag par défaut (`vue_generale`) si `tag` est null
@@ -89,7 +89,7 @@ const uploadUrls = uploadUrlsResults
 
 ### 3. Conservation du bien en draft si incomplet
 
-**Fichier** : `app/app/owner/property/new/_steps/SummaryStep.tsx`
+**Fichier** : `app/owner/property/new/_steps/SummaryStep.tsx`
 
 **Changements** :
 - ✅ Désactivation de l'activation automatique
@@ -112,7 +112,7 @@ const uploadUrls = uploadUrlsResults
 1. **Le bien est créé** avec `etat = "draft"`
 2. **Les photos sont uploadées** avec tag par défaut si manquant
 3. **En cas d'erreur photos** : Le bien est quand même créé et visible
-4. **Le bien apparaît immédiatement** dans `/app/owner/properties`
+4. **Le bien apparaît immédiatement** dans `/owner/properties`
 5. **Message utilisateur** : "Bien créé avec succès" (avec note si incomplet)
 
 ### Logs serveur attendus :

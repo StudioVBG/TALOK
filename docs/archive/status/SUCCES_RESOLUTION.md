@@ -45,7 +45,7 @@
 
 ### 1. Recharger la Page
 
-**Recharger :** `/app/owner/properties`
+**Recharger :** `/owner/properties`
 
 **Résultats attendus :**
 - Les logs console doivent montrer `propertiesCount = 6`
@@ -78,8 +78,8 @@
 
 ### Fichiers Modifiés
 1. ✅ `lib/hooks/use-properties.ts` - Logs améliorés
-2. ✅ `app/app/owner/properties/page.tsx` - Logs améliorés
-3. ✅ `app/app/owner/contracts/OwnerContractsClient.tsx` - Erreur corrigée
+2. ✅ `app/owner/properties/page.tsx` - Logs améliorés
+3. ✅ `app/owner/contracts/OwnerContractsClient.tsx` - Erreur corrigée
 
 ### Migrations SQL Appliquées
 1. ✅ `fix_missing_rls_policies_properties` - Policies RLS créées
@@ -98,7 +98,7 @@
 - [x] Policies RLS créées et vérifiées
 - [x] Endpoint debug testé : `directQueryCount = 6` ✅
 - [x] Endpoint debug testé : `apiQueryCount = 6` ✅
-- [ ] Page `/app/owner/properties` rechargée
+- [ ] Page `/owner/properties` rechargée
 - [ ] Vérification que les 6 propriétés s'affichent
 
 ---

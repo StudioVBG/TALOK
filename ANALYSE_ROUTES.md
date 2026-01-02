@@ -1,13 +1,13 @@
 # 📊 Analyse Complète des Routes - Gestion Locative
 
 ## 🔑 Rôles Identifiés
-1. **OWNER** (Propriétaire) - `/app/owner/*`
-2. **TENANT** (Locataire) - `/app/tenant/*`
-3. **PROVIDER** (Prestataire) - `/app/provider/*`
+1. **OWNER** (Propriétaire) - `/owner/*`
+2. **TENANT** (Locataire) - `/tenant/*`
+3. **PROVIDER** (Prestataire) - `/provider/*`
 4. **ADMIN** (Administrateur) - `/admin/*`
-5. **SYNDIC** (Syndic copropriété) - `/app/syndic/*`
-6. **GUARANTOR** (Garant) - `/app/guarantor/*`
-7. **COPRO** (Copropriétaire) - `/app/copro/*`
+5. **SYNDIC** (Syndic copropriété) - `/syndic/*`
+6. **GUARANTOR** (Garant) - `/guarantor/*`
+7. **COPRO** (Copropriétaire) - `/copro/*`
 
 ---
 
@@ -16,24 +16,24 @@
 ### Pages Principales
 | Route | Description | API Utilisée | Statut |
 |-------|-------------|--------------|--------|
-| `/app/owner/dashboard` | Tableau de bord | `GET /api/owner/dashboard` | ⚠️ À vérifier |
-| `/app/owner/properties` | Liste des biens | `GET /api/owner/properties` | ✅ OK |
-| `/app/owner/properties/[id]` | Détail d'un bien | `fetchPropertyDetails()` | ✅ CORRIGÉ |
-| `/app/owner/properties/[id]/edit` | Édition d'un bien | `PATCH /api/properties/[id]` | ✅ OK |
-| `/app/owner/properties/new` | Créer un bien | `POST /api/properties/init` | ✅ OK |
-| `/app/owner/contracts` | Liste des baux | `GET /api/leases` | ⚠️ À vérifier |
-| `/app/owner/contracts/[id]` | Détail d'un bail | `GET /api/leases/[id]` | ⚠️ À vérifier |
-| `/app/owner/contracts/new` | Créer un bail | `POST /api/leases` | ⚠️ À vérifier |
-| `/app/owner/tenants` | Liste des locataires | Direct Supabase | ⚠️ À vérifier |
-| `/app/owner/tickets` | Liste des tickets | `GET /api/tickets` | ⚠️ RLS Issue |
-| `/app/owner/tickets/[id]` | Détail ticket | `GET /api/tickets/[id]` | ❌ 403 Error |
-| `/app/owner/tickets/new` | Nouveau ticket | `POST /api/tickets` | ✅ OK |
-| `/app/owner/money` | Finances | `GET /api/invoices` | ⚠️ À vérifier |
-| `/app/owner/documents` | Documents | `useDocuments()` hook | ⚠️ À vérifier |
-| `/app/owner/inspections` | États des lieux | `GET /api/edl` | ⚠️ À vérifier |
-| `/app/owner/end-of-lease` | Fin de bail | `GET /api/end-of-lease` | ❌ Function missing |
-| `/app/owner/providers` | Prestataires | `GET /api/providers/search` | ⚠️ À vérifier |
-| `/app/owner/profile` | Profil | `GET /api/me/profile` | ⚠️ À vérifier |
+| `/owner/dashboard` | Tableau de bord | `GET /api/owner/dashboard` | ⚠️ À vérifier |
+| `/owner/properties` | Liste des biens | `GET /api/owner/properties` | ✅ OK |
+| `/owner/properties/[id]` | Détail d'un bien | `fetchPropertyDetails()` | ✅ CORRIGÉ |
+| `/owner/properties/[id]/edit` | Édition d'un bien | `PATCH /api/properties/[id]` | ✅ OK |
+| `/owner/properties/new` | Créer un bien | `POST /api/properties/init` | ✅ OK |
+| `/owner/contracts` | Liste des baux | `GET /api/leases` | ⚠️ À vérifier |
+| `/owner/contracts/[id]` | Détail d'un bail | `GET /api/leases/[id]` | ⚠️ À vérifier |
+| `/owner/contracts/new` | Créer un bail | `POST /api/leases` | ⚠️ À vérifier |
+| `/owner/tenants` | Liste des locataires | Direct Supabase | ⚠️ À vérifier |
+| `/owner/tickets` | Liste des tickets | `GET /api/tickets` | ⚠️ RLS Issue |
+| `/owner/tickets/[id]` | Détail ticket | `GET /api/tickets/[id]` | ❌ 403 Error |
+| `/owner/tickets/new` | Nouveau ticket | `POST /api/tickets` | ✅ OK |
+| `/owner/money` | Finances | `GET /api/invoices` | ⚠️ À vérifier |
+| `/owner/documents` | Documents | `useDocuments()` hook | ⚠️ À vérifier |
+| `/owner/inspections` | États des lieux | `GET /api/edl` | ⚠️ À vérifier |
+| `/owner/end-of-lease` | Fin de bail | `GET /api/end-of-lease` | ❌ Function missing |
+| `/owner/providers` | Prestataires | `GET /api/providers/search` | ⚠️ À vérifier |
+| `/owner/profile` | Profil | `GET /api/me/profile` | ⚠️ À vérifier |
 
 ### APIs Owner Dédiées
 ```
@@ -48,17 +48,17 @@
 ### Pages Principales
 | Route | Description | API Utilisée | Statut |
 |-------|-------------|--------------|--------|
-| `/app/tenant/dashboard` | Tableau de bord | `fetchTenantLease()` | ✅ CORRIGÉ |
-| `/app/tenant/lease` | Mon bail | `fetchTenantLease()` | ✅ CORRIGÉ |
-| `/app/tenant/payments` | Paiements | `GET /api/invoices` | ⚠️ À vérifier |
-| `/app/tenant/documents` | Documents | `useDocuments()` hook | ⚠️ RLS Issue |
-| `/app/tenant/requests` | Mes demandes | `GET /api/tickets` | ⚠️ À vérifier |
-| `/app/tenant/requests/new` | Nouvelle demande | `POST /api/tickets` | ⚠️ À vérifier |
-| `/app/tenant/meters` | Relevés compteurs | `GET /api/meters/readings` | ⚠️ À vérifier |
-| `/app/tenant/colocation` | Colocation | Direct Supabase | ⚠️ À vérifier |
-| `/app/tenant/identity` | Identité | `GET /api/tenant/identity` | ⚠️ À vérifier |
-| `/app/tenant/signatures` | Signatures | `GET /api/tenant/pending-signatures` | ⚠️ À vérifier |
-| `/app/tenant/settings` | Paramètres | `GET /api/me/profile` | ⚠️ À vérifier |
+| `/tenant/dashboard` | Tableau de bord | `fetchTenantLease()` | ✅ CORRIGÉ |
+| `/tenant/lease` | Mon bail | `fetchTenantLease()` | ✅ CORRIGÉ |
+| `/tenant/payments` | Paiements | `GET /api/invoices` | ⚠️ À vérifier |
+| `/tenant/documents` | Documents | `useDocuments()` hook | ⚠️ RLS Issue |
+| `/tenant/requests` | Mes demandes | `GET /api/tickets` | ⚠️ À vérifier |
+| `/tenant/requests/new` | Nouvelle demande | `POST /api/tickets` | ⚠️ À vérifier |
+| `/tenant/meters` | Relevés compteurs | `GET /api/meters/readings` | ⚠️ À vérifier |
+| `/tenant/colocation` | Colocation | Direct Supabase | ⚠️ À vérifier |
+| `/tenant/identity` | Identité | `GET /api/tenant/identity` | ⚠️ À vérifier |
+| `/tenant/signatures` | Signatures | `GET /api/tenant/pending-signatures` | ⚠️ À vérifier |
+| `/tenant/settings` | Paramètres | `GET /api/me/profile` | ⚠️ À vérifier |
 
 ### APIs Tenant Dédiées
 ```
@@ -74,15 +74,15 @@
 ### Pages Principales
 | Route | Description | API Utilisée | Statut |
 |-------|-------------|--------------|--------|
-| `/app/provider/dashboard` | Tableau de bord | `GET /api/provider/dashboard` | ⚠️ À vérifier |
-| `/app/provider/jobs` | Missions | `GET /api/work-orders` | ⚠️ À vérifier |
-| `/app/provider/quotes` | Devis | `GET /api/provider/quotes` | ⚠️ À vérifier |
-| `/app/provider/quotes/new` | Nouveau devis | `POST /api/provider/quotes` | ⚠️ À vérifier |
-| `/app/provider/invoices` | Factures | `GET /api/provider/invoices` | ⚠️ À vérifier |
-| `/app/provider/calendar` | Calendrier | Direct Supabase | ⚠️ À vérifier |
-| `/app/provider/portfolio` | Portfolio | `GET /api/provider/portfolio` | ⚠️ À vérifier |
-| `/app/provider/compliance` | Conformité | `GET /api/provider/compliance/status` | ⚠️ À vérifier |
-| `/app/provider/reviews` | Avis | Direct Supabase | ⚠️ À vérifier |
+| `/provider/dashboard` | Tableau de bord | `GET /api/provider/dashboard` | ⚠️ À vérifier |
+| `/provider/jobs` | Missions | `GET /api/work-orders` | ⚠️ À vérifier |
+| `/provider/quotes` | Devis | `GET /api/provider/quotes` | ⚠️ À vérifier |
+| `/provider/quotes/new` | Nouveau devis | `POST /api/provider/quotes` | ⚠️ À vérifier |
+| `/provider/invoices` | Factures | `GET /api/provider/invoices` | ⚠️ À vérifier |
+| `/provider/calendar` | Calendrier | Direct Supabase | ⚠️ À vérifier |
+| `/provider/portfolio` | Portfolio | `GET /api/provider/portfolio` | ⚠️ À vérifier |
+| `/provider/compliance` | Conformité | `GET /api/provider/compliance/status` | ⚠️ À vérifier |
+| `/provider/reviews` | Avis | Direct Supabase | ⚠️ À vérifier |
 
 ### APIs Provider Dédiées
 ```
@@ -135,10 +135,10 @@
 ### Pages Principales
 | Route | Description | API Utilisée |
 |-------|-------------|--------------|
-| `/app/syndic/dashboard` | Dashboard | `GET /api/syndic/dashboard` |
-| `/app/syndic/sites` | Copropriétés | `GET /api/copro/sites` |
-| `/app/syndic/assemblies` | AG | `GET /api/copro/assemblies` |
-| `/app/syndic/invites` | Invitations | `GET /api/copro/invites` |
+| `/syndic/dashboard` | Dashboard | `GET /api/syndic/dashboard` |
+| `/syndic/sites` | Copropriétés | `GET /api/copro/sites` |
+| `/syndic/assemblies` | AG | `GET /api/copro/assemblies` |
+| `/syndic/invites` | Invitations | `GET /api/copro/invites` |
 
 ---
 
@@ -147,9 +147,9 @@
 ### Pages Principales
 | Route | Description | API Utilisée |
 |-------|-------------|--------------|
-| `/app/guarantor/dashboard` | Dashboard | `GET /api/guarantors/dashboard` |
-| `/app/guarantor/documents` | Documents | `GET /api/guarantors/documents` |
-| `/app/guarantor/profile` | Profil | `GET /api/guarantors/me` |
+| `/guarantor/dashboard` | Dashboard | `GET /api/guarantors/dashboard` |
+| `/guarantor/documents` | Documents | `GET /api/guarantors/documents` |
+| `/guarantor/profile` | Profil | `GET /api/guarantors/me` |
 
 ---
 

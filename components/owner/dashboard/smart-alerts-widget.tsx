@@ -294,7 +294,7 @@ export function generateSmartAlerts(params: {
       message: `${formatCurrency(invoice.amount)} en retard de ${invoice.daysLate} jours`,
       action: {
         label: "Gérer l'impayé",
-        href: `/app/owner/money?invoice=${invoice.id}`,
+        href: `/owner/money?invoice=${invoice.id}`,
       },
     });
   }
@@ -309,7 +309,7 @@ export function generateSmartAlerts(params: {
       message: `${lease.address} - expire dans ${lease.daysUntilExpiry} jours`,
       action: {
         label: "Gérer la fin de bail",
-        href: `/app/owner/end-of-lease/${lease.id}`,
+        href: `/owner/end-of-lease/${lease.id}`,
       },
     });
   }
@@ -324,7 +324,7 @@ export function generateSmartAlerts(params: {
       message: `${doc.type} - ${doc.property}`,
       action: {
         label: "Ajouter le document",
-        href: "/app/owner/documents/upload",
+        href: "/owner/documents/upload",
       },
       dismissible: true,
     });
@@ -340,7 +340,7 @@ export function generateSmartAlerts(params: {
       message: `${irl.address} - +${irl.increase.toFixed(2)}€/mois possible`,
       action: {
         label: "Appliquer la révision",
-        href: `/app/owner/contracts/${irl.leaseId}/revision`,
+        href: `/owner/contracts/${irl.leaseId}/revision`,
       },
       dismissible: true,
     });

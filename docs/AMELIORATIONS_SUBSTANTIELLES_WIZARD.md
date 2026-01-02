@@ -23,7 +23,7 @@
   - Persistance automatique dans localStorage
   - Actions simples (`next`, `prev`, `patch`, `reset`)
   - Mode FAST/FULL géré automatiquement
-- ✅ **Routes canoniques** : `/app/owner/property/new` (singulier)
+- ✅ **Routes canoniques** : `/owner/property/new` (singulier)
 - ✅ **Composants modulaires** : Chaque step est un composant indépendant
 - ✅ **Code-splitting** : Steps chargés dynamiquement
 
@@ -134,7 +134,7 @@
 **Impact** :
 - 🔥 **0 → 7 appels API intégrés** (100% fonctionnel)
 - 🔥 **Gestion d'erreurs robuste** : Continue même en cas d'échec partiel
-- 🔥 **Redirection automatique** : Vers `/app/owner/properties/[id]` après création
+- 🔥 **Redirection automatique** : Vers `/owner/properties/[id]` après création
 
 ---
 
@@ -239,7 +239,7 @@
 #### Structure des fichiers
 
 ```
-app/app/owner/property/new/
+app/owner/property/new/
 ├── page.tsx                    # Wrapper principal
 ├── _store/
 │   └── useNewProperty.ts      # Store Zustand

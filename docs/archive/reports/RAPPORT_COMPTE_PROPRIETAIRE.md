@@ -27,15 +27,15 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 - Consulter les documents
 - Accéder à un tableau de bord avec KPIs
 
-**Base path :** `/app/owner`
+**Base path :** `/owner`
 
 ---
 
 ## 🖥️ Routes Frontend (Pages)
 
 ### 1. Tableau de bord
-**Route :** `/app/owner/dashboard`  
-**Fichier :** `app/app/owner/dashboard/page.tsx`  
+**Route :** `/owner/dashboard`  
+**Fichier :** `app/owner/dashboard/page.tsx`  
 **API associée :** `GET /api/owner/dashboard`
 
 **Fonctionnalités :**
@@ -54,8 +54,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 2. Mes biens
-**Route :** `/app/owner/properties`  
-**Fichier :** `app/app/owner/properties/page.tsx`  
+**Route :** `/owner/properties`  
+**Fichier :** `app/owner/properties/page.tsx`  
 **API associée :** `GET /api/properties`
 
 **Fonctionnalités :**
@@ -78,8 +78,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 3. Détails d'un bien
-**Route :** `/app/owner/properties/[id]`  
-**Fichier :** `app/app/owner/properties/[id]/page.tsx`  
+**Route :** `/owner/properties/[id]`  
+**Fichier :** `app/owner/properties/[id]/page.tsx`  
 **API associée :** `GET /api/properties/[id]`
 
 **Fonctionnalités :**
@@ -96,8 +96,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 4. Ajouter un bien
-**Route :** `/app/owner/properties/new`  
-**Fichier :** `app/app/owner/properties/new/page.tsx`  
+**Route :** `/owner/properties/new`  
+**Fichier :** `app/owner/properties/new/page.tsx`  
 **API associée :** `POST /api/properties`
 
 **Fonctionnalités :**
@@ -112,8 +112,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 5. Baux & locataires
-**Route :** `/app/owner/contracts`  
-**Fichier :** `app/app/owner/contracts/page.tsx`  
+**Route :** `/owner/contracts`  
+**Fichier :** `app/owner/contracts/page.tsx`  
 **API associée :** `GET /api/leases`
 
 **Fonctionnalités :**
@@ -129,8 +129,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 6. Détails d'un bail
-**Route :** `/app/owner/contracts/[id]`  
-**Fichier :** `app/app/owner/contracts/[id]/page.tsx`  
+**Route :** `/owner/contracts/[id]`  
+**Fichier :** `app/owner/contracts/[id]/page.tsx`  
 **API associée :** `GET /api/leases/[id]`
 
 **Fonctionnalités :**
@@ -146,8 +146,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 7. Loyers & revenus
-**Route :** `/app/owner/money`  
-**Fichier :** `app/app/owner/money/page.tsx`  
+**Route :** `/owner/money`  
+**Fichier :** `app/owner/money/page.tsx`  
 **API associée :** `GET /api/invoices`
 
 **Fonctionnalités :**
@@ -165,8 +165,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 8. Documents
-**Route :** `/app/owner/documents`  
-**Fichier :** `app/app/owner/documents/page.tsx`
+**Route :** `/owner/documents`  
+**Fichier :** `app/owner/documents/page.tsx`
 
 **Fonctionnalités :**
 - Liste des documents
@@ -177,8 +177,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 9. Aide & services
-**Route :** `/app/owner/support`  
-**Fichier :** `app/app/owner/support/page.tsx`
+**Route :** `/owner/support`  
+**Fichier :** `app/owner/support/page.tsx`
 
 **Fonctionnalités :**
 - Centre d'aide
@@ -189,8 +189,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 10. Mon profil
-**Route :** `/app/owner/profile`  
-**Fichier :** `app/app/owner/profile/page.tsx`  
+**Route :** `/owner/profile`  
+**Fichier :** `app/owner/profile/page.tsx`  
 **API associée :** `GET /api/me/profile`, `PUT /api/me/profile`
 
 **Fonctionnalités :**
@@ -666,7 +666,7 @@ app/
 ### Conventions de nommage
 
 - **Routes API :** `/api/[ressource]` ou `/api/[ressource]/[id]`
-- **Pages :** `/app/owner/[section]` ou `/app/owner/[section]/[id]`
+- **Pages :** `/owner/[section]` ou `/owner/[section]/[id]`
 - **Hooks :** `use[Resource]()` (camelCase)
 - **Types :** `[Resource]Row`, `[Resource]Data` (PascalCase)
 

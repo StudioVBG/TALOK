@@ -58,7 +58,7 @@ http://localhost:3000/api/debug/properties
 
 ### 2. Vérifier les Logs dans la Console
 
-**Recharger `/app/owner/properties`** et ouvrir la console (F12).
+**Recharger `/owner/properties`** et ouvrir la console (F12).
 
 **Logs attendus :**
 ```json
@@ -129,7 +129,7 @@ Dans le terminal où `npm run dev` tourne, chercher :
 ## ✅ Checklist Finale
 
 - [ ] Tester `/api/debug/properties` et vérifier les résultats
-- [ ] Recharger `/app/owner/properties` et vérifier les logs console
+- [ ] Recharger `/owner/properties` et vérifier les logs console
 - [ ] Vérifier les logs serveur dans le terminal
 - [ ] Comparer `profile.id` dans les logs avec `3b9280bc-061b-4880-a5e1-57d3f7ab06e5`
 - [ ] Vérifier que `Nombre de propriétés trouvées` = 6

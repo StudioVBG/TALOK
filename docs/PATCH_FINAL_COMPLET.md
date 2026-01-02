@@ -2,18 +2,18 @@
 
 **Date** : 2025-02-18  
 **Problèmes corrigés** :
-1. ✅ Bug `PUT /app/owner/property/undefined` 
+1. ✅ Bug `PUT /owner/property/undefined` 
 2. ✅ fetchProperties retourne 0 malgré que les biens existent
 
 ---
 
 ## 📋 RÉSUMÉ DES PROBLÈMES IDENTIFIÉS
 
-### Problème 1 : PUT /app/owner/property/undefined ❌
+### Problème 1 : PUT /owner/property/undefined ❌
 
 **Cause** : L'API `/api/properties/[id]/photos/upload-url` retourne `upload_url` (snake_case) mais le code TypeScript attend `uploadURL` (camelCase).
 
-**Fichier** : `app/app/owner/property/new/_steps/SummaryStep.tsx`
+**Fichier** : `app/owner/property/new/_steps/SummaryStep.tsx`
 
 **Ligne problématique** : Ligne 207-236
 
@@ -39,7 +39,7 @@
 
 ### Patch 1 : Correction du bug PUT undefined
 
-**Fichier** : `app/app/owner/property/new/_steps/SummaryStep.tsx`
+**Fichier** : `app/owner/property/new/_steps/SummaryStep.tsx`
 
 **Changements** :
 1. Correction du type de réponse API : `{ upload_url: string; uploadURL?: string; ... }`
@@ -63,7 +63,7 @@
 
 ### Patch 3 : Amélioration de fetchProperties
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 **Changements** :
 1. Utiliser `service_role` pour charger les médias aussi (bypass RLS)
@@ -76,18 +76,18 @@
 
 Après application des patches :
 
-1. ✅ Plus d'erreur `PUT /app/owner/property/undefined`
+1. ✅ Plus d'erreur `PUT /owner/property/undefined`
 2. ✅ Les photos s'uploadent correctement avec l'URL signée Supabase
 3. ✅ `fetchProperties` retourne les propriétés correctement
 4. ✅ `OwnerDataProvider` reçoit `propertiesCount > 0`
-5. ✅ Les propriétés apparaissent dans `/app/owner/properties`
+5. ✅ Les propriétés apparaissent dans `/owner/properties`
 
 ---
 
 ## 🧪 TESTS À EFFECTUER
 
 1. **Créer un bien avec photos** :
-   - Vérifier qu'il n'y a plus d'erreur `PUT /app/owner/property/undefined`
+   - Vérifier qu'il n'y a plus d'erreur `PUT /owner/property/undefined`
    - Vérifier que les photos s'uploadent correctement
 
 2. **Vérifier les logs serveur** :
@@ -95,7 +95,7 @@ Après application des patches :
    - `[OwnerLayout] ✅ Propriétés chargées: X`
    - `[OwnerDataProvider] Données reçues: { propertiesCount: X, ... }`
 
-3. **Vérifier la page `/app/owner/properties`** :
+3. **Vérifier la page `/owner/properties`** :
    - Les propriétés doivent apparaître sans toucher aux filtres
 
 ---

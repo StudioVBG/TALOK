@@ -1,23 +1,32 @@
 "use client";
 
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
-import { MapPin, Home, Ruler, Euro, Image as ImageIcon, Edit2, AlertCircle, Car, LayoutGrid } from "lucide-react";
+import { 
+  MapPin, Home, Ruler, Euro, Image as ImageIcon, 
+  Edit2, AlertCircle, Car, LayoutGrid, 
+  Sparkles, Calendar, Globe, Lock
+} from "lucide-react";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 const TYPES_WITHOUT_ROOMS = ["parking", "box", "local_commercial", "bureaux", "entrepot", "fonds_de_commerce"];
 
 export function RecapStep() {
-  const { formData, rooms, photos, setStep } = usePropertyWizardStore();
+  const { formData, rooms, photos, setStep, mode } = usePropertyWizardStore();
 
   const propertyType = (formData.type as string) || "";
   const hasRooms = !TYPES_WITHOUT_ROOMS.includes(propertyType);
   const getTypeLabel = (type: string) => type ? type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ') : "—";
   const mainPhoto = photos.find(p => p.is_main) || photos[0];
+  const equipments = formData.equipments || [];
+  const availableFrom = formData.available_from ? new Date(formData.available_from) : null;
+  const visibility = (formData as any).visibility || "private";
 
-  const Section = ({ title, step, children, icon: Icon, className }: { title: string; step: 'type_bien' | 'address' | 'details' | 'rooms' | 'photos'; children: React.ReactNode; icon: any; className?: string }) => (
+  const Section = ({ title, step, children, icon: Icon, className }: { title: string; step: 'type_bien' | 'address' | 'details' | 'rooms' | 'photos' | 'features' | 'publish'; children: React.ReactNode; icon: any; className?: string }) => (
     <Card 
       className={cn("group hover:border-primary/50 transition-colors cursor-pointer overflow-hidden relative", className)}
       onClick={() => setStep(step)}
@@ -129,6 +138,41 @@ export function RecapStep() {
               </div>
             )}
           </Section>
+
+          {/* Équipements - Mode FULL uniquement - Colonne 1 & 2 */}
+          {mode === 'full' && (
+            <Section title="Équipements" step="features" icon={Sparkles} className="md:col-span-2">
+              <div className="flex flex-wrap gap-1.5">
+                {equipments.length > 0 ? (
+                  equipments.map((eq) => (
+                    <span key={eq} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium border border-primary/20">
+                      {eq.replace(/_/g, ' ')}
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">Aucun équipement sélectionné</p>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {/* Publication - Mode FULL uniquement - Colonne 3 */}
+          {mode === 'full' && (
+            <Section title="Publication" step="publish" icon={Calendar}>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  {visibility === 'public' ? (
+                    <><Globe className="h-4 w-4 text-green-600" /> Public</>
+                  ) : (
+                    <><Lock className="h-4 w-4 text-amber-600" /> Privé</>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Dispo : {availableFrom ? format(availableFrom, 'dd/MM/yyyy', { locale: fr }) : 'Immédiate'}
+                </p>
+              </div>
+            </Section>
+          )}
         </div>
         
         {/* Warning */}

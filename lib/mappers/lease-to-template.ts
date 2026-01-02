@@ -1,6 +1,6 @@
 import { numberToWords } from "@/lib/helpers/format";
 import type { BailComplet } from "@/lib/templates/bail/types";
-import type { LeaseDetails } from "@/app/app/owner/_data/fetchLeaseDetails";
+import type { LeaseDetails } from "@/app/owner/_data/fetchLeaseDetails";
 
 interface OwnerProfile {
   id: string;

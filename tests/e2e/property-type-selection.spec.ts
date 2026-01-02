@@ -13,7 +13,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Property Type Selection - Step 1", () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to property creation page
-    await page.goto("/app/owner/properties/new");
+    await page.goto("/owner/properties/new");
     // Wait for the wizard to load
     await page.waitForSelector('[role="listbox"]', { timeout: 10000 });
   });

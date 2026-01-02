@@ -75,7 +75,7 @@ export default function CoproInvitePage() {
         setSuccess(true);
         // Rediriger après 2 secondes
         setTimeout(() => {
-          router.push(result.redirect_url || '/app/copro/dashboard');
+          router.push(result.redirect_url || '/copro/dashboard');
         }, 2000);
       } else {
         setError(result.error_message || 'Erreur lors de l\'acceptation');

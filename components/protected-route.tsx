@@ -31,13 +31,13 @@ export function ProtectedRoute({
       // Rediriger vers le dashboard approprié selon le rôle
       switch (profile.role) {
         case "owner":
-          router.replace("/app/owner/dashboard");
+          router.replace("/owner/dashboard");
           break;
         case "tenant":
-          router.replace("/app/tenant");
+          router.replace("/tenant");
           break;
         case "provider":
-          router.replace("/app/provider");
+          router.replace("/provider");
           break;
         case "admin":
           router.replace("/admin/dashboard");

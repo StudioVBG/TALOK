@@ -72,7 +72,7 @@ WHERE energie IS NOT NULL OR ges IS NOT NULL;
 
 ### 3. Restauration du code TypeScript ✅
 
-**Fichier** : `app/app/owner/_data/fetchPropertyDetails.ts`
+**Fichier** : `app/owner/_data/fetchPropertyDetails.ts`
 
 Le code a été **restauré** pour utiliser les colonnes DPE nouvellement créées :
 - ✅ `dpe_classe_energie`, `dpe_classe_climat` dans `properties`
@@ -110,13 +110,13 @@ AND column_name IN ('dpe_classe_energie', 'dpe_classe_climat', 'preview_url', 'i
 
 ### ⏳ Test 2 : Liste des propriétés
 ```
-URL : http://localhost:3000/app/owner/properties
+URL : http://localhost:3000/owner/properties
 Résultat attendu : Affichage des 10 propriétés avec leurs photos
 ```
 
 ### ⏳ Test 3 : Détail d'une propriété
 ```
-URL : http://localhost:3000/app/owner/properties/23aa5434-6543-4581-952e-2d176b6ff4c3
+URL : http://localhost:3000/owner/properties/23aa5434-6543-4581-952e-2d176b6ff4c3
 Résultat attendu : Affichage des détails de la propriété (pas "Propriété non trouvée")
 ```
 
@@ -158,7 +158,7 @@ Toutes les propriétés ont le statut `draft` et appartiennent à l'utilisateur 
 ## 🎯 PROCHAINES ÉTAPES
 
 1. **Tester l'application** dans le navigateur :
-   - Naviguer vers `/app/owner/properties`
+   - Naviguer vers `/owner/properties`
    - Vérifier que les 10 propriétés s'affichent
    - Cliquer sur une propriété pour voir les détails
 

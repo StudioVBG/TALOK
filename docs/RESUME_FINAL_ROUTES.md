@@ -5,7 +5,7 @@
 ### Phase 1 : Vérification initiale
 - ✅ 12 routes principales vérifiées
 - ✅ 4 problèmes identifiés et corrigés
-- ✅ 1 nouvelle page créée (`/app/owner/documents/upload`)
+- ✅ 1 nouvelle page créée (`/owner/documents/upload`)
 
 ### Phase 2 : Standardisation avec helpers
 - ✅ Création de `lib/owner/routes.ts` avec helpers centralisés
@@ -21,22 +21,22 @@
 
 ### Nouveaux fichiers
 1. `lib/owner/routes.ts` - Helpers centralisés pour toutes les routes
-2. `app/app/owner/documents/upload/page.tsx` - Page d'upload de documents
+2. `app/owner/documents/upload/page.tsx` - Page d'upload de documents
 3. `docs/VERIFICATION_ROUTES_BOUTONS.md` - Guide de vérification
 4. `docs/CORRECTIONS_ROUTES_BOUTONS.md` - Détails des corrections
 5. `docs/RAPPORT_VERIFICATION_ROUTES.md` - Rapport complet
 6. `docs/RESUME_FINAL_ROUTES.md` - Ce document
 
 ### Fichiers modifiés
-1. `app/app/owner/property/new/page.tsx` - Redirection vers nouvelle route
-2. `app/app/owner/properties/OwnerPropertiesClient.tsx` - Utilisation des helpers
-3. `app/app/owner/properties/[id]/OwnerPropertyDetailClient.tsx` - Utilisation des helpers
-4. `app/app/owner/properties/[id]/page.tsx` - Routes corrigées
-5. `app/app/owner/contracts/OwnerContractsClient.tsx` - Utilisation des helpers
-6. `app/app/owner/contracts/[id]/OwnerContractDetailClient.tsx` - Utilisation des helpers
-7. `app/app/owner/money/OwnerMoneyClient.tsx` - Utilisation des helpers
-8. `app/app/owner/documents/OwnerDocumentsClient.tsx` - Utilisation des helpers
-9. `app/app/owner/documents/upload/page.tsx` - Utilisation des helpers
+1. `app/owner/property/new/page.tsx` - Redirection vers nouvelle route
+2. `app/owner/properties/OwnerPropertiesClient.tsx` - Utilisation des helpers
+3. `app/owner/properties/[id]/OwnerPropertyDetailClient.tsx` - Utilisation des helpers
+4. `app/owner/properties/[id]/page.tsx` - Routes corrigées
+5. `app/owner/contracts/OwnerContractsClient.tsx` - Utilisation des helpers
+6. `app/owner/contracts/[id]/OwnerContractDetailClient.tsx` - Utilisation des helpers
+7. `app/owner/money/OwnerMoneyClient.tsx` - Utilisation des helpers
+8. `app/owner/documents/OwnerDocumentsClient.tsx` - Utilisation des helpers
+9. `app/owner/documents/upload/page.tsx` - Utilisation des helpers
 10. `components/owner/cards/OwnerPropertyCard.tsx` - Utilisation des helpers
 
 ## 🎯 Routes standardisées
@@ -85,20 +85,20 @@ ownerSupportRoutes.withProperty(propertyId)
 ## 📋 Routes vérifiées et fonctionnelles
 
 ### Routes principales ✅
-- `/app/owner/dashboard`
-- `/app/owner/properties` + `/new` + `/[id]` + `/[id]/edit`
-- `/app/owner/contracts` + `/[id]`
-- `/app/owner/money`
-- `/app/owner/documents` + `/upload`
-- `/app/owner/support`
-- `/app/owner/profile`
+- `/owner/dashboard`
+- `/owner/properties` + `/new` + `/[id]` + `/[id]/edit`
+- `/owner/contracts` + `/[id]`
+- `/owner/money`
+- `/owner/documents` + `/upload`
+- `/owner/support`
+- `/owner/profile`
 
 ### Routes externes ✅
 - `/leases/new` (avec query params)
 - `/invoices/[id]`
 
 ### Routes redirigées ✅
-- `/app/owner/property/new` → `/app/owner/properties/new`
+- `/owner/property/new` → `/owner/properties/new`
 
 ## 🔍 Actions des boutons vérifiées
 

@@ -11,19 +11,19 @@ Nous avons éliminé la dette technique liée à la duplication des routes.
 
 - **Supprimé** : `app/owner`, `app/tenant`, `app/vendor`, `app/provider` (racine).
 - **Consolidé** : Tout se trouve désormais sous `app/app/{role}`.
-  - `app/app/owner` : Espace Propriétaire (Complet)
-  - `app/app/tenant` : Espace Locataire (Complet)
-  - `app/app/provider` : Espace Prestataire (Nouveau standard)
+  - `app/owner` : Espace Propriétaire (Complet)
+  - `app/tenant` : Espace Locataire (Complet)
+  - `app/provider` : Espace Prestataire (Nouveau standard)
   - `app/app/admin` : Espace Admin (Redirigé depuis /admin)
 
-- **Middleware** : Mis à jour pour rediriger automatiquement les anciennes routes (ex: `/owner` -> `/app/owner/dashboard`).
+- **Middleware** : Mis à jour pour rediriger automatiquement les anciennes routes (ex: `/owner` -> `/owner/dashboard`).
 - **Navbar** : Links mis à jour pour pointer vers les nouvelles routes unifiées.
 
 ## 2. 👷 Espace Prestataire (Provider)
 
-- **Structure** : Migré de `/app/vendor` vers `/app/app/provider` pour alignement avec Owner/Tenant.
-- **Onboarding** : Flux corrigé. À la fin de l'onboarding, l'utilisateur est redirigé vers `/app/provider/dashboard`.
-- **Dashboard** : Accessible via `/app/provider/dashboard`. Contient les bases (Missions, Factures).
+- **Structure** : Migré de `/app/vendor` vers `/app/provider` pour alignement avec Owner/Tenant.
+- **Onboarding** : Flux corrigé. À la fin de l'onboarding, l'utilisateur est redirigé vers `/provider/dashboard`.
+- **Dashboard** : Accessible via `/provider/dashboard`. Contient les bases (Missions, Factures).
 
 ## 3. 💶 Finance & Connexion Bancaire
 

@@ -61,22 +61,22 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
   const mainNavigation = [
     {
       name: "Tableau de bord",
-      href: "/app/tenant/dashboard",
+      href: "/tenant/dashboard",
       icon: LayoutDashboard,
     },
     {
       name: "Mon logement",
-      href: "/app/tenant/lease",
+      href: "/tenant/lease",
       icon: Home,
     },
     {
       name: "Paiements",
-      href: "/app/tenant/payments",
+      href: "/tenant/payments",
       icon: CreditCard,
     },
     {
       name: "Documents",
-      href: "/app/tenant/documents",
+      href: "/tenant/documents",
       icon: FileText,
     },
   ];
@@ -84,37 +84,37 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
   const secondaryNavigation = [
     {
       name: "Demandes",
-      href: "/app/tenant/requests",
+      href: "/tenant/requests",
       icon: Wrench,
     },
     {
       name: "États des lieux",
-      href: "/app/tenant/inspections",
+      href: "/tenant/inspections",
       icon: ClipboardCheck,
     },
     {
       name: "Compteurs",
-      href: "/app/tenant/meters",
+      href: "/tenant/meters",
       icon: Gauge,
     },
     {
       name: "Signatures",
-      href: "/app/tenant/signatures",
+      href: "/tenant/signatures",
       icon: FileSignature,
     },
     {
       name: "Messages",
-      href: "/app/tenant/messages",
+      href: "/tenant/messages",
       icon: MessageSquare,
     },
     {
       name: "Récompenses",
-      href: "/app/tenant/rewards",
+      href: "/tenant/rewards",
       icon: Gift,
     },
     {
       name: "Marketplace",
-      href: "/app/tenant/marketplace",
+      href: "/tenant/marketplace",
       icon: ShoppingBag,
     },
   ];
@@ -122,12 +122,12 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
   const bottomNavigation = [
     {
       name: "Aide",
-      href: "/app/tenant/help",
+      href: "/tenant/help",
       icon: HelpCircle,
     },
     {
       name: "Paramètres",
-      href: "/app/tenant/settings",
+      href: "/tenant/settings",
       icon: Settings,
     },
   ];
@@ -178,7 +178,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/app/tenant/settings">
+                <Link href="/tenant/settings">
                   <Settings className="mr-2 h-4 w-4" />
                   Paramètres
                 </Link>
@@ -204,7 +204,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b shrink-0">
-          <Link href="/app/tenant/dashboard" className="flex items-center gap-2">
+          <Link href="/tenant/dashboard" className="flex items-center gap-2">
             <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               Gestion Locative
             </span>

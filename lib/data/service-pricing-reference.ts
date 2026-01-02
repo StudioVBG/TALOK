@@ -373,7 +373,7 @@ export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
  * Icônes des types de service (Lucide)
  */
 export const SERVICE_TYPE_ICONS: Record<ServiceType, string> = {
-  plomberie: 'Droplets',
+  plomberie: 'Droplet',
   electricite: 'Zap',
   serrurerie: 'Key',
   chauffage_clim: 'Thermometer',

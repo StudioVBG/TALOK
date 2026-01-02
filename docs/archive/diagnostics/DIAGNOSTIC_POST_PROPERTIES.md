@@ -54,7 +54,7 @@
 - **Solution** : Vérifier `.env.local`
 
 ### 3. Tester la Création
-1. Ouvrir `/app/owner/property/new`
+1. Ouvrir `/owner/property/new`
 2. Sélectionner un type de bien (ex: "appartement")
 3. Observer les logs serveur
 4. Partager les logs complets
@@ -65,7 +65,7 @@
 - [ ] Erreur exacte identifiée
 - [ ] Solution appliquée
 - [ ] Test de création réussi
-- [ ] Propriété visible dans `/app/owner/properties`
+- [ ] Propriété visible dans `/owner/properties`
 
 ---
 

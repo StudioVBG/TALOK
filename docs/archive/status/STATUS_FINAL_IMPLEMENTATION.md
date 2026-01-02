@@ -92,7 +92,7 @@ Le build Next.js montre des erreurs dans d'autres fichiers (non liés à Propert
 ## 🧪 Tests à effectuer
 
 ### Test visuel
-1. Ouvrir `/app/owner/properties/23aa5434-6543-4581-952e-2d176b6ff4c3`
+1. Ouvrir `/owner/properties/23aa5434-6543-4581-952e-2d176b6ff4c3`
 2. Vérifier l'affichage du Hero avec photos
 3. Vérifier les stats (125 m², 5 p., 3 ch.)
 4. Vérifier les badges DPE/GES
@@ -114,7 +114,7 @@ Le build Next.js montre des erreurs dans d'autres fichiers (non liés à Propert
 - ✅ `STATUS_FINAL_IMPLEMENTATION.md` (ce fichier)
 
 ### Modifiés
-- ✅ `app/app/owner/properties/[id]/PropertyDetailsClient.tsx`
+- ✅ `app/owner/properties/[id]/PropertyDetailsClient.tsx`
 - ✅ `lib/types/owner-property.ts`
 
 ### Migrations SQL

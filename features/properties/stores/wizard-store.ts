@@ -5,13 +5,15 @@ import type { Property, Room, Photo } from '@/lib/types';
 import type { PropertyTypeV3 } from '@/lib/types/property-v3';
 
 // Types
-export type WizardStep = 'type_bien' | 'address' | 'details' | 'rooms' | 'photos' | 'recap';
+export type WizardStep = 'type_bien' | 'address' | 'details' | 'rooms' | 'photos' | 'features' | 'publish' | 'recap';
+export type WizardMode = 'fast' | 'full';
 type SyncStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 interface WizardState {
   // État Global
   propertyId: string | null;
   currentStep: WizardStep;
+  mode: WizardMode;
   syncStatus: SyncStatus;
   lastError: string | null;
 
@@ -41,12 +43,16 @@ interface WizardState {
   
   // Navigation
   setStep: (step: WizardStep) => void;
+  setMode: (mode: WizardMode) => void;
   nextStep: () => void;
   prevStep: () => void;
 }
 
 // Mapping des étapes (ordre logique)
-const STEPS_ORDER: WizardStep[] = ['type_bien', 'address', 'details', 'rooms', 'photos', 'recap'];
+const STEPS_ORDER: WizardStep[] = ['type_bien', 'address', 'details', 'rooms', 'photos', 'features', 'publish', 'recap'];
+
+// Étapes pour le mode FAST
+const FAST_STEPS: WizardStep[] = ['type_bien', 'address', 'photos', 'recap'];
 
 // Types de biens qui n'ont PAS d'étape "rooms" (pas de pièces à configurer)
 // ⚠️ Aligné avec TypeStep.tsx : utiliser les vrais IDs (local_commercial, bureaux, etc.)
@@ -59,12 +65,14 @@ const TYPES_WITHOUT_ROOMS_STEP = [
   "fonds_de_commerce"
 ];
 
-// Fonction pour obtenir les étapes applicables selon le type de bien
-function getApplicableSteps(propertyType: string | undefined): WizardStep[] {
+// Fonction pour obtenir les étapes applicables selon le type de bien et le mode
+function getApplicableSteps(propertyType: string | undefined, mode: WizardMode): WizardStep[] {
+  let steps = mode === 'fast' ? FAST_STEPS : STEPS_ORDER;
+  
   if (propertyType && TYPES_WITHOUT_ROOMS_STEP.includes(propertyType)) {
-    return STEPS_ORDER.filter(step => step !== 'rooms');
+    return steps.filter(step => step !== 'rooms');
   }
-  return STEPS_ORDER;
+  return steps;
 }
 
 // Types de pièces principales (comptées dans nb_pieces)
@@ -87,6 +95,7 @@ function calculateRoomCounts(rooms: Room[]): { nb_pieces: number; nb_chambres: n
 const INITIAL_STATE = {
   propertyId: null,
   currentStep: 'type_bien' as WizardStep,
+  mode: 'full' as WizardMode,
   syncStatus: 'idle' as SyncStatus,
   lastError: null,
   formData: { etat: 'draft' } as Partial<Property>,
@@ -338,10 +347,12 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
   // Navigation
   setStep: (step) => set({ currentStep: step }),
   
+  setMode: (mode) => set({ mode }),
+  
   nextStep: () => {
-    const { currentStep, formData } = get();
+    const { currentStep, formData, mode } = get();
     const propertyType = (formData.type as string) || "";
-    const applicableSteps = getApplicableSteps(propertyType);
+    const applicableSteps = getApplicableSteps(propertyType, mode);
     const currentIndex = applicableSteps.indexOf(currentStep);
     if (currentIndex < applicableSteps.length - 1) {
       set({ currentStep: applicableSteps[currentIndex + 1] });
@@ -349,9 +360,9 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
   },
 
   prevStep: () => {
-    const { currentStep, formData } = get();
+    const { currentStep, formData, mode } = get();
     const propertyType = (formData.type as string) || "";
-    const applicableSteps = getApplicableSteps(propertyType);
+    const applicableSteps = getApplicableSteps(propertyType, mode);
     const currentIndex = applicableSteps.indexOf(currentStep);
     if (currentIndex > 0) {
       set({ currentStep: applicableSteps[currentIndex - 1] });

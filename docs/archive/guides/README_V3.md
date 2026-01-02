@@ -18,7 +18,7 @@ L'implémentation complète du **Property V3** est terminée. Tous les composant
 
 1. Démarrer le serveur : `npm run dev`
 2. Accéder au wizard : `/properties/new-v3`
-3. Ou via dashboard : `/app/owner` → Bouton "Ajouter un bien (V3)"
+3. Ou via dashboard : `/owner` → Bouton "Ajouter un bien (V3)"
 4. Tester la création de biens (Habitation, Parking, Locaux Pro)
 
 ## 📚 Documentation disponible
@@ -115,7 +115,7 @@ Gestion locative/
 - **Protection** : Propriétaires et admins uniquement
 
 ### Accès depuis le dashboard
-- **URL** : `/app/owner`
+- **URL** : `/owner`
 - **Action** : Cliquer sur "Ajouter un bien (V3)" dans le header
 
 ## ✅ Checklist finale
@@ -141,7 +141,7 @@ Gestion locative/
 ## 🔗 Liens rapides
 
 - **SQL Editor Supabase** : https://supabase.com/dashboard/project/poeijjosocmqlhgsacud/editor
-- **Dashboard Propriétaire** : `/app/owner`
+- **Dashboard Propriétaire** : `/owner`
 - **Wizard V3** : `/properties/new-v3`
 - **Guide Complet** : `GUIDE_COMPLET_V3.md`
 

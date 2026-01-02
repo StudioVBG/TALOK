@@ -1,6 +1,10 @@
 /**
  * Service Assistant IA
- * SOTA Décembre 2025 - GPT-5.1 + LangGraph
+ * SOTA Décembre 2025 - GPT-5.2 + LangGraph 1.0
+ * 
+ * Supporte deux architectures :
+ * - Architecture simple (property-assistant.graph.ts) : Agent unique avec tools
+ * - Architecture multi-agent (multi-agent-graph.ts) : Supervisor avec agents spécialisés
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -10,6 +14,12 @@ import {
   type AssistantInvokeParams,
   type AssistantInvokeResult 
 } from "../ai/property-assistant.graph";
+import {
+  invokeMultiAgentAssistant,
+  streamMultiAgentAssistant,
+  type MultiAgentInvokeParams,
+  type MultiAgentInvokeResult,
+} from "../ai/multi-agent-assistant";
 import type { AssistantContext, UserRole } from "../ai/types";
 import { v4 as uuidv4 } from "uuid";
 
@@ -182,6 +192,9 @@ export class AssistantService {
   
   /**
    * Envoie un message à l'assistant et obtient une réponse
+   * Utilise l'architecture simple par défaut
+   * 
+   * Pour utiliser l'architecture multi-agent Supervisor, utiliser sendMessageMultiAgent()
    */
   async sendMessage(
     threadId: string, 
@@ -255,6 +268,73 @@ export class AssistantService {
         .update({ title: newTitle })
         .eq("id", threadId);
     }
+    
+    return {
+      ...result,
+      messageId: assistantMessage?.id || "",
+    };
+  }
+  
+  /**
+   * Envoie un message à l'assistant multi-agent Supervisor
+   * Utilise l'architecture Supervisor avec agents spécialisés
+   */
+  async sendMessageMultiAgent(
+    threadId: string,
+    message: string,
+    context: AssistantContext
+  ): Promise<MultiAgentInvokeResult & { messageId: string }> {
+    const supabase = await createClient();
+    
+    // Sauvegarder le message utilisateur
+    const { data: userMessage, error: userMsgError } = await supabase
+      .from("assistant_messages")
+      .insert({
+        thread_id: threadId,
+        role: "user",
+        content: message,
+      })
+      .select("id")
+      .single();
+    
+    if (userMsgError) {
+      console.error("[AssistantService] Error saving user message:", userMsgError);
+    }
+    
+    // Invoquer l'assistant multi-agent
+    const params: MultiAgentInvokeParams = {
+      message,
+      threadId,
+      context,
+    };
+    
+    const result = await invokeMultiAgentAssistant(params);
+    
+    // Sauvegarder la réponse de l'assistant
+    const { data: assistantMessage, error: assistantMsgError } = await supabase
+      .from("assistant_messages")
+      .insert({
+        thread_id: threadId,
+        role: "assistant",
+        content: result.response,
+        tools_used: result.toolsUsed,
+      })
+      .select("id")
+      .single();
+    
+    if (assistantMsgError) {
+      console.error("[AssistantService] Error saving assistant message:", assistantMsgError);
+    }
+    
+    // Mettre à jour le thread
+    await supabase
+      .from("assistant_threads")
+      .update({
+        last_message: message.substring(0, 100),
+        message_count: supabase.rpc("increment_message_count", { thread_id_param: threadId }),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", threadId);
     
     return {
       ...result,

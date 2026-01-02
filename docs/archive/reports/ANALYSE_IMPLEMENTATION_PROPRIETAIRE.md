@@ -41,14 +41,14 @@ Cette analyse compare les fonctionnalités **prévues** dans le domaine model (`
 - ✅ Gestion des unités (colocation) - API existe
 - ✅ Types multiples (appartement, maison, studio, colocation, saisonnier, commercial, etc.)
 - ✅ Filtres et recherche
-- ✅ Pages UI complètes (`/app/owner/properties`)
+- ✅ Pages UI complètes (`/owner/properties`)
 
 **Baux :**
 - ✅ CRUD complet (`GET/POST/PUT/DELETE /api/leases`)
 - ✅ Gestion des signataires (`/api/leases/[id]/signers`)
 - ✅ Statuts (draft, pending_signature, active, terminated)
 - ✅ Types de baux (nu, meublé, colocation, saisonnier)
-- ✅ Pages UI complètes (`/app/owner/contracts`)
+- ✅ Pages UI complètes (`/owner/contracts`)
 
 **Colocation :**
 - ⚠️ Routes API existent (`/api/leases/[id]/roommates`, `/api/leases/[id]/payment-shares`)
@@ -81,7 +81,7 @@ Cette analyse compare les fonctionnalités **prévues** dans le domaine model (`
 - ✅ Génération mensuelle automatique (`/api/invoices/generate-monthly`)
 - ✅ Calculs automatiques (montant_total = loyer + charges)
 - ✅ Statuts (draft, sent, paid, late)
-- ✅ Pages UI complètes (`/app/owner/money`)
+- ✅ Pages UI complètes (`/owner/money`)
 
 **Charges :**
 - ✅ Routes API (`GET/POST/PUT/DELETE /api/charges`)
@@ -107,7 +107,7 @@ Cette analyse compare les fonctionnalités **prévues** dans le domaine model (`
 - ✅ Priorités (basse, normale, haute)
 - ✅ Statuts (open, in_progress, resolved, closed)
 - ✅ Messages tickets (`/api/tickets/[id]/messages`)
-- ✅ Pages UI complètes (`/app/owner/support`)
+- ✅ Pages UI complètes (`/owner/support`)
 
 **Work Orders :**
 - ✅ Routes API (`GET/POST/PUT/DELETE /api/work-orders`)
@@ -131,7 +131,7 @@ Cette analyse compare les fonctionnalités **prévues** dans le domaine model (`
 - ✅ Téléchargement sécurisé (`/api/documents/[id]/download`)
 - ✅ URLs signées (`/api/documents/[id]/copy-link`)
 - ✅ Réorganisation (`/api/documents/[id]/reorder`)
-- ✅ Pages UI (`/app/owner/documents`)
+- ✅ Pages UI (`/owner/documents`)
 
 **EDL (États des Lieux) :**
 - ✅ Routes API (`GET/POST/PUT /api/edl/[id]`)
@@ -151,7 +151,7 @@ Cette analyse compare les fonctionnalités **prévues** dans le domaine model (`
 - ✅ Gestion admin (`/admin/blog`)
 - ✅ Système de tags
 - ✅ Recherche
-- ⚠️ Intégration dans l'interface propriétaire (partielle - `/app/owner/support` existe mais pas complète)
+- ⚠️ Intégration dans l'interface propriétaire (partielle - `/owner/support` existe mais pas complète)
 
 **Pourcentage :** ✅ **70%** (Blog fonctionnel mais intégration propriétaire à améliorer)
 
@@ -165,7 +165,7 @@ Cette analyse compare les fonctionnalités **prévues** dans le domaine model (`
 - ✅ Zone 2 : Résumé financier (revenus, graphiques, impayés)
 - ✅ Zone 3 : Portefeuille par module (habitation, LCD, pro, parking)
 - ✅ Zone 4 : Conformité et risques
-- ✅ Pages UI complètes (`/app/owner/dashboard`)
+- ✅ Pages UI complètes (`/owner/dashboard`)
 - ✅ Composants réutilisables (`OwnerTodoSection`, `OwnerFinanceSummary`, etc.)
 
 **Pourcentage :** ✅ **95%** (Très complet, quelques optimisations possibles)

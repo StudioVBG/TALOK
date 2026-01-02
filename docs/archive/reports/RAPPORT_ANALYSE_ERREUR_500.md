@@ -19,7 +19,7 @@ GET https://poeijjosocmqlhgsacud.supabase.co/rest/v1/properties?select=id&owner_
 #### ⚠️ Service `PeopleService.getOwnerProperties()` - APPEL DIRECT
 - **Fichier**: `features/admin/services/people.service.ts:212-260`
 - **Problème**: Fait un appel direct à Supabase avec `.select("*")` et `.eq("owner_id", ownerId)`
-- **Utilisation**: Utilisé dans `app/admin/people/owners/[id]/page.tsx` mais **PAS** dans `app/app/owner/page.tsx`
+- **Utilisation**: Utilisé dans `app/admin/people/owners/[id]/page.tsx` mais **PAS** dans `app/owner/page.tsx`
 - **Conclusion**: Ne semble pas être la cause directe
 
 ### 2. Analyse de la Route API `/api/properties`

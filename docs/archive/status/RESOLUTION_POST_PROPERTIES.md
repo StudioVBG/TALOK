@@ -127,12 +127,12 @@ Tous les `SELECT` ont été corrigés pour utiliser `type` au lieu de `type_bien
 ## 🎯 Prochaines Étapes
 
 1. **Tester la création d'un bien via le wizard**
-   - Aller sur `/app/owner/property/new`
+   - Aller sur `/owner/property/new`
    - Sélectionner un type de bien
    - Vérifier que le draft est créé sans erreur
 
 2. **Vérifier l'affichage**
-   - Aller sur `/app/owner/properties`
+   - Aller sur `/owner/properties`
    - Vérifier que le nouveau bien apparaît dans la liste
 
 3. **Nettoyer les endpoints de test** (optionnel)

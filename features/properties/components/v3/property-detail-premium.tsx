@@ -29,7 +29,7 @@ import {
   TrendingUp,
   Shield,
   Zap,
-  Droplets,
+  Droplet,
   Wind,
   Snowflake,
   Sun,
@@ -497,7 +497,7 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
                             <div>
                               <p className="text-sm font-semibold text-muted-foreground">Eau chaude</p>
                               <div className="flex items-center gap-2 mt-1">
-                                <Droplets className="h-4 w-4 text-primary" />
+                                <Droplet className="h-4 w-4 text-primary" />
                                 <p className="text-base font-medium capitalize">
                                   {property.eau_chaude_type.replace(/_/g, " ")}
                                 </p>
@@ -990,7 +990,7 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
               >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold">Baux associés</h2>
-                  <Link href={`/app/owner/contracts/new?propertyId=${property.id}`}>
+                  <Link href={`/owner/contracts/new?propertyId=${property.id}`}>
                     <Button>
                       <Sparkles className="h-4 w-4 mr-2" />
                       Créer un bail

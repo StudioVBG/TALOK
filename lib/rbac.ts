@@ -372,21 +372,21 @@ export function getDefaultRouteForRole(roleCode: RoleCode): string {
     case 'platform_admin':
       return '/admin/dashboard';
     case 'syndic':
-      return '/app/syndic/dashboard';
+      return '/syndic/dashboard';
     case 'president_cs':
     case 'conseil_syndical':
-      return '/app/copro/dashboard';
+      return '/copro/dashboard';
     case 'coproprietaire_occupant':
     case 'coproprietaire_bailleur':
     case 'coproprietaire_nu':
     case 'usufruitier':
-      return '/app/copro/dashboard';
+      return '/copro/dashboard';
     case 'locataire':
-      return '/app/tenant/dashboard';
+      return '/tenant/dashboard';
     case 'gardien':
-      return '/app/copro/tickets';
+      return '/copro/tickets';
     case 'prestataire':
-      return '/app/provider/dashboard';
+      return '/provider/dashboard';
     default:
       return '/dashboard';
   }

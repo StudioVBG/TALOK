@@ -1,12 +1,15 @@
 /**
  * Assistant IA de Gestion Locative
- * SOTA Décembre 2025 - GPT-4o + LangGraph
+ * SOTA Décembre 2025 - GPT-5.2 + LangGraph 1.0
  * 
  * Architecture ReAct avec mémoire persistante et tools adaptés par rôle
  * Conseils personnalisés selon le type de compte
+ * 
+ * NOTE: Pour l'architecture multi-agent Supervisor, utiliser multi-agent-graph.ts
  */
 
-import { StateGraph, Annotation, END, START, MemorySaver } from "@langchain/langgraph";
+import { StateGraph, Annotation, END, START } from "@langchain/langgraph";
+import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { ChatOpenAI } from "@langchain/openai";
 import { 
   BaseMessage, 
@@ -17,6 +20,7 @@ import {
 } from "@langchain/core/messages";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { getToolsForRole } from "./tools";
+import { createThinkingModel } from "@/lib/ai/config";
 import type { AssistantContext, UserRole } from "./types";
 
 // ============================================
@@ -228,7 +232,7 @@ function isOpenAIConfigured(): boolean {
 }
 
 /**
- * Crée le modèle LLM configuré
+ * Crée le modèle LLM configuré avec GPT-5.2 Thinking par défaut
  */
 function createModel() {
   // Vérifier que la clé API est configurée
@@ -236,13 +240,8 @@ function createModel() {
     throw new Error("OPENAI_API_KEY non configurée ou invalide. Veuillez configurer la clé API dans les variables d'environnement.");
   }
   
-  const modelName = process.env.OPENAI_MODEL || "gpt-4o";
-  
-  return new ChatOpenAI({
-    modelName,
-    temperature: 0.3,
-    maxTokens: 4096,
-  });
+  // Utiliser GPT-5.2 Thinking par défaut
+  return createThinkingModel();
 }
 
 // ============================================
@@ -389,25 +388,59 @@ const workflow = new StateGraph(AssistantState)
   .addEdge("tools", "agent");
 
 // ============================================
-// CHECKPOINTER (MÉMOIRE)
+// POSTGRES CHECKPOINTER (MÉMOIRE DURABLE)
 // ============================================
 
 /**
- * Checkpointer pour la mémoire conversationnelle
- * Permet de maintenir le contexte entre les messages
- * 
- * En production, utiliser PostgresSaver:
- * import { PostgresSaver } from "@langchain/langgraph/checkpoint/postgres";
- * const checkpointer = PostgresSaver.fromConnString(process.env.DATABASE_URL);
+ * Crée le checkpointer PostgresSaver pour la persistance production
  */
-const checkpointer = new MemorySaver();
+let checkpointer: PostgresSaver | null = null;
+
+async function getCheckpointer(): Promise<PostgresSaver> {
+  if (!checkpointer) {
+    const databaseUrl = process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+      console.warn("[Assistant] DATABASE_URL non configurée, utilisation de MemorySaver en fallback");
+      // Fallback sur MemorySaver si DATABASE_URL n'est pas configurée
+      const { MemorySaver } = await import("@langchain/langgraph");
+      return new MemorySaver() as any;
+    }
+    
+    try {
+      checkpointer = await PostgresSaver.fromConnString(databaseUrl);
+      // Setup initial (à faire une seule fois)
+      await checkpointer.setup();
+    } catch (error) {
+      // Si la table existe déjà ou autre erreur, utiliser MemorySaver en fallback
+      console.warn("[Assistant] Erreur lors du setup PostgresSaver, utilisation de MemorySaver:", error);
+      const { MemorySaver } = await import("@langchain/langgraph");
+      return new MemorySaver() as any;
+    }
+  }
+  
+  return checkpointer;
+}
 
 // ============================================
-// COMPILED GRAPH
+// COMPILED GRAPH (LAZY)
 // ============================================
 
+let compiledGraph: ReturnType<typeof workflow.compile> | null = null;
+
+export async function getPropertyAssistantGraph() {
+  if (!compiledGraph) {
+    const checkpointer = await getCheckpointer();
+    compiledGraph = workflow.compile({ checkpointer });
+  }
+  return compiledGraph;
+}
+
+// Export pour compatibilité (utilise MemorySaver par défaut si pas de DB)
+// En production, utiliser getPropertyAssistantGraph() pour PostgresSaver
+import { MemorySaver } from "@langchain/langgraph";
 export const propertyAssistantGraph = workflow.compile({
-  checkpointer,
+  checkpointer: new MemorySaver(),
 });
 
 // ============================================
@@ -429,6 +462,7 @@ export interface AssistantInvokeResult {
 
 /**
  * Fonction helper pour invoquer l'assistant
+ * Utilise PostgresSaver si disponible, sinon MemorySaver
  */
 export async function invokeAssistant(
   params: AssistantInvokeParams
@@ -441,7 +475,10 @@ export async function invokeAssistant(
     },
   };
   
-  const result = await propertyAssistantGraph.invoke(
+  // Utiliser le graph avec PostgresSaver si disponible
+  const graph = await getPropertyAssistantGraph();
+  
+  const result = await graph.invoke(
     {
       messages: [new HumanMessage(message)],
       context,
@@ -477,6 +514,7 @@ export async function invokeAssistant(
 
 /**
  * Fonction helper pour le streaming
+ * Utilise PostgresSaver si disponible, sinon MemorySaver
  */
 export async function* streamAssistant(
   params: AssistantInvokeParams
@@ -493,7 +531,10 @@ export async function* streamAssistant(
     },
   };
   
-  const stream = await propertyAssistantGraph.stream(
+  // Utiliser le graph avec PostgresSaver si disponible
+  const graph = await getPropertyAssistantGraph();
+  
+  const stream = await graph.stream(
     {
       messages: [new HumanMessage(message)],
       context,

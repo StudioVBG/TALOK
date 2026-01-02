@@ -3,23 +3,23 @@
 ## ✅ Corrections appliquées
 
 ### 1. Redirection de l'ancien wizard vers le nouveau
-**Fichier :** `app/app/owner/property/new/page.tsx`
-**Action :** Redirige maintenant vers `/app/owner/properties/new`
+**Fichier :** `app/owner/property/new/page.tsx`
+**Action :** Redirige maintenant vers `/owner/properties/new`
 **Status :** ✅ Corrigé
 
 ### 2. Création de la page d'upload de documents
-**Fichier créé :** `app/app/owner/documents/upload/page.tsx`
+**Fichier créé :** `app/owner/documents/upload/page.tsx`
 **Action :** Page créée avec formulaire d'upload
 **Status :** ✅ Créé
 
 ### 3. Correction des liens d'upload de documents
-**Fichier :** `app/app/owner/documents/OwnerDocumentsClient.tsx`
+**Fichier :** `app/owner/documents/OwnerDocumentsClient.tsx`
 **Avant :** `/documents/upload` (API route)
-**Après :** `/app/owner/documents/upload` (Page)
+**Après :** `/owner/documents/upload` (Page)
 **Status :** ✅ Corrigé (2 occurrences)
 
 ### 4. Correction du bouton de téléchargement de document
-**Fichier :** `app/app/owner/documents/OwnerDocumentsClient.tsx`
+**Fichier :** `app/owner/documents/OwnerDocumentsClient.tsx`
 **Avant :** Lien vers `/documents/${doc.id}` (route non vérifiée)
 **Après :** Bouton avec action onClick qui ouvre `storage_path`
 **Status :** ✅ Corrigé (TODO ajouté pour implémentation complète)
@@ -27,53 +27,53 @@
 ## 📋 Routes validées
 
 ### Routes principales
-- ✅ `/app/owner/dashboard`
-- ✅ `/app/owner/properties`
-- ✅ `/app/owner/properties/new` (utilise PropertyWizardV3)
-- ✅ `/app/owner/properties/[id]`
-- ✅ `/app/owner/properties/[id]/edit`
-- ✅ `/app/owner/contracts`
-- ✅ `/app/owner/contracts/[id]`
-- ✅ `/app/owner/money`
-- ✅ `/app/owner/documents`
-- ✅ `/app/owner/documents/upload` (NOUVELLE PAGE)
-- ✅ `/app/owner/support`
-- ✅ `/app/owner/profile`
+- ✅ `/owner/dashboard`
+- ✅ `/owner/properties`
+- ✅ `/owner/properties/new` (utilise PropertyWizardV3)
+- ✅ `/owner/properties/[id]`
+- ✅ `/owner/properties/[id]/edit`
+- ✅ `/owner/contracts`
+- ✅ `/owner/contracts/[id]`
+- ✅ `/owner/money`
+- ✅ `/owner/documents`
+- ✅ `/owner/documents/upload` (NOUVELLE PAGE)
+- ✅ `/owner/support`
+- ✅ `/owner/profile`
 
 ### Routes externes utilisées
 - ✅ `/leases/new` (avec query params `propertyId` ou `property_id`)
 - ✅ `/invoices/[id]` (détail d'une facture)
 
 ### Routes redirigées
-- ✅ `/app/owner/property/new` → `/app/owner/properties/new`
+- ✅ `/owner/property/new` → `/owner/properties/new`
 
 ## 🎯 Actions des boutons vérifiées
 
 ### Dashboard
-- ✅ "Ajouter un bien" → `/app/owner/properties/new`
-- ✅ "Demander de l'aide" → `/app/owner/support` (dans le header)
+- ✅ "Ajouter un bien" → `/owner/properties/new`
+- ✅ "Demander de l'aide" → `/owner/support` (dans le header)
 
 ### Properties
-- ✅ "Ajouter un bien" → `/app/owner/properties/new`
-- ✅ "Voir la fiche" → `/app/owner/properties/[id]`
+- ✅ "Ajouter un bien" → `/owner/properties/new`
+- ✅ "Voir la fiche" → `/owner/properties/[id]`
 - ✅ "Créer un bail" → `/leases/new?propertyId=...` ou `/leases/new?property_id=...`
-- ✅ "Voir le bail" → `/app/owner/contracts/[id]`
-- ✅ "Voir les baux" → `/app/owner/contracts?property_id=...`
-- ✅ "Voir les loyers" → `/app/owner/money?property_id=...`
-- ✅ "Voir les documents" → `/app/owner/documents?property_id=...`
+- ✅ "Voir le bail" → `/owner/contracts/[id]`
+- ✅ "Voir les baux" → `/owner/contracts?property_id=...`
+- ✅ "Voir les loyers" → `/owner/money?property_id=...`
+- ✅ "Voir les documents" → `/owner/documents?property_id=...`
 
 ### Contracts
 - ✅ "Créer un bail" → `/leases/new`
-- ✅ "Voir" → `/app/owner/contracts/[id]`
-- ✅ "Voir les loyers" → `/app/owner/money?lease_id=...`
-- ✅ "Voir les documents" → `/app/owner/documents?lease_id=...`
+- ✅ "Voir" → `/owner/contracts/[id]`
+- ✅ "Voir les loyers" → `/owner/money?lease_id=...`
+- ✅ "Voir les documents" → `/owner/documents?lease_id=...`
 
 ### Money
 - ✅ "Marquer payé" → `/invoices/[id]`
-- ✅ "Voir mes baux" → `/app/owner/contracts`
+- ✅ "Voir mes baux" → `/owner/contracts`
 
 ### Documents
-- ✅ "Téléverser un document" → `/app/owner/documents/upload`
+- ✅ "Téléverser un document" → `/owner/documents/upload`
 - ✅ "Télécharger" → Action onClick (ouvre storage_path)
 
 ## ⚠️ Points d'attention
@@ -97,7 +97,7 @@
 1. **Utiliser les constantes OWNER_ROUTES partout**
    ```tsx
    // Au lieu de :
-   <Link href="/app/owner/properties/new">
+   <Link href="/owner/properties/new">
    
    // Utiliser :
    <Link href={`${OWNER_ROUTES.properties.path}/new`}>

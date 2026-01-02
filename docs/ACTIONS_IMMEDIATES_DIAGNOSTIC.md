@@ -3,7 +3,7 @@
 ## ✅ Ce qui a été fait
 
 1. **Logs de debug ajoutés dans la création** (`app/api/properties/route.ts`)
-2. **Logs de debug améliorés dans fetchProperties** (`app/app/owner/_data/fetchProperties.ts`)
+2. **Logs de debug améliorés dans fetchProperties** (`app/owner/_data/fetchProperties.ts`)
 3. **Scripts SQL de diagnostic créés** (`supabase/migrations/202502190000_diagnostic_owner_id.sql`)
 4. **Migration de correction créée** (`supabase/migrations/202502190001_fix_owner_id_mismatch.sql`)
 
@@ -22,7 +22,7 @@
 
 ### Étape 2 : Vérifier les Logs lors de la Création
 
-1. **Créer un nouveau bien** via le wizard (`/app/owner/properties/new`)
+1. **Créer un nouveau bien** via le wizard (`/owner/properties/new`)
 2. **Vérifier les logs serveur** dans le terminal où `npm run dev` tourne :
    ```
    [POST /api/properties] DEBUG: {
@@ -47,7 +47,7 @@
 
 ### Étape 3 : Vérifier les Logs lors de la Lecture
 
-1. **Recharger la page** `/app/owner/properties`
+1. **Recharger la page** `/owner/properties`
 2. **Vérifier les logs serveur** :
    ```
    [fetchProperties] DEBUG: {
@@ -79,14 +79,14 @@
 - ✅ Les logs montrent `ownerIdParam === profileId`
 - ✅ Les propriétés créées ont `owner_id = profile.id`
 - ✅ Les propriétés sont trouvées lors de la lecture
-- ✅ La page `/app/owner/properties` affiche les biens
+- ✅ La page `/owner/properties` affiche les biens
 
 ### Si problème détecté :
 
 - ❌ Les logs montrent `ownerIdParam !== profileId`
 - ❌ Les propriétés créées ont `owner_id = user.id` au lieu de `profile.id`
 - ❌ Les propriétés ne sont pas trouvées lors de la lecture
-- ❌ La page `/app/owner/properties` reste vide
+- ❌ La page `/owner/properties` reste vide
 
 ---
 
@@ -115,9 +115,9 @@
 - [ ] Scripts SQL de diagnostic exécutés
 - [ ] Logs de création vérifiés (owner_id correct)
 - [ ] Logs de lecture vérifiés (ownerIdParam === profileId)
-- [ ] Nouveau bien créé et visible dans `/app/owner/properties`
+- [ ] Nouveau bien créé et visible dans `/owner/properties`
 - [ ] Si problème détecté, migration de correction exécutée
-- [ ] Page `/app/owner/properties` affiche bien les biens
+- [ ] Page `/owner/properties` affiche bien les biens
 
 ---
 

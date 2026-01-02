@@ -8,7 +8,7 @@ import { useRouter, useParams } from "next/navigation";
  * Redirection vers la route canonique de détail d'un logement
  * 
  * Route legacy : /properties/[id]
- * Route canonique : /app/owner/properties/[id]
+ * Route canonique : /owner/properties/[id]
  */
 export default function LegacyPropertyDetailPage() {
   const router = useRouter();
@@ -16,7 +16,7 @@ export default function LegacyPropertyDetailPage() {
 
   useEffect(() => {
     if (params.id && typeof params.id === "string") {
-      router.replace(`/app/owner/properties/${params.id}`);
+      router.replace(`/owner/properties/${params.id}`);
     }
   }, [router, params.id]);
 

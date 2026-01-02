@@ -8,7 +8,7 @@
 
 ### 1. Logs SERVEUR (Terminal `npm run dev`)
 
-**À chercher après rechargement de `/app/owner/properties`** :
+**À chercher après rechargement de `/owner/properties`** :
 
 ```
 [fetchProperties] Début - ownerId: ...
@@ -48,7 +48,7 @@
 
 ### Étape 1 : fetchProperties (Server Component)
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 **Logs attendus** :
 ```
@@ -64,7 +64,7 @@
 
 ### Étape 2 : OwnerLayout (Server Component)
 
-**Fichier** : `app/app/owner/layout.tsx`
+**Fichier** : `app/owner/layout.tsx`
 
 **Logs attendus** :
 ```
@@ -80,7 +80,7 @@
 
 ### Étape 3 : OwnerDataProvider (Client Component)
 
-**Fichier** : `app/app/owner/_data/OwnerDataProvider.tsx`
+**Fichier** : `app/owner/_data/OwnerDataProvider.tsx`
 
 **Logs attendus** :
 ```
@@ -95,7 +95,7 @@
 
 ### Étape 4 : PropertiesPageClient (Client Component)
 
-**Fichier** : `app/app/owner/properties/PropertiesPageClient.tsx`
+**Fichier** : `app/owner/properties/PropertiesPageClient.tsx`
 
 **Logs attendus** :
 ```
@@ -174,7 +174,7 @@
 
 ## 🚀 ACTIONS IMMÉDIATES
 
-1. **Recharger `/app/owner/properties`**
+1. **Recharger `/owner/properties`**
 2. **Copier TOUS les logs serveur** (terminal `npm run dev`)
 3. **Copier TOUS les logs client** (console navigateur)
 4. **Partager les logs** pour diagnostic précis

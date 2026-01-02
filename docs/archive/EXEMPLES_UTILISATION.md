@@ -28,7 +28,7 @@ function PropertyDeleteButton({ propertyId }: { propertyId: string }) {
       updateFn: (old: any[], id: string) => old?.filter((p) => p.id !== id) ?? [],
     },
     onSuccess: () => {
-      router.push("/app/owner/properties");
+      router.push("/owner/properties");
     },
   });
 
@@ -182,7 +182,7 @@ export default function Page() {
 </ErrorBoundary>
 ```
 
-**Note :** Déjà intégré dans `app/app/owner/layout.tsx` pour toutes les pages owner.
+**Note :** Déjà intégré dans `app/owner/layout.tsx` pour toutes les pages owner.
 
 ---
 
@@ -230,7 +230,7 @@ const handleDelete = async () => {
   try {
     await deleteProperty.mutateAsync(propertyId);
     toast({ title: "Succès", description: "Bien supprimé" });
-    router.push("/app/owner/properties");
+    router.push("/owner/properties");
   } catch (error) {
     toast({ title: "Erreur", description: "Échec de la suppression", variant: "destructive" });
   }
@@ -245,7 +245,7 @@ const deleteProperty = useMutationWithToast({
   successMessage: "Bien supprimé avec succès",
   errorMessage: "Impossible de supprimer le bien",
   invalidateQueries: ["properties"],
-  onSuccess: () => router.push("/app/owner/properties"),
+  onSuccess: () => router.push("/owner/properties"),
 });
 
 // Utilisation simple

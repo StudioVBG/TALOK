@@ -85,7 +85,7 @@
 
 - `/signup/account` - Formulaire d'inscription (✅ valeurs visibles immédiatement)
 - `/auth/signin` - Connexion
-- `/app/owner` - Dashboard propriétaire
+- `/owner` - Dashboard propriétaire
 - `/properties` - Liste des logements
 - `/dashboard` - Dashboard général
 

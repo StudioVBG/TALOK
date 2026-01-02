@@ -163,7 +163,7 @@ export function NotificationCenter({ className }: NotificationCenterProps) {
                 Tout marquer lu
               </Button>
             )}
-            <Link href="/app/settings/notifications">
+            <Link href="/settings/notifications">
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Settings className="h-4 w-4" />
               </Button>
@@ -238,7 +238,7 @@ export function NotificationCenter({ className }: NotificationCenterProps) {
 
         {/* Footer */}
         <div className="p-3 border-t">
-          <Link href="/app/notifications" onClick={() => setIsOpen(false)}>
+          <Link href="/notifications" onClick={() => setIsOpen(false)}>
             <Button variant="outline" size="sm" className="w-full">
               Voir toutes les notifications
             </Button>

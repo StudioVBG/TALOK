@@ -22,7 +22,7 @@ interface SmartLinkProps extends Omit<LinkProps, "href"> {
  * 
  * @example
  * <SmartLink 
- *   href={`/app/owner/properties/${id}`} 
+ *   href={`/owner/properties/${id}`} 
  *   prefetchType="property" 
  *   prefetchId={id}
  * >

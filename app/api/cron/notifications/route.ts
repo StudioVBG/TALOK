@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
           p_type: "payment_due",
           p_title: "Rappel : loyer à payer dans 5 jours",
           p_message: `Votre loyer de ${invoice.montant_total}€ pour ${invoice.periode} est dû dans 5 jours.`,
-          p_action_url: "/app/tenant/payments",
+          p_action_url: "/tenant/payments",
           p_priority: "normal",
           p_metadata: { invoice_id: invoice.id },
         });
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
           p_type: "payment_due",
           p_title: "⚠️ Loyer à payer demain",
           p_message: `Votre loyer de ${invoice.montant_total}€ est dû demain.`,
-          p_action_url: "/app/tenant/payments",
+          p_action_url: "/tenant/payments",
           p_priority: "high",
           p_metadata: { invoice_id: invoice.id },
         });
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
             p_type: "payment_overdue",
             p_title: "🚨 Loyer en retard",
             p_message: `Votre loyer de ${invoice.montant_total}€ est en retard de paiement.`,
-            p_action_url: "/app/tenant/payments",
+            p_action_url: "/tenant/payments",
             p_priority: "urgent",
             p_metadata: { invoice_id: invoice.id },
           });
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
             p_type: "payment_overdue",
             p_title: "Loyer impayé",
             p_message: `Un loyer de ${invoice.montant_total}€ est en retard de paiement.`,
-            p_action_url: "/app/owner/money",
+            p_action_url: "/owner/money",
             p_priority: "high",
             p_metadata: { invoice_id: invoice.id },
           });
@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
               p_type: "lease_expiring",
               p_title: `Bail expire dans ${check.days} jours`,
               p_message: `Le bail pour ${lease.properties?.adresse_complete} expire le ${lease.date_fin}.`,
-              p_action_url: `/app/owner/contracts/${lease.id}`,
+              p_action_url: `/owner/contracts/${lease.id}`,
               p_priority: check.priority,
               p_metadata: { lease_id: lease.id, days_remaining: check.days },
             });

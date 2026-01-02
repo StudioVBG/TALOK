@@ -33,7 +33,7 @@ PropertiesPageClient
 
 ### 1. Vérifier les logs serveur
 
-Après avoir rechargé `/app/owner/properties`, chercher dans les logs serveur :
+Après avoir rechargé `/owner/properties`, chercher dans les logs serveur :
 
 ```
 [OwnerLayout] Profile ID utilisé pour charger les données: <UUID>
@@ -63,12 +63,12 @@ Après avoir rechargé `/app/owner/properties`, chercher dans les logs serveur :
 owner_id: profileId, // où profileId = profile.id depuis getOwnerProfile()
 ```
 
-**Lecture** (`app/app/owner/layout.tsx`, ligne 66) :
+**Lecture** (`app/owner/layout.tsx`, ligne 66) :
 ```typescript
 getCachedProperties(profile.id) // où profile.id vient de getOwnerProfile()
 ```
 
-**Requête** (`app/app/owner/_data/fetchProperties.ts`, ligne 173) :
+**Requête** (`app/owner/_data/fetchProperties.ts`, ligne 173) :
 ```typescript
 .eq("owner_id", ownerId) // où ownerId = profile.id passé depuis OwnerLayout
 ```
@@ -97,7 +97,7 @@ getCachedProperties(profile.id) // où profile.id vient de getOwnerProfile()
 
 ## 🛠️ PATCH APPLIQUÉ
 
-### Changements dans `app/app/owner/layout.tsx`
+### Changements dans `app/owner/layout.tsx`
 
 1. **Clé de cache améliorée** :
    ```typescript
@@ -127,7 +127,7 @@ getCachedProperties(profile.id) // où profile.id vient de getOwnerProfile()
 ### Test 1 : Vérifier les logs serveur
 
 1. Créer un bien via le wizard
-2. Recharger `/app/owner/properties`
+2. Recharger `/owner/properties`
 3. Vérifier les logs serveur :
    - `[OwnerLayout] Profile ID utilisé pour charger les données: <UUID>`
    - `[fetchProperties] ✅ Requête directe réussie: X propriétés trouvées`
@@ -144,7 +144,7 @@ getCachedProperties(profile.id) // où profile.id vient de getOwnerProfile()
 
 1. Vider le cache Next.js : `rm -rf .next`
 2. Redémarrer le serveur : `npm run dev`
-3. Recharger `/app/owner/properties`
+3. Recharger `/owner/properties`
 4. Vérifier si les propriétés apparaissent maintenant
 
 ---
@@ -155,7 +155,7 @@ Après application du patch :
 
 1. ✅ Les logs serveur montrent `propertiesCount > 0`
 2. ✅ `OwnerDataProvider` reçoit `propertiesCount > 0`
-3. ✅ Les propriétés apparaissent dans `/app/owner/properties`
+3. ✅ Les propriétés apparaissent dans `/owner/properties`
 
 ---
 

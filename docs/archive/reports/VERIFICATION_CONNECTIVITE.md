@@ -55,7 +55,7 @@
 
 3. **Dashboard Owner** :
    ```
-   https://gestion-immo-nine.vercel.app/app/owner
+   https://gestion-immo-nine.vercel.app/owner
    ```
 
 ---

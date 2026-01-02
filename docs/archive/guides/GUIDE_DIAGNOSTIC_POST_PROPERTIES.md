@@ -53,7 +53,7 @@
 1. **Ouvrir le terminal** où `npm run dev` tourne
 
 2. **Créer un nouveau bien** via le wizard :
-   - Aller sur `/app/owner/property/new`
+   - Aller sur `/owner/property/new`
    - Sélectionner un type de bien (ex: "appartement")
 
 3. **Observer les logs** qui doivent afficher :
@@ -105,7 +105,7 @@
 - [ ] Erreur exacte identifiée
 - [ ] Solution appliquée
 - [ ] Test de création réussi
-- [ ] Propriété visible dans `/app/owner/properties`
+- [ ] Propriété visible dans `/owner/properties`
 
 ---
 

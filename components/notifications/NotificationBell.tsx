@@ -138,30 +138,30 @@ export function NotificationBell() {
   const getNotificationLink = (notification: Notification): string | null => {
     switch (notification.type) {
       case "lease_invite":
-        return `/app/tenant/dashboard`;
+        return `/tenant/dashboard`;
       
       // Notifications compteurs - Locataire
       case "meter_reading_required":
       case "meter_reading_reminder":
       case "edl_meter_pending":
-        return `/app/tenant/meters`;
+        return `/tenant/meters`;
       
       // Notifications compteurs - Propriétaire
       case "meter_reading_submitted":
         if (notification.metadata?.edl_id) {
-          return `/app/owner/inspections/${notification.metadata.edl_id}`;
+          return `/owner/inspections/${notification.metadata.edl_id}`;
         }
         if (notification.metadata?.property_id) {
-          return `/app/owner/properties/${notification.metadata.property_id}`;
+          return `/owner/properties/${notification.metadata.property_id}`;
         }
-        return `/app/owner/dashboard`;
+        return `/owner/dashboard`;
       
       // EDL planifié
       case "edl_scheduled":
         if (notification.metadata?.edl_id) {
-          return `/app/tenant/signatures`;
+          return `/tenant/signatures`;
         }
-        return `/app/tenant/meters`;
+        return `/tenant/meters`;
       
       default:
         return null;
@@ -286,7 +286,7 @@ export function NotificationBell() {
               className="w-full text-xs"
               asChild
             >
-              <Link href="/app/tenant/notifications">
+              <Link href="/tenant/notifications">
                 Voir toutes les notifications
               </Link>
             </Button>

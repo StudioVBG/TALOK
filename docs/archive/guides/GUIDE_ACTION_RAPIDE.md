@@ -38,14 +38,14 @@ supabase db push
 
 ### Étape 3 : Test (2 min)
 
-1. **Créer un nouveau bien** via `/app/owner/properties/new`
+1. **Créer un nouveau bien** via `/owner/properties/new`
 2. **Vérifier les logs serveur** :
    ```
    [createDraftProperty] ✅ Insert successful: {
      owner_id: "...",  ← Doit être égal à profileId
    }
    ```
-3. **Recharger** `/app/owner/properties`
+3. **Recharger** `/owner/properties`
 4. **Vérifier** que le bien s'affiche
 
 ---
@@ -83,7 +83,7 @@ supabase db push
 - [ ] Migration de correction exécutée (si nécessaire)
 - [ ] Nouveau bien créé avec succès
 - [ ] Logs serveur montrent `owner_id = profile.id`
-- [ ] Page `/app/owner/properties` affiche les biens
+- [ ] Page `/owner/properties` affiche les biens
 - [ ] Propriétaire B ne voit pas les biens de A
 
 ---

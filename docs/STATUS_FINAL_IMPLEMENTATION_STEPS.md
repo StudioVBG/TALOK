@@ -29,7 +29,7 @@
   - Mise à jour avec les données complètes via `PATCH /api/properties/[id]`
   - Activation du bien (état: draft → active)
 - ✅ **Gestion d'erreurs** : Affichage des erreurs avec messages clairs
-- ✅ **Redirection** : Redirection vers `/app/owner/properties/[id]` après création
+- ✅ **Redirection** : Redirection vers `/owner/properties/[id]` après création
 - ✅ **Reset store** : Réinitialisation du store Zustand après création
 - ✅ **Toast notifications** : Feedback utilisateur (succès/erreur)
 

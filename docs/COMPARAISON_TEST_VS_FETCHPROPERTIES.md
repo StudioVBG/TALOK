@@ -42,7 +42,7 @@ const { data: testProperties, error: testError, count } = await serviceClient
 // ✅ RÉSULTAT: 5 biens trouvés
 ```
 
-### fetchProperties (`app/app/owner/_data/fetchProperties.ts`)
+### fetchProperties (`app/owner/_data/fetchProperties.ts`)
 
 ```typescript
 // 1. Créer le client service_role
@@ -96,13 +96,13 @@ Avec ces corrections, `fetchProperties` devrait maintenant :
 2. ✅ Faire la même requête que le script
 3. ✅ Trouver les **5 biens** comme le script
 4. ✅ Les retourner à `OwnerLayout`
-5. ✅ Les afficher dans `/app/owner/properties`
+5. ✅ Les afficher dans `/owner/properties`
 
 ---
 
 ## 🧪 TEST
 
-**Action** : Recharger `/app/owner/properties`
+**Action** : Recharger `/owner/properties`
 
 **Logs attendus** :
 ```

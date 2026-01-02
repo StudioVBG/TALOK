@@ -9,7 +9,7 @@
 
 ### 1. Composants existants ✅
 
-**Fichier** : `app/app/owner/properties/PropertiesPageClient.tsx`
+**Fichier** : `app/owner/properties/PropertiesPageClient.tsx`
 
 **Composants UI** :
 - ✅ `PropertyCard` : Carte de propriété avec image, badges, infos
@@ -78,7 +78,7 @@ SELECT COUNT(*) FROM properties WHERE owner_id = public.user_profile_id();
 
 ### Option 1 : Utiliser le service_role pour bypass RLS (TEMPORAIRE)
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 **Changement** :
 ```typescript
@@ -136,7 +136,7 @@ $$;
 
 ### Option 3 : Utiliser directement `profile.id` au lieu de RLS
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 **Changement** : Ne pas compter sur RLS, utiliser directement le filtre `owner_id = profile.id`
 
@@ -153,7 +153,7 @@ $$;
 
 ### Solution immédiate : Utiliser service_role pour fetchProperties
 
-**Fichier** : `app/app/owner/_data/fetchProperties.ts`
+**Fichier** : `app/owner/_data/fetchProperties.ts`
 
 **Changement** :
 1. Utiliser `supabaseAdmin()` pour bypass RLS

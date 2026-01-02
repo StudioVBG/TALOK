@@ -97,7 +97,7 @@ L'application utilise une architecture moderne avec:
 - **Dossiers `_data/`** pour centraliser les fetch par espace
 
 ```typescript
-// Exemple: /app/app/owner/_data/
+// Exemple: /app/owner/_data/
 fetchDashboard.ts      // RPC owner_dashboard
 fetchProperties.ts     // Liste propriétés
 fetchPropertyDetails.ts // Détails logement

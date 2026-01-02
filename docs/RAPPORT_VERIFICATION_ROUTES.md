@@ -9,18 +9,18 @@ Toutes les routes principales du Compte Propriétaire ont été vérifiées et c
 ### Routes principales ✅
 | Route | Status | Action |
 |-------|--------|--------|
-| `/app/owner/dashboard` | ✅ OK | Aucune action |
-| `/app/owner/properties` | ✅ OK | Aucune action |
-| `/app/owner/properties/new` | ✅ OK | Utilisée par tous les boutons "Ajouter un bien" |
-| `/app/owner/properties/[id]` | ✅ OK | Aucune action |
-| `/app/owner/properties/[id]/edit` | ✅ OK | Aucune action |
-| `/app/owner/contracts` | ✅ OK | Aucune action |
-| `/app/owner/contracts/[id]` | ✅ OK | Aucune action |
-| `/app/owner/money` | ✅ OK | Aucune action |
-| `/app/owner/documents` | ✅ OK | Aucune action |
-| `/app/owner/documents/upload` | ✅ CRÉÉ | Nouvelle page créée |
-| `/app/owner/support` | ✅ OK | Aucune action |
-| `/app/owner/profile` | ✅ OK | Aucune action |
+| `/owner/dashboard` | ✅ OK | Aucune action |
+| `/owner/properties` | ✅ OK | Aucune action |
+| `/owner/properties/new` | ✅ OK | Utilisée par tous les boutons "Ajouter un bien" |
+| `/owner/properties/[id]` | ✅ OK | Aucune action |
+| `/owner/properties/[id]/edit` | ✅ OK | Aucune action |
+| `/owner/contracts` | ✅ OK | Aucune action |
+| `/owner/contracts/[id]` | ✅ OK | Aucune action |
+| `/owner/money` | ✅ OK | Aucune action |
+| `/owner/documents` | ✅ OK | Aucune action |
+| `/owner/documents/upload` | ✅ CRÉÉ | Nouvelle page créée |
+| `/owner/support` | ✅ OK | Aucune action |
+| `/owner/profile` | ✅ OK | Aucune action |
 
 ### Routes externes ✅
 | Route | Status | Usage |
@@ -31,30 +31,30 @@ Toutes les routes principales du Compte Propriétaire ont été vérifiées et c
 ### Routes redirigées ✅
 | Route | Redirection | Status |
 |-------|-------------|--------|
-| `/app/owner/property/new` | → `/app/owner/properties/new` | ✅ Corrigé |
+| `/owner/property/new` | → `/owner/properties/new` | ✅ Corrigé |
 
 ## 🔧 Corrections appliquées
 
 ### 1. Redirection de l'ancien wizard
-**Fichier :** `app/app/owner/property/new/page.tsx`
+**Fichier :** `app/owner/property/new/page.tsx`
 **Problème :** Route obsolète qui créait de la confusion
-**Solution :** Redirection vers `/app/owner/properties/new`
+**Solution :** Redirection vers `/owner/properties/new`
 **Status :** ✅ Corrigé
 
 ### 2. Page d'upload de documents
-**Fichier créé :** `app/app/owner/documents/upload/page.tsx`
+**Fichier créé :** `app/owner/documents/upload/page.tsx`
 **Problème :** Les boutons pointaient vers une API route au lieu d'une page
 **Solution :** Création d'une page complète avec formulaire d'upload
 **Status :** ✅ Créé
 
 ### 3. Liens d'upload de documents
-**Fichier :** `app/app/owner/documents/OwnerDocumentsClient.tsx`
+**Fichier :** `app/owner/documents/OwnerDocumentsClient.tsx`
 **Problème :** 2 occurrences pointaient vers `/documents/upload` (API route)
-**Solution :** Correction vers `/app/owner/documents/upload` (page)
+**Solution :** Correction vers `/owner/documents/upload` (page)
 **Status :** ✅ Corrigé (2 occurrences)
 
 ### 4. Bouton de téléchargement de document
-**Fichier :** `app/app/owner/documents/OwnerDocumentsClient.tsx`
+**Fichier :** `app/owner/documents/OwnerDocumentsClient.tsx`
 **Problème :** Lien vers `/documents/${doc.id}` (route non vérifiée)
 **Solution :** Bouton avec action onClick qui ouvre `storage_path`
 **Status :** ✅ Corrigé (TODO ajouté pour implémentation complète)
@@ -62,30 +62,30 @@ Toutes les routes principales du Compte Propriétaire ont été vérifiées et c
 ## 📋 Vérification des actions des boutons
 
 ### Dashboard
-- ✅ "Ajouter un bien" → `/app/owner/properties/new` (utilise `OWNER_ROUTES.properties.path`)
-- ✅ "Demander de l'aide" → `/app/owner/support` (utilise `OWNER_ROUTES.support.path`)
+- ✅ "Ajouter un bien" → `/owner/properties/new` (utilise `OWNER_ROUTES.properties.path`)
+- ✅ "Demander de l'aide" → `/owner/support` (utilise `OWNER_ROUTES.support.path`)
 
 ### Properties
-- ✅ "Ajouter un bien" → `/app/owner/properties/new`
-- ✅ "Voir la fiche" → `/app/owner/properties/[id]`
+- ✅ "Ajouter un bien" → `/owner/properties/new`
+- ✅ "Voir la fiche" → `/owner/properties/[id]`
 - ✅ "Créer un bail" → `/leases/new?propertyId=...` ou `/leases/new?property_id=...`
-- ✅ "Voir le bail" → `/app/owner/contracts/[id]`
-- ✅ "Voir les baux" → `/app/owner/contracts?property_id=...`
-- ✅ "Voir les loyers" → `/app/owner/money?property_id=...`
-- ✅ "Voir les documents" → `/app/owner/documents?property_id=...`
+- ✅ "Voir le bail" → `/owner/contracts/[id]`
+- ✅ "Voir les baux" → `/owner/contracts?property_id=...`
+- ✅ "Voir les loyers" → `/owner/money?property_id=...`
+- ✅ "Voir les documents" → `/owner/documents?property_id=...`
 
 ### Contracts
 - ✅ "Créer un bail" → `/leases/new`
-- ✅ "Voir" → `/app/owner/contracts/[id]`
-- ✅ "Voir les loyers" → `/app/owner/money?lease_id=...`
-- ✅ "Voir les documents" → `/app/owner/documents?lease_id=...`
+- ✅ "Voir" → `/owner/contracts/[id]`
+- ✅ "Voir les loyers" → `/owner/money?lease_id=...`
+- ✅ "Voir les documents" → `/owner/documents?lease_id=...`
 
 ### Money
 - ✅ "Marquer payé" → `/invoices/[id]`
-- ✅ "Voir mes baux" → `/app/owner/contracts`
+- ✅ "Voir mes baux" → `/owner/contracts`
 
 ### Documents
-- ✅ "Téléverser un document" → `/app/owner/documents/upload` (2 occurrences corrigées)
+- ✅ "Téléverser un document" → `/owner/documents/upload` (2 occurrences corrigées)
 - ✅ "Télécharger" → Action onClick (ouvre `storage_path`)
 
 ## ⚠️ Points d'attention
@@ -109,7 +109,7 @@ Toutes les routes principales du Compte Propriétaire ont été vérifiées et c
 <Link href={`${OWNER_ROUTES.properties.path}/new`}>
 
 // ⚠️ À améliorer (properties)
-<Link href="/app/owner/properties/new">
+<Link href="/owner/properties/new">
 ```
 
 ## 🎯 Recommandations d'amélioration
@@ -157,9 +157,9 @@ Utiliser toujours `property_id` (avec underscore) au lieu de `propertyId` (camel
 
 ## 📚 Fichiers modifiés
 
-1. `app/app/owner/property/new/page.tsx` - Redirection vers nouvelle route
-2. `app/app/owner/documents/upload/page.tsx` - Nouvelle page créée
-3. `app/app/owner/documents/OwnerDocumentsClient.tsx` - Corrections des liens et bouton téléchargement
+1. `app/owner/property/new/page.tsx` - Redirection vers nouvelle route
+2. `app/owner/documents/upload/page.tsx` - Nouvelle page créée
+3. `app/owner/documents/OwnerDocumentsClient.tsx` - Corrections des liens et bouton téléchargement
 
 ## 📝 Documentation créée
 

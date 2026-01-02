@@ -148,7 +148,7 @@ export default function VerifyEmailOnboardingPage() {
         router.push("/tenant/onboarding/context");
         break;
       case "provider":
-        router.push("/app/provider/onboarding/profile");
+        router.push("/provider/onboarding/profile");
         break;
       case "guarantor":
         router.push("/guarantor/onboarding/context");

@@ -415,25 +415,25 @@ function DashboardSkeleton() {
 const redirects: Record<string, string> = {
   // Anciennes routes owner vers nouvelles
   '/owner/dashboard': '/owner',
+  '/owner/dashboard': '/owner',
   '/app/owner/dashboard': '/owner',
-  '/app/app/owner/dashboard': '/owner',
   '/owner/billing': '/owner/finances',
+  '/owner/money': '/owner/finances',
   '/app/owner/money': '/owner/finances',
-  '/app/app/owner/money': '/owner/finances',
+  '/owner/properties': '/owner/properties',
   '/owner/properties': '/owner/properties',
   '/app/owner/properties': '/owner/properties',
-  '/app/app/owner/properties': '/owner/properties',
+  '/owner/contracts': '/owner/leases',
   '/app/owner/contracts': '/owner/leases',
-  '/app/app/owner/contracts': '/owner/leases',
   '/owner/charges': '/owner/finances/charges',
   
   // Anciennes routes tenant vers nouvelles
   '/tenant/dashboard': '/tenant',
+  '/tenant/dashboard': '/tenant',
   '/app/tenant/dashboard': '/tenant',
-  '/app/app/tenant/dashboard': '/tenant',
-  '/app/tenant/payments': '/tenant/payments',
+  '/tenant/payments': '/tenant/payments',
   '/tenant/invoices': '/tenant/payments',
-  '/app/tenant/requests': '/tenant/tickets',
+  '/tenant/requests': '/tenant/tickets',
   
   // Routes génériques vers contextuelles
   '/properties': '/owner/properties',

@@ -64,7 +64,7 @@ Créer un composant Hero moderne (Style 2025) pour afficher le résumé d'un log
 
 ### 3. Intégration dans PropertyDetailsClient ✅
 
-**Fichier** : `app/app/owner/properties/[id]/PropertyDetailsClient.tsx`
+**Fichier** : `app/owner/properties/[id]/PropertyDetailsClient.tsx`
 
 **Modifications** :
 - ✅ Import du composant `PropertyHero`
@@ -124,7 +124,7 @@ Créer un composant Hero moderne (Style 2025) pour afficher le résumé d'un log
 
 ### Interface utilisateur ✅
 
-**Page de détail** : `/app/owner/properties/[id]`
+**Page de détail** : `/owner/properties/[id]`
 
 **Composants affichés** :
 1. ✅ **Bouton retour** : Lien vers la liste des propriétés
@@ -165,7 +165,7 @@ Créer un composant Hero moderne (Style 2025) pour afficher le résumé d'un log
 ## 🧪 Tests à effectuer
 
 ### Test visuel
-- [ ] Ouvrir `/app/owner/properties/23aa5434-6543-4581-952e-2d176b6ff4c3`
+- [ ] Ouvrir `/owner/properties/23aa5434-6543-4581-952e-2d176b6ff4c3`
 - [ ] Vérifier que les photos s'affichent correctement
 - [ ] Vérifier que les stats sont correctes (125 m², 5 p., 3 ch.)
 - [ ] Vérifier que les badges DPE/GES s'affichent (B/A)
@@ -174,9 +174,9 @@ Créer un composant Hero moderne (Style 2025) pour afficher le résumé d'un log
 
 ### Test fonctionnel
 - [ ] Cliquer sur "Créer un bail" → Redirige vers `/leases/new?propertyId=...`
-- [ ] Cliquer sur "Modifier" → Redirige vers `/app/owner/properties/[id]/edit`
+- [ ] Cliquer sur "Modifier" → Redirige vers `/owner/properties/[id]/edit`
 - [ ] Cliquer sur "Supprimer" → Ouvre le dialog de confirmation
-- [ ] Cliquer sur "Retour à la liste" → Redirige vers `/app/owner/properties`
+- [ ] Cliquer sur "Retour à la liste" → Redirige vers `/owner/properties`
 
 ---
 
@@ -186,7 +186,7 @@ Créer un composant Hero moderne (Style 2025) pour afficher le résumé d'un log
 - ✅ `components/owner/properties/PropertyHero.tsx` (236 lignes)
 
 ### Modifiés
-- ✅ `app/app/owner/properties/[id]/PropertyDetailsClient.tsx`
+- ✅ `app/owner/properties/[id]/PropertyDetailsClient.tsx`
 - ✅ `lib/types/owner-property.ts`
 
 ### Migrations SQL appliquées
