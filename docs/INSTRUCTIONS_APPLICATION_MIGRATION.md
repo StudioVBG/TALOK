@@ -29,7 +29,7 @@ supabase login
 ### Étape 2 : Lier le projet local au projet cloud
 
 ```bash
-supabase link --project-ref poeijjosocmqlhgsacud
+supabase link --project-ref $SUPABASE_PROJECT_REF
 ```
 
 **Action** :
@@ -126,7 +126,7 @@ Après application de la migration :
 
 ### Erreur : "Project not linked"
 
-**Solution** : Exécuter `supabase link --project-ref poeijjosocmqlhgsacud`
+**Solution** : Exécuter `supabase link --project-ref $SUPABASE_PROJECT_REF`
 
 ### Erreur : "Not authenticated"
 

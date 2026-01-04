@@ -8,7 +8,7 @@ L'implémentation complète du **Property V3** est terminée. Tous les composant
 
 ### 1️⃣ Appliquer la migration BDD (OBLIGATOIRE)
 
-1. Aller sur : https://supabase.com/dashboard/project/poeijjosocmqlhgsacud/editor
+1. Aller sur : https://supabase.com/dashboard/project/[PROJECT_ID]/editor
 2. Ouvrir : `supabase/migrations/202502150000_property_model_v3.sql`
 3. Copier-coller le contenu dans le SQL Editor
 4. Exécuter : Cliquer sur "Run" ou `Cmd+Enter` / `Ctrl+Enter`
@@ -140,7 +140,7 @@ Gestion locative/
 
 ## 🔗 Liens rapides
 
-- **SQL Editor Supabase** : https://supabase.com/dashboard/project/poeijjosocmqlhgsacud/editor
+- **SQL Editor Supabase** : https://supabase.com/dashboard/project/[PROJECT_ID]/editor
 - **Dashboard Propriétaire** : `/owner`
 - **Wizard V3** : `/properties/new-v3`
 - **Guide Complet** : `GUIDE_COMPLET_V3.md`
@@ -165,5 +165,5 @@ Le **Property V3** est **complètement implémenté et prêt pour les tests**. T
 **Date de création** : 2025-11-15  
 **Version** : 3.0.0  
 **Status** : ✅ Prêt pour application et tests  
-**Project Ref** : `poeijjosocmqlhgsacud`
+**Project Ref** : `[PROJECT_ID]`
 

@@ -60,7 +60,7 @@ Dans Cursor → Settings → Tools & MCP → Installed MCP Servers :
 
 3. **Vérification CLI** :
    - ✅ Supabase CLI installé (v2.58.5)
-   - ✅ Projet lié localement (`poeijjosocmqlhgsacud`)
+   - ✅ Projet lié localement (`[PROJECT_ID]`)
    - ✅ Migrations présentes dans `supabase/migrations/`
 
 ### Configuration finale
@@ -108,7 +108,7 @@ supabase gen types typescript     # Générer types TS
 
 **État actuel** :
 - ✅ CLI installé et fonctionnel
-- ✅ Projet lié : `poeijjosocmqlhgsacud`
+- ✅ Projet lié : `[PROJECT_ID]`
 - ✅ Migrations disponibles : 42 fichiers dans `supabase/migrations/`
 
 ### Management API (Automatisation)
@@ -346,7 +346,7 @@ export class SupabaseClient {
 
 1. **CLI Supabase** :
    - ✅ Installation vérifiée (v2.58.5)
-   - ✅ Projet lié (`poeijjosocmqlhgsacud`)
+   - ✅ Projet lié (`[PROJECT_ID]`)
    - ✅ Migrations présentes (42 fichiers)
 
 2. **Configuration MCP** :

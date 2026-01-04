@@ -4,7 +4,11 @@
 
 const https = require('https');
 
-const SUPABASE_PROJECT_REF = process.env.SUPABASE_PROJECT_REF || 'poeijjosocmqlhgsacud';
+const SUPABASE_PROJECT_REF = process.env.SUPABASE_PROJECT_REF;
+
+if (!SUPABASE_PROJECT_REF) {
+  throw new Error("SUPABASE_PROJECT_REF manquant. Renseignez la variable d'environnement avant d'exécuter ce script.");
+}
 const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
 
 if (!SUPABASE_ACCESS_TOKEN) {

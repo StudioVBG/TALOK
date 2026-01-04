@@ -184,7 +184,7 @@ Cela retournera un JSON avec :
 **Solution** :
 ```bash
 supabase login
-supabase link --project-ref poeijjosocmqlhgsacud
+supabase link --project-ref $SUPABASE_PROJECT_REF
 supabase db push
 ```
 

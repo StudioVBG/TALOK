@@ -41,7 +41,7 @@
 1. Allez sur : https://vercel.com/studiovbgs-projects/gestion-immo/settings/environment-variables
 2. Trouvez `NEXT_PUBLIC_SUPABASE_URL`
 3. Vérifiez que la valeur est :
-   - ✅ Format : `https://poeijjosocmqlhgsacud.supabase.co`
+   - ✅ Format : `https://[PROJECT_ID].supabase.co`
    - ❌ PAS : `https://supabase.com/dashboard/...`
 
 ### Étape 2 : Vérifier les Autres Variables

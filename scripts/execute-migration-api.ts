@@ -8,7 +8,12 @@ import * as dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 
-const SUPABASE_PROJECT_REF = "poeijjosocmqlhgsacud";
+const SUPABASE_PROJECT_REF = process.env.SUPABASE_PROJECT_REF;
+
+if (!SUPABASE_PROJECT_REF) {
+  console.error("❌ SUPABASE_PROJECT_REF manquant");
+  process.exit(1);
+}
 const MANAGEMENT_API_TOKEN = process.env.SUPABASE_MANAGEMENT_API_TOKEN;
 
 if (!MANAGEMENT_API_TOKEN) {

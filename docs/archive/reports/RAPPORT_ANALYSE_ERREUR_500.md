@@ -4,7 +4,7 @@
 
 L'erreur dans la console montre :
 ```
-GET https://poeijjosocmqlhgsacud.supabase.co/rest/v1/properties?select=id&owner_id=eq.246c62e8-cf80-47d7-9efb-a7197e3f1cf4 500 (Internal Server Error)
+GET https://[PROJECT_ID].supabase.co/rest/v1/properties?select=id&owner_id=eq.[USER_UUID] 500 (Internal Server Error)
 ```
 
 ## 📊 Analyse du Code

@@ -5,7 +5,7 @@
 L'erreur dans la console montre que l'URL Supabase est incorrecte :
 
 ```
-https://supabase.com/dashboard/project/poeijjosocmqlhgsacud/settings/api-keys/new/auth/v1/token
+https://supabase.com/dashboard/project/[PROJECT_ID]/settings/api-keys/new/auth/v1/token
 ```
 
 Cette URL pointe vers le **dashboard Supabase** au lieu de l'**API Supabase**.
@@ -15,11 +15,11 @@ Cette URL pointe vers le **dashboard Supabase** au lieu de l'**API Supabase**.
 ### 1. Trouver la bonne URL Supabase
 
 1. Allez sur https://app.supabase.com
-2. Sélectionnez votre projet (ID: `poeijjosocmqlhgsacud`)
+2. Sélectionnez votre projet (ID: `[PROJECT_ID]`)
 3. Allez dans **Settings** → **API**
 4. Dans la section **Project URL**, vous devriez voir quelque chose comme :
    ```
-   https://poeijjosocmqlhgsacud.supabase.co
+   https://[PROJECT_ID].supabase.co
    ```
    ⚠️ **C'est cette URL qu'il faut utiliser**, PAS l'URL du dashboard !
 
@@ -30,19 +30,19 @@ Cette URL pointe vers le **dashboard Supabase** au lieu de l'**API Supabase**.
 3. **Supprimez-la** si elle existe avec une mauvaise valeur
 4. **Ajoutez-la à nouveau** avec la bonne valeur :
    - **Nom** : `NEXT_PUBLIC_SUPABASE_URL`
-   - **Valeur** : `https://poeijjosocmqlhgsacud.supabase.co` (remplacez par votre vraie URL)
+   - **Valeur** : `https://[PROJECT_ID].supabase.co` (remplacez par votre vraie URL)
    - **Environnements** : ✅ Production ✅ Preview ✅ Development
 
 ### 3. Format correct vs incorrect
 
 ❌ **INCORRECT** (URL du dashboard) :
 ```
-https://supabase.com/dashboard/project/poeijjosocmqlhgsacud/settings/api-keys/new
+https://supabase.com/dashboard/project/[PROJECT_ID]/settings/api-keys/new
 ```
 
 ✅ **CORRECT** (URL de l'API) :
 ```
-https://poeijjosocmqlhgsacud.supabase.co
+https://[PROJECT_ID].supabase.co
 ```
 
 ### 4. Redéployer

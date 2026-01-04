@@ -133,7 +133,7 @@ npm run dev
 
 1. **Corriger les variables sur Vercel** :
    - Aller sur : https://vercel.com/studiovbgs-projects/gestion-immo/settings/environment-variables
-   - Vérifier que `NEXT_PUBLIC_SUPABASE_URL` = `https://poeijjosocmqlhgsacud.supabase.co`
+   - Vérifier que `NEXT_PUBLIC_SUPABASE_URL` = `https://[PROJECT_ID].supabase.co`
    - Redéployer
 
 2. **Préparer le commit** :

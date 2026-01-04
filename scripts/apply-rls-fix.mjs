@@ -20,7 +20,12 @@ envContent.split('\n').forEach(line => {
   }
 });
 
-const SUPABASE_PROJECT_REF = 'poeijjosocmqlhgsacud';
+const SUPABASE_PROJECT_REF = env.SUPABASE_PROJECT_REF;
+
+if (!SUPABASE_PROJECT_REF) {
+  console.error('❌ SUPABASE_PROJECT_REF non trouvé dans .env.local');
+  process.exit(1);
+}
 const SUPABASE_ACCESS_TOKEN = env.SUPABASE_MANAGEMENT_API_TOKEN;
 
 if (!SUPABASE_ACCESS_TOKEN) {

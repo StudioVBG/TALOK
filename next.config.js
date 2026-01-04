@@ -95,11 +95,7 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
-      {
-        protocol: 'https',
-        hostname: 'poeijjosocmqlhgsacud.supabase.co',
-      },
-      // Fallback générique pour Supabase
+      // Supabase Storage - pattern générique pour tous les projets
       {
         protocol: 'https',
         hostname: '*.supabase.co',
