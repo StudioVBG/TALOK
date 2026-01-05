@@ -105,6 +105,19 @@ export function DashboardClient() {
     if (!dashboard) return [];
     const actions = [];
     
+    // Action 1 : Signer le bail (Priorité Haute)
+    if (dashboard.lease?.statut === 'pending_signature') {
+      actions.push({
+        id: 'sign-lease',
+        label: "Signer mon bail",
+        icon: PenTool,
+        color: 'text-indigo-600',
+        bg: 'bg-indigo-50',
+        href: '/tenant/onboarding/sign'
+      });
+    }
+
+    // Action 2 : Impayés
     if (dashboard.stats?.unpaid_amount > 0) {
       actions.push({
         id: 'payment',
@@ -116,17 +129,19 @@ export function DashboardClient() {
       });
     }
     
+    // Action 3 : EDL en attente
     if (dashboard.pending_edls?.length > 0) {
       actions.push({
         id: 'edl',
         label: `Signer l'état des lieux`,
-        icon: PenTool,
+        icon: FileText,
         color: 'text-amber-600',
         bg: 'bg-amber-50',
         href: `/signature-edl/${dashboard.pending_edls[0].invitation_token}`
       });
     }
     
+    // Action 4 : Assurance
     if (!dashboard.insurance?.has_insurance) {
       actions.push({
         id: 'insurance',
@@ -157,7 +172,7 @@ export function DashboardClient() {
         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <h1 className="text-3xl font-black tracking-tight text-slate-900">
-              Bonjour, {profile?.prenom || "Locataire"} 👋
+              Bonjour {profile?.prenom ? `, ${profile.prenom}` : ""} 👋
             </h1>
             <p className="text-slate-500 mt-1 font-medium">
               {pendingActions.length > 0 
@@ -254,11 +269,11 @@ export function DashboardClient() {
                   </div>
                   
                   <h2 className="text-4xl md:text-5xl font-black mb-3 leading-tight max-w-2xl tracking-tight">
-                    {currentProperty?.adresse_complete}
+                    {currentProperty?.adresse_complete || "Adresse non renseignée"}
                   </h2>
                   <p className="text-xl text-white/70 font-medium flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-indigo-400" />
-                    {currentProperty?.ville}, {currentProperty?.code_postal}
+                    {currentProperty?.ville || "Ville non renseignée"}{currentProperty?.code_postal ? `, ${currentProperty.code_postal}` : ""}
                   </p>
                 </div>
 

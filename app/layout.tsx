@@ -5,6 +5,16 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Dancing_Script, Great_Vibes, Pacifico, Satisfy } from "next/font/google";
 import "./globals.css";
 
+/**
+ * Normalise l'URL de base pour les métadonnées.
+ * Ajoute le protocole https:// si manquant pour éviter les erreurs new URL().
+ */
+function getMetadataBaseUrl(): URL {
+  const rawUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+  return new URL(normalizedUrl);
+}
+
 // Polices cursives pour les signatures
 const dancingScript = Dancing_Script({ 
   subsets: ["latin"], 
@@ -57,7 +67,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  metadataBase: getMetadataBaseUrl(),
   other: {
     "mobile-web-app-capable": "yes",
   },
