@@ -1,5 +1,7 @@
-# Configuration Netlify pour Next.js
+# ==============================================================================
+# Configuration Netlify pour Next.js - Gestion Locative
 # https://docs.netlify.com/integrations/frameworks/next-js/overview/
+# ==============================================================================
 
 [build]
   command = "npm run build"
@@ -9,11 +11,36 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Variables d'environnement (à configurer dans l'UI Netlify)
+# Variables d'environnement de build
 [build.environment]
   NODE_VERSION = "20"
   NPM_VERSION = "10"
   NETLIFY = "true"  # Désactive PWA sur Netlify
+
+# ==============================================================================
+# VARIABLES D'ENVIRONNEMENT À CONFIGURER DANS L'UI NETLIFY
+# Site settings > Environment variables
+# ==============================================================================
+#
+# 🔴 REQUISES:
+#   - NEXT_PUBLIC_SUPABASE_URL
+#   - NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   - SUPABASE_SERVICE_ROLE_KEY (🔒 secret)
+#   - API_KEY_MASTER_KEY (🔒 secret)
+#   - NEXT_PUBLIC_APP_URL (ex: https://votre-site.netlify.app)
+#
+# 🟡 OPTIONNELLES (selon fonctionnalités activées):
+#   - OPENAI_API_KEY (🔒 secret) - pour les fonctionnalités IA
+#   - STRIPE_SECRET_KEY (🔒 secret) - pour les paiements
+#   - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY - pour les paiements
+#   - RESEND_API_KEY (🔒 secret) - pour les emails
+#   - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (🔒 secrets) - pour les SMS
+#   - NEXT_PUBLIC_SENTRY_DSN - pour le monitoring
+#   - NEXT_PUBLIC_POSTHOG_KEY - pour les analytics
+#
+# ⚠️  IMPORTANT: Les variables marquées 🔒 sont secrètes et ne doivent
+#     JAMAIS commencer par NEXT_PUBLIC_ pour éviter l'exposition au client.
+# ==============================================================================
 
 # Headers de sécurité
 [[headers]]
@@ -21,7 +48,15 @@
   [headers.values]
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Headers spécifiques pour les assets statiques (cache long)
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
 
 # Note: Les redirections sont gérées automatiquement par le plugin Next.js
 # Pas besoin de les définir manuellement
