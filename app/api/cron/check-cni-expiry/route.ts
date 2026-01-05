@@ -4,26 +4,22 @@ export const runtime = 'nodejs';
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email/send-email";
+import { verifyCronSecret, unauthorizedResponse } from "@/app/api/_lib/supabase";
 
 /**
  * CRON: GET /api/cron/check-cni-expiry
- * 
+ *
  * Vérifie quotidiennement les CNI expirant dans 30, 15, 7 jours ou expirées.
  * Envoie des notifications au locataire et au propriétaire.
- * 
+ *
  */
 export async function GET(request: Request) {
+  // Vérification sécurité - CRON_SECRET obligatoire en production
+  if (!verifyCronSecret(request)) {
+    return unauthorizedResponse("CRON_SECRET invalide ou manquant");
+  }
+
   try {
-    // Vérifier le token CRON (sécurité)
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-    
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      // En dev, on autorise sans token
-      if (process.env.NODE_ENV === "production") {
-        return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-      }
-    }
 
     const serviceClient = getServiceClient();
     

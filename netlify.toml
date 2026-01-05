@@ -16,6 +16,7 @@
   NODE_VERSION = "20"
   NPM_VERSION = "10"
   NETLIFY = "true"  # Désactive PWA sur Netlify
+  NETLIFY_NEXT_SKEW_PROTECTION = "true"  # Protection contre les décalages client/serveur lors des déploiements
 
 # ==============================================================================
 # VARIABLES D'ENVIRONNEMENT À CONFIGURER DANS L'UI NETLIFY
@@ -48,9 +49,9 @@
   [headers.values]
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
-    X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
 # Headers spécifiques pour les assets statiques (cache long)
 [[headers]]
@@ -58,6 +59,17 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Note: Les redirections sont gérées automatiquement par le plugin Next.js
-# Pas besoin de les définir manuellement
+# Redirections (optimisation: plus rapide que le middleware)
+[[redirects]]
+  from = "/app/*"
+  to = "/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/tenant/home"
+  to = "/tenant/dashboard"
+  status = 301
+
+# Note: Les autres redirections sont gérées par le plugin Next.js
 

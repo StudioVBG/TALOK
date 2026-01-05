@@ -2,14 +2,20 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { isDevOnly, prodDisabledResponse } from "@/app/api/_lib/supabase";
 
 /**
  * GET /api/debug/apply-migration
  * Applique la migration pour ajouter les nouveaux statuts de bail
- * 
- * Route publique pour debug - À SUPPRIMER EN PRODUCTION
+ *
+ * SECURITE: Route désactivée en production
  */
 export async function GET(request: Request) {
+  // Bloquer en production
+  if (!isDevOnly()) {
+    return prodDisabledResponse();
+  }
+
   try {
     const serviceClient = getServiceClient();
     

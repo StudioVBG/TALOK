@@ -9,21 +9,12 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
-
-// Vérifier le secret CRON pour sécuriser l'endpoint
-function verifyCronSecret(request: Request): boolean {
-  const authHeader = request.headers.get("authorization");
-  if (!process.env.CRON_SECRET) {
-    console.warn("CRON_SECRET non configuré - accès autorisé en dev");
-    return process.env.NODE_ENV === "development";
-  }
-  return authHeader === `Bearer ${process.env.CRON_SECRET}`;
-}
+import { verifyCronSecret, unauthorizedResponse } from "@/app/api/_lib/supabase";
 
 export async function GET(request: Request) {
-  // Vérification sécurité
+  // Vérification sécurité - CRON_SECRET obligatoire en production
   if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedResponse("CRON_SECRET invalide ou manquant");
   }
 
   const supabase = createServiceRoleClient();

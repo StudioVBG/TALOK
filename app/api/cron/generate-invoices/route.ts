@@ -3,19 +3,17 @@ export const dynamic = "force-dynamic";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { verifyCronSecret, unauthorizedResponse } from "@/app/api/_lib/supabase";
 
 /**
  * API Route pour la génération automatique des factures
  * Destinée à être appelée par un cron job (ex: GitHub Actions, Supabase Cron)
- * GET /api/cron/generate-invoices?key=CRON_SECRET_KEY
+ * GET /api/cron/generate-invoices avec header Authorization: Bearer CRON_SECRET
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const key = searchParams.get("key");
-
-  // Sécurité : vérifier la clé secrète
-  if (key !== process.env.CRON_SECRET_KEY) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  // Vérification sécurité - CRON_SECRET obligatoire en production
+  if (!verifyCronSecret(request)) {
+    return unauthorizedResponse("CRON_SECRET invalide ou manquant");
   }
 
   try {

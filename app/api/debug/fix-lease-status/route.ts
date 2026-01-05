@@ -3,14 +3,20 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { isDevOnly, prodDisabledResponse } from "@/app/api/_lib/supabase";
 
 /**
  * GET /api/debug/fix-lease-status?leaseId=xxx&fix=true
  * Vérifie le statut d'un bail et le corrige si fix=true
- * 
- * Route publique pour debug - À SUPPRIMER EN PRODUCTION
+ *
+ * SECURITE: Route désactivée en production
  */
 export async function GET(request: Request) {
+  // Bloquer en production
+  if (!isDevOnly()) {
+    return prodDisabledResponse();
+  }
+
   try {
     const url = new URL(request.url);
     const leaseId = url.searchParams.get("leaseId");

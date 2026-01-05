@@ -1,5 +1,6 @@
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// Note: force-dynamic supprimé pour permettre le caching SSG/ISR sur Netlify
+// Les pages dynamiques définissent leur propre export dynamic = "force-dynamic"
 
 import type { Metadata, Viewport } from "next";
 import { Inter, Dancing_Script, Great_Vibes, Pacifico, Satisfy } from "next/font/google";

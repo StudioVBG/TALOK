@@ -4,15 +4,20 @@ export const runtime = 'nodejs';
 /**
  * API de diagnostic pour l'Assistant IA
  * GET /api/debug/assistant-config
- * 
+ *
  * Vérifie la configuration et les tables nécessaires
- * NOTE: Cet endpoint ne requiert pas d'authentification
+ * SECURITE: Route désactivée en production
  */
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isDevOnly, prodDisabledResponse } from "@/app/api/_lib/supabase";
 
 export async function GET() {
+  // Bloquer en production
+  if (!isDevOnly()) {
+    return prodDisabledResponse();
+  }
   const diagnostics: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
     checks: {},
