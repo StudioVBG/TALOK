@@ -1,6 +1,15 @@
 import { MetadataRoute } from "next";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://gestion-locative.com";
+/**
+ * Normalise l'URL de base.
+ * Ajoute le protocole https:// si manquant.
+ */
+function getBaseUrl(): string {
+  const rawUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gestion-locative.com";
+  return /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+}
+
+const BASE_URL = getBaseUrl();
 
 /**
  * Sitemap dynamique pour le SEO
