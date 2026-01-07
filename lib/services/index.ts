@@ -12,9 +12,7 @@ export {
   getResendCredentials,
   getTwilioCredentials,
   getStripeCredentials,
-  getYousignCredentials,
   invalidateCredentialsCache,
-  getCredentials,
   type ProviderName,
   type ProviderCredentials,
 } from "./credentials-service";
@@ -81,17 +79,27 @@ export {
   type CreateQuoteInput,
 } from "./quote-service";
 
-// Service Signature électronique (Yousign)
+// Service Signature électronique (interne TALOK)
 export {
   createSignatureRequest,
-  getSignatureRequestStatus,
-  downloadSignedDocument,
+  getSignatureRequest,
+  sendSignatureRequest,
+  signDocument,
+  refuseSignature,
   cancelSignatureRequest,
-  type YousignSigner,
-  type YousignDocument,
-  type SignatureRequest,
-  type SignatureResult,
-} from "./yousign.service";
+  generateSignatureToken,
+  verifySignatureToken,
+} from "@/lib/signatures/service";
+
+export type {
+  SignatureRequest,
+  SignatureRequestSigner,
+  SignatureRequestStatus,
+  SignerStatus,
+  CreateSignatureRequestDTO,
+  CreateSignerDTO,
+  SignDocumentDTO,
+} from "@/lib/signatures/types";
 
 // Service Paiement (Stripe)
 export {

@@ -27,12 +27,11 @@ function getServiceClient() {
 }
 
 // Types
-export type ProviderName = 
-  | "Resend" 
-  | "Twilio" 
-  | "Stripe" 
-  | "Yousign" 
-  | "Veriff" 
+export type ProviderName =
+  | "Resend"
+  | "Twilio"
+  | "Stripe"
+  | "Veriff"
   | "GoCardless"
   | "Google Maps"
   | "Brevo"
@@ -268,29 +267,6 @@ export async function getStripeCredentials(): Promise<{
   return {
     secretKey: credentials.apiKey,
     webhookSecret: credentials.config.webhook_secret || "",
-  };
-}
-
-/**
- * Récupère les credentials Yousign
- */
-export async function getYousignCredentials(): Promise<{
-  apiKey: string;
-} | null> {
-  const credentials = await getProviderCredentials("Yousign");
-  
-  if (!credentials) {
-    // Fallback sur les variables d'environnement
-    const envKey = process.env.YOUSIGN_API_KEY;
-    
-    if (envKey) {
-      return { apiKey: envKey };
-    }
-    return null;
-  }
-
-  return {
-    apiKey: credentials.apiKey,
   };
 }
 

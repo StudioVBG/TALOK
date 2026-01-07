@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
-import type { SignatureRequest, SignatureRequestSigner, SignatureRequestStatus, SignerStatus } from "@/lib/yousign/types";
+import type { SignatureRequest, SignatureRequestSigner, SignatureRequestStatus, SignerStatus } from "@/lib/signatures/types";
 
 interface SignatureRequestCardProps {
   request: SignatureRequest & {
@@ -47,8 +47,7 @@ const STATUS_CONFIG: Record<SignatureRequestStatus, {
   color: string;
 }> = {
   draft: { label: "Brouillon", variant: "outline", icon: FileText, color: "text-muted-foreground" },
-  pending_validation: { label: "En attente de validation", variant: "secondary", icon: Clock, color: "text-yellow-600" },
-  validated: { label: "Validé", variant: "default", icon: CheckCircle, color: "text-green-600" },
+  pending: { label: "En attente", variant: "secondary", icon: Clock, color: "text-yellow-600" },
   ongoing: { label: "En cours", variant: "default", icon: Send, color: "text-blue-600" },
   done: { label: "Terminé", variant: "default", icon: CheckCircle, color: "text-green-600" },
   expired: { label: "Expiré", variant: "destructive", icon: AlertCircle, color: "text-orange-600" },
@@ -109,8 +108,8 @@ export function SignatureRequestCard({ request, onSend, onCancel, onRefresh }: S
     }
   };
 
-  const canSend = ["draft", "validated"].includes(request.status);
-  const canCancel = ["draft", "pending_validation", "validated", "ongoing"].includes(request.status);
+  const canSend = ["draft"].includes(request.status);
+  const canCancel = ["draft", "pending", "ongoing"].includes(request.status);
 
   return (
     <motion.div
