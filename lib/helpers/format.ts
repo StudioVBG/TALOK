@@ -10,13 +10,19 @@ export function formatCurrency(amount: number): string {
 export function formatDate(date: string | Date): string {
   if (!date) return "";
   
-  // Si c'est une chaîne YYYY-MM-DD (sans heure), on force à midi pour éviter les décalages de fuseau horaire
+  // ✅ FIX SOTA 2026: Gère les dates ISO complètes (ex: "1992-04-04T00:00:00.000Z")
+  // Extrait YYYY-MM-DD et force à midi pour éviter les décalages de fuseau horaire
   let d: Date;
-  if (typeof date === "string" && date.length === 10 && date.includes("-")) {
-    const [year, month, day] = date.split("-").map(Number);
-    d = new Date(year, month - 1, day, 12, 0, 0);
+  if (typeof date === "string") {
+    const dateOnly = date.substring(0, 10);
+    if (dateOnly.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateOnly.split("-").map(Number);
+      d = new Date(year, month - 1, day, 12, 0, 0);
+    } else {
+      d = new Date(date);
+    }
   } else {
-    d = typeof date === "string" ? new Date(date) : date;
+    d = date;
   }
 
   return new Intl.DateTimeFormat("fr-FR", {
@@ -29,13 +35,18 @@ export function formatDate(date: string | Date): string {
 export function formatDateShort(date: string | Date): string {
   if (!date) return "";
 
-  // Si c'est une chaîne YYYY-MM-DD (sans heure), on force à midi
+  // ✅ FIX SOTA 2026: Gère les dates ISO complètes
   let d: Date;
-  if (typeof date === "string" && date.length === 10 && date.includes("-")) {
-    const [year, month, day] = date.split("-").map(Number);
-    d = new Date(year, month - 1, day, 12, 0, 0);
+  if (typeof date === "string") {
+    const dateOnly = date.substring(0, 10);
+    if (dateOnly.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateOnly.split("-").map(Number);
+      d = new Date(year, month - 1, day, 12, 0, 0);
+    } else {
+      d = new Date(date);
+    }
   } else {
-    d = typeof date === "string" ? new Date(date) : date;
+    d = date;
   }
 
   return new Intl.DateTimeFormat("fr-FR", {
