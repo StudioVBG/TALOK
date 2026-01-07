@@ -1339,14 +1339,15 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                         )}
                       </Button>
 
-                      <button
+                      <Button
                         type="button"
+                        variant="link"
                         onClick={() => handleSendOtp(verificationMethod)}
-                        className="text-sm text-blue-600 hover:underline w-full text-center"
+                        className="text-sm text-blue-600 w-full"
                       >
                         Renvoyer le code
-                      </button>
-                      
+                      </Button>
+
                       <Button
                         variant="ghost"
                         onClick={() => {
