@@ -1,4 +1,4 @@
-# 🏗️ Diagramme d'Architecture - Gestion Locative
+# 🏗️ Diagramme d'Architecture - Talok
 
 ## Vue d'ensemble du système
 

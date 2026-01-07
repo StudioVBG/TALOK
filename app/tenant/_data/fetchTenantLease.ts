@@ -109,6 +109,9 @@ export async function fetchTenantLease(userId: string) {
         role,
         signature_status,
         signed_at,
+        signature_image,
+        signature_image_path,
+        proof_id,
         profiles (
           id,
           prenom,
@@ -126,19 +129,51 @@ export async function fetchTenantLease(userId: string) {
     return null;
   }
 
-  // Mapper pour ajouter .name pour compatibilité Dashboard et nettoyer les données
-  const mappedLeases = leases.map(l => ({
-    ...l,
-    property: l.property ? {
-      ...l.property,
-      ville: l.property.ville || "Ville inconnue",
-      code_postal: l.property.code_postal || "00000",
-      adresse_complete: l.property.adresse_complete || "Adresse non renseignée"
-    } : null,
-    owner: l.property?.owner ? {
-      ...l.property.owner,
-      name: `${l.property.owner.prenom || ""} ${l.property.owner.nom || ""}`.trim() || "Propriétaire"
-    } : null
+  // ✅ SOTA 2026: Générer des URLs signées pour les images de signature (bucket privé)
+  const mappedLeases = await Promise.all(leases.map(async (l) => {
+    // Générer les URLs signées pour chaque signataire
+    const signersWithUrls = await Promise.all((l.lease_signers || []).map(async (s: any) => {
+      let signatureImageUrl: string | null = null;
+      
+      // Si signature_image est déjà une data URL ou URL HTTP
+      if (s.signature_image) {
+        if (s.signature_image.startsWith("data:") || s.signature_image.startsWith("http")) {
+          signatureImageUrl = s.signature_image;
+        }
+      }
+      
+      // Sinon, générer une URL signée depuis le path
+      if (!signatureImageUrl && s.signature_image_path) {
+        try {
+          const { data: signedUrlData } = await serviceClient.storage
+            .from("documents")
+            .createSignedUrl(s.signature_image_path, 3600);
+          
+          if (signedUrlData?.signedUrl) {
+            signatureImageUrl = signedUrlData.signedUrl;
+          }
+        } catch (err) {
+          console.error("[fetchTenantLease] Error generating signed URL:", err);
+        }
+      }
+      
+      return { ...s, signature_image: signatureImageUrl };
+    }));
+    
+    return {
+      ...l,
+      property: l.property ? {
+        ...l.property,
+        ville: l.property.ville || "Ville inconnue",
+        code_postal: l.property.code_postal || "00000",
+        adresse_complete: l.property.adresse_complete || "Adresse non renseignée"
+      } : null,
+      owner: l.property?.owner ? {
+        ...l.property.owner,
+        name: `${l.property.owner.prenom || ""} ${l.property.owner.nom || ""}`.trim() || "Propriétaire"
+      } : null,
+      lease_signers: signersWithUrls
+    };
   }));
 
   console.log("[fetchTenantLease] ✅ Baux chargés avec succès:", mappedLeases.length);

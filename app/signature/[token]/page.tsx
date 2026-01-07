@@ -176,7 +176,7 @@ export default async function SignaturePage({ params }: PageProps) {
 }
 
 export const metadata = {
-  title: "Signer votre bail | Gestion Locative",
+  title: "Signer votre bail | Talok",
   description: "Complétez votre profil et signez votre contrat de location",
 };
 

@@ -112,8 +112,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 5. Baux & locataires
-**Route :** `/owner/contracts`  
-**Fichier :** `app/owner/contracts/page.tsx`  
+**Route :** `/owner/leases`  
+**Fichier :** `app/owner/leases/page.tsx`  
 **API associée :** `GET /api/leases`
 
 **Fonctionnalités :**
@@ -129,8 +129,8 @@ Le compte propriétaire est une interface complète de gestion locative permetta
 ---
 
 ### 6. Détails d'un bail
-**Route :** `/owner/contracts/[id]`  
-**Fichier :** `app/owner/contracts/[id]/page.tsx`  
+**Route :** `/owner/leases/[id]`  
+**Fichier :** `app/owner/leases/[id]/page.tsx`  
 **API associée :** `GET /api/leases/[id]`
 
 **Fonctionnalités :**

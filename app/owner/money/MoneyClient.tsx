@@ -38,6 +38,7 @@ import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PlanGateInline, UsageLimitBanner } from "@/components/subscription";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ManualPaymentDialog } from "@/components/payments";
 
 interface MoneyClientProps {
   data: InvoicesWithPagination;
@@ -50,6 +51,10 @@ export function MoneyClient({ data }: MoneyClientProps) {
   const [isPending, startTransition] = useTransition();
   const [isGenerating, startGenerateTransition] = useTransition();
   const { toast } = useToast();
+  
+  // État pour le dialogue de paiement manuel
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<InvoiceRow | null>(null);
 
   // Détection des biens en DROM pour alerte fiscale SOTA 2026
   const dromProperties = useMemo(() => {
@@ -113,17 +118,26 @@ export function MoneyClient({ data }: MoneyClientProps) {
     }));
   }, [invoices]);
 
+  // Ouvrir le dialogue de paiement manuel
+  const handleOpenPaymentDialog = (invoice: InvoiceRow) => {
+    setSelectedInvoiceForPayment(invoice);
+    setPaymentDialogOpen(true);
+  };
+  
+  // Callback après paiement
+  const handlePaymentComplete = () => {
+    setPaymentDialogOpen(false);
+    setSelectedInvoiceForPayment(null);
+    // Refresh la page pour mettre à jour les données
+    window.location.reload();
+  };
+
   const handleMarkPaid = (invoiceId: string) => {
-    setPendingInvoice({ id: invoiceId, action: "pay" });
-    startTransition(async () => {
-      const result = await markInvoiceAsPaid(invoiceId);
-      if (result.success) {
-        toast({ title: "Facture payée", description: "Le statut a été mis à jour." });
-      } else {
-        toast({ title: "Impossible de marquer comme payé", description: result.error, variant: "destructive" });
-      }
-      setPendingInvoice(null);
-    });
+    // Trouver la facture pour ouvrir le dialogue
+    const invoice = invoices.find(inv => inv.id === invoiceId);
+    if (invoice) {
+      handleOpenPaymentDialog(invoice);
+    }
   };
 
   const handleReminder = (invoiceId: string) => {
@@ -499,6 +513,26 @@ export function MoneyClient({ data }: MoneyClientProps) {
           </Tabs>
         </div>
       </div>
+
+      {/* Dialogue de paiement manuel */}
+      {selectedInvoiceForPayment && (
+        <ManualPaymentDialog
+          open={paymentDialogOpen}
+          onOpenChange={setPaymentDialogOpen}
+          invoiceId={selectedInvoiceForPayment.id}
+          invoiceReference={selectedInvoiceForPayment.reference || ""}
+          amount={Number(selectedInvoiceForPayment.montant_total) || 0}
+          tenantName={
+            selectedInvoiceForPayment.lease?.signers?.[0]?.profile
+              ? `${selectedInvoiceForPayment.lease.signers[0].profile.prenom || ""} ${selectedInvoiceForPayment.lease.signers[0].profile.nom || ""}`.trim()
+              : "Locataire"
+          }
+          ownerName="Propriétaire"
+          propertyAddress={selectedInvoiceForPayment.lease?.property?.adresse_complete || ""}
+          periode={selectedInvoiceForPayment.periode || ""}
+          onPaymentComplete={handlePaymentComplete}
+        />
+      )}
     </PageTransition>
   );
 }

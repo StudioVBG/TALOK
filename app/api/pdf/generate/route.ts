@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     let filename: string = "document.pdf";
 
     switch (type) {
-      // --- Gestion Locative ---
+      // --- Talok ---
       case 'lease':
         // Validation basique des données du bail
         const bailData = data.bail_data || data;

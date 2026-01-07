@@ -35,13 +35,13 @@ const ownerActions: QuickAction[] = [
   {
     icon: FileText,
     label: "Nouveau bail",
-    href: "/owner/contracts/new",
+    href: "/owner/leases/new",
     color: "text-emerald-600 dark:text-emerald-400",
   },
   {
     icon: CreditCard,
     label: "Émettre facture",
-    href: "/owner/finances/invoices/new",
+    href: "/owner/money",
     color: "text-amber-600 dark:text-amber-400",
   },
   {

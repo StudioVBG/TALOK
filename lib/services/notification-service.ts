@@ -398,7 +398,7 @@ export async function notifyLeaseSigned(
     message: `Le bail pour ${propertyAddress} a été signé par toutes les parties`,
     recipientId,
     actionUrl: isOwner 
-      ? `/owner/contracts/${leaseId}` 
+      ? `/owner/leases/${leaseId}` 
       : `/tenant/lease`,
     actionLabel: "Voir le bail",
     metadata: { propertyAddress, leaseId },

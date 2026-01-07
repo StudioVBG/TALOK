@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 
 export const metadata = {
-  title: "Mes Locataires | Gestion Locative",
+  title: "Mes Locataires | Talok",
   description: "Gérez vos locataires et suivez leurs paiements",
 };
 

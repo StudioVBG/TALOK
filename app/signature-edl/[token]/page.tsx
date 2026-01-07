@@ -11,7 +11,7 @@ import EDLSignatureClient from "./EDLSignatureClient";
 
 export async function generateMetadata({ params }: { params: { token: string } }) {
   return {
-    title: "Signer l'état des lieux | Gestion Locative",
+    title: "Signer l'état des lieux | Talok",
     description: "Signature électronique de l'état des lieux",
   };
 }
@@ -31,8 +31,8 @@ async function fetchEDLByToken(token: string) {
     return null;
   }
 
-  // 2. Vérifier si déjà signé
-  if (signatureEntry.signed_at) {
+  // 2. Vérifier si déjà signé - on vérifie signature_image_path car signed_at peut avoir une valeur par défaut
+  if (signatureEntry.signature_image_path) {
     return { alreadySigned: true, edlId: signatureEntry.edl_id };
   }
 

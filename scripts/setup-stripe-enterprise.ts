@@ -141,7 +141,7 @@ async function findOrCreateProduct(plan: PlanConfig): Promise<Stripe.Product> {
 
   // Créer le produit
   const product = await stripe.products.create({
-    name: `Gestion Locative - ${plan.name}`,
+    name: `Talok - ${plan.name}`,
     description: plan.description,
     metadata: {
       plan_slug: plan.slug,

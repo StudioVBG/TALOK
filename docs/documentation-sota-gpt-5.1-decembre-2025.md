@@ -1814,7 +1814,7 @@ def optimized_call(prompt: str, complexity: str = "auto") -> str:
 
 ## 17. Cas d'Usage et Patterns
 
-### 17.1 Agent de Gestion Locative
+### 17.1 Agent de Talok
 
 ```python
 from langgraph.prebuilt import create_react_agent

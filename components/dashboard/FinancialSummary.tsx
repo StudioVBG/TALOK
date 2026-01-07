@@ -27,7 +27,7 @@ interface FinancialSummaryProps {
   className?: string;
 }
 
-export function FinancialSummary({ data, viewAllHref = "/owner/finances", className }: FinancialSummaryProps) {
+export function FinancialSummary({ data, viewAllHref = "/owner/money", className }: FinancialSummaryProps) {
   const { currentMonth, lastMonth, arrears = 0, upcoming = 0 } = data;
 
   const collectionRate = currentMonth.expected > 0

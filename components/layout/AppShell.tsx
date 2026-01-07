@@ -65,7 +65,7 @@ const ownerNavigation: NavSection[] = [
       { name: "Tableau de bord", href: "/owner", icon: LayoutDashboard },
       { name: "Mes biens", href: "/owner/properties", icon: Building2 },
       { name: "Baux", href: "/owner/leases", icon: FileText },
-      { name: "Finances", href: "/owner/finances", icon: Euro },
+      { name: "Finances", href: "/owner/money", icon: Euro },
     ],
   },
   {
@@ -88,7 +88,7 @@ const tenantNavigation: NavSection[] = [
   {
     items: [
       { name: "Tableau de bord", href: "/tenant", icon: LayoutDashboard },
-      { name: "Mon logement", href: "/tenant/home", icon: Home },
+      { name: "Mon logement", href: "/tenant/lease", icon: Home },
       { name: "Paiements", href: "/tenant/payments", icon: CreditCard },
       { name: "Documents", href: "/tenant/documents", icon: FileText },
     ],
@@ -96,7 +96,7 @@ const tenantNavigation: NavSection[] = [
   {
     title: "Gestion",
     items: [
-      { name: "Demandes", href: "/tenant/tickets", icon: Wrench },
+      { name: "Demandes", href: "/tenant/requests", icon: Wrench },
       { name: "Compteurs", href: "/tenant/meters", icon: Gauge },
       { name: "Signatures", href: "/tenant/signatures", icon: FileSignature },
       { name: "Messages", href: "/tenant/messages", icon: MessageSquare },

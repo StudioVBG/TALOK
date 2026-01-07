@@ -47,22 +47,36 @@ export default function VerifyEmailOnboardingPage() {
   }, [emailParam]);
 
   const handleResendEmail = async () => {
-    if (!email) return;
+    if (!email) {
+      toast({
+        title: "Email manquant",
+        description: "Aucune adresse email n'est disponible pour le renvoi.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
+    console.log("[VerifyEmail] Tentative de renvoi pour:", email);
+    
     try {
       // Essayer d'envoyer l'email via le service
       try {
         await authService.resendConfirmationEmail(email);
+        console.log("[VerifyEmail] Email renvoyé avec succès via authService");
       } catch (serviceError: any) {
+        console.log("[VerifyEmail] Erreur authService:", serviceError.message);
+        
         // Si erreur de session, essayer directement avec Supabase
         if (
           serviceError.message?.includes("session") ||
           serviceError.message?.includes("Auth session missing")
         ) {
+          console.log("[VerifyEmail] Retry direct avec Supabase client");
           const supabase = (await import("@/lib/supabase/client")).createClient();
           const { getAuthCallbackUrl } = await import("@/lib/utils/redirect-url");
           const redirectUrl = getAuthCallbackUrl();
+          
           const { error: resendError } = await supabase.auth.resend({
             type: "signup",
             email,
@@ -71,7 +85,11 @@ export default function VerifyEmailOnboardingPage() {
             },
           });
 
-          if (resendError) throw resendError;
+          if (resendError) {
+            console.error("[VerifyEmail] Erreur Supabase resend:", resendError);
+            throw resendError;
+          }
+          console.log("[VerifyEmail] Email renvoyé avec succès via Supabase direct");
         } else {
           throw serviceError;
         }
@@ -79,13 +97,26 @@ export default function VerifyEmailOnboardingPage() {
 
       setEmailSent(true);
       toast({
-        title: "Email envoyé",
-        description: "Un nouvel email de confirmation a été envoyé.",
+        title: "Email envoyé ✅",
+        description: "Un nouvel email de confirmation a été envoyé. Vérifiez aussi vos spams !",
       });
     } catch (error: any) {
+      console.error("[VerifyEmail] Erreur finale:", error);
+      
+      // Messages d'erreur plus explicites
+      let errorMessage = error.message || "Impossible d'envoyer l'email.";
+      
+      if (error.message?.includes("rate limit") || error.message?.includes("too many")) {
+        errorMessage = "Trop de tentatives. Attendez quelques minutes avant de réessayer.";
+      } else if (error.message?.includes("already confirmed")) {
+        errorMessage = "Cet email est déjà confirmé. Essayez de vous connecter.";
+      } else if (error.message?.includes("not found") || error.message?.includes("User not found")) {
+        errorMessage = "Aucun compte trouvé avec cet email. Vérifiez l'adresse ou inscrivez-vous.";
+      }
+      
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'envoyer l'email.",
+        title: "Erreur d'envoi",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -198,8 +229,8 @@ export default function VerifyEmailOnboardingPage() {
       footer={
         <p>
           Pas reçu ?{" "}
-          <a href="mailto:support@gestion-locative.app" className="text-white underline-offset-4 hover:underline">
-            support@gestion-locative.app
+          <a href="mailto:support@talok.fr" className="text-white underline-offset-4 hover:underline">
+            support@talok.fr
           </a>
         </p>
       }

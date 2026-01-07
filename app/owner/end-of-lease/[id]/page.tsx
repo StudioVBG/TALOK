@@ -162,7 +162,7 @@ export default function EndOfLeasePage() {
           </AlertDescription>
         </Alert>
         <div className="mt-4">
-          <Link href={`/owner/contracts/${leaseId}`}>
+          <Link href={`/owner/leases/${leaseId}`}>
             <Button variant="outline">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Retour au bail
@@ -181,7 +181,7 @@ export default function EndOfLeasePage() {
     <div className="container mx-auto p-6 space-y-6">
       {/* En-tête */}
       <div className="flex items-center gap-4">
-        <Link href={`/owner/contracts/${leaseId}`}>
+        <Link href={`/owner/leases/${leaseId}`}>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>

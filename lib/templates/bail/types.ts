@@ -16,6 +16,8 @@ export interface Bailleur {
   telephone?: string;
   email?: string;
   type: 'particulier' | 'societe';
+  date_naissance?: string;
+  lieu_naissance?: string;
   // Si société
   raison_sociale?: string;
   siret?: string;
@@ -95,9 +97,9 @@ export interface Logement {
   annexes: Annexe[];
   
   // Éléments de confort
-  chauffage_type?: 'individuel' | 'collectif';
-  chauffage_energie?: 'gaz' | 'electricite' | 'fioul' | 'bois' | 'pompe_chaleur' | 'autre';
-  eau_chaude_type?: 'individuel' | 'collectif';
+  chauffage_type?: 'individuel' | 'collectif' | 'aucun';
+  chauffage_energie?: 'gaz' | 'electricite' | 'fioul' | 'bois' | 'pompe_chaleur' | 'solaire' | 'autre';
+  eau_chaude_type?: 'individuel' | 'collectif' | 'solaire' | 'electrique_indiv' | 'gaz_indiv' | 'autre';
   eau_chaude_energie?: 'gaz' | 'electricite' | 'fioul' | 'solaire' | 'autre';
   
   // Accès technologies

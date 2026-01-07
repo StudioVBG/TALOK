@@ -62,7 +62,8 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
   // 2. Récupérer les données liées en parallèle
   const [
     { data: units },
-    { data: leases },
+    { data: leasesData },
+    { data: edlsData },
     { data: tickets },
     { data: invoices },
     { data: photosData },
@@ -71,8 +72,10 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
   ] = await Promise.all([
     // Units
     supabase.from("units").select("*").eq("property_id", propertyId),
-    // Leases (baux actifs ou en attente avec leurs EDLs et signataires)
-    supabase.from("leases").select("*, edls:edl(id, status, type), tenants:lease_signers(id, role, profile:profiles(prenom, nom))").eq("property_id", propertyId).neq("statut", "terminated"),
+    // Leases (baux actifs ou en attente avec leurs signataires)
+    supabase.from("leases").select("*, tenants:lease_signers(id, role, profile:profiles(prenom, nom))").eq("property_id", propertyId).neq("statut", "terminated"),
+    // EDLs (tous les EDLs de la propriété)
+    supabase.from("edl").select("id, lease_id, type, status, scheduled_at, completed_date").eq("property_id", propertyId),
     // Tickets
     supabase.from("tickets").select("*").eq("property_id", propertyId).order("created_at", { ascending: false }).limit(5),
     // Invoices (dernières factures)
@@ -107,7 +110,13 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
     coverDocId = cover.id;
   }
 
-  // 4. Construire l'objet OwnerProperty
+  // 4. Attacher les EDLs aux baux correspondants
+  const leases = (leasesData || []).map(lease => ({
+    ...lease,
+    edls: (edlsData || []).filter(e => e.lease_id === lease.id)
+  }));
+
+  // 5. Construire l'objet OwnerProperty
   const enrichedProperty: OwnerProperty = {
     ...property,
     cover_url: coverUrl,
@@ -119,7 +128,7 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
 
   // Calcul simple du statut
   const activeLease = leases?.find((l) => l.statut === "active");
-  const pendingLease = leases?.find((l) => l.statut === "pending_signature");
+  const pendingLease = leases?.find((l) => ["pending_signature", "fully_signed", "partially_signed"].includes(l.statut));
   
   if (activeLease) enrichedProperty.status = "loue";
   else if (pendingLease) enrichedProperty.status = "en_preavis";

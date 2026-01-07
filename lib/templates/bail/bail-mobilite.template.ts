@@ -648,6 +648,12 @@ export const BAIL_MOBILITE_TEMPLATE = `
               <span class="party-label">Nom et prénom :</span><br>
               <span class="party-value">{{BAILLEUR_NOM_COMPLET}}</span>
             </div>
+            {{#if BAILLEUR_DATE_NAISSANCE}}
+            <div class="party-info">
+              <span class="party-label">Né(e) le :</span><br>
+              <span class="party-value">{{BAILLEUR_DATE_NAISSANCE}} {{#if BAILLEUR_LIEU_NAISSANCE}}à {{BAILLEUR_LIEU_NAISSANCE}}{{/if}}</span>
+            </div>
+            {{/if}}
             {{/unless}}
             <div class="party-info">
               <span class="party-label">Adresse :</span><br>

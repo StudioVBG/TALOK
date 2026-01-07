@@ -58,75 +58,87 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
   const profile = serverProfile || clientProfile;
 
-  const mainNavigation = [
+  const navigationGroups = [
     {
-      name: "Tableau de bord",
-      href: "/tenant/dashboard",
-      icon: LayoutDashboard,
+      title: "Mon Foyer",
+      items: [
+        {
+          name: "Tableau de bord",
+          href: "/tenant/dashboard",
+          icon: LayoutDashboard,
+        },
+        {
+          name: "Ma Vie au Logement",
+          href: "/tenant/lease",
+          icon: Home,
+        },
+      ],
     },
     {
-      name: "Mon logement",
-      href: "/tenant/lease",
-      icon: Home,
+      title: "Mon Contrat",
+      items: [
+        {
+          name: "Coffre-fort (Documents)",
+          href: "/tenant/documents",
+          icon: FileText,
+        },
+        {
+          name: "Suivi Juridique (EDL/Sign)",
+          href: "/tenant/inspections",
+          icon: ClipboardCheck,
+        },
+      ],
     },
     {
-      name: "Paiements",
-      href: "/tenant/payments",
-      icon: CreditCard,
+      title: "Mes Finances",
+      items: [
+        {
+          name: "Loyers & Factures",
+          href: "/tenant/payments",
+          icon: CreditCard,
+        },
+      ],
     },
     {
-      name: "Documents",
-      href: "/tenant/documents",
-      icon: FileText,
-    },
-  ];
-
-  const secondaryNavigation = [
-    {
-      name: "Demandes",
-      href: "/tenant/requests",
-      icon: Wrench,
-    },
-    {
-      name: "États des lieux",
-      href: "/tenant/inspections",
-      icon: ClipboardCheck,
+      title: "Assistance",
+      items: [
+        {
+          name: "Demandes & SAV",
+          href: "/tenant/requests",
+          icon: Wrench,
+        },
+        {
+          name: "Messagerie",
+          href: "/tenant/messages",
+          icon: MessageSquare,
+        },
+      ],
     },
     {
-      name: "Compteurs",
-      href: "/tenant/meters",
-      icon: Gauge,
-    },
-    {
-      name: "Signatures",
-      href: "/tenant/signatures",
-      icon: FileSignature,
-    },
-    {
-      name: "Messages",
-      href: "/tenant/messages",
-      icon: MessageSquare,
-    },
-    {
-      name: "Récompenses",
-      href: "/tenant/rewards",
-      icon: Gift,
-    },
-    {
-      name: "Marketplace",
-      href: "/tenant/marketplace",
-      icon: ShoppingBag,
+      title: "Mes Avantages",
+      items: [
+        {
+          name: "Club Récompenses",
+          href: "/tenant/rewards",
+          icon: Gift,
+        },
+        {
+          name: "Marketplace",
+          href: "/tenant/marketplace",
+          icon: ShoppingBag,
+        },
+      ],
     },
   ];
 
   const bottomNavigation = [
     {
-      name: "Aide",
+      name: "Aide & FAQ",
       href: "/tenant/help",
       icon: HelpCircle,
     },
     {
-      name: "Paramètres",
+      name: "Mon Profil",
       href: "/tenant/settings",
       icon: Settings,
     },
@@ -148,7 +160,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
             {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
           <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Gestion Locative
+            Talok
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -206,7 +218,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         <div className="h-16 flex items-center px-6 border-b shrink-0">
           <Link href="/tenant/dashboard" className="flex items-center gap-2">
             <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Gestion Locative
+              Talok
             </span>
             <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
               Locataire
@@ -235,63 +247,36 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
         {/* Main Navigation */}
         <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
-              Principal
-            </p>
-            {mainNavigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isCurrent(item.href)
-                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
-                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-                )}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <item.icon
+          {navigationGroups.map((group) => (
+            <div key={group.title} className="space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
+                {group.title}
+              </p>
+              {group.items.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
                   className={cn(
-                    "h-5 w-5",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                     isCurrent(item.href)
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-slate-400"
+                      ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
                   )}
-                />
-                {item.name}
-              </Link>
-            ))}
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
-              Gestion
-            </p>
-            {secondaryNavigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                  isCurrent(item.href)
-                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
-                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
-                )}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <item.icon
-                  className={cn(
-                    "h-5 w-5",
-                    isCurrent(item.href)
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-slate-400"
-                  )}
-                />
-                {item.name}
-              </Link>
-            ))}
-          </div>
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <item.icon
+                    className={cn(
+                      "h-5 w-5",
+                      isCurrent(item.href)
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-slate-400"
+                    )}
+                  />
+                  {item.name}
+                </Link>
+              ))}
+            </div>
+          ))}
         </nav>
 
         {/* Bottom Navigation */}

@@ -142,7 +142,19 @@ export type LeaseType =
   | "contrat_parking"
   | "location_gerance";
 
-export type LeaseStatus = "draft" | "pending_signature" | "active" | "terminated";
+// ✅ SOTA 2026: Tous les statuts de bail légaux
+export type LeaseStatus = 
+  | "draft"                   // Brouillon
+  | "sent"                    // Envoyé pour signature
+  | "pending_signature"       // En attente de signatures
+  | "partially_signed"        // Partiellement signé
+  | "pending_owner_signature" // Locataire signé, attente propriétaire
+  | "fully_signed"            // Entièrement signé (avant EDL)
+  | "active"                  // Bail actif
+  | "notice_given"            // Congé donné (préavis en cours)
+  | "amended"                 // Avenant en cours
+  | "terminated"              // Terminé
+  | "archived";               // Archivé
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "late";
 

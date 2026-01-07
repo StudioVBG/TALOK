@@ -13,7 +13,7 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 // Note: En mode gratuit Resend, on ne peut envoyer qu'à l'adresse du compte
 const RECIPIENT = "volberg.thomas@gmail.com";
 // IMPORTANT: Utiliser l'adresse de test Resend (pas besoin de vérification de domaine)
-const FROM = "Gestion Locative <onboarding@resend.dev>";
+const FROM = "Talok <onboarding@resend.dev>";
 
 async function send() {
   console.log("📧 Préparation de l'envoi...\n");
@@ -75,7 +75,7 @@ async function send() {
     body: JSON.stringify({
       from: FROM,
       to: [RECIPIENT],
-      subject: "✅ Test Gestion Locative - Configuration réussie !",
+      subject: "✅ Test Talok - Configuration réussie !",
       html: `
 <!DOCTYPE html>
 <html lang="fr">
@@ -91,7 +91,7 @@ async function send() {
       </p>
       <p style="font-size: 16px; color: #374151; line-height: 1.6;">
         Votre service d'envoi d'emails <strong>Resend</strong> est maintenant 
-        correctement configuré pour votre application <strong>Gestion Locative</strong>.
+        correctement configuré pour votre application <strong>Talok</strong>.
       </p>
       
       <div style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #86efac; border-radius: 12px; padding: 20px; margin: 24px 0;">
@@ -113,7 +113,7 @@ async function send() {
     
     <div style="text-align: center; padding: 20px;">
       <p style="margin: 0; font-size: 12px; color: #9ca3af;">
-        © ${new Date().getFullYear()} Gestion Locative - Tous droits réservés
+        © ${new Date().getFullYear()} Talok - Tous droits réservés
       </p>
       <p style="margin: 8px 0 0 0; font-size: 11px; color: #9ca3af;">
         Email envoyé le ${new Date().toLocaleString("fr-FR")}

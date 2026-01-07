@@ -1,5 +1,5 @@
 # RAPPORT D'AUDIT TECHNIQUE COMPLET
-## Application de Gestion Locative - Novembre 2025
+## Application de Talok - Novembre 2025
 
 ---
 
@@ -51,7 +51,7 @@ app/
 | `/owner/dashboard` | `app/owner/dashboard/page.tsx` | Page | ✅ Existe |
 | `/owner/properties` | `app/owner/properties/page.tsx` | Page | ✅ Existe |
 | `/owner/properties/new` | `app/owner/properties/new/page.tsx` | Page | ✅ Existe |
-| `/owner/contracts` | `app/owner/contracts/page.tsx` | Page | ✅ Existe |
+| `/owner/leases` | `app/owner/leases/page.tsx` | Page | ✅ Existe |
 | `/owner/money` | `app/owner/money/page.tsx` | Page | ✅ Existe |
 | `/owner/documents` | `app/owner/documents/page.tsx` | Page | ✅ Existe |
 | `/owner/dashboard` | `app/owner/dashboard/page.tsx` | Page | ⚠️ DOUBLON |

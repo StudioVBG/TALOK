@@ -47,8 +47,8 @@ export function OnboardingShell({ stepLabel, title, subtitle, children, footer }
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             <span>Besoin d’aide ? </span>
-            <a href="mailto:support@gestion-locative.app" className="text-white underline-offset-4 hover:underline">
-              support@gestion-locative.app
+            <a href="mailto:support@talok.fr" className="text-white underline-offset-4 hover:underline">
+              support@talok.fr
             </a>
           </div>
         </div>

@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
     // Générer un secret pour l'utilisateur
     const secret = authenticator.generateSecret();
-    const serviceName = "Gestion Locative";
+    const serviceName = "Talok";
     const accountName = user.email || user.id;
 
     // Générer l'URL du QR code

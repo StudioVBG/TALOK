@@ -180,9 +180,10 @@ export async function POST(request: Request, { params }: PageProps) {
     const ownerSigned = allSigners?.find((s) => s.role === "proprietaire")?.signature_status === "signed";
 
     // 4. Mettre à jour le bail avec le nouveau statut
+    // ✅ SOTA 2026: Le bail signé passe à "fully_signed", l'activation se fait après l'EDL
     let newStatus = lease.statut;
     if (allSigned) {
-      newStatus = "active";
+      newStatus = "fully_signed";  // Activation après EDL via /activate
     } else if (!ownerSigned) {
       newStatus = "pending_owner_signature";
     }

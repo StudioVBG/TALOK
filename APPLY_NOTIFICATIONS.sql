@@ -180,7 +180,7 @@ BEGIN
         'lease_signed',
         'Bail signé !',
         format('Le bail pour %s est maintenant actif.', v_property_address),
-        '/app/owner/contracts/' || NEW.id,
+        '/app/owner/leases/' || NEW.id,
         NEW.id,
         'lease'
       );

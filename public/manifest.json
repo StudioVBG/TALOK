@@ -1,6 +1,6 @@
 {
-  "name": "Gestion Locative",
-  "short_name": "GestLoc",
+  "name": "Talok",
+  "short_name": "Talok",
   "description": "La plateforme tout-en-un pour gérer vos locations : baux automatiques, signatures électroniques, scoring locataires, paiements et quittances.",
   "start_url": "/",
   "display": "standalone",

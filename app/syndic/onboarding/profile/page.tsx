@@ -103,7 +103,7 @@ export default function SyndicOnboardingProfilePage() {
             <User className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 bg-clip-text text-transparent">
-            Bienvenue sur Gestion Locative
+            Bienvenue sur Talok
           </h1>
           <p className="text-muted-foreground mt-2">
             Commençons par configurer votre profil de syndic

@@ -92,7 +92,7 @@ export default function HomeClient() {
           </motion.div>
 
           <h1 className="text-6xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
-            Gestion Locative
+            Talok
           </h1>
 
           <p className="text-xl text-slate-200 max-w-2xl leading-relaxed">
@@ -202,14 +202,14 @@ export default function HomeClient() {
             <Building2 className="h-4 w-4" />
             <span>Besoin d'aide ? </span>
             <a
-              href="mailto:support@gestion-locative.app"
+              href="mailto:support@talok.fr"
               className="text-white underline-offset-4 hover:underline transition-colors"
             >
-              support@gestion-locative.app
+              support@talok.fr
             </a>
           </div>
           <p className="text-xs text-slate-400">
-            © 2025 Gestion Locative. Tous droits réservés.
+            © 2026 Talok. Tous droits réservés.
           </p>
         </motion.div>
       </div>

@@ -33,15 +33,15 @@ const TWILIO_MESSAGING_SERVICE_SID = process.env.TWILIO_MESSAGING_SERVICE_SID;
 // Templates SMS
 const SMS_TEMPLATES: Record<string, (data: any) => string> = {
   payment_reminder: (data) =>
-    `[GestionLocative] Rappel: Votre loyer de ${data.amount}€ est dû le ${data.dueDate}. Réglez via votre espace locataire.`,
+    `[Talok] Rappel: Votre loyer de ${data.amount}€ est dû le ${data.dueDate}. Réglez via votre espace locataire.`,
   payment_late: (data) =>
-    `[GestionLocative] URGENT: Votre loyer de ${data.amount}€ est en retard de ${data.daysLate} jour(s). Merci de régulariser rapidement.`,
+    `[Talok] URGENT: Votre loyer de ${data.amount}€ est en retard de ${data.daysLate} jour(s). Merci de régulariser rapidement.`,
   ticket_urgent: (data) =>
-    `[GestionLocative] Incident urgent signalé: ${data.title}. Connectez-vous pour plus de détails.`,
+    `[Talok] Incident urgent signalé: ${data.title}. Connectez-vous pour plus de détails.`,
   edl_reminder: (data) =>
-    `[GestionLocative] Rappel: État des lieux prévu le ${data.date} à ${data.time} pour ${data.property}.`,
+    `[Talok] Rappel: État des lieux prévu le ${data.date} à ${data.time} pour ${data.property}.`,
   lease_expiring: (data) =>
-    `[GestionLocative] Votre bail pour ${data.property} expire dans ${data.daysLeft} jours. Contactez votre propriétaire.`,
+    `[Talok] Votre bail pour ${data.property} expire dans ${data.daysLeft} jours. Contactez votre propriétaire.`,
   custom: (data) => data.message || "",
 };
 
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
       .from("sms_messages")
       .insert({
         profile_id: targetProfileId,
-        from_number: TWILIO_PHONE_NUMBER || "GestionLocative",
+        from_number: TWILIO_PHONE_NUMBER || "Talok",
         to_number: formattedPhone,
         message: message,
         twilio_sid: twilioResponse.sid,

@@ -1,4 +1,4 @@
-# 🚀 Guide de démarrage - Gestion Locative
+# 🚀 Guide de démarrage - Talok
 
 ## Prérequis
 

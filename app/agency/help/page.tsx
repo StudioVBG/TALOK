@@ -110,7 +110,7 @@ export default function AgencyHelpPage() {
             </div>
             <div>
               <h3 className="font-semibold">Email support</h3>
-              <p className="text-sm text-white/80">support@gestionlocative.fr</p>
+              <p className="text-sm text-white/80">support@talok.fr</p>
             </div>
           </CardContent>
         </Card>

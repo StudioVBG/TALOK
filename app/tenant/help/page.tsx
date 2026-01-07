@@ -62,7 +62,7 @@ export default function TenantHelpPage() {
               <Mail className="h-6 w-6 text-green-600" />
             </div>
             <h3 className="font-semibold mb-1">Email</h3>
-            <p className="text-sm text-muted-foreground">support@gestion-locative.app</p>
+            <p className="text-sm text-muted-foreground">support@talok.fr</p>
           </CardContent>
         </Card>
 

@@ -9,7 +9,7 @@
    - Connectez-vous avec votre compte
 
 2. **Sélectionnez votre projet**
-   - Cliquez sur le projet "Gestion Locative" (ou le nom de votre projet)
+   - Cliquez sur le projet "Talok" (ou le nom de votre projet)
 
 3. **Accédez aux paramètres**
    - Cliquez sur l'onglet **"Settings"** en haut

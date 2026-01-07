@@ -220,7 +220,7 @@ async function handleSignerDeclined(
       p_type: "signature_declined",
       p_title: "Signature refusée",
       p_body: `Un signataire a refusé de signer le bail pour ${lease.property.adresse_complete}.`,
-      p_action_url: `/owner/contracts/${lease.id}`,
+      p_action_url: `/owner/leases/${lease.id}`,
       p_priority: "high",
     });
   }
@@ -294,7 +294,7 @@ async function handleSignatureComplete(
       p_type: "lease_signed",
       p_title: "Bail signé !",
       p_body: `Le bail pour ${lease.property.adresse_complete} a été signé par toutes les parties.`,
-      p_action_url: `/owner/contracts/${lease.id}`,
+      p_action_url: `/owner/leases/${lease.id}`,
       p_priority: "high",
     });
   }

@@ -164,7 +164,7 @@ export async function POST(request: Request, { params }: PageProps) {
     }
 
     const smsResult = await sendOTPSMS(formattedPhone, otpCode, {
-      appName: "Gestion Locative",
+      appName: "Talok",
       expiryMinutes: 10,
     });
 

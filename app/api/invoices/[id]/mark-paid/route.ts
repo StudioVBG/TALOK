@@ -28,13 +28,26 @@ export async function POST(
     const invoiceId = params.id;
 
     // Récupérer les données optionnelles du body
-    let body: { payment_method?: string; notes?: string } = {};
+    interface MarkPaidBody {
+      amount?: number;
+      moyen?: string;
+      payment_method?: string;
+      date_paiement?: string;
+      reference?: string;
+      bank_name?: string;
+      notes?: string;
+    }
+    
+    let body: MarkPaidBody = {};
     try {
       body = await request.json();
     } catch {
       // Body vide, c'est OK
     }
-    const { payment_method = "autre", notes } = body;
+    
+    // Support both "moyen" and "payment_method" for backward compatibility
+    const paymentMethod = body.moyen || body.payment_method || "autre";
+    const { reference, bank_name, notes, date_paiement } = body;
 
     // Récupérer la facture avec vérification d'accès
     const { data: invoice, error: invoiceError } = await supabase
@@ -92,16 +105,33 @@ export async function POST(
       );
     }
 
-    // Créer le paiement
+    // Déterminer le montant (utiliser celui fourni ou le total de la facture)
+    const paymentAmount = body.amount && body.amount > 0 
+      ? body.amount 
+      : invoiceData.montant_total;
+    
+    // Créer le paiement avec toutes les métadonnées
+    const paymentData: Record<string, unknown> = {
+      invoice_id: invoiceId,
+      montant: paymentAmount,
+      moyen: paymentMethod,
+      date_paiement: date_paiement || new Date().toISOString().split("T")[0],
+      statut: "succeeded",
+    };
+    
+    // Ajouter les métadonnées optionnelles si présentes
+    // Ces données seront stockées dans provider_ref ou un champ metadata
+    if (reference || bank_name || notes) {
+      paymentData.provider_ref = JSON.stringify({
+        reference: reference || null,
+        bank_name: bank_name || null,
+        notes: notes || null,
+      });
+    }
+    
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
-      .insert({
-        invoice_id: invoiceId,
-        montant: invoiceData.montant_total,
-        moyen: payment_method,
-        date_paiement: new Date().toISOString().split("T")[0],
-        statut: "succeeded",
-      })
+      .insert(paymentData)
       .select()
       .single();
 
@@ -129,8 +159,10 @@ export async function POST(
         payment_id: payment?.id,
         lease_id: invoiceData.lease_id,
         tenant_id: invoiceData.tenant_id,
-        amount: invoiceData.montant_total,
-        payment_method,
+        amount: paymentAmount,
+        payment_method: paymentMethod,
+        reference,
+        bank_name,
         marked_by: user.id,
       },
     } as any);
@@ -144,8 +176,10 @@ export async function POST(
       metadata: {
         lease_id: invoiceData.lease_id,
         payment_id: payment?.id,
-        amount: invoiceData.montant_total,
-        payment_method,
+        amount: paymentAmount,
+        payment_method: paymentMethod,
+        reference,
+        bank_name,
         notes,
       },
     } as any);

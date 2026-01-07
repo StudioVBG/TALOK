@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "Connexions Bancaires | Gestion Locative",
+  title: "Connexions Bancaires | Talok",
   description: "Gérez vos connexions bancaires pour l'automatisation des paiements",
 };
 

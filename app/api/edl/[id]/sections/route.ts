@@ -14,7 +14,7 @@ const sectionSchema = z.object({
         z.object({
           room_name: z.string(),
           item_name: z.string(),
-          condition: z.enum(["bon", "moyen", "mauvais", "tres_mauvais"]).nullable().optional(),
+          condition: z.enum(["neuf", "bon", "moyen", "mauvais", "tres_mauvais"]).nullable().optional(),
           notes: z.string().optional().nullable(),
         })
       ),

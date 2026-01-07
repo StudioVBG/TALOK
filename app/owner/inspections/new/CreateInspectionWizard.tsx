@@ -26,6 +26,7 @@ import {
   Save,
   Loader2,
   Trash2,
+  Key,
 } from "lucide-react";
 import {
   Card,
@@ -35,6 +36,13 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -74,7 +82,7 @@ interface RoomData {
   customName?: string;
   items: Array<{
     name: string;
-    condition: "bon" | "moyen" | "mauvais" | "tres_mauvais" | null;
+    condition: "neuf" | "bon" | "moyen" | "mauvais" | "tres_mauvais" | null;
     notes: string;
     photos: File[];
   }>;
@@ -150,6 +158,7 @@ const ROOM_TEMPLATES: RoomTemplate[] = [
 ];
 
 const CONDITION_OPTIONS = [
+  { value: "neuf", label: "Neuf", color: "bg-blue-100 text-blue-800 border-blue-300" },
   { value: "bon", label: "Bon état", color: "bg-green-100 text-green-800 border-green-300" },
   { value: "moyen", label: "État moyen", color: "bg-yellow-100 text-yellow-800 border-yellow-300" },
   { value: "mauvais", label: "Mauvais état", color: "bg-orange-100 text-orange-800 border-orange-300" },
@@ -162,6 +171,7 @@ const STEPS = [
   { id: "meters", title: "Compteurs", description: "Relevés des compteurs" },
   { id: "rooms", title: "Pièces", description: "Sélectionnez les pièces" },
   { id: "inspection", title: "Inspection", description: "Remplissez l'EDL" },
+  { id: "keys", title: "Clés", description: "Trousseau de clés" },
   { id: "summary", title: "Résumé", description: "Vérifiez et validez" },
 ];
 
@@ -173,6 +183,22 @@ interface MeterReading {
   unit: string;
   photo?: File;
 }
+
+interface KeyItem {
+  type: string;
+  count: number;
+  notes?: string;
+}
+
+const DEFAULT_KEY_TYPES = [
+  "Clé Porte d'entrée",
+  "Badge Immeuble",
+  "Digicode / Code d'accès",
+  "Clé Boîte aux lettres",
+  "Clé Garage / Parking",
+  "Clé Cave",
+  "Télécommande Portail",
+];
 
 const METER_TYPES = [
   { type: "electricity" as const, label: "Électricité", unit: "kWh", icon: "⚡" },
@@ -203,6 +229,11 @@ export function CreateInspectionWizard({ leases }: Props) {
   const [meterReadings, setMeterReadings] = useState<MeterReading[]>([
     { type: "electricity", meterNumber: "", reading: "", unit: "kWh" },
     { type: "water", meterNumber: "", reading: "", unit: "m³" },
+  ]);
+
+  // État pour les clés
+  const [keys, setKeys] = useState<KeyItem[]>([
+    { type: "Clé Porte d'entrée", count: 1, notes: "" },
   ]);
 
   // Charger les compteurs existants quand un bail est sélectionné
@@ -308,11 +339,14 @@ export function CreateInspectionWizard({ leases }: Props) {
       case 4:
         return roomsData.length > 0;
       case 5:
+        // Au moins une clé
+        return keys.length > 0 && keys.some(k => k.type.trim() !== "");
+      case 6:
         return true;
       default:
         return false;
     }
-  }, [step, selectedLease, edlType, scheduledDate, meterReadings, selectedRooms.length, roomsData.length]);
+  }, [step, selectedLease, edlType, scheduledDate, meterReadings, selectedRooms.length, roomsData.length, keys]);
   
   // Fonctions pour gérer les compteurs
   const updateMeterReading = (index: number, field: keyof MeterReading, value: string) => {
@@ -512,7 +546,7 @@ export function CreateInspectionWizard({ leases }: Props) {
   const updateItemCondition = (
     roomIndex: number,
     itemIndex: number,
-    condition: "bon" | "moyen" | "mauvais" | "tres_mauvais"
+    condition: "neuf" | "bon" | "moyen" | "mauvais" | "tres_mauvais"
   ) => {
     setRoomsData((prev) => {
       const updated = [...prev];
@@ -570,6 +604,11 @@ export function CreateInspectionWizard({ leases }: Props) {
           scheduled_at: scheduledDate,
           lease_id: selectedLease.id,
           general_notes: generalNotes,
+          keys: keys.filter(k => k.type.trim() !== "").map(k => ({
+            type: k.type,
+            quantite: k.count,
+            notes: k.notes
+          })),
         }),
       });
 
@@ -1352,8 +1391,117 @@ export function CreateInspectionWizard({ leases }: Props) {
             </div>
           )}
 
-          {/* Step 6: Summary */}
+          {/* Step 6: Keys */}
           {step === 5 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  Trousseau de clés
+                </CardTitle>
+                <CardDescription>
+                  Listez les clés remises au locataire lors de l&apos;entrée
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  {keys.map((keyItem, index) => (
+                    <div key={index} className="p-4 border rounded-lg bg-slate-50/50 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
+                          Clé #{index + 1}
+                        </div>
+                        {keys.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setKeys(prev => prev.filter((_, i) => i !== index))}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2 md:col-span-2">
+                          <Label>Type de clé</Label>
+                          <div className="flex gap-2">
+                            <Select
+                              value={keyItem.type}
+                              onValueChange={(v) => {
+                                const newKeys = [...keys];
+                                newKeys[index].type = v;
+                                setKeys(newKeys);
+                              }}
+                            >
+                              <SelectTrigger className="bg-white">
+                                <SelectValue placeholder="Choisir un type..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DEFAULT_KEY_TYPES.map(t => (
+                                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                                ))}
+                                <SelectItem value="Autre">Autre...</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {keyItem.type === "Autre" && (
+                              <Input 
+                                placeholder="Précisez..." 
+                                className="bg-white"
+                                onChange={(e) => {
+                                  // Logic to handle custom type if needed
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Quantité</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={keyItem.count}
+                            onChange={(e) => {
+                              const newKeys = [...keys];
+                              newKeys[index].count = parseInt(e.target.value) || 1;
+                              setKeys(newKeys);
+                            }}
+                            className="bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Observations (facultatif)</Label>
+                        <Input
+                          placeholder="Ex: Marque Vachette, un peu usée..."
+                          value={keyItem.notes}
+                          onChange={(e) => {
+                            const newKeys = [...keys];
+                            newKeys[index].notes = e.target.value;
+                            setKeys(newKeys);
+                          }}
+                          className="bg-white"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <Button
+                  variant="outline"
+                  onClick={() => setKeys(prev => [...prev, { type: "Clé Porte d'entrée", count: 1, notes: "" }])}
+                  className="w-full border-dashed"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter une autre clé
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 7: Summary */}
+          {step === 6 && (
             <Card>
               <CardHeader>
                 <CardTitle>Résumé de l&apos;état des lieux</CardTitle>
@@ -1422,6 +1570,20 @@ export function CreateInspectionWizard({ leases }: Props) {
                     onChange={(e) => setGeneralNotes(e.target.value)}
                     className="h-24"
                   />
+                </div>
+
+                {/* Keys Summary */}
+                <div>
+                  <p className="text-sm font-medium mb-2">
+                    Trousseau de clés ({keys.length})
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {keys.filter(k => k.type.trim() !== "").map((k, i) => (
+                      <Badge key={i} variant="secondary">
+                        {k.type} (x{k.count})
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>

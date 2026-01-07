@@ -4,7 +4,7 @@
 
 export type EDLType = "entree" | "sortie";
 
-export type ItemCondition = "bon" | "moyen" | "mauvais" | "tres_mauvais";
+export type ItemCondition = "neuf" | "bon" | "moyen" | "mauvais" | "tres_mauvais";
 
 export interface EDLItem {
   id?: string;
@@ -189,6 +189,7 @@ export interface EDLTemplateVariables {
   
   // État global
   RESUME_ETAT: string;
+  NB_ELEMENTS_NEUF: number;
   NB_ELEMENTS_BON: number;
   NB_ELEMENTS_MOYEN: number;
   NB_ELEMENTS_MAUVAIS: number;
@@ -198,6 +199,7 @@ export interface EDLTemplateVariables {
 
 // Labels pour les conditions
 export const CONDITION_LABELS: Record<ItemCondition, string> = {
+  neuf: "Neuf",
   bon: "Bon état",
   moyen: "État moyen",
   mauvais: "Mauvais état",
@@ -205,6 +207,7 @@ export const CONDITION_LABELS: Record<ItemCondition, string> = {
 };
 
 export const CONDITION_COLORS: Record<ItemCondition, string> = {
+  neuf: "#3b82f6", // blue-500 (bleu pour neuf)
   bon: "#22c55e", // green-500
   moyen: "#eab308", // yellow-500
   mauvais: "#f97316", // orange-500

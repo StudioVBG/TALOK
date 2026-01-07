@@ -273,7 +273,7 @@ export function SignInForm() {
         <p>
           Besoin d’aide ?{" "}
           <a
-            href="mailto:support@gestion-locative.app"
+            href="mailto:support@talok.fr"
             className="text-primary underline-offset-2 hover:underline"
           >
             Contacter l’équipe

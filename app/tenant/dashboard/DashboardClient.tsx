@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTenantData } from "../_data/TenantDataProvider";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -65,6 +66,59 @@ export function DashboardClient() {
   
   // Gestion du logement sélectionné si multi-baux
   const [selectedLeaseIndex, setSelectedLeaseIndex] = useState(0);
+  
+  // État pour les EDLs en attente (récupérés directement si la RPC ne les renvoie pas)
+  const [pendingEDLs, setPendingEDLs] = useState<any[]>([]);
+  
+  // Récupérer les EDLs en attente directement depuis le client
+  useEffect(() => {
+    async function fetchPendingEDLs() {
+      // Si la RPC a déjà renvoyé des EDLs, on les utilise
+      if (dashboard?.pending_edls && dashboard.pending_edls.length > 0) {
+        setPendingEDLs(dashboard.pending_edls);
+        return;
+      }
+      
+      // Sinon, on récupère directement
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (!profileData) return;
+      
+      // Récupérer les EDLs où la signature n'est pas complète (pas d'image = pas vraiment signé)
+      const { data: edls } = await supabase
+        .from("edl_signatures")
+        .select(`
+          id, invitation_token, signed_at, signature_image_path,
+          edl:edl_id(id, type, status, scheduled_at, property:property_id(adresse_complete))
+        `)
+        .eq("signer_profile_id", profileData.id)
+        .is("signature_image_path", null); // Vérifie l'absence d'image, pas signed_at
+      
+      if (edls && edls.length > 0) {
+        const formatted = edls
+          .filter((sig: any) => sig.edl && sig.edl.status !== 'draft')
+          .map((sig: any) => ({
+            id: sig.edl.id,
+            type: sig.edl.type,
+            status: sig.edl.status,
+            scheduled_at: sig.edl.scheduled_at,
+            invitation_token: sig.invitation_token,
+            property_address: sig.edl.property?.adresse_complete || 'Adresse non renseignée'
+          }));
+        setPendingEDLs(formatted);
+      }
+    }
+    
+    fetchPendingEDLs();
+  }, [dashboard?.pending_edls]);
 
   const currentLease = useMemo(() => {
     if (!dashboard?.leases || dashboard.leases.length === 0) return dashboard?.lease;
@@ -100,13 +154,30 @@ export function DashboardClient() {
     return items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 8);
   }, [dashboard]);
 
+  // ✅ FIX: Vérifier si le locataire a déjà signé ce bail
+  const hasSignedLease = useMemo(() => {
+    if (!dashboard?.lease?.signers) return false;
+    
+    // Chercher le signataire locataire
+    const tenantSigner = dashboard.lease.signers.find((s: any) => 
+      s.role === 'locataire_principal' || s.role === 'tenant' || s.role === 'locataire'
+    );
+    
+    // Le locataire a signé si son statut est 'signed' OU s'il a une date de signature
+    return tenantSigner?.signature_status === 'signed' || !!tenantSigner?.signed_at;
+  }, [dashboard]);
+
   // 2. Calcul des actions requises (Command Center)
   const pendingActions = useMemo(() => {
     if (!dashboard) return [];
     const actions = [];
     
     // Action 1 : Signer le bail (Priorité Haute)
-    if (dashboard.lease?.statut === 'pending_signature') {
+    // ✅ FIX: Vérifier AUSSI que le locataire n'a pas déjà signé
+    // Le bail peut être pending_signature si le propriétaire n'a pas encore signé
+    const needsToSignLease = dashboard.lease?.statut === 'pending_signature' && !hasSignedLease;
+    
+    if (needsToSignLease) {
       actions.push({
         id: 'sign-lease',
         label: "Signer mon bail",
@@ -129,15 +200,15 @@ export function DashboardClient() {
       });
     }
     
-    // Action 3 : EDL en attente
-    if (dashboard.pending_edls?.length > 0) {
+    // Action 3 : EDL en attente (utilise pendingEDLs qui est récupéré directement)
+    if (pendingEDLs.length > 0) {
       actions.push({
         id: 'edl',
         label: `Signer l'état des lieux`,
         icon: FileText,
         color: 'text-amber-600',
         bg: 'bg-amber-50',
-        href: `/signature-edl/${dashboard.pending_edls[0].invitation_token}`
+        href: `/signature-edl/${pendingEDLs[0].invitation_token}`
       });
     }
     
@@ -154,7 +225,39 @@ export function DashboardClient() {
     }
     
     return actions;
-  }, [dashboard]);
+  }, [dashboard, pendingEDLs, hasSignedLease]);
+
+  // Vérifier si le bail/logement est lié
+  const hasLeaseData = currentLease && currentProperty?.adresse_complete && currentProperty.adresse_complete !== "Adresse à compléter";
+  // ✅ FIX: L'onboarding est incomplet seulement si le locataire N'A PAS signé
+  const isOnboardingIncomplete = !hasLeaseData || (currentLease?.statut === 'pending_signature' && !hasSignedLease);
+
+  // Calcul de la progression onboarding
+  const onboardingProgress = useMemo(() => {
+    let steps = 0;
+    let completed = 0;
+    
+    // Étape 1: Compte créé (toujours fait si on est ici)
+    steps++; completed++;
+    
+    // Étape 2: Liaison au logement
+    steps++;
+    if (hasLeaseData) completed++;
+    
+    // Étape 3: Dossier locataire
+    steps++;
+    // TODO: Vérifier si le dossier est complet
+    
+    // Étape 4: Identité vérifiée
+    steps++;
+    if (dashboard?.kyc_status === 'verified') completed++;
+    
+    // Étape 5: Bail signé
+    steps++;
+    if (currentLease?.statut === 'active' || currentLease?.statut === 'fully_signed') completed++;
+    
+    return { steps, completed, percentage: Math.round((completed / steps) * 100) };
+  }, [hasLeaseData, dashboard?.kyc_status, currentLease?.statut]);
 
   if (!dashboard) {
     return (
@@ -168,21 +271,117 @@ export function DashboardClient() {
     <PageTransition>
       <div className="container mx-auto px-4 py-6 max-w-7xl space-y-8">
         
+        {/* --- SECTION 0 : ONBOARDING PROGRESS (SOTA 2026) --- */}
+        {isOnboardingIncomplete && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 p-8 text-white shadow-2xl"
+          >
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+              <div className="absolute bottom-0 right-0 w-64 h-64 bg-indigo-300 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+            </div>
+
+            <div className="relative z-10">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                      <Sparkles className="h-6 w-6 text-amber-300" />
+                    </div>
+                    <h2 className="text-2xl font-black">Bienvenue chez vous !</h2>
+                  </div>
+                  <p className="text-white/80 text-lg font-medium max-w-xl">
+                    {!hasLeaseData 
+                      ? "Votre espace locataire est presque prêt. Finalisez votre dossier pour débloquer toutes les fonctionnalités."
+                      : (currentLease?.statut === 'pending_signature' && !hasSignedLease)
+                        ? "Votre bail vous attend ! Signez-le pour activer votre espace."
+                        : hasSignedLease && currentLease?.statut === 'pending_signature'
+                          ? "Vous avez signé ! En attente de la signature du propriétaire."
+                          : "Complétez les dernières étapes pour finaliser votre installation."}
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-end gap-3 min-w-[200px]">
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-white/70 uppercase tracking-wider">Progression</p>
+                    <p className="text-5xl font-black">{onboardingProgress.percentage}%</p>
+                  </div>
+                  <div className="w-full h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                    <motion.div 
+                      className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${onboardingProgress.percentage}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                    />
+                  </div>
+                  <p className="text-xs text-white/60">{onboardingProgress.completed}/{onboardingProgress.steps} étapes complétées</p>
+                </div>
+              </div>
+
+              {/* Actions rapides */}
+              <div className="mt-8 flex flex-wrap gap-3">
+                {!hasLeaseData && (
+                  <Button 
+                    asChild 
+                    className="bg-white text-indigo-700 hover:bg-white/90 font-bold rounded-xl h-12 px-6 shadow-lg"
+                  >
+                    <Link href="/tenant/onboarding/context" className="flex items-center gap-2">
+                      <Home className="h-4 w-4" />
+                      Lier mon logement
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
+                {/* ✅ FIX: Vérifier que le locataire n'a pas déjà signé */}
+                {hasLeaseData && currentLease?.statut === 'pending_signature' && !hasSignedLease && (
+                  <Button 
+                    asChild 
+                    className="bg-white text-indigo-700 hover:bg-white/90 font-bold rounded-xl h-12 px-6 shadow-lg"
+                  >
+                    <Link href="/tenant/onboarding/sign" className="flex items-center gap-2">
+                      <PenTool className="h-4 w-4" />
+                      Signer mon bail
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
+                {dashboard?.kyc_status !== 'verified' && (
+                  <Button 
+                    asChild 
+                    variant="secondary"
+                    className="bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl h-12 px-6 backdrop-blur-sm border border-white/20"
+                  >
+                    <Link href="/tenant/onboarding/identity" className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      Vérifier mon identité
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+        
         {/* --- SECTION 1 : HEADER & COMMAND CENTER --- */}
         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <h1 className="text-3xl font-black tracking-tight text-slate-900">
-              Bonjour {profile?.prenom ? `, ${profile.prenom}` : ""} 👋
+              {isOnboardingIncomplete ? "Votre tableau de bord" : `Bonjour${profile?.prenom ? `, ${profile.prenom}` : ""} 👋`}
             </h1>
             <p className="text-slate-500 mt-1 font-medium">
-              {pendingActions.length > 0 
-                ? `Vous avez ${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} en attente.`
-                : "Tout est en ordre dans votre logement."}
+              {!hasLeaseData 
+                ? "Liez votre logement pour accéder à toutes les fonctionnalités."
+                : pendingActions.length > 0 
+                  ? `Vous avez ${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} en attente.`
+                  : "Tout est en ordre dans votre logement."}
             </p>
           </motion.div>
 
           <AnimatePresence mode="wait">
-            {pendingActions.length > 0 && (
+            {pendingActions.length > 0 && hasLeaseData && (
               <motion.div 
                 key="pending-actions"
                 initial={{ opacity: 0, scale: 0.9, y: -10 }} 
@@ -215,129 +414,188 @@ export function DashboardClient() {
         {/* --- SECTION 2 : BENTO GRID SOTA 2026 --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Row 1: Logement & Credit Builder */}
-          {/* A. CARTE LOGEMENT - 8/12 */}
+          {/* A. STATUS FINANCIER & PAIEMENT - 4/12 */}
           <motion.div 
-            className="lg:col-span-8 group"
+            className="lg:col-span-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <GlassCard className="relative overflow-hidden h-full border-none shadow-2xl bg-slate-900 text-white min-h-[380px]">
-              <div className="absolute inset-0 z-0">
-                {currentProperty?.cover_url ? (
-                  <OptimizedImage 
-                    src={currentProperty.cover_url} 
-                    alt="Logement" 
-                    fill 
-                    className="object-cover opacity-40 group-hover:scale-105 transition-transform duration-700" 
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-blue-900" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
-              </div>
-
-              <CardContent className="relative z-10 p-8 flex flex-col h-full justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="flex items-center gap-2">
-                      <StatusBadge 
-                        status={currentLease?.statut === 'active' ? 'Bail Actif' : 'En attente'} 
-                        type={currentLease?.statut === 'active' ? 'success' : 'warning'}
-                        className="bg-white/10 text-white border-white/20 backdrop-blur-md px-3 h-7 font-bold"
-                      />
-                      <Badge variant="outline" className="text-white/70 border-white/20 h-7 font-bold">
-                        {LEASE_TYPE_LABELS[currentLease?.type_bail || ''] || "Location"}
-                      </Badge>
-                    </div>
+            <GlassCard className="p-6 bg-white shadow-xl border-l-4 border-l-indigo-600 h-full flex flex-col justify-between">
+              <div>
+                <p className="text-xs font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Situation Financière</p>
+                {hasLeaseData ? (
+                  <>
+                    <h3 className="text-3xl font-black text-slate-900 mt-2">
+                      {formatCurrency((currentLease?.loyer || 0) + (currentLease?.charges_forfaitaires || 0))}
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1 font-medium">Loyer mensuel CC</p>
                     
-                    {dashboard.leases?.length > 1 && (
-                      <div className="flex gap-1.5 p-1 bg-white/10 backdrop-blur-xl rounded-lg border border-white/10">
-                        {dashboard.leases.map((_, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setSelectedLeaseIndex(idx)}
-                            className={cn(
-                              "w-3 h-3 rounded-full transition-all",
-                              selectedLeaseIndex === idx ? "bg-white scale-125 shadow-[0_0_10px_white]" : "bg-white/30 hover:bg-white/50"
-                            )}
-                          />
-                        ))}
+                    {dashboard.stats?.unpaid_amount > 0 ? (
+                      <div className="mt-6 p-4 rounded-2xl bg-red-50 border border-red-100">
+                        <p className="text-xs font-bold text-red-600 uppercase">Impayé en cours</p>
+                        <p className="text-2xl font-black text-red-700">{formatCurrency(dashboard.stats.unpaid_amount)}</p>
+                      </div>
+                    ) : (
+                      <div className="mt-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        <p className="text-sm font-bold text-emerald-700">À jour de vos loyers</p>
                       </div>
                     )}
-                  </div>
-                  
-                  <h2 className="text-4xl md:text-5xl font-black mb-3 leading-tight max-w-2xl tracking-tight">
-                    {currentProperty?.adresse_complete || "Adresse non renseignée"}
-                  </h2>
-                  <p className="text-xl text-white/70 font-medium flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-indigo-400" />
-                    {currentProperty?.ville || "Ville non renseignée"}{currentProperty?.code_postal ? `, ${currentProperty.code_postal}` : ""}
-                  </p>
-                </div>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-3xl font-black text-slate-300 mt-2">— €</h3>
+                    <p className="text-sm text-slate-400 mt-1 font-medium">En attente de liaison</p>
+                    <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-center gap-3">
+                      <Clock className="h-5 w-5 text-amber-600" />
+                      <p className="text-sm font-bold text-amber-700">Liez votre logement</p>
+                    </div>
+                  </>
+                )}
+              </div>
 
-                <div className="mt-8 flex flex-wrap items-center gap-3 pt-6 border-t border-white/10">
-                  <DocumentDownloadButton 
-                    type="lease" 
-                    leaseId={currentLease?.id} 
-                    variant="secondary" 
-                    className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-xl h-12 px-6 rounded-xl font-bold transition-all"
-                    label="Mon Bail PDF"
-                  />
-                  <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-xl h-12 px-6 rounded-xl font-bold transition-all" asChild>
-                    <Link href="/tenant/lease" className="gap-2">
-                      <Building2 className="h-4 w-4" /> Fiche Technique
+              <div className="mt-8 space-y-3">
+                {hasLeaseData ? (
+                  <>
+                    <Button className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02]" asChild>
+                      <Link href="/tenant/payments">Payer le loyer</Link>
+                    </Button>
+                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-slate-200" asChild>
+                      <Link href="/tenant/payments">Historique & Quittances</Link>
+                    </Button>
+                  </>
+                ) : (
+                  <Button className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02]" asChild>
+                    <Link href="/tenant/onboarding/context">
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Configurer mon espace
                     </Link>
                   </Button>
-                  <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-xl h-12 px-6 rounded-xl font-bold transition-all" asChild>
-                    <Link href="/tenant/meters" className="gap-2">
-                      <Zap className="h-4 w-4 text-amber-400" /> Relevés
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
+                )}
+              </div>
             </GlassCard>
           </motion.div>
 
-          {/* B. CREDIT BUILDER - 4/12 */}
+          {/* B. CARTE LOGEMENT RÉDUITE - 8/12 */}
           <motion.div 
-            className="lg:col-span-4"
+            className="lg:col-span-8 group"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
+            {hasLeaseData ? (
+              <GlassCard className="relative overflow-hidden h-full border-none shadow-2xl bg-slate-900 text-white min-h-[300px]">
+                <div className="absolute inset-0 z-0">
+                  {currentProperty?.cover_url ? (
+                    <OptimizedImage 
+                      src={currentProperty.cover_url} 
+                      alt="Logement" 
+                      fill 
+                      className="object-cover opacity-40 group-hover:scale-105 transition-transform duration-700" 
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-blue-900" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+                </div>
+
+                <CardContent className="relative z-10 p-8 flex flex-col h-full justify-between">
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-2">
+                        <StatusBadge 
+                          status={currentLease?.statut === 'active' ? 'Bail Actif' : currentLease?.statut === 'pending_signature' ? 'À signer' : 'En attente'} 
+                          type={currentLease?.statut === 'active' ? 'success' : 'warning'}
+                          className="bg-white/10 text-white border-white/20 backdrop-blur-md px-3 h-7 font-bold"
+                        />
+                        <Badge variant="outline" className="text-white/70 border-white/20 h-7 font-bold">
+                          {LEASE_TYPE_LABELS[currentLease?.type_bail || ''] || "Location"}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <h2 className="text-3xl md:text-4xl font-black mb-2 tracking-tight">
+                      {currentProperty?.adresse_complete}
+                    </h2>
+                    <p className="text-lg text-white/70 font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-indigo-400" />
+                      {currentProperty?.ville}{currentProperty?.code_postal ? `, ${currentProperty.code_postal}` : ""}
+                    </p>
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap items-center gap-3 pt-6 border-t border-white/10">
+                    <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-xl h-11 px-5 rounded-xl font-bold transition-all" asChild>
+                      <Link href="/tenant/lease" className="gap-2">
+                        <Building2 className="h-4 w-4" /> Ma Vie au Logement
+                      </Link>
+                    </Button>
+                    <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-xl h-11 px-5 rounded-xl font-bold transition-all" asChild>
+                      <Link href="/tenant/requests/new" className="gap-2">
+                        <Wrench className="h-4 w-4" /> Signaler un problème
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </GlassCard>
+            ) : (
+              /* État vide - Pas de logement lié */
+              <GlassCard className="relative overflow-hidden h-full border-2 border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-slate-100 min-h-[300px]">
+                <CardContent className="p-8 flex flex-col items-center justify-center h-full text-center">
+                  <div className="relative mb-6">
+                    <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-2xl animate-pulse" />
+                    <div className="relative p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl shadow-xl">
+                      <Home className="h-12 w-12 text-white" />
+                    </div>
+                  </div>
+                  
+                  <h2 className="text-2xl font-black text-slate-800 mb-3">
+                    Pas encore de logement
+                  </h2>
+                  <p className="text-slate-500 max-w-md mb-8 font-medium leading-relaxed">
+                    Votre propriétaire doit vous inviter ou vous pouvez entrer le code de votre logement pour accéder à toutes les fonctionnalités.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button 
+                      asChild
+                      className="bg-indigo-600 hover:bg-indigo-700 font-bold rounded-xl h-12 px-6 shadow-lg shadow-indigo-200"
+                    >
+                      <Link href="/tenant/onboarding/context" className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Entrer un code logement
+                      </Link>
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="font-bold rounded-xl h-12 px-6 border-slate-300"
+                    >
+                      <Info className="h-4 w-4 mr-2" />
+                      Comment ça marche ?
+                    </Button>
+                  </div>
+                </CardContent>
+              </GlassCard>
+            )}
+          </motion.div>
+
+          {/* Row 2: Credit Builder, Energy, Activity */}
+          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
             <CreditBuilderCard score={742} className="h-full bg-white shadow-xl border-slate-200" />
           </motion.div>
 
-          {/* Row 2: Energy, Activity, Rewards */}
-          {/* C. ANALYSE ÉNERGIE - 4/12 */}
-          <motion.div 
-            className="lg:col-span-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
+          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
             <ConsumptionChart type="electricity" className="h-full" />
           </motion.div>
 
-          {/* D. FLUX D'ACTIVITÉ - 4/12 */}
-          <motion.div 
-            className="lg:col-span-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
+          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
             <GlassCard className="h-full p-0 overflow-hidden border-slate-200 shadow-xl bg-white">
               <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                 <h3 className="font-bold text-slate-900 flex items-center gap-2">
                   <History className="h-4 w-4 text-indigo-600" /> Activité
                 </h3>
-                <Button variant="ghost" size="sm" asChild className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-50">
-                  <Link href="/tenant/payments">Voir tout</Link>
-                </Button>
               </div>
-              <div className="divide-y divide-slate-100 overflow-y-auto max-h-[300px]">
+              <div className="divide-y divide-slate-100 overflow-y-auto max-h-[250px]">
                 {activityFeed.length > 0 ? activityFeed.map((item) => (
                   <div key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-50/80 transition-colors group cursor-pointer">
                     <div className="flex items-center gap-3">
@@ -357,45 +615,6 @@ export function DashboardClient() {
                 )) : (
                   <div className="p-8 text-center text-slate-400 text-sm">Aucune activité</div>
                 )}
-              </div>
-            </GlassCard>
-          </motion.div>
-
-          {/* E. REWARDS & OFFERS - 4/12 */}
-          <motion.div 
-            className="lg:col-span-4 space-y-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <GlassCard className="p-6 border-none bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-xl relative overflow-hidden">
-              <Gift className="absolute -right-4 -bottom-4 h-20 w-20 text-white/10 rotate-12" />
-              <div className="relative z-10">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Fidélité</p>
-                <h3 className="text-2xl font-black mb-4">1,250 <span className="text-sm opacity-70">Pts</span></h3>
-                <Button variant="secondary" className="w-full bg-white/10 hover:bg-white/20 border-white/30 text-white font-bold h-10 px-4" asChild>
-                  <Link href="/tenant/rewards">Boutique</Link>
-                </Button>
-              </div>
-            </GlassCard>
-
-            <GlassCard className="p-6 border-slate-200 bg-white shadow-xl">
-              <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2 text-sm">
-                <LayoutGrid className="h-4 w-4 text-indigo-600" /> Services
-              </h3>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-between h-10 rounded-xl border-slate-100 text-xs" asChild>
-                  <Link href="/tenant/marketplace">
-                    <span className="flex items-center gap-2 font-bold text-slate-700"><Shield className="h-3.5 w-3.5 text-blue-500" /> Assurance</span>
-                    <Badge className="bg-emerald-50 text-emerald-600 border-none text-[10px]">-15%</Badge>
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-between h-10 rounded-xl border-slate-100 text-xs" asChild>
-                  <Link href="/tenant/marketplace">
-                    <span className="flex items-center gap-2 font-bold text-slate-700"><Zap className="h-3.5 w-3.5 text-amber-500" /> Énergie</span>
-                    <Badge className="bg-indigo-50 text-indigo-600 border-none text-[10px]">Éco</Badge>
-                  </Link>
-                </Button>
               </div>
             </GlassCard>
           </motion.div>

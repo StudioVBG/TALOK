@@ -41,8 +41,8 @@ app/
 - ✅ `/owner/dashboard`
 - ✅ `/owner/properties`
 - ✅ `/owner/properties/[id]`
-- ✅ `/owner/contracts`
-- ✅ `/owner/contracts/[id]`
+- ✅ `/owner/leases`
+- ✅ `/owner/leases/[id]`
 - ✅ `/owner/money`
 - ✅ `/owner/documents`
 - ✅ `/owner/support`

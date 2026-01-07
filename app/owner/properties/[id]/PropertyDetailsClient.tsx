@@ -49,7 +49,7 @@ import { FavoriteButton } from "@/components/ui/favorite-button";
 import { EntityNotes } from "@/components/ui/entity-notes";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Navigation } from "lucide-react";
+import { ChevronLeft, ChevronRight, Navigation, CheckCircle2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
 // Import dynamique de la carte pour éviter les erreurs SSR
@@ -828,16 +828,38 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
   const isLeasePending = existingLease?.statut === "pending_signature";
   const isLeaseSigned = existingLease?.statut === "fully_signed";
   const isLeasePartiallySigned = existingLease?.statut === "partially_signed";
-  const edlDraft = existingLease?.edls?.find((e: any) => e.type === 'entree' && ["draft", "scheduled", "in_progress"].includes(e.status));
+  
+  // Vérifier si un EDL d'entrée est signé pour ce bail
+  const entryEdl = existingLease?.edls?.find((e: any) => e.type === 'entree');
+  const edlIsSigned = entryEdl?.status === 'signed';
+  const edlDraft = entryEdl && ["draft", "scheduled", "in_progress", "completed"].includes(entryEdl.status) ? entryEdl : null;
 
-  // Mutation pour la suppression du bien
+  // ========== MUTATIONS ==========
+  const activateLease = useMutationWithToast({
+    mutationFn: async (leaseId: string) => {
+      // ✅ SOTA 2026: Utiliser la route d'activation dédiée (avec EDL et facturation)
+      await apiClient.post(`/leases/${leaseId}/activate`, {});
+    },
+    successMessage: "Bail activé avec succès ! La facture initiale a été générée.",
+    invalidateQueries: ["property-details", propertyId],
+    onSuccess: () => {
+      router.refresh();
+    }
+  });
+
+  const handleManualActivation = () => {
+    if (existingLease?.id) {
+      activateLease.mutate(existingLease.id);
+    }
+  };
+
   const deleteProperty = useMutationWithToast({
     mutationFn: async (id: string) => {
       await apiClient.delete(`/properties/${id}`);
     },
     successMessage: "Bien supprimé avec succès",
     errorMessage: "Impossible de supprimer le bien.",
-    invalidateQueries: ["properties"],
+    invalidateQueries: ["property-details", propertyId],
     onSuccess: () => {
       router.push("/owner/properties");
     },
@@ -1623,7 +1645,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                        "Brouillon"}
                     </Badge>
                     <Link 
-                      href={`/owner/contracts/${existingLease.id}`} 
+                      href={`/owner/leases/${existingLease.id}`} 
                       className="text-sm text-blue-600 hover:underline"
                     >
                       Voir le bail
@@ -1643,11 +1665,27 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     </div>
                   )}
                   {isLeaseSigned && (
-                    <div className="pt-2 border-t">
+                    <div className="pt-2 border-t space-y-3">
                       <p className="text-sm text-muted-foreground">
-                        ✅ Bail entièrement signé. Un EDL d'entrée est requis pour activer le bail.
+                        {edlIsSigned 
+                          ? "✅ Bail entièrement signé et EDL terminé. Le bail est prêt à être activé."
+                          : "✅ Bail entièrement signé. Un EDL d'entrée est requis pour activer le bail."}
                       </p>
-                      {edlDraft ? (
+                      
+                      {edlIsSigned ? (
+                        <Button 
+                          onClick={handleManualActivation}
+                          disabled={activateLease.isPending}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-100"
+                        >
+                          {activateLease.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                          )}
+                          Activer le bail maintenant
+                        </Button>
+                      ) : edlDraft ? (
                         <Button asChild variant="default" size="sm" className="mt-2 w-full bg-indigo-600 hover:bg-indigo-700">
                           <Link href={`/owner/inspections/${edlDraft.id}`}>
                             <FileText className="h-4 w-4 mr-2" />
@@ -1670,7 +1708,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         Signature en cours - En attente des autres parties
                       </p>
                       <Button asChild variant="outline" size="sm" className="mt-2 w-full">
-                        <Link href={`/owner/contracts/${existingLease.id}?tab=preview`}>
+                        <Link href={`/owner/leases/${existingLease.id}?tab=preview`}>
                           Voir les signatures
                         </Link>
                       </Button>
@@ -1682,7 +1720,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         En attente de signature des parties
                       </p>
                       <Button asChild variant="outline" size="sm" className="mt-2 w-full">
-                        <Link href={`/owner/contracts/${existingLease.id}?tab=preview`}>
+                        <Link href={`/owner/leases/${existingLease.id}?tab=preview`}>
                           Aperçu du bail
                         </Link>
                       </Button>
@@ -1694,7 +1732,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         Bail en cours de création
                       </p>
                       <Button asChild variant="outline" size="sm" className="mt-2 w-full">
-                        <Link href={`/owner/contracts/${existingLease.id}`}>
+                        <Link href={`/owner/leases/${existingLease.id}`}>
                           Continuer la création
                         </Link>
                       </Button>
@@ -1706,7 +1744,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                   <Badge variant="outline">Vacant</Badge>
                   <p className="text-sm text-muted-foreground">Aucun locataire actuellement.</p>
                   <Button asChild className="w-full" variant="default">
-                    <Link href={`/owner/contracts/new?propertyId=${propertyId}`}>Créer un bail</Link>
+                    <Link href={`/owner/leases/new?propertyId=${propertyId}`}>Créer un bail</Link>
                   </Button>
                 </div>
               )}

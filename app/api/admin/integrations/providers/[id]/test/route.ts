@@ -147,7 +147,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 // Test Resend
 async function testResend(apiKey: string, adminEmail: string | undefined, config: any): Promise<{ success: boolean; message: string; details?: any }> {
   try {
-    const fromAddress = config?.email_from || "Gestion Locative <onboarding@resend.dev>";
+    const fromAddress = config?.email_from || "Talok <onboarding@resend.dev>";
     
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -158,7 +158,7 @@ async function testResend(apiKey: string, adminEmail: string | undefined, config
       body: JSON.stringify({
         from: fromAddress,
         to: [adminEmail || "test@example.com"],
-        subject: "✅ Test de configuration Resend - Gestion Locative",
+        subject: "✅ Test de configuration Resend - Talok",
         html: `
           <div style="font-family: sans-serif; padding: 20px;">
             <h2 style="color: #10b981;">✅ Configuration Resend réussie !</h2>

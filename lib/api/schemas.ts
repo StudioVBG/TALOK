@@ -215,7 +215,7 @@ export const CreateInspectionSchema = z.object({
 export const AddInspectionItemSchema = z.object({
   room_name: z.string().min(1, "Nom de pièce requis"),
   item_name: z.string().min(1, "Nom d'élément requis"),
-  condition: z.enum(["bon", "moyen", "mauvais", "tres_mauvais"]).optional(),
+  condition: z.enum(["neuf", "bon", "moyen", "mauvais", "tres_mauvais"]).optional(),
   notes: z.string().optional(),
 });
 

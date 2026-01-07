@@ -22,12 +22,15 @@ export const recorderRoleSchema = z.enum(['owner', 'tenant']);
  */
 export const createEDLMeterReadingSchema = z.object({
   edl_id: z.string().uuid('ID EDL invalide'),
-  meter_id: z.string().uuid('ID compteur invalide'),
+  meter_id: z.string().optional(), // Rendu optionnel pour supporter les IDs temporaires
   manual_value: z
     .number()
     .min(0, 'La valeur doit être positive')
     .max(9999999, 'La valeur est trop grande')
     .optional(),
+  reading_unit: z.string().optional(),
+  meter_number: z.string().optional(),
+  location: z.string().optional(),
   comment: z.string().max(500, 'Commentaire trop long').optional(),
 });
 
@@ -38,8 +41,12 @@ export const validateEDLMeterReadingSchema = z.object({
   corrected_value: z
     .number()
     .min(0, 'La valeur doit être positive')
-    .max(9999999, 'La valeur est trop grande'),
+    .max(9999999, 'La valeur est trop grande')
+    .optional()
+    .nullable(),
   comment: z.string().max(500, 'Commentaire trop long').optional(),
+  meter_number: z.string().optional(),
+  location: z.string().optional(),
 });
 
 /**

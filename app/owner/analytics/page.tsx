@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 
 export const metadata = {
-  title: "Analytics | Gestion Locative",
+  title: "Analytics | Talok",
   description: "Analysez la performance de votre patrimoine immobilier",
 };
 

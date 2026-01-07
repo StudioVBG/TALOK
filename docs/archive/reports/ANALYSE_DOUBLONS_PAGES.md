@@ -9,8 +9,8 @@
 2. ✅ `/app/owner/properties/page.tsx` - Liste des biens
 3. ✅ `/app/owner/properties/new/page.tsx` - Ajouter un bien
 4. ✅ `/app/owner/properties/[id]/page.tsx` - Détails d'un bien
-5. ✅ `/app/owner/contracts/page.tsx` - Liste des baux
-6. ✅ `/app/owner/contracts/[id]/page.tsx` - Détails d'un bail
+5. ✅ `/app/owner/leases/page.tsx` - Liste des baux
+6. ✅ `/app/owner/leases/[id]/page.tsx` - Détails d'un bail
 7. ✅ `/app/owner/money/page.tsx` - Loyers & revenus
 8. ✅ `/app/owner/documents/page.tsx` - Documents
 9. ✅ `/app/owner/support/page.tsx` - Aide & services
@@ -93,7 +93,7 @@
    - **Impact :** Fonctionnalité d'édition manquante
    - **Recommandation :** Créer si nécessaire
 
-2. ❓ `/app/owner/contracts/new/page.tsx` - Créer un nouveau bail
+2. ❓ `/app/owner/leases/new/page.tsx` - Créer un nouveau bail
    - **Statut :** Non trouvée
    - **Impact :** Impossible de créer un bail depuis l'interface propriétaire
    - **Recommandation :** Créer si nécessaire

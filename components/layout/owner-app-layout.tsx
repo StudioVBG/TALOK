@@ -35,15 +35,16 @@ import { CommandPalette } from "@/components/command-palette";
 import { NotificationCenter } from "@/components/notifications";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
+import { OnboardingTourProvider, AutoTourPrompt, StartTourButton } from "@/components/onboarding";
 
 const navigation = [
-  { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard },
-  { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2 },
-  { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText },
-  { name: "États des lieux", href: "/owner/inspections", icon: ClipboardCheck },
-  { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro },
+  { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard, tourId: "nav-dashboard" },
+  { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2, tourId: "nav-properties" },
+  { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
+  { name: "États des lieux", href: "/owner/inspections", icon: ClipboardCheck, tourId: "nav-inspections" },
+  { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
   { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
-  { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench },
+  { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
   { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck },
   { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
   { name: "Facturation", href: "/settings/billing", icon: CreditCard },
@@ -106,6 +107,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
       <SubscriptionProvider>
+      <OnboardingTourProvider role="owner">
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
         {/* Desktop Sidebar */}
         <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
@@ -115,7 +117,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                 <Building2 className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-slate-900">Gestion Locative</h1>
+                <h1 className="text-lg font-bold text-slate-900">Talok</h1>
                 <p className="text-xs text-slate-500">Compte Propriétaire</p>
               </div>
             </div>
@@ -127,6 +129,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                     <li key={item.name}>
                       <Link
                         href={item.href}
+                        data-tour={(item as any).tourId}
                         className={cn(
                           "group flex gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 transition-all duration-200",
                           isActive
@@ -151,12 +154,12 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
             <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
             <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white">
               <div className="flex h-16 items-center justify-between px-6 border-b">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-white" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+                      <Building2 className="h-5 w-5 text-white" />
+                    </div>
+                    <h1 className="text-lg font-bold text-slate-900">Talok</h1>
                   </div>
-                  <h1 className="text-lg font-bold text-slate-900">Gestion Locative</h1>
-                </div>
                 <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
                   <X className="h-5 w-5" />
                 </Button>
@@ -209,6 +212,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                 </h2>
                 {/* SOTA 2025 - Bouton recherche rapide qui ouvre Command Palette */}
                 <button
+                  data-tour="search-button"
                   onClick={() => {
                     const event = new KeyboardEvent("keydown", { key: "k", metaKey: true });
                     document.dispatchEvent(event);
@@ -295,7 +299,11 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
 
         {/* SOTA 2025 - Floating Upgrade Button */}
         <UpgradeTrigger variant="floating" />
+
+        {/* SOTA 2026 - Tour guidé d'onboarding */}
+        <AutoTourPrompt />
       </div>
+      </OnboardingTourProvider>
       </SubscriptionProvider>
     </ProtectedRoute>
   );

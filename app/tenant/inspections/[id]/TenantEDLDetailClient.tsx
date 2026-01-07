@@ -45,6 +45,7 @@ interface TenantEDLDetailClientProps {
     raw: any;
     mySignature: any;
     meterReadings: any[];
+    allPropertyMeters: any[]; // Ajouté
     ownerProfile: any;
     rooms: any[];
     stats: {
@@ -65,10 +66,11 @@ export default function TenantEDLDetailClient({
   const [isSigning, setIsSigning] = useState(false);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
 
-  const { raw: edl, mySignature, meterReadings, ownerProfile, rooms, stats } = data;
+  const { raw: edl, mySignature, meterReadings, allPropertyMeters, ownerProfile, rooms, stats } = data;
   const property = edl.lease?.property || edl.property_details;
 
-  const hasSigned = !!(mySignature?.signed_at && mySignature?.signature_image_path);
+  // ✅ FIX: Plus résilient - On a signé si signed_at est présent ET qu'on a une image (directe ou fallback)
+  const hasSigned = !!(mySignature?.signed_at && (mySignature?.signature_image_path || mySignature?.signature_image_url));
 
   const adaptedSignatures = (edl.edl_signatures || []).map((s: any) => ({
     id: s.id,
@@ -82,6 +84,13 @@ export default function TenantEDLDetailClient({
     profile: s.profile,
   }));
 
+  console.log("[TenantEDLDetail] Adapted signatures:", JSON.stringify(adaptedSignatures.map(s => ({
+    role: s.signer_type,
+    hasUrl: !!s.signature_image_url,
+    url: s.signature_image_url ? s.signature_image_url.substring(0, 50) + '...' : null,
+    signedAt: s.signed_at
+  })), null, 2));
+
   const adaptedMeterReadings = (meterReadings || []).map((r: any) => ({
     type: r.meter?.type || "electricity",
     meter_number: r.meter?.serial_number || r.meter?.meter_number,
@@ -94,8 +103,9 @@ export default function TenantEDLDetailClient({
     id: m.id,
     edl_id: edl.id,
     item_id: m.item_id,
-    file_path: m.storage_path,
-    type: m.media_type || "photo",
+    file_path: m.storage_path || m.file_path,
+    signed_url: m.signed_url,
+    type: m.media_type || m.type || "photo",
   }));
 
   const edlTemplateData = mapRawEDLToTemplate(
@@ -105,7 +115,7 @@ export default function TenantEDLDetailClient({
     adaptedMedia,
     adaptedMeterReadings,
     adaptedSignatures,
-    []
+    edl.keys || []
   );
 
   const handleSignatureSubmit = async (signatureData: SignatureData) => {
@@ -162,13 +172,7 @@ export default function TenantEDLDetailClient({
                 {isSigning ? "Signature..." : "Signer l'EDL"}
               </Button>
             )}
-            <Button 
-              variant="outline" 
-              onClick={handleDownloadPDF}
-              className="h-11 px-6 border-slate-200 bg-white hover:bg-slate-50 font-semibold rounded-xl shadow-sm"
-            >
-              <Download className="h-4 w-4 mr-2" /> Télécharger PDF
-            </Button>
+            {/* ✅ Note: Le bouton Télécharger est géré à l'intérieur du composant EDLPreview pour éviter les doublons */}
           </div>
         </div>
 
@@ -176,28 +180,7 @@ export default function TenantEDLDetailClient({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           <div className="lg:col-span-8 space-y-6">
-            <AnimatePresence>
-              {!hasSigned && edl.status !== "draft" && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
-                  <GlassCard className="p-6 border-none bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-xl relative overflow-hidden">
-                    <div className="relative z-10 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
-                          <FileSignature className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold">Votre signature est requise</h3>
-                          <p className="text-white/80 text-sm">Vérifiez les pièces et les compteurs avant de valider.</p>
-                        </div>
-                      </div>
-                      <Button onClick={() => setIsSignModalOpen(true)} variant="secondary" className="bg-white text-orange-600 hover:bg-slate-50 font-bold">
-                        Ouvrir le pad
-                      </Button>
-                    </div>
-                  </GlassCard>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Note: La bannière de signature a été supprimée car redondante avec le bouton du header */}
 
             {/* Aperçu Document Premium */}
             <div className="space-y-4">
@@ -207,7 +190,7 @@ export default function TenantEDLDetailClient({
               </div>
               <GlassCard className="p-0 border-slate-200 shadow-2xl overflow-hidden bg-white">
                 <div className="h-[75vh] overflow-y-auto custom-scrollbar">
-                  <EDLPreview edlData={edlTemplateData} />
+                  <EDLPreview edlData={edlTemplateData} edlId={edl.id} />
                 </div>
               </GlassCard>
             </div>
@@ -245,31 +228,70 @@ export default function TenantEDLDetailClient({
               </div>
             </GlassCard>
 
-            {/* 2. Relevés de Compteurs */}
-            {meterReadings.length > 0 && (
-              <GlassCard className="p-6 border-slate-200 bg-white shadow-lg space-y-4">
-                <h4 className="font-bold text-slate-900 flex items-center gap-2">
-                  <Maximize className="h-5 w-5 text-indigo-600" /> Énergie
-                </h4>
-                <div className="space-y-3">
-                  {meterReadings.map((reading: any, i: number) => {
-                    const type = reading.meter?.type || "electricity";
+            {/* 2. Données Techniques (Compteurs & Clés) - Visibilité Totale */}
+            <GlassCard className="p-6 border-slate-200 bg-white shadow-lg space-y-4">
+              <h4 className="font-bold text-slate-900 flex items-center gap-2 border-b pb-3">
+                <Maximize className="h-5 w-5 text-indigo-600" /> Données techniques
+              </h4>
+              
+              {/* Compteurs */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Compteurs du logement</p>
+                <div className="grid grid-cols-1 gap-2">
+                  {(allPropertyMeters || []).map((meter: any) => {
+                    const reading = meterReadings.find(r => r.meter_id === meter.id);
+                    const type = meter.type;
                     const Icon = type === "electricity" ? Zap : type === "water" ? Droplet : Flame;
+                    
                     return (
-                      <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 group hover:border-indigo-200 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <Icon className="h-4 w-4 text-slate-400" />
-                          <span className="text-sm font-bold text-slate-600 capitalize">{type}</span>
+                      <div key={meter.id} className="flex flex-col p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-indigo-500" />
+                            <span className="text-xs font-bold text-slate-700 capitalize">
+                              {type === 'electricity' ? 'Électricité' : type === 'water' ? 'Eau' : 'Gaz'}
+                            </span>
+                          </div>
+                          {reading ? (
+                            <span className="text-sm font-black text-slate-900">
+                              {reading.reading_value} {reading.reading_unit || meter.unit}
+                            </span>
+                          ) : (
+                            <Badge variant="outline" className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">
+                              À relever
+                            </Badge>
+                          )}
                         </div>
-                        <span className="font-black text-slate-900">{reading.reading_value} {reading.reading_unit || "kWh"}</span>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-slate-400">N° {meter.meter_number || meter.serial_number || "Non renseigné"}</span>
+                          {meter.location && <span className="text-[10px] text-slate-400 italic">{meter.location}</span>}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              </GlassCard>
-            )}
+              </div>
 
-            {/* 3. Recapitulatif Technique */}
+              {/* Clés (si présentes) */}
+              {(edl.keys && edl.keys.length > 0) && (
+                <div className="space-y-3 pt-3 border-t border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clés remises</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {edl.keys.map((key: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between p-2 px-3 rounded-lg bg-indigo-50/50 border border-indigo-100">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-indigo-400" />
+                          <span className="text-xs font-medium text-slate-700">{key.type}</span>
+                        </div>
+                        <span className="text-xs font-bold text-indigo-700">x{key.quantite || key.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </GlassCard>
+
+            {/* 3. Recapitulatif (Ancien bloc 3 devenu 4) */}
             <GlassCard className="p-6 border-slate-200 bg-slate-50/50 space-y-4">
               <h4 className="font-bold text-slate-900 flex items-center gap-2 uppercase text-[10px] tracking-[0.2em]">Récapitulatif</h4>
               <div className="space-y-2 text-sm">

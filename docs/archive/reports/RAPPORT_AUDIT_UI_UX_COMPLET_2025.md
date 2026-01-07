@@ -1,4 +1,4 @@
-# 📊 Rapport d'Audit Complet UI/UX - Application de Gestion Locative
+# 📊 Rapport d'Audit Complet UI/UX - Application de Talok
 
 **Date :** Novembre 2025  
 **Statut :** CRITIQUE - Réorganisation urgente nécessaire
@@ -76,7 +76,7 @@ L'application a **TROIS structures de routes parallèles** qui créent une confu
 | Dashboard Propriétaire | `/owner/dashboard` | `/owner/dashboard` | - |
 | Dashboard Locataire | `/tenant/dashboard` | `/tenant/dashboard` | - |
 | Properties | `/properties` | `/owner/properties` | `/owner/properties` |
-| Leases/Contracts | `/leases` | `/owner/contracts` | - |
+| Leases/Contracts | `/leases` | `/owner/leases` | - |
 | Invoices | `/invoices` | `/owner/billing` | `/owner/money` |
 | Tickets | `/tickets` | `/tenant/requests` | - |
 | Documents | `/documents` | `/owner/documents` | - |
@@ -122,7 +122,7 @@ href="/owner/tickets/new"
 
 ### 3.1 Noms de l'Application Incohérents
 
-- `"Gestion Locative"` - Dans owner-app-layout.tsx (58 occurrences)
+- `"Talok"` - Dans owner-app-layout.tsx (58 occurrences)
 - `"ImmoGestion"` - Dans tenant-app-layout.tsx (21 occurrences)
 
 **Impact** : Identité de marque fracturée, confusion utilisateur
@@ -345,7 +345,7 @@ Data Fetching:     TanStack Query (déjà partiellement)
 
 **Actions :**
 
-1. **Nom unique** : `Lokatif` (ou autre nom défini)
+1. **Nom unique** : `Talok` (ou autre nom défini)
 2. **Tokens CSS standardisés** :
 
 ```css

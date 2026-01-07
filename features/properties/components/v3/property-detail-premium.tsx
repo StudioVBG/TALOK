@@ -990,7 +990,7 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
               >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold">Baux associés</h2>
-                  <Link href={`/owner/contracts/new?propertyId=${property.id}`}>
+                  <Link href={`/owner/leases/new?propertyId=${property.id}`}>
                     <Button>
                       <Sparkles className="h-4 w-4 mr-2" />
                       Créer un bail

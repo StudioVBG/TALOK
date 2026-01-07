@@ -1,4 +1,4 @@
-# 📊 Tracking Plan - Gestion Locative SaaS
+# 📊 Tracking Plan - Talok SaaS
 
 **Version**: 1.0  
 **Date**: 6 Décembre 2025  

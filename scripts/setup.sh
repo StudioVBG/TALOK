@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Script de configuration automatique du projet Gestion Locative
+# Script de configuration automatique du projet Talok
 
-echo "🚀 Configuration du projet Gestion Locative"
+echo "🚀 Configuration du projet Talok"
 echo ""
 
 # Vérifier Node.js

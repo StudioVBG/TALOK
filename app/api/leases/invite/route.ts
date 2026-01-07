@@ -402,6 +402,28 @@ export async function POST(request: Request) {
         
         processedInvitees.push({ email: invitee.email, exists: true, notified: true });
       } else {
+        // Le locataire n'a pas encore de compte - créer un signataire avec invited_email
+        const signerRole = invitee.role === "principal" 
+          ? "locataire_principal" 
+          : "colocataire";
+          
+        const { error: inviteSignerError } = await serviceClient
+          .from("lease_signers")
+          .insert({
+            lease_id: lease.id,
+            profile_id: null, // Sera rempli quand le locataire créera son compte
+            invited_email: invitee.email,
+            invited_name: invitee.name || null,
+            role: signerRole,
+            signature_status: "pending",
+          });
+          
+        if (inviteSignerError) {
+          console.error(`[API leases/invite] Erreur ajout signataire invité ${invitee.email}:`, inviteSignerError);
+        } else {
+          console.log(`[API leases/invite] ✅ ${invitee.email} ajouté comme signataire invité (${signerRole})`);
+        }
+        
         processedInvitees.push({ email: invitee.email, exists: false, notified: false });
       }
     }
@@ -488,7 +510,7 @@ export async function POST(request: Request) {
     // ✅ Invalider les caches pour forcer le rechargement des pages
     revalidatePath(`/owner/properties/${validated.property_id}`);
     revalidatePath("/owner/properties");
-    revalidatePath("/owner/contracts");
+    revalidatePath("/owner/leases");
 
     return NextResponse.json({
       success: true,

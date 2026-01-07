@@ -167,8 +167,8 @@ export function mapRawEDLToTemplate(
     
     // Trouver les photos associées à cet item
     const itemPhotos = media
-      .filter((m) => m.item_id === item.id && m.type === "photo")
-      .map((m) => getPublicUrl(m.file_path));
+      .filter((m) => m.item_id === item.id && (m.type === "photo" || (m as any).media_type === "photo"))
+      .map((m) => (m as any).signed_url || getPublicUrl(m.file_path || (m as any).storage_path));
 
     roomItems.push({
       id: item.id,
@@ -182,10 +182,19 @@ export function mapRawEDLToTemplate(
   });
 
   // Convertir la Map en tableau
-  const pieces = Array.from(roomsMap.entries()).map(([nom, items]) => ({
-    nom,
-    items,
-  }));
+  const pieces = Array.from(roomsMap.entries()).map(([nom, items]) => {
+    // Trouver les photos globales de la pièce (item_id est nul)
+    // 🔧 FIX: Vérifier room_name OU section pour la compatibilité
+    const roomPhotos = media
+      .filter((m) => !m.item_id && (m.room_name === nom || (m as any).section === nom) && (m.type === "photo" || (m as any).media_type === "photo"))
+      .map((m) => (m as any).signed_url || getPublicUrl(m.file_path || (m as any).storage_path));
+
+    return {
+      nom,
+      items,
+      photos: roomPhotos.length > 0 ? roomPhotos : undefined,
+    };
+  });
 
   // Extraire les locataires des signataires
   let locataires =
@@ -250,7 +259,7 @@ export function mapRawEDLToTemplate(
       });
   }
 
-  // Construire le bailleur
+  // ✅ SOTA 2026: Construire le bailleur avec fallbacks robustes
   const bailleur = {
     type: ownerProfile?.type || "particulier",
     nom_complet:
@@ -258,7 +267,47 @@ export function mapRawEDLToTemplate(
         ? ownerProfile?.raison_sociale || ""
         : `${ownerProfile?.profile?.prenom || ""} ${ownerProfile?.profile?.nom || ""}`.trim(),
     raison_sociale: ownerProfile?.raison_sociale || undefined,
-    representant: ownerProfile?.representant_nom || undefined,
+    representant: (function() {
+      // 1. Représentant explicitement défini
+      if (ownerProfile?.representant_nom) return ownerProfile.representant_nom;
+      
+      // 2. Nom du profil propriétaire
+      const profileName = ownerProfile?.profile?.prenom 
+        ? `${ownerProfile.profile.prenom} ${ownerProfile.profile.nom || ""}`.trim()
+        : null;
+      if (profileName) return profileName;
+      
+      // 3. Depuis les signataires du bail (lease)
+      const signers = (edl as any).lease?.signers;
+      if (Array.isArray(signers)) {
+        const ownerSigner = signers.find((s: any) => 
+          s.role === 'owner' || s.role === 'proprietaire' || s.role === 'bailleur'
+        );
+        if (ownerSigner?.profile?.prenom) {
+          return `${ownerSigner.profile.prenom} ${ownerSigner.profile.nom || ""}`.trim();
+        }
+        // Fallback sur invited_name si pas de profil
+        if (ownerSigner?.invited_name) return ownerSigner.invited_name;
+      }
+      
+      // 4. Depuis les signatures EDL
+      const edlSignatures = (edl as any).edl_signatures || signatures;
+      if (Array.isArray(edlSignatures)) {
+        const ownerSig = edlSignatures.find((s: any) => 
+          s.signer_role === 'owner' || s.signer_role === 'proprietaire'
+        );
+        if (ownerSig?.profile?.prenom) {
+          return `${ownerSig.profile.prenom} ${ownerSig.profile.nom || ""}`.trim();
+        }
+      }
+      
+      // Debug si pas de représentant trouvé pour une société
+      if (ownerProfile?.type === "societe") {
+        console.warn("[edl-to-template] ⚠️ Société sans représentant trouvé:", ownerProfile?.raison_sociale);
+      }
+      
+      return undefined;
+    })(),
     adresse: ownerProfile?.adresse_facturation || undefined,
     telephone: ownerProfile?.profile?.telephone || undefined,
     email: ownerProfile?.profile?.email || undefined,
@@ -273,31 +322,58 @@ export function mapRawEDLToTemplate(
     photo_url: m.photo_url ? getPublicUrl(m.photo_url) : undefined,
   }));
 
-  // Convertir les signatures
-  // Priorité: URL signée (pour buckets privés) > signature_image > signature_image_path
-  const edlSignatures: EDLSignature[] = signatures.map((s) => ({
-    signer_type: s.signer_type as EDLSignature["signer_type"],
-    signer_profile_id: s.signer_profile_id,
-    signer_name: s.profile 
-      ? `${s.profile.prenom || ""} ${s.profile.nom || ""}`.trim()
-      : s.signer_type === "owner" ? "Bailleur" : "Locataire",
-    // Utiliser l'URL signée si disponible (générée côté serveur pour le bucket privé)
-    signature_image: s.signature_image_url || 
-      (s.signature_image?.startsWith("data:") || s.signature_image?.startsWith("http") ? s.signature_image : undefined) ||
-      ((s.signature_image || s.signature_image_path) ? getPublicUrl(s.signature_image || s.signature_image_path || "") : undefined),
-    signed_at: s.signed_at || undefined,
-    ip_address: s.ip_inet || s.ip_address || undefined,
-    invitation_sent_at: s.invitation_sent_at || undefined,
-    invitation_token: s.invitation_token || undefined,
-    proof_id: (s as any).proof_id || undefined,
-    proof_metadata: (s as any).proof_metadata || undefined,
-    document_hash: (s as any).document_hash || undefined,
-  }));
+  // ✅ SOTA 2026: Convertir les signatures avec gestion robuste des URLs
+  const edlSignatures: EDLSignature[] = signatures.map((sig) => {
+    // Résoudre l'URL de signature avec priorité claire
+    let signatureImage: string | undefined = undefined;
+    
+    // 1. URL signée (priorité maximale pour buckets privés)
+    if (sig.signature_image_url && sig.signature_image_url.startsWith("http")) {
+      signatureImage = sig.signature_image_url;
+    }
+    // 2. signature_image si c'est déjà une URL ou data:image
+    else if (sig.signature_image && (sig.signature_image.startsWith("data:") || sig.signature_image.startsWith("http"))) {
+      signatureImage = sig.signature_image;
+    }
+    // 3. Générer une URL publique à partir du path (fallback)
+    else if (sig.signature_image_path) {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (supabaseUrl) {
+        // Note: ceci ne fonctionnera que si le bucket est public ou si une URL signée est générée côté serveur
+        signatureImage = `${supabaseUrl}/storage/v1/object/public/documents/${sig.signature_image_path}`;
+      }
+    }
+    
+    // Debug: logger si pas d'image trouvée pour une signature existante
+    if (!signatureImage && sig.signed_at) {
+      console.warn(`[edl-to-template] ⚠️ Signature ${sig.signer_role} signée mais pas d'image:`, {
+        hasUrl: !!sig.signature_image_url,
+        hasImage: !!sig.signature_image,
+        hasPath: !!sig.signature_image_path,
+      });
+    }
+
+    return {
+      signer_type: (sig.signer_role === "owner" || sig.signer_role === "proprietaire" ? "owner" : "tenant") as any,
+      signer_profile_id: sig.signer_profile_id,
+      signer_name: sig.profile 
+        ? `${sig.profile.prenom || ""} ${sig.profile.nom || ""}`.trim()
+        : sig.signer_role === "owner" || sig.signer_role === "proprietaire" ? "Bailleur" : "Locataire",
+      signature_image: signatureImage,
+      signed_at: sig.signed_at || undefined,
+      ip_address: sig.ip_inet || sig.ip_address || undefined,
+      invitation_sent_at: sig.invitation_sent_at || undefined,
+      invitation_token: sig.invitation_token || undefined,
+      proof_id: (sig as any).proof_id || undefined,
+      proof_metadata: (sig as any).proof_metadata || undefined,
+      document_hash: (sig as any).document_hash || undefined,
+    };
+  });
 
   // Convertir les clés
-  const clesRemises = keys.map((k) => ({
+  const clesRemises = keys.map((k: any) => ({
     type: k.type,
-    quantite: k.quantity,
+    quantite: k.quantite || k.quantity || 0, // Gère quantite et quantity
     notes: k.notes || undefined,
   }));
 

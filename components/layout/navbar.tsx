@@ -104,7 +104,7 @@ export function Navbar() {
         { href: "/owner", label: "Tableau de bord", icon: <Home className="h-4 w-4" /> },
         { href: "/owner/properties", label: "Mes biens", icon: <Building2 className="h-4 w-4" /> },
         { href: "/owner/leases", label: "Baux & locataires", icon: <FileText className="h-4 w-4" /> },
-        { href: "/owner/finances", label: "Loyers & revenus", icon: <Receipt className="h-4 w-4" /> },
+        { href: "/owner/money", label: "Loyers & revenus", icon: <Receipt className="h-4 w-4" /> },
         { href: "/owner/documents", label: "Documents", icon: <FileText className="h-4 w-4" /> },
         { href: "/owner/support", label: "Aide & services", icon: <HelpCircle className="h-4 w-4" /> }
       );
@@ -112,15 +112,15 @@ export function Navbar() {
       // Nouvelle structure SOTA 2025
       items.push(
         { href: "/tenant", label: "Tableau de bord", icon: <Home className="h-4 w-4" /> },
-        { href: "/tenant/home", label: "Mon logement", icon: <Building2 className="h-4 w-4" /> },
+        { href: "/tenant/lease", label: "Mon logement", icon: <Building2 className="h-4 w-4" /> },
         { href: "/tenant/payments", label: "Paiements", icon: <Receipt className="h-4 w-4" /> },
-        { href: "/tenant/tickets", label: "Demandes", icon: <Wrench className="h-4 w-4" /> }
+        { href: "/tenant/requests", label: "Demandes", icon: <Wrench className="h-4 w-4" /> }
       );
     } else if (profile.role === "provider") {
       // Nouvelle structure SOTA 2025
       items.push(
         { href: "/provider", label: "Tableau de bord", icon: <Home className="h-4 w-4" /> },
-        { href: "/provider/work-orders", label: "Interventions", icon: <Wrench className="h-4 w-4" /> }
+        { href: "/provider/jobs", label: "Interventions", icon: <Wrench className="h-4 w-4" /> }
       );
     }
 
@@ -155,7 +155,7 @@ export function Navbar() {
                 <Building2 className="h-5 w-5" />
               </div>
               <span className="text-xl font-bold hidden sm:inline-block">
-                Gestion Locative
+                Talok
               </span>
             </Link>
 

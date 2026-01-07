@@ -11,6 +11,10 @@ export interface CreateLeaseData {
   depot_de_garantie: number;
   date_debut: string;
   date_fin?: string | null;
+  // ✅ FIX: Ajout des champs locataire
+  tenant_email?: string;
+  tenant_name?: string;
+  tenant_profile_id?: string;
 }
 
 export interface UpdateLeaseData extends Partial<CreateLeaseData> {

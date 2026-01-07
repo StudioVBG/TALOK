@@ -32,17 +32,17 @@ Le code respecte **parfaitement** les conventions définies dans `docs/naming-co
 ### ⚠️ Route `/contracts` → `/leases`
 
 **Contexte** :
-- Route actuelle : `/owner/contracts/`
+- Route actuelle : `/owner/leases/`
 - Lexique canonique : `Lease` = Bail
 - Incohérence : Route utilise `contracts` au lieu de `leases`
 
 **Note** : Cette suggestion n'est **PAS** appliquée conformément aux règles strictes du projet.
 
 **Si cette suggestion est validée explicitement**, les fichiers suivants seraient concernés :
-- `app/owner/contracts/page.tsx` → `app/owner/leases/page.tsx`
-- `app/owner/contracts/ContractsPageClient.tsx` → `app/owner/leases/LeasesPageClient.tsx`
-- `app/owner/contracts/[id]/page.tsx` → `app/owner/leases/[id]/page.tsx`
-- `app/owner/contracts/[id]/ContractDetailPageClient.tsx` → `app/owner/leases/[id]/LeaseDetailPageClient.tsx`
+- `app/owner/leases/page.tsx` → `app/owner/leases/page.tsx`
+- `app/owner/leases/ContractsPageClient.tsx` → `app/owner/leases/LeasesPageClient.tsx`
+- `app/owner/leases/[id]/page.tsx` → `app/owner/leases/[id]/page.tsx`
+- `app/owner/leases/[id]/ContractDetailPageClient.tsx` → `app/owner/leases/[id]/LeaseDetailPageClient.tsx`
 - ~10-15 fichiers avec liens à mettre à jour
 - 2 fichiers de redirection à créer
 

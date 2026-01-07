@@ -1,4 +1,4 @@
-# 🚀 Plan de Réorganisation UI/UX - Gestion Locative
+# 🚀 Plan de Réorganisation UI/UX - Talok
 
 **Version :** 1.0  
 **Date :** Novembre 2025  
@@ -108,7 +108,7 @@ app/
 
 ### Nom de l'Application
 
-**Décision :** `Lokatif` (ou garder un nom unique à valider)
+**Décision :** `Talok` (ou garder un nom unique à valider)
 
 ### Tokens de Design
 
@@ -423,8 +423,8 @@ const redirects: Record<string, string> = {
   '/owner/properties': '/owner/properties',
   '/owner/properties': '/owner/properties',
   '/app/owner/properties': '/owner/properties',
-  '/owner/contracts': '/owner/leases',
-  '/app/owner/contracts': '/owner/leases',
+  '/owner/leases': '/owner/leases',
+  '/app/owner/leases': '/owner/leases',
   '/owner/charges': '/owner/finances/charges',
   
   // Anciennes routes tenant vers nouvelles

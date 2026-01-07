@@ -1,7 +1,7 @@
 # 🚀 Rapport Stratégique & Technique : Intégration IA & LangGraph
 
 **Date :** 19 Février 2025
-**Projet :** SaaS Gestion Locative "Génie Locatif"
+**Projet :** SaaS Talok "Génie Locatif"
 **Statut :** Implémentation V1 Terminée
 
 ---

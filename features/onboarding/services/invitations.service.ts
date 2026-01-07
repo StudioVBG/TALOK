@@ -98,9 +98,10 @@ export class InvitationsService {
   }
 
   /**
-   * Marquer une invitation comme utilisée
+   * Marquer une invitation comme utilisée ET lier le profile_id au lease_signers
    */
   async markInvitationAsUsed(token: string, userId: string): Promise<void> {
+    // 1. Récupérer le profil de l'utilisateur
     const { data: profile, error: profileError } = await this.supabase
       .from("profiles")
       .select("id")
@@ -110,6 +111,17 @@ export class InvitationsService {
     if (profileError || !profile) throw new Error("Profil non trouvé");
     const profileData = profile as any;
 
+    // 2. Récupérer l'invitation pour avoir le lease_id et l'email
+    const { data: invitation, error: invError } = await this.supabase
+      .from("invitations")
+      .select("id, lease_id, email")
+      .eq("token", token)
+      .single();
+
+    if (invError || !invitation) throw new Error("Invitation non trouvée");
+    const invitationData = invitation as any;
+
+    // 3. Marquer l'invitation comme utilisée
     const { error } = await this.supabase
       .from("invitations")
       .update({
@@ -119,6 +131,22 @@ export class InvitationsService {
       .eq("token", token);
 
     if (error) throw error;
+
+    // 4. ✅ CRITIQUE : Lier le profile_id au lease_signers si un bail existe
+    if (invitationData.lease_id) {
+      const { error: signerError } = await this.supabase
+        .from("lease_signers")
+        .update({ profile_id: profileData.id } as any)
+        .eq("lease_id", invitationData.lease_id)
+        .eq("invited_email", invitationData.email)
+        .is("profile_id", null);
+
+      if (signerError) {
+        console.error("[markInvitationAsUsed] Erreur liaison lease_signers:", signerError);
+      } else {
+        console.log(`[markInvitationAsUsed] ✅ Profile ${profileData.id} lié au lease_signers pour bail ${invitationData.lease_id}`);
+      }
+    }
   }
 
   /**

@@ -1,4 +1,4 @@
-# 📊 Grille Tarifaire GestLoc
+# 📊 Grille Tarifaire Talok
 
 > Dernière mise à jour : Décembre 2024
 
@@ -184,12 +184,12 @@
 
 ## 📈 Comparaison Concurrentielle
 
-| Concurrent | Prix entrée | Prix milieu | Différenciateur GestLoc |
+| Concurrent | Prix entrée | Prix milieu | Différenciateur Talok |
 |------------|-------------|-------------|-------------------------|
 | Rentila | Gratuit (limité) | 9.90€ | Open Banking natif |
 | Smovin | 19€ | 39€ | E-signature intégrée |
 | Hektor | 29€ | 69€ | Espace locataire moderne |
-| **GestLoc** | **19€** | **39€** | **Tout en un** |
+| **Talok** | **19€** | **39€** | **Tout en un** |
 
 ---
 
@@ -206,8 +206,8 @@ Les tarifs peuvent évoluer. En cas de modification :
 
 ## 📞 Contact
 
-- **Support** : support@gestloc.fr
-- **Commercial** : commercial@gestloc.fr
-- **Enterprise** : enterprise@gestloc.fr
+- **Support** : support@talok.fr
+- **Commercial** : commercial@talok.fr
+- **Enterprise** : enterprise@talok.fr
 
 

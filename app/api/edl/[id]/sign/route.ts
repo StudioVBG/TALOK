@@ -164,11 +164,11 @@ export async function POST(
       .eq("edl_id", params.id);
 
     const hasOwner = allSignatures?.some(
-      (s: any) => (s.signer_role === "owner" || s.signer_role === "proprietaire") 
+      (s: any) => (s.signer_role === "owner" || s.signer_role === "proprietaire" || s.signer_role === "bailleur") 
         && s.signature_image_path && s.signed_at
     );
     const hasTenant = allSignatures?.some(
-      (s: any) => (s.signer_role === "tenant" || s.signer_role === "locataire") 
+      (s: any) => (s.signer_role === "tenant" || s.signer_role === "locataire" || s.signer_role === "locataire_principal") 
         && s.signature_image_path && s.signed_at
     );
 

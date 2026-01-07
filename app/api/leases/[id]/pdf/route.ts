@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Récupérer le profil de l'utilisateur
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, role, prenom, nom, telephone")
+      .select("id, role, prenom, nom, telephone, date_naissance")
       .eq("user_id", user.id)
       .single();
 
@@ -205,6 +205,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       bailleur: {
         nom: isOwnerSociete ? ownerProfile.raison_sociale : (profile.nom || ""),
         prenom: isOwnerSociete ? "" : (profile.prenom || ""),
+        date_naissance: isOwnerSociete ? undefined : profile.date_naissance,
         adresse: ownerAddress || `${property?.adresse_complete}, ${property?.code_postal} ${property?.ville}`,
         code_postal: "",
         ville: "",

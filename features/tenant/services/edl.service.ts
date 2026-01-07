@@ -18,7 +18,7 @@ export interface EDLItem {
   edl_id: string;
   room_name: string;
   item_name: string;
-  condition?: "bon" | "moyen" | "mauvais" | "tres_mauvais" | null;
+  condition?: "neuf" | "bon" | "moyen" | "mauvais" | "tres_mauvais" | null;
   notes?: string | null;
   created_at: string;
 }

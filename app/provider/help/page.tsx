@@ -356,10 +356,10 @@ export default function ProviderHelpPage() {
                       Réponse sous 24-48h
                     </p>
                     <a
-                      href="mailto:support-prestataires@gestionlocative.fr"
+                      href="mailto:support-prestataires@talok.fr"
                       className="font-semibold text-orange-600 hover:underline"
                     >
-                      support-prestataires@gestionlocative.fr
+                      support-prestataires@talok.fr
                     </a>
                   </div>
 

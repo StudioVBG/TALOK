@@ -1,4 +1,4 @@
-# 📋 Résumé Exécutif - Gestion Locative
+# 📋 Résumé Exécutif - Talok
 
 **Date** : 2025-02-15  
 **Statut global** : ✅ **Application fonctionnelle et prête pour la production**

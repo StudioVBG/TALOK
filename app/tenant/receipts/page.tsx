@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { fetchTenantLease } from "../_data/fetchTenantLease";
 
 export const metadata = {
-  title: "Mes Quittances | Gestion Locative",
+  title: "Mes Quittances | Talok",
   description: "Consultez et téléchargez vos quittances de loyer",
 };
 

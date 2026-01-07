@@ -1,5 +1,5 @@
 # 📊 RAPPORT COMPLET DE L'APPLICATION
-## SaaS de Gestion Locative - France + DROM
+## SaaS de Talok - France + DROM
 
 **Date du rapport** : Novembre 2025  
 **Version** : 0.1.0  

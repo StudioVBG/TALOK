@@ -1,6 +1,6 @@
 /**
  * Design System Tokens - SOTA 2025
- * Système de design unifié pour Lokatif
+ * Système de design unifié pour Talok
  */
 
 // ============================================================================
@@ -223,8 +223,8 @@ export const navStyles = {
 // ============================================================================
 
 export const APP_CONFIG = {
-  name: 'Gestion Locative',
-  shortName: 'GestLoc',
+  name: 'Talok',
+  shortName: 'Talok',
   tagline: 'La plateforme tout-en-un pour gérer vos locations',
   description: 'Baux automatiques, signatures électroniques, scoring locataires, paiements et quittances.',
   logo: {
@@ -232,7 +232,7 @@ export const APP_CONFIG = {
     gradient: 'from-blue-600 to-indigo-600',
   },
   support: {
-    email: 'support@gestion-locative.fr',
+    email: 'support@talok.fr',
   },
 } as const;
 

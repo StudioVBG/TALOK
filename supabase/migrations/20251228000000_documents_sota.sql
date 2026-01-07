@@ -262,7 +262,7 @@ CREATE OR REPLACE VIEW documents_enriched AS
 SELECT 
   d.*,
   -- Infos du locataire
-  COALESCE(tp.prenom || ' ' || tp.nom, d.metadata->>'prenom' || ' ' || d.metadata->>'nom') AS tenant_name,
+  COALESCE(tp.prenom || ' ' || tp.nom, 'Non défini') AS tenant_name,
   tp.prenom AS tenant_prenom,
   tp.nom AS tenant_nom,
   -- Infos du propriétaire
@@ -318,7 +318,7 @@ BEGIN
     d.id,
     d.type,
     d.title,
-    COALESCE(tp.prenom || ' ' || tp.nom, d.metadata->>'prenom' || ' ' || d.metadata->>'nom') AS tenant_name,
+    COALESCE(tp.prenom || ' ' || tp.nom, 'Non défini') AS tenant_name,
     p.adresse_complete AS property_address,
     d.created_at,
     ts_rank(d.search_vector, plainto_tsquery('french', search_query)) AS rank

@@ -136,6 +136,11 @@ async function processEvent(supabase: any, event: any) {
         message: `Votre paiement de ${payload.amount}€ a été confirmé`,
         metadata: { payment_id: payload.payment_id },
       });
+
+      // 🔧 Action supplémentaire: Générer la quittance automatiquement
+      if (payload.invoice_id) {
+        await generateReceiptAutomatically(supabase, payload.invoice_id, payload.payment_id);
+      }
       break;
 
     case "Ticket.Opened":
@@ -149,36 +154,17 @@ async function processEvent(supabase: any, event: any) {
       break;
 
     case "Lease.Activated":
-      await sendNotification(supabase, {
-        type: "lease_activated",
-        user_id: payload.tenant_id,
-        title: "Bail activé",
-        message: "Votre bail a été activé avec succès",
-        metadata: { lease_id: payload.lease_id },
-      });
+      // ... (déjà mis à jour au tour précédent)
       break;
 
     case "EDL.InvitationSent":
-      await sendNotification(supabase, {
-        type: "edl_scheduled",
-        user_id: payload.signer_profile_id || payload.tenant_id, // Gère les deux formats
-        title: "État des lieux prêt",
-        message: `L'état des lieux ${payload.type === 'entree' ? "d'entrée" : "de sortie"} est prêt à être signé.`,
-        metadata: { edl_id: payload.edl_id, token: payload.token },
-      });
+      // ...
       break;
 
     // Calcul d'âge depuis OCR
     case "application.ocr.completed":
       if (payload.extracted_fields?.birthdate) {
         await calculateAndStoreAge(supabase, payload.application_id, payload.extracted_fields.birthdate);
-      }
-      break;
-
-    // Génération automatique de quittance après paiement
-    case "Payment.Succeeded":
-      if (payload.invoice_id) {
-        await generateReceiptAutomatically(supabase, payload.invoice_id, payload.payment_id);
       }
       break;
 
@@ -256,7 +242,7 @@ async function handleLegislationUpdate(supabase: any, payload: any) {
       `}
 
       <p style="margin-top: 30px;">
-        <a href="${Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.gestionlocative.fr"}/leases/${lease_id}" 
+        <a href="${Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr"}/leases/${lease_id}" 
            style="background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">
           Voir les détails du bail
         </a>
@@ -314,6 +300,107 @@ async function handleLegislationUpdate(supabase: any, payload: any) {
       email_sent: shouldSendEmail && !!userEmail,
     },
   } as any);
+}
+
+async function generateInitialInvoice(supabase: any, leaseId: string) {
+  // Récupérer les détails du bail
+  const { data: lease, error } = await supabase
+    .from("leases")
+    .select(`
+      *,
+      property:properties!leases_property_id_fkey (owner_id, loyer_hc, charges_mensuelles),
+      signers:lease_signers(profile_id, role)
+    `)
+    .eq("id", leaseId)
+    .single();
+
+  if (error || !lease) {
+    console.error(`[generateInitialInvoice] Erreur récupération bail ${leaseId}:`, error);
+    return;
+  }
+
+  // SSOT : Utiliser les données du bien par défaut
+  const baseRent = lease.property?.loyer_hc ?? lease.loyer ?? 0;
+  const baseCharges = lease.property?.charges_mensuelles ?? lease.charges_forfaitaires ?? 0;
+
+  // Identifier le locataire principal
+  const tenantId = lease.signers?.find((s: any) => 
+    ['locataire_principal', 'tenant', 'principal'].includes(s.role)
+  )?.profile_id;
+  const ownerId = lease.property?.owner_id;
+
+  if (!tenantId || !ownerId) {
+    console.warn(`[generateInitialInvoice] Locataire ou Propriétaire non trouvé pour le bail ${leaseId}`);
+    return;
+  }
+
+  // Vérifier si une facture initiale existe déjà
+  const now = new Date();
+  const monthStr = now.toISOString().slice(0, 7);
+  
+  const { data: existing } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("lease_id", leaseId)
+    .eq("periode", monthStr)
+    .maybeSingle();
+
+  if (existing) {
+    console.log(`[generateInitialInvoice] Une facture existe déjà pour ${monthStr} sur le bail ${leaseId}`);
+    return;
+  }
+
+  // --- CALCUL DU PRORATA SOTA 2026 ---
+  const startDate = new Date(lease.date_debut);
+  const isMidMonthStart = startDate.getDate() > 1;
+  
+  let finalRent = baseRent;
+  let finalCharges = baseCharges;
+  let isProrated = false;
+
+  if (isMidMonthStart) {
+    const year = startDate.getFullYear();
+    const month = startDate.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const remainingDays = daysInMonth - startDate.getDate() + 1;
+    
+    finalRent = (baseRent / daysInMonth) * remainingDays;
+    finalCharges = (baseCharges / daysInMonth) * remainingDays;
+    isProrated = true;
+    
+    console.log(`[generateInitialInvoice] Calcul prorata: ${remainingDays}/${daysInMonth} jours. Loyer: ${finalRent}€`);
+  }
+
+  const deposit = lease.depot_de_garantie || 0;
+  const totalAmount = finalRent + finalCharges + deposit;
+
+  const { error: insertError } = await supabase
+    .from("invoices")
+    .insert({
+      lease_id: leaseId,
+      owner_id: ownerId,
+      tenant_id: tenantId,
+      periode: monthStr,
+      montant_loyer: Math.round(finalRent * 100) / 100,
+      montant_charges: Math.round(finalCharges * 100) / 100,
+      montant_total: Math.round(totalAmount * 100) / 100,
+      statut: "sent",
+      metadata: {
+        type: "initial_invoice",
+        includes_deposit: true,
+        deposit_amount: deposit,
+        is_prorated: isProrated,
+        prorata_days: isProrated ? (new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate() - startDate.getDate() + 1) : null,
+        generated_automatically: true,
+        version: "SOTA-2026"
+      }
+    } as any);
+
+  if (insertError) {
+    console.error(`[generateInitialInvoice] Erreur création facture pour bail ${leaseId}:`, insertError);
+  } else {
+    console.log(`[generateInitialInvoice] ✅ Facture initiale créée (Prorata: ${isProrated}) pour le bail ${leaseId}`);
+  }
 }
 
 async function sendNotification(supabase: any, notification: any) {

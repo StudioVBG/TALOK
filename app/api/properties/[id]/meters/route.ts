@@ -238,9 +238,12 @@ export async function POST(
         property_id: params.id,
         type: normalizedType,
         meter_number: meterNumberValue,
+        serial_number: meterNumberValue, // On remplit les deux pour compatibilité
+        location: location || null,
         provider: provider || null,
         unit: finalUnit,
         is_connected: is_connected,
+        is_active: true,
       } as any)
       .select()
       .single();

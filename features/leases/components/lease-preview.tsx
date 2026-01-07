@@ -106,43 +106,148 @@ export function LeasePreview({
     return hash.toString(36);
   }, [typeBail, bailData]);
 
-  // Valider les données du bail
-  const validateBailData = useCallback((): string[] => {
-    const errors: string[] = [];
+  // ✅ SOTA 2026: Validation des données du bail (CRITIQUES vs RECOMMANDÉES)
+  const validateBailData = useCallback((): { critical: string[]; warnings: string[] } => {
+    const critical: string[] = [];
+    const warnings: string[] = [];
     
-    // Pour une société, seul le nom (raison sociale) est requis
-    // Pour un particulier, nom ET prénom sont requis
+    // === CHAMPS CRITIQUES (bloquent la création) ===
+    
+    // Bailleur
     const isSociete = bailData.bailleur?.type === "societe";
-    if (!bailData.bailleur?.nom || (!isSociete && !bailData.bailleur?.prenom)) {
-      errors.push("Informations du bailleur incomplètes");
+    if (isSociete) {
+      if (!bailData.bailleur?.nom && !bailData.bailleur?.raison_sociale) {
+        critical.push("Raison sociale de la société manquante");
+      }
+      if (!bailData.bailleur?.siret) {
+        warnings.push("SIRET de la société non renseigné");
+      }
+    } else {
+      if (!bailData.bailleur?.nom) {
+        critical.push("Nom du bailleur manquant");
+      }
+      if (!bailData.bailleur?.prenom) {
+        critical.push("Prénom du bailleur manquant");
+      }
     }
     
+    if (!bailData.bailleur?.adresse) {
+      critical.push("Adresse du bailleur manquante");
+    }
+    
+    // Locataire
     if (!bailData.locataires || bailData.locataires.length === 0) {
-      errors.push("Aucun locataire défini");
+      critical.push("Aucun locataire défini");
+    } else {
+      const mainTenant = bailData.locataires[0];
+      // Vérifier si c'est une invitation (données placeholder) vs profil réel
+      const isPlaceholder = mainTenant.nom?.includes("[") || mainTenant.nom?.includes("@");
+      if (!isPlaceholder) {
+        if (!mainTenant.nom || mainTenant.nom === "[NOM LOCATAIRE]") {
+          warnings.push("Nom du locataire principal non renseigné");
+        }
+      }
     }
     
+    // Logement
     if (!bailData.logement?.adresse_complete) {
-      errors.push("Adresse du logement manquante");
+      critical.push("Adresse du logement manquante");
     }
     
-    if (!bailData.logement?.surface_habitable) {
-      errors.push("Surface habitable non renseignée");
+    if (!bailData.logement?.surface_habitable || bailData.logement.surface_habitable <= 0) {
+      critical.push("Surface habitable non renseignée");
+    } else if (bailData.logement.surface_habitable < 9) {
+      // Loi Carrez : minimum 9m² pour location
+      critical.push("Surface habitable insuffisante (min. 9m² légal)");
     }
     
-    if (!bailData.conditions?.loyer_hc) {
-      errors.push("Montant du loyer non renseigné");
+    if (!bailData.logement?.nb_pieces_principales || bailData.logement.nb_pieces_principales < 1) {
+      warnings.push("Nombre de pièces principales non renseigné");
     }
     
+    // Conditions financières
+    if (!bailData.conditions?.loyer_hc || bailData.conditions.loyer_hc <= 0) {
+      critical.push("Montant du loyer non renseigné");
+    }
+    
+    if (bailData.conditions?.charges_montant === undefined) {
+      warnings.push("Montant des charges non renseigné (sera à 0€)");
+    }
+    
+    // Dépôt de garantie : vérifier la limite légale
+    const typeBailLocal = bailData.conditions?.type_bail || "nu";
+    const loyerHC = bailData.conditions?.loyer_hc || 0;
+    const depot = bailData.conditions?.depot_garantie || 0;
+    
+    let maxDepotLegal = loyerHC;
+    if (typeBailLocal === "meuble" || typeBailLocal === "colocation") maxDepotLegal = loyerHC * 2;
+    if (typeBailLocal === "mobilite") maxDepotLegal = 0;
+    
+    if (depot > maxDepotLegal && maxDepotLegal > 0) {
+      critical.push(`Dépôt de garantie (${depot}€) supérieur au maximum légal (${maxDepotLegal}€)`);
+    }
+    if (typeBailLocal === "mobilite" && depot > 0) {
+      critical.push("Bail mobilité : dépôt de garantie interdit");
+    }
+    
+    // Dates
     if (!bailData.conditions?.date_debut) {
-      errors.push("Date de début du bail non renseignée");
+      critical.push("Date de début du bail non renseignée");
+    } else {
+      const dateDebut = new Date(bailData.conditions.date_debut);
+      const aujourdhui = new Date();
+      aujourdhui.setHours(0, 0, 0, 0);
+      
+      // Pour bail saisonnier : peut commencer dans le passé proche (annulation)
+      if (typeBailLocal !== "saisonnier") {
+        const debutMoins6Mois = new Date(aujourdhui);
+        debutMoins6Mois.setMonth(debutMoins6Mois.getMonth() - 6);
+        if (dateDebut < debutMoins6Mois) {
+          warnings.push("Date de début très ancienne (> 6 mois)");
+        }
+      }
     }
     
-    if (!bailData.diagnostics?.dpe) {
-      errors.push("DPE non renseigné (obligatoire)");
+    // Durée pour baux avec fin obligatoire
+    if (typeBailLocal === "saisonnier" || typeBailLocal === "mobilite") {
+      if (!bailData.conditions?.date_fin) {
+        critical.push(`Date de fin obligatoire pour un bail ${typeBailLocal === "saisonnier" ? "saisonnier" : "mobilité"}`);
+      } else if (bailData.conditions.date_debut) {
+        const debut = new Date(bailData.conditions.date_debut);
+        const fin = new Date(bailData.conditions.date_fin);
+        const diffMois = (fin.getFullYear() - debut.getFullYear()) * 12 + (fin.getMonth() - debut.getMonth());
+        
+        if (typeBailLocal === "mobilite" && diffMois > 10) {
+          critical.push("Bail mobilité : durée max 10 mois");
+        }
+        if (typeBailLocal === "saisonnier" && diffMois > 3) {
+          warnings.push("Location saisonnière > 90 jours : requalification possible en meublé");
+        }
+      }
     }
     
-    return errors;
+    // === DIAGNOSTICS OBLIGATOIRES ===
+    if (!bailData.diagnostics?.dpe?.classe_energie) {
+      critical.push("DPE non renseigné (obligatoire depuis 2023)");
+    } else {
+      const classeEnergie = bailData.diagnostics.dpe.classe_energie;
+      // Depuis 2025 : interdiction de louer G, depuis 2028 : F, depuis 2034 : E
+      if (classeEnergie === "G") {
+        critical.push("⚠️ Logement classé G : location interdite depuis 2025");
+      } else if (classeEnergie === "F") {
+        warnings.push("⚠️ Logement classé F : location interdite à partir de 2028");
+      } else if (classeEnergie === "E") {
+        warnings.push("ℹ️ Logement classé E : location interdite à partir de 2034");
+      }
+    }
+    
+    return { critical, warnings };
   }, [bailData]);
+
+  // Wrapper pour compatibilité avec le code existant
+  const validationResult = useMemo(() => validateBailData(), [validateBailData]);
+  const validationErrors = useMemo(() => [...validationResult.critical, ...validationResult.warnings], [validationResult]);
+  const hasCriticalErrors = validationResult.critical.length > 0;
 
   // === DEBOUNCE: Génération de l'aperçu avec délai ===
   useEffect(() => {
@@ -161,8 +266,8 @@ export function LeasePreview({
 
     // Debounce de 500ms - attend que l'utilisateur arrête de taper
     debounceTimerRef.current = setTimeout(async () => {
-      const errors = validateBailData();
-      setValidationErrors(errors);
+      // Note: validationResult est déjà calculé via useMemo
+      setValidationErrors([...validationResult.critical, ...validationResult.warnings]);
 
       try {
         const previewHtml = pdfService.previewLease(typeBail, bailData);
@@ -187,7 +292,7 @@ export function LeasePreview({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [dataHash, typeBail, bailData, validateBailData, toast, html]);
+  }, [dataHash, typeBail, bailData, validationResult, toast, html]);
 
   // === TÉLÉCHARGEMENT: Utiliser l'impression native pour garantir le rendu ===
   const handleDownloadPDF = async () => {
@@ -253,7 +358,11 @@ export function LeasePreview({
               <FileText className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-lg">Bail {typeLabels[typeBail]}</CardTitle>
+              <CardTitle className="text-lg">
+                {bailData.logement?.adresse_complete 
+                  ? `Bail - ${bailData.logement.adresse_complete}`
+                  : `Bail ${typeLabels[typeBail]}`}
+              </CardTitle>
               <CardDescription className="flex items-center gap-2">
                 Aperçu en temps réel du contrat
                 {lastGenerated && (
@@ -331,9 +440,37 @@ export function LeasePreview({
       </CardHeader>
 
       <CardContent className="space-y-4 flex-1 flex flex-col min-h-0">
-        {/* Erreurs de validation */}
+        {/* ✅ SOTA 2026: Erreurs critiques (rouge) vs Avertissements (jaune) */}
         <AnimatePresence>
-          {validationErrors.length > 0 && (
+          {validationResult.critical.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="bg-red-50 border border-red-300 rounded-lg p-3 shrink-0"
+            >
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium text-red-800 text-sm">
+                    🚫 Erreurs bloquantes ({validationResult.critical.length})
+                  </p>
+                  <ul className="mt-1 space-y-0.5 text-xs text-red-700">
+                    {validationResult.critical.map((error, i) => (
+                      <li key={i} className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                        {error}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <AnimatePresence>
+          {validationResult.warnings.length > 0 && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
@@ -344,18 +481,18 @@ export function LeasePreview({
                 <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
                 <div className="flex-1">
                   <p className="font-medium text-amber-800 text-sm">
-                    Données manquantes ({validationErrors.length})
+                    ⚠️ Recommandations ({validationResult.warnings.length})
                   </p>
                   <ul className="mt-1 space-y-0.5 text-xs text-amber-700">
-                    {validationErrors.slice(0, 3).map((error, i) => (
+                    {validationResult.warnings.slice(0, 5).map((warning, i) => (
                       <li key={i} className="flex items-center gap-2">
                         <span className="w-1 h-1 bg-amber-500 rounded-full" />
-                        {error}
+                        {warning}
                       </li>
                     ))}
-                    {validationErrors.length > 3 && (
+                    {validationResult.warnings.length > 5 && (
                       <li className="text-amber-600 italic">
-                        + {validationErrors.length - 3} autres...
+                        + {validationResult.warnings.length - 5} autres...
                       </li>
                     )}
                   </ul>
@@ -366,10 +503,16 @@ export function LeasePreview({
         </AnimatePresence>
 
         {/* Indicateur de statut de cache */}
-        {!loading && lastGenerated && validationErrors.length === 0 && (
+        {!loading && lastGenerated && !hasCriticalErrors && validationResult.warnings.length === 0 && (
           <div className="flex items-center gap-2 text-xs text-green-600 shrink-0">
             <Check className="h-3 w-3" />
-            <span>Aperçu à jour</span>
+            <span>✅ Bail valide - Prêt à envoyer</span>
+          </div>
+        )}
+        {!loading && lastGenerated && !hasCriticalErrors && validationResult.warnings.length > 0 && (
+          <div className="flex items-center gap-2 text-xs text-amber-600 shrink-0">
+            <Check className="h-3 w-3" />
+            <span>Bail valide (avec recommandations)</span>
           </div>
         )}
 

@@ -1,7 +1,7 @@
 # 📊 État du Déploiement Vercel
 
 **Date** : $(date +"%Y-%m-%d %H:%M:%S")
-**Projet** : Gestion Locative
+**Projet** : Talok
 **Plateforme** : Vercel
 
 ## ✅ État Actuel

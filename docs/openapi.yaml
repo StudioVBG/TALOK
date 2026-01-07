@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Gestion Locative API
+  title: Talok API
   description: |
     API REST pour l'application SaaS de gestion locative.
     
@@ -18,7 +18,7 @@ info:
   version: 1.0.0
   contact:
     name: Support
-    email: support@gestionlocative.fr
+    email: support@talok.fr
 
 servers:
   - url: /api/v1

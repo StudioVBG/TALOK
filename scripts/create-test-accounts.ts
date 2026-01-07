@@ -44,7 +44,7 @@ const testAccounts: TestAccount[] = [
     telephone: "0601020304",
     ownerType: "societe",
     siret: "12345678901234",
-    raisonSociale: "Gestion Immo Plus SARL",
+    raisonSociale: "Talok Plus SARL",
   },
   // Propriétaire Particulier
   {

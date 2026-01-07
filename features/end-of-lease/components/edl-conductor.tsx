@@ -40,7 +40,7 @@ export interface EDLPhoto {
   roomId: string;
   isMain?: boolean;
   uploadedAt: string;
-  condition?: "bon" | "moyen" | "mauvais" | "tres_mauvais";
+  condition?: "neuf" | "bon" | "moyen" | "mauvais" | "tres_mauvais";
 }
 
 export interface EDLData {

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   return {
-    title: "Détails EDL | Gestion Locative",
+    title: "Détails EDL | Talok",
     description: "Visualiser et compléter l'état des lieux",
   };
 }
@@ -282,6 +282,7 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
 
   // Fetch meter readings (resilient to missing table)
   let meterReadings: any[] = [];
+  let propertyMeters: any[] = [];
   try {
     const { data: readings } = await supabase
       .from("edl_meter_readings")
@@ -291,37 +292,56 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
       `)
       .eq("edl_id", edlId);
     meterReadings = readings || [];
-  } catch (e) {
-    console.warn("[fetchInspectionDetail] edl_meter_readings fetch failed");
-  }
 
-  // Group items by room
-  const roomsMap: Record<string, any[]> = {};
-  for (const item of edl_items || []) {
-    if (!roomsMap[item.room_name]) {
-      roomsMap[item.room_name] = [];
+    // Récupérer également tous les compteurs du bien
+    const { data: meters, error: metersError } = await supabase
+      .from("meters")
+      .select("*")
+      .eq("property_id", property.id);
+    
+    if (metersError) {
+      console.warn("[fetchInspectionDetail] property meters fetch failed:", metersError);
+    } else {
+      // Filtrer en JS pour éviter les erreurs si la colonne is_active n'existe pas encore
+      propertyMeters = meters?.filter(m => m.is_active !== false) || [];
     }
-    const itemMedia = (edl_media || []).filter(
-      (m: any) => m.item_id === item.id
-    );
-    roomsMap[item.room_name].push({
-      ...item,
-      media: itemMedia,
-    });
+  } catch (e) {
+    console.warn("[fetchInspectionDetail] meter data fetch failed", e);
   }
 
-  const rooms = Object.entries(roomsMap).map(([name, items]) => ({
-    name,
-    items,
-    stats: {
-      total: items.length,
-      completed: items.filter((i: any) => i.condition).length,
-      bon: items.filter((i: any) => i.condition === "bon").length,
-      moyen: items.filter((i: any) => i.condition === "moyen").length,
-      mauvais: items.filter((i: any) => i.condition === "mauvais").length,
-      tres_mauvais: items.filter((i: any) => i.condition === "tres_mauvais").length,
-    },
-  }));
+  // 🔧 FIX: Reconstruire la variable rooms manquante pour l'affichage
+  const items = edl_items || [];
+  const media = edl_media || [];
+  
+  const roomsMap = items.reduce((acc: any, item: any) => {
+    const roomName = item.room_name || "Général";
+    if (!acc[roomName]) acc[roomName] = [];
+    
+    // Attacher les médias de cet item
+    const itemMedia = media.filter((m: any) => m.item_id === item.id);
+    
+    acc[roomName].push({
+      ...item,
+      media: itemMedia
+    });
+    return acc;
+  }, {});
+
+  const rooms = Object.entries(roomsMap).map(([name, items]: [string, any[]]) => {
+    const completed = items.filter(i => i.condition).length;
+    return {
+      name,
+      items,
+      stats: {
+        total: items.length,
+        completed,
+        bon: items.filter(i => i.condition === 'bon').length,
+        moyen: items.filter(i => i.condition === 'moyen').length,
+        mauvais: items.filter(i => i.condition === 'mauvais').length,
+        tres_mauvais: items.filter(i => i.condition === 'tres_mauvais').length,
+      }
+    };
+  });
 
   return {
     raw: {
@@ -330,17 +350,18 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
         ...lease,
         property,
       } : null,
-      edl_items: edl_items || [],
-      edl_media: edl_media || [],
+      edl_items: items,
+      edl_media: media,
       edl_signatures: edl_signatures || [],
     },
     meterReadings,
+    propertyMeters,
     ownerProfile,
     rooms,
     stats: {
-      totalItems: (edl_items || []).length,
-      completedItems: (edl_items || []).filter((i: any) => i.condition).length,
-      totalPhotos: (edl_media || []).length,
+      totalItems: items.length,
+      completedItems: items.filter((i: any) => i.condition).length,
+      totalPhotos: media.length,
       signaturesCount: (edl_signatures || []).filter((s: any) => s.signature_image_path && s.signed_at).length,
     },
   };

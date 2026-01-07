@@ -123,6 +123,10 @@ export async function PATCH(
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         updates[field] = body[field];
+        // ✅ Sync meter_number if serial_number is updated
+        if (field === 'serial_number') {
+          updates['meter_number'] = body[field];
+        }
       }
     }
 

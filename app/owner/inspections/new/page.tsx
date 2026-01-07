@@ -9,7 +9,7 @@ import { CreateInspectionWizard } from "./CreateInspectionWizard";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Nouvel état des lieux | Gestion Locative",
+  title: "Nouvel état des lieux | Talok",
   description: "Créer un nouvel état des lieux d'entrée ou de sortie",
 };
 

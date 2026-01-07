@@ -8,7 +8,17 @@ export function formatCurrency(amount: number): string {
 }
 
 export function formatDate(date: string | Date): string {
-  const d = typeof date === "string" ? new Date(date) : date;
+  if (!date) return "";
+  
+  // Si c'est une chaîne YYYY-MM-DD (sans heure), on force à midi pour éviter les décalages de fuseau horaire
+  let d: Date;
+  if (typeof date === "string" && date.length === 10 && date.includes("-")) {
+    const [year, month, day] = date.split("-").map(Number);
+    d = new Date(year, month - 1, day, 12, 0, 0);
+  } else {
+    d = typeof date === "string" ? new Date(date) : date;
+  }
+
   return new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
     month: "long",
@@ -17,7 +27,17 @@ export function formatDate(date: string | Date): string {
 }
 
 export function formatDateShort(date: string | Date): string {
-  const d = typeof date === "string" ? new Date(date) : date;
+  if (!date) return "";
+
+  // Si c'est une chaîne YYYY-MM-DD (sans heure), on force à midi
+  let d: Date;
+  if (typeof date === "string" && date.length === 10 && date.includes("-")) {
+    const [year, month, day] = date.split("-").map(Number);
+    d = new Date(year, month - 1, day, 12, 0, 0);
+  } else {
+    d = typeof date === "string" ? new Date(date) : date;
+  }
+
   return new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
     month: "2-digit",

@@ -13,7 +13,7 @@ export const BAIL_COLOCATION_TEMPLATE = `
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Contrat de colocation</title>
+  <title>{{DOCUMENT_TITLE}}</title>
   <style>
     * {
       margin: 0;
@@ -475,7 +475,7 @@ export const BAIL_COLOCATION_TEMPLATE = `
   <div class="page">
     <!-- EN-TÊTE -->
     <div class="header">
-      <h1>Contrat de Colocation</h1>
+      <h1>{{DOCUMENT_TITLE}}</h1>
       <div class="subtitle">
         Bail de colocation {{#if BAIL_MEUBLE}}meublée{{else}}vide{{/if}} 
         à usage de résidence principale
@@ -512,12 +512,18 @@ export const BAIL_COLOCATION_TEMPLATE = `
             <span class="party-value">{{BAILLEUR_REPRESENTANT}}, {{BAILLEUR_REPRESENTANT_QUALITE}}</span>
           </div>
           {{/if}}
-          {{#unless IS_SOCIETE}}
-          <div class="party-info">
-            <span class="party-label">Nom et prénom :</span><br>
-            <span class="party-value">{{BAILLEUR_NOM_COMPLET}}</span>
-          </div>
-          {{/unless}}
+            {{#unless IS_SOCIETE}}
+            <div class="party-info">
+              <span class="party-label">Nom et prénom :</span><br>
+              <span class="party-value">{{BAILLEUR_NOM_COMPLET}}</span>
+            </div>
+            {{#if BAILLEUR_DATE_NAISSANCE}}
+            <div class="party-info">
+              <span class="party-label">Né(e) le :</span><br>
+              <span class="party-value">{{BAILLEUR_DATE_NAISSANCE}} {{#if BAILLEUR_LIEU_NAISSANCE}}à {{BAILLEUR_LIEU_NAISSANCE}}{{/if}}</span>
+            </div>
+            {{/if}}
+            {{/unless}}
           <div class="party-info">
             <span class="party-label">Adresse :</span><br>
             <span class="party-value">{{BAILLEUR_ADRESSE}}</span>

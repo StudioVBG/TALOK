@@ -96,7 +96,7 @@ export default function AgencySettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="raison_sociale">Raison sociale</Label>
-                  <Input id="raison_sociale" defaultValue="Gestion Immo Plus SARL" />
+                  <Input id="raison_sociale" defaultValue="Talok Plus SARL" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="forme_juridique">Forme juridique</Label>

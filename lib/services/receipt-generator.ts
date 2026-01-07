@@ -366,7 +366,7 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Uint8Array>
     color: grayColor,
   });
   
-  page.drawText("Gestion Locative", {
+  page.drawText("Talok", {
     x: width - margin - 80,
     y: footerY,
     size: 8,

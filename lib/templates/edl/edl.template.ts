@@ -13,7 +13,7 @@ export const EDL_TEMPLATE = `
   <style>
     @page {
       size: A4;
-      margin: 15mm 15mm 20mm 15mm;
+      margin: 10mm 10mm 15mm 10mm;
     }
     
     * {
@@ -24,8 +24,8 @@ export const EDL_TEMPLATE = `
     
     body {
       font-family: 'Helvetica Neue', Arial, sans-serif;
-      font-size: 10pt;
-      line-height: 1.4;
+      font-size: 9.5pt;
+      line-height: 1.3;
       color: #1a1a1a;
       background: white;
     }
@@ -44,20 +44,20 @@ export const EDL_TEMPLATE = `
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding-bottom: 15px;
+      padding-bottom: 10px;
       border-bottom: 3px solid #1e40af;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
     }
     
     .header-left h1 {
-      font-size: 20pt;
+      font-size: 18pt;
       font-weight: 700;
       color: #1e40af;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
     
     .header-left .edl-type {
-      font-size: 14pt;
+      font-size: 12pt;
       font-weight: 600;
       color: {{EDL_TYPE_COLOR}};
       text-transform: uppercase;
@@ -69,19 +69,19 @@ export const EDL_TEMPLATE = `
     
     .reference-box {
       background: #f1f5f9;
-      padding: 10px 15px;
+      padding: 8px 12px;
       border-radius: 6px;
       border: 1px solid #cbd5e1;
     }
     
     .reference-box .label {
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #64748b;
       text-transform: uppercase;
     }
     
     .reference-box .value {
-      font-size: 11pt;
+      font-size: 10pt;
       font-weight: 700;
       color: #1e293b;
       font-family: 'Courier New', monospace;
@@ -89,17 +89,17 @@ export const EDL_TEMPLATE = `
     
     /* Sections */
     .section {
-      margin-bottom: 20px;
+      margin-bottom: 12px;
     }
     
     .section-title {
-      font-size: 12pt;
+      font-size: 11pt;
       font-weight: 700;
       color: #1e40af;
-      padding: 8px 12px;
+      padding: 6px 10px;
       background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
       border-left: 4px solid #1e40af;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       border-radius: 0 4px 4px 0;
     }
     
@@ -111,7 +111,7 @@ export const EDL_TEMPLATE = `
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      gap: 15px;
     }
     
     /* Info boxes */
@@ -119,56 +119,58 @@ export const EDL_TEMPLATE = `
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 6px;
-      padding: 12px;
+      padding: 10px;
     }
     
     .info-box h3 {
-      font-size: 10pt;
+      font-size: 9.5pt;
       font-weight: 600;
       color: #475569;
-      margin-bottom: 8px;
-      padding-bottom: 6px;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
       border-bottom: 1px solid #e2e8f0;
     }
     
     .info-row {
       display: flex;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
     
     .info-row .label {
       font-weight: 500;
       color: #64748b;
-      width: 120px;
+      width: 110px;
       flex-shrink: 0;
+      font-size: 9pt;
     }
     
     .info-row .value {
       color: #1e293b;
       font-weight: 500;
+      font-size: 9pt;
     }
     
     /* Compteurs */
     .meter-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+      gap: 10px;
     }
     
     .meter-card {
       background: white;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
-      padding: 12px;
+      padding: 10px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
     
     .meter-icon {
-      font-size: 24pt;
-      width: 50px;
-      height: 50px;
+      font-size: 20pt;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -179,31 +181,38 @@ export const EDL_TEMPLATE = `
     .meter-info .meter-type {
       font-weight: 600;
       color: #1e293b;
-      font-size: 10pt;
+      font-size: 9pt;
     }
     
     .meter-info .meter-number {
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #64748b;
     }
     
     .meter-info .meter-value {
-      font-size: 14pt;
+      font-size: 12pt;
       font-weight: 700;
       color: #1e40af;
-      margin-top: 4px;
+      margin-top: 2px;
+    }
+    
+    .meter-info .meter-value.pending {
+      color: #d97706;
+      font-size: 9pt;
+      font-weight: 600;
+      font-style: italic;
     }
     
     /* Pièces */
     .room-section {
-      margin-bottom: 20px;
+      margin-bottom: 10px;
       page-break-inside: avoid;
     }
     
     .room-header {
       background: #1e293b;
       color: white;
-      padding: 10px 15px;
+      padding: 6px 12px;
       border-radius: 6px 6px 0 0;
       display: flex;
       justify-content: space-between;
@@ -211,13 +220,13 @@ export const EDL_TEMPLATE = `
     }
     
     .room-name {
-      font-size: 11pt;
+      font-size: 10pt;
       font-weight: 600;
     }
     
     .room-badge {
-      font-size: 9pt;
-      padding: 3px 10px;
+      font-size: 8.5pt;
+      padding: 2px 8px;
       border-radius: 20px;
       font-weight: 500;
     }
@@ -244,7 +253,7 @@ export const EDL_TEMPLATE = `
     .item-row {
       display: flex;
       align-items: center;
-      padding: 8px 12px;
+      padding: 6px 12px;
       border-bottom: 1px solid #f1f5f9;
     }
     
@@ -260,15 +269,16 @@ export const EDL_TEMPLATE = `
       flex: 1;
       font-weight: 500;
       color: #374151;
+      font-size: 9pt;
     }
     
     .item-condition {
-      padding: 4px 12px;
+      padding: 2px 10px;
       border-radius: 20px;
-      font-size: 9pt;
+      font-size: 8.5pt;
       font-weight: 600;
       text-align: center;
-      min-width: 100px;
+      min-width: 90px;
     }
     
     .item-condition.bon {
@@ -293,22 +303,22 @@ export const EDL_TEMPLATE = `
     
     .item-notes {
       width: 100%;
-      padding: 6px 12px;
+      padding: 4px 10px;
       background: #fffbeb;
       border-left: 3px solid #f59e0b;
-      font-size: 9pt;
+      font-size: 8.5pt;
       font-style: italic;
       color: #92400e;
-      margin: 4px 12px 8px 12px;
+      margin: 2px 12px 4px 12px;
     }
     
     /* Photos section */
     .photos-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-top: 8px;
-      padding: 8px 12px;
+      gap: 6px;
+      margin-top: 4px;
+      padding: 4px 12px;
     }
     
     .photo-thumb {
@@ -332,7 +342,7 @@ export const EDL_TEMPLATE = `
     
     .keys-table th,
     .keys-table td {
-      padding: 10px 12px;
+      padding: 8px 12px;
       text-align: left;
       border-bottom: 1px solid #e2e8f0;
     }
@@ -341,33 +351,38 @@ export const EDL_TEMPLATE = `
       background: #f8fafc;
       font-weight: 600;
       color: #475569;
-      font-size: 9pt;
+      font-size: 8.5pt;
       text-transform: uppercase;
     }
     
     .keys-table td {
-      font-size: 10pt;
+      font-size: 9pt;
     }
     
     .key-qty {
       font-weight: 700;
       color: #1e40af;
-      font-size: 12pt;
+      font-size: 11pt;
     }
     
     /* Résumé état */
     .summary-stats {
       display: flex;
       gap: 10px;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
     
     .stat-card {
       flex: 1;
       text-align: center;
-      padding: 12px;
+      padding: 10px;
       border-radius: 8px;
       border: 2px solid;
+    }
+    
+    .stat-card.neuf {
+      background: #eff6ff;
+      border-color: #3b82f6;
     }
     
     .stat-card.bon {
@@ -391,20 +406,21 @@ export const EDL_TEMPLATE = `
     }
     
     .stat-number {
-      font-size: 20pt;
+      font-size: 18pt;
       font-weight: 700;
     }
     
+    .stat-card.neuf .stat-number { color: #1d4ed8; }
     .stat-card.bon .stat-number { color: #166534; }
     .stat-card.moyen .stat-number { color: #854d0e; }
     .stat-card.mauvais .stat-number { color: #c2410c; }
     .stat-card.tres_mauvais .stat-number { color: #b91c1c; }
     
     .stat-label {
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #64748b;
       text-transform: uppercase;
-      margin-top: 4px;
+      margin-top: 2px;
     }
     
     /* Observations */
@@ -412,97 +428,97 @@ export const EDL_TEMPLATE = `
       background: #fffbeb;
       border: 1px solid #fcd34d;
       border-radius: 8px;
-      padding: 15px;
+      padding: 12px;
     }
     
     .observations-box h4 {
-      font-size: 10pt;
+      font-size: 9pt;
       font-weight: 600;
       color: #92400e;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     
     .observations-box p {
-      font-size: 10pt;
+      font-size: 9.5pt;
       color: #78350f;
-      line-height: 1.5;
+      line-height: 1.4;
     }
     
     /* Signatures */
     .signatures-section {
-      margin-top: 30px;
+      margin-top: 20px;
       page-break-inside: avoid;
     }
     
     .signatures-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 30px;
+      gap: 20px;
     }
     
     .signature-box {
       border: 2px solid #e2e8f0;
       border-radius: 8px;
-      padding: 20px;
-      min-height: 200px;
+      padding: 15px;
+      min-height: 160px;
     }
     
     .signature-box h4 {
-      font-size: 10pt;
+      font-size: 9pt;
       font-weight: 600;
       color: #475569;
       text-transform: uppercase;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
       border-bottom: 1px solid #e2e8f0;
     }
     
     .signature-name {
-      font-size: 11pt;
+      font-size: 10pt;
       font-weight: 600;
       color: #1e293b;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
     
     .signature-area {
-      height: 100px;
+      height: 80px;
       border: 1px dashed #cbd5e1;
       border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
       background: #f8fafc;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     
     .signature-area img {
-      max-height: 90px;
+      max-height: 70px;
       max-width: 90%;
     }
     
     .signature-area .placeholder {
       color: #94a3b8;
-      font-size: 9pt;
+      font-size: 8.5pt;
     }
     
     .signature-date {
-      font-size: 9pt;
+      font-size: 8.5pt;
       color: #64748b;
     }
     
     /* Legal footer */
     .legal-footer {
-      margin-top: 30px;
-      padding: 15px;
+      margin-top: 20px;
+      padding: 12px;
       background: #f1f5f9;
       border-radius: 6px;
-      font-size: 8pt;
+      font-size: 7.5pt;
       color: #64748b;
-      line-height: 1.6;
+      line-height: 1.5;
     }
     
     .legal-footer p {
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
     
     /* Print specifics */
@@ -531,8 +547,8 @@ export const EDL_TEMPLATE = `
     }
     
     .checkbox-empty {
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
       border: 1px solid #64748b;
       border-radius: 2px;
       display: inline-block;
@@ -730,6 +746,10 @@ export const EDL_TEMPLATE = `
       <div class="section-title">📊 Résumé de l'état général</div>
       <div class="section-content">
         <div class="summary-stats">
+          <div class="stat-card neuf">
+            <div class="stat-number">{{NB_ELEMENTS_NEUF}}</div>
+            <div class="stat-label">Neuf</div>
+          </div>
           <div class="stat-card bon">
             <div class="stat-number">{{NB_ELEMENTS_BON}}</div>
             <div class="stat-label">Bon état</div>
@@ -748,7 +768,7 @@ export const EDL_TEMPLATE = `
           </div>
         </div>
         <p style="font-size: 9pt; color: #64748b; text-align: center;">
-          {{POURCENTAGE_BON_ETAT}}% des éléments sont en bon état
+          {{POURCENTAGE_BON_ETAT}}% des éléments sont en bon ou neuf état
         </p>
       </div>
     </div>
@@ -821,9 +841,18 @@ export const EDL_TEMPLATE = `
           <div class="signature-area">
             {{#if SIGNATURE_IMAGE_BAILLEUR}}
             <img src="{{SIGNATURE_IMAGE_BAILLEUR}}" alt="Signature bailleur" />
-            {{else}}
-            <span class="placeholder">Signature en attente</span>
             {{/if}}
+            {{#unless SIGNATURE_IMAGE_BAILLEUR}}
+              {{#if DATE_SIGNATURE_BAILLEUR}}
+              <div style="text-align: center;">
+                <div style="color: #059669; font-size: 14pt; font-weight: bold;">SIGNÉ</div>
+                <div style="color: #64748b; font-size: 8pt;">(Image non disponible)</div>
+              </div>
+              {{/if}}
+              {{#unless DATE_SIGNATURE_BAILLEUR}}
+              <span class="placeholder">Signature en attente</span>
+              {{/unless}}
+            {{/unless}}
           </div>
           <div class="signature-date">
             {{#if DATE_SIGNATURE_BAILLEUR}}
@@ -842,9 +871,18 @@ export const EDL_TEMPLATE = `
           <div class="signature-area">
             {{#if SIGNATURE_IMAGE_LOCATAIRE}}
             <img src="{{SIGNATURE_IMAGE_LOCATAIRE}}" alt="Signature locataire" />
-            {{else}}
-            <span class="placeholder">Signature en attente</span>
             {{/if}}
+            {{#unless SIGNATURE_IMAGE_LOCATAIRE}}
+              {{#if DATE_SIGNATURE_LOCATAIRE}}
+              <div style="text-align: center;">
+                <div style="color: #059669; font-size: 14pt; font-weight: bold;">SIGNÉ</div>
+                <div style="color: #64748b; font-size: 8pt;">(Image non disponible)</div>
+              </div>
+              {{/if}}
+              {{#unless DATE_SIGNATURE_LOCATAIRE}}
+              <span class="placeholder">Signature en attente</span>
+              {{/unless}}
+            {{/unless}}
           </div>
           <div class="signature-date">
             {{#if DATE_SIGNATURE_LOCATAIRE}}

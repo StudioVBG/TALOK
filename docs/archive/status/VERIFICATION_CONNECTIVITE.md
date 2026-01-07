@@ -63,8 +63,8 @@ Vérifier que tous les éléments de l'application sont connectés à 100% :
 - ✅ `GET /api/leases/[id]/signers` - Liste des signataires
 
 #### Pages
-- ✅ `/owner/contracts` → `useLeases()` → API ✅
-- ✅ `/owner/contracts/[id]` → `useLease()` → API ✅
+- ✅ `/owner/leases` → `useLeases()` → API ✅
+- ✅ `/owner/leases/[id]` → `useLease()` → API ✅
 
 **Status : ✅ 100% CONNECTÉ**
 

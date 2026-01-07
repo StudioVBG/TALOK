@@ -190,6 +190,7 @@ const hotWaterTypeEnum = z.enum(["electrique_indiv", "gaz_indiv", "collectif", "
 const climatePresenceEnum = z.enum(["aucune", "fixe", "mobile"]);
 const climateTypeEnum = z.enum(["split", "gainable"]);
 const roomTypeEnum = z.enum([
+  // Types principaux habitation
   "sejour",
   "chambre",
   "cuisine",
@@ -201,6 +202,19 @@ const roomTypeEnum = z.enum([
   "terrasse",
   "cave",
   "autre",
+  // Types additionnels V3
+  "salon_cuisine",
+  "bureau",
+  "dressing",
+  "suite_parentale",
+  "mezzanine",
+  "buanderie",
+  "cellier",
+  "jardin",
+  // Types pro/parking
+  "stockage",
+  "emplacement",
+  "box",
 ]);
 const roomEmitterEnum = z.enum(["radiateur", "plancher", "convecteur", "poele"]);
 const photoTagEnum = z.enum(["vue_generale", "plan", "detail", "exterieur"]);
@@ -569,6 +583,21 @@ export const unitSchema = z.object({
   capacite_max: z.number().int().min(1).max(10, "Maximum 10 colocataires"),
   surface: z.number().positive().optional().nullable(),
 });
+
+// ✅ SOTA 2026: Tous les statuts de bail légaux
+export const leaseStatusSchema = z.enum([
+  "draft",
+  "sent",
+  "pending_signature",
+  "partially_signed",
+  "pending_owner_signature",
+  "fully_signed",
+  "active",
+  "notice_given",
+  "amended",
+  "terminated",
+  "archived",
+]);
 
 // Validation des baux
 export const leaseSchema = z.object({

@@ -242,8 +242,8 @@ PROGRESSION:           +35%
 
 ```json
 {
-  "name": "Gestion Locative",
-  "short_name": "GestLoc",
+  "name": "Talok",
+  "short_name": "Talok",
   "display": "standalone",
   "theme_color": "#6366f1",
   "background_color": "#0a0a0a",

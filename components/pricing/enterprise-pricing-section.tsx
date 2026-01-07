@@ -113,16 +113,16 @@ const UNIQUE_DIFFERENTIATORS = [
 // COMPARATIF CONCURRENTIEL
 // ============================================
 const COMPETITIVE_COMPARISON = [
-  { feature: "Open Banking", gestloc: true, rentila: false, smovin: false, hektor: false, ublo: true },
-  { feature: "Scoring IA", gestloc: true, rentila: false, smovin: false, hektor: false, ublo: false },
-  { feature: "Support DROM", gestloc: true, rentila: false, smovin: false, hektor: false, ublo: false },
-  { feature: "Portail Locataire", gestloc: true, rentila: false, smovin: "basic", hektor: true, ublo: true },
-  { feature: "E-signature intégrée", gestloc: true, rentila: false, smovin: true, hektor: true, ublo: true },
-  { feature: "EDL numériques", gestloc: true, rentila: false, smovin: "basic", hektor: true, ublo: true },
-  { feature: "Channel Manager", gestloc: true, rentila: false, smovin: false, hektor: "basic", ublo: "basic" },
-  { feature: "API ouverte", gestloc: true, rentila: false, smovin: false, hektor: "basic", ublo: true },
-  { feature: "White Label", gestloc: true, rentila: false, smovin: false, hektor: false, ublo: true },
-  { feature: "Gestion Colocation", gestloc: true, rentila: true, smovin: true, hektor: true, ublo: true },
+  { feature: "Open Banking", talok: true, rentila: false, smovin: false, hektor: false, ublo: true },
+  { feature: "Scoring IA", talok: true, rentila: false, smovin: false, hektor: false, ublo: false },
+  { feature: "Support DROM", talok: true, rentila: false, smovin: false, hektor: false, ublo: false },
+  { feature: "Portail Locataire", talok: true, rentila: false, smovin: "basic", hektor: true, ublo: true },
+  { feature: "E-signature intégrée", talok: true, rentila: false, smovin: true, hektor: true, ublo: true },
+  { feature: "EDL numériques", talok: true, rentila: false, smovin: "basic", hektor: true, ublo: true },
+  { feature: "Channel Manager", talok: true, rentila: false, smovin: false, hektor: "basic", ublo: "basic" },
+  { feature: "API ouverte", talok: true, rentila: false, smovin: false, hektor: "basic", ublo: true },
+  { feature: "White Label", talok: true, rentila: false, smovin: false, hektor: false, ublo: true },
+  { feature: "Gestion Colocation", talok: true, rentila: true, smovin: true, hektor: true, ublo: true },
 ];
 
 const COMPETITORS = [
@@ -551,7 +551,7 @@ export function EnterprisePricingSection({
               {/* Hero */}
               <div className="text-center mb-8">
                 <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                  GestLoc vs <span className="text-slate-400">la concurrence</span>
+                  Talok vs <span className="text-slate-400">la concurrence</span>
                 </h3>
                 <p className="text-slate-400 max-w-2xl mx-auto">
                   Comparaison objective avec les 4 principaux concurrents du marché français.
@@ -566,7 +566,7 @@ export function EnterprisePricingSection({
                       <th className="text-left p-4 text-slate-400 font-medium">Fonctionnalité</th>
                       <th className="p-4 text-center">
                         <div className="flex flex-col items-center gap-1">
-                          <span className="text-emerald-400 font-bold">GestLoc</span>
+                          <span className="text-emerald-400 font-bold">Talok</span>
                           <Badge className="bg-emerald-500/20 text-emerald-300 text-xs">À partir de 19€</Badge>
                         </div>
                       </th>
@@ -591,7 +591,7 @@ export function EnterprisePricingSection({
                       >
                         <td className="p-4 text-white font-medium">{row.feature}</td>
                         <td className="p-4 text-center">
-                          <ComparisonCell value={row.gestloc} highlight />
+                          <ComparisonCell value={row.talok} highlight />
                         </td>
                         <td className="p-4 text-center">
                           <ComparisonCell value={row.rentila} />
@@ -615,7 +615,7 @@ export function EnterprisePricingSection({
               <div className="mt-8 grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
                   <div className="text-3xl font-bold text-emerald-400">10/10</div>
-                  <div className="text-sm text-slate-300">GestLoc</div>
+                  <div className="text-sm text-slate-300">Talok</div>
                 </div>
                 {COMPETITORS.map((comp, i) => {
                   const scores = [3, 5, 6, 8]; // Scores simulés

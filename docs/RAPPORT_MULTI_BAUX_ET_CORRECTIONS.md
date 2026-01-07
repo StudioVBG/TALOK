@@ -172,7 +172,7 @@ if (data.adresse) {
 ### 4. Types de Baux alignés avec BDD
 
 #### 4.1 LeaseTypeCards.tsx
-**Fichier** : `app/owner/contracts/new/LeaseTypeCards.tsx`
+**Fichier** : `app/owner/leases/new/LeaseTypeCards.tsx`
 
 | Ancien ID | Nouveau ID (BDD) |
 |-----------|------------------|
@@ -181,7 +181,7 @@ if (data.adresse) {
 | `commercial` | `commercial_3_6_9` |
 
 #### 4.2 ContractsClient.tsx
-**Fichier** : `app/owner/contracts/ContractsClient.tsx`
+**Fichier** : `app/owner/leases/ContractsClient.tsx`
 
 Labels et filtres mis à jour pour correspondre aux IDs BDD.
 
@@ -218,8 +218,8 @@ Quand l'utilisateur tape une adresse, le code postal et la ville sont automatiqu
 | `app/owner/properties/page.tsx` | ✏️ Modifié | Badges dynamiques |
 | `app/api/scrape/route.ts` | ✏️ Modifié | Extraction améliorée |
 | `features/properties/components/v3/property-wizard-v3.tsx` | ✏️ Modifié | Import corrigé |
-| `app/owner/contracts/new/LeaseTypeCards.tsx` | ✏️ Modifié | IDs types baux |
-| `app/owner/contracts/ContractsClient.tsx` | ✏️ Modifié | Labels/filtres |
+| `app/owner/leases/new/LeaseTypeCards.tsx` | ✏️ Modifié | IDs types baux |
+| `app/owner/leases/ContractsClient.tsx` | ✏️ Modifié | Labels/filtres |
 | `features/properties/components/v3/immersive/steps/AddressStep.tsx` | ✏️ Modifié | Extraction CP |
 | `scripts/fix_all_rls_and_meters.sql` | 🆕 Nouveau | Script correctifs BDD |
 

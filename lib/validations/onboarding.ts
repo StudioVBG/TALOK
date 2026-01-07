@@ -219,6 +219,7 @@ export const tenantFileSchema = z.object({
 export const tenantPaymentSchema = z.object({
   moyen_encaissement: z.enum(["sepa_sdd", "virement_sct", "virement_inst", "pay_by_bank", "carte_wallet"]),
   sepa_mandat_accepte: z.boolean().optional(),
+  stripe_payment_method_id: z.string().optional(),
   // Pour colocation
   part_percentage: z.number().min(0).max(100).optional(),
   part_montant: z.number().positive().optional(),

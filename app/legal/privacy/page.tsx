@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Politique de Confidentialité - Gestion Locative",
+  title: "Politique de Confidentialité - Talok",
   description: "Politique de confidentialité et protection des données personnelles",
 };
 
@@ -38,8 +38,8 @@ export default function PrivacyPage() {
               Le responsable du traitement des données est la société exploitant la plateforme 
               de gestion locative. Pour toute question relative à vos données, contactez notre 
               Délégué à la Protection des Données (DPO) à : 
-              <a href="mailto:dpo@gestion-locative.app" className="text-primary hover:underline ml-1">
-                dpo@gestion-locative.app
+              <a href="mailto:dpo@talok.fr" className="text-primary hover:underline ml-1">
+                dpo@talok.fr
               </a>
             </p>
 
@@ -111,8 +111,8 @@ export default function PrivacyPage() {
             </ul>
             <p>
               Pour exercer ces droits, contactez-nous à : 
-              <a href="mailto:privacy@gestion-locative.app" className="text-primary hover:underline ml-1">
-                privacy@gestion-locative.app
+              <a href="mailto:privacy@talok.fr" className="text-primary hover:underline ml-1">
+                privacy@talok.fr
               </a>
             </p>
 

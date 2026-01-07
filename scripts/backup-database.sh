@@ -210,7 +210,7 @@ send_notification() {
 # Main
 main() {
     log_info "=========================================="
-    log_info "Backup Gestion Locative - ${DATE}"
+    log_info "Backup Talok - ${DATE}"
     log_info "=========================================="
     
     check_prerequisites

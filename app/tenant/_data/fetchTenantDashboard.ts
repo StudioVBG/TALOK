@@ -99,6 +99,7 @@ export interface PendingEDL {
 
 export interface TenantDashboardData {
   profile_id: string;
+  kyc_status: 'pending' | 'processing' | 'verified' | 'rejected';
   tenant?: {
     prenom: string;
     nom: string;

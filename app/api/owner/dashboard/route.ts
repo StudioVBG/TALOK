@@ -234,7 +234,7 @@ export async function GET(request: Request) {
         priority: "high",
         label: `Signer ${uniqueLeases.size} bail${uniqueLeases.size > 1 ? "x" : ""} en attente`,
         count: uniqueLeases.size,
-        action_url: "/owner/contracts?filter=status:draft_or_to_sign",
+        action_url: "/owner/leases?filter=status:draft_or_to_sign",
       });
     }
 
@@ -253,7 +253,7 @@ export async function GET(request: Request) {
         priority: "medium",
         label: `Préparer ${endingLeases.length} fin${endingLeases.length > 1 ? "s" : ""} de bail à venir`,
         count: endingLeases.length,
-        action_url: "/owner/contracts?filter=lease_end:3months",
+        action_url: "/owner/leases?filter=lease_end:3months",
       });
     }
 
@@ -421,7 +421,7 @@ export async function GET(request: Request) {
         type: "lease_end",
         severity: daysUntilEnd < 30 ? "high" : daysUntilEnd < 90 ? "medium" : "low",
         label: `Fin de bail ${lease.properties?.adresse_complete || ""} dans ${Math.ceil(daysUntilEnd / 30)} mois`,
-        action_url: `/owner/contracts/${lease.id}`,
+        action_url: `/owner/leases/${lease.id}`,
       });
     });
 

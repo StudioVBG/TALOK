@@ -155,6 +155,7 @@ async function fetchLeaseDetailsFallback(
   console.log("[fetchLeaseDetailsFallback] Owner access verified ✓");
 
   // 2. Récupérer les signataires
+  // ✅ SOTA 2026: Récupérer TOUS les champs de signature (image ET path)
   const { data: signers } = await supabase
     .from("lease_signers")
     .select(`
@@ -163,6 +164,9 @@ async function fetchLeaseDetailsFallback(
       signature_status,
       signed_at,
       signature_image,
+      signature_image_path,
+      proof_id,
+      ip_inet,
       invited_email,
       invited_name,
       invited_at,
@@ -218,8 +222,17 @@ async function fetchLeaseDetailsFallback(
     .from("edl")
     .select("id, status, type, scheduled_at, completed_date")
     .eq("lease_id", leaseId)
+    .eq("type", "entree")
     .order("created_at", { ascending: false })
     .limit(1)
+    .maybeSingle();
+
+  // 7. Vérifier si la première facture est payée (SOTA 2026)
+  const { data: initialInvoice } = await supabase
+    .from("invoices")
+    .select("statut")
+    .eq("lease_id", leaseId)
+    .eq("metadata->>type", "initial_invoice")
     .maybeSingle();
 
   // Construire le résultat
@@ -228,31 +241,73 @@ async function fetchLeaseDetailsFallback(
     cover_url: mainPhoto?.url || null,
   };
 
-  const cleanLease = lease;
+  // SSOT 2026 : Consolider les données financières
+  const cleanLease = {
+    ...lease,
+    loyer: propertyRow.loyer_hc ?? lease.loyer ?? 0,
+    charges_forfaitaires: propertyRow.charges_mensuelles ?? lease.charges_forfaitaires ?? 0,
+    has_signed_edl: edl?.status === "signed",
+    has_paid_initial: initialInvoice?.statut === "paid",
+  };
 
-  // Transformer les signataires
-  const formattedSigners = (signers || []).map((s: any) => ({
-    id: s.id,
-    role: s.role,
-    signature_status: s.signature_status,
-    signed_at: s.signed_at,
-    signature_image: s.signature_image,
-    invited_email: s.invited_email,
-    invited_name: s.invited_name,
-    invited_at: s.invited_at,
-    profile: s.profiles ? {
-      id: s.profiles.id,
-      prenom: s.profiles.prenom,
-      nom: s.profiles.nom,
-      email: s.profiles.email,
-      telephone: s.profiles.telephone,
-      avatar_url: s.profiles.avatar_url,
-      date_naissance: s.profiles.date_naissance,
-      lieu_naissance: s.profiles.lieu_naissance,
-      nationalite: s.profiles.nationalite,
-      adresse: s.profiles.adresse,
-    } : null,
-  }));
+  // ✅ SOTA 2026: Générer des URLs signées pour les images de signature (bucket privé)
+  // Durée de validité: 1 heure
+  const signersWithSignedUrls = await Promise.all(
+    (signers || []).map(async (s: any) => {
+      let signatureImageUrl: string | null = null;
+      
+      // 1. Si signature_image est déjà une data URL ou URL HTTP, l'utiliser
+      if (s.signature_image) {
+        if (s.signature_image.startsWith("data:") || s.signature_image.startsWith("http")) {
+          signatureImageUrl = s.signature_image;
+        }
+      }
+      
+      // 2. Si signature_image_path existe, générer une URL signée
+      if (!signatureImageUrl && s.signature_image_path) {
+        try {
+          const { data: signedUrlData } = await supabase.storage
+            .from("documents")
+            .createSignedUrl(s.signature_image_path, 3600); // 1 heure
+          
+          if (signedUrlData?.signedUrl) {
+            signatureImageUrl = signedUrlData.signedUrl;
+            console.log("[fetchLeaseDetails] ✅ Generated signed URL for signature:", s.role);
+          }
+        } catch (err) {
+          console.error("[fetchLeaseDetails] Error generating signed URL:", err);
+        }
+      }
+      
+      return {
+        id: s.id,
+        role: s.role,
+        signature_status: s.signature_status,
+        signed_at: s.signed_at,
+        signature_image: signatureImageUrl,
+        signature_image_path: s.signature_image_path,
+        proof_id: s.proof_id,
+        ip_inet: s.ip_inet,
+        invited_email: s.invited_email,
+        invited_name: s.invited_name,
+        invited_at: s.invited_at,
+        profile: s.profiles ? {
+          id: s.profiles.id,
+          prenom: s.profiles.prenom,
+          nom: s.profiles.nom,
+          email: s.profiles.email,
+          telephone: s.profiles.telephone,
+          avatar_url: s.profiles.avatar_url,
+          date_naissance: s.profiles.date_naissance,
+          lieu_naissance: s.profiles.lieu_naissance,
+          nationalite: s.profiles.nationalite,
+          adresse: s.profiles.adresse,
+        } : null,
+      };
+    })
+  );
+
+  const formattedSigners = signersWithSignedUrls;
 
   // Transformer les paiements
   const formattedPayments = (payments || []).map((p: any) => ({

@@ -21,7 +21,7 @@ export const OWNER_ROUTES = {
     icon: "Building2",
   },
   contracts: {
-    path: "/owner/contracts",
+    path: "/owner/leases",
     name: "Baux & locataires",
     component: "OwnerContractsPage",
     auth: ["owner"],
@@ -35,7 +35,7 @@ export const OWNER_ROUTES = {
     icon: "Users",
   },
   leases: {
-    path: "/owner/contracts",
+    path: "/owner/leases",
     name: "Baux",
     component: "OwnerContractsPage",
     auth: ["owner"],

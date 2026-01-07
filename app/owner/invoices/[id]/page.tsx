@@ -25,11 +25,14 @@ import {
   Printer,
   Mail,
   CreditCard,
+  Banknote,
+  Plus,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ManualPaymentDialog } from "@/components/payments";
 
 const statusConfig = {
   draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700", icon: FileText },
@@ -64,6 +67,10 @@ interface Invoice {
     nom: string;
     email: string;
   };
+  owner?: {
+    prenom: string;
+    nom: string;
+  };
   payments?: Array<{
     id: string;
     montant: number;
@@ -82,23 +89,31 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+
+  const fetchInvoice = async () => {
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setInvoice(data.invoice || data);
+      }
+    } catch (error) {
+      console.error("Erreur chargement facture:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchInvoice() {
-      try {
-        const response = await fetch(`/api/invoices/${invoiceId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setInvoice(data.invoice || data);
-        }
-      } catch (error) {
-        console.error("Erreur chargement facture:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
     if (invoiceId) fetchInvoice();
   }, [invoiceId]);
+
+  // Refresh after payment
+  const handlePaymentComplete = () => {
+    fetchInvoice();
+    setShowPaymentDialog(false);
+  };
 
   const handleSendReminder = async () => {
     setSending(true);
@@ -216,24 +231,33 @@ export default function InvoiceDetailPage() {
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={handleDownload}>
                 <Download className="mr-2 h-4 w-4" />
                 Télécharger
               </Button>
               {!isPaid && (
-                <Button
-                  variant="outline"
-                  onClick={handleSendReminder}
-                  disabled={sending}
-                >
-                  {sending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Mail className="mr-2 h-4 w-4" />
-                  )}
-                  Envoyer rappel
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleSendReminder}
+                    disabled={sending}
+                  >
+                    {sending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Mail className="mr-2 h-4 w-4" />
+                    )}
+                    Rappel
+                  </Button>
+                  <Button
+                    onClick={() => setShowPaymentDialog(true)}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Enregistrer paiement
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -411,6 +435,20 @@ export default function InvoiceDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Dialog de paiement manuel */}
+        <ManualPaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={setShowPaymentDialog}
+          invoiceId={invoice.id}
+          invoiceReference={invoice.reference}
+          amount={resteDu > 0 ? resteDu : invoice.montant_total}
+          tenantName={invoice.tenant ? `${invoice.tenant.prenom} ${invoice.tenant.nom}` : "Locataire"}
+          ownerName={invoice.owner ? `${invoice.owner.prenom} ${invoice.owner.nom}` : "Propriétaire"}
+          propertyAddress={invoice.property?.adresse_complete || ""}
+          periode={invoice.periode}
+          onPaymentComplete={handlePaymentComplete}
+        />
       </div>
     </motion.div>
   );

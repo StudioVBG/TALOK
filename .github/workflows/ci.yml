@@ -1,4 +1,4 @@
-# CI/CD Pipeline - Gestion Locative SaaS
+# CI/CD Pipeline - Talok SaaS
 # Exécute les checks de qualité sur chaque push et PR
 
 name: CI

@@ -25,6 +25,12 @@ function generateMeterHTML(
 ): string {
   const label = METER_TYPE_LABELS[type] || type;
   const icon = METER_TYPE_ICONS[type] || "📊";
+  
+  // Formatage de la valeur du relevé
+  const isNotRead = reading === "Non relevé" || !reading;
+  const displayValue = isNotRead ? "À relever" : reading;
+  const displayUnit = isNotRead ? "" : unit;
+  const valueClass = isNotRead ? "meter-value pending" : "meter-value";
 
   return `
     <div class="meter-card">
@@ -32,7 +38,7 @@ function generateMeterHTML(
       <div class="meter-info">
         <div class="meter-type">${label}</div>
         ${meterNumber ? `<div class="meter-number">N° ${meterNumber}</div>` : ""}
-        <div class="meter-value">${reading} ${unit}</div>
+        <div class="${valueClass}" style="${isNotRead ? 'color: #d97706; font-style: italic; font-size: 0.9em;' : ''}">${displayValue} ${displayUnit}</div>
       </div>
     </div>
   `;
@@ -48,7 +54,8 @@ function generateRoomHTML(
     condition: ItemCondition | null;
     notes?: string;
     photos?: string[];
-  }>
+  }>,
+  roomPhotos?: string[]
 ): string {
   const conditionCounts = {
     bon: 0,
@@ -79,36 +86,49 @@ function generateRoomHTML(
 
   const itemsHTML = items
     .map((item) => {
-      const conditionClass = item.condition || "";
-      const conditionLabel = item.condition
-        ? CONDITION_LABELS[item.condition]
-        : "Non évalué";
-
-      let html = `
-        <div class="item-row">
-          <span class="item-name">${item.item_name}</span>
-          <span class="item-condition ${conditionClass}">${conditionLabel}</span>
-        </div>
-      `;
-
-      if (item.notes) {
-        html += `<div class="item-notes">📝 ${item.notes}</div>`;
-      }
-
+      const conditionLabel = item.condition ? CONDITION_LABELS[item.condition] : "Non évalué";
+      const conditionClass = item.condition || "none";
+      
+      let itemPhotosHTML = "";
       if (item.photos && item.photos.length > 0) {
-        html += `
+        itemPhotosHTML = `
           <div class="photos-grid">
-            ${item.photos
-              .slice(0, 4)
-              .map((url) => `<div class="photo-thumb"><img src="${url}" alt="Photo" /></div>`)
-              .join("")}
+            ${item.photos.slice(0, 4).map(url => `
+              <div class="photo-thumb">
+                <img src="${url}" alt="Photo ${item.item_name}" />
+              </div>
+            `).join('')}
           </div>
         `;
       }
 
-      return html;
+      return `
+        <div class="item-container" style="border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; margin-bottom: 4px;">
+          <div class="item-row" style="display: flex; align-items: center; padding: 4px 12px; border-bottom: none;">
+            <span class="item-name" style="flex: 1; font-weight: 500; color: #374151; font-size: 9pt;">${item.item_name}</span>
+            <span class="item-condition ${conditionClass}" style="padding: 2px 10px; border-radius: 20px; font-size: 8.5pt; font-weight: 600; text-align: center; min-width: 90px;">
+              ${conditionLabel}
+            </span>
+          </div>
+          ${item.notes ? `<div class="item-notes" style="width: calc(100% - 24px); padding: 4px 10px; background: #fffbeb; border-left: 3px solid #f59e0b; font-size: 8.5pt; font-style: italic; color: #92400e; margin: 2px 12px 4px 12px;">${item.notes}</div>` : ""}
+          ${itemPhotosHTML}
+        </div>
+      `;
     })
     .join("");
+
+  let roomPhotosHTML = "";
+  if (roomPhotos && roomPhotos.length > 0) {
+    roomPhotosHTML = `
+      <div class="section-subtitle" style="padding: 6px 15px; font-weight: bold; color: #475569; font-size: 8.5pt;">📸 Photos de la pièce</div>
+      <div class="photos-grid">
+        ${roomPhotos
+          .slice(0, 8)
+          .map((url) => `<div class="photo-thumb"><img src="${url}" alt="Photo pièce" /></div>`)
+          .join("")}
+      </div>
+    `;
+  }
 
   return `
     <div class="room-section">
@@ -119,6 +139,7 @@ function generateRoomHTML(
       <div class="room-items">
         ${itemsHTML}
       </div>
+      ${roomPhotosHTML}
     </div>
   `;
 }
@@ -217,22 +238,25 @@ function generateEmptyRoomsHTML(rooms: string[]): string {
  */
 export function mapEDLToTemplateVariables(edl: EDLComplet): EDLTemplateVariables {
   // Comptage des états
-  let nbBon = 0,
+  let nbNeuf = 0,
+    nbBon = 0,
     nbMoyen = 0,
     nbMauvais = 0,
     nbTresMauvais = 0;
 
   edl.pieces.forEach((piece) => {
     piece.items.forEach((item) => {
-      if (item.condition === "bon") nbBon++;
+      if (item.condition === "neuf") nbNeuf++;
+      else if (item.condition === "bon") nbBon++;
       else if (item.condition === "moyen") nbMoyen++;
       else if (item.condition === "mauvais") nbMauvais++;
       else if (item.condition === "tres_mauvais") nbTresMauvais++;
     });
   });
 
-  const totalElements = nbBon + nbMoyen + nbMauvais + nbTresMauvais;
-  const pourcentageBon = totalElements > 0 ? Math.round((nbBon / totalElements) * 100) : 0;
+  const totalElements = nbNeuf + nbBon + nbMoyen + nbMauvais + nbTresMauvais;
+  // Neuf + Bon sont considérés comme "bon état" pour le pourcentage global
+  const pourcentageBon = totalElements > 0 ? Math.round(((nbNeuf + nbBon) / totalElements) * 100) : 0;
 
   // Générer HTML des compteurs
   const compteursHTML = edl.compteurs
@@ -241,15 +265,15 @@ export function mapEDLToTemplateVariables(edl: EDLComplet): EDLTemplateVariables
 
   // Générer HTML des pièces
   const piecesHTML = edl.pieces
-    .map((piece) => generateRoomHTML(piece.nom, piece.items))
+    .map((piece) => generateRoomHTML(piece.nom, piece.items, (piece as any).photos))
     .join("");
 
   // Générer HTML des clés
   const clesHTML = edl.cles_remises ? generateKeysHTML(edl.cles_remises) : "";
 
   // Signatures (supporte les rôles en anglais et français)
-  const signatureBailleur = edl.signatures.find((s) => s.signer_type === "proprietaire" || s.signer_type === "owner");
-  const signatureLocataire = edl.signatures.find((s) => s.signer_type === "locataire" || s.signer_type === "tenant");
+  const signatureBailleur = edl.signatures.find((s) => ["proprietaire", "owner", "propriétaire"].includes(s.signer_type));
+  const signatureLocataire = edl.signatures.find((s) => ["locataire", "tenant"].includes(s.signer_type));
 
   // Nom complet des locataires
   const locatairesNomComplet = edl.locataires
@@ -385,6 +409,7 @@ export function mapEDLToTemplateVariables(edl: EDLComplet): EDLTemplateVariables
 
     // Résumé
     RESUME_ETAT: pourcentageBon >= 80 ? "Bon" : pourcentageBon >= 50 ? "Moyen" : "Mauvais",
+    NB_ELEMENTS_NEUF: nbNeuf,
     NB_ELEMENTS_BON: nbBon,
     NB_ELEMENTS_MOYEN: nbMoyen,
     NB_ELEMENTS_MAUVAIS: nbMauvais,

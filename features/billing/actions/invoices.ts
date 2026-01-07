@@ -88,7 +88,7 @@ export async function createInvoiceAction(formData: z.infer<typeof createInvoice
 
   // 5. Revalidation du cache Next.js
   revalidatePath("/owner/money");
-  revalidatePath(`/owner/contracts/${lease_id}`);
+  revalidatePath(`/owner/leases/${lease_id}`);
 
   return { success: true, invoice };
 }

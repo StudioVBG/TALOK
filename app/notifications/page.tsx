@@ -104,7 +104,7 @@ export default function NotificationsPage() {
             message: "Le bail du 45 avenue des Champs se termine dans 30 jours.",
             created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
             read: true,
-            link: "/owner/contracts",
+            link: "/owner/leases",
           },
           {
             id: "5",

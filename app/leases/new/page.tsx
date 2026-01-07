@@ -29,7 +29,7 @@ function NewLeasePageContent() {
     if (propertyId) {
       router.push(`/owner/properties/${propertyId}`);
     } else {
-      router.push("/owner/contracts");
+      router.push("/owner/leases");
     }
   };
 

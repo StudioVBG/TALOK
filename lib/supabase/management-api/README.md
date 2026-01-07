@@ -8,7 +8,7 @@ Client TypeScript pour interagir avec l'API Management de Supabase.
 
 1. Allez sur [https://app.supabase.com/account/tokens](https://app.supabase.com/account/tokens)
 2. Cliquez sur "Generate new token"
-3. Donnez un nom à votre token (ex: "Gestion Locative - Management API")
+3. Donnez un nom à votre token (ex: "Talok - Management API")
 4. Copiez le token généré (il ne sera affiché qu'une seule fois)
 
 ### 2. Ajouter le token aux variables d'environnement

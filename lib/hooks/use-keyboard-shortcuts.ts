@@ -129,7 +129,7 @@ export function useOwnerShortcuts() {
     {
       key: "c",
       modifiers: { meta: true },
-      action: () => router.push("/owner/contracts"),
+      action: () => router.push("/owner/leases"),
       description: "Voir mes contrats",
     },
     {
