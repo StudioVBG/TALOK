@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServerClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import type { CreateSignatureRequestDTO, SignatureRequest } from "@/lib/yousign/types";
+import type { CreateSignatureRequestDTO, SignatureRequest } from "@/lib/signatures/types";
 
 // Schema de validation
 const createRequestSchema = z.object({
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         ordered_signers: validated.ordered_signers,
         reminder_interval_days: validated.reminder_interval_days,
         deadline: validated.deadline,
-        status: validated.validation_required ? "pending_validation" : "draft",
+        status: "draft",
       })
       .select()
       .single();

@@ -1,11 +1,14 @@
 /**
- * Design System Utilities - SOTA 2025
+ * Design System Utilities - SOTA 2026
  * Fonctions utilitaires pour le design system
+ *
+ * Les fonctions de formatage de base sont réexportées depuis @/lib/helpers/format
+ * pour éviter les duplications
  */
 
-import { 
-  invoiceStatusStyles, 
-  leaseStatusStyles, 
+import {
+  invoiceStatusStyles,
+  leaseStatusStyles,
   ticketStatusStyles,
   priorityStyles,
   type InvoiceStatus,
@@ -13,6 +16,20 @@ import {
   type TicketStatus,
   type PriorityVariant,
 } from './tokens';
+
+// ============================================================================
+// RE-EXPORT DES FONCTIONS DE FORMATAGE COMMUNES
+// ============================================================================
+export {
+  formatCurrency,
+  formatDate,
+  formatDateShort,
+  formatPeriod as formatPeriodShort,
+  formatPhoneNumber,
+  formatFullName,
+  buildAvatarUrl,
+  numberToWords,
+} from '@/lib/helpers/format';
 
 // ============================================================================
 // STATUS LABELS (French)
@@ -48,45 +65,20 @@ export const priorityLabels: Record<PriorityVariant, string> = {
 };
 
 // ============================================================================
-// FORMATTERS
+// FORMATTERS ADDITIONNELS
 // ============================================================================
-
-/**
- * Formate un montant en euros
- */
-export function formatCurrency(amount: number | null | undefined): string {
-  if (amount === null || amount === undefined) return '0 €';
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
-/**
- * Formate une date courte
- */
-export function formatDateShort(date: string | Date | null | undefined): string {
-  if (!date) return '-';
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(date));
-}
 
 /**
  * Formate une date relative (il y a X jours)
  */
 export function formatRelativeDate(date: string | Date | null | undefined): string {
   if (!date) return '-';
-  
+
   const now = new Date();
   const target = new Date(date);
   const diffTime = now.getTime() - target.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays === 0) return "Aujourd'hui";
   if (diffDays === 1) return 'Hier';
   if (diffDays < 7) return `Il y a ${diffDays} jours`;
@@ -100,10 +92,10 @@ export function formatRelativeDate(date: string | Date | null | undefined): stri
  */
 export function formatPeriod(period: string | null | undefined): string {
   if (!period) return '-';
-  
+
   const [year, month] = period.split('-');
   const date = new Date(parseInt(year), parseInt(month) - 1);
-  
+
   return new Intl.DateTimeFormat('fr-FR', {
     month: 'long',
     year: 'numeric',

@@ -107,6 +107,35 @@
   }
 }
 
+/* ============================================
+   SAFE AREA SUPPORT (SOTA 2026)
+   Support pour iPhone notch, Dynamic Island, etc.
+   ============================================ */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Fixed bottom navigation safe area */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Fixed top header safe area */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Full safe area inset */
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+  }
+}
+
 @layer utilities {
   /* Scrollbar masquée mais fonctionnelle (clean look) */
   .no-scrollbar::-webkit-scrollbar {

@@ -438,7 +438,7 @@ function MobileBottomNav({ role, navigation, isCurrent }: MobileBottomNavProps) 
   return (
     <>
       <div className="h-16 lg:hidden" /> {/* Spacer */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t lg:hidden safe-area-bottom">
         <div className="flex items-center justify-around h-16 px-2">
           {bottomItems.map((item) => {
             const isActive = isCurrent(item.href);
