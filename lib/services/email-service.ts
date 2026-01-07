@@ -656,6 +656,75 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
 </html>
     `,
   },
+
+  // Demande de signature (système interne TALOK)
+  signature_request: {
+    id: "signature_request",
+    subject: "Signature requise : {{document_name}}",
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f1f5f9;">
+  <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); padding: 32px; text-align: center;">
+      <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">
+        ✍️ Signature requise
+      </h1>
+    </div>
+
+    <!-- Content -->
+    <div style="padding: 32px;">
+      <p style="font-size: 16px; color: #334155; margin: 0 0 24px 0;">
+        Bonjour {{signer_name}},
+      </p>
+
+      <p style="font-size: 16px; color: #334155; margin: 0 0 24px 0;">
+        <strong>{{sender_name}}</strong> vous invite à signer le document suivant :
+      </p>
+
+      <!-- Document Card -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 24px 0;">
+        <p style="margin: 0; font-weight: 600; color: #1e293b; font-size: 18px;">
+          📄 {{document_name}}
+        </p>
+        {{#if deadline_text}}
+        <p style="margin: 8px 0 0 0; color: #64748b; font-size: 14px;">
+          ⏰ À signer {{deadline_text}}
+        </p>
+        {{/if}}
+      </div>
+
+      <!-- CTA Button -->
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="{{signature_url}}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
+          ✍️ Signer le document
+        </a>
+      </div>
+
+      <p style="font-size: 14px; color: #94a3b8; text-align: center; margin: 0;">
+        Ce lien est personnel et sécurisé.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748b;">
+        🔒 Signature électronique sécurisée
+      </p>
+      <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+        © {{year}} Talok - Votre solution de gestion immobilière
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    `,
+  },
 };
 
 // ============================================
@@ -842,6 +911,31 @@ export async function sendLeaseSignatureEmail(
   });
 }
 
+/**
+ * Envoie un email de demande de signature (système interne TALOK)
+ */
+export async function sendSignatureRequestEmail(params: {
+  to: string;
+  signerName: string;
+  documentName: string;
+  senderName: string;
+  signatureUrl: string;
+  deadline?: string;
+}): Promise<EmailResult> {
+  const deadlineText = params.deadline
+    ? `avant le ${new Date(params.deadline).toLocaleDateString("fr-FR")}`
+    : "";
+
+  return sendTemplateEmail("signature_request", params.to, {
+    signer_name: params.signerName,
+    document_name: params.documentName,
+    sender_name: params.senderName,
+    signature_url: params.signatureUrl,
+    deadline_text: deadlineText,
+    year: new Date().getFullYear().toString(),
+  });
+}
+
 export default {
   sendEmail,
   sendTemplateEmail,
@@ -851,6 +945,7 @@ export default {
   sendPaymentReceivedEmail,
   sendLeaseInviteEmail,
   sendLeaseSignatureEmail,
+  sendSignatureRequestEmail,
   EMAIL_TEMPLATES,
 };
 
