@@ -79,8 +79,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Generate session ID
     const sessionId = crypto.randomUUID();
 
-    // TODO: Integrate with eIDAS provider (Yousign, DocuSign)
-    // For now, create internal signature session
+    // Création de la session de signature interne TALOK
 
     // Create signature records for each signer
     for (const signer of signers) {

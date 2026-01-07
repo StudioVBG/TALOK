@@ -107,9 +107,6 @@ const providerFields: Record<string, { key: string; label: string; type: string;
     { key: "account_sid", label: "Account SID", type: "text", placeholder: "ACxxxxxxxxxx", required: true },
     { key: "phone_number", label: "Numéro d'envoi", type: "text", placeholder: "+33600000000" },
   ],
-  Yousign: [
-    { key: "api_key", label: "Clé API Yousign", type: "password", placeholder: "xxxxxxxxxx", required: true },
-  ],
   Veriff: [
     { key: "api_key", label: "Clé API Veriff", type: "password", placeholder: "xxxxxxxxxx", required: true },
     { key: "api_secret", label: "Secret API", type: "password", placeholder: "xxxxxxxxxx", required: true },

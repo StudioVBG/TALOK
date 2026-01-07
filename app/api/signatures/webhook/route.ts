@@ -6,14 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 /**
- * POST /api/signatures/webhook - Handler pour les webhooks des providers de signature (Yousign/DocuSign)
+ * POST /api/signatures/webhook - Handler pour les webhooks du système de signature interne
  */
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const body = await request.json();
     const eventType = body.type || body.event_type;
-    const signature = request.headers.get("x-signature") || request.headers.get("yousign-signature");
+    const signature = request.headers.get("x-signature") || request.headers.get("x-talok-signature");
 
     // Vérifier la signature du webhook (à implémenter selon le provider)
     // const isValid = verifyWebhookSignature(body, signature);
