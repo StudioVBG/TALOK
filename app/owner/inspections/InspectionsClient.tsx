@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, ClipboardList, Search, CheckCircle2, Clock, Eye, FileText, Printer, Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, ClipboardList, Search, CheckCircle2, Clock, Eye, FileText, Printer, Trash2, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +62,38 @@ export function InspectionsClient({ inspections }: Props) {
   const [typeFilter, setTypeFilter] = useState("all");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [edlToDelete, setEdlToDelete] = useState<Inspection | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Synchroniser les statuts EDL/Bail
+  const handleSyncStatuses = async () => {
+    try {
+      setIsSyncing(true);
+      const response = await fetch("/api/admin/sync-edl-lease-status", {
+        method: "POST",
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de la synchronisation");
+      }
+      
+      toast({
+        title: "Synchronisation réussie",
+        description: data.message || `${data.edlsUpdated} EDL(s) mis à jour, ${data.leasesActivated} bail(s) activé(s)`,
+      });
+      
+      router.refresh();
+    } catch (error: any) {
+      toast({
+        title: "Erreur de synchronisation",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -202,6 +234,17 @@ export function InspectionsClient({ inspections }: Props) {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Bouton de synchronisation */}
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleSyncStatuses}
+              disabled={isSyncing}
+              className="shadow hover:shadow-md transition-all duration-300"
+              title="Synchroniser les statuts"
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            </Button>
             {/* Template à imprimer - disponible pour tous */}
             <Button variant="outline" asChild className="shadow hover:shadow-md transition-all duration-300">
               <Link href="/owner/inspections/template">

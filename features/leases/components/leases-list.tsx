@@ -83,7 +83,7 @@ export function LeasesList({ propertyId, showPropertyFilter = false }: LeasesLis
       <div className="text-center py-12">
         <p className="text-muted-foreground mb-4">Aucun bail enregistré.</p>
         {!propertyId && (profile?.role === "owner" || profile?.role === "admin") && (
-          <Link href="/owner/contracts/new">
+          <Link href="/owner/leases/new">
             <Button>Créer un bail</Button>
           </Link>
         )}
@@ -96,7 +96,7 @@ export function LeasesList({ propertyId, showPropertyFilter = false }: LeasesLis
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Mes baux ({leases.length})</h2>
         {!propertyId && (profile?.role === "owner" || profile?.role === "admin") && (
-          <Link href="/owner/contracts/new">
+          <Link href="/owner/leases/new">
             <Button>Créer un bail</Button>
           </Link>
         )}

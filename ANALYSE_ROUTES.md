@@ -1,4 +1,4 @@
-# 📊 Analyse Complète des Routes - Gestion Locative
+# 📊 Analyse Complète des Routes - Talok
 
 ## 🔑 Rôles Identifiés
 1. **OWNER** (Propriétaire) - `/owner/*`
@@ -21,9 +21,9 @@
 | `/owner/properties/[id]` | Détail d'un bien | `fetchPropertyDetails()` | ✅ CORRIGÉ |
 | `/owner/properties/[id]/edit` | Édition d'un bien | `PATCH /api/properties/[id]` | ✅ OK |
 | `/owner/properties/new` | Créer un bien | `POST /api/properties/init` | ✅ OK |
-| `/owner/contracts` | Liste des baux | `GET /api/leases` | ⚠️ À vérifier |
-| `/owner/contracts/[id]` | Détail d'un bail | `GET /api/leases/[id]` | ⚠️ À vérifier |
-| `/owner/contracts/new` | Créer un bail | `POST /api/leases` | ⚠️ À vérifier |
+| `/owner/leases` | Liste des baux | `GET /api/leases` | ⚠️ À vérifier |
+| `/owner/leases/[id]` | Détail d'un bail | `GET /api/leases/[id]` | ⚠️ À vérifier |
+| `/owner/leases/new` | Créer un bail | `POST /api/leases` | ⚠️ À vérifier |
 | `/owner/tenants` | Liste des locataires | Direct Supabase | ⚠️ À vérifier |
 | `/owner/tickets` | Liste des tickets | `GET /api/tickets` | ⚠️ RLS Issue |
 | `/owner/tickets/[id]` | Détail ticket | `GET /api/tickets/[id]` | ❌ 403 Error |

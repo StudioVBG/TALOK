@@ -67,7 +67,7 @@ export async function sendPushNotification(
     const webPush = await import("web-push");
 
     webPush.setVapidDetails(
-      "mailto:support@gestionlocative.fr",
+      "mailto:support@talok.fr",
       VAPID_PUBLIC_KEY,
       VAPID_PRIVATE_KEY
     );

@@ -93,17 +93,18 @@ async function handleSignatureCompleted(supabase: any, signatureId: string, prov
   const allSigned = allSigners?.every((s: any) => s.signature_status === "signed");
 
   if (allSigned) {
-    // Activer le bail
+    // ✅ SOTA 2026: Passer à "fully_signed" - activation après EDL via /activate
     await supabase
       .from("leases")
-      .update({ statut: "active" } as any)
+      .update({ statut: "fully_signed" } as any)
       .eq("id", signature.lease_id);
 
-    // Émettre des événements
+    // Émettre des événements - NOTA: Bail fully_signed, pas encore activé
     await supabase.from("outbox").insert({
-      event_type: "Lease.Activated",
+      event_type: "Lease.FullySigned",
       payload: {
         lease_id: signature.lease_id,
+        next_step: "edl_entree_required",
       },
     } as any);
   }

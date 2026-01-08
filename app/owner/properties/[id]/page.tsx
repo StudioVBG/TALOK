@@ -30,12 +30,12 @@ export async function generateMetadata(
 
   if (!property) {
     return {
-      title: "Bien non trouvé | Gestion Locative",
+      title: "Bien non trouvé | Talok",
     };
   }
 
   return {
-    title: `${property.adresse_complete} | Gestion Locative`,
+    title: `${property.adresse_complete} | Talok`,
     description: `${property.type} de ${property.surface}m² avec ${property.nb_pieces} pièce(s) à ${property.ville}`,
   };
 }

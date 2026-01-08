@@ -201,7 +201,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href={`/owner/contracts/${tenant.lease_id}`}>
+                    <Link href={`/owner/leases/${tenant.lease_id}`}>
                       <FileText className="h-4 w-4 mr-2" />
                       Voir le bail
                     </Link>
@@ -382,7 +382,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
             description="Vos locataires apparaîtront ici une fois qu'un bail sera signé."
             action={{
               label: "Créer un bail",
-              href: "/owner/contracts/new",
+              href: "/owner/leases/new",
             }}
           />
         </div>

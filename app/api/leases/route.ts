@@ -412,7 +412,83 @@ export async function POST(request: Request) {
       console.warn("[POST /api/leases] Exception signataire (non bloquant):", signerErr);
     }
 
-    console.log("[POST /api/leases] Bail créé:", leaseResult.id);
+    // ✅ FIX: Ajouter un signataire locataire (soit avec profile existant, soit placeholder)
+    try {
+      const tenantEmail = body.tenant_email as string | undefined;
+      const tenantName = body.tenant_name as string | undefined;
+      const tenantProfileId = body.tenant_profile_id as string | undefined;
+      
+      let tenantSignerData: Record<string, unknown>;
+      
+      if (tenantProfileId) {
+        // Cas 1: Le locataire a déjà un profil
+        tenantSignerData = {
+          lease_id: leaseResult.id,
+          profile_id: tenantProfileId,
+          role: "locataire_principal",
+          signature_status: "pending",
+        };
+        console.log("[POST /api/leases] Locataire ajouté via profile_id:", tenantProfileId);
+      } else if (tenantEmail && tenantEmail !== "") {
+        // Cas 2: On a un email - chercher si un profil existe via auth.users
+        const { data: authData } = await serviceClient.auth.admin.listUsers();
+        const existingUser = authData?.users?.find(u => u.email?.toLowerCase() === tenantEmail.toLowerCase());
+        
+        let existingProfileId: string | null = null;
+        if (existingUser) {
+          const { data: profile } = await serviceClient
+            .from("profiles")
+            .select("id")
+            .eq("user_id", existingUser.id)
+            .maybeSingle();
+          if (profile) existingProfileId = profile.id;
+        }
+        
+        if (existingProfileId) {
+          tenantSignerData = {
+            lease_id: leaseResult.id,
+            profile_id: existingProfileId,
+            role: "locataire_principal",
+            signature_status: "pending",
+          };
+          console.log("[POST /api/leases] Locataire trouvé par email:", tenantEmail);
+        } else {
+          // Créer un signataire invité
+          tenantSignerData = {
+            lease_id: leaseResult.id,
+            profile_id: null,
+            invited_email: tenantEmail,
+            invited_name: tenantName || tenantEmail.split("@")[0],
+            role: "locataire_principal",
+            signature_status: "pending",
+          };
+          console.log("[POST /api/leases] Locataire invité créé:", tenantEmail);
+        }
+      } else {
+        // Cas 3: Pas d'info locataire - créer un placeholder
+        tenantSignerData = {
+          lease_id: leaseResult.id,
+          profile_id: null,
+          invited_email: "locataire@a-definir.com",
+          invited_name: "Locataire à définir",
+          role: "locataire_principal",
+          signature_status: "pending",
+        };
+        console.log("[POST /api/leases] Locataire placeholder créé");
+      }
+      
+      const { error: tenantSignerError } = await serviceClient
+        .from("lease_signers")
+        .insert(tenantSignerData);
+      
+      if (tenantSignerError) {
+        console.warn("[POST /api/leases] Erreur ajout signataire locataire:", tenantSignerError);
+      }
+    } catch (tenantErr) {
+      console.warn("[POST /api/leases] Exception signataire locataire (non bloquant):", tenantErr);
+    }
+
+    console.log("[POST /api/leases] Bail créé avec signataires:", leaseResult.id);
 
     return NextResponse.json(lease, { status: 201 });
   } catch (error: unknown) {

@@ -183,7 +183,7 @@ export async function confirmSepaSetupIntent(
           type: "online",
           online: {
             ip_address: "127.0.0.1", // À remplacer par l'IP réelle
-            user_agent: "GestionLocative/1.0",
+            user_agent: "Talok/1.0",
           },
         },
       },

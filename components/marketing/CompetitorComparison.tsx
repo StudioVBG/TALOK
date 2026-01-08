@@ -4,7 +4,7 @@
  * CompetitorComparison - Tableau comparatif vs concurrence
  * 
  * Composant standalone réutilisable pour afficher la comparaison
- * GestLoc vs les principaux concurrents du marché français
+ * Talok vs les principaux concurrents du marché français
  * 
  * Basé sur le benchmark de 15 concurrents (Rentila, Smovin, Hektor, etc.)
  */
@@ -47,7 +47,7 @@ interface ComparisonFeature {
   name: string;
   description?: string;
   category: string;
-  gestloc: boolean | string;
+  talok: boolean | string;
   competitors: Record<string, boolean | string>;
   isHighlight?: boolean;
 }
@@ -98,7 +98,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "Open Banking",
     description: "Synchronisation bancaire automatique, rapprochement loyers/paiements",
     category: "💰 Finance",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: false, smovin: false, hektor: false, ublo: true },
     isHighlight: true,
   },
@@ -107,7 +107,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "Scoring IA Locataire",
     description: "Analyse automatique dossiers, score solvabilité, détection fraude",
     category: "🤖 Innovation",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: false, smovin: false, hektor: false, ublo: false },
     isHighlight: true,
   },
@@ -116,7 +116,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "Support DROM",
     description: "Martinique, Guadeloupe, Réunion, Guyane, Mayotte - IRL spécifiques",
     category: "🌍 Couverture",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: false, smovin: false, hektor: false, ublo: false },
     isHighlight: true,
   },
@@ -125,7 +125,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "Portail Locataire",
     description: "Dashboard personnalisé, tickets, chat, paiement en ligne",
     category: "👤 Expérience",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: false, smovin: "basic", hektor: true, ublo: true },
     isHighlight: true,
   },
@@ -135,7 +135,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "E-signature intégrée",
     description: "Signature électronique légale des baux et documents",
     category: "📄 Documents",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: false, smovin: true, hektor: true, ublo: true },
   },
   {
@@ -143,7 +143,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "EDL numériques",
     description: "États des lieux avec photos, annotations, comparatif entrée/sortie",
     category: "📄 Documents",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: false, smovin: "basic", hektor: true, ublo: true },
   },
   {
@@ -151,7 +151,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "Channel Manager",
     description: "Sync Airbnb, Booking, Abritel pour locations saisonnières",
     category: "🏨 Saisonnier",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: false, smovin: false, hektor: "basic", ublo: "basic" },
   },
   {
@@ -159,7 +159,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "API ouverte",
     description: "Intégration avec outils tiers, automatisations",
     category: "🔧 Technique",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: false, smovin: false, hektor: "basic", ublo: true },
   },
   {
@@ -167,7 +167,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "White Label",
     description: "Personnalisation avec votre marque, domaine personnalisé",
     category: "🎨 Branding",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: false, smovin: false, hektor: false, ublo: true },
   },
   {
@@ -175,7 +175,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "Gestion Colocation",
     description: "Caution solidaire, turnover, baux multi-locataires",
     category: "🏠 Gestion",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: true, smovin: true, hektor: true, ublo: true },
   },
   {
@@ -183,7 +183,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "Relances automatiques",
     description: "Email et SMS pour les loyers impayés",
     category: "⚡ Automatisation",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: "basic", smovin: true, hektor: true, ublo: true },
   },
   {
@@ -191,7 +191,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     name: "Multi-utilisateurs",
     description: "Gestion d'équipe avec rôles et permissions",
     category: "👥 Collaboration",
-    gestloc: true,
+    talok: true,
     competitors: { rentila: false, smovin: "basic", hektor: true, ublo: true },
   },
 ];
@@ -199,13 +199,13 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
 // Calcul des scores
 function calculateScore(competitor: string): number {
   return COMPARISON_FEATURES.filter(f => {
-    const value = competitor === "gestloc" ? f.gestloc : f.competitors[competitor];
+    const value = competitor === "talok" ? f.talok : f.competitors[competitor];
     return value === true;
   }).length;
 }
 
 const SCORES = {
-  gestloc: calculateScore("gestloc"),
+  talok: calculateScore("talok"),
   rentila: calculateScore("rentila"),
   smovin: calculateScore("smovin"),
   hektor: calculateScore("hektor"),
@@ -218,22 +218,22 @@ const SCORES = {
 
 function FeatureCell({ 
   value, 
-  isGestLoc = false 
+  isTalok = false 
 }: { 
   value: boolean | string; 
-  isGestLoc?: boolean;
+  isTalok?: boolean;
 }) {
   if (value === true) {
     return (
       <div className={cn(
         "inline-flex items-center justify-center w-8 h-8 rounded-full transition-transform",
-        isGestLoc 
+        isTalok 
           ? "bg-emerald-500/20 scale-110" 
           : "bg-slate-700/50"
       )}>
         <Check className={cn(
           "w-5 h-5",
-          isGestLoc ? "text-emerald-400" : "text-green-500"
+          isTalok ? "text-emerald-400" : "text-green-500"
         )} />
       </div>
     );
@@ -347,7 +347,7 @@ export function CompetitorComparison({
             Analyse de 15 concurrents
           </Badge>
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
-            GestLoc vs <span className="text-slate-400">la concurrence</span>
+            Talok vs <span className="text-slate-400">la concurrence</span>
           </h2>
           <p className="text-slate-400 max-w-2xl mx-auto text-sm md:text-base">
             Comparaison objective avec Rentila, Smovin, Hektor, Ublo et autres acteurs du marché français.
@@ -364,8 +364,8 @@ export function CompetitorComparison({
           className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8"
         >
           <ScoreCard 
-            name="GestLoc" 
-            score={SCORES.gestloc} 
+            name="Talok" 
+            score={SCORES.talok} 
             maxScore={maxScore}
             isHighlighted 
             price="À partir de 19€"
@@ -399,7 +399,7 @@ export function CompetitorComparison({
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-emerald-400 font-bold flex items-center gap-1">
                     <Sparkles className="w-4 h-4" />
-                    GestLoc
+                    Talok
                   </span>
                 </div>
               </th>
@@ -452,7 +452,7 @@ export function CompetitorComparison({
                   </div>
                 </td>
                 <td className="p-4 text-center">
-                  <FeatureCell value={feature.gestloc} isGestLoc />
+                  <FeatureCell value={feature.talok} isTalok />
                 </td>
                 {COMPETITORS.map((comp) => (
                   <td key={comp.id} className="p-4 text-center">

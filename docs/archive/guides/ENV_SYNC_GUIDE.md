@@ -55,7 +55,7 @@ SUPABASE_SERVICE_ROLE_KEY=PLACEHOLDER_TOKEN
    - Connectez-vous
 
 2. **Sélectionnez votre projet**
-   - Cliquez sur "Gestion Locative" (ou votre projet)
+   - Cliquez sur "Talok" (ou votre projet)
 
 3. **Accédez aux variables d'environnement**
    - Cliquez sur **Settings** (en haut)

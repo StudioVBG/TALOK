@@ -1,4 +1,4 @@
-# 📊 Rapport d'Architecture Global - Gestion Locative
+# 📊 Rapport d'Architecture Global - Talok
 
 **Date:** 2025-02-19  
 **Version:** 1.0  

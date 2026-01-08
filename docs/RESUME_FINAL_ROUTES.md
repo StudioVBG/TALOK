@@ -32,8 +32,8 @@
 2. `app/owner/properties/OwnerPropertiesClient.tsx` - Utilisation des helpers
 3. `app/owner/properties/[id]/OwnerPropertyDetailClient.tsx` - Utilisation des helpers
 4. `app/owner/properties/[id]/page.tsx` - Routes corrigées
-5. `app/owner/contracts/OwnerContractsClient.tsx` - Utilisation des helpers
-6. `app/owner/contracts/[id]/OwnerContractDetailClient.tsx` - Utilisation des helpers
+5. `app/owner/leases/OwnerContractsClient.tsx` - Utilisation des helpers
+6. `app/owner/leases/[id]/OwnerContractDetailClient.tsx` - Utilisation des helpers
 7. `app/owner/money/OwnerMoneyClient.tsx` - Utilisation des helpers
 8. `app/owner/documents/OwnerDocumentsClient.tsx` - Utilisation des helpers
 9. `app/owner/documents/upload/page.tsx` - Utilisation des helpers
@@ -87,7 +87,7 @@ ownerSupportRoutes.withProperty(propertyId)
 ### Routes principales ✅
 - `/owner/dashboard`
 - `/owner/properties` + `/new` + `/[id]` + `/[id]/edit`
-- `/owner/contracts` + `/[id]`
+- `/owner/leases` + `/[id]`
 - `/owner/money`
 - `/owner/documents` + `/upload`
 - `/owner/support`

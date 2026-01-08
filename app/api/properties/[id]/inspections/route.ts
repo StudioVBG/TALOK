@@ -23,7 +23,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { type, scheduled_at, lease_id, notes } = body;
+    const { type, scheduled_at, lease_id, notes, keys } = body;
 
     if (!type || !["entree", "sortie"].includes(type)) {
       return NextResponse.json(
@@ -96,6 +96,7 @@ export async function POST(
         scheduled_at: scheduled_at,
         status: "scheduled",
         general_notes: notes,
+        keys: keys || [],
         created_by: user.id,
       } as any)
       .select()

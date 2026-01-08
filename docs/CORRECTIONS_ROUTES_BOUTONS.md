@@ -32,8 +32,8 @@
 - ✅ `/owner/properties/new` (utilise PropertyWizardV3)
 - ✅ `/owner/properties/[id]`
 - ✅ `/owner/properties/[id]/edit`
-- ✅ `/owner/contracts`
-- ✅ `/owner/contracts/[id]`
+- ✅ `/owner/leases`
+- ✅ `/owner/leases/[id]`
 - ✅ `/owner/money`
 - ✅ `/owner/documents`
 - ✅ `/owner/documents/upload` (NOUVELLE PAGE)
@@ -57,20 +57,20 @@
 - ✅ "Ajouter un bien" → `/owner/properties/new`
 - ✅ "Voir la fiche" → `/owner/properties/[id]`
 - ✅ "Créer un bail" → `/leases/new?propertyId=...` ou `/leases/new?property_id=...`
-- ✅ "Voir le bail" → `/owner/contracts/[id]`
-- ✅ "Voir les baux" → `/owner/contracts?property_id=...`
+- ✅ "Voir le bail" → `/owner/leases/[id]`
+- ✅ "Voir les baux" → `/owner/leases?property_id=...`
 - ✅ "Voir les loyers" → `/owner/money?property_id=...`
 - ✅ "Voir les documents" → `/owner/documents?property_id=...`
 
 ### Contracts
 - ✅ "Créer un bail" → `/leases/new`
-- ✅ "Voir" → `/owner/contracts/[id]`
+- ✅ "Voir" → `/owner/leases/[id]`
 - ✅ "Voir les loyers" → `/owner/money?lease_id=...`
 - ✅ "Voir les documents" → `/owner/documents?lease_id=...`
 
 ### Money
 - ✅ "Marquer payé" → `/invoices/[id]`
-- ✅ "Voir mes baux" → `/owner/contracts`
+- ✅ "Voir mes baux" → `/owner/leases`
 
 ### Documents
 - ✅ "Téléverser un document" → `/owner/documents/upload`

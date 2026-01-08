@@ -157,7 +157,7 @@ export default function RoleChoicePage() {
         <div className="mx-auto max-w-3xl space-y-4 text-center">
           <Badge className="bg-white/10 text-white backdrop-blur">Étape 1 / 3 – Sélectionnez votre expérience</Badge>
           <div className="flex items-center justify-center gap-3">
-            <h1 className="text-4xl font-semibold tracking-tight">Bienvenue sur Gestion Locative 👋</h1>
+            <h1 className="text-4xl font-semibold tracking-tight">Bienvenue sur Talok 👋</h1>
             <Sparkles className="h-6 w-6 text-indigo-200" />
           </div>
           <p className="text-lg text-slate-200">
@@ -317,8 +317,8 @@ export default function RoleChoicePage() {
               </div>
             </div>
             <div className="mt-4 flex flex-col gap-3 text-sm">
-              <a href="mailto:support@gestion-locative.app" className="flex items-center justify-between hover:underline">
-                support@gestion-locative.app
+              <a href="mailto:support@talok.fr" className="flex items-center justify-between hover:underline">
+                support@talok.fr
                 <ArrowRight className="h-4 w-4" />
               </a>
               <a href="https://calendly.com/" target="_blank" className="flex items-center justify-between hover:underline">

@@ -47,7 +47,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Récupérer le profil de l'utilisateur
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, role, prenom, nom, telephone, email")
+      .select("id, role, prenom, nom, telephone, email, date_naissance")
       .eq("user_id", user.id)
       .single();
 
@@ -139,7 +139,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Récupérer les infos du propriétaire
     const { data: ownerProfileData } = await serviceClient
       .from("profiles")
-      .select("id, prenom, nom, telephone, email")
+      .select("id, prenom, nom, telephone, email, date_naissance")
       .eq("id", property.owner_id)
       .single();
 
@@ -221,6 +221,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       bailleur: {
         nom: isOwnerSociete ? ownerProfile.raison_sociale : (ownerProfileData?.nom || ""),
         prenom: isOwnerSociete ? "" : (ownerProfileData?.prenom || ""),
+        date_naissance: isOwnerSociete ? undefined : ownerProfileData?.date_naissance,
         adresse: ownerAddress || `${property?.adresse_complete}, ${property?.code_postal} ${property?.ville}`,
         code_postal: "",
         ville: "",

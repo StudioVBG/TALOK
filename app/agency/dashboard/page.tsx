@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Dashboard Agence | Gestion Locative",
+  title: "Dashboard Agence | Talok",
   description: "Tableau de bord de votre agence immobilière",
 };
 

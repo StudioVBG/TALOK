@@ -58,7 +58,7 @@ Le lexique fourni par l'utilisateur est donc la **référence canonique** à uti
 | `Lease` / `lease` | ✅ **TOUS** les fichiers de code | Bail (entité métier) | ✅ `Lease` | ✅ **GARDER** |
 | `bail` / `baux` | UI uniquement (textes) | Bail (affichage FR) | ✅ `Lease` (code) | ✅ **GARDER en UI** |
 | `type_bail` | DB, validations | Type de bail (champ DB) | ⚠️ `type_bail` (DB) | ✅ **GARDER** (nom DB) |
-| `Contract` / `contract` | Routes Next.js (`/owner/contracts/`) | Route pour baux | ⚠️ `contracts` (route) | ⚠️ **À DÉCIDER** |
+| `Contract` / `contract` | Routes Next.js (`/owner/leases/`) | Route pour baux | ⚠️ `contracts` (route) | ⚠️ **À DÉCIDER** |
 
 ---
 
@@ -92,24 +92,24 @@ Le code respecte **100%** les conventions :
 #### **Route `/contracts` → `/leases`** (Suggestion uniquement)
 
 **Contexte** :
-- Route actuelle : `/owner/contracts/`
+- Route actuelle : `/owner/leases/`
 - Lexique canonique : `Lease` = Bail
 - Incohérence : Route utilise `contracts` au lieu de `leases`
 
 **Note** : Cette suggestion n'est **PAS** appliquée conformément aux règles strictes du projet.
 
 #### **Contexte**
-- Route actuelle : `/owner/contracts/`
+- Route actuelle : `/owner/leases/`
 - Lexique canonique : `Lease` = Bail
 - Incohérence : Route utilise `contracts` au lieu de `leases`
 
 **⚠️ NOTE** : Cette suggestion n'est **PAS** appliquée conformément aux règles strictes du projet.
 
 **Si cette suggestion est validée explicitement**, les fichiers suivants seraient concernés :
-- `app/owner/contracts/page.tsx` → `app/owner/leases/page.tsx`
-- `app/owner/contracts/ContractsPageClient.tsx` → `app/owner/leases/LeasesPageClient.tsx`
-- `app/owner/contracts/[id]/page.tsx` → `app/owner/leases/[id]/page.tsx`
-- `app/owner/contracts/[id]/ContractDetailPageClient.tsx` → `app/owner/leases/[id]/LeaseDetailPageClient.tsx`
+- `app/owner/leases/page.tsx` → `app/owner/leases/page.tsx`
+- `app/owner/leases/ContractsPageClient.tsx` → `app/owner/leases/LeasesPageClient.tsx`
+- `app/owner/leases/[id]/page.tsx` → `app/owner/leases/[id]/page.tsx`
+- `app/owner/leases/[id]/ContractDetailPageClient.tsx` → `app/owner/leases/[id]/LeaseDetailPageClient.tsx`
 - ~10-15 fichiers avec liens à mettre à jour
 - 2 fichiers de redirection à créer
 

@@ -1,5 +1,5 @@
 /**
- * Types pour l'Assistant IA de Gestion Locative
+ * Types pour l'Assistant IA de Talok
  * SOTA Décembre 2025 - GPT-5.1 + LangGraph
  */
 

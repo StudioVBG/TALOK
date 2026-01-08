@@ -1,4 +1,4 @@
-# ✅ Checklist de Déploiement Netlify - Gestion Locative
+# ✅ Checklist de Déploiement Netlify - Talok
 
 ## 🎯 Résumé des Fonctionnalités
 - [x] Next.js 14 App Router

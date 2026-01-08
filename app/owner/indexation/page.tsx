@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { IndexationList } from "./IndexationList";
 
 export const metadata = {
-  title: "Révisions de loyer (IRL) | Gestion Locative",
+  title: "Révisions de loyer (IRL) | Talok",
   description: "Gérez les révisions annuelles de loyer selon l'IRL",
 };
 

@@ -104,7 +104,7 @@ export function SignatureAlertBanner({ className, dismissible = true }: Signatur
               {signatures.slice(0, 3).map((sig) => (
                 <Link
                   key={sig.id}
-                  href={`/owner/contracts/${sig.lease_id}`}
+                  href={`/owner/leases/${sig.lease_id}`}
                   className="group flex items-center justify-between p-3 bg-white/80 backdrop-blur rounded-xl border border-orange-100 hover:border-orange-300 hover:shadow-md transition-all duration-200"
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -131,7 +131,7 @@ export function SignatureAlertBanner({ className, dismissible = true }: Signatur
               
               {signatures.length > 3 && (
                 <Link
-                  href="/owner/contracts?filter=pending_signature"
+                  href="/owner/leases?filter=pending_signature"
                   className="block text-center py-2 text-sm font-medium text-orange-600 hover:text-orange-700"
                 >
                   Voir les {signatures.length - 3} autre(s) →

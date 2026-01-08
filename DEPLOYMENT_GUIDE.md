@@ -1,4 +1,4 @@
-# 🚀 Guide de Déploiement Netlify - Gestion Locative
+# 🚀 Guide de Déploiement Netlify - Talok
 
 ## 📋 Prérequis
 

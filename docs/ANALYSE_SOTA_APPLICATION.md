@@ -1,4 +1,4 @@
-# 🔬 Analyse SOTA de l'Application de Gestion Locative
+# 🔬 Analyse SOTA de l'Application de Talok
 
 ## Basée sur la Documentation GPT-5.1 - Décembre 2025
 

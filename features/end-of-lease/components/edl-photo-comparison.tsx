@@ -28,7 +28,7 @@ export interface ComparisonPhoto {
   taken_at: string;
   room_name?: string;
   item_name?: string;
-  condition?: "bon" | "moyen" | "mauvais" | "tres_mauvais";
+  condition?: "neuf" | "bon" | "moyen" | "mauvais" | "tres_mauvais";
 }
 
 interface EDLPhotoComparisonProps {

@@ -24,10 +24,29 @@ export function mapLeaseToTemplate(
 ): Partial<BailComplet> {
   const { lease, property, signers } = details;
 
-  // Trouver les signataires
-  const mainTenant = signers?.find((s: any) => s.role === "locataire_principal");
-  const ownerSigner = signers?.find((s: any) => s.role === "proprietaire");
-  const guarantor = signers?.find((s: any) => s.role === "garant");
+  // Trier les signataires pour mettre ceux qui ont signé en premier (le plus "réel")
+  const sortedSigners = (signers || []).sort((a: any, b: any) => {
+    if (a.signature_status === 'signed' && b.signature_status !== 'signed') return -1;
+    if (a.signature_status !== 'signed' && b.signature_status === 'signed') return 1;
+    // Priorité à ceux qui ont un profil lié
+    if (a.profile_id && !b.profile_id) return -1;
+    if (!a.profile_id && b.profile_id) return 1;
+    return 0;
+  });
+
+  // Trouver les signataires - ✅ FIX: Plus résilient sur les rôles
+  const mainTenant = sortedSigners.find((s: any) => {
+    const role = s.role?.toLowerCase() || "";
+    return role.includes("locataire") || role.includes("tenant") || role === "principal";
+  });
+  const ownerSigner = sortedSigners.find((s: any) => {
+    const role = s.role?.toLowerCase() || "";
+    return role.includes("proprietaire") || role.includes("owner") || role === "bailleur";
+  });
+  const guarantor = sortedSigners.find((s: any) => {
+    const role = s.role?.toLowerCase() || "";
+    return role.includes("garant") || role.includes("caution");
+  });
 
   // S'assurer que surface > 0, sinon undefined pour afficher les pointillés
   // On utilise any car property peut ne pas avoir toutes les propriétés typées dans LeaseDetails
@@ -53,10 +72,15 @@ export function mapLeaseToTemplate(
     }
   };
 
-  // ✅ LIRE depuis le BIEN (source unique)
-  const loyer = propAny?.loyer_hc ?? propAny?.loyer_base ?? lease.loyer ?? 0;
-  const charges = propAny?.charges_mensuelles ?? lease.charges_forfaitaires ?? 0;
-  const depotGarantie = getMaxDepotLegal(lease.type_bail, loyer);
+  // ✅ LIRE depuis le BAIL en priorité (données saisies par l'utilisateur), puis fallback sur BIEN
+  const loyer = lease.loyer ?? propAny?.loyer_hc ?? propAny?.loyer_base ?? 0;
+  const charges = lease.charges_forfaitaires ?? propAny?.charges_mensuelles ?? 0;
+  
+  // ✅ CORRECTION SOTA 2026: Utiliser le dépôt saisi, sinon calculer le max légal
+  const depotSaisi = (lease as any).depot_de_garantie;
+  const depotGarantie = (depotSaisi && depotSaisi > 0) 
+    ? depotSaisi 
+    : getMaxDepotLegal(lease.type_bail, loyer);
 
   // Calcul de la durée par défaut selon le type de bail
   // ✅ FIX: Prend en compte le type de bailleur (société = 6 ans pour bail nu)
@@ -131,9 +155,13 @@ export function mapLeaseToTemplate(
     },
 
     locataires: mainTenant ? [{
-      nom: mainTenant.profile?.nom || "[NOM LOCATAIRE]",
-      prenom: mainTenant.profile?.prenom || "[PRÉNOM]",
-      email: mainTenant.profile?.email || "",
+      // ✅ FIX: Priorité aux données du profil, puis invited_name, puis extraction depuis l'email
+      nom: mainTenant.profile?.nom || 
+           (mainTenant.invited_name ? mainTenant.invited_name.split(' ').slice(1).join(' ') || mainTenant.invited_name : "") ||
+           (mainTenant.invited_email && !mainTenant.invited_email.includes('@a-definir') ? mainTenant.invited_email.split('@')[0] : "[NOM LOCATAIRE]"),
+      prenom: mainTenant.profile?.prenom || 
+              (mainTenant.invited_name ? mainTenant.invited_name.split(' ')[0] : ""),
+      email: mainTenant.profile?.email || mainTenant.invited_email || "",
       telephone: mainTenant.profile?.telephone || "",
       date_naissance: mainTenant.profile?.date_naissance || "",
       lieu_naissance: mainTenant.profile?.lieu_naissance || "",
@@ -269,5 +297,9 @@ export function mapLeaseToTemplate(
         image: guarantor?.signature_image || null,
       } : null,
     },
+    
+    // ✅ SOTA 2026: Transmettre les signers bruts pour le template service
+    // Nécessaire pour que les images de signature s'affichent dans le PDF
+    signers: sortedSigners,
   };
 }

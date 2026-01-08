@@ -100,7 +100,7 @@ export default function AgencyLayout({ children }: AgencyLayoutProps) {
                     Espace Agence
                   </h1>
                   <p className="text-xs text-muted-foreground">
-                    Gestion locative pro
+                    Talok Pro
                   </p>
                 </div>
               </div>

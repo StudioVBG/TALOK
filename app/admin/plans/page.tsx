@@ -1078,7 +1078,7 @@ function EmailPreviewDialog({
             
             <p className="text-sm">
               Cordialement,<br />
-              L'équipe GestLoc
+              L'équipe Talok
             </p>
           </div>
           
@@ -1088,7 +1088,7 @@ function EmailPreviewDialog({
               Conformément à l'article L121-84 du Code de la consommation, vous disposez d'un droit 
               de résiliation sans frais en cas de modification des conditions contractuelles.
             </p>
-            <p className="mt-2">© 2025 GestLoc - Tous droits réservés</p>
+            <p className="mt-2">© 2025 Talok - Tous droits réservés</p>
           </div>
         </div>
         

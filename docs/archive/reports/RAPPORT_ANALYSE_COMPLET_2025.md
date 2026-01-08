@@ -1,4 +1,4 @@
-# 📊 RAPPORT D'ANALYSE COMPLET — Application Gestion Locative
+# 📊 RAPPORT D'ANALYSE COMPLET — Application Talok
 
 **Date**: 27 Novembre 2025  
 **Version**: v1.0 MVP  

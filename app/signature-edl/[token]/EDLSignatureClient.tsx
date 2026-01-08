@@ -1,7 +1,7 @@
 "use client";
 // @ts-nocheck
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,8 +49,8 @@ export default function EDLSignatureClient({
   const [html, setHtml] = useState<string>("");
   const [loadingPreview, setLoadingPreview] = useState(true);
 
-  // Charger l'aperçu HTML
-  useState(() => {
+  // Charger l'aperçu HTML - ✅ FIX: useEffect au lieu de useState
+  useEffect(() => {
     async function loadPreview() {
       try {
         const response = await fetch(`/api/signature/edl/${token}/preview`, {
@@ -65,7 +65,7 @@ export default function EDLSignatureClient({
       }
     }
     loadPreview();
-  }, []);
+  }, [token]);
 
   const handleSign = async (signatureData: SignatureData) => {
     setIsSigning(true);

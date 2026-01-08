@@ -1,4 +1,4 @@
-# 🎯 Plan de Refactor - Gestion Locative
+# 🎯 Plan de Refactor - Talok
 
 ## 📊 Diagnostic Global
 

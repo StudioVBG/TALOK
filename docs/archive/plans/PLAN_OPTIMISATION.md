@@ -1,4 +1,4 @@
-# 🎯 Plan d'Optimisation - Gestion Locative
+# 🎯 Plan d'Optimisation - Talok
 
 **Date** : 19 novembre 2025  
 **Statut** : Analyse complète des améliorations nécessaires

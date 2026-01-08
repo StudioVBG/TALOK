@@ -119,7 +119,7 @@ export function WhyChooseUs({ className, variant = "full" }: WhyChooseUsProps) {
           </h2>
           <p className="text-slate-400 max-w-2xl mx-auto">
             Après analyse de 15 concurrents (Rentila, Smovin, Hektor...), 
-            GestLoc se distingue par 4 fonctionnalités uniques.
+            Talok se distingue par 4 fonctionnalités uniques.
           </p>
         </motion.div>
 

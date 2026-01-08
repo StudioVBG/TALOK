@@ -285,7 +285,7 @@ export async function sendOTPSMS(
     expiryMinutes?: number;
   }
 ): Promise<SMSResult> {
-  const appName = options?.appName || "Gestion Locative";
+  const appName = options?.appName || "Talok";
   const expiry = options?.expiryMinutes || 10;
   
   const message = `${appName}: Votre code de vérification est ${code}. Valable ${expiry} minutes. Ne le partagez avec personne.`;

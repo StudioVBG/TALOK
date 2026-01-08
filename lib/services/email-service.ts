@@ -55,7 +55,7 @@ export interface EmailTemplate {
 const config = {
   provider: (process.env.EMAIL_PROVIDER as EmailProvider) || "resend",
   apiKey: process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || "",
-  from: process.env.EMAIL_FROM || "Gestion Locative <noreply@gestion-locative.app>",
+  from: process.env.EMAIL_FROM || "Talok <noreply@talok.fr>",
   replyTo: process.env.EMAIL_REPLY_TO,
   // Forcer l'envoi même en dev si cette variable est définie
   forceSend: process.env.EMAIL_FORCE_SEND === "true",
@@ -115,9 +115,9 @@ async function sendViaResend(options: EmailOptions): Promise<EmailResult> {
       if (fromAddress.includes("@gmail.com") || fromAddress.includes("@hotmail.com") || fromAddress.includes("@yahoo.com")) {
         console.warn("[Email] ⚠️ Adresse d'expédition non autorisée:", fromAddress);
         console.warn("[Email] ⚠️ Utilisation de onboarding@resend.dev (limité à l'email du propriétaire du compte)");
-        fromAddress = "Gestion Locative <onboarding@resend.dev>";
+        fromAddress = "Talok <onboarding@resend.dev>";
       } else {
-        fromAddress = `Gestion Locative <${fromAddress}>`;
+        fromAddress = `Talok <${fromAddress}>`;
       }
     }
     
@@ -308,7 +308,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
   // Bienvenue
   welcome: {
     id: "welcome",
-    subject: "Bienvenue sur Gestion Locative, {{name}} !",
+    subject: "Bienvenue sur Talok, {{name}} !",
     html: `
 <!DOCTYPE html>
 <html>
@@ -320,7 +320,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
   </div>
   <div class="content">
     <p>Bonjour {{name}},</p>
-    <p>Nous sommes ravis de vous accueillir sur <strong>Gestion Locative</strong> !</p>
+    <p>Nous sommes ravis de vous accueillir sur <strong>Talok</strong> !</p>
     <p>Votre compte a été créé avec succès. Vous pouvez maintenant :</p>
     <ul>
       <li>Ajouter vos biens immobiliers</li>
@@ -334,7 +334,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
     <p>Si vous avez des questions, notre équipe est là pour vous aider.</p>
   </div>
   <div class="footer">
-    <p>© {{year}} Gestion Locative. Tous droits réservés.</p>
+    <p>© {{year}} Talok. Tous droits réservés.</p>
   </div>
 </div>
 </body>
@@ -371,7 +371,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
     </p>
   </div>
   <div class="footer">
-    <p>© {{year}} Gestion Locative. Tous droits réservés.</p>
+    <p>© {{year}} Talok. Tous droits réservés.</p>
   </div>
 </div>
 </body>
@@ -412,7 +412,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
     </p>
   </div>
   <div class="footer">
-    <p>© {{year}} Gestion Locative. Tous droits réservés.</p>
+    <p>© {{year}} Talok. Tous droits réservés.</p>
   </div>
 </div>
 </body>
@@ -449,7 +449,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
     </p>
   </div>
   <div class="footer">
-    <p>© {{year}} Gestion Locative. Tous droits réservés.</p>
+    <p>© {{year}} Talok. Tous droits réservés.</p>
   </div>
 </div>
 </body>
@@ -488,7 +488,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
     </p>
   </div>
   <div class="footer">
-    <p>© {{year}} Gestion Locative. Tous droits réservés.</p>
+    <p>© {{year}} Talok. Tous droits réservés.</p>
   </div>
 </div>
 </body>
@@ -527,7 +527,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
     </p>
   </div>
   <div class="footer">
-    <p>© {{year}} Gestion Locative. Tous droits réservés.</p>
+    <p>© {{year}} Talok. Tous droits réservés.</p>
   </div>
 </div>
 </body>
@@ -648,7 +648,7 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
         🔒 Signature électronique sécurisée
       </p>
       <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-        © {{year}} Gestion Locative - Votre solution de gestion immobilière
+        © {{year}} Talok - Votre solution de gestion immobilière
       </p>
     </div>
   </div>

@@ -4,6 +4,7 @@ import { useTenantData } from "../_data/TenantDataProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
+import { useState, useEffect } from "react";
 import { 
   FileText, 
   Home, 
@@ -12,25 +13,36 @@ import {
   FileSignature, 
   MapPin, 
   Maximize, 
+  Maximize2,
   Layers, 
   ShieldCheck, 
   Euro,
   Info,
   Calendar,
-  Phone, 
-  Mail, 
-  Zap, 
+  Phone,
+  Mail,
+  Zap,
   Droplet,
   Flame,
-  CheckCircle2, 
+  CheckCircle2,
   ChevronRight,
   ClipboardCheck,
   Building2,
   Key,
   Gauge,
   Activity,
-  ArrowUpRight
+  ArrowUpRight,
+  AlertCircle,
+  FolderOpen,
+  FileSearch,
+  Download,
+  ShieldAlert,
+  Search,
+  Loader2,
+  CalendarOff,
+  DoorOpen
 } from "lucide-react";
+import { TenantNoticeWizard } from "@/features/tenant/components/TenantNoticeWizard";
 import { DocumentDownloadButton } from "@/components/documents/DocumentDownloadButton";
 import { LeasePreview } from "@/components/documents/LeasePreview";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -38,7 +50,6 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
 
 const LEASE_TYPE_LABELS: Record<string, string> = {
   nu: "Location nue",
@@ -54,9 +65,27 @@ const METER_ICONS: Record<string, any> = {
 };
 
 export default function TenantLeasePage() {
-  const { dashboard } = useTenantData();
+  const { dashboard, refetch } = useTenantData();
   const [activeTab, setActiveTab] = useState("contract");
+  const [docs, setDocs] = useState<{
+    diagnostics: any[];
+    contractual: any[];
+    others: any[];
+  } | null>(null);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [showNoticeWizard, setShowNoticeWizard] = useState(false);
   
+  useEffect(() => {
+    if (dashboard?.lease?.id) {
+      setLoadingDocs(true);
+      fetch(`/api/tenant/lease/${dashboard.lease.id}/documents`)
+        .then(res => res.json())
+        .then(data => setDocs(data))
+        .catch(err => console.error("Error fetching docs:", err))
+        .finally(() => setLoadingDocs(false));
+    }
+  }, [dashboard?.lease?.id]);
+
   if (!dashboard) return null;
   const { lease, property } = dashboard;
 
@@ -101,8 +130,8 @@ export default function TenantLeasePage() {
           <div className="flex flex-wrap gap-3">
             <Tabs defaultValue="contract" onValueChange={setActiveTab} className="bg-slate-100 p-1 rounded-xl border border-slate-200">
               <TabsList className="bg-transparent border-none">
-                <TabsTrigger value="contract" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold">Contrat</TabsTrigger>
-                <TabsTrigger value="passport" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold">Fiche Technique</TabsTrigger>
+                <TabsTrigger value="contract" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold">📜 Contrat</TabsTrigger>
+                <TabsTrigger value="passport" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold">🛠️ Vie Pratique</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -172,13 +201,14 @@ export default function TenantLeasePage() {
                         </h3>
                       </div>
                       <div className="space-y-3">
-                        <DocumentDownloadButton 
-                          type="lease" 
-                          leaseId={lease.id} 
-                          label="Bail de location (Original)" 
-                          className="w-full h-12 justify-between px-4 rounded-xl border-slate-200 hover:bg-slate-50 font-bold"
-                        />
-                        {isFullySigned && (
+                        {!isFullySigned ? (
+                          <DocumentDownloadButton 
+                            type="lease" 
+                            leaseId={lease.id} 
+                            label="Bail de location (Original)" 
+                            className="w-full h-12 justify-between px-4 rounded-xl border-slate-200 hover:bg-slate-50 font-bold"
+                          />
+                        ) : (
                           <DocumentDownloadButton 
                             type="lease" 
                             leaseId={lease.id} 
@@ -187,8 +217,153 @@ export default function TenantLeasePage() {
                             className="w-full h-12 justify-between px-4 bg-slate-900 hover:bg-black text-white rounded-xl shadow-lg font-bold"
                             label="Bail Signé & Certifié"
                           />
-          )}
-        </div>
+                        )}
+                      </div>
+                    </GlassCard>
+                  </motion.div>
+
+                  {/* NOUVEAU : Checklist de Conformité */}
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                    <GlassCard className="p-6 border-slate-200 bg-white shadow-lg space-y-6">
+                      <div className="flex items-center justify-between border-b pb-4">
+                        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                          <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                          Conformité du Bail
+                        </h3>
+                        <Badge className={cn(
+                          "font-black uppercase tracking-tighter",
+                          isFullySigned ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                        )}>
+                          {isFullySigned ? "Validé" : "En cours"}
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <CheckItem label="Contrat de bail signé" status={isFullySigned ? 'success' : 'pending'} />
+                        <CheckItem label="Dossier Diagnostics (DDT)" status={docs?.diagnostics && docs.diagnostics.length > 0 ? 'success' : 'pending'} />
+                        <CheckItem label="Attestation d'assurance" status={dashboard.insurance?.has_insurance ? 'success' : 'pending'} />
+                        <CheckItem label="État des lieux d'entrée" status={lease.statut === 'active' ? 'success' : 'pending'} />
+                      </div>
+                    </GlassCard>
+                  </motion.div>
+
+                  {/* Section Donner Congé - Visible uniquement si bail actif */}
+                  {lease.statut === 'active' && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                      <GlassCard className="p-6 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-lg space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-amber-100 rounded-xl">
+                              <DoorOpen className="h-5 w-5 text-amber-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-slate-900">Quitter le logement</h3>
+                              <p className="text-xs text-slate-500">Donner congé à votre propriétaire</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm text-slate-600">
+                          Vous souhaitez mettre fin à votre bail ? Donnez congé en respectant le préavis légal 
+                          de <strong>{lease.type_bail === 'nu' ? '3 mois' : '1 mois'}</strong>.
+                        </p>
+
+                        <Button 
+                          variant="outline" 
+                          className="w-full border-amber-300 text-amber-700 hover:bg-amber-100 hover:text-amber-800 font-bold"
+                          onClick={() => setShowNoticeWizard(true)}
+                        >
+                          <CalendarOff className="h-4 w-4 mr-2" />
+                          Donner congé
+                        </Button>
+                      </GlassCard>
+                    </motion.div>
+                  )}
+
+                  {/* Congé en cours */}
+                  {lease.statut === 'notice_given' && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                      <GlassCard className="p-6 border-orange-300 bg-gradient-to-br from-orange-50 to-red-50 shadow-lg space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-orange-100 rounded-xl">
+                            <CalendarOff className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-900">Congé en cours</h3>
+                            <p className="text-xs text-slate-500">Votre préavis est en cours</p>
+                          </div>
+                        </div>
+                        
+                        <div className="p-4 bg-white/80 rounded-xl border border-orange-200">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-600">Fin du bail prévue</span>
+                            <span className="font-bold text-orange-700">
+                              {lease.date_fin ? formatDateShort(lease.date_fin) : '—'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-slate-500">
+                          Pensez à préparer l'état des lieux de sortie et à organiser la remise des clés.
+                        </p>
+                      </GlassCard>
+                    </motion.div>
+                  )}
+
+                  {/* NOUVEAU : Annexes & Diagnostics */}
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                    <GlassCard className="p-0 border-slate-200 bg-white shadow-lg overflow-hidden">
+                      <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                          <FolderOpen className="h-5 w-5 text-indigo-600" />
+                          Annexes & Diagnostics
+                        </h3>
+                        {loadingDocs && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+                      </div>
+                      <div className="divide-y divide-slate-50">
+                        {docs?.diagnostics.map((doc: any) => (
+                          <div key={doc.id} className="p-4 hover:bg-slate-50/50 transition-colors flex items-center justify-between group">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-amber-50 rounded-lg group-hover:bg-amber-100 transition-colors">
+                                <Gauge className="h-4 w-4 text-amber-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-900">{doc.title || doc.type}</p>
+                                <p className="text-[10px] text-slate-400 font-medium">Diagnostic Technique</p>
+                              </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-8 text-indigo-600 font-bold" asChild>
+                              <a href={`/api/documents/view?path=${doc.storage_path}`} target="_blank">
+                                <Maximize2 className="h-4 w-4 mr-1" /> Voir
+                              </a>
+                            </Button>
+                          </div>
+                        ))}
+                        {docs?.contractual.filter((d: any) => !d.type?.toLowerCase().includes("bail")).map((doc: any) => (
+                          <div key={doc.id} className="p-4 hover:bg-slate-50/50 transition-colors flex items-center justify-between group">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+                                <FileText className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-900">{doc.title || doc.type}</p>
+                                <p className="text-[10px] text-slate-400 font-medium capitalize">{doc.type}</p>
+                              </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-8 text-indigo-600 font-bold" asChild>
+                              <a href={`/api/documents/view?path=${doc.storage_path}`} target="_blank">
+                                <Maximize2 className="h-4 w-4 mr-1" /> Voir
+                              </a>
+                            </Button>
+                          </div>
+                        ))}
+                        {(!docs || (docs.diagnostics.length === 0 && docs.contractual.length === 0)) && !loadingDocs && (
+                          <div className="p-8 text-center">
+                            <FileSearch className="h-8 w-8 text-slate-200 mx-auto mb-2" />
+                            <p className="text-sm text-slate-400 font-medium">Aucune annexe répertoriée.</p>
+                          </div>
+                        )}
+                      </div>
                     </GlassCard>
                   </motion.div>
       </div>
@@ -217,8 +392,8 @@ export default function TenantLeasePage() {
                           <Building2 className="h-6 w-6 text-indigo-600" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-bold text-slate-900">Identité</h3>
-                          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Référence Logement</p>
+                          <h3 className="text-xl font-bold text-slate-900">Le Logement</h3>
+                          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Identité Technique</p>
                         </div>
                       </div>
 
@@ -248,21 +423,6 @@ export default function TenantLeasePage() {
                           <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
                             <p className="text-[10px] font-bold text-slate-400 uppercase">Ascenseur</p>
                             <p className="font-bold text-slate-900">{property?.ascenseur ? "Oui" : "Non"}</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 pt-4 border-t border-slate-100">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-500">Année construction</span>
-                            <span className="font-bold text-slate-900">{property?.annee_construction || "—"}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-500">Lot n°</span>
-                            <span className="font-bold text-slate-900">{property?.num_lot || "—"}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-500">Parking</span>
-                            <span className="font-bold text-slate-900">{property?.parking_numero || "Sans"}</span>
                           </div>
                         </div>
                       </div>
@@ -306,9 +466,9 @@ export default function TenantLeasePage() {
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
                     <div className="flex items-center justify-between mb-4 px-2">
                       <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <Gauge className="h-5 w-5 text-indigo-600" /> Relevés Techniques (Meters)
+                        <Gauge className="h-5 w-5 text-indigo-600" /> Relevés de Compteurs
                       </h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Source : EDL d'entrée</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Source : États des lieux</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {property?.meters && property.meters.length > 0 ? (
@@ -324,8 +484,8 @@ export default function TenantLeasePage() {
                                   <div>
                                     <p className="font-bold text-slate-900 capitalize">{m.type}</p>
                                     <p className="text-[10px] text-slate-400 font-mono">N° {m.serial_number}</p>
-              </div>
-            </div>
+                                  </div>
+                                </div>
                                 <Activity className="h-4 w-4 text-emerald-500 animate-pulse" />
                               </div>
                               <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex justify-between items-end">
@@ -334,12 +494,12 @@ export default function TenantLeasePage() {
                                   <p className="text-2xl font-black text-indigo-600">{m.last_reading_value || "—"}</p>
                                 </div>
                                 <span className="text-xs font-bold text-indigo-400">{m.unit}</span>
-          </div>
+                              </div>
                               {m.last_reading_date && (
                                 <p className="text-[10px] text-slate-400 mt-3 flex items-center gap-1.5 font-medium italic">
                                   <Calendar className="h-3 w-3" /> Relevé certifié le {formatDateShort(m.last_reading_date)}
-            </p>
-          )}
+                                </p>
+                              )}
                             </GlassCard>
                           );
                         })
@@ -438,7 +598,47 @@ export default function TenantLeasePage() {
           </AnimatePresence>
         </Tabs>
 
+        {/* Wizard de congé */}
+        {lease && (
+          <TenantNoticeWizard
+            leaseId={lease.id}
+            open={showNoticeWizard}
+            onOpenChange={setShowNoticeWizard}
+            onSuccess={() => {
+              refetch?.();
+            }}
+          />
+        )}
+
       </div>
     </PageTransition>
+  );
+}
+
+function CheckItem({ label, status }: { label: string, status: 'success' | 'pending' | 'error' }) {
+  return (
+    <div className="flex items-center justify-between group">
+      <div className="flex items-center gap-3">
+        <div className={cn(
+          "p-1.5 rounded-full transition-colors",
+          status === 'success' ? "bg-emerald-100 text-emerald-600" : 
+          status === 'error' ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-300"
+        )}>
+          {status === 'success' ? <CheckCircle2 className="h-4 w-4" /> : 
+           status === 'error' ? <AlertCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+        </div>
+        <span className={cn(
+          "text-sm font-bold transition-colors",
+          status === 'success' ? "text-slate-900" : "text-slate-400"
+        )}>
+          {label}
+        </span>
+      </div>
+      {status === 'success' ? (
+        <Badge variant="ghost" className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0">Conforme</Badge>
+      ) : (
+        <Badge variant="ghost" className="text-[10px] font-black uppercase text-slate-400 bg-slate-50 px-2 py-0">En attente</Badge>
+      )}
+    </div>
   );
 }

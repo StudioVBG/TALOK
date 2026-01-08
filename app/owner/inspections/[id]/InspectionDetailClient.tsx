@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  AlertTriangle,
   FileSignature,
   ChevronDown,
   ChevronRight,
@@ -103,13 +104,18 @@ interface InspectionData {
       };
       signers: Array<{
         role: string;
-        profile: {
+        profile_id?: string | null;
+        signed_at?: string | null;
+        invited_email?: string | null;
+        invited_name?: string | null;
+        profile?: {
           id: string;
           prenom: string;
           nom: string;
           email: string;
-          avatar_url: string;
-        };
+          avatar_url?: string;
+          user_id?: string;
+        } | null;
       }>;
     };
     edl_items: any[];
@@ -117,6 +123,7 @@ interface InspectionData {
     edl_signatures: any[];
   };
   meterReadings: any[];
+  propertyMeters: any[]; // Ajouté
   ownerProfile: any;
   rooms: Room[];
   stats: {
@@ -167,15 +174,18 @@ export function InspectionDetailClient({ data }: Props) {
   const [isDownloading, setIsDownloading] = useState(false);
 
   // Données
-  const { raw: edl, meterReadings, ownerProfile, stats } = data;
+  const { raw: edl, meterReadings, propertyMeters, ownerProfile, stats } = data;
 
   // 1. Adapter les signatures pour le mapper
+  // ✅ SOTA 2026: Utiliser l'URL signée en priorité pour les images de signature
   const adaptedSignatures = (edl.edl_signatures || []).map((s: any) => ({
     id: s.id,
     edl_id: edl.id,
     signer_type: s.signer_role,
     signer_profile_id: s.signer_profile_id || s.signer_user,
-    signature_image: s.signature_image_path,
+    // ✅ FIX: Priorité URL signée > path brut
+    signature_image: s.signature_image_url || s.signature_image_path,
+    signature_image_path: s.signature_image_path, // Garder le path pour référence
     signature_image_url: s.signature_image_url,
     signed_at: s.signed_at,
     ip_address: s.ip_inet,
@@ -184,14 +194,28 @@ export function InspectionDetailClient({ data }: Props) {
     profile: s.profile,
   }));
 
-  // 2. Adapter les relevés de compteurs
-  const adaptedMeterReadings = (meterReadings || []).map((r: any) => ({
+  // 2. Adapter les relevés de compteurs (et inclure les compteurs sans relevé)
+  const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
+  
+  const existingReadings = (meterReadings || []).map((r: any) => ({
     type: r.meter?.type || "electricity",
-    meter_number: r.meter?.meter_number,
+    meter_number: r.meter?.meter_number || r.meter?.serial_number,
     reading: String(r.reading_value),
-    unit: r.reading_unit || "kWh",
+    unit: r.reading_unit || r.meter?.unit || "kWh",
     photo_url: r.photo_path,
   }));
+
+  const missingMeters = (propertyMeters || [])
+    .filter((m: any) => !recordedMeterIds.has(m.id))
+    .map((m: any) => ({
+      type: m.type || "electricity",
+      meter_number: m.meter_number || m.serial_number,
+      reading: "Non relevé", // Valeur explicite pour l'affichage
+      unit: m.unit || "kWh",
+      photo_url: null,
+    }));
+
+  const adaptedMeterReadings = [...existingReadings, ...missingMeters];
 
   // 3. Adapter les médias
   const adaptedMedia = (edl.edl_media || []).map((m: any) => ({
@@ -200,6 +224,7 @@ export function InspectionDetailClient({ data }: Props) {
     item_id: m.item_id,
     file_path: m.storage_path,
     type: m.media_type || "photo",
+    room_name: m.section, // 🔧 Correction: mapper la section pour l'affichage des photos globales
   }));
 
   // 4. Mapper les données pour l'aperçu du document
@@ -210,7 +235,7 @@ export function InspectionDetailClient({ data }: Props) {
     adaptedMedia,
     adaptedMeterReadings,
     adaptedSignatures,
-    []
+    edl.keys || []
   );
 
   // Handlers
@@ -298,13 +323,16 @@ export function InspectionDetailClient({ data }: Props) {
     }
   };
 
-  const handleSendToTenant = async (signerProfileId: string) => {
+  const handleSendToTenant = async (signerProfileId: string | null, invitedEmail?: string) => {
     try {
       setIsSending(true);
       const response = await fetch(`/api/edl/${edl.id}/invite`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signer_profile_id: signerProfileId }),
+        body: JSON.stringify({ 
+          signer_profile_id: signerProfileId || undefined,
+          invited_email: invitedEmail || undefined,
+        }),
       });
 
       if (!response.ok) {
@@ -336,40 +364,82 @@ export function InspectionDetailClient({ data }: Props) {
     ? Math.round((stats.completedItems / stats.totalItems) * 100)
     : 0;
 
-  const ownerSignature = edl.edl_signatures?.find((s: any) => s.signer_role === "owner" || s.signer_role === "proprietaire");
-  const tenantSignature = edl.edl_signatures?.find((s: any) => s.signer_role === "tenant" || s.signer_role === "locataire");
-  
-  // Chercher le locataire principal dans le bail (rôles anglais ET français)
-  const mainTenantFromLease = edl.lease?.signers?.find((s: any) => 
-    s.role === 'tenant' || 
-    s.role === 'principal' || 
-    s.role === 'locataire_principal' || 
-    s.role === 'locataire'
+  // ===============================
+  // ANALYSE DES SIGNATURES ET DONNÉES
+  // ===============================
+  const ownerSignature = edl.edl_signatures?.find((s: any) => 
+    s.signer_role === "owner" || s.signer_role === "proprietaire"
+  );
+  const tenantSignature = edl.edl_signatures?.find((s: any) => 
+    s.signer_role === "tenant" || s.signer_role === "locataire"
   );
   
-  // Priorité: signature EDL > signataire du bail
+  // Chercher le locataire dans le bail
+  const mainTenantFromLease = edl.lease?.signers?.find((s: any) => 
+    ['tenant', 'locataire_principal', 'locataire', 'principal'].includes(s.role)
+  );
+
+  // ===============================
+  // DÉTERMINER L'ÉTAT DU LOCATAIRE
+  // ===============================
+
+  // Cas 1: Le locataire a-t-il un vrai profil lié?
+  const tenantHasRealProfile = !!(
+    mainTenantFromLease?.profile?.id || 
+    mainTenantFromLease?.profile_id ||
+    tenantSignature?.signer_profile_id
+  );
+
+  // Cas 2: Le locataire a-t-il signé le bail?
+  const tenantSignedLease = !!(mainTenantFromLease?.signed_at);
+
+  // Cas 3: L'email est-il un placeholder?
+  const tenantEmail = mainTenantFromLease?.invited_email || 
+                      mainTenantFromLease?.profile?.email ||
+                      tenantSignature?.profile?.email;
+
+  const isPlaceholderEmail = tenantEmail && (
+    tenantEmail.includes('@a-definir') || 
+    tenantEmail.includes('@placeholder') ||
+    tenantEmail === 'locataire@a-definir.com'
+  );
+  
+  // Cas 4: Y a-t-il une erreur de données?
+  const hasDataError = !tenantHasRealProfile && isPlaceholderEmail;
+
+  // Cas 5: Le bail est-il complètement signé par les 2 parties?
+  const leaseFullySigned = !!(ownerSignature?.signed_at && tenantSignedLease && tenantHasRealProfile);
+
+  // Profile ID à utiliser pour l'invitation
   const tenantProfileId = tenantSignature?.signer_profile_id || 
-                          tenantSignature?.signer_user ||
                           mainTenantFromLease?.profile?.id ||
                           mainTenantFromLease?.profile_id;
   
-  const tenantName = tenantSignature?.signer_name 
-    ? tenantSignature.signer_name 
-    : tenantSignature?.profile 
+  // Nom du locataire pour l'affichage
+  const tenantName = tenantSignature?.profile 
       ? `${tenantSignature.profile.prenom || ''} ${tenantSignature.profile.nom || ''}`.trim()
       : mainTenantFromLease?.profile 
         ? `${mainTenantFromLease.profile.prenom || ''} ${mainTenantFromLease.profile.nom || ''}`.trim()
-        : "Locataire";
+      : mainTenantFromLease?.invited_name || 
+        (isPlaceholderEmail ? "Locataire (non défini)" : tenantEmail) || 
+        "Locataire";
 
-  // Debug log pour comprendre les données
-  console.log("[EDL Debug] tenantSignature:", tenantSignature);
-  console.log("[EDL Debug] mainTenantFromLease:", mainTenantFromLease);
-  console.log("[EDL Debug] tenantProfileId:", tenantProfileId);
-  console.log("[EDL Debug] edl.lease?.signers:", edl.lease?.signers);
-
+  // Signatures complètes (avec image)
   const ownerSigned = !!(ownerSignature?.signed_at && (ownerSignature?.signature_image_path || ownerSignature?.signature_image));
   const tenantSigned = !!(tenantSignature?.signed_at && (tenantSignature?.signature_image_path || tenantSignature?.signature_image));
   const actualSignaturesCount = (edl.edl_signatures || []).filter((s: any) => (s.signature_image_path || s.signature_image) && s.signed_at).length;
+
+  // Debug log pour comprendre les données
+  console.log("[EDL Debug]", {
+    tenantHasRealProfile,
+    tenantSignedLease,
+    isPlaceholderEmail,
+    hasDataError,
+    leaseFullySigned,
+    tenantProfileId,
+    tenantEmail,
+    signers: edl.lease?.signers
+  });
 
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col">
@@ -428,10 +498,10 @@ export function InspectionDetailClient({ data }: Props) {
               Imprimer
             </Button>
             
-            {edl.status === "draft" && (
-              <Button variant="outline" size="sm" asChild>
+            {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
+              <Button variant="outline" size="sm" asChild className="bg-white border-slate-200 shadow-sm hover:bg-slate-50">
                 <Link href={`/owner/inspections/${edl.id}/edit`}>
-                  <Edit className="h-4 w-4 mr-2" />
+                  <Edit className="h-4 w-4 mr-2 text-indigo-600" />
                   Modifier
                 </Link>
               </Button>
@@ -517,9 +587,13 @@ export function InspectionDetailClient({ data }: Props) {
                 </div>
 
                 {/* Locataire */}
-                <div className={`p-3 rounded-lg border flex items-center justify-between ${tenantSigned ? "bg-green-50 border-green-200" : "bg-white border-slate-200 shadow-sm"}`}>
+                <div className={`p-3 rounded-lg border flex items-center justify-between ${
+                  tenantSigned ? "bg-green-50 border-green-200" : "bg-white border-slate-200 shadow-sm"
+                }`}>
                   <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${tenantSigned ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"}`}>
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                      tenantSigned ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"
+                    }`}>
                       {tenantSigned ? <CheckCircle2 className="h-4 w-4" /> : <User className="h-4 w-4" />}
                     </div>
                     <div>
@@ -529,19 +603,27 @@ export function InspectionDetailClient({ data }: Props) {
                           ? `Signé le ${new Date(tenantSignature.signed_at).toLocaleDateString()}` 
                           : tenantSignature?.invitation_sent_at 
                             ? `Invitation envoyée le ${new Date(tenantSignature.invitation_sent_at).toLocaleDateString()}` 
-                            : "En attente d'invitation"}
+                            : tenantHasRealProfile 
+                              ? "En attente d'invitation"
+                              : isPlaceholderEmail 
+                                ? "Email à définir"
+                                : "Non invité"}
                       </p>
                     </div>
                   </div>
-                  {!tenantSigned && tenantProfileId && (
+                  
+                  {/* Bouton d'action - Cas: profil réel disponible */}
+                  {!tenantSigned && (
                     <Button 
                       size="sm" 
                       variant="ghost" 
                       className="text-blue-600 h-7 px-2 text-[10px] hover:bg-blue-50"
-                      onClick={() => handleSendToTenant(tenantProfileId)}
-                      disabled={isSending}
+                      onClick={() => handleSendToTenant(tenantProfileId || null, !tenantProfileId ? tenantEmail : undefined)}
+                      disabled={isSending || (isPlaceholderEmail && !tenantProfileId)}
                     >
-                      {isSending ? <Loader2 className="h-3 w-3 animate-spin" /> : (
+                      {isSending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
                         <>
                           <Mail className="h-3 w-3 mr-1" />
                           {tenantSignature?.invitation_sent_at ? "Renvoyer" : "Inviter"}
@@ -550,6 +632,21 @@ export function InspectionDetailClient({ data }: Props) {
                     </Button>
                   )}
                 </div>
+
+                {isPlaceholderEmail && !tenantHasRealProfile && (
+                  <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 mt-2">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
+                      <div className="text-[10px] text-amber-700">
+                        <p className="font-bold">Email non défini</p>
+                        <p>L&apos;email actuel est un placeholder. Vous devez modifier le bail pour inviter le locataire avec son vrai email.</p>
+                        <Link href={`/owner/leases/${edl.lease?.id}/edit`} className="text-blue-600 underline mt-1 block">
+                          Modifier le bail
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <p className="text-[10px] text-slate-500 italic text-center leading-relaxed">
                   L&apos;état des lieux fait partie intégrante du bail. Les deux parties doivent signer pour sceller le document.
@@ -579,6 +676,37 @@ export function InspectionDetailClient({ data }: Props) {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Compteurs du bien */}
+            {(propertyMeters || []).length > 0 && (
+              <Card className="border-none shadow-sm bg-white overflow-hidden">
+                <CardHeader className="pb-2 border-b border-slate-50">
+                  <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <Home className="h-3 w-3 text-slate-400" />
+                    Données techniques
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-3">
+                  {propertyMeters.map((meter: any) => {
+                    const hasReading = recordedMeterIds.has(meter.id);
+                    return (
+                      <div key={meter.id} className="p-2 rounded-lg border border-slate-100 bg-slate-50/50">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-[9px] font-bold uppercase text-slate-500">
+                            {meter.type === 'electricity' ? 'Électricité' : meter.type === 'gas' ? 'Gaz' : 'Eau'}
+                          </span>
+                          <Badge variant={hasReading ? "secondary" : "outline"} className={`text-[8px] h-4 px-1 ${hasReading ? "bg-green-100 text-green-700 border-none" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                            {hasReading ? "Relevé effectué" : "À relever"}
+                          </Badge>
+                        </div>
+                        <p className="text-[11px] font-medium text-slate-900 leading-none">N° {meter.meter_number || meter.serial_number}</p>
+                        {meter.location && <p className="text-[9px] text-muted-foreground mt-1 italic">{meter.location}</p>}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
 
           </div>
         </div>

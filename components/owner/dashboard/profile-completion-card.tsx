@@ -180,7 +180,7 @@ const TASK_CONFIG: Record<string, Omit<CompletionTask, "completed">> = {
     title: "Créer votre premier bail",
     description: "Officialisez la location de votre bien",
     icon: FileText,
-    href: "/owner/contracts/new",
+    href: "/owner/leases/new",
     priority: "medium",
     reward: "+5%",
     category: "property",

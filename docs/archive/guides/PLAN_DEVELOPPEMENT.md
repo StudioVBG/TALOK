@@ -1,4 +1,4 @@
-# 🚀 Plan de Développement - Gestion Locative
+# 🚀 Plan de Développement - Talok
 
 ## ✅ Phase 1 : Infrastructure & Déploiement (TERMINÉE)
 

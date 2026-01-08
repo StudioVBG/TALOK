@@ -235,7 +235,7 @@ export function generatePDFHTML(data: any[], options: ExportOptions): string {
   
   ${includeTimestamp ? `
   <div class="footer">
-    <p>Généré le ${new Date().toLocaleString("fr-FR")} - Gestion Locative</p>
+    <p>Généré le ${new Date().toLocaleString("fr-FR")} - Talok</p>
   </div>
   ` : ""}
 </body>

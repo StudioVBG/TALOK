@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     // Envoyer l'email de test
     const result = await sendEmail({
       to: recipientEmail,
-      subject: "🧪 Test de configuration email - Gestion Locative",
+      subject: "🧪 Test de configuration email - Talok",
       html: `
 <!DOCTYPE html>
 <html>
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     <!-- Footer -->
     <div style="background: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
       <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-        Gestion Locative - Votre solution de gestion immobilière<br>
+        Talok - Votre solution de gestion immobilière<br>
         © ${new Date().getFullYear()} Tous droits réservés
       </p>
     </div>

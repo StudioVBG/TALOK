@@ -39,7 +39,7 @@ Homogénéiser toutes les pages de l'application pour qu'elles utilisent le bon 
 ### Routes Owner Maintenant Disponibles
 - ✅ `/owner/dashboard` - Tableau de bord
 - ✅ `/owner/properties` - Mes biens
-- ✅ `/owner/contracts` - Baux & locataires
+- ✅ `/owner/leases` - Baux & locataires
 - ✅ `/owner/money` - Loyers & revenus
 - ✅ `/owner/documents` - Documents
 - ✅ `/owner/support` - Aide & services

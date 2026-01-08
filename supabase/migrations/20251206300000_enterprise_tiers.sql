@@ -28,7 +28,7 @@ INSERT INTO subscription_plans (
 ) VALUES (
   'gratuit',
   'Gratuit',
-  'Découvrez la gestion locative simplifiée avec 1 bien',
+  'Découvrez Talok et simplifiez la gestion de votre premier bien',
   0, 0,  -- Gratuit
   1, 1, 2, 0.1,  -- 1 bien, 100 Mo
   '{
@@ -575,7 +575,7 @@ BEGIN
       )
       ON CONFLICT (owner_id) DO NOTHING;
       
-      RAISE NOTICE 'Abonnement Gratuit créé pour le propriétaire %', NEW.id;
+      RAISE NOTICE 'Abonnement Talok Gratuit créé pour le propriétaire %', NEW.id;
     END IF;
   END IF;
   

@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
               p_type: "lease_expiring",
               p_title: `Bail expire dans ${check.days} jours`,
               p_message: `Le bail pour ${lease.properties?.adresse_complete} expire le ${lease.date_fin}.`,
-              p_action_url: `/owner/contracts/${lease.id}`,
+              p_action_url: `/owner/leases/${lease.id}`,
               p_priority: check.priority,
               p_metadata: { lease_id: lease.id, days_remaining: check.days },
             });

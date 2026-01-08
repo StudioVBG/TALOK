@@ -79,7 +79,7 @@
 ### Fichiers Modifiés
 1. ✅ `lib/hooks/use-properties.ts` - Logs améliorés
 2. ✅ `app/owner/properties/page.tsx` - Logs améliorés
-3. ✅ `app/owner/contracts/OwnerContractsClient.tsx` - Erreur corrigée
+3. ✅ `app/owner/leases/OwnerContractsClient.tsx` - Erreur corrigée
 
 ### Migrations SQL Appliquées
 1. ✅ `fix_missing_rls_policies_properties` - Policies RLS créées

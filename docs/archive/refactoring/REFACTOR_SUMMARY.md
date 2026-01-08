@@ -1,4 +1,4 @@
-# 📊 Résumé Global du Refactor - Gestion Locative
+# 📊 Résumé Global du Refactor - Talok
 
 ## ✅ Étapes Complétées
 

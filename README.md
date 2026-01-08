@@ -1,4 +1,4 @@
-# 🏠 Gestion Locative
+# 🏠 Talok
 
 Application SaaS de gestion locative pour la France et les DROM.
 

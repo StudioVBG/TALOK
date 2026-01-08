@@ -113,7 +113,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       signers = allSigners;
     }
 
-    // ✅ SYNCHRONISATION : Les données financières viennent du BIEN (source unique)
+    // ✅ SYNCHRONISATION : Les données financières viennent du BIEN (source unique SSOT 2026)
     const getMaxDepotLegal = (typeBail: string, loyerHC: number): number => {
       switch (typeBail) {
         case "nu":
@@ -131,31 +131,49 @@ export async function GET(request: Request, { params }: RouteParams) {
       }
     };
 
-    // ✅ LIRE depuis le BIEN (source unique)
-    const loyer = property.loyer_hc ?? property.loyer_base ?? 0;
-    const charges = property.charges_mensuelles ?? 0;
-    const maxDepot = getMaxDepotLegal(lease.type_bail, loyer);
+    // ✅ SSOT 2026 : Priorité aux données du BIEN si elles existent
+    const loyer = property.loyer_hc ?? property.loyer_base ?? lease.loyer ?? 0;
+    const charges = property.charges_mensuelles ?? lease.charges_forfaitaires ?? 0;
+    const maxDepot = lease.depot_de_garantie ?? getMaxDepotLegal(lease.type_bail, loyer);
+
+    // Vérifier si un EDL d'entrée est signé
+    const { data: edl } = await serviceClient
+      .from("edl")
+      .select("status")
+      .eq("lease_id", leaseId)
+      .eq("type", "entree")
+      .maybeSingle();
+
+    // Vérifier si la première facture est payée
+    const { data: firstInvoice } = await serviceClient
+      .from("invoices")
+      .select("statut")
+      .eq("lease_id", leaseId)
+      .eq("metadata->>type", "initial_invoice")
+      .maybeSingle();
 
     return NextResponse.json({
       lease: {
         id: lease.id,
         type_bail: lease.type_bail,
-        // ✅ Données lues depuis le BIEN
+        // ✅ Données consolidées SSOT
         loyer,
         charges_forfaitaires: charges,
         depot_garantie: maxDepot,
         date_debut: lease.date_debut,
         date_fin: lease.date_fin,
         statut: lease.statut,
+        // Flags pour le tracker UI
+        has_signed_edl: edl?.status === "signed",
+        has_paid_initial: firstInvoice?.statut === "paid",
         // Indice de référence
         indice_reference: lease.indice_reference || "IRL",
-        // Champs additionnels
+        // ... (reste des champs)
         charges_type: lease.charges_type || "forfait",
         mode_paiement: lease.mode_paiement || "virement",
         jour_paiement: lease.jour_paiement || 5,
         revision_autorisee: lease.revision_autorisee ?? true,
         clauses_particulieres: lease.clauses_particulieres || "",
-        // ✅ Propriété complète (source unique des données)
         property: property,
         signers: signers || [],
       },

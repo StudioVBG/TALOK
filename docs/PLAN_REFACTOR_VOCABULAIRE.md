@@ -28,24 +28,24 @@ Le code respecte **100%** les conventions de nommage :
 #### **Option A : Route `/contracts` → `/leases`** (Optionnel)
 
 **Contexte** :
-- Route actuelle : `/owner/contracts/`
+- Route actuelle : `/owner/leases/`
 - Lexique canonique : `Lease` = Bail
 - Incohérence : Route utilise `contracts` au lieu de `leases`
 
 **Fichiers concernés** :
-1. `app/owner/contracts/page.tsx` → Renommer en `app/owner/leases/page.tsx`
-2. `app/owner/contracts/[id]/page.tsx` → Renommer en `app/owner/leases/[id]/page.tsx`
-3. `app/owner/contracts/[id]/ContractDetailPageClient.tsx` → Renommer en `app/owner/leases/[id]/LeaseDetailPageClient.tsx`
-4. `app/owner/contracts/ContractsPageClient.tsx` → Renommer en `app/owner/leases/LeasesPageClient.tsx`
+1. `app/owner/leases/page.tsx` → Renommer en `app/owner/leases/page.tsx`
+2. `app/owner/leases/[id]/page.tsx` → Renommer en `app/owner/leases/[id]/page.tsx`
+3. `app/owner/leases/[id]/ContractDetailPageClient.tsx` → Renommer en `app/owner/leases/[id]/LeaseDetailPageClient.tsx`
+4. `app/owner/leases/ContractsPageClient.tsx` → Renommer en `app/owner/leases/LeasesPageClient.tsx`
 
 **Liens à mettre à jour** :
-- Tous les `href="/owner/contracts"` → `href="/owner/leases"`
-- Tous les `router.push("/owner/contracts")` → `router.push("/owner/leases")`
-- Tous les `revalidatePath("/owner/contracts")` → `revalidatePath("/owner/leases")`
+- Tous les `href="/owner/leases"` → `href="/owner/leases"`
+- Tous les `router.push("/owner/leases")` → `router.push("/owner/leases")`
+- Tous les `revalidatePath("/owner/leases")` → `revalidatePath("/owner/leases")`
 
 **Redirection à créer** :
-- `app/owner/contracts/page.tsx` → Redirection vers `/owner/leases`
-- `app/owner/contracts/[id]/page.tsx` → Redirection vers `/owner/leases/[id]`
+- `app/owner/leases/page.tsx` → Redirection vers `/owner/leases`
+- `app/owner/leases/[id]/page.tsx` → Redirection vers `/owner/leases/[id]`
 
 **Impact** : Moyen (redirections + liens + renommage fichiers)
 

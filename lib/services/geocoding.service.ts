@@ -33,7 +33,7 @@ export async function geocodeAddress(
 
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "GestionLocative/1.0 (contact@gestionlocative.fr)",
+        "User-Agent": "Talok/1.0 (contact@talok.fr)",
         "Accept-Language": "fr",
       },
     });
@@ -78,7 +78,7 @@ export async function reverseGeocode(
 
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "GestionLocative/1.0 (contact@gestionlocative.fr)",
+        "User-Agent": "Talok/1.0 (contact@talok.fr)",
         "Accept-Language": "fr",
       },
     });

@@ -64,6 +64,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -72,14 +73,14 @@ export const metadata: Metadata = {
     "mobile-web-app-capable": "yes",
   },
   title: {
-    default: "Gestion Locative",
-    template: "%s | Gestion Locative",
+    default: "Talok",
+    template: "%s | Talok",
   },
   description: "Application SaaS de gestion locative pour la France et les DROM. Gérez vos biens, locataires, loyers et documents en toute simplicité.",
-  keywords: ["gestion locative", "immobilier", "location", "propriétaire", "locataire", "loyer", "bail", "France", "DROM"],
-  authors: [{ name: "Gestion Locative" }],
-  creator: "Gestion Locative",
-  publisher: "Gestion Locative",
+  keywords: ["talok", "gestion locative", "immobilier", "location", "propriétaire", "locataire", "loyer", "bail", "France", "DROM"],
+  authors: [{ name: "Talok" }],
+  creator: "Talok",
+  publisher: "Talok",
   robots: {
     index: true,
     follow: true,
@@ -105,29 +106,29 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "fr_FR",
-    url: "https://gestion-locative.app",
-    siteName: "Gestion Locative",
-    title: "Gestion Locative - Simplifiez la gestion de vos biens",
+    url: "https://talok.fr",
+    siteName: "Talok",
+    title: "Talok - Simplifiez la gestion de vos biens",
     description: "Application SaaS de gestion locative pour la France et les DROM",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Gestion Locative",
+        alt: "Talok",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Gestion Locative",
+    title: "Talok",
     description: "Application SaaS de gestion locative pour la France et les DROM",
     images: ["/og-image.png"],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Gestion Locative",
+    title: "Talok",
   },
   formatDetection: {
     telephone: true,

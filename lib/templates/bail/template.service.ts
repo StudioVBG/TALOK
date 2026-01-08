@@ -10,6 +10,7 @@ import { BAIL_PARKING_TEMPLATE } from './bail-parking.template';
 import type { BailComplet, TypeBail, TemplateVariables } from './types';
 import type { ParkingLease, ParkingCategory } from './bail-parking.types';
 import { getParkingCategoryLabel, getVehicleTypeLabel, getAccessMethodLabel, getSecurityFeatureLabel } from './bail-parking.types';
+import { formatDate as globalFormatDate } from '@/lib/helpers/format';
 
 // Types de bail étendus pour inclure parking
 type ExtendedTypeBail = TypeBail | 'parking';
@@ -50,6 +51,9 @@ export class LeaseTemplateService {
 
     // Variables système
     variables['REFERENCE_BAIL'] = data.reference || `BAIL-${Date.now()}`;
+    variables['DOCUMENT_TITLE'] = data.logement?.adresse_complete 
+      ? `Contrat de Location - ${data.logement.adresse_complete}`
+      : "Contrat de Location";
     variables['DATE_GENERATION'] = this.formatDate(now);
     variables['DATE_SIGNATURE'] = data.date_signature ? this.formatDate(new Date(data.date_signature)) : '';
     variables['LIEU_SIGNATURE'] = data.lieu_signature || '';
@@ -66,34 +70,44 @@ export class LeaseTemplateService {
         .map(s => `
           <div class="party-box" style="margin-bottom: 20px; border-color: #7c3aed; background: #faf5ff;">
             <div class="party-title" style="color: #7c3aed; border-bottom-color: #e9d5ff;">
-              Preuve de signature : ${s.role === 'proprietaire' ? 'Bailleur' : (s.role === 'locataire' || s.role === 'locataire_principal' ? 'Locataire' : s.role)}
+              Preuve de signature : ${s.role === 'proprietaire' ? 'Bailleur' : 'Locataire'}
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
               <div>
-                <p style="font-size: 9pt;"><span style="color: #666;">Signataire :</span> <strong>${s.profile?.prenom || ''} ${s.profile?.nom || ''}</strong></p>
+                <p style="font-size: 9pt;"><span style="color: #666;">Signataire :</span> <strong>${(s.profile?.prenom || s.profile?.nom) ? `${s.profile.prenom || ''} ${s.profile.nom || ''}`.trim() : (s.invited_name || 'Signataire')}</strong></p>
                 <p style="font-size: 9pt;"><span style="color: #666;">Date :</span> <strong>${s.signed_at ? this.formatDate(new Date(s.signed_at)) : 'N/A'}</strong></p>
                 <p style="font-size: 9pt;"><span style="color: #666;">ID Preuve :</span> <code style="font-size: 8pt;">${(s as any).proof_id || 'N/A'}</code></p>
               </div>
               <div>
                 <p style="font-size: 9pt;"><span style="color: #666;">Adresse IP :</span> <strong>${(s as any).ip_inet || (s as any).ip_address || 'N/A'}</strong></p>
-                <p style="font-size: 9pt;"><span style="color: #666;">Vérification ID :</span> <strong style="color: #059669;">CONFIRMÉE (CNI)</strong></p>
+                <p style="font-size: 9pt;"><span style="color: #666;">Vérification ID :</span> <strong style="color: #059669;">CONFIRMÉE</strong></p>
               </div>
             </div>
           </div>
         `).join('');
 
       // Injecter les images de signature pour les templates
-      const bailleurSig = allSigned.find(s => s.role === 'proprietaire');
-      const locataireSig = allSigned.find(s => s.role === 'locataire' || s.role === 'locataire_principal');
+      // ✅ FIX: Détection de rôle plus robuste
+      const bailleurSig = allSigned.find(s => {
+        const r = (s.role || '').toLowerCase();
+        return r === 'proprietaire' || r === 'owner' || r === 'bailleur';
+      });
+      
+      const locataireSig = allSigned.find(s => {
+        const r = (s.role || '').toLowerCase();
+        return r === 'locataire' || r === 'locataire_principal' || r === 'tenant' || r === 'principal';
+      });
       
       if (bailleurSig) {
         variables['BAILLEUR_SIGNATURE_IMAGE'] = (bailleurSig as any).signature_image || '';
         variables['BAILLEUR_DATE_SIGNATURE'] = bailleurSig.signed_at ? this.formatDate(new Date(bailleurSig.signed_at)) : '';
+        variables['BAILLEUR_SIGNE'] = 'true';
       }
       
       if (locataireSig) {
         variables['LOCATAIRE_SIGNATURE_IMAGE'] = (locataireSig as any).signature_image || '';
         variables['LOCATAIRE_DATE_SIGNATURE'] = locataireSig.signed_at ? this.formatDate(new Date(locataireSig.signed_at)) : '';
+        variables['LOCATAIRE_SIGNE'] = 'true';
       }
     }
 
@@ -123,6 +137,8 @@ export class LeaseTemplateService {
       variables['BAILLEUR_ADRESSE'] = `${b.adresse}, ${b.code_postal} ${b.ville}`.replace(/^,\s*/, '').replace(/,\s*$/, '');
       variables['BAILLEUR_QUALITE'] = isSociete ? 'Personne morale' : 'Personne physique';
       variables['BAILLEUR_TYPE'] = b.type;
+      variables['BAILLEUR_DATE_NAISSANCE'] = (!isSociete && b.date_naissance) ? this.formatDate(b.date_naissance) : '';
+      variables['BAILLEUR_LIEU_NAISSANCE'] = (!isSociete && b.lieu_naissance) ? b.lieu_naissance : '';
       
       // Mandataire
       if (b.est_mandataire && b.mandataire_nom) {
@@ -131,19 +147,47 @@ export class LeaseTemplateService {
       }
     }
 
-    // Locataire(s)
+    // Locataire(s) - ✅ FIX: Meilleure gestion des fallbacks
     if (data.locataires && data.locataires.length > 0) {
       const l = data.locataires[0];
-      variables['LOCATAIRE_NOM_COMPLET'] = `${l.prenom} ${l.nom}`;
-      variables['LOCATAIRE_DATE_NAISSANCE'] = l.date_naissance ? this.formatDate(new Date(l.date_naissance)) : '';
+      
+      // ✅ FIX: Construire le nom complet avec fallback
+      const prenom = l.prenom || '';
+      const nom = l.nom || '';
+      let nomComplet = `${prenom} ${nom}`.trim();
+      
+      // Si le nom est vide ou est un placeholder, indiquer "En attente"
+      if (!nomComplet || nomComplet === '' || nomComplet.includes('[') || nomComplet.includes('placeholder')) {
+        nomComplet = '[En attente de locataire]';
+        variables['LOCATAIRE_EN_ATTENTE'] = 'true';
+      } else {
+        variables['LOCATAIRE_EN_ATTENTE'] = '';
+      }
+      
+      variables['LOCATAIRE_NOM_COMPLET'] = nomComplet;
+      variables['LOCATAIRE_PRENOM'] = prenom || '';
+      variables['LOCATAIRE_NOM'] = nom || '';
+      variables['LOCATAIRE_DATE_NAISSANCE'] = l.date_naissance ? this.formatDate(l.date_naissance) : '';
       variables['LOCATAIRE_LIEU_NAISSANCE'] = l.lieu_naissance || '';
+      variables['LOCATAIRE_EMAIL'] = (l as any).email || '';
+      variables['LOCATAIRE_TELEPHONE'] = (l as any).telephone || '';
 
       if (data.locataires.length > 1) {
         const l2 = data.locataires[1];
-        variables['LOCATAIRE_2_NOM'] = `${l2.prenom} ${l2.nom}`;
-        variables['LOCATAIRE_2_DATE_NAISSANCE'] = l2.date_naissance ? this.formatDate(new Date(l2.date_naissance)) : '';
+        const prenom2 = l2.prenom || '';
+        const nom2 = l2.nom || '';
+        variables['LOCATAIRE_2_NOM'] = `${prenom2} ${nom2}`.trim() || '[Non défini]';
+        variables['LOCATAIRE_2_DATE_NAISSANCE'] = l2.date_naissance ? this.formatDate(l2.date_naissance) : '';
         variables['LOCATAIRE_2_LIEU_NAISSANCE'] = l2.lieu_naissance || '';
       }
+    } else {
+      // ✅ FIX: Aucun locataire défini
+      variables['LOCATAIRE_NOM_COMPLET'] = '[En attente de locataire]';
+      variables['LOCATAIRE_EN_ATTENTE'] = 'true';
+      variables['LOCATAIRE_PRENOM'] = '';
+      variables['LOCATAIRE_NOM'] = '';
+      variables['LOCATAIRE_DATE_NAISSANCE'] = '';
+      variables['LOCATAIRE_LIEU_NAISSANCE'] = '';
     }
 
     // Logement
@@ -183,7 +227,7 @@ export class LeaseTemplateService {
       let eauChaudeDisplay = 'Collective';
       if (log.eau_chaude_type === 'solaire') {
         eauChaudeDisplay = 'Individuelle (Solaire)';
-      } else if (['individuel', 'electrique_indiv', 'gaz_indiv'].includes(log.eau_chaude_type)) {
+      } else if (log.eau_chaude_type === 'individuel' || log.eau_chaude_type === 'electrique_indiv' || log.eau_chaude_type === 'gaz_indiv') {
         eauChaudeDisplay = 'Individuelle';
       } else if (log.eau_chaude_type === 'autre') {
         eauChaudeDisplay = 'Autre';
@@ -315,38 +359,6 @@ export class LeaseTemplateService {
       variables['GARANT_TYPE_ENGAGEMENT'] = 'solidaire'; // ou 'simple'
     }
 
-    // Signatures électroniques
-    if ((data as any).signatures) {
-      const sigs = (data as any).signatures;
-      
-      // Signature bailleur
-      if (sigs.bailleur?.signed && sigs.bailleur?.image) {
-        variables['BAILLEUR_SIGNATURE_IMAGE'] = sigs.bailleur.image;
-        variables['BAILLEUR_SIGNE'] = 'true';
-        variables['BAILLEUR_DATE_SIGNATURE'] = sigs.bailleur.signed_at 
-          ? this.formatDate(new Date(sigs.bailleur.signed_at)) 
-          : '';
-      }
-      
-      // Signature locataire
-      if (sigs.locataire?.signed && sigs.locataire?.image) {
-        variables['LOCATAIRE_SIGNATURE_IMAGE'] = sigs.locataire.image;
-        variables['LOCATAIRE_SIGNE'] = 'true';
-        variables['LOCATAIRE_DATE_SIGNATURE'] = sigs.locataire.signed_at 
-          ? this.formatDate(new Date(sigs.locataire.signed_at)) 
-          : '';
-      }
-      
-      // Signature garant
-      if (sigs.garant?.signed && sigs.garant?.image) {
-        variables['GARANT_SIGNATURE_IMAGE'] = sigs.garant.image;
-        variables['GARANT_SIGNE'] = 'true';
-        variables['GARANT_DATE_SIGNATURE'] = sigs.garant.signed_at 
-          ? this.formatDate(new Date(sigs.garant.signed_at)) 
-          : '';
-      }
-    }
-
     // Clauses particulières
     if (data.clauses) {
       variables['ACTIVITE_PRO_AUTORISEE'] = data.clauses.activite_professionnelle_autorisee ? 'true' : '';
@@ -456,12 +468,8 @@ export class LeaseTemplateService {
   // UTILITAIRES DE FORMATAGE
   // ============================================
 
-  static formatDate(date: Date): string {
-    return date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+  static formatDate(date: string | Date): string {
+    return globalFormatDate(date);
   }
 
   static formatMontant(montant: number): string {

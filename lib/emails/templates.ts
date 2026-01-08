@@ -32,7 +32,7 @@ function baseLayout(content: string, preheader?: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Gestion Locative</title>
+  <title>Talok</title>
   <!--[if mso]>
   <noscript>
     <xml>
@@ -246,16 +246,16 @@ function baseLayout(content: string, preheader?: string): string {
   <div class="container">
     <div class="card">
       <div class="header">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.gestionlocative.fr'}" class="logo">
-          🏠 Gestion Locative
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}" class="logo">
+          🏠 Talok
         </a>
       </div>
       ${content}
       <div class="footer">
         <p>
-          © ${new Date().getFullYear()} Gestion Locative. Tous droits réservés.<br>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.gestionlocative.fr'}/legal/privacy">Politique de confidentialité</a> · 
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.gestionlocative.fr'}/legal/terms">Conditions d'utilisation</a>
+          © ${new Date().getFullYear()} Talok. Tous droits réservés.<br>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}/legal/privacy">Politique de confidentialité</a> · 
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}/legal/terms">Conditions d'utilisation</a>
         </p>
       </div>
     </div>
@@ -623,7 +623,7 @@ export const emailTemplates = {
       <div class="content">
         <h1>Vous êtes invité !</h1>
         <p>Bonjour ${data.tenantName},</p>
-        <p><strong>${data.ownerName}</strong> vous invite à rejoindre le logement suivant sur Gestion Locative :</p>
+        <p><strong>${data.ownerName}</strong> vous invite à rejoindre le logement suivant sur Talok :</p>
         
         <div class="highlight-box">
           <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">${data.propertyAddress}</p>
@@ -664,7 +664,7 @@ export const emailTemplates = {
     };
     
     return {
-      subject: `${roleInfo[data.role].emoji} Bienvenue sur Gestion Locative !`,
+      subject: `${roleInfo[data.role].emoji} Bienvenue sur Talok !`,
       html: baseLayout(`
         <div class="content">
           <div style="text-align: center; margin-bottom: 24px;">
@@ -676,7 +676,7 @@ export const emailTemplates = {
           
           <div class="divider"></div>
           
-          <p>Avec Gestion Locative, vous pouvez :</p>
+          <p>Avec Talok, vous pouvez :</p>
           <ul style="color: ${COLORS.gray[700]};">
             ${data.role === 'owner' ? `
               <li>Gérer vos logements et locataires</li>
@@ -699,7 +699,7 @@ export const emailTemplates = {
             <a href="${data.loginUrl}" class="button">Accéder à mon espace</a>
           </div>
         </div>
-      `, `Bienvenue sur Gestion Locative, votre espace ${roleInfo[data.role].title} est prêt.`),
+      `, `Bienvenue sur Talok, votre espace ${roleInfo[data.role].title} est prêt.`),
     };
   },
 
@@ -726,7 +726,7 @@ export const emailTemplates = {
           Ce lien expire dans ${data.expiresIn}. Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email en toute sécurité.
         </p>
       </div>
-    `, 'Réinitialisez votre mot de passe Gestion Locative.'),
+    `, 'Réinitialisez votre mot de passe Talok.'),
   }),
 
   /**

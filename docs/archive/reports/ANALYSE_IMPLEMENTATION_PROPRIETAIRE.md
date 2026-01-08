@@ -48,7 +48,7 @@ Cette analyse compare les fonctionnalités **prévues** dans le domaine model (`
 - ✅ Gestion des signataires (`/api/leases/[id]/signers`)
 - ✅ Statuts (draft, pending_signature, active, terminated)
 - ✅ Types de baux (nu, meublé, colocation, saisonnier)
-- ✅ Pages UI complètes (`/owner/contracts`)
+- ✅ Pages UI complètes (`/owner/leases`)
 
 **Colocation :**
 - ⚠️ Routes API existent (`/api/leases/[id]/roommates`, `/api/leases/[id]/payment-shares`)

@@ -2,7 +2,7 @@
 
 ## 📊 Vue d'Ensemble
 
-**Application**: SaaS de Gestion Locative (France + DROM)  
+**Application**: SaaS de Talok (France + DROM)  
 **Stack**: Next.js 14, React, TypeScript, Supabase, Tailwind CSS  
 **État**: Fonctionnel avec base solide, nécessite optimisations
 

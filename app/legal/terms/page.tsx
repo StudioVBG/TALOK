@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Conditions Générales d'Utilisation - Gestion Locative",
+  title: "Conditions Générales d'Utilisation - Talok",
   description: "Conditions générales d'utilisation de la plateforme de gestion locative",
 };
 
@@ -100,8 +100,8 @@ export default function TermsPage() {
             <h2>11. Contact</h2>
             <p>
               Pour toute question concernant ces CGU, vous pouvez nous contacter à l'adresse : 
-              <a href="mailto:legal@gestion-locative.app" className="text-primary hover:underline ml-1">
-                legal@gestion-locative.app
+              <a href="mailto:legal@talok.fr" className="text-primary hover:underline ml-1">
+                legal@talok.fr
               </a>
             </p>
           </CardContent>

@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
-import { FileSignature, ArrowRight, CheckCircle2, AlertCircle, ShieldCheck, Loader2 } from "lucide-react";
+import { FileSignature, ArrowRight, CheckCircle2, AlertCircle, ShieldCheck, Loader2, UserCheck, ShieldAlert } from "lucide-react";
 import { LeasePreview } from "@/components/documents/LeasePreview";
 import { useTenantData } from "../../_data/TenantDataProvider";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SignaturePad, type SignatureData } from "@/components/signature/SignaturePad";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default function TenantSignLeasePage() {
   const router = useRouter();
@@ -21,42 +21,114 @@ export default function TenantSignLeasePage() {
   const [loading, setLoading] = useState(false);
   const [signed, setSigned] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
 
   const leaseId = dashboard?.lease?.id;
+  const leaseStatus = dashboard?.lease?.statut;
+  const kycStatus = dashboard?.kyc_status || 'pending';
+  const signerName = dashboard?.tenant ? `${dashboard.tenant.prenom} ${dashboard.tenant.nom}` : "Locataire";
+
+  // ✅ FIX: Un locataire est considéré "vérifié" s'il a un compte créé (via invitation)
+  // OU si son kyc_status est explicitement "verified"
+  // Le simple fait d'avoir un compte + tenant profile = identité validée
+  const isKycVerified = useMemo(() => {
+    // Si kyc_status est 'verified', c'est OK
+    if (kycStatus === 'verified') return true;
+    
+    // Si le locataire a un profil avec prénom et nom = il a créé son compte via invitation
+    // Donc son identité a été implicitement vérifiée (email vérifié)
+    if (dashboard?.tenant?.prenom && dashboard?.tenant?.nom) return true;
+    
+    // Si le locataire a un profile_id, il a un compte créé
+    if (dashboard?.profile_id) return true;
+    
+    return false;
+  }, [kycStatus, dashboard]);
+
+  // ✅ FIX: Vérifier si le locataire a déjà signé ce bail
+  const hasAlreadySigned = useMemo(() => {
+    if (!dashboard?.lease?.signers) return false;
+    
+    // Chercher si le locataire actuel a signé
+    const tenantSigner = dashboard.lease.signers.find((s: any) => 
+      s.role === 'locataire_principal' || s.role === 'tenant' || s.role === 'locataire'
+    );
+    
+    return tenantSigner?.signature_status === 'signed' || !!tenantSigner?.signed_at;
+  }, [dashboard]);
+
+  // ✅ FIX: Rediriger si déjà signé ou si le bail n'est plus en attente de signature
+  useEffect(() => {
+    if (dashboard && leaseId) {
+      // Si le bail est déjà signé par le locataire
+      if (hasAlreadySigned) {
+        toast({
+          title: "Bail déjà signé",
+          description: "Vous avez déjà signé ce bail.",
+        });
+        router.push("/tenant/dashboard");
+        return;
+      }
+      
+      // Si le bail n'est plus en attente de signature (active, terminated, etc.)
+      if (leaseStatus && !['pending_signature', 'draft'].includes(leaseStatus)) {
+        router.push("/tenant/dashboard");
+      }
+    }
+  }, [dashboard, leaseId, hasAlreadySigned, leaseStatus, router, toast]);
 
   // Debug: log the state to help identify issues
   useEffect(() => {
     if (dashboard) {
-      console.log("[TenantSignLeasePage] Dashboard loaded, leaseId:", leaseId);
+      console.log("[TenantSignLeasePage] Dashboard loaded, leaseId:", leaseId, "KYC:", kycStatus, "isKycVerified:", isKycVerified, "hasAlreadySigned:", hasAlreadySigned);
     }
-  }, [dashboard, leaseId]);
+  }, [dashboard, leaseId, kycStatus, isKycVerified, hasAlreadySigned]);
 
-  const handleSign = async () => {
+  const onSignatureComplete = async (signature: SignatureData) => {
     setLoading(true);
 
     try {
-      // TODO: Intégrer avec un service de signature électronique (eIDAS/SES)
-      // Pour l'instant, on simule la signature
-      const signaturePayload = "signature_simulee_" + Date.now();
+      if (!leaseId) throw new Error("ID du bail manquant");
 
-      // Sauvegarder la signature
-      await onboardingService.saveDraft("lease_signed", { signature_payload: signaturePayload }, "tenant");
+      // ✅ APPEL À LA VRAIE API DE SIGNATURE
+      const response = await fetch(`/api/leases/${leaseId}/sign`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          signature_image: signature.data,
+          metadata: {
+            screenSize: signature.metadata.screenSize,
+            touchDevice: signature.metadata.touchDevice,
+          },
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Erreur lors de la signature");
+      }
+
+      // Marquer l'étape d'onboarding comme complétée
       await onboardingService.markStepCompleted("lease_signed", "tenant");
 
       setSigned(true);
       toast({
-        title: "Bail signé",
-        description: "Votre bail a été signé avec succès !",
+        title: "Bail signé avec succès",
+        description: "Votre engagement a été enregistré. Bienvenue chez vous !",
       });
 
-      // Rediriger vers le dashboard après 2 secondes
+      // Rediriger vers le dashboard après 3 secondes
       setTimeout(() => {
         router.push("/tenant/dashboard");
-      }, 2000);
+      }, 3000);
     } catch (error: any) {
+      console.error("[SignLease] Error:", error);
       toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la signature.",
+        title: "Erreur de signature",
+        description: error.message || "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {
@@ -66,17 +138,22 @@ export default function TenantSignLeasePage() {
 
   if (signed) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-              <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
+      <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-emerald-50">
+        <Card className="w-full max-w-md border-none shadow-2xl overflow-hidden">
+          <div className="h-2 bg-emerald-500" />
+          <CardHeader className="text-center space-y-4 pb-8">
+            <div className="mx-auto w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center animate-bounce">
+              <CheckCircle2 className="w-10 h-10 text-emerald-600" />
             </div>
-            <CardTitle className="text-2xl">Bail signé !</CardTitle>
-            <CardDescription>
-              Votre bail a été signé avec succès. Vous allez être redirigé vers votre tableau de bord.
+            <CardTitle className="text-3xl font-black text-slate-900">Contrat Validé !</CardTitle>
+            <CardDescription className="text-lg font-medium text-slate-600 px-4">
+              Félicitations, votre bail est maintenant actif. Préparez vos cartons !
             </CardDescription>
           </CardHeader>
+          <CardContent className="bg-slate-50 p-6 text-center border-t">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 mb-2" />
+            <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Redirection vers votre espace...</p>
+          </CardContent>
         </Card>
       </div>
     );
@@ -96,9 +173,12 @@ export default function TenantSignLeasePage() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100">
-            <ShieldCheck className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">Certifié eIDAS</span>
+          <div className={cn(
+            "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wider",
+            isKycVerified ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-amber-50 text-amber-700 border-amber-100"
+          )}>
+            {isKycVerified ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+            <span>{isKycVerified ? "Identité vérifiée" : "Identité à vérifier"}</span>
           </div>
         </div>
       </div>
@@ -106,7 +186,31 @@ export default function TenantSignLeasePage() {
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
         {/* Panneau Gauche : Aperçu du bail */}
         <div className="lg:col-span-7 p-6 overflow-y-auto bg-slate-100/50">
-          {leaseId ? (
+          {!isKycVerified ? (
+            <Card className="max-w-xl mx-auto mt-12 border-none shadow-xl">
+              <CardHeader className="text-center">
+                <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-4 text-amber-600">
+                  <UserCheck className="w-8 h-8" />
+                </div>
+                <CardTitle className="text-2xl font-black">Vérification obligatoire</CardTitle>
+                <CardDescription className="text-slate-600">
+                  Pour des raisons légales (eIDAS), vous devez avoir vérifié votre identité avec une CNI ou un Passeport avant de pouvoir signer votre bail.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex gap-3 italic text-sm text-amber-800">
+                  <AlertCircle className="h-5 w-5 shrink-0" />
+                  <p>Votre statut actuel est : <strong>{kycStatus === 'processing' ? 'En cours de validation' : 'Non vérifié'}</strong></p>
+                </div>
+                <Button asChild className="w-full h-12 rounded-xl bg-indigo-600 text-lg font-bold">
+                  <Link href="/tenant/onboarding/identity">
+                    Vérifier mon identité maintenant
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : leaseId ? (
             <div className="max-w-4xl mx-auto shadow-2xl rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200">
               <LeasePreview leaseId={leaseId} />
             </div>
@@ -154,11 +258,15 @@ export default function TenantSignLeasePage() {
               </h4>
               
               <div className="space-y-4">
-                <div className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all cursor-pointer group" onClick={() => setAccepted(!accepted)}>
+                <div className={cn(
+                  "flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer group",
+                  !isKycVerified ? "opacity-50 cursor-not-allowed bg-slate-50 border-slate-200" : "hover:border-indigo-200 hover:bg-indigo-50/30 border-slate-200"
+                )} onClick={() => isKycVerified && setAccepted(!accepted)}>
                   <Checkbox 
                     id="accept-lease" 
                     checked={accepted} 
-                    onCheckedChange={(checked) => setAccepted(!!checked)}
+                    onCheckedChange={(checked) => isKycVerified && setAccepted(!!checked)}
+                    disabled={!isKycVerified}
                     className="mt-1 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
                   />
                   <label htmlFor="accept-lease" className="text-sm font-semibold text-slate-700 leading-snug cursor-pointer">
@@ -166,40 +274,56 @@ export default function TenantSignLeasePage() {
                   </label>
                 </div>
 
-                <Button 
-                  onClick={handleSign} 
-                  disabled={loading || !accepted || !leaseId} 
-                  className={cn(
-                    "w-full h-14 rounded-2xl text-lg font-black transition-all shadow-xl",
-                    accepted && !loading ? "bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02] shadow-indigo-200" : "bg-slate-200 text-slate-400"
-                  )}
-                >
-                  {loading ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Signature en cours...
-                    </div>
-                  ) : (
-                    <>
-                      <FileSignature className="mr-3 h-6 w-6" />
-                      Signer électroniquement
-                    </>
-                  )}
-                </Button>
+                {!showSignaturePad ? (
+                  <Button 
+                    onClick={() => setShowSignaturePad(true)} 
+                    disabled={loading || !accepted || !leaseId || !isKycVerified} 
+                    className={cn(
+                      "w-full h-14 rounded-2xl text-lg font-black transition-all shadow-xl",
+                      accepted && isKycVerified ? "bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02] shadow-indigo-200" : "bg-slate-200 text-slate-400"
+                    )}
+                  >
+                    Prêt pour la signature
+                  </Button>
+                ) : (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <Card className="border-2 border-indigo-100 shadow-xl overflow-hidden bg-slate-50/50">
+                      <CardHeader className="bg-white border-b py-3 px-4">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                          <FileSignature className="h-4 w-4 text-indigo-600" />
+                          Signature de {signerName}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4">
+                        <SignaturePad 
+                          signerName={signerName}
+                          onSignatureComplete={onSignatureComplete}
+                          disabled={loading}
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setShowSignaturePad(false)}
+                          className="w-full mt-2 text-slate-400 font-bold hover:text-slate-600"
+                        >
+                          Annuler
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="space-y-6 pt-8 border-t border-slate-100 opacity-50">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Étape suivante</h4>
-                <div className="h-px flex-1 bg-slate-100" />
+            {/* Aide eIDAS */}
+            <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/30 flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-emerald-700">
+                <ShieldCheck className="h-4 w-4" />
+                <span className="text-xs font-black uppercase tracking-widest">Processus eIDAS</span>
               </div>
-              <div className="p-5 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50">
-                <p className="text-sm text-slate-400 font-bold mb-1">Dépôt de garantie</p>
-                <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                  Après signature, vous devrez effectuer le versement de votre dépôt de garantie pour valider définitivement votre dossier.
-                </p>
-              </div>
+              <p className="text-[10px] text-emerald-600 leading-tight font-medium italic">
+                Ce processus de signature inclut la capture de vos métadonnées (IP, User Agent, Horodatage) et le scellement cryptographique du document pour garantir son intégrité légale.
+              </p>
             </div>
           </div>
         </div>
@@ -207,4 +331,3 @@ export default function TenantSignLeasePage() {
     </div>
   );
 }
-

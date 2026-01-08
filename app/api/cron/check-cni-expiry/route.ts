@@ -341,14 +341,14 @@ async function sendCniExpiryEmail(params: {
           </p>
         </div>
         
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://gestion-locative.app"}/tenant/identity" 
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr"}/tenant/identity" 
            style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px;">
           Mettre à jour ma CNI
         </a>
         
         <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-          Cet email a été envoyé automatiquement par Gestion Locative.<br>
-          Pour toute question, contactez-nous à support@gestion-locative.app
+          Cet email a été envoyé automatiquement par Talok.<br>
+          Pour toute question, contactez-nous à support@talok.fr
         </p>
       </div>
     </div>

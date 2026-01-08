@@ -207,7 +207,7 @@ export function generateCoproInviteEmail(data: CoproInviteEmailData): {
         </p>
         ` : ''}
         <p style="margin-top: 16px;">
-          © ${new Date().getFullYear()} Gestion Locative SaaS
+          © ${new Date().getFullYear()} Talok SaaS
         </p>
       </div>
     </div>
@@ -242,7 +242,7 @@ Si vous n'attendiez pas cette invitation, vous pouvez ignorer cet email.
 
 ${data.syndic_email ? `Contact syndic : ${data.syndic_email}` : ''}
 
-© ${new Date().getFullYear()} Gestion Locative SaaS
+© ${new Date().getFullYear()} Talok SaaS
   `.trim();
 
   return { subject, html, text };

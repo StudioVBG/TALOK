@@ -1,4 +1,4 @@
-# ✅ CHECKLIST REFONTE SOTA 2025 — Gestion Locative
+# ✅ CHECKLIST REFONTE SOTA 2025 — Talok
 
 **Date**: 27 Novembre 2025  
 **Statut**: ✅ IMPLÉMENTÉ

@@ -124,11 +124,11 @@ export default async function OwnerLayout({ children }) {
 **Priorité 1:**
 - [ ] `app/owner/dashboard/page.tsx`
 - [ ] `app/owner/properties/page.tsx`
-- [ ] `app/owner/contracts/page.tsx`
+- [ ] `app/owner/leases/page.tsx`
 
 **Priorité 2:**
 - [ ] `app/owner/properties/[id]/page.tsx`
-- [ ] `app/owner/contracts/[id]/page.tsx`
+- [ ] `app/owner/leases/[id]/page.tsx`
 - [ ] `app/owner/money/page.tsx`
 - [ ] `app/owner/documents/page.tsx`
 

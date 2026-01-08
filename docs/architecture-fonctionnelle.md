@@ -1,4 +1,4 @@
-# Architecture fonctionnelle SaaS Gestion Locative
+# Architecture fonctionnelle SaaS Talok
 
 ```mermaid
 graph TD

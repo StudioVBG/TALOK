@@ -30,6 +30,21 @@ export async function GET() {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
+    // 🔧 FIX: Pour les locataires, on renvoie un usage vide au lieu de 500
+    if (profile.role === "tenant") {
+      return NextResponse.json({ 
+        usage: {
+          properties: { used: 0, limit: 0, percentage: 0 },
+          leases: { used: 0, limit: 0, percentage: 0 },
+          users: { used: 1, limit: 1, percentage: 100 },
+          signatures: { used: 0, limit: 0, percentage: 0 },
+          storage: { used: 0, limit: 0, percentage: 0, unit: "Mo" },
+        },
+        plan_slug: "tenant",
+        limits: {},
+      });
+    }
+
     // Récupérer l'abonnement via owner_id (schéma existant)
     const { data: subscription } = await supabase
       .from("subscriptions")

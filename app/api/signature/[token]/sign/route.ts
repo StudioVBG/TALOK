@@ -106,21 +106,24 @@ export async function POST(request: Request, { params }: PageProps) {
 
     // ✅ CODE VALIDE - Procéder à la signature
 
-    // 1. Récupérer le signataire par email (supporte tous les rôles: locataire, colocataire, garant)
-    const { data: signer, error: signerError } = await serviceClient
+    // ✅ SOTA 2026: Recherche flexible du signataire
+    // Priorité 1: Par email (insensible à la casse)
+    const normalizedEmail = tokenData.tenantEmail.toLowerCase().trim();
+    
+    const { data: signer } = await serviceClient
       .from("lease_signers")
-      .select("id, profile_id, role, invited_name")
+      .select("id, profile_id, role, invited_name, invited_email")
       .eq("lease_id", lease.id)
-      .eq("invited_email", tokenData.tenantEmail)
+      .ilike("invited_email", normalizedEmail)
       .maybeSingle();
 
-    // Si pas trouvé par email, chercher par profile_id via un profil existant
     let actualSigner = signer;
+    
+    // Priorité 2: Par profile_id via un profil existant
     if (!actualSigner) {
-      // Chercher le profil par email
       const { data: existingUsers } = await serviceClient.auth.admin.listUsers();
       const existingUser = existingUsers?.users?.find(
-        (u) => u.email?.toLowerCase() === tokenData.tenantEmail.toLowerCase()
+        (u) => u.email?.toLowerCase() === normalizedEmail
       );
 
       if (existingUser) {
@@ -133,7 +136,7 @@ export async function POST(request: Request, { params }: PageProps) {
         if (profile) {
           const { data: signerByProfile } = await serviceClient
             .from("lease_signers")
-            .select("id, profile_id, role, invited_name")
+            .select("id, profile_id, role, invited_name, invited_email")
             .eq("lease_id", lease.id)
             .eq("profile_id", profile.id)
             .maybeSingle();
@@ -142,27 +145,68 @@ export async function POST(request: Request, { params }: PageProps) {
         }
       }
     }
+    
+    // Priorité 3: Par rôle flexible (dernier recours)
+    if (!actualSigner) {
+      const { data: signerByRole } = await serviceClient
+        .from("lease_signers")
+        .select("id, profile_id, role, invited_name, invited_email")
+        .eq("lease_id", lease.id)
+        .in("role", ["locataire_principal", "locataire", "tenant", "colocataire", "principal"])
+        .is("signature_status", null)
+        .limit(1)
+        .maybeSingle();
+      
+      actualSigner = signerByRole;
+    }
 
     if (!actualSigner) {
+      console.error(`[Signature OTP] ❌ Aucun signataire trouvé pour ${normalizedEmail} sur le bail ${lease.id}`);
       return NextResponse.json(
         { error: "Vous n'êtes pas signataire de ce bail" },
         { status: 403 }
       );
     }
 
+    console.log(`[Signature OTP] ✅ Signataire trouvé: ${actualSigner.id}, role: ${actualSigner.role}`);
+
     const signerProfileId = actualSigner.profile_id || null;
     const signerRole = actualSigner.role;
     const signerName = actualSigner.invited_name || tokenData.tenantEmail;
 
-    // 2. Mettre à jour le signataire avec la signature ET l'image
+    // 2. Préparer les données de mise à jour
     const updateData: Record<string, any> = {
       signature_status: "signed",
       signed_at: new Date().toISOString(),
+      ip_inet: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
     };
     
-    // Ajouter l'image de signature si fournie
+    // ✅ FIX: Sauvegarder l'image de signature dans Storage + base64
     if (signatureImage) {
-      updateData.signature_image = signatureImage;
+      updateData.signature_image = signatureImage; // Base64 comme fallback
+      
+      // Uploader aussi dans Storage pour cohérence
+      try {
+        const signaturePath = `signatures/${lease.id}/${actualSigner.id}_${Date.now()}.png`;
+        const signatureBuffer = Buffer.from(
+          signatureImage.replace(/^data:image\/\w+;base64,/, ""),
+          "base64"
+        );
+        
+        const { error: uploadError } = await serviceClient.storage
+          .from("documents")
+          .upload(signaturePath, signatureBuffer, {
+            contentType: "image/png",
+            upsert: true,
+          });
+        
+        if (!uploadError) {
+          updateData.signature_image_path = signaturePath;
+          console.log(`[Signature OTP] ✅ Image uploadée: ${signaturePath}`);
+        }
+      } catch (uploadError) {
+        console.warn("[Signature OTP] ⚠️ Erreur upload image:", uploadError);
+      }
     }
     
     await serviceClient
@@ -176,13 +220,21 @@ export async function POST(request: Request, { params }: PageProps) {
       .select("id, signature_status, role")
       .eq("lease_id", lease.id);
 
-    const allSigned = allSigners?.every((s) => s.signature_status === "signed") ?? false;
-    const ownerSigned = allSigners?.find((s) => s.role === "proprietaire")?.signature_status === "signed";
+    const totalSigners = allSigners?.length || 0;
+    const signedCount = allSigners?.filter(s => s.signature_status === "signed").length || 0;
+    const allSigned = totalSigners >= 2 && signedCount === totalSigners;
+    
+    // ✅ FIX: Recherche flexible du propriétaire
+    const ownerSigned = allSigners?.some(s => 
+      ["proprietaire", "owner", "bailleur"].includes(s.role?.toLowerCase() || "") && 
+      s.signature_status === "signed"
+    ) ?? false;
 
     // 4. Mettre à jour le bail avec le nouveau statut
+    // ✅ SOTA 2026: Le bail signé passe à "fully_signed", l'activation se fait après l'EDL
     let newStatus = lease.statut;
     if (allSigned) {
-      newStatus = "active";
+      newStatus = "fully_signed";  // Activation après EDL via /activate
     } else if (!ownerSigned) {
       newStatus = "pending_owner_signature";
     }
@@ -277,7 +329,7 @@ export async function POST(request: Request, { params }: PageProps) {
     return NextResponse.json({
       success: true,
       message: allSigned 
-        ? "Bail signé avec succès ! Le bail est maintenant actif." 
+        ? "✅ Bail entièrement signé ! En attente de l'état des lieux d'entrée." 
         : "Signature enregistrée avec succès !",
       lease_id: lease.id,
       signer_profile_id: signerProfileId,

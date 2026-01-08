@@ -199,23 +199,23 @@ function formatPhoneNumber(phone: string): string {
 export const SMS_TEMPLATES = {
   // Code OTP pour signature
   signature_otp: (code: string) => 
-    `Votre code de signature Gestion Locative : ${code}. Valable 10 minutes.`,
+    `Votre code de signature Talok : ${code}. Valable 10 minutes.`,
   
   // Rappel de loyer
   rent_reminder: (amount: number, dueDate: string) =>
-    `Rappel: Votre loyer de ${amount}€ est dû le ${dueDate}. Gestion Locative`,
+    `Rappel: Votre loyer de ${amount}€ est dû le ${dueDate}. Talok`,
   
   // Confirmation de paiement
   payment_confirmation: (amount: number) =>
-    `Paiement de ${amount}€ reçu. Merci ! Gestion Locative`,
+    `Paiement de ${amount}€ reçu. Merci ! Talok`,
   
   // Nouveau ticket maintenance
   maintenance_ticket: (ticketId: string) =>
-    `Ticket #${ticketId} créé. Nous vous contacterons sous 48h. Gestion Locative`,
+    `Ticket #${ticketId} créé. Nous vous contacterons sous 48h. Talok`,
   
   // RDV intervention
   intervention_scheduled: (date: string, time: string) =>
-    `RDV intervention confirmé le ${date} à ${time}. Gestion Locative`,
+    `RDV intervention confirmé le ${date} à ${time}. Talok`,
 };
 
 /**

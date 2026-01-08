@@ -2,7 +2,7 @@
 
 # Script de démarrage automatique de l'application
 
-echo "🚀 Démarrage de l'application Gestion Locative"
+echo "🚀 Démarrage de l'application Talok"
 echo ""
 
 # Vérifier Node.js

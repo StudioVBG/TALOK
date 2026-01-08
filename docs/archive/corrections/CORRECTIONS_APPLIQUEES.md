@@ -34,7 +34,7 @@ console.log("[useProperties] Response received:", JSON.stringify({
 ### 2. Correction de l'Erreur `useOwnerData`
 
 **Fichier modifié :**
-- `app/owner/contracts/OwnerContractsClient.tsx`
+- `app/owner/leases/OwnerContractsClient.tsx`
 
 **Problème :**
 - `OwnerContractsClient` utilisait `useOwnerData()` mais le `OwnerDataProvider` n'était pas présent dans le layout

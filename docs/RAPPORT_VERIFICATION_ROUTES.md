@@ -14,8 +14,8 @@ Toutes les routes principales du Compte Propriétaire ont été vérifiées et c
 | `/owner/properties/new` | ✅ OK | Utilisée par tous les boutons "Ajouter un bien" |
 | `/owner/properties/[id]` | ✅ OK | Aucune action |
 | `/owner/properties/[id]/edit` | ✅ OK | Aucune action |
-| `/owner/contracts` | ✅ OK | Aucune action |
-| `/owner/contracts/[id]` | ✅ OK | Aucune action |
+| `/owner/leases` | ✅ OK | Aucune action |
+| `/owner/leases/[id]` | ✅ OK | Aucune action |
 | `/owner/money` | ✅ OK | Aucune action |
 | `/owner/documents` | ✅ OK | Aucune action |
 | `/owner/documents/upload` | ✅ CRÉÉ | Nouvelle page créée |
@@ -69,20 +69,20 @@ Toutes les routes principales du Compte Propriétaire ont été vérifiées et c
 - ✅ "Ajouter un bien" → `/owner/properties/new`
 - ✅ "Voir la fiche" → `/owner/properties/[id]`
 - ✅ "Créer un bail" → `/leases/new?propertyId=...` ou `/leases/new?property_id=...`
-- ✅ "Voir le bail" → `/owner/contracts/[id]`
-- ✅ "Voir les baux" → `/owner/contracts?property_id=...`
+- ✅ "Voir le bail" → `/owner/leases/[id]`
+- ✅ "Voir les baux" → `/owner/leases?property_id=...`
 - ✅ "Voir les loyers" → `/owner/money?property_id=...`
 - ✅ "Voir les documents" → `/owner/documents?property_id=...`
 
 ### Contracts
 - ✅ "Créer un bail" → `/leases/new`
-- ✅ "Voir" → `/owner/contracts/[id]`
+- ✅ "Voir" → `/owner/leases/[id]`
 - ✅ "Voir les loyers" → `/owner/money?lease_id=...`
 - ✅ "Voir les documents" → `/owner/documents?lease_id=...`
 
 ### Money
 - ✅ "Marquer payé" → `/invoices/[id]`
-- ✅ "Voir mes baux" → `/owner/contracts`
+- ✅ "Voir mes baux" → `/owner/leases`
 
 ### Documents
 - ✅ "Téléverser un document" → `/owner/documents/upload` (2 occurrences corrigées)

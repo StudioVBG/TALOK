@@ -101,7 +101,7 @@ export default async function TenantProfilePage({ params }: PageProps) {
 }
 
 export const metadata = {
-  title: "Fiche Locataire | Gestion Locative",
+  title: "Fiche Locataire | Talok",
   description: "Consulter le profil complet du locataire",
 };
 

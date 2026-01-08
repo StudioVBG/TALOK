@@ -136,7 +136,12 @@ export function EDLPreview({
     }
 
     if (!edlData.compteurs || edlData.compteurs.length === 0) {
-      warnings.push("Aucun relevé de compteur saisi");
+      warnings.push("Aucun compteur enregistré pour ce logement");
+    } else {
+      const unreadMeters = edlData.compteurs.filter(c => c.reading === "Non relevé" || !c.reading);
+      if (unreadMeters.length > 0) {
+        warnings.push(`${unreadMeters.length} relevé(s) de compteur à saisir`);
+      }
     }
 
     // Vérifier que toutes les pièces ont des items évalués
@@ -160,13 +165,14 @@ export function EDLPreview({
       return null;
     }
 
-    let nbBon = 0, nbMoyen = 0, nbMauvais = 0, nbTresMauvais = 0, nbTotal = 0;
+    let nbNeuf = 0, nbBon = 0, nbMoyen = 0, nbMauvais = 0, nbTresMauvais = 0, nbTotal = 0;
 
     edlData.pieces.forEach((piece) => {
       piece.items.forEach((item) => {
         if (item.condition) {
           nbTotal++;
-          if (item.condition === "bon") nbBon++;
+          if (item.condition === "neuf") nbNeuf++;
+          else if (item.condition === "bon") nbBon++;
           else if (item.condition === "moyen") nbMoyen++;
           else if (item.condition === "mauvais") nbMauvais++;
           else if (item.condition === "tres_mauvais") nbTresMauvais++;
@@ -174,9 +180,11 @@ export function EDLPreview({
       });
     });
 
-    const pourcentageBon = nbTotal > 0 ? Math.round((nbBon / nbTotal) * 100) : 0;
+    // Neuf + Bon sont considérés comme "bon état" pour le pourcentage global
+    const pourcentageBon = nbTotal > 0 ? Math.round(((nbNeuf + nbBon) / nbTotal) * 100) : 0;
 
     return {
+      nbNeuf,
       nbBon,
       nbMoyen,
       nbMauvais,
@@ -529,30 +537,13 @@ export function EDLPreview({
           )}
         </div>
 
-        {/* Actions */}
+        {/* Actions - ✅ Nettoyage: Bouton masqué car déjà présent dans le header de l'aperçu */}
         <div className="flex items-center justify-between pt-2 border-t">
           <p className="text-xs text-muted-foreground">
             {isVierge
               ? "Téléchargez ce template à imprimer et remplir sur place"
               : "L'aperçu se met à jour automatiquement"}
           </p>
-          <Button
-            onClick={handleDownload}
-            disabled={!html || downloading || loading}
-            className="gap-2"
-          >
-            {downloading ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Génération...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Télécharger PDF
-              </>
-            )}
-          </Button>
         </div>
       </CardContent>
     </Card>

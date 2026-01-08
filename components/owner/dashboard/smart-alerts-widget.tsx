@@ -340,7 +340,7 @@ export function generateSmartAlerts(params: {
       message: `${irl.address} - +${irl.increase.toFixed(2)}€/mois possible`,
       action: {
         label: "Appliquer la révision",
-        href: `/owner/contracts/${irl.leaseId}/revision`,
+        href: `/owner/leases/${irl.leaseId}/revision`,
       },
       dismissible: true,
     });

@@ -21,7 +21,7 @@
 - Animations CSS-only
 - Système de spacing et grids
 - Typographie standardisée
-- Configuration de l'app (`APP_CONFIG.name = "Lokatif"`)
+- Configuration de l'app (`APP_CONFIG.name = "Talok"`)
 - Styles par rôle (owner, tenant, provider, admin)
 
 ---
@@ -97,7 +97,7 @@ app/(dashboard)/
 |---------------|----------------|
 | `/owner/dashboard` | `/owner` |
 | `/owner/properties` | `/owner/properties` |
-| `/owner/contracts` | `/owner/leases` |
+| `/owner/leases` | `/owner/leases` |
 | `/owner/money` | `/owner/finances` |
 | `/tenant/dashboard` | `/tenant` |
 | `/tenant/payments` | `/tenant/payments` |

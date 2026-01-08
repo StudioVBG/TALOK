@@ -25,10 +25,10 @@ RESEND_API_KEY=your_resend_api_key_here
 
 # Adresse d'expédition
 # Pour les tests, utilisez l'adresse Resend par défaut :
-EMAIL_FROM=Gestion Locative <onboarding@resend.dev>
+EMAIL_FROM=Talok <onboarding@resend.dev>
 
 # Pour la production, utilisez votre domaine vérifié :
-# EMAIL_FROM=Gestion Locative <noreply@votre-domaine.com>
+# EMAIL_FROM=Talok <noreply@votre-domaine.com>
 
 # Forcer l'envoi même en développement (optionnel)
 EMAIL_FORCE_SEND=true
@@ -82,7 +82,7 @@ Pour utiliser votre propre domaine en production :
 │  Ce lien expire dans 7 jours.                │
 ├──────────────────────────────────────────────┤
 │  🔒 Signature électronique sécurisée         │
-│  © 2025 Gestion Locative                     │
+│  © 2025 Talok                     │
 └──────────────────────────────────────────────┘
 ```
 
@@ -172,7 +172,7 @@ Si vous préférez SendGrid :
 ```env
 EMAIL_PROVIDER=sendgrid
 EMAIL_API_KEY=your_sendgrid_api_key_here
-EMAIL_FROM=Gestion Locative <noreply@votre-domaine.com>
+EMAIL_FROM=Talok <noreply@votre-domaine.com>
 ```
 
 ## Ressources

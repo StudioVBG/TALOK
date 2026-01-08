@@ -40,42 +40,10 @@ export class AuthService {
     if (authError) throw authError;
     if (!authData.user) throw new Error("User creation failed");
 
-    // Mettre à jour le profil avec toutes les données
-    // Le trigger peut avoir créé le profil avec le rôle depuis les metadata,
-    // mais on s'assure que tout est à jour
-    const updateData: any = {
-      role: data.role,
-    };
-
-    // Ne mettre à jour prenom et nom que s'ils sont fournis et non vides
-    if (data.prenom && data.prenom.trim()) {
-      updateData.prenom = data.prenom;
-    }
-    if (data.nom && data.nom.trim()) {
-      updateData.nom = data.nom;
-    }
-    if (data.telephone && data.telephone.trim()) {
-      updateData.telephone = data.telephone;
-    }
-
-    // Utiliser upsert pour créer ou mettre à jour le profil
-    const { error: profileError } = await (this.supabase
-      .from("profiles") as any)
-      .upsert(
-        {
-          user_id: authData.user.id,
-          ...updateData,
-        },
-        {
-          onConflict: "user_id",
-        }
-      );
-
-    if (profileError) {
-      console.error("Error updating profile:", profileError);
-      throw profileError;
-    }
-
+    // Le profil est créé automatiquement par le trigger handle_new_user
+    // qui lit le rôle, prénom, nom et téléphone depuis les metadata de l'utilisateur
+    // Donc pas besoin de faire un upsert ici
+    
     return authData;
   }
 

@@ -1,4 +1,4 @@
-# 🧪 Tests - Gestion Locative
+# 🧪 Tests - Talok
 
 ## Sources et Justifications
 

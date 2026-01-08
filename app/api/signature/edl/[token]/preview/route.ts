@@ -66,6 +66,20 @@ export async function POST(
       serviceClient.from("owner_profiles").select("*, profile:profiles(*)").eq("profile_id", edl.lease?.property?.owner_id || edl.property_id).single()
     ]);
 
+    // 🔧 Générer des URLs signées pour les images de signature (bucket privé)
+    for (const sig of (signaturesRaw || [])) {
+      if (sig.signature_image_path) {
+        const { data: signedUrlData } = await serviceClient.storage
+          .from("documents")
+          .createSignedUrl(sig.signature_image_path, 3600);
+        
+        if (signedUrlData?.signedUrl) {
+          (sig as any).signature_image_url = signedUrlData.signedUrl;
+          console.log("[EDL Token Preview] ✅ Generated signed URL for signature:", sig.signer_role);
+        }
+      }
+    }
+
     // Mapper les données (on pourrait exporter mapDatabaseToEDLComplet mais ici on simplifie)
     const fullEdlData = mapDatabaseToEDLComplet(
       edl,
@@ -134,14 +148,23 @@ function mapDatabaseToEDLComplet(
     signer_type: ["owner", "proprietaire"].includes(sig.signer_role) ? "proprietaire" : "locataire",
     signer_name: sig.signer_name || `${sig.profile?.prenom || ""} ${sig.profile?.nom || ""}`.trim() || "Signataire",
     signed_at: sig.signed_at,
-    signature_image: sig.signature_image_path,
+    // Utiliser l'URL signée en priorité (générée avant le mapping)
+    signature_image: sig.signature_image_url || sig.signature_image_path,
   }));
+
+  // Vérifier si l'EDL est complet et signé
+  const hasOwnerSig = signatures.some((s: any) => ["owner", "proprietaire"].includes(s.signer_role) && s.signed_at);
+  const hasTenantSig = signatures.some((s: any) => ["tenant", "locataire"].includes(s.signer_role) && s.signed_at);
+  const isComplete = edl.status === "completed" || edl.status === "signed";
+  const isSigned = hasOwnerSig && hasTenantSig;
 
   return {
     id: edl.id,
+    reference: edl.reference || `EDL-${edl.id?.slice(0, 8)?.toUpperCase() || Date.now().toString(36).toUpperCase()}`,
     type: edl.type,
     scheduled_date: edl.scheduled_at,
     completed_date: edl.completed_date,
+    created_at: edl.created_at || new Date().toISOString(),
     logement: {
       adresse_complete: property?.adresse_complete || "",
       ville: property?.ville || "",
@@ -152,9 +175,22 @@ function mapDatabaseToEDLComplet(
     },
     bailleur,
     locataires,
+    bail: {
+      id: lease?.id || "",
+      reference: lease?.reference,
+      type_bail: lease?.type_bail || "nu",
+      date_debut: lease?.date_debut || "",
+      date_fin: lease?.date_fin,
+      loyer_hc: lease?.loyer || 0,
+      charges: lease?.charges_forfaitaires || 0,
+    },
     compteurs: edl.meter_readings || [],
     pieces,
     signatures: mappedSignatures,
+    is_complete: isComplete,
+    is_signed: isSigned,
+    status: edl.status || "draft",
   };
 }
+
 

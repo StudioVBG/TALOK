@@ -25,7 +25,7 @@ async function main() {
   console.log("   EMAIL_PROVIDER:", process.env.EMAIL_PROVIDER || "resend (par défaut)");
   console.log("   RESEND_API_KEY:", process.env.RESEND_API_KEY ? "✅ Configurée" : "❌ Non configurée");
   console.log("   EMAIL_API_KEY:", process.env.EMAIL_API_KEY ? "✅ Configurée" : "❌ Non configurée");
-  console.log("   EMAIL_FROM:", process.env.EMAIL_FROM || "Gestion Locative <noreply@gestion-locative.app>");
+  console.log("   EMAIL_FROM:", process.env.EMAIL_FROM || "Talok <noreply@talok.fr>");
   console.log("   EMAIL_FORCE_SEND:", process.env.EMAIL_FORCE_SEND || "false");
   console.log("   NODE_ENV:", process.env.NODE_ENV || "development");
   console.log();
@@ -68,7 +68,7 @@ async function main() {
   console.log("Test 1: Email simple...");
   const result1 = await sendEmail({
     to: testEmail,
-    subject: "🧪 Test Gestion Locative - Email simple",
+    subject: "🧪 Test Talok - Email simple",
     html: `
       <div style="font-family: sans-serif; padding: 20px;">
         <h1 style="color: #3b82f6;">✅ Configuration réussie !</h1>
@@ -76,7 +76,7 @@ async function main() {
         <p><strong>Date :</strong> ${new Date().toLocaleString("fr-FR")}</p>
         <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
         <p style="color: #6b7280; font-size: 14px;">
-          Gestion Locative - Test automatique
+          Talok - Test automatique
         </p>
       </div>
     `,

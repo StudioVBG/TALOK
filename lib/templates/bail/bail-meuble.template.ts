@@ -12,7 +12,7 @@ export const BAIL_MEUBLE_TEMPLATE = `
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Contrat de location - Bail meublé</title>
+  <title>{{DOCUMENT_TITLE}}</title>
   <style>
     * {
       margin: 0;
@@ -432,7 +432,7 @@ export const BAIL_MEUBLE_TEMPLATE = `
   <div class="page">
     <!-- EN-TÊTE -->
     <div class="header">
-      <h1>Contrat de Location Meublée</h1>
+      <h1>{{DOCUMENT_TITLE}}</h1>
       <div class="subtitle">Bail de location meublée à usage de résidence principale</div>
       <div class="badge-meuble">MEUBLÉ</div>
       {{#if BAIL_ETUDIANT}}
@@ -471,6 +471,12 @@ export const BAIL_MEUBLE_TEMPLATE = `
               <span class="party-label">Nom et prénom :</span><br>
               <span class="party-value">{{BAILLEUR_NOM_COMPLET}}</span>
             </div>
+            {{#if BAILLEUR_DATE_NAISSANCE}}
+            <div class="party-info">
+              <span class="party-label">Né(e) le :</span><br>
+              <span class="party-value">{{BAILLEUR_DATE_NAISSANCE}} {{#if BAILLEUR_LIEU_NAISSANCE}}à {{BAILLEUR_LIEU_NAISSANCE}}{{/if}}</span>
+            </div>
+            {{/if}}
             {{/unless}}
             <div class="party-info">
               <span class="party-label">Adresse :</span><br>

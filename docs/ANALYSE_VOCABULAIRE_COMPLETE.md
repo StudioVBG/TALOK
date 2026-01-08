@@ -80,7 +80,7 @@ Le lexique fourni par l'utilisateur est donc la **référence canonique** à uti
 | `Lease` / `lease` | Code (types, variables, fonctions) | ✅ **TOUS** les fichiers de code | ✅ **CANONIQUE** |
 | `bail` / `baux` | **UI uniquement** (textes affichés) | `ContractDetailPageClient.tsx`, `ContractsPageClient.tsx`, etc. | ⚠️ **UI uniquement** |
 | `type_bail` | **Champ DB** (nom de colonne) | `property-v3.ts`, `conditions-step.tsx`, migrations SQL | ⚠️ **Champ DB** |
-| `Contract` / `contract` | **Routes Next.js** (nom de route) | `app/owner/contracts/` | ⚠️ **Nom de route** (peut être synonyme de Lease) |
+| `Contract` / `contract` | **Routes Next.js** (nom de route) | `app/owner/leases/` | ⚠️ **Nom de route** (peut être synonyme de Lease) |
 
 ---
 
@@ -136,7 +136,7 @@ Le code respecte **excellemment** les conventions :
 - **Action** : ⚠️ **À DÉCIDER** - Garder ou renommer en anglais ?
 
 #### **3. Route `/contracts` vs `/leases`**
-- Route actuelle : `/owner/contracts/`
+- Route actuelle : `/owner/leases/`
 - **Statut** : ⚠️ **INCOHÉRENT** - Devrait être `/leases` selon lexique
 - **Action** : ⚠️ **À DÉCIDER** - Renommer route ou garder ?
 

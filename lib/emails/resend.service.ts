@@ -22,8 +22,8 @@ function getResendClient(): Resend {
 }
 
 // Configuration
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Gestion Locative <noreply@gestionlocative.fr>';
-const REPLY_TO = process.env.RESEND_REPLY_TO || 'support@gestionlocative.fr';
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Talok <noreply@talok.fr>';
+const REPLY_TO = process.env.RESEND_REPLY_TO || 'support@talok.fr';
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -300,7 +300,7 @@ export async function sendLeaseSignedNotification(data: {
     signerRole: data.signerRole,
     propertyAddress: data.propertyAddress,
     allSigned: data.allSigned,
-    leaseUrl: `${process.env.NEXT_PUBLIC_APP_URL}/owner/contracts/${data.leaseId}`,
+    leaseUrl: `${process.env.NEXT_PUBLIC_APP_URL}/owner/leases/${data.leaseId}`,
   });
 
   return sendEmail({

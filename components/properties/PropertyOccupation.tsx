@@ -55,7 +55,7 @@ function VacantState({
   createLeaseHref?: string;
   allowActions?: boolean;
 }) {
-  const href = createLeaseHref || `/owner/contracts/new?propertyId=${propertyId}`;
+  const href = createLeaseHref || `/owner/leases/new?propertyId=${propertyId}`;
   
   return (
     <div className="text-center space-y-4">
@@ -89,7 +89,7 @@ function LeaseInfo({
   
   const leaseHref = viewLeaseHref 
     ? viewLeaseHref(lease.id) 
-    : `/owner/contracts/${lease.id}`;
+    : `/owner/leases/${lease.id}`;
 
   return (
     <div className="space-y-4">

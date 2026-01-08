@@ -1,124 +1,81 @@
+export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
+import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
+import { NextResponse } from "next/server";
+
 /**
- * API Routes pour les préavis de départ
- * GET /api/leases/[id]/notice - Récupérer le préavis d'un bail
- * POST /api/leases/[id]/notice - Créer un préavis de départ
+ * Configuration des préavis selon le type de bail (en jours)
+ * Source: Loi ALUR et Code civil
  */
+const NOTICE_PERIODS: Record<string, { standard: number; reduced: number; label: string }> = {
+  nu: { standard: 90, reduced: 30, label: "Location nue" },           // 3 mois, 1 mois en zone tendue
+  meuble: { standard: 30, reduced: 30, label: "Location meublée" },   // 1 mois
+  colocation: { standard: 30, reduced: 30, label: "Colocation" },     // 1 mois
+  saisonnier: { standard: 0, reduced: 0, label: "Saisonnier" },       // Pas de préavis
+  mobilite: { standard: 30, reduced: 30, label: "Bail mobilité" },    // 1 mois
+};
 
-import { NextRequest, NextResponse } from "next/server";
-import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
-import { z } from "zod";
+/**
+ * Motifs légaux pour préavis réduit (location nue)
+ * Article 15 de la loi du 6 juillet 1989
+ */
+const REDUCED_NOTICE_REASONS = [
+  "mutation_professionnelle",
+  "perte_emploi",
+  "nouvel_emploi",
+  "raison_sante",
+  "rsa_beneficiaire",
+  "aah_beneficiaire",
+  "zone_tendue",
+  "premier_emploi",
+  "violence_conjugale",
+];
 
-const createNoticeSchema = z.object({
-  initiated_by: z.enum(["tenant", "owner"]),
-  notice_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  expected_departure_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  notice_period_months: z.number().int().min(1).max(6).optional().default(3),
-  reason: z.enum([
-    "standard",
-    "zone_tendue",
-    "mutation_professionnelle",
-    "perte_emploi",
-    "nouvel_emploi",
-    "raison_sante",
-    "rsa_beneficiaire",
-    "aah_beneficiaire",
-    "premier_logement",
-    "conge_vente",
-    "conge_reprise",
-    "motif_legitime",
-    "autre",
-  ]).optional(),
-  reason_details: z.string().max(1000).optional(),
-  acknowledgment_method: z.enum([
-    "lettre_recommandee",
-    "acte_huissier",
-    "remise_main_propre",
-    "email_certifie",
-  ]).optional(),
-  notes: z.string().max(2000).optional(),
-});
-
+/**
+ * GET /api/leases/[id]/notice - Vérifier les conditions de congé
+ */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id: leaseId } = await params;
-    const supabase = await createRouteHandlerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le préavis avec les détails
-    const { data: notice, error } = await supabase
-      .from("departure_notices")
-      .select(`
-        *,
-        lease:leases!departure_notices_lease_id_fkey(
-          id, loyer, charges_forfaitaires, date_debut,
-          property:properties(id, adresse_complete, ville)
-        ),
-        initiator:profiles!departure_notices_initiator_profile_id_fkey(
-          id, prenom, nom
-        )
-      `)
-      .eq("lease_id", leaseId)
-      .neq("status", "withdrawn")
-      .maybeSingle();
+    const leaseId = params.id;
 
-    if (error) {
-      console.error("Erreur récupération préavis:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    if (!notice) {
-      return NextResponse.json({ error: "Préavis non trouvé" }, { status: 404 });
-    }
-
-    return NextResponse.json(notice);
-  } catch (error: any) {
-    console.error("Erreur API notice GET:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id: leaseId } = await params;
-    const supabase = await createRouteHandlerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-    }
-
-    // Récupérer le profil
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
-    }
-
-    // Vérifier que le bail existe et que l'utilisateur y a accès
+    // Récupérer le bail
     const { data: lease, error: leaseError } = await supabase
       .from("leases")
       .select(`
-        id, statut, date_debut,
-        property:properties(id, owner_id)
+        id,
+        type_bail,
+        statut,
+        date_debut,
+        date_fin,
+        loyer,
+        charges_forfaitaires,
+        depot_garantie,
+        property:properties!inner(
+          id,
+          owner_id,
+          adresse_complete,
+          ville,
+          code_postal,
+          zone_tendue
+        ),
+        signers:lease_signers(
+          id,
+          role,
+          profile_id,
+          profile:profiles(id, prenom, nom, email, user_id)
+        )
       `)
       .eq("id", leaseId)
       .single();
@@ -127,88 +84,85 @@ export async function POST(
       return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
     }
 
-    // Vérifier l'accès selon le rôle
-    const isOwner = (lease.property as any)?.owner_id === profile.id;
-    const { data: isSigner } = await supabase
-      .from("lease_signers")
-      .select("id")
-      .eq("lease_id", leaseId)
-      .eq("profile_id", profile.id)
-      .maybeSingle();
+    // Vérifier que l'utilisateur est bien locataire de ce bail
+    const leaseData = lease as any;
+    const tenantSigner = leaseData.signers?.find(
+      (s: any) => s.role === "locataire_principal" && s.profile?.user_id === user.id
+    );
 
-    if (!isOwner && !isSigner && profile.role !== "admin") {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
-
-    // Vérifier qu'il n'y a pas déjà un préavis actif
-    const { data: existingNotice } = await supabase
-      .from("departure_notices")
-      .select("id")
-      .eq("lease_id", leaseId)
-      .not("status", "in", "(withdrawn)")
-      .maybeSingle();
-
-    if (existingNotice) {
+    if (!tenantSigner) {
       return NextResponse.json(
-        { error: "Un préavis existe déjà pour ce bail" },
-        { status: 409 }
-      );
-    }
-
-    // Valider les données
-    const body = await request.json();
-    const validatedData = createNoticeSchema.parse(body);
-
-    // Vérifier la cohérence initiated_by / rôle
-    if (validatedData.initiated_by === "owner" && !isOwner && profile.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul le propriétaire peut donner un congé" },
+        { error: "Vous n'êtes pas locataire de ce bail" },
         { status: 403 }
       );
     }
 
-    if (validatedData.initiated_by === "tenant" && isOwner && !isSigner) {
+    // Vérifier que le bail est actif
+    if (leaseData.statut !== "active") {
       return NextResponse.json(
-        { error: "Seul le locataire peut donner un préavis de départ" },
-        { status: 403 }
-      );
-    }
-
-    // Créer le préavis
-    const serviceClient = createServiceRoleClient();
-    const { data: notice, error: createError } = await serviceClient
-      .from("departure_notices")
-      .insert({
-        lease_id: leaseId,
-        initiator_profile_id: profile.id,
-        ...validatedData,
-        status: "pending",
-      })
-      .select(`
-        *,
-        lease:leases!departure_notices_lease_id_fkey(
-          id, loyer, charges_forfaitaires,
-          property:properties(id, adresse_complete, ville)
-        )
-      `)
-      .single();
-
-    if (createError) {
-      console.error("Erreur création préavis:", createError);
-      return NextResponse.json({ error: createError.message }, { status: 500 });
-    }
-
-    // TODO: Envoyer notification à l'autre partie
-
-    return NextResponse.json(notice, { status: 201 });
-  } catch (error: any) {
-    if (error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Données invalides", details: error.errors },
+        { error: "Seul un bail actif peut faire l'objet d'un congé" },
         { status: 400 }
       );
     }
-    console.error("Erreur API notice POST:", error);
+
+    // Calculer les conditions de préavis
+    const noticePeriod = NOTICE_PERIODS[leaseData.type_bail] || NOTICE_PERIODS.meuble;
+    const isZoneTendue = leaseData.property?.zone_tendue === true;
+    
+    // Durée du préavis applicable
+    const standardNoticeDays = noticePeriod.standard;
+    const reducedNoticeDays = noticePeriod.reduced;
+    const canHaveReducedNotice = leaseData.type_bail === "nu" && standardNoticeDays !== reducedNoticeDays;
+
+    // Calculer les dates
+    const today = new Date();
+    const standardEndDate = new Date(today);
+    standardEndDate.setDate(standardEndDate.getDate() + standardNoticeDays);
+    
+    const reducedEndDate = new Date(today);
+    reducedEndDate.setDate(reducedEndDate.getDate() + reducedNoticeDays);
+
+    // Récupérer le propriétaire
+    const owner = leaseData.signers?.find((s: any) => s.role === "proprietaire" || s.role === "bailleur");
+
+    return NextResponse.json({
+      lease: {
+        id: leaseData.id,
+        type_bail: leaseData.type_bail,
+        type_bail_label: noticePeriod.label,
+        date_debut: leaseData.date_debut,
+        loyer: leaseData.loyer,
+        charges: leaseData.charges_forfaitaires,
+        depot_garantie: leaseData.depot_garantie,
+      },
+      property: {
+        adresse: leaseData.property?.adresse_complete,
+        ville: leaseData.property?.ville,
+        code_postal: leaseData.property?.code_postal,
+        zone_tendue: isZoneTendue,
+      },
+      owner: owner?.profile ? {
+        prenom: owner.profile.prenom,
+        nom: owner.profile.nom,
+        email: owner.profile.email,
+      } : null,
+      tenant: {
+        prenom: tenantSigner.profile?.prenom,
+        nom: tenantSigner.profile?.nom,
+        email: tenantSigner.profile?.email,
+      },
+      notice_conditions: {
+        standard_days: standardNoticeDays,
+        reduced_days: reducedNoticeDays,
+        can_have_reduced: canHaveReducedNotice,
+        is_zone_tendue: isZoneTendue,
+        standard_end_date: standardEndDate.toISOString().split("T")[0],
+        reduced_end_date: reducedEndDate.toISOString().split("T")[0],
+        reduced_reasons: canHaveReducedNotice ? REDUCED_NOTICE_REASONS : [],
+      },
+    });
+  } catch (error: any) {
+    console.error("[notice] GET error:", error);
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },
       { status: 500 }
@@ -216,9 +170,214 @@ export async function POST(
   }
 }
 
+/**
+ * POST /api/leases/[id]/notice - Donner congé (locataire)
+ */
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient();
+    const serviceClient = getServiceClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
+    if (!user) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
 
+    const leaseId = params.id;
+    const body = await request.json();
 
+    const {
+      notice_date,          // Date d'envoi du congé
+      end_date,             // Date de fin souhaitée
+      reason,               // Motif (optionnel pour meublé, obligatoire pour préavis réduit)
+      reduced_notice,       // Demande de préavis réduit
+      forwarding_address,   // Nouvelle adresse
+      notes,                // Commentaires additionnels
+    } = body;
 
+    // Récupérer le bail
+    const { data: lease, error: leaseError } = await serviceClient
+      .from("leases")
+      .select(`
+        id,
+        type_bail,
+        statut,
+        date_debut,
+        loyer,
+        charges_forfaitaires,
+        depot_garantie,
+        property:properties!inner(
+          id,
+          owner_id,
+          adresse_complete,
+          ville,
+          code_postal,
+          zone_tendue
+        ),
+        signers:lease_signers(
+          id,
+          role,
+          profile_id,
+          profile:profiles(id, prenom, nom, email, user_id)
+        )
+      `)
+      .eq("id", leaseId)
+      .single();
 
+    if (leaseError || !lease) {
+      return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
+    }
 
+    const leaseData = lease as any;
+
+    // Vérifier que l'utilisateur est bien locataire de ce bail
+    const tenantSigner = leaseData.signers?.find(
+      (s: any) => s.role === "locataire_principal" && s.profile?.user_id === user.id
+    );
+
+    if (!tenantSigner) {
+      return NextResponse.json(
+        { error: "Vous n'êtes pas locataire de ce bail" },
+        { status: 403 }
+      );
+    }
+
+    // Vérifier que le bail est actif
+    if (leaseData.statut !== "active") {
+      return NextResponse.json(
+        { error: "Seul un bail actif peut faire l'objet d'un congé" },
+        { status: 400 }
+      );
+    }
+
+    // Valider le préavis réduit si demandé
+    const noticePeriod = NOTICE_PERIODS[leaseData.type_bail] || NOTICE_PERIODS.meuble;
+    if (reduced_notice && leaseData.type_bail === "nu") {
+      if (!reason || !REDUCED_NOTICE_REASONS.includes(reason)) {
+        return NextResponse.json(
+          { error: "Motif valide requis pour le préavis réduit" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Calculer la date de fin effective
+    const noticeStartDate = new Date(notice_date || new Date());
+    const noticeDays = reduced_notice ? noticePeriod.reduced : noticePeriod.standard;
+    const effectiveEndDate = new Date(noticeStartDate);
+    effectiveEndDate.setDate(effectiveEndDate.getDate() + noticeDays);
+
+    // Créer l'enregistrement de congé
+    const { data: notice, error: noticeError } = await serviceClient
+      .from("lease_notices")
+      .insert({
+        lease_id: leaseId,
+        tenant_profile_id: tenantSigner.profile_id,
+        notice_date: noticeStartDate.toISOString().split("T")[0],
+        effective_end_date: effectiveEndDate.toISOString().split("T")[0],
+        notice_period_days: noticeDays,
+        is_reduced_notice: !!reduced_notice,
+        reduced_notice_reason: reduced_notice ? reason : null,
+        forwarding_address,
+        notes,
+        status: "pending", // pending, acknowledged, completed
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (noticeError) {
+      // Si la table n'existe pas, la créer via migration
+      if (noticeError.code === "42P01") {
+        console.error("[notice] Table lease_notices manquante, création nécessaire");
+        return NextResponse.json(
+          { error: "Configuration en cours, veuillez réessayer" },
+          { status: 503 }
+        );
+      }
+      throw noticeError;
+    }
+
+    // Mettre à jour le bail avec le statut "notice_given"
+    await serviceClient
+      .from("leases")
+      .update({
+        statut: "notice_given",
+        date_fin: effectiveEndDate.toISOString().split("T")[0],
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", leaseId);
+
+    // Récupérer le propriétaire pour la notification
+    const owner = leaseData.signers?.find((s: any) => s.role === "proprietaire" || s.role === "bailleur");
+
+    // Notifier le propriétaire
+    if (owner?.profile?.user_id) {
+      await serviceClient.from("notifications").insert({
+        user_id: owner.profile.user_id,
+        type: "lease_notice",
+        title: "📬 Congé reçu",
+        body: `${tenantSigner.profile?.prenom} ${tenantSigner.profile?.nom} a donné congé pour le logement ${leaseData.property?.adresse_complete}. Fin du bail prévue le ${effectiveEndDate.toLocaleDateString("fr-FR")}.`,
+        priority: "high",
+        metadata: {
+          lease_id: leaseId,
+          notice_id: notice?.id,
+          end_date: effectiveEndDate.toISOString().split("T")[0],
+        },
+      });
+    }
+
+    // Émettre un événement pour le workflow
+    await serviceClient.from("outbox").insert({
+      event_type: "Lease.NoticeGiven",
+      payload: {
+        lease_id: leaseId,
+        notice_id: notice?.id,
+        tenant_id: tenantSigner.profile_id,
+        owner_id: leaseData.property?.owner_id,
+        notice_date: noticeStartDate.toISOString().split("T")[0],
+        effective_end_date: effectiveEndDate.toISOString().split("T")[0],
+        notice_period_days: noticeDays,
+        is_reduced_notice: !!reduced_notice,
+        reason: reason,
+      },
+    });
+
+    // Journaliser
+    await serviceClient.from("audit_log").insert({
+      user_id: user.id,
+      action: "lease_notice_given",
+      entity_type: "lease",
+      entity_id: leaseId,
+      metadata: {
+        notice_id: notice?.id,
+        notice_date: noticeStartDate.toISOString().split("T")[0],
+        effective_end_date: effectiveEndDate.toISOString().split("T")[0],
+        notice_period_days: noticeDays,
+        is_reduced_notice: !!reduced_notice,
+        reason,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Congé enregistré avec succès",
+      notice: {
+        id: notice?.id,
+        notice_date: noticeStartDate.toISOString().split("T")[0],
+        effective_end_date: effectiveEndDate.toISOString().split("T")[0],
+        notice_period_days: noticeDays,
+        is_reduced_notice: !!reduced_notice,
+      },
+    });
+  } catch (error: any) {
+    console.error("[notice] POST error:", error);
+    return NextResponse.json(
+      { error: error.message || "Erreur serveur" },
+      { status: 500 }
+    );
+  }
+}

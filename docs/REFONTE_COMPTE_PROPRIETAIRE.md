@@ -17,7 +17,7 @@
 - ✅ `app/owner/dashboard/OwnerDashboardClient.tsx` - Client Component avec interactions
 - ✅ `app/owner/properties/page.tsx` - Server Component qui charge les données
 - ✅ `app/owner/properties/OwnerPropertiesClient.tsx` - Client Component avec filtres
-- ✅ `app/owner/contracts/page.tsx` - Server Component qui charge les données
+- ✅ `app/owner/leases/page.tsx` - Server Component qui charge les données
 - ✅ `app/owner/money/page.tsx` - Server Component qui charge les données
 
 ## 📋 Architecture mise en place

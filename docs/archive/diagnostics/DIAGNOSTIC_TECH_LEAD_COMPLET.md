@@ -1,4 +1,4 @@
-# 🔍 DIAGNOSTIC TECH LEAD COMPLET - Gestion Locative SaaS
+# 🔍 DIAGNOSTIC TECH LEAD COMPLET - Talok SaaS
 
 **Date:** $(date)  
 **Tech Lead:** Analyse complète du codebase  

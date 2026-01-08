@@ -3,7 +3,7 @@
 /**
  * DifferentiatorsShowcase - Mise en avant des différenciateurs
  * 
- * Composant hero pour afficher les 4 avantages uniques de GestLoc
+ * Composant hero pour afficher les 4 avantages uniques de Talok
  * par rapport à la concurrence (basé sur benchmark de 15 concurrents)
  */
 

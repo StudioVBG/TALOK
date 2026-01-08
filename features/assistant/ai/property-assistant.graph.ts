@@ -1,5 +1,5 @@
 /**
- * Assistant IA de Gestion Locative
+ * Assistant IA de Talok
  * SOTA Décembre 2025 - GPT-5.2 + LangGraph 1.0
  * 
  * Architecture ReAct avec mémoire persistante et tools adaptés par rôle

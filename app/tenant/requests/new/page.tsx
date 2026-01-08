@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { 
   Select,
   SelectContent,
@@ -60,8 +61,8 @@ export default function NewTenantRequestPage() {
   const [mode, setMode] = useState<'classic' | 'tom'>('tom');
   const [loading, setLoading] = useState(false);
 
-  // Get current property ID from dashboard
-  const propertyId = dashboard?.lease?.property_id || dashboard?.leases?.[0]?.property_id;
+  // 🔧 FIX: Protection contre dashboard null ou structure inattendue
+  const propertyId = dashboard?.lease?.property_id || (dashboard?.leases && dashboard.leases.length > 0 ? dashboard.leases[0].property_id : null);
 
   const [form, setForm] = useState({
     titre: "",

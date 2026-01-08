@@ -7,8 +7,8 @@
 - `/owner/properties` ✅
 - `/owner/properties/[id]` ✅
 - `/owner/properties/[id]/edit` ✅
-- `/owner/contracts` ✅
-- `/owner/contracts/[id]` ✅
+- `/owner/leases` ✅
+- `/owner/leases/[id]` ✅
 - `/owner/money` ✅
 - `/owner/documents` ✅
 - `/owner/support` ✅
@@ -90,8 +90,8 @@ import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 - ✅ `/owner/properties/new`
 - ✅ `/owner/properties/[id]`
 - ✅ `/owner/properties/[id]/edit`
-- ✅ `/owner/contracts`
-- ✅ `/owner/contracts/[id]`
+- ✅ `/owner/leases`
+- ✅ `/owner/leases/[id]`
 - ✅ `/owner/money`
 - ✅ `/owner/documents`
 - ✅ `/owner/support`

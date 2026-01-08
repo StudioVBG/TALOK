@@ -5,4 +5,5 @@
 
 export { SignaturePad, type SignaturePadRef } from "./SignaturePad";
 export { CashReceiptFlow } from "./CashReceiptFlow";
+export { ManualPaymentDialog, type ManualPaymentDialogProps } from "./ManualPaymentDialog";
 

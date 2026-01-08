@@ -96,7 +96,7 @@ const categoryColors: Record<string, string> = {
 const providerFields: Record<string, { key: string; label: string; type: string; placeholder: string; required?: boolean }[]> = {
   Resend: [
     { key: "api_key", label: "Clé API Resend", type: "password", placeholder: "re_xxxxxxxxxx", required: true },
-    { key: "email_from", label: "Adresse d'envoi", type: "text", placeholder: "Gestion Locative <contact@domaine.com>" },
+    { key: "email_from", label: "Adresse d'envoi", type: "text", placeholder: "Talok <contact@domaine.com>" },
   ],
   Stripe: [
     { key: "api_key", label: "Clé secrète Stripe", type: "password", placeholder: "sk_live_xxxxxxxxxx", required: true },

@@ -184,8 +184,8 @@ export function PropertyDetailsWrapper({
         backHref="/owner/properties"
         backLabel="Retour à la liste"
         editHref={`/owner/properties/${propertyId}/edit`}
-        createLeaseHref={`/owner/contracts/new?propertyId=${propertyId}`}
-        viewLeaseHref={(leaseId) => `/owner/contracts/${leaseId}`}
+        createLeaseHref={`/owner/leases/new?propertyId=${propertyId}`}
+        viewLeaseHref={(leaseId) => `/owner/leases/${leaseId}`}
         
         // Slot owner - Actions personnalisées
         sidebarSlot={

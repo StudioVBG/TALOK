@@ -129,7 +129,7 @@ INSERT INTO subscription_plans (
 ) VALUES (
   'pro',
   'Pro',
-  'Pour les gestionnaires professionnels et SCI',
+  'Le plan idéal pour les gestionnaires et SCI',
   5900, 59000,  -- 59€/mois, 590€/an
   50, -1, -1, 20,  -- -1 = illimité
   '{
@@ -306,7 +306,7 @@ BEGIN
       )
       ON CONFLICT (owner_id) DO NOTHING;
       
-      RAISE NOTICE 'Abonnement Starter (essai) créé pour le propriétaire %', NEW.id;
+      RAISE NOTICE 'Abonnement Talok Starter (essai) créé pour le propriétaire %', NEW.id;
     END IF;
   END IF;
   

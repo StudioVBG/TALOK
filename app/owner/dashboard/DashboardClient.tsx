@@ -23,6 +23,8 @@ import { UrgentActionsSection, type UrgentAction } from "@/components/owner/dash
 import { PushNotificationPrompt } from "@/components/notifications/push-notification-prompt";
 import { SignatureAlertBanner } from "@/components/owner/dashboard/signature-alert-banner";
 import { OwnerRecentActivity } from "@/components/owner/dashboard/recent-activity";
+import { RealtimeRevenueWidget, RealtimeStatusIndicator } from "@/components/owner/dashboard/realtime-revenue-widget";
+import { StartTourButton } from "@/components/onboarding";
 
 // Lazy loading des composants lourds
 const OwnerTodoSection = dynamic(
@@ -142,7 +144,7 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
   if (!hasProperties && completionPercentage < 50) {
      return (
        <EmptyState 
-         title="Bienvenue sur Lokatif !"
+         title="Bienvenue sur Talok !"
          description="Pour commencer, ajoutez votre premier bien immobilier."
          icon={Plus}
          action={{
@@ -177,6 +179,17 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
       link: `${OWNER_ROUTES.contracts.path}?filter=pending_signature`,
       linkLabel: "Signer",
       metadata: { count: dashboard.leases.pending },
+    }] : []),
+    // EDL en attente de signature propriétaire (haute)
+    ...(dashboard.edl?.pending_owner_signature > 0 ? [{
+      id: "edl_pending",
+      type: "signature" as const,
+      priority: "high" as const,
+      title: `${dashboard.edl.pending_owner_signature} État des lieux à signer`,
+      description: "Des états des lieux sont terminés et attendent votre signature pour validation",
+      link: "/owner/inspections",
+      linkLabel: "Signer",
+      metadata: { count: dashboard.edl.pending_owner_signature },
     }] : []),
     // Tickets ouverts (moyenne)
     ...(dashboard.tickets?.open > 0 ? [{
@@ -292,6 +305,7 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
+                  data-tour="dashboard-header"
                 >
                   Tableau de bord
                 </motion.h1>
@@ -299,11 +313,13 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 }}
+                  className="flex items-center gap-2"
                 >
                   <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 gap-1.5 px-2.5 py-1">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     SOTA 2026 Secure
                   </Badge>
+                  <RealtimeStatusIndicator />
                 </motion.div>
               </div>
               <motion.p 
@@ -438,20 +454,28 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
           </div>
         </motion.section>
 
-        {/* Zone 2 - Vue finances détaillée */}
+        {/* Zone 2 - Vue finances détaillée avec Temps Réel */}
         <motion.section variants={itemVariants}>
           <div className="mb-4 flex items-center justify-between">
              <h2 className="text-xl font-semibold text-slate-800">Performance Financière</h2>
-             <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700">
-                <Link href="/owner/money">
-                   Voir détails <ArrowRight className="ml-1 h-4 w-4" />
-                </Link>
-             </Button>
+             <div className="flex items-center gap-2">
+               <StartTourButton className="text-xs" />
+               <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700">
+                  <Link href="/owner/money">
+                     Voir détails <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+               </Button>
+             </div>
           </div>
-          <OwnerFinanceSummary
-            chartData={transformedData.zone2_finances.chart_data}
-            kpis={transformedData.zone2_finances.kpis}
-          />
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Widget Temps Réel SOTA 2026 */}
+            <RealtimeRevenueWidget />
+            {/* Widget classique */}
+            <OwnerFinanceSummary
+              chartData={transformedData.zone2_finances.chart_data}
+              kpis={transformedData.zone2_finances.kpis}
+            />
+          </div>
         </motion.section>
 
         {/* Zone 3 - Portefeuille & conformité */}

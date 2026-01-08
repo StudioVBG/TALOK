@@ -33,6 +33,9 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
     depot_de_garantie: 0,
     date_debut: "",
     date_fin: null,
+    // ✅ FIX: Champs locataire
+    tenant_email: "",
+    tenant_name: "",
   });
 
   useEffect(() => {
@@ -199,6 +202,44 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
               />
             </div>
           </div>
+
+          {/* ✅ FIX: Section Locataire */}
+          {!lease && (
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="font-medium text-sm text-muted-foreground">Locataire (optionnel)</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="tenant_name">Nom complet du locataire</Label>
+                  <Input
+                    id="tenant_name"
+                    type="text"
+                    placeholder="Jean Dupont"
+                    value={formData.tenant_name || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tenant_name: e.target.value })
+                    }
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tenant_email">Email du locataire</Label>
+                  <Input
+                    id="tenant_email"
+                    type="email"
+                    placeholder="locataire@email.com"
+                    value={formData.tenant_email || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tenant_email: e.target.value })
+                    }
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Si renseigné, le locataire recevra une invitation pour signer le bail.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">

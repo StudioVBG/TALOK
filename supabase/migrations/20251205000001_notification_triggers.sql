@@ -204,7 +204,7 @@ BEGIN
         'lease_signed',
         'Bail signé !',
         format('Le bail pour %s est maintenant actif.', v_property_address),
-        '/app/owner/contracts/' || NEW.id,
+        '/app/owner/leases/' || NEW.id,
         NEW.id,
         'lease'
       );
@@ -344,7 +344,7 @@ BEGIN
         v_lease.adresse_complete, 
         to_char(v_lease.date_fin, 'DD/MM/YYYY')
       ),
-      '/app/owner/contracts/' || v_lease.id,
+      '/app/owner/leases/' || v_lease.id,
       v_lease.id,
       'lease'
     );

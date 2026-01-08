@@ -57,7 +57,7 @@ const ownerCommands = {
     { icon: LayoutDashboard, label: "Tableau de bord", href: "/owner/dashboard", shortcut: "⌘D" },
     { icon: Building2, label: "Mes biens", href: "/owner/properties", shortcut: "⌘B" },
     { icon: Users, label: "Mes locataires", href: "/owner/tenants", shortcut: "⌘L" },
-    { icon: FileText, label: "Baux & contrats", href: "/owner/contracts", shortcut: "⌘C" },
+    { icon: FileText, label: "Baux & contrats", href: "/owner/leases", shortcut: "⌘C" },
     { icon: Euro, label: "Loyers & revenus", href: "/owner/money", shortcut: "⌘M" },
     { icon: Wrench, label: "Tickets maintenance", href: "/owner/tickets" },
     { icon: ClipboardCheck, label: "États des lieux", href: "/owner/inspections" },
@@ -67,7 +67,7 @@ const ownerCommands = {
   ],
   actions: [
     { icon: Plus, label: "Ajouter un bien", href: "/owner/properties/new", accent: true },
-    { icon: Plus, label: "Créer un bail", href: "/owner/contracts/new", accent: true },
+    { icon: Plus, label: "Créer un bail", href: "/owner/leases/new", accent: true },
     { icon: Plus, label: "Nouveau ticket", href: "/owner/tickets/new" },
     { icon: Plus, label: "Nouvel état des lieux", href: "/owner/inspections/new" },
     { icon: CreditCard, label: "Générer les factures", href: "/owner/money?action=generate" },

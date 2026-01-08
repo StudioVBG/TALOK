@@ -151,7 +151,7 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
         {/* Header */}
         <div className="mb-8">
           <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2">
-            <Link href="/owner/contracts">
+            <Link href="/owner/leases">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Retour aux baux
             </Link>
@@ -360,7 +360,7 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
                     </div>
                     <div className="mt-3 pt-3 border-t">
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/owner/contracts/${currentLease.id}`}>
+                        <Link href={`/owner/leases/${currentLease.id}`}>
                           Voir le bail
                         </Link>
                       </Button>
