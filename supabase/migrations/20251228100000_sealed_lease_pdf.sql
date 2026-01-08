@@ -108,3 +108,4 @@ COMMENT ON FUNCTION seal_lease IS 'Scelle un bail après signature complète. St
 
 
 
+
