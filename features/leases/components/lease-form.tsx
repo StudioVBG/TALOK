@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { propertiesService } from "@/features/properties/services/properties.ser
 import type { CreateLeaseData, UpdateLeaseData } from "../services/leases.service";
 import type { Lease, Property, LeaseType } from "@/lib/types";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { getMaxDepotLegal, getMaxDepotMois } from "@/lib/validations/lease-financial";
 
 interface LeaseFormProps {
   propertyId?: string;
@@ -60,6 +61,20 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
         .catch(() => {});
     }
   }, [lease, profile]);
+
+  // ✅ CALCUL AUTOMATIQUE du dépôt de garantie quand loyer ou type change
+  useEffect(() => {
+    if (formData.loyer > 0) {
+      const depotAuto = getMaxDepotLegal(formData.type_bail, formData.loyer);
+      setFormData(prev => ({
+        ...prev,
+        depot_de_garantie: depotAuto
+      }));
+    }
+  }, [formData.loyer, formData.type_bail]);
+
+  // ✅ Calcul du nombre de mois pour l'affichage
+  const depotMois = useMemo(() => getMaxDepotMois(formData.type_bail), [formData.type_bail]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,22 +199,28 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="depot_de_garantie">Dépôt de garantie (€)</Label>
+              <Label htmlFor="depot_de_garantie">
+                Dépôt de garantie (€)
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  {depotMois > 0 ? `(${depotMois} mois - auto)` : "(interdit)"}
+                </span>
+              </Label>
               <Input
                 id="depot_de_garantie"
                 type="number"
                 min="0"
                 step="0.01"
                 value={formData.depot_de_garantie}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    depot_de_garantie: parseFloat(e.target.value) || 0,
-                  })
-                }
-                required
+                readOnly
+                className="bg-muted cursor-not-allowed"
                 disabled={loading}
               />
+              <p className="text-xs text-muted-foreground">
+                {formData.type_bail === "mobilite" 
+                  ? "⚠️ Interdit pour bail mobilité (Loi ELAN)"
+                  : `✅ Calculé automatiquement : ${depotMois} × loyer`
+                }
+              </p>
             </div>
           </div>
 
