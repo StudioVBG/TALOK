@@ -24,7 +24,6 @@ import {
   Shield,
   CreditCard,
   ClipboardCheck,
-  Plus,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { OwnerBottomNav } from "./owner-bottom-nav";
@@ -37,8 +36,6 @@ import { CommandPalette } from "@/components/command-palette";
 import { NotificationCenter } from "@/components/notifications";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
-import { OrganizationSwitcher } from "@/components/owner/organization-switcher";
-import { useOrganizationOptional } from "@/lib/hooks/use-organization";
 import { OnboardingTourProvider, AutoTourPrompt, StartTourButton } from "@/components/onboarding";
 
 const navigation = [
@@ -72,9 +69,6 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
   const { profile: clientProfile, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-
-  // Organisation context (optionnel car peut ne pas être disponible)
-  const orgContext = useOrganizationOptional();
 
   // Utiliser le profil du serveur si disponible, sinon celui du client
   const profile = serverProfile || clientProfile;
@@ -129,21 +123,6 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                 <p className="text-xs text-slate-500">Compte Propriétaire</p>
               </div>
             </div>
-
-            {/* Sélecteur d'organisation - Multi-sociétés */}
-            {orgContext && orgContext.organizations.length > 0 && (
-              <div className="py-2">
-                <OrganizationSwitcher
-                  organizations={orgContext.organizations}
-                  currentOrganizationId={orgContext.currentOrganizationId}
-                  propertyCountByOrg={orgContext.propertyCountByOrg}
-                  onSelect={orgContext.setCurrentOrganizationId}
-                  onCreateNew={() => router.push("/owner/settings/organizations")}
-                  className="w-full"
-                />
-              </div>
-            )}
-
             <nav className="flex flex-1 flex-col">
               <ul role="list" className="flex flex-1 flex-col gap-y-1">
                 {navigation.map((item) => {
