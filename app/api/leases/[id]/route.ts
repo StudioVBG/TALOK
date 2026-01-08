@@ -218,11 +218,14 @@ export async function PUT(request: Request, { params }: RouteParams) {
     // Utiliser le service client pour bypass RLS
     const serviceClient = getServiceClient();
 
-    // Vérifier que le bail existe et appartient au propriétaire
+    // Vérifier que le bail existe et récupérer les données actuelles
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select(`
         id,
+        loyer,
+        type_bail,
+        depot_de_garantie,
         property:properties!inner(
           id,
           owner_id
@@ -250,24 +253,37 @@ export async function PUT(request: Request, { params }: RouteParams) {
       );
     }
 
-    // ✅ SSOT 2026: Validation des données financières si présentes
-    if (body.loyer !== undefined && body.depot_garantie !== undefined && body.type_bail !== undefined) {
-      const loyer = parseFloat(body.loyer);
-      const depot = parseFloat(body.depot_garantie);
-      const maxDepot = getMaxDepotLegal(body.type_bail, loyer);
-      const maxMois = getMaxDepotMois(body.type_bail);
+    // ✅ SSOT 2026: Déterminer les nouvelles valeurs (ou garder les actuelles)
+    const currentLease = lease as any;
+    const newLoyer = body.loyer !== undefined ? parseFloat(body.loyer) : currentLease.loyer;
+    const newTypeBail = body.type_bail !== undefined ? body.type_bail : currentLease.type_bail;
+    
+    // ✅ CALCUL AUTOMATIQUE: Recalculer le dépôt si loyer ou type change
+    let newDepot: number;
+    if (body.depot_garantie !== undefined) {
+      // Dépôt fourni manuellement - vérifier le max légal
+      newDepot = parseFloat(body.depot_garantie);
+      const maxDepot = getMaxDepotLegal(newTypeBail, newLoyer);
+      const maxMois = getMaxDepotMois(newTypeBail);
       
-      if (body.type_bail === "mobilite" && depot > 0) {
+      if (newTypeBail === "mobilite" && newDepot > 0) {
         return NextResponse.json(
           { error: "Le dépôt de garantie est interdit pour un bail mobilité (Art. 25-13 Loi ELAN)" },
           { status: 400 }
         );
-      } else if (depot > maxDepot && maxDepot > 0) {
+      } else if (newDepot > maxDepot && maxDepot > 0) {
         return NextResponse.json(
-          { error: `Dépôt de garantie (${depot}€) supérieur au maximum légal (${maxMois} mois = ${maxDepot}€)` },
+          { error: `Dépôt de garantie (${newDepot}€) supérieur au maximum légal (${maxMois} mois = ${maxDepot}€)` },
           { status: 400 }
         );
       }
+    } else if (body.loyer !== undefined || body.type_bail !== undefined) {
+      // Loyer ou type change sans dépôt fourni → recalculer automatiquement
+      newDepot = getMaxDepotLegal(newTypeBail, newLoyer);
+      console.log(`[PUT /api/leases] Dépôt recalculé automatiquement: ${newDepot}€ (${newTypeBail}, loyer: ${newLoyer}€)`);
+    } else {
+      // Aucun changement financier
+      newDepot = currentLease.depot_de_garantie;
     }
 
     // Préparer les données de base à mettre à jour (colonnes garanties)
@@ -277,7 +293,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (body.type_bail !== undefined) baseUpdateData.type_bail = body.type_bail;
     if (body.loyer !== undefined) baseUpdateData.loyer = parseFloat(body.loyer);
     if (body.charges_forfaitaires !== undefined) baseUpdateData.charges_forfaitaires = parseFloat(body.charges_forfaitaires);
-    if (body.depot_garantie !== undefined) baseUpdateData.depot_de_garantie = parseFloat(body.depot_garantie);
+    // ✅ Toujours mettre à jour le dépôt (recalculé auto si nécessaire)
+    if (body.depot_garantie !== undefined || body.loyer !== undefined || body.type_bail !== undefined) {
+      baseUpdateData.depot_de_garantie = newDepot;
+    }
     if (body.date_debut !== undefined) baseUpdateData.date_debut = body.date_debut;
     if (body.date_fin !== undefined) baseUpdateData.date_fin = body.date_fin;
 
