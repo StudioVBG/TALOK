@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -15,18 +15,25 @@ interface UseSignOutOptions {
  * - État de chargement
  * - Nettoyage complet du cache
  * - Redirection forcée garantie
- * - Protection contre double-clic
+ * - Protection contre double-clic (avec useRef)
  */
 export function useSignOut(options: UseSignOutOptions = {}) {
   const { redirectTo = "/auth/signin", onSuccess, onError } = options;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const router = useRouter();
+  
+  // ✅ FIX: Utiliser une ref pour éviter le problème de closure stale
+  const isSigningOutRef = useRef(false);
 
   const signOut = useCallback(async () => {
-    // Protection contre double-clic
-    if (isLoading) return;
+    // Protection contre double-clic avec ref (pas de problème de closure)
+    if (isSigningOutRef.current) {
+      console.log("[useSignOut] Déjà en cours de déconnexion, ignoré");
+      return;
+    }
 
+    isSigningOutRef.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -99,7 +106,7 @@ export function useSignOut(options: UseSignOutOptions = {}) {
         router.push(redirectTo);
       }
     }
-  }, [isLoading, onSuccess, onError, redirectTo, router]);
+  }, [onSuccess, onError, redirectTo, router]); // ✅ isLoading retiré des dépendances
 
   return {
     signOut,
@@ -107,4 +114,3 @@ export function useSignOut(options: UseSignOutOptions = {}) {
     error,
   };
 }
-
