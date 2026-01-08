@@ -331,11 +331,12 @@ export function LeasePreview({
   // === TÉLÉCHARGEMENT: Utiliser l'impression native pour garantir le rendu ===
   const handleDownloadPDF = async () => {
     const errors = validateBailData();
+    const totalErrors = errors.critical.length + errors.warnings.length;
     
-    if (errors.length > 0) {
+    if (totalErrors > 0) {
       toast({
         title: "⚠️ Données incomplètes",
-        description: `${errors.length} champ(s) manquant(s). Le document peut être incomplet.`,
+        description: `${totalErrors} champ(s) manquant(s). Le document peut être incomplet.`,
       });
     }
 
