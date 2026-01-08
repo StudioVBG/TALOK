@@ -99,10 +99,9 @@ export async function POST(request: Request, { params }: PageProps) {
       );
     }
 
-    // Générer la preuve de signature
-    const ipAddress = request.headers.get("x-forwarded-for") || 
-                      request.headers.get("x-real-ip") || 
-                      "unknown";
+    // Extraire la première IP du header X-Forwarded-For
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const ipAddress = forwardedFor ? forwardedFor.split(",")[0].trim() : (request.headers.get("x-real-ip") || "0.0.0.0");
 
     // Créer un contenu de document pour le hash
     const documentContent = JSON.stringify({

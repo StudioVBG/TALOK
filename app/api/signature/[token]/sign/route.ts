@@ -175,10 +175,14 @@ export async function POST(request: Request, { params }: PageProps) {
     const signerName = actualSigner.invited_name || tokenData.tenantEmail;
 
     // 2. Préparer les données de mise à jour
+    // Extraire la première IP du header X-Forwarded-For (peut contenir plusieurs IPs séparées par virgule)
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : (request.headers.get("x-real-ip") || "0.0.0.0");
+
     const updateData: Record<string, any> = {
       signature_status: "signed",
       signed_at: new Date().toISOString(),
-      ip_inet: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
+      ip_inet: clientIp,
     };
     
     // ✅ FIX: Sauvegarder l'image de signature dans Storage + base64
@@ -281,7 +285,7 @@ export async function POST(request: Request, { params }: PageProps) {
           signer_email: tokenData.tenantEmail,
           signer_name: signerName,
           verification_method: "otp_sms",
-          signature_ip: request.headers.get("x-forwarded-for") || "unknown",
+          signature_ip: clientIp,
         },
       });
 

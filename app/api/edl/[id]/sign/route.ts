@@ -116,6 +116,10 @@ export async function POST(
       throw new Error("Erreur lors de l'enregistrement de l'image de signature");
     }
 
+    // Extraire la première IP du header X-Forwarded-For
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : "0.0.0.0";
+
     // 5. Générer le Dossier de Preuve (Audit Trail)
     const proof = await generateSignatureProof({
       documentType: "EDL",
@@ -129,7 +133,7 @@ export async function POST(
       signatureType: "draw",
       signatureImage: signatureBase64,
       userAgent: request.headers.get("user-agent") || "Inconnu",
-      ipAddress: request.headers.get("x-forwarded-for") || "Inconnue",
+      ipAddress: clientIp,
       screenSize: clientMetadata?.screenSize || "Non spécifié",
       touchDevice: clientMetadata?.touchDevice || false,
     });

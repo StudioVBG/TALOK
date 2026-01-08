@@ -122,6 +122,10 @@ export async function POST(
       identityMethod = `CNI n°${cniNumber}`;
     }
     
+    // Extraire la première IP du header X-Forwarded-For (peut contenir plusieurs IPs séparées par virgule)
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : "0.0.0.0";
+
     const proof = await generateSignatureProof({
       documentType: "BAIL",
       documentId: leaseId,
@@ -134,7 +138,7 @@ export async function POST(
       signatureType: "draw",
       signatureImage: signature_image,
       userAgent: request.headers.get("user-agent") || "Inconnu",
-      ipAddress: request.headers.get("x-forwarded-for") || "Inconnue",
+      ipAddress: clientIp,
       screenSize: clientMetadata?.screenSize || "Non spécifié",
       touchDevice: clientMetadata?.touchDevice || false,
     });
