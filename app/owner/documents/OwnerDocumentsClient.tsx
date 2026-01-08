@@ -330,14 +330,14 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
         header: "Actions",
         className: "text-right",
         cell: (doc: any) => (
-            <div className="flex justify-end gap-1">
+            <div className="flex justify-end gap-1" role="group" aria-label="Actions sur le document">
                 {/* Prévisualiser */}
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600"
+                    className="h-11 w-11 hover:bg-blue-50 hover:text-blue-600"
                     onClick={() => openPreview(doc)}
-                    title="Prévisualiser"
+                    aria-label={`Prévisualiser ${doc.title || getTypeLabel(doc.type || "")}`}
                 >
                     <Eye className="h-4 w-4" />
                 </Button>
@@ -345,9 +345,9 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600"
+                    className="h-11 w-11 hover:bg-indigo-50 hover:text-indigo-600"
                     onClick={() => handleDownload(doc)}
-                    title="Télécharger"
+                    aria-label={`Télécharger ${doc.title || getTypeLabel(doc.type || "")}`}
                 >
                     <Download className="h-4 w-4" />
                 </Button>
@@ -355,9 +355,9 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                    className="h-11 w-11 hover:bg-red-50 hover:text-red-600"
                     onClick={() => openDeleteDialog(doc)}
-                    title="Supprimer"
+                    aria-label={`Supprimer ${doc.title || getTypeLabel(doc.type || "")}`}
                 >
                     <Trash2 className="h-4 w-4" />
                 </Button>
@@ -457,6 +457,7 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 bg-white border-slate-200"
+                    aria-label="Rechercher dans les documents"
                     />
                 </div>
                 </div>

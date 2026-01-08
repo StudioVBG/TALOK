@@ -194,6 +194,8 @@ function DocumentGroup({
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
+        aria-expanded={expanded}
+        aria-controls={`group-content-${title.replace(/\s+/g, '-')}`}
       >
         <div className="flex items-center gap-3">
           <div className={cn("p-2 rounded-lg", badgeColor)}>
@@ -220,7 +222,12 @@ function DocumentGroup({
 
       {/* Contenu */}
       {expanded && (
-        <div className="border-t border-slate-100 p-4 space-y-3">
+        <div 
+          id={`group-content-${title.replace(/\s+/g, '-')}`}
+          className="border-t border-slate-100 p-4 space-y-3"
+          role="region"
+          aria-label={`Documents de ${title}`}
+        >
           {/* CNI groupées */}
           {groupedDocs.cniPairs.map((pair, idx) => (
             <div key={`cni-pair-${idx}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
@@ -315,13 +322,14 @@ function DocumentMiniCard({
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1" role="group" aria-label="Actions sur le document">
         {onPreview && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-11 w-11"
             onClick={() => onPreview(doc)}
+            aria-label={`Prévisualiser ${doc.title || typeLabel}`}
           >
             <Eye className="h-4 w-4" />
           </Button>
@@ -330,8 +338,9 @@ function DocumentMiniCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-11 w-11"
             onClick={() => onDownload(doc)}
+            aria-label={`Télécharger ${doc.title || typeLabel}`}
           >
             <Download className="h-4 w-4" />
           </Button>
@@ -340,8 +349,9 @@ function DocumentMiniCard({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+            className="h-11 w-11 hover:bg-red-50 hover:text-red-600"
             onClick={() => onDelete(doc)}
+            aria-label={`Supprimer ${doc.title || typeLabel}`}
           >
             <Trash2 className="h-4 w-4" />
           </Button>

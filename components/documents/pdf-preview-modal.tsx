@@ -87,34 +87,37 @@ export function PDFPreviewModal({
             </div>
             
             {/* Toolbar */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" role="toolbar" aria-label="Outils de visualisation">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleZoomOut}
                 disabled={zoom <= 50}
-                className="h-8 w-8"
+                className="h-11 w-11"
+                aria-label="Dézoomer"
               >
                 <ZoomOut className="h-4 w-4" />
               </Button>
-              <span className="text-sm font-medium w-12 text-center">{zoom}%</span>
+              <span className="text-sm font-medium w-12 text-center" aria-live="polite">{zoom}%</span>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleZoomIn}
                 disabled={zoom >= 200}
-                className="h-8 w-8"
+                className="h-11 w-11"
+                aria-label="Zoomer"
               >
                 <ZoomIn className="h-4 w-4" />
               </Button>
               
-              <div className="w-px h-6 bg-slate-200 mx-2" />
+              <div className="w-px h-6 bg-slate-200 mx-2" aria-hidden="true" />
               
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleRotate}
-                className="h-8 w-8"
+                className="h-11 w-11"
+                aria-label="Pivoter le document"
               >
                 <RotateCw className="h-4 w-4" />
               </Button>
@@ -123,7 +126,8 @@ export function PDFPreviewModal({
                 variant="ghost"
                 size="icon"
                 onClick={handleFullscreen}
-                className="h-8 w-8"
+                className="h-11 w-11"
+                aria-label={isFullscreen ? "Quitter le plein écran" : "Afficher en plein écran"}
               >
                 {isFullscreen ? (
                   <Minimize2 className="h-4 w-4" />
@@ -132,13 +136,14 @@ export function PDFPreviewModal({
                 )}
               </Button>
               
-              <div className="w-px h-6 bg-slate-200 mx-2" />
+              <div className="w-px h-6 bg-slate-200 mx-2" aria-hidden="true" />
               
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleDownload}
-                className="gap-2"
+                className="gap-2 h-11"
+                aria-label={`Télécharger ${documentTitle}`}
               >
                 <Download className="h-4 w-4" />
                 Télécharger

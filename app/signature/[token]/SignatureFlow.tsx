@@ -1088,64 +1088,43 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                   <div className="text-center">
                     <h2 className="text-xl font-bold">Signature électronique</h2>
                     <p className="text-muted-foreground mt-1">
-                      Choisissez votre méthode de signature
+                      {signatureMode === "pad" 
+                        ? "Dessinez ou tapez votre signature ci-dessous"
+                        : "Vérification par code de sécurité"}
                     </p>
                   </div>
 
-                  {/* Choix du mode de signature */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setSignatureMode("pad")}
-                      className={cn(
-                        "p-4 rounded-xl border-2 transition-all text-left",
-                        signatureMode === "pad"
-                          ? "border-green-500 bg-green-50 dark:bg-green-950/30"
-                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
-                      )}
-                    >
-                      <PenTool className={cn(
-                        "h-8 w-8 mb-2",
-                        signatureMode === "pad" ? "text-green-600" : "text-slate-400"
-                      )} />
-                      <p className="font-semibold">Signature rapide</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Dessinez ou tapez votre signature
-                      </p>
-                      <Badge variant="secondary" className="mt-2 text-xs">
-                        Recommandé
-                      </Badge>
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => setSignatureMode("otp")}
-                      className={cn(
-                        "p-4 rounded-xl border-2 transition-all text-left",
-                        signatureMode === "otp"
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
-                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
-                      )}
-                    >
-                      <Smartphone className={cn(
-                        "h-8 w-8 mb-2",
-                        signatureMode === "otp" ? "text-blue-600" : "text-slate-400"
-                      )} />
-                      <p className="font-semibold">Code SMS/Email</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Recevez un code de vérification
-                      </p>
-                    </button>
-                  </div>
-
-                  {/* Mode Signature Pad (recommandé) */}
+                  {/* Mode Signature Pad - AFFICHÉ PAR DÉFAUT */}
                   {signatureMode === "pad" && (
                     <div className="space-y-4">
+                      {/* Badge info */}
+                      <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                        <PenTool className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                          Signature rapide recommandée
+                        </span>
+                      </div>
+
                       <SignaturePad
                         signerName={`${profileData.prenom} ${profileData.nom}`}
                         onSignatureComplete={handleSignWithPad}
                         disabled={isSubmitting}
                       />
+                      
+                      {/* Lien discret pour changer de méthode */}
+                      <div className="text-center pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Problème avec la signature ?
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSignatureMode("otp")}
+                          className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center justify-center gap-1 mx-auto"
+                        >
+                          <Smartphone className="h-3 w-3" />
+                          Signer par code SMS/Email
+                        </button>
+                      </div>
                       
                       <Button
                         variant="outline"
@@ -1161,6 +1140,16 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                   {/* Mode OTP (code SMS/Email) */}
                   {signatureMode === "otp" && !otpSent && (
                     <div className="space-y-4">
+                      {/* Bouton retour vers signature rapide */}
+                      <button
+                        type="button"
+                        onClick={() => setSignatureMode("pad")}
+                        className="w-full text-sm text-green-600 hover:text-green-700 hover:underline flex items-center justify-center gap-1 p-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800"
+                      >
+                        <PenTool className="h-4 w-4" />
+                        ← Retour à la signature rapide (recommandé)
+                      </button>
+
                       {/* Choix SMS ou Email */}
                       <div className="grid grid-cols-2 gap-2">
                         <Button
@@ -1347,17 +1336,31 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                         Renvoyer le code
                       </button>
                       
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          setOtpSent(false);
-                          setOtpCode("");
-                        }}
-                        className="w-full gap-2"
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                        Changer de méthode
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setOtpSent(false);
+                            setOtpCode("");
+                          }}
+                          className="flex-1 gap-2"
+                        >
+                          <ArrowLeft className="h-4 w-4" />
+                          Changer de méthode
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSignatureMode("pad");
+                            setOtpSent(false);
+                            setOtpCode("");
+                          }}
+                          className="flex-1 gap-2 border-green-300 text-green-700 hover:bg-green-50"
+                        >
+                          <PenTool className="h-4 w-4" />
+                          Signature rapide
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>

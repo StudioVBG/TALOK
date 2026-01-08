@@ -186,10 +186,98 @@ export async function POST(
       metadata: { role: rights.role, proof_id: proof.proofId },
     } as any);
 
+    // 11. ✅ SOTA 2026: Émettre les événements pour notifications
+    try {
+      // Récupérer les infos nécessaires pour les notifications
+      const { data: leaseInfo } = await serviceClient
+        .from("leases")
+        .select(`
+          id,
+          property:properties(id, adresse_complete, ville, owner_id),
+          signers:lease_signers(profile_id, role, signature_status, profiles(prenom, nom, user_id))
+        `)
+        .eq("id", leaseId)
+        .single();
+
+      const ownerSigner = leaseInfo?.signers?.find((s: any) => s.role === "proprietaire");
+      const tenantSigner = leaseInfo?.signers?.find((s: any) => 
+        s.role === "locataire_principal" || s.role === "locataire"
+      );
+
+      // Si le LOCATAIRE vient de signer → Notifier le PROPRIÉTAIRE
+      if (rights.role?.includes("locataire") || rights.role === "tenant" || rights.role === "principal") {
+        await serviceClient.from("outbox").insert({
+          event_type: "Lease.TenantSigned",
+          payload: {
+            lease_id: leaseId,
+            owner_user_id: ownerSigner?.profiles?.user_id,
+            owner_profile_id: ownerSigner?.profile_id,
+            tenant_name: `${tenantSigner?.profiles?.prenom || ""} ${tenantSigner?.profiles?.nom || ""}`.trim() || "Le locataire",
+            property_address: leaseInfo?.property?.adresse_complete || leaseInfo?.property?.ville || "votre bien",
+          },
+        } as any);
+        console.log(`[Sign-Lease] ✅ Événement Lease.TenantSigned émis pour notifier le propriétaire`);
+      }
+
+      // Si le PROPRIÉTAIRE vient de signer → Notifier le LOCATAIRE que c'est fait
+      if (rights.role === "proprietaire" || rights.role === "owner" || rights.role === "bailleur") {
+        await serviceClient.from("outbox").insert({
+          event_type: "Lease.OwnerSigned",
+          payload: {
+            lease_id: leaseId,
+            tenant_user_id: tenantSigner?.profiles?.user_id,
+            tenant_profile_id: tenantSigner?.profile_id,
+            owner_name: `${ownerSigner?.profiles?.prenom || ""} ${ownerSigner?.profiles?.nom || ""}`.trim() || "Le propriétaire",
+            property_address: leaseInfo?.property?.adresse_complete || leaseInfo?.property?.ville || "le bien",
+          },
+        } as any);
+        console.log(`[Sign-Lease] ✅ Événement Lease.OwnerSigned émis pour notifier le locataire`);
+      }
+
+      // Si le bail est maintenant FULLY_SIGNED → Notifier les deux parties
+      if (newLeaseStatus === "fully_signed") {
+        // Notifier le propriétaire
+        if (ownerSigner?.profiles?.user_id) {
+          await serviceClient.from("outbox").insert({
+            event_type: "Lease.FullySigned",
+            payload: {
+              lease_id: leaseId,
+              user_id: ownerSigner.profiles.user_id,
+              profile_id: ownerSigner.profile_id,
+              is_owner: true,
+              property_address: leaseInfo?.property?.adresse_complete || leaseInfo?.property?.ville,
+              next_step: "edl_entree",
+            },
+          } as any);
+        }
+
+        // Notifier le locataire
+        if (tenantSigner?.profiles?.user_id) {
+          await serviceClient.from("outbox").insert({
+            event_type: "Lease.FullySigned",
+            payload: {
+              lease_id: leaseId,
+              user_id: tenantSigner.profiles.user_id,
+              profile_id: tenantSigner.profile_id,
+              is_owner: false,
+              property_address: leaseInfo?.property?.adresse_complete || leaseInfo?.property?.ville,
+              next_step: "await_edl",
+            },
+          } as any);
+        }
+
+        console.log(`[Sign-Lease] ✅ Événements Lease.FullySigned émis pour les deux parties`);
+      }
+    } catch (notifError) {
+      // Ne pas bloquer la signature si les notifications échouent
+      console.error("[Sign-Lease] Erreur émission événements:", notifError);
+    }
+
     return NextResponse.json({
       success: true,
       proof_id: proof.proofId,
-      lease_status: newLeaseStatus
+      lease_status: newLeaseStatus,
+      new_status: newLeaseStatus
     });
 
   } catch (error: any) {

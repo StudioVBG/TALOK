@@ -181,6 +181,96 @@ async function processReceiptGeneration(supabase: any, invoiceId: string, paymen
   }
 }
 
+/**
+ * ✅ SOTA 2026: Émettre un événement Payment.Succeeded dans l'outbox
+ * pour les notifications et la traçabilité
+ */
+async function emitPaymentSucceededEvent(
+  supabase: any, 
+  paymentId: string, 
+  invoiceId: string, 
+  amount: number
+) {
+  try {
+    // Récupérer les infos du locataire et du propriétaire
+    const { data: invoice } = await supabase
+      .from("invoices")
+      .select(`
+        id,
+        periode,
+        owner_id,
+        tenant_id,
+        lease:leases (
+          id,
+          property:properties (
+            adresse_complete,
+            ville
+          )
+        )
+      `)
+      .eq("id", invoiceId)
+      .single();
+
+    if (!invoice) return;
+
+    // Récupérer le user_id du locataire pour la notification
+    const { data: tenantProfile } = await supabase
+      .from("profiles")
+      .select("user_id, prenom, nom")
+      .eq("id", invoice.tenant_id)
+      .single();
+
+    // Récupérer le user_id du propriétaire pour la notification
+    const { data: ownerProfile } = await supabase
+      .from("profiles")
+      .select("user_id, prenom, nom")
+      .eq("id", invoice.owner_id)
+      .single();
+
+    const propertyAddress = invoice.lease?.property?.adresse_complete || 
+                            invoice.lease?.property?.ville || 
+                            "le logement";
+
+    // Notifier le LOCATAIRE
+    if (tenantProfile?.user_id) {
+      await supabase.from("outbox").insert({
+        event_type: "Payment.Succeeded",
+        payload: {
+          payment_id: paymentId,
+          invoice_id: invoiceId,
+          amount: amount,
+          tenant_id: tenantProfile.user_id,
+          tenant_name: `${tenantProfile.prenom || ""} ${tenantProfile.nom || ""}`.trim(),
+          periode: invoice.periode,
+          property_address: propertyAddress,
+          type: "tenant_notification"
+        },
+      });
+    }
+
+    // Notifier le PROPRIÉTAIRE
+    if (ownerProfile?.user_id) {
+      await supabase.from("outbox").insert({
+        event_type: "Payment.Received",
+        payload: {
+          payment_id: paymentId,
+          invoice_id: invoiceId,
+          amount: amount,
+          owner_id: ownerProfile.user_id,
+          tenant_name: `${tenantProfile?.prenom || ""} ${tenantProfile?.nom || ""}`.trim(),
+          periode: invoice.periode,
+          property_address: propertyAddress,
+          type: "owner_notification"
+        },
+      });
+    }
+
+    console.log(`[Payment] ✅ Events emitted for payment ${paymentId}`);
+  } catch (error) {
+    console.error("[Payment] Error emitting events:", error);
+  }
+}
+
 export async function POST(request: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   
@@ -277,6 +367,9 @@ export async function POST(request: NextRequest) {
                payment.id, 
                (session.amount_total || 0) / 100
              );
+
+             // ✅ SOTA 2026: Émettre événement pour notifications
+             await emitPaymentSucceededEvent(supabase, payment.id, invoiceId, (session.amount_total || 0) / 100);
           }
 
           // Récupérer les infos pour la notification
@@ -386,6 +479,9 @@ export async function POST(request: NextRequest) {
                 newPayment.id, 
                 paymentIntent.amount / 100
               );
+
+              // ✅ SOTA 2026: Émettre événement pour notifications
+              await emitPaymentSucceededEvent(supabase, newPayment.id, invoiceId, paymentIntent.amount / 100);
             }
           }
         }

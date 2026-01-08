@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +36,18 @@ import {
   ExternalLink,
   AlertTriangle,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  ClipboardCheck,
+  Sparkles,
+  PartyPopper,
+  ArrowRight,
+  PenTool,
+  Key,
+  Euro,
+  Zap,
+  Clock,
+  Send,
+  Bell
 } from "lucide-react";
 import { LeaseRenewalWizard } from "@/features/leases/components/lease-renewal-wizard";
 import { useToast } from "@/components/ui/use-toast";
@@ -47,6 +59,7 @@ import { OwnerSignatureModal } from "./OwnerSignatureModal";
 import { dpeService } from "@/features/diagnostics/services/dpe.service";
 import { useEffect } from "react";
 import { LeaseProgressTracker, type LeaseProgressStatus } from "@/components/owner/leases/LeaseProgressTracker";
+import { Celebration, useCelebration } from "@/components/ui/celebration";
 
 interface LeaseDetailsClientProps {
   details: LeaseDetails;
@@ -148,6 +161,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const [isTerminating, setIsTerminating] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
   const [dpeStatus, setDpeStatus] = useState<{ status: string; data?: any } | null>(null);
+  
+  // ✅ SOTA 2026: Hook de célébration
+  const { celebrate, celebrationProps } = useCelebration();
+  
   const [activationCheck, setActivationCheck] = useState<{
     can_activate: boolean;
     can_force_activate: boolean;
@@ -225,11 +242,150 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const mainTenant = signers?.find((s: any) => s.role === "locataire_principal");
   const ownerSigner = signers?.find((s: any) => s.role === "proprietaire");
   
-  // Vérifier si le propriétaire doit signer
-  const needsOwnerSignature = (
-    lease.statut === "pending_owner_signature" || 
-    (lease.statut === "pending_signature" && mainTenant?.signature_status === "signed" && ownerSigner?.signature_status !== "signed")
-  );
+  // ✅ SOTA 2026: Logique corrigée - Le propriétaire peut signer dès que le locataire a signé
+  const needsOwnerSignature = useMemo(() => {
+    // Si déjà fully_signed, active, ou terminé → pas besoin de signer
+    if (["fully_signed", "active", "terminated", "archived"].includes(lease.statut)) {
+      return false;
+    }
+    // Si le propriétaire a déjà signé → pas besoin
+    if (ownerSigner?.signature_status === "signed") {
+      return false;
+    }
+    // Le locataire principal doit avoir signé en premier
+    return mainTenant?.signature_status === "signed";
+  }, [lease.statut, mainTenant?.signature_status, ownerSigner?.signature_status]);
+
+  // ✅ SOTA 2026: Utiliser les données pré-calculées par fetchLeaseDetails (SSOT)
+  // edl est un OBJET unique (ou null), PAS un tableau !
+  const hasEdl = useMemo(() => {
+    // Si c'est un objet unique (nouveau format SOTA 2026)
+    if (edl && typeof edl === "object" && !Array.isArray(edl)) {
+      return true;
+    }
+    // Fallback legacy: Si c'est un tableau (ancien format)
+    if (Array.isArray(edl)) {
+      return edl.length > 0;
+    }
+    return false;
+  }, [edl]);
+  
+  // ✅ SOTA 2026: Priorité aux données pré-calculées dans lease.has_signed_edl
+  const hasSignedEdl = useMemo(() => {
+    // 1. Utiliser la valeur pré-calculée par fetchLeaseDetails (SSOT)
+    if (typeof (lease as any).has_signed_edl === "boolean") {
+      return (lease as any).has_signed_edl;
+    }
+    // 2. Fallback: edl est un OBJET unique (nouveau format)
+    if (edl && typeof edl === "object" && !Array.isArray(edl)) {
+      return edl.status === "signed" || edl.status === "completed";
+    }
+    // 3. Fallback legacy: Si c'est un tableau
+    if (Array.isArray(edl)) {
+      const entryEdl = edl.find((e: any) => e.type === "entree");
+      return entryEdl?.status === "signed" || entryEdl?.status === "completed";
+    }
+    return false;
+  }, [lease, edl]);
+
+  // ✅ SOTA 2026: Priorité aux données pré-calculées dans lease.has_paid_initial
+  const hasPaidInitial = useMemo(() => {
+    // 1. Utiliser la valeur pré-calculée par fetchLeaseDetails (SSOT)
+    if (typeof (lease as any).has_paid_initial === "boolean") {
+      return (lease as any).has_paid_initial;
+    }
+    // 2. Fallback: Vérifier les paiements
+    if (!payments || payments.length === 0) return false;
+    return payments.some((p: any) => 
+      p.statut === "succeeded" || p.statut === "paid"
+    );
+  }, [lease, payments]);
+
+  // ✅ SOTA 2026: Déterminer l'action prioritaire
+  const nextAction = useMemo(() => {
+    // 1. En attente de signature locataire
+    if (["draft", "sent", "pending_signature"].includes(lease.statut) && mainTenant?.signature_status !== "signed") {
+      return {
+        type: "waiting_tenant",
+        icon: Clock,
+        title: "En attente du locataire",
+        description: mainTenant?.invited_email 
+          ? `${mainTenant.invited_email} n'a pas encore signé`
+          : "Le locataire n'a pas encore signé",
+        action: null,
+        actionLabel: null,
+        color: "amber"
+      };
+    }
+    
+    // 2. Propriétaire doit signer
+    if (needsOwnerSignature) {
+      return {
+        type: "sign_owner",
+        icon: PenTool,
+        title: "À votre tour de signer !",
+        description: "Le locataire a signé. Signez pour valider le bail.",
+        action: () => setShowSignatureModal(true),
+        actionLabel: "Signer maintenant",
+        color: "blue",
+        urgent: true
+      };
+    }
+    
+    // 3. Bail signé, EDL requis
+    if (lease.statut === "fully_signed" && !hasSignedEdl) {
+      return {
+        type: "create_edl",
+        icon: ClipboardCheck,
+        title: "Créer l'état des lieux",
+        description: "Le bail est signé. Créez l'EDL d'entrée pour l'activer.",
+        href: `/owner/edl/new?lease_id=${leaseId}&property_id=${property.id}`,
+        actionLabel: "Créer l'EDL",
+        color: "indigo"
+      };
+    }
+    
+    // 4. EDL fait, activer le bail
+    if (lease.statut === "fully_signed" && hasSignedEdl) {
+      return {
+        type: "activate",
+        icon: Key,
+        title: "Prêt à activer !",
+        description: "L'EDL est signé. Activez le bail pour démarrer la location.",
+        action: () => handleActivate(false),
+        actionLabel: "Activer le bail",
+        color: "green"
+      };
+    }
+    
+    // 5. Bail actif, premier paiement en attente
+    if (lease.statut === "active" && !hasPaidInitial) {
+      return {
+        type: "awaiting_payment",
+        icon: Euro,
+        title: "En attente du 1er paiement",
+        description: `${formatCurrency(premierVersement)} (loyer + charges + dépôt)`,
+        action: null,
+        actionLabel: null,
+        color: "amber"
+      };
+    }
+    
+    // 6. Tout est OK
+    if (lease.statut === "active") {
+      return {
+        type: "all_done",
+        icon: CheckCircle,
+        title: "Bail actif",
+        description: "Tout est en ordre ! Le bail est en cours.",
+        action: null,
+        actionLabel: null,
+        color: "green"
+      };
+    }
+    
+    return null;
+  }, [lease.statut, mainTenant, needsOwnerSignature, hasSignedEdl, hasPaidInitial, premierVersement, leaseId, property.id]);
 
   // Construire bailData pour la prévisualisation (via mapper)
   const bailData = mapLeaseToTemplate(details, ownerProfile);
@@ -250,11 +406,20 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       if (!response.ok) {
         throw new Error(result.error || "Erreur lors de la signature");
       }
-      toast({
-        title: "✅ Bail signé !",
-        description: "Le bail est maintenant actif.",
-      });
+      
       setShowSignatureModal(false);
+      
+      // 🎉 SOTA 2026: Célébration après signature réussie !
+      celebrate({
+        title: "Bail signé ! 🎉",
+        subtitle: "Toutes les parties ont signé. Prochaine étape : l'état des lieux d'entrée.",
+        type: "milestone",
+        nextAction: {
+          label: "Créer l'état des lieux",
+          href: `/owner/edl/new?lease_id=${leaseId}&property_id=${property.id}`,
+        },
+      });
+      
       router.refresh();
     } catch (error: any) {
       console.error("Erreur signature:", error);
@@ -374,10 +539,17 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         throw new Error(result.error || "Impossible d'activer le bail");
       }
       
-      toast({
-        title: "✅ Bail activé !",
-        description: result.warning || "Le bail est maintenant actif.",
+      // 🎉 SOTA 2026: Grande célébration - Bail actif !
+      celebrate({
+        title: "Félicitations ! 🏠",
+        subtitle: `Le bail est maintenant actif. La première facture de ${formatCurrency(premierVersement)} a été générée.`,
+        type: "complete",
+        nextAction: {
+          label: "Voir les factures",
+          href: `/owner/leases/${leaseId}/invoices`,
+        },
       });
+      
       router.refresh();
     } catch (error: any) {
       console.error("Erreur activation:", error);
@@ -476,14 +648,159 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       </div>
 
       <div className="container mx-auto px-4 py-6 max-w-7xl">
-        {/* 🚀 Tracker de progression SOTA 2026 */}
-        <div className="mb-8">
+        {/* 🚀 SOTA 2026: Tracker de progression */}
+        <div className="mb-6">
           <LeaseProgressTracker 
             status={lease.statut as LeaseProgressStatus}
-            hasSignedEdl={lease.has_signed_edl}
-            hasPaidInitial={lease.has_paid_initial}
+            hasSignedEdl={hasSignedEdl}
+            hasPaidInitial={hasPaidInitial}
           />
         </div>
+
+        {/* ⚡ SOTA 2026: Carte d'action prioritaire - User First */}
+        {nextAction && nextAction.type !== "all_done" && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <Card className={`overflow-hidden border-2 ${
+              nextAction.color === "blue" ? "border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50" :
+              nextAction.color === "green" ? "border-green-300 bg-gradient-to-r from-green-50 to-emerald-50" :
+              nextAction.color === "indigo" ? "border-indigo-300 bg-gradient-to-r from-indigo-50 to-purple-50" :
+              nextAction.color === "amber" ? "border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50" :
+              "border-slate-200"
+            }`}>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  {/* Icône avec animation */}
+                  <motion.div
+                    animate={nextAction.urgent ? { scale: [1, 1.1, 1] } : {}}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className={`p-3 rounded-xl ${
+                      nextAction.color === "blue" ? "bg-blue-500" :
+                      nextAction.color === "green" ? "bg-green-500" :
+                      nextAction.color === "indigo" ? "bg-indigo-500" :
+                      nextAction.color === "amber" ? "bg-amber-500" :
+                      "bg-slate-500"
+                    }`}
+                  >
+                    <nextAction.icon className="h-6 w-6 text-white" />
+                  </motion.div>
+                  
+                  {/* Texte */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className={`text-lg font-bold ${
+                        nextAction.color === "blue" ? "text-blue-900" :
+                        nextAction.color === "green" ? "text-green-900" :
+                        nextAction.color === "indigo" ? "text-indigo-900" :
+                        nextAction.color === "amber" ? "text-amber-900" :
+                        "text-slate-900"
+                      }`}>
+                        {nextAction.title}
+                      </h3>
+                      {nextAction.urgent && (
+                        <Badge className="bg-blue-600 animate-pulse">
+                          <Zap className="h-3 w-3 mr-1" />
+                          Action requise
+                        </Badge>
+                      )}
+                    </div>
+                    <p className={`text-sm mt-1 ${
+                      nextAction.color === "blue" ? "text-blue-700" :
+                      nextAction.color === "green" ? "text-green-700" :
+                      nextAction.color === "indigo" ? "text-indigo-700" :
+                      nextAction.color === "amber" ? "text-amber-700" :
+                      "text-slate-600"
+                    }`}>
+                      {nextAction.description}
+                    </p>
+                  </div>
+                  
+                  {/* Bouton d'action */}
+                  {(nextAction.action || nextAction.href) && (
+                    nextAction.href ? (
+                      <Button asChild size="lg" className={`gap-2 shadow-lg ${
+                        nextAction.color === "blue" ? "bg-blue-600 hover:bg-blue-700" :
+                        nextAction.color === "green" ? "bg-green-600 hover:bg-green-700" :
+                        nextAction.color === "indigo" ? "bg-indigo-600 hover:bg-indigo-700" :
+                        "bg-slate-600 hover:bg-slate-700"
+                      }`}>
+                        <Link href={nextAction.href}>
+                          {nextAction.actionLabel}
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button 
+                        size="lg" 
+                        onClick={nextAction.action}
+                        disabled={isSigning || isActivating}
+                        className={`gap-2 shadow-lg ${
+                          nextAction.color === "blue" ? "bg-blue-600 hover:bg-blue-700" :
+                          nextAction.color === "green" ? "bg-green-600 hover:bg-green-700" :
+                          nextAction.color === "indigo" ? "bg-indigo-600 hover:bg-indigo-700" :
+                          "bg-slate-600 hover:bg-slate-700"
+                        }`}
+                      >
+                        {(isSigning || isActivating) ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            {nextAction.actionLabel}
+                            <ArrowRight className="h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    )
+                  )}
+                  
+                  {/* Pour les actions en attente */}
+                  {nextAction.type === "waiting_tenant" && mainTenant?.invited_email && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await fetch(`/api/leases/${leaseId}/signers/${mainTenant.id}/resend`, { method: "POST" });
+                          toast({ title: "✅ Relance envoyée", description: `Un nouvel email a été envoyé à ${mainTenant.invited_email}` });
+                        } catch (e) {
+                          toast({ title: "Erreur", description: "Impossible d'envoyer la relance", variant: "destructive" });
+                        }
+                      }}
+                      className="gap-2"
+                    >
+                      <Send className="h-4 w-4" />
+                      Relancer
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* ✅ SOTA 2026: Message de succès si tout est OK */}
+        {nextAction?.type === "all_done" && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-6"
+          >
+            <Card className="border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="p-2 bg-green-500 rounded-full">
+                  <CheckCircle className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-green-900">Bail actif</h3>
+                  <p className="text-sm text-green-700">Tout est en ordre ! Le locataire est installé.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
@@ -1038,6 +1355,9 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         }}
         ownerName={ownerProfile ? `${ownerProfile.prenom || ""} ${ownerProfile.nom || ""}`.trim() : ""}
       />
+
+      {/* 🎉 SOTA 2026: Célébration */}
+      <Celebration {...celebrationProps} />
     </div>
   );
 }

@@ -2,20 +2,130 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
-export interface LeaseDetails {
-  lease: any; // TODO: Typage strict
-  property: {
+// ✅ SOTA 2026: Types stricts pour l'intégrité des données
+
+/** Statuts possibles d'un EDL */
+export type EDLStatus = "draft" | "scheduled" | "in_progress" | "completed" | "signed" | "disputed";
+
+/** Type d'EDL */
+export type EDLType = "entree" | "sortie";
+
+/** Structure d'un État des Lieux */
+export interface EDLEntry {
+  id: string;
+  status: EDLStatus;
+  type: EDLType;
+  scheduled_at?: string | null;
+  completed_date?: string | null;
+}
+
+/** Statuts possibles d'un bail */
+export type LeaseStatus = 
+  | "draft" 
+  | "sent" 
+  | "pending_signature" 
+  | "partially_signed" 
+  | "pending_owner_signature" 
+  | "fully_signed" 
+  | "active" 
+  | "notice_given" 
+  | "amended" 
+  | "terminated" 
+  | "archived";
+
+/** Statuts possibles d'une signature */
+export type SignatureStatus = "pending" | "signed" | "refused" | "expired";
+
+/** Structure d'un signataire */
+export interface Signer {
+  id: string;
+  role: "proprietaire" | "locataire_principal" | "colocataire" | "garant";
+  signature_status: SignatureStatus;
+  signed_at: string | null;
+  signature_image: string | null;
+  signature_image_path: string | null;
+  proof_id: string | null;
+  ip_inet: string | null;
+  invited_email: string | null;
+  invited_name: string | null;
+  invited_at: string | null;
+  profile: {
     id: string;
-    adresse_complete: string;
-    ville: string;
-    code_postal: string;
-    type: string;
-    cover_url: string | null;
-  };
-  signers: any[];
-  payments: any[];
-  documents: any[];
-  edl?: any;
+    prenom: string | null;
+    nom: string | null;
+    email: string | null;
+    telephone: string | null;
+    avatar_url: string | null;
+    date_naissance: string | null;
+    lieu_naissance: string | null;
+    nationalite: string | null;
+    adresse: string | null;
+  } | null;
+}
+
+/** Structure d'un paiement */
+export interface Payment {
+  id: string;
+  date_paiement: string | null;
+  montant: number;
+  statut: "pending" | "succeeded" | "paid" | "failed" | "refunded";
+  periode: string | null;
+}
+
+/** Structure du bail avec données SSOT */
+export interface Lease {
+  id: string;
+  statut: LeaseStatus;
+  type_bail: string;
+  loyer: number;
+  charges_forfaitaires: number;
+  depot_de_garantie: number;
+  date_debut: string;
+  date_fin: string | null;
+  sealed_at: string | null;
+  signed_pdf_path: string | null;
+  // ✅ SSOT 2026: Données pré-calculées
+  has_signed_edl: boolean;
+  has_paid_initial: boolean;
+  [key: string]: any; // Permettre des champs supplémentaires
+}
+
+/** Structure de la propriété */
+export interface Property {
+  id: string;
+  owner_id: string;
+  adresse_complete: string;
+  numero_rue?: string;
+  nom_rue?: string;
+  ville: string;
+  code_postal: string;
+  type: string;
+  cover_url: string | null;
+  loyer_hc?: number;
+  charges_mensuelles?: number;
+  [key: string]: any;
+}
+
+/** Structure d'un document */
+export interface Document {
+  id: string;
+  type: string;
+  storage_path: string;
+  created_at: string;
+  title?: string;
+  name?: string;
+  [key: string]: any;
+}
+
+/** Interface principale des détails du bail - TYPAGE STRICT */
+export interface LeaseDetails {
+  lease: Lease;
+  property: Property;
+  signers: Signer[];
+  payments: Payment[];
+  documents: Document[];
+  /** EDL est un OBJET UNIQUE ou null, PAS un tableau ! */
+  edl: EDLEntry | null;
 }
 
 export async function fetchLeaseDetails(leaseId: string, ownerId: string): Promise<LeaseDetails | null> {
