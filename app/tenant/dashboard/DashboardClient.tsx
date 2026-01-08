@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTenantData } from "../_data/TenantDataProvider";
 import { createClient } from "@/lib/supabase/client";
+import { useTenantRealtime } from "@/lib/hooks/use-realtime-tenant";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -70,6 +71,9 @@ export function DashboardClient() {
   // État pour les EDLs en attente (récupérés directement si la RPC ne les renvoie pas)
   const [pendingEDLs, setPendingEDLs] = useState<any[]>([]);
   
+  // 🔴 SOTA 2026: Hook temps réel pour synchronisation avec propriétaire
+  const realtime = useTenantRealtime({ showToasts: true, enableSound: false });
+  
   // Récupérer les EDLs en attente directement depuis le client
   useEffect(() => {
     async function fetchPendingEDLs() {
@@ -127,11 +131,23 @@ export function DashboardClient() {
 
   const currentProperty = useMemo(() => currentLease?.property, [currentLease]);
 
-  // 1. Logique de tri du flux d'activité unifié
+  // 1. Logique de tri du flux d'activité unifié (inclut les événements temps réel)
   const activityFeed = useMemo(() => {
     if (!dashboard) return [];
     
     const items = [
+      // Événements temps réel en premier (les plus récents)
+      ...realtime.recentEvents.map(event => ({
+        id: `rt-${event.id}`,
+        date: event.timestamp,
+        type: event.type as string,
+        title: event.title,
+        status: event.action,
+        isRealtime: true, // Marqueur pour style spécial
+        importance: event.importance,
+        raw: event
+      })),
+      // Factures
       ...(dashboard.invoices || []).map(inv => ({
         id: `inv-${inv.id}`,
         date: new Date(inv.created_at || new Date()),
@@ -141,6 +157,7 @@ export function DashboardClient() {
         status: inv.statut,
         raw: inv
       })),
+      // Tickets
       ...(dashboard.tickets || []).map(t => ({
         id: `tick-${t.id}`,
         date: new Date(t.created_at || new Date()),
@@ -151,8 +168,16 @@ export function DashboardClient() {
       }))
     ];
 
-    return items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 8);
-  }, [dashboard]);
+    // Dédupliquer par ID (les événements realtime peuvent être des doublons)
+    const seen = new Set();
+    const unique = items.filter(item => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+
+    return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
+  }, [dashboard, realtime.recentEvents]);
 
   // ✅ FIX: Vérifier si le locataire a déjà signé ce bail
   const hasSignedLease = useMemo(() => {
@@ -357,9 +382,25 @@ export function DashboardClient() {
         {/* --- SECTION 1 : HEADER & COMMAND CENTER --- */}
         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">
-              {isOnboardingIncomplete ? "Votre tableau de bord" : `Bonjour${profile?.prenom ? `, ${profile.prenom}` : ""} 👋`}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-black tracking-tight text-slate-900">
+                {isOnboardingIncomplete ? "Votre tableau de bord" : `Bonjour${profile?.prenom ? `, ${profile.prenom}` : ""} 👋`}
+              </h1>
+              {/* 🔴 SOTA 2026: Indicateur de connexion temps réel */}
+              {realtime.isConnected && (
+                <motion.div 
+                  initial={{ scale: 0 }} 
+                  animate={{ scale: 1 }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  Live
+                </motion.div>
+              )}
+            </div>
             <p className="text-slate-500 mt-1 font-medium">
               {!hasLeaseData 
                 ? "Liez votre logement pour accéder à toutes les fonctionnalités."
@@ -416,15 +457,34 @@ export function DashboardClient() {
                 <p className="text-xs font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Situation Financière</p>
                 {hasLeaseData ? (
                   <>
-                    <h3 className="text-3xl font-black text-slate-900 mt-2">
-                      {formatCurrency((currentLease?.loyer || 0) + (currentLease?.charges_forfaitaires || 0))}
-                    </h3>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">Loyer mensuel CC</p>
+                    {/* 🔴 SOTA 2026: Utiliser les données temps réel si disponibles */}
+                    <div className={cn(
+                      "transition-all duration-500",
+                      realtime.hasRecentLeaseChange && "ring-2 ring-indigo-400 ring-offset-2 rounded-xl p-2 -m-2"
+                    )}>
+                      <h3 className="text-3xl font-black text-slate-900 mt-2">
+                        {formatCurrency(
+                          realtime.totalMonthly > 0 
+                            ? realtime.totalMonthly 
+                            : (currentLease?.loyer || 0) + (currentLease?.charges_forfaitaires || 0)
+                        )}
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1 font-medium flex items-center gap-2">
+                        Loyer mensuel CC
+                        {realtime.hasRecentLeaseChange && (
+                          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px] animate-pulse">
+                            Mis à jour
+                          </Badge>
+                        )}
+                      </p>
+                    </div>
                     
-                    {dashboard.stats?.unpaid_amount > 0 ? (
+                    {(realtime.unpaidAmount > 0 || dashboard.stats?.unpaid_amount > 0) ? (
                       <div className="mt-6 p-4 rounded-2xl bg-red-50 border border-red-100">
                         <p className="text-xs font-bold text-red-600 uppercase">Impayé en cours</p>
-                        <p className="text-2xl font-black text-red-700">{formatCurrency(dashboard.stats.unpaid_amount)}</p>
+                        <p className="text-2xl font-black text-red-700">
+                          {formatCurrency(realtime.unpaidAmount > 0 ? realtime.unpaidAmount : dashboard.stats?.unpaid_amount)}
+                        </p>
                       </div>
                     ) : (
                       <div className="mt-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-3">
@@ -587,22 +647,46 @@ export function DashboardClient() {
                 </h3>
               </div>
               <div className="divide-y divide-slate-100 overflow-y-auto max-h-[250px]">
-                {activityFeed.length > 0 ? activityFeed.map((item) => (
-                  <div key={item.id} className="p-4 flex items-center justify-between hover:bg-slate-50/80 transition-colors group cursor-pointer">
+                {activityFeed.length > 0 ? activityFeed.map((item: any) => (
+                  <motion.div 
+                    key={item.id} 
+                    initial={item.isRealtime ? { opacity: 0, x: -20, backgroundColor: "rgb(238, 242, 255)" } : false}
+                    animate={{ opacity: 1, x: 0, backgroundColor: "transparent" }}
+                    transition={{ duration: 0.5 }}
+                    className={cn(
+                      "p-4 flex items-center justify-between hover:bg-slate-50/80 transition-colors group cursor-pointer",
+                      item.isRealtime && item.importance === "high" && "bg-indigo-50/50"
+                    )}
+                  >
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        "p-2 rounded-xl",
-                        item.type === 'invoice' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'
+                        "p-2 rounded-xl relative",
+                        item.type === 'invoice' ? 'bg-emerald-50 text-emerald-600' : 
+                        item.type === 'lease' ? 'bg-indigo-50 text-indigo-600' :
+                        item.type === 'document' ? 'bg-amber-50 text-amber-600' :
+                        'bg-slate-50 text-slate-600'
                       )}>
-                        {item.type === 'invoice' ? <FileText className="h-4 w-4" /> : <Wrench className="h-4 w-4" />}
+                        {item.type === 'invoice' ? <FileText className="h-4 w-4" /> : 
+                         item.type === 'lease' ? <Home className="h-4 w-4" /> :
+                         item.type === 'document' ? <FileText className="h-4 w-4" /> :
+                         <Wrench className="h-4 w-4" />}
+                        {/* Indicateur temps réel */}
+                        {item.isRealtime && (
+                          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                          </span>
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-bold text-slate-900 truncate max-w-[120px]">{item.title}</p>
-                        <p className="text-[10px] font-medium text-slate-400">{formatDateShort(item.date)}</p>
+                        <p className="text-[10px] font-medium text-slate-400">
+                          {item.isRealtime ? "À l'instant" : formatDateShort(item.date)}
+                        </p>
                       </div>
                     </div>
                     <ChevronRight className="h-3 w-3 text-slate-300 group-hover:text-indigo-600" />
-                  </div>
+                  </motion.div>
                 )) : (
                   <div className="p-8 text-center text-slate-400 text-sm">Aucune activité</div>
                 )}
