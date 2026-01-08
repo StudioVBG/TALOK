@@ -4,6 +4,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { decode } from "base64-arraybuffer";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
+import { extractClientIP } from "@/lib/utils/ip-address";
 
 /**
  * POST /api/signature/edl/[token]/sign - Signer un EDL via token d'invitation
@@ -69,7 +70,7 @@ export async function POST(
       signatureType: "draw",
       signatureImage: signatureBase64,
       userAgent: request.headers.get("user-agent") || "Inconnu",
-      ipAddress: request.headers.get("x-forwarded-for") || "Inconnue",
+      ipAddress: extractClientIP(request),
       screenSize: clientMetadata?.screenSize || "Non spécifié",
       touchDevice: clientMetadata?.touchDevice || false,
     });

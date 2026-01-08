@@ -10,6 +10,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
+import { extractClientIP } from "@/lib/utils/ip-address";
 
 /**
  * POST /api/leases/[id]/sign - Signer un bail avec Audit Trail conforme
@@ -134,7 +135,7 @@ export async function POST(
       signatureType: "draw",
       signatureImage: signature_image,
       userAgent: request.headers.get("user-agent") || "Inconnu",
-      ipAddress: (request.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "0.0.0.0",
+      ipAddress: extractClientIP(request),
       screenSize: clientMetadata?.screenSize || "Non spécifié",
       touchDevice: clientMetadata?.touchDevice || false,
     });

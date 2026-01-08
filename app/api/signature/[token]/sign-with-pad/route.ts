@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { generateSignatureProof, generateSignatureCertificate } from "@/lib/services/signature-proof.service";
+import { extractClientIP } from "@/lib/utils/ip-address";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -100,9 +101,7 @@ export async function POST(request: Request, { params }: PageProps) {
     }
 
     // Générer la preuve de signature
-    const ipAddress = request.headers.get("x-forwarded-for") || 
-                      request.headers.get("x-real-ip") || 
-                      "unknown";
+    const ipAddress = extractClientIP(request);
 
     // Créer un contenu de document pour le hash
     const documentContent = JSON.stringify({

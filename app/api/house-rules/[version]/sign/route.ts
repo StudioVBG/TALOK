@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { extractClientIP } from "@/lib/utils/ip-address";
 
 /**
  * POST /api/house-rules/[version]/sign - Signer une version du règlement de colocation
@@ -72,7 +73,7 @@ export async function POST(
     }
 
     // Récupérer IP et User Agent
-    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null;
+    const ip = extractClientIP(request);
     const userAgent = request.headers.get("user-agent") || null;
 
     // Créer l'acceptation

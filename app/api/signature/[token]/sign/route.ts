@@ -5,6 +5,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { verifyOTP, deleteOTP } from "@/lib/services/otp-store";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { extractClientIP } from "@/lib/utils/ip-address";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -178,7 +179,7 @@ export async function POST(request: Request, { params }: PageProps) {
     const updateData: Record<string, any> = {
       signature_status: "signed",
       signed_at: new Date().toISOString(),
-      ip_inet: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
+      ip_inet: extractClientIP(request),
     };
     
     // ✅ FIX: Sauvegarder l'image de signature dans Storage + base64
@@ -281,7 +282,7 @@ export async function POST(request: Request, { params }: PageProps) {
           signer_email: tokenData.tenantEmail,
           signer_name: signerName,
           verification_method: "otp_sms",
-          signature_ip: request.headers.get("x-forwarded-for") || "unknown",
+          signature_ip: extractClientIP(request),
         },
       });
 
