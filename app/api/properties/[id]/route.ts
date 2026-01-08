@@ -664,17 +664,143 @@ export async function DELETE(
       throw new ApiError(400, "Seuls les brouillons peuvent être supprimés");
     }
 
-    // ✅ SUPPRESSION: Supprimer la propriété
-    const { error: deleteError } = await serviceClient
-      .from("properties")
-      .delete()
-      .eq("id", propertyId);
+    // ✅ SOTA 2026: Vérifier s'il y a des baux actifs
+    const { data: activeLeases, error: leasesError } = await serviceClient
+      .from("leases")
+      .select(`
+        id, 
+        statut,
+        type_bail,
+        signers:lease_signers(
+          profile_id,
+          role,
+          profile:profiles(id, prenom, nom, email)
+        )
+      `)
+      .eq("property_id", propertyId)
+      .in("statut", ["active", "pending_signature", "partially_signed", "fully_signed"]);
 
-    if (deleteError) {
-      throw new ApiError(500, "Erreur lors de la suppression", deleteError);
+    if (leasesError) {
+      console.error("[DELETE Property] Erreur vérification baux:", leasesError);
     }
 
-    return NextResponse.json({ success: true });
+    // ✅ BLOQUER si bail actif (sauf admin)
+    if (!isAdmin && activeLeases && activeLeases.length > 0) {
+      const activeLease = activeLeases[0] as any;
+      const tenantSigner = activeLease.signers?.find((s: any) => 
+        s.role === "locataire_principal" || s.role === "colocataire"
+      );
+      const tenantName = tenantSigner?.profile 
+        ? `${tenantSigner.profile.prenom || ""} ${tenantSigner.profile.nom || ""}`.trim() || tenantSigner.profile.email
+        : "un locataire";
+
+      throw new ApiError(
+        400, 
+        `Impossible de supprimer : bail ${activeLease.statut === "active" ? "actif" : "en cours de signature"} avec ${tenantName}. Terminez d'abord le bail.`,
+        { 
+          leaseId: activeLease.id, 
+          leaseStatus: activeLease.statut,
+          tenantName 
+        }
+      );
+    }
+
+    // ✅ SOTA 2026: Récupérer l'adresse pour les notifications
+    const { data: propertyDetails } = await serviceClient
+      .from("properties")
+      .select("adresse_complete, ville")
+      .eq("id", propertyId)
+      .single();
+
+    // ✅ SOTA 2026: Notifier les locataires des baux (même terminés) avant suppression
+    const { data: allLeases } = await serviceClient
+      .from("leases")
+      .select(`
+        id,
+        signers:lease_signers(
+          profile_id,
+          role
+        )
+      `)
+      .eq("property_id", propertyId);
+
+    if (allLeases && allLeases.length > 0) {
+      const tenantProfileIds = new Set<string>();
+      
+      for (const lease of allLeases) {
+        const leaseData = lease as any;
+        if (leaseData.signers) {
+          for (const signer of leaseData.signers) {
+            if ((signer.role === "locataire_principal" || signer.role === "colocataire") && signer.profile_id) {
+              tenantProfileIds.add(signer.profile_id);
+            }
+          }
+        }
+      }
+
+      // Créer les notifications pour chaque locataire
+      const address = propertyDetails?.adresse_complete || "Adresse inconnue";
+      const city = propertyDetails?.ville || "";
+      
+      for (const tenantId of tenantProfileIds) {
+        await serviceClient
+          .from("notifications")
+          .insert({
+            recipient_id: tenantId,
+            type: "alert",
+            title: "Logement supprimé",
+            message: `Le logement "${address}${city ? `, ${city}` : ""}" a été supprimé par le propriétaire. Vos documents restent accessibles dans votre coffre-fort.`,
+            link: "/tenant/documents",
+            related_id: propertyId,
+            related_type: "property"
+          })
+          .then(({ error }) => {
+            if (error) {
+              console.error("[DELETE Property] Erreur notification locataire:", error);
+            }
+          });
+      }
+    }
+
+    // ✅ SOTA 2026: Soft-delete au lieu de hard-delete
+    // Marquer comme supprimé plutôt que supprimer définitivement
+    const { data: softDeletedProperty, error: softDeleteError } = await serviceClient
+      .from("properties")
+      .update({ 
+        etat: "deleted",
+        deleted_at: new Date().toISOString(),
+        deleted_by: profile.id
+      })
+      .eq("id", propertyId)
+      .select()
+      .single();
+
+    // Si soft-delete échoue (colonne manquante), faire un hard-delete
+    if (softDeleteError) {
+      console.warn("[DELETE Property] Soft-delete échoué, fallback hard-delete:", softDeleteError.message);
+      
+      const { error: deleteError } = await serviceClient
+        .from("properties")
+        .delete()
+        .eq("id", propertyId);
+
+      if (deleteError) {
+        throw new ApiError(500, "Erreur lors de la suppression", deleteError);
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        mode: "hard_delete",
+        message: "Propriété supprimée définitivement"
+      });
+    }
+
+    return NextResponse.json({ 
+      success: true,
+      mode: "soft_delete", 
+      message: "Propriété archivée. Les locataires ont été notifiés.",
+      tenantsNotified: allLeases?.length || 0
+    });
   } catch (error: unknown) {
     return handleApiError(error);
   }
