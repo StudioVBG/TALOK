@@ -132,15 +132,27 @@ async function processEvent(supabase: any, event: any) {
       await sendNotification(supabase, {
         type: "payment_succeeded",
         user_id: payload.tenant_id,
-        title: "Paiement confirmé",
-        message: `Votre paiement de ${payload.amount}€ a été confirmé`,
-        metadata: { payment_id: payload.payment_id },
+        title: "✅ Paiement confirmé",
+        message: `Votre paiement de ${payload.amount}€ pour ${payload.property_address || "votre loyer"} (${payload.periode}) a été confirmé. Votre quittance est disponible.`,
+        metadata: { payment_id: payload.payment_id, invoice_id: payload.invoice_id },
       });
 
-      // 🔧 Action supplémentaire: Générer la quittance automatiquement
-      if (payload.invoice_id) {
+      // La quittance est déjà générée dans le webhook Stripe (processReceiptGeneration)
+      // mais on garde un fallback au cas où
+      if (payload.invoice_id && !payload.receipt_generated) {
         await generateReceiptAutomatically(supabase, payload.invoice_id, payload.payment_id);
       }
+      break;
+
+    // ✅ SOTA 2026: Notifier le propriétaire qu'un paiement a été reçu
+    case "Payment.Received":
+      await sendNotification(supabase, {
+        type: "payment_received",
+        user_id: payload.owner_id,
+        title: "💰 Paiement reçu !",
+        message: `${payload.tenant_name || "Votre locataire"} a payé ${payload.amount}€ pour ${payload.property_address || "le logement"} (${payload.periode}).`,
+        metadata: { payment_id: payload.payment_id, invoice_id: payload.invoice_id },
+      });
       break;
 
     case "Ticket.Opened":
@@ -154,11 +166,94 @@ async function processEvent(supabase: any, event: any) {
       break;
 
     case "Lease.Activated":
-      // ... (déjà mis à jour au tour précédent)
+      // Notifier le locataire que le bail est actif
+      if (payload.tenant_user_id) {
+        await sendNotification(supabase, {
+          type: "lease_activated",
+          user_id: payload.tenant_user_id,
+          title: "🏠 Bail activé !",
+          message: `Votre bail pour ${payload.property_address || "le logement"} est maintenant actif. Bienvenue chez vous !`,
+          metadata: { lease_id: payload.lease_id },
+        });
+      }
+      break;
+
+    // ✅ SOTA 2026: Notification quand le locataire signe
+    case "Lease.TenantSigned":
+      if (payload.owner_user_id) {
+        await sendNotification(supabase, {
+          type: "lease_tenant_signed",
+          user_id: payload.owner_user_id,
+          title: "✍️ Signature locataire reçue !",
+          message: `${payload.tenant_name} a signé le bail pour ${payload.property_address}. C'est à votre tour !`,
+          metadata: { lease_id: payload.lease_id, action: "sign_required" },
+        });
+        
+        // Envoyer aussi un email
+        await sendSignatureEmail(supabase, {
+          user_id: payload.owner_user_id,
+          subject: `✍️ ${payload.tenant_name} a signé le bail !`,
+          message: `Le locataire a signé le bail pour ${payload.property_address}. Connectez-vous pour finaliser la signature.`,
+          cta_label: "Signer le bail",
+          cta_url: `/owner/leases/${payload.lease_id}`,
+        });
+      }
+      break;
+
+    // ✅ SOTA 2026: Notification quand le propriétaire signe
+    case "Lease.OwnerSigned":
+      if (payload.tenant_user_id) {
+        await sendNotification(supabase, {
+          type: "lease_owner_signed",
+          user_id: payload.tenant_user_id,
+          title: "✅ Le propriétaire a signé !",
+          message: `${payload.owner_name} a également signé le bail pour ${payload.property_address}.`,
+          metadata: { lease_id: payload.lease_id },
+        });
+      }
+      break;
+
+    // ✅ SOTA 2026: Notification quand le bail est entièrement signé
+    case "Lease.FullySigned":
+      await sendNotification(supabase, {
+        type: "lease_fully_signed",
+        user_id: payload.user_id,
+        title: "🎉 Bail entièrement signé !",
+        message: payload.is_owner 
+          ? `Toutes les signatures sont complètes pour ${payload.property_address}. Prochaine étape : l'état des lieux.`
+          : `Votre bail pour ${payload.property_address} est signé par toutes les parties. L'état des lieux sera bientôt programmé.`,
+        metadata: { 
+          lease_id: payload.lease_id, 
+          next_step: payload.next_step,
+          action: payload.is_owner ? "create_edl" : null 
+        },
+      });
+
+      // Envoyer email avec prochaines étapes
+      await sendSignatureEmail(supabase, {
+        user_id: payload.user_id,
+        subject: "🎉 Bail signé - Prochaines étapes",
+        message: payload.is_owner 
+          ? `Félicitations ! Le bail pour ${payload.property_address} est maintenant signé. Créez l'état des lieux d'entrée pour finaliser l'emménagement.`
+          : `Félicitations ! Votre bail pour ${payload.property_address} est signé. Votre propriétaire va programmer l'état des lieux d'entrée.`,
+        cta_label: payload.is_owner ? "Créer l'état des lieux" : "Voir mon bail",
+        cta_url: payload.is_owner 
+          ? `/owner/inspections/new?lease_id=${payload.lease_id}`
+          : `/tenant/lease`,
+      });
       break;
 
     case "EDL.InvitationSent":
-      // ...
+      // Notification pour invitation EDL
+      if (payload.tenant_user_id) {
+        await sendNotification(supabase, {
+          type: "edl_invitation",
+          user_id: payload.tenant_user_id,
+          title: "📋 État des lieux programmé",
+          message: `Un état des lieux ${payload.type === "entree" ? "d'entrée" : "de sortie"} a été programmé pour ${payload.property_address}.`,
+          metadata: { edl_id: payload.edl_id, type: payload.type },
+        });
+      }
       break;
 
     // Calcul d'âge depuis OCR
@@ -171,6 +266,41 @@ async function processEvent(supabase: any, event: any) {
     // Mise à jour législative - Notification aux propriétaires et locataires
     case "Legislation.Updated":
       await handleLegislationUpdate(supabase, payload);
+      break;
+
+    // ✅ SOTA 2026: Relances de paiement automatisées
+    case "Payment.Reminder":
+      await sendNotification(supabase, {
+        type: "payment_reminder",
+        user_id: payload.tenant_id,
+        title: payload.reminder_subject || "Rappel de paiement",
+        message: `Votre loyer de ${payload.montant_total}€ pour ${payload.property_address} (${payload.periode}) n'a pas encore été réglé (${payload.days_overdue} jours).`,
+        metadata: { 
+          invoice_id: payload.invoice_id, 
+          level: payload.reminder_level,
+          days_overdue: payload.days_overdue 
+        },
+      });
+
+      // Envoyer email de relance
+      await sendPaymentReminderEmail(supabase, payload);
+      break;
+
+    // ✅ SOTA 2026: Alerte propriétaire pour impayé critique
+    case "Payment.OverdueAlert":
+      await sendNotification(supabase, {
+        type: "payment_overdue_alert",
+        user_id: payload.owner_id,
+        title: "🚨 Impayé détecté",
+        message: `${payload.tenant_name} n'a pas réglé son loyer de ${payload.montant_total}€ pour ${payload.property_address} (${payload.days_overdue} jours de retard).`,
+        metadata: { 
+          invoice_id: payload.invoice_id,
+          days_overdue: payload.days_overdue 
+        },
+      });
+
+      // Email au propriétaire
+      await sendOverdueAlertEmail(supabase, payload);
       break;
 
     // Autres événements (à étendre selon besoins)
@@ -414,12 +544,327 @@ async function sendNotification(supabase: any, notification: any) {
     read: false,
   } as any);
 
-  // TODO: Envoyer email/push selon les préférences utilisateur
-  // const { data: settings } = await supabase
-  //   .from("notification_settings")
-  //   .select("*")
-  //   .eq("user_id", notification.user_id)
-  //   .single();
+  // Envoyer push notification si activée
+  try {
+    const { data: settings } = await supabase
+      .from("notification_settings")
+      .select("push_enabled, push_subscription")
+      .eq("user_id", notification.user_id)
+      .single();
+
+    if (settings?.push_enabled && settings?.push_subscription) {
+      // TODO: Envoyer via Web Push API
+      console.log(`[Notification] Push notification à envoyer à ${notification.user_id}`);
+    }
+  } catch (error) {
+    console.log(`[Notification] Pas de settings push pour ${notification.user_id}`);
+  }
+}
+
+/**
+ * ✅ SOTA 2026: Envoyer un email transactionnel lié aux signatures
+ */
+async function sendSignatureEmail(supabase: any, params: {
+  user_id: string;
+  subject: string;
+  message: string;
+  cta_label: string;
+  cta_url: string;
+}) {
+  try {
+    // Vérifier les préférences email
+    const { data: settings } = await supabase
+      .from("notification_settings")
+      .select("email_enabled")
+      .eq("user_id", params.user_id)
+      .single();
+
+    if (settings?.email_enabled === false) {
+      console.log(`[Email] Emails désactivés pour ${params.user_id}`);
+      return;
+    }
+
+    // Récupérer l'email de l'utilisateur
+    const { data: authUser } = await supabase.auth.admin.getUserById(params.user_id);
+    const userEmail = authUser?.user?.email;
+
+    if (!userEmail) {
+      console.log(`[Email] Pas d'email trouvé pour ${params.user_id}`);
+      return;
+    }
+
+    // Récupérer le nom de l'utilisateur
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("prenom, nom")
+      .eq("user_id", params.user_id)
+      .single();
+
+    const userName = profile?.prenom || "Bonjour";
+    const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
+
+    const emailHtml = `
+      <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 40px 30px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">Talok</h1>
+          <p style="color: #94a3b8; margin: 8px 0 0; font-size: 14px;">Gestion locative simplifiée</p>
+        </div>
+        
+        <div style="padding: 40px 30px;">
+          <h2 style="color: #1e293b; margin: 0 0 20px; font-size: 22px; font-weight: 600;">
+            ${params.subject}
+          </h2>
+          
+          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+            ${userName},
+          </p>
+          
+          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 32px;">
+            ${params.message}
+          </p>
+          
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${appUrl}${params.cta_url}" 
+               style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
+                      color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; 
+                      font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);">
+              ${params.cta_label}
+            </a>
+          </div>
+        </div>
+        
+        <div style="background: #f8fafc; padding: 24px 30px; border-top: 1px solid #e2e8f0;">
+          <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
+            Vous recevez cet email car vous avez un compte sur Talok.
+            <br />
+            <a href="${appUrl}/settings/notifications" style="color: #64748b;">Gérer mes préférences</a>
+          </p>
+        </div>
+      </div>
+    `;
+
+    // Appeler le service email
+    const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
+    
+    if (emailServiceUrl) {
+      await fetch(emailServiceUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
+        },
+        body: JSON.stringify({
+          to: userEmail,
+          subject: params.subject,
+          html: emailHtml,
+        }),
+      });
+      console.log(`[Email] ✅ Email envoyé à ${userEmail}: ${params.subject}`);
+    } else {
+      // En mode dev, log seulement
+      console.log(`[Email] Service non configuré. Email à ${userEmail}: ${params.subject}`);
+    }
+  } catch (error) {
+    console.error(`[Email] Erreur envoi:`, error);
+  }
+}
+
+/**
+ * ✅ SOTA 2026: Envoyer un email de relance de paiement
+ */
+async function sendPaymentReminderEmail(supabase: any, payload: any) {
+  const { tenant_id, montant_total, periode, property_address, days_overdue, reminder_level } = payload;
+
+  // Récupérer les infos utilisateur
+  const { data: authUser } = await supabase.auth.admin.getUserById(tenant_id);
+  const userEmail = authUser?.user?.email;
+  if (!userEmail) return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("prenom, nom")
+    .eq("user_id", tenant_id)
+    .single();
+
+  const userName = profile?.prenom || "Bonjour";
+  const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
+
+  // Style de l'email selon le niveau de relance
+  const levelStyles: Record<string, { color: string; bgColor: string; emoji: string }> = {
+    friendly: { color: "#3b82f6", bgColor: "#eff6ff", emoji: "📅" },
+    reminder: { color: "#f59e0b", bgColor: "#fffbeb", emoji: "⏰" },
+    urgent: { color: "#ef4444", bgColor: "#fef2f2", emoji: "⚠️" },
+    final: { color: "#dc2626", bgColor: "#fee2e2", emoji: "🚨" },
+  };
+
+  const style = levelStyles[reminder_level] || levelStyles.reminder;
+
+  const emailHtml = `
+    <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+      <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 40px 30px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Talok</h1>
+      </div>
+      
+      <div style="padding: 40px 30px;">
+        <div style="background: ${style.bgColor}; border-left: 4px solid ${style.color}; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
+          <h2 style="color: ${style.color}; margin: 0 0 8px; font-size: 20px;">
+            ${style.emoji} ${payload.reminder_subject || "Rappel de paiement"}
+          </h2>
+          <p style="color: #475569; margin: 0; font-size: 14px;">
+            ${days_overdue} jours depuis l'émission de la facture
+          </p>
+        </div>
+        
+        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+          ${userName},
+        </p>
+        
+        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+          Nous n'avons pas encore reçu votre paiement de loyer pour <strong>${property_address}</strong> (${periode}).
+        </p>
+        
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+          <p style="color: #64748b; margin: 0 0 8px; font-size: 14px;">Montant dû</p>
+          <p style="color: #1e293b; margin: 0; font-size: 32px; font-weight: 700;">${montant_total}€</p>
+        </div>
+        
+        ${reminder_level === "urgent" || reminder_level === "final" ? `
+          <div style="background: #fee2e2; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+            <p style="color: #dc2626; margin: 0; font-size: 14px;">
+              <strong>⚠️ Important :</strong> Un retard prolongé peut entraîner des frais supplémentaires et affecter votre relation avec votre propriétaire.
+            </p>
+          </div>
+        ` : ""}
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${appUrl}/tenant/invoices" 
+             style="display: inline-block; background: ${style.color}; color: #ffffff; text-decoration: none; 
+                    padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+            Payer maintenant
+          </a>
+        </div>
+        
+        <p style="color: #94a3b8; font-size: 14px; text-align: center;">
+          Si vous avez déjà effectué le paiement, ignorez ce message.
+        </p>
+      </div>
+      
+      <div style="background: #f8fafc; padding: 24px 30px; border-top: 1px solid #e2e8f0;">
+        <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
+          Besoin d'aide ? <a href="${appUrl}/help" style="color: #3b82f6;">Contactez le support</a>
+        </p>
+      </div>
+    </div>
+  `;
+
+  const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
+  if (emailServiceUrl) {
+    await fetch(emailServiceUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
+      },
+      body: JSON.stringify({
+        to: userEmail,
+        subject: `${style.emoji} ${payload.reminder_subject} - ${montant_total}€`,
+        html: emailHtml,
+      }),
+    });
+    console.log(`[Email] ✅ Relance ${reminder_level} envoyée à ${userEmail}`);
+  }
+}
+
+/**
+ * ✅ SOTA 2026: Envoyer une alerte impayé au propriétaire
+ */
+async function sendOverdueAlertEmail(supabase: any, payload: any) {
+  const { owner_id, tenant_name, montant_total, periode, property_address, days_overdue } = payload;
+
+  const { data: authUser } = await supabase.auth.admin.getUserById(owner_id);
+  const userEmail = authUser?.user?.email;
+  if (!userEmail) return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("prenom, nom")
+    .eq("user_id", owner_id)
+    .single();
+
+  const userName = profile?.prenom || "Bonjour";
+  const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
+
+  const emailHtml = `
+    <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+      <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 40px 30px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">🚨 Alerte Impayé</h1>
+      </div>
+      
+      <div style="padding: 40px 30px;">
+        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+          ${userName},
+        </p>
+        
+        <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
+          <p style="color: #dc2626; margin: 0 0 8px; font-size: 16px; font-weight: 600;">
+            Impayé détecté - ${days_overdue} jours de retard
+          </p>
+          <p style="color: #7f1d1d; margin: 0;">
+            <strong>${tenant_name}</strong> n'a pas réglé son loyer pour <strong>${property_address}</strong> (${periode}).
+          </p>
+        </div>
+        
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px; display: flex; justify-content: space-between;">
+          <div>
+            <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">Montant impayé</p>
+            <p style="color: #dc2626; margin: 0; font-size: 28px; font-weight: 700;">${montant_total}€</p>
+          </div>
+          <div style="text-align: right;">
+            <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">Jours de retard</p>
+            <p style="color: #ef4444; margin: 0; font-size: 28px; font-weight: 700;">${days_overdue}</p>
+          </div>
+        </div>
+        
+        <h3 style="color: #1e293b; margin: 24px 0 12px; font-size: 16px;">Actions recommandées :</h3>
+        <ul style="color: #475569; margin: 0 0 24px; padding-left: 20px; line-height: 1.8;">
+          <li>Contactez votre locataire pour comprendre la situation</li>
+          <li>Vérifiez si un problème technique empêche le paiement</li>
+          <li>Envisagez une relance amiable avant toute procédure</li>
+        </ul>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${appUrl}/owner/money?filter=late" 
+             style="display: inline-block; background: #dc2626; color: #ffffff; text-decoration: none; 
+                    padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+            Voir les impayés
+          </a>
+        </div>
+      </div>
+      
+      <div style="background: #f8fafc; padding: 24px 30px; border-top: 1px solid #e2e8f0;">
+        <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
+          Des relances automatiques sont envoyées à votre locataire.
+        </p>
+      </div>
+    </div>
+  `;
+
+  const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
+  if (emailServiceUrl) {
+    await fetch(emailServiceUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
+      },
+      body: JSON.stringify({
+        to: userEmail,
+        subject: `🚨 Impayé: ${tenant_name} - ${montant_total}€ (${days_overdue}j)`,
+        html: emailHtml,
+      }),
+    });
+    console.log(`[Email] ✅ Alerte impayé envoyée au propriétaire ${userEmail}`);
+  }
 }
 
 async function calculateAndStoreAge(supabase: any, applicationId: string, birthdate: string) {

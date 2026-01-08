@@ -30,8 +30,13 @@ import {
   Info,
   Loader2,
   User,
-  Sparkles
+  Sparkles,
+  LayoutGrid,
+  Layers,
+  Home
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DocumentGroups } from "@/components/documents/document-groups";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentUploadModal } from "@/components/documents/DocumentUploadModal";
 import { useTenantData } from "../_data/TenantDataProvider";
@@ -108,6 +113,8 @@ export default function TenantDocumentsPage() {
   const { dashboard } = useTenantData();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  // 🎨 Mode d'affichage SOTA 2026 : "grid" (grille) ou "cascade" (groupé par catégorie)
+  const [viewMode, setViewMode] = useState<"grid" | "cascade">("grid");
 
   const leaseId = dashboard?.lease?.id;
   const propertyId = dashboard?.lease?.property_id;
@@ -245,7 +252,22 @@ export default function TenantDocumentsPage() {
               Tous vos documents officiels et quittances sécurisés.
             </p>
           </div>
-          <DocumentUploadModal leaseId={leaseId} propertyId={propertyId} />
+          <div className="flex items-center gap-3">
+            {/* Toggle vue SOTA 2026 */}
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "grid" | "cascade")} className="bg-white/80 rounded-lg border shadow-sm">
+              <TabsList className="grid grid-cols-2 h-11">
+                <TabsTrigger value="grid" className="flex items-center gap-1.5 text-xs px-3" aria-label="Vue grille">
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  Grille
+                </TabsTrigger>
+                <TabsTrigger value="cascade" className="flex items-center gap-1.5 text-xs px-3" aria-label="Vue par catégorie">
+                  <Layers className="h-3.5 w-3.5" />
+                  Catégories
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <DocumentUploadModal leaseId={leaseId} propertyId={propertyId} />
+          </div>
         </div>
 
         {/* Barre de Recherche et Filtres */}
@@ -280,7 +302,7 @@ export default function TenantDocumentsPage() {
           </div>
         </GlassCard>
 
-        {/* Liste des Documents - Bento Grid Style */}
+        {/* Liste des Documents - SOTA 2026 avec deux modes */}
         {filteredDocuments.length === 0 ? (
           <div className="py-24 text-center">
             <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -289,7 +311,27 @@ export default function TenantDocumentsPage() {
             <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun document trouvé</h3>
             <p className="text-slate-500">Essayez de modifier vos filtres ou effectuez une nouvelle recherche.</p>
           </div>
+        ) : viewMode === "cascade" ? (
+          /* 📁 Vue cascade groupée par catégorie */
+          <DocumentGroups
+            documents={filteredDocuments.map((doc: any) => ({
+              id: doc.id,
+              type: detectType(doc),
+              title: getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] || DOCUMENT_CONFIG.autre),
+              storage_path: doc.storage_path,
+              created_at: doc.created_at,
+              tenant_id: doc.tenant_id,
+              property_id: doc.property_id,
+              lease_id: doc.lease_id,
+              metadata: doc.metadata,
+              verification_status: doc.verification_status,
+            }))}
+            groupBy="category"
+            onPreview={(doc) => window.open(`/api/documents/${doc.id}/download`, "_blank")}
+            onDownload={(doc) => window.open(`/api/documents/${doc.id}/download`, "_blank")}
+          />
         ) : (
+          /* 🎨 Vue Bento Grid Style */
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <AnimatePresence mode="popLayout">
               {filteredDocuments.map((doc: any) => {

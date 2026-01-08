@@ -24,8 +24,9 @@ const navigation = [
   { name: "Calendrier", href: "/provider/calendar", icon: Calendar },
   { name: "Mes devis", href: "/provider/quotes", icon: FileText },
   { name: "Mes factures", href: "/provider/invoices", icon: Receipt },
+  { name: "Mes documents", href: "/provider/documents", icon: FileText },
   { name: "Mes avis", href: "/provider/reviews", icon: Star },
-  { name: "Mes documents", href: "/provider/compliance", icon: Shield },
+  { name: "Conformité", href: "/provider/compliance", icon: Shield },
 ];
 
 const secondaryNav = [
