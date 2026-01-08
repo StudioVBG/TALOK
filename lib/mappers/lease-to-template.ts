@@ -51,11 +51,15 @@ export function mapLeaseToTemplate(
   const loyer = lease.loyer ?? propAny?.loyer_hc ?? propAny?.loyer_base ?? 0;
   const charges = lease.charges_forfaitaires ?? propAny?.charges_mensuelles ?? 0;
   
-  // ✅ CORRECTION SOTA 2026: Utiliser le dépôt saisi, sinon calculer le max légal
+  // ✅ CALCUL AUTOMATIQUE: Toujours calculer le dépôt basé sur le loyer
+  // Cela garantit la cohérence même pour les baux existants avec des données incorrectes
+  const maxDepotLegal = getMaxDepotLegal(lease.type_bail, loyer);
   const depotSaisi = (lease as any).depot_de_garantie;
-  const depotGarantie = (depotSaisi && depotSaisi > 0) 
+  
+  // Si le dépôt saisi dépasse le max légal, utiliser le max légal
+  const depotGarantie = (depotSaisi && depotSaisi > 0 && depotSaisi <= maxDepotLegal)
     ? depotSaisi 
-    : getMaxDepotLegal(lease.type_bail, loyer);
+    : maxDepotLegal;
 
   // Calcul de la durée par défaut selon le type de bail
   // ✅ FIX: Prend en compte le type de bailleur (société = 6 ans pour bail nu)
