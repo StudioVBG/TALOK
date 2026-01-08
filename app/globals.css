@@ -109,7 +109,9 @@
 
 /* ============================================
    SAFE AREA SUPPORT (SOTA 2026)
-   Support pour iPhone notch, Dynamic Island, etc.
+   Support universel: iPhone (notch, Dynamic Island),
+   Android (punch-hole, gesture navigation), 
+   iPad, tablettes Android
    ============================================ */
 @supports (padding: max(0px)) {
   body {
@@ -134,6 +136,24 @@
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
   }
+
+  /* Margin variants pour safe areas */
+  .mt-safe {
+    margin-top: env(safe-area-inset-top);
+  }
+  
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Padding with minimum fallback */
+  .pt-safe-min {
+    padding-top: max(env(safe-area-inset-top), 1rem);
+  }
+  
+  .pb-safe-min {
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  }
 }
 
 @layer utilities {
@@ -155,6 +175,80 @@
   .animate-gradient {
     background-size: 200% 200%;
     animation: gradient 8s ease infinite;
+  }
+
+  /* ============================================
+     TOUCH TARGETS - iOS 44pt / Android 48dp
+     Minimum recommandé pour accessibilité
+     ============================================ */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .touch-target-lg {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* ============================================
+     TEXT RESPONSIVE - Modern text wrapping
+     ============================================ */
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* ============================================
+     SCROLLBAR STYLÉE - Desktop uniquement
+     ============================================ */
+  @media (hover: hover) {
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: hsl(var(--muted-foreground) / 0.3);
+      border-radius: 3px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+      background: hsl(var(--muted-foreground) / 0.5);
+    }
+  }
+
+  /* ============================================
+     HOVER STATES - Adaptatif touch/souris
+     ============================================ */
+  @media (hover: none) {
+    /* Sur tactile, remplacer hover par active */
+    .hover-or-active:active {
+      opacity: 0.8;
+    }
+  }
+  
+  @media (hover: hover) {
+    .hover-or-active:hover {
+      opacity: 0.9;
+    }
+  }
+
+  /* ============================================
+     RESPONSIVE HELPERS
+     ============================================ */
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height pour mobile */
+  }
+  
+  .h-screen-safe {
+    height: 100vh;
+    height: 100dvh;
   }
 }
 

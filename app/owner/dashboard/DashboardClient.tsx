@@ -289,19 +289,21 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
         animate="visible"
         className="space-y-8 pb-10"
       >
-        {/* SOTA Header */}
+        {/* SOTA Header - Responsive pour tous appareils 2025-2026 */}
         <motion.header
           variants={itemVariants}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 p-8 text-white shadow-2xl"
+          className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 p-4 xs:p-5 sm:p-6 lg:p-8 text-white shadow-2xl"
         >
-          <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-          <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+          {/* Background decorations - Masquées sur très petit écran pour performance */}
+          <div className="hidden xs:block absolute top-0 right-0 -mt-10 -mr-10 h-48 sm:h-64 w-48 sm:w-64 rounded-full bg-white/5 blur-3xl" />
+          <div className="hidden xs:block absolute bottom-0 left-0 -mb-10 -ml-10 h-48 sm:h-64 w-48 sm:w-64 rounded-full bg-blue-500/10 blur-3xl" />
           
-          <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
+          <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 lg:gap-6">
+            <div className="min-w-0 flex-1">
+              {/* Titre + Badge - Toujours en ligne */}
+              <div className="flex flex-row items-center flex-wrap gap-2 xs:gap-3 mb-1.5 sm:mb-2">
                 <motion.h1 
-                  className="text-4xl font-bold tracking-tight"
+                  className="text-xl xs:text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
@@ -313,50 +315,55 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 }}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1.5 xs:gap-2"
                 >
-                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 gap-1.5 px-2.5 py-1">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    SOTA 2026 Secure
+                  {/* Badge SOTA - Condensé sur mobile */}
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 gap-1 xs:gap-1.5 px-1.5 xs:px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] xs:text-xs">
+                    <ShieldCheck className="h-3 w-3 xs:h-3.5 xs:w-3.5" />
+                    <span className="hidden sm:inline">SOTA 2026</span> Secure
                   </Badge>
                   <RealtimeStatusIndicator />
                 </motion.div>
               </div>
               <motion.p 
-                className="text-slate-300 text-lg"
+                className="text-slate-300 text-sm xs:text-base sm:text-lg"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
               >
-                Bienvenue, vous gérez {dashboard.properties?.total || 0} biens avec succès.
+                Bienvenue, vous gérez {dashboard.properties?.total || 0} bien{(dashboard.properties?.total || 0) > 1 ? 's' : ''} avec succès.
               </motion.p>
             </div>
             
             {/* ✅ SOTA 2026: Bouton "Ajouter un bien" supprimé du header - déjà présent dans quick-links */}
           </div>
 
-          {/* Quick Stats in Header */}
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-white/10 pt-6">
-             <div>
-                <p className="text-slate-400 text-sm font-medium">Revenus du mois</p>
-                <p className="text-2xl font-bold mt-1">
+          {/* Quick Stats in Header - Grid responsive */}
+          <div className="mt-4 sm:mt-6 lg:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-2.5 xs:gap-3 sm:gap-4 border-t border-white/10 pt-4 sm:pt-6">
+             {/* KPI 1: Revenus */}
+             <div className="min-w-0">
+                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Revenus du mois</p>
+                <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1 truncate">
                    <AnimatedCounter value={transformedData.zone2_finances.kpis.revenue_current_month.collected} type="currency" />
                 </p>
              </div>
-             <div>
-                <p className="text-slate-400 text-sm font-medium">Biens gérés</p>
-                <p className="text-2xl font-bold mt-1">
+             {/* KPI 2: Biens */}
+             <div className="min-w-0">
+                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Biens gérés</p>
+                <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1">
                    <AnimatedCounter value={dashboard.properties?.total || 0} />
                 </p>
              </div>
-             <div>
-                <p className="text-slate-400 text-sm font-medium">Baux actifs</p>
-                <p className="text-2xl font-bold mt-1">
+             {/* KPI 3: Baux */}
+             <div className="min-w-0">
+                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Baux actifs</p>
+                <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1">
                    <AnimatedCounter value={dashboard.leases?.active || 0} />
                 </p>
              </div>
-             <div>
-                <p className="text-slate-400 text-sm font-medium">Taux d'occupation</p>
+             {/* KPI 4: Taux d'occupation */}
+             <div className="min-w-0">
+                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Taux d'occupation</p>
                 {(() => {
                   const rate = dashboard.properties?.total > 0 
                     ? Math.round(((dashboard.leases?.active || 0) / dashboard.properties.total) * 100) 
@@ -364,11 +371,11 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
                   const colorClass = rate >= 80 ? "text-emerald-400" : rate >= 50 ? "text-amber-400" : "text-red-400";
                   const barColor = rate >= 80 ? "bg-emerald-400" : rate >= 50 ? "bg-amber-400" : "bg-red-400";
                   return (
-                    <div className="space-y-1">
-                      <p className={`text-2xl font-bold ${colorClass}`}>
+                    <div className="space-y-0.5 sm:space-y-1">
+                      <p className={`text-base xs:text-lg sm:text-xl lg:text-2xl font-bold ${colorClass}`}>
                         {rate}%
                       </p>
-                      <div className="h-1.5 w-24 bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-1 xs:h-1.5 w-16 xs:w-20 sm:w-24 bg-slate-700 rounded-full overflow-hidden">
                         <div 
                           className={`h-full ${barColor} transition-all duration-500`}
                           style={{ width: `${rate}%` }}
@@ -407,31 +414,31 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
           <UrgentActionsSection actions={urgentActions} />
         </motion.section>
         
-        {/* Liens rapides */}
+        {/* Liens rapides - Touch-friendly et responsive */}
         <motion.section variants={itemVariants}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 xs:gap-2.5 sm:gap-3">
             <Link href="/owner/tenants">
-              <GlassCard hoverEffect className="p-4 text-center cursor-pointer">
-                <Users className="h-6 w-6 mx-auto text-blue-600 mb-2" />
-                <p className="text-sm font-medium text-slate-700">Mes locataires</p>
+              <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
+                <Users className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-blue-600 mb-1.5 xs:mb-2" />
+                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-slate-700 line-clamp-1">Mes locataires</p>
               </GlassCard>
             </Link>
             <Link href="/owner/analytics">
-              <GlassCard hoverEffect className="p-4 text-center cursor-pointer">
-                <BarChart3 className="h-6 w-6 mx-auto text-emerald-600 mb-2" />
-                <p className="text-sm font-medium text-slate-700">Analytics</p>
+              <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
+                <BarChart3 className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-emerald-600 mb-1.5 xs:mb-2" />
+                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-slate-700 line-clamp-1">Analytics</p>
               </GlassCard>
             </Link>
             <Link href={`${OWNER_ROUTES.contracts.path}/new`}>
-              <GlassCard hoverEffect className="p-4 text-center cursor-pointer">
-                <Plus className="h-6 w-6 mx-auto text-amber-600 mb-2" />
-                <p className="text-sm font-medium text-slate-700">Nouveau bail</p>
+              <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
+                <Plus className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-amber-600 mb-1.5 xs:mb-2" />
+                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-slate-700 line-clamp-1">Nouveau bail</p>
               </GlassCard>
             </Link>
             <Link href={`${OWNER_ROUTES.properties.path}/new`}>
-              <GlassCard hoverEffect className="p-4 text-center cursor-pointer">
-                <Plus className="h-6 w-6 mx-auto text-purple-600 mb-2" />
-                <p className="text-sm font-medium text-slate-700">Ajouter un bien</p>
+              <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
+                <Plus className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-purple-600 mb-1.5 xs:mb-2" />
+                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-slate-700 line-clamp-1">Ajouter un bien</p>
               </GlassCard>
             </Link>
           </div>
@@ -439,18 +446,20 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
 
         {/* Zone 2 - Vue finances détaillée avec Temps Réel */}
         <motion.section variants={itemVariants}>
-          <div className="mb-4 flex items-center justify-between">
-             <h2 className="text-xl font-semibold text-slate-800">Performance Financière</h2>
-             <div className="flex items-center gap-2">
-               <StartTourButton className="text-xs" />
-               <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700">
+          <div className="mb-3 sm:mb-4 flex flex-row items-center justify-between gap-2">
+             <h2 className="text-sm xs:text-base sm:text-lg lg:text-xl font-semibold text-slate-800 truncate">Performance Financière</h2>
+             <div className="flex items-center gap-1.5 xs:gap-2 shrink-0">
+               <StartTourButton className="text-[10px] xs:text-xs hidden xs:flex" />
+               <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700 h-7 xs:h-8 sm:h-9 px-2 xs:px-3 text-xs xs:text-sm">
                   <Link href="/owner/money">
-                     Voir détails <ArrowRight className="ml-1 h-4 w-4" />
+                     <span className="hidden sm:inline">Voir détails</span>
+                     <span className="sm:hidden">Détails</span>
+                     <ArrowRight className="ml-1 h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
                   </Link>
                </Button>
              </div>
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-2">
             {/* Widget Temps Réel SOTA 2026 */}
             <RealtimeRevenueWidget />
             {/* Widget classique */}
@@ -461,25 +470,25 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
           </div>
         </motion.section>
 
-        {/* Zone 3 - Portefeuille & conformité */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="grid gap-6 sm:grid-cols-2">
+        {/* Zone 3 - Portefeuille & conformité - Responsive mobile → tablet → desktop */}
+        <div className="grid gap-3 sm:gap-4 lg:gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="md:col-span-2 lg:col-span-2 space-y-3 sm:space-y-4 lg:space-y-6">
+            <div className="grid gap-3 sm:gap-4 lg:gap-6 sm:grid-cols-2">
               <GlassCard hoverEffect={true}>
-                <div className="p-1">
+                <div className="p-0.5 xs:p-1">
                   <OwnerPortfolioByModule modules={transformedData.zone3_portfolio.modules} />
                 </div>
               </GlassCard>
               
               <GlassCard hoverEffect={true} className={transformedData.zone3_portfolio.compliance.length > 0 ? "border-red-100 bg-red-50/30" : ""}>
-                <div className="p-1">
+                <div className="p-0.5 xs:p-1">
                   <OwnerRiskSection risks={transformedData.zone3_portfolio.compliance} />
                 </div>
               </GlassCard>
             </div>
           </div>
           
-          <div className="lg:col-span-1">
+          <div className="md:col-span-2 lg:col-span-1">
             <OwnerRecentActivity activities={dashboard.recentActivity || []} />
           </div>
         </div>

@@ -9,10 +9,32 @@ const config: Config = {
     "./features/**/*.{ts,tsx}",
   ],
   theme: {
+    // Breakpoints responsive universels 2025-2026
+    screens: {
+      'xs': '360px',    // Petits smartphones (iPhone SE, Pixel compact)
+      'sm': '390px',    // Smartphones standards (iPhone 16, Pixel 10, Galaxy S25)
+      'md': '744px',    // Tablettes portrait (iPad mini, Galaxy Tab)
+      'lg': '1024px',   // Tablettes paysage / iPad Pro / petits laptops
+      'xl': '1280px',   // Laptops (MacBook Air)
+      '2xl': '1536px',  // Desktop standard
+      '3xl': '1920px',  // Grands écrans / 4K
+    },
     container: {
       center: true,
-      padding: "2rem",
+      padding: {
+        DEFAULT: "1rem",
+        xs: "1rem",
+        sm: "1.25rem",
+        md: "1.5rem",
+        lg: "2rem",
+        xl: "2rem",
+        "2xl": "2rem",
+      },
       screens: {
+        sm: "100%",
+        md: "100%",
+        lg: "1024px",
+        xl: "1280px",
         "2xl": "1400px",
       },
     },
