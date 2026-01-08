@@ -11,6 +11,7 @@ import { Confetti } from "@/components/ui/confetti";
 import { TomAssistant } from "@/components/ai/tom-assistant";
 import { ImportStep } from "./immersive/steps/ImportStep";
 import type { Property } from "@/lib/types";
+import { buildingsService } from "../../services/buildings.service";
 
 // Dynamically import steps for code splitting
 const TypeStep = dynamic(() => import("./immersive/steps/TypeStep").then((mod) => ({ default: mod.TypeStep })), {
@@ -389,6 +390,42 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
   }, [currentStep, isInitializing]);
 
   const handleFinish = async () => {
+    const isBuilding = formData.type === "immeuble";
+    
+    // 🏢 SOTA 2026 - Gestion spécifique des immeubles
+    if (isBuilding) {
+      try {
+        // Créer l'immeuble avec ses lots
+        const result = await buildingsService.createFromWizardData(formData);
+        
+        // 🎉 Déclencher le confetti
+        setShowConfetti(true);
+        
+        toast({
+          title: "🏢 Immeuble créé !",
+          description: `${formData.building_units?.length || 0} lot(s) ajouté(s). Redirection...`,
+        });
+        
+        // Attendre pour voir le confetti
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Réinitialiser et rediriger
+        reset();
+        router.push(`/owner/buildings/${result.buildingId}`);
+        return;
+        
+      } catch (error: any) {
+        console.error("Erreur création immeuble:", error);
+        toast({
+          title: "Erreur",
+          description: error.message || "Impossible de créer l'immeuble",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    // --- Flux standard pour les autres types de biens ---
     if (!storePropertyId) {
       toast({
         title: "Erreur",

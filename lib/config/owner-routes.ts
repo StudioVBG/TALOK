@@ -20,6 +20,13 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "Building2",
   },
+  buildings: {
+    path: "/owner/buildings",
+    name: "Mes immeubles",
+    component: "OwnerBuildingsPage",
+    auth: ["owner"],
+    icon: "Building",
+  },
   contracts: {
     path: "/owner/leases",
     name: "Baux & locataires",

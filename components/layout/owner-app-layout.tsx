@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   Building2,
+  Building,
   FileText,
   Euro,
   FileCheck,
@@ -40,6 +41,7 @@ import { OnboardingTourProvider, AutoTourPrompt, StartTourButton } from "@/compo
 const navigation = [
   { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard, tourId: "nav-dashboard" },
   { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2, tourId: "nav-properties" },
+  { name: "Mes immeubles", href: OWNER_ROUTES.buildings.path, icon: Building, tourId: "nav-buildings", badge: "Nouveau" },
   { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
   { name: "États des lieux", href: "/owner/inspections", icon: ClipboardCheck, tourId: "nav-inspections" },
   { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
