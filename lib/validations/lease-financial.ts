@@ -56,8 +56,8 @@ export function getMaxDepotMois(typeBail: BailType | string): number {
 export const LeaseFinancialSchema = z.object({
   loyer: z
     .number({ required_error: "Le loyer est obligatoire" })
-    .min(1, "Le loyer doit être supérieur à 0€")
-    .max(50000, "Le loyer semble anormalement élevé"),
+    .min(1, "Le loyer doit être supérieur à 0€"),
+    // Pas de limite haute - biens de luxe possibles
   
   charges_forfaitaires: z
     .number()
@@ -67,28 +67,30 @@ export const LeaseFinancialSchema = z.object({
   depot_de_garantie: z
     .number()
     .min(0, "Le dépôt ne peut pas être négatif")
-    .default(0),
+    .optional(), // Optionnel car calculé automatiquement si non fourni
   
   type_bail: z.enum(BAIL_TYPES, {
     errorMap: () => ({ message: "Type de bail invalide" }),
   }),
 }).superRefine((data, ctx) => {
-  // Validation du dépôt max légal
-  const maxDepot = getMaxDepotLegal(data.type_bail, data.loyer);
-  const maxMois = getMaxDepotMois(data.type_bail);
-  
-  if (data.type_bail === "mobilite" && data.depot_de_garantie > 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Le dépôt de garantie est interdit pour un bail mobilité (Art. 25-13 Loi ELAN)",
-      path: ["depot_de_garantie"],
-    });
-  } else if (data.depot_de_garantie > maxDepot && maxDepot > 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `Dépôt de garantie (${data.depot_de_garantie}€) supérieur au maximum légal (${maxMois} mois = ${maxDepot}€)`,
-      path: ["depot_de_garantie"],
-    });
+  // Validation du dépôt max légal (seulement si fourni)
+  if (data.depot_de_garantie !== undefined && data.depot_de_garantie > 0) {
+    const maxDepot = getMaxDepotLegal(data.type_bail, data.loyer);
+    const maxMois = getMaxDepotMois(data.type_bail);
+    
+    if (data.type_bail === "mobilite") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Le dépôt de garantie est interdit pour un bail mobilité (Art. 25-13 Loi ELAN)",
+        path: ["depot_de_garantie"],
+      });
+    } else if (data.depot_de_garantie > maxDepot && maxDepot > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Dépôt de garantie (${data.depot_de_garantie}€) supérieur au maximum légal (${maxMois} mois = ${maxDepot}€)`,
+        path: ["depot_de_garantie"],
+      });
+    }
   }
 });
 
@@ -105,7 +107,7 @@ export const LeaseCreateSchema = z.object({
   type_bail: z.enum(BAIL_TYPES),
   loyer: z.number().min(1, "Loyer obligatoire"),
   charges_forfaitaires: z.number().min(0).default(0),
-  depot_de_garantie: z.number().min(0).default(0),
+  depot_de_garantie: z.number().min(0).optional(), // Optionnel - calculé auto si non fourni
   date_debut: z.string().min(1, "Date de début obligatoire"),
   date_fin: z.string().optional().nullable(),
   
@@ -113,21 +115,23 @@ export const LeaseCreateSchema = z.object({
   tenant_email: z.string().email().optional().nullable(),
   tenant_name: z.string().optional().nullable(),
 }).superRefine((data, ctx) => {
-  // Validation dépôt max
-  const maxDepot = getMaxDepotLegal(data.type_bail, data.loyer);
-  
-  if (data.type_bail === "mobilite" && data.depot_de_garantie > 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Dépôt de garantie interdit pour bail mobilité",
-      path: ["depot_de_garantie"],
-    });
-  } else if (data.depot_de_garantie > maxDepot && maxDepot > 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `Dépôt (${data.depot_de_garantie}€) > max légal (${maxDepot}€)`,
-      path: ["depot_de_garantie"],
-    });
+  // Validation dépôt max (seulement si fourni manuellement)
+  if (data.depot_de_garantie !== undefined && data.depot_de_garantie > 0) {
+    const maxDepot = getMaxDepotLegal(data.type_bail, data.loyer);
+    
+    if (data.type_bail === "mobilite") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Dépôt de garantie interdit pour bail mobilité",
+        path: ["depot_de_garantie"],
+      });
+    } else if (data.depot_de_garantie > maxDepot && maxDepot > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Dépôt (${data.depot_de_garantie}€) > max légal (${maxDepot}€)`,
+        path: ["depot_de_garantie"],
+      });
+    }
   }
   
   // Validation durée bail mobilité (max 10 mois)

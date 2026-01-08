@@ -341,12 +341,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     
     // ✅ SSOT 2026: Validation unifiée avec Zod
+    const loyer = body.loyer ? parseFloat(body.loyer) : undefined;
+    const typeBail = body.type_bail || "meuble";
+    const depotFourni = body.depot_garantie ? parseFloat(body.depot_garantie) : undefined;
+    
     const validationResult = LeaseCreateSchema.safeParse({
       property_id: body.property_id,
-      type_bail: body.type_bail || "meuble",
-      loyer: body.loyer ? parseFloat(body.loyer) : undefined,
+      type_bail: typeBail,
+      loyer: loyer,
       charges_forfaitaires: body.charges_forfaitaires ? parseFloat(body.charges_forfaitaires) : 0,
-      depot_de_garantie: body.depot_garantie ? parseFloat(body.depot_garantie) : (body.loyer ? parseFloat(body.loyer) : 0),
+      depot_de_garantie: depotFourni, // Peut être undefined - sera calculé après
       date_debut: body.date_debut,
       date_fin: body.date_fin || null,
       tenant_email: body.tenant_email,
@@ -363,6 +367,13 @@ export async function POST(request: Request) {
     }
     
     const validatedData = validationResult.data;
+    
+    // ✅ CALCUL AUTOMATIQUE du dépôt de garantie si non fourni
+    let depotGarantie = validatedData.depot_de_garantie;
+    if (depotGarantie === undefined || depotGarantie === 0) {
+      depotGarantie = getMaxDepotLegal(validatedData.type_bail, validatedData.loyer);
+      console.log(`[POST /api/leases] Dépôt calculé automatiquement: ${depotGarantie}€ (${validatedData.type_bail}, loyer: ${validatedData.loyer}€)`);
+    }
 
     // Vérifier que le bien appartient au propriétaire (sauf admin)
     if (profileData.role !== "admin") {
@@ -382,13 +393,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // ✅ SSOT 2026: Créer le bail avec les données VALIDÉES
+    // ✅ SSOT 2026: Créer le bail avec les données VALIDÉES + dépôt calculé
     const leaseData = {
       property_id: validatedData.property_id,
       type_bail: validatedData.type_bail,
       loyer: validatedData.loyer,
       charges_forfaitaires: validatedData.charges_forfaitaires,
-      depot_de_garantie: validatedData.depot_de_garantie,
+      depot_de_garantie: depotGarantie, // ← Calculé automatiquement si non fourni
       date_debut: validatedData.date_debut,
       date_fin: validatedData.date_fin || null,
       statut: (body.statut as string) || "draft",
