@@ -134,37 +134,73 @@ export const animations = {
 } as const;
 
 // ============================================================================
-// SPACING SYSTEM
+// SPACING SYSTEM - Responsive 2025-2026
+// Adapté pour: iPhone SE → iPhone 17 Pro Max → iPad → Desktop 4K
 // ============================================================================
 
 export const spacing = {
-  page: 'px-4 sm:px-6 lg:px-8',
-  section: 'space-y-6',
-  card: 'p-4 sm:p-6',
+  // Page padding adaptatif (mobile → tablet → desktop)
+  page: 'px-3 xs:px-4 sm:px-5 md:px-6 lg:px-8',
+  
+  // Section spacing vertical
+  section: 'space-y-4 sm:space-y-6 lg:space-y-8',
+  
+  // Card padding interne
+  card: 'p-3 xs:p-4 sm:p-5 lg:p-6',
+  cardCompact: 'p-2.5 xs:p-3 sm:p-4',
+  
+  // Stack vertical (espacement entre éléments empilés)
   stack: {
     xs: 'space-y-1',
-    sm: 'space-y-2',
-    md: 'space-y-4',
-    lg: 'space-y-6',
-    xl: 'space-y-8',
+    sm: 'space-y-1.5 xs:space-y-2',
+    md: 'space-y-2.5 xs:space-y-3 sm:space-y-4',
+    lg: 'space-y-4 sm:space-y-5 lg:space-y-6',
+    xl: 'space-y-5 sm:space-y-6 lg:space-y-8',
   },
+  
+  // Stack horizontal (espacement inline)
   inline: {
     xs: 'space-x-1',
-    sm: 'space-x-2',
-    md: 'space-x-4',
-    lg: 'space-x-6',
+    sm: 'space-x-1.5 xs:space-x-2',
+    md: 'space-x-2.5 xs:space-x-3 sm:space-x-4',
+    lg: 'space-x-4 sm:space-x-5 lg:space-x-6',
+  },
+  
+  // Gap pour grids/flex
+  gap: {
+    xs: 'gap-1 xs:gap-1.5',
+    sm: 'gap-2 xs:gap-2.5 sm:gap-3',
+    md: 'gap-3 xs:gap-3.5 sm:gap-4',
+    lg: 'gap-4 sm:gap-5 lg:gap-6',
   },
 } as const;
 
 // ============================================================================
-// GRID SYSTEMS
+// GRID SYSTEMS - Responsive 2025-2026
+// Mobile-first: tous appareils du iPhone SE au Desktop 4K
 // ============================================================================
 
 export const grids = {
-  kpi: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4',
-  twoCol: 'grid grid-cols-1 lg:grid-cols-2 gap-6',
-  threeCol: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6',
-  sidebar: 'grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6',
+  // KPIs: 1 col (petit mobile) → 2 col (mobile+) → 4 col (desktop)
+  kpi: 'grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-2.5 xs:gap-3 sm:gap-4',
+  
+  // 2 colonnes: 1 col (mobile) → 2 col (tablet+)
+  twoCol: 'grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-6',
+  
+  // 3 colonnes: 1 col (mobile) → 2 col (tablet) → 3 col (desktop)
+  threeCol: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6',
+  
+  // 4 colonnes: 2 col (mobile) → 4 col (tablet+)
+  fourCol: 'grid grid-cols-2 md:grid-cols-4 gap-2 xs:gap-2.5 sm:gap-3 lg:gap-4',
+  
+  // Sidebar: Stack (mobile/tablet) → Sidebar à droite (desktop)
+  sidebar: 'grid grid-cols-1 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-4 sm:gap-5 lg:gap-6',
+  
+  // Dashboard layout principal
+  dashboard: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6',
+  
+  // Quick links / Actions rapides
+  quickLinks: 'grid grid-cols-2 sm:grid-cols-4 gap-2 xs:gap-2.5 sm:gap-3',
 } as const;
 
 // ============================================================================

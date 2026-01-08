@@ -109,9 +109,9 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
       <SubscriptionProvider>
       <OnboardingTourProvider role="owner">
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-        {/* Desktop Sidebar */}
-        <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-          <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white border-r border-slate-200 px-6 pb-4">
+        {/* Desktop Sidebar - Visible sur lg+ (tablettes paysage et desktop) */}
+        <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 xl:w-72 lg:flex-col">
+          <div className="flex grow flex-col gap-y-4 lg:gap-y-5 overflow-y-auto bg-white border-r border-slate-200 px-4 lg:px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
                 <Building2 className="h-5 w-5 text-white" />
@@ -192,10 +192,10 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
           </div>
         )}
 
-        {/* Main Content */}
-        <div className="lg:pl-72">
-          {/* Top Header */}
-          <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-slate-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+        {/* Main Content - Adapté au sidebar responsive */}
+        <div className="lg:pl-64 xl:pl-72">
+          {/* Top Header - Hauteur et padding adaptatifs */}
+          <header className="sticky top-0 z-40 flex h-14 xs:h-16 shrink-0 items-center gap-x-2 xs:gap-x-3 sm:gap-x-4 lg:gap-x-6 border-b border-slate-200 bg-white/95 backdrop-blur-sm px-3 xs:px-4 sm:px-6 lg:px-8 shadow-sm">
             <Button
               variant="ghost"
               size="icon"
@@ -281,15 +281,16 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
             </div>
           </header>
 
-          {/* Page Content */}
-          <main className="py-6 px-4 sm:px-6 lg:px-8">
+          {/* Page Content - Padding adaptatif mobile → tablet → desktop */}
+          <main className="py-4 xs:py-5 sm:py-6 px-3 xs:px-4 sm:px-6 lg:px-8">
             {children}
           </main>
         </div>
 
-        {/* Mobile Bottom Navigation */}
+        {/* Mobile Bottom Navigation - Visible jusqu'à lg */}
         <OwnerBottomNav />
-        <div className="h-16 md:hidden" />
+        {/* Spacer pour éviter que le contenu soit caché derrière la bottom nav */}
+        <div className="h-14 xs:h-16 lg:hidden" />
 
         {/* Assistant IA - Bouton flottant */}
         <AssistantPanel />

@@ -243,15 +243,22 @@ const getPriorityColor = (priority: CompletionTask["priority"]) => {
   }
 };
 
-// Composant cercle de progression animé
-function CircularProgress({ percentage, size = 120 }: { percentage: number; size?: number }) {
-  const strokeWidth = 8;
+// Composant cercle de progression animé - Responsive
+interface CircularProgressProps {
+  percentage: number;
+  size?: number;
+  className?: string;
+}
+
+function CircularProgress({ percentage, size = 100, className }: CircularProgressProps) {
+  const strokeWidth = size < 100 ? 6 : 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (percentage / 100) * circumference;
+  const fontSize = size < 100 ? "text-xl" : "text-2xl sm:text-3xl";
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className={cn("relative shrink-0", className)} style={{ width: size, height: size }}>
       {/* Cercle de fond */}
       <svg className="transform -rotate-90" width={size} height={size}>
         <circle
@@ -288,20 +295,20 @@ function CircularProgress({ percentage, size = 120 }: { percentage: number; size
       {/* Pourcentage au centre */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <motion.span
-          className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent"
+          className={cn(fontSize, "font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent")}
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
         >
           {percentage}%
         </motion.span>
-        <span className="text-xs text-muted-foreground">complété</span>
+        <span className="text-[10px] xs:text-xs text-muted-foreground">complété</span>
       </div>
     </div>
   );
 }
 
-// Composant tâche individuelle
+// Composant tâche individuelle - Responsive
 function TaskItem({ task, index }: { task: CompletionTask; index: number }) {
   const Icon = task.icon;
 
@@ -318,45 +325,46 @@ function TaskItem({ task, index }: { task: CompletionTask; index: number }) {
       <Link
         href={task.href}
         className={cn(
-          "flex items-center gap-4 p-4 rounded-xl border transition-all duration-300",
+          // Layout + padding adaptatif + touch target
+          "flex items-center gap-2.5 xs:gap-3 sm:gap-4 p-2.5 xs:p-3 sm:p-4 rounded-lg xs:rounded-xl border transition-all duration-300 touch-target",
           task.completed
             ? "bg-green-50/50 border-green-200"
-            : "bg-white hover:bg-slate-50 border-slate-200 hover:border-blue-300 hover:shadow-md"
+            : "bg-white hover:bg-slate-50 border-slate-200 hover:border-blue-300 active:bg-slate-100 hover:shadow-md"
         )}
       >
-        {/* Icône */}
+        {/* Icône - Taille adaptative */}
         <div
           className={cn(
-            "flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300",
+            "flex-shrink-0 w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 rounded-lg xs:rounded-xl flex items-center justify-center transition-all duration-300",
             task.completed
               ? "bg-green-100 text-green-600"
               : "bg-gradient-to-br from-blue-100 to-purple-100 text-blue-600 group-hover:scale-110"
           )}
         >
           {task.completed ? (
-            <CheckCircle2 className="w-6 h-6" />
+            <CheckCircle2 className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6" />
           ) : (
-            <Icon className="w-6 h-6" />
+            <Icon className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6" />
           )}
         </div>
 
         {/* Contenu */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
             <h4 className={cn(
-              "font-semibold text-sm",
+              "font-semibold text-[11px] xs:text-xs sm:text-sm truncate",
               task.completed ? "text-green-700 line-through" : "text-slate-900"
             )}>
               {task.title}
             </h4>
             {!task.completed && task.reward && (
-              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+              <span className="px-1 xs:px-1.5 sm:px-2 py-0.5 text-[8px] xs:text-[10px] sm:text-xs font-medium rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white shrink-0">
                 {task.reward}
               </span>
             )}
           </div>
           <p className={cn(
-            "text-xs mt-0.5",
+            "text-[9px] xs:text-[10px] sm:text-xs mt-0.5 truncate",
             task.completed ? "text-green-600" : "text-muted-foreground"
           )}>
             {task.completed ? "✓ Complété" : task.description}
@@ -365,7 +373,7 @@ function TaskItem({ task, index }: { task: CompletionTask; index: number }) {
 
         {/* Flèche */}
         {!task.completed && (
-          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+          <ChevronRight className="w-4 h-4 xs:w-5 xs:h-5 text-slate-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all shrink-0" />
         )}
       </Link>
     </motion.div>
@@ -473,26 +481,31 @@ export function ProfileCompletionCard({ data, className }: ProfileCompletionCard
         className
       )}
     >
-      {/* Background décoratif */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-100/50 via-purple-100/50 to-pink-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+      {/* Background décoratif - Masqué sur petit mobile pour perf */}
+      <div className="hidden xs:block absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-gradient-to-br from-blue-100/50 via-purple-100/50 to-pink-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
-      {/* Header */}
-      <div className="relative p-6 pb-4 border-b border-slate-100">
-        <div className="flex items-start gap-6">
-          <CircularProgress percentage={percentage} />
-          <div className="flex-1 pt-2">
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="w-5 h-5 text-amber-500" />
-              <h3 className="text-lg font-bold text-slate-900">
+      {/* Header - Toujours en ligne */}
+      <div className="relative p-3 xs:p-4 sm:p-6 pb-3 sm:pb-4 border-b border-slate-100">
+        <div className="flex flex-row items-center gap-3 xs:gap-4 sm:gap-6">
+          {/* Cercle de progression - Taille adaptative */}
+          <CircularProgress 
+            percentage={percentage} 
+            size={64}
+            className="w-16 h-16 xs:w-20 xs:h-20 sm:w-24 sm:h-24 shrink-0"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 xs:gap-2 mb-1">
+              <Sparkles className="w-4 h-4 xs:w-5 xs:h-5 text-amber-500 shrink-0" />
+              <h3 className="text-sm xs:text-base sm:text-lg font-bold text-slate-900 truncate">
                 {message.title}
               </h3>
             </div>
-            <p className="text-sm text-muted-foreground mb-3">
+            <p className="text-[10px] xs:text-xs sm:text-sm text-muted-foreground mb-2 xs:mb-3 line-clamp-1 xs:line-clamp-2">
               {message.subtitle}
             </p>
-            <div className="flex items-center gap-3">
-              <Progress value={percentage} className="h-2 flex-1" />
-              <span className="text-sm font-medium text-slate-600">
+            <div className="flex items-center gap-2 xs:gap-3">
+              <Progress value={percentage} className="h-1.5 xs:h-2 flex-1" />
+              <span className="text-[10px] xs:text-xs sm:text-sm font-medium text-slate-600 shrink-0">
                 {completedCount}/{totalCount}
               </span>
             </div>
@@ -500,30 +513,33 @@ export function ProfileCompletionCard({ data, className }: ProfileCompletionCard
         </div>
       </div>
 
-      {/* Liste des tâches */}
-      <div className="relative p-4 space-y-3">
+      {/* Liste des tâches - Padding et espacement adaptatifs */}
+      <div className="relative p-2.5 xs:p-3 sm:p-4 space-y-2 xs:space-y-3">
         {/* Tâches non complétées */}
         {incompleteTasks.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 px-2 mb-3">
-              <Zap className="w-4 h-4 text-amber-500" />
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="space-y-1.5 xs:space-y-2">
+            <div className="flex items-center gap-1.5 xs:gap-2 px-1 xs:px-2 mb-2 xs:mb-3">
+              <Zap className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-amber-500" />
+              <span className="text-[10px] xs:text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Actions recommandées
               </span>
             </div>
-            {incompleteTasks.slice(0, 4).map((task, index) => (
+            {/* Afficher 3 sur mobile, 4 sur desktop */}
+            {incompleteTasks.slice(0, 3).map((task, index) => (
               <TaskItem key={task.id} task={task} index={index} />
             ))}
-            {incompleteTasks.length > 4 && (
+            {incompleteTasks.length > 3 && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-center py-2"
+                className="text-center py-1.5 xs:py-2"
               >
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="ghost" size="sm" asChild className="h-8 xs:h-9 text-xs xs:text-sm">
                   <Link href="/owner/profile" className="text-blue-600">
-                    Voir toutes les tâches ({incompleteTasks.length - 4} de plus)
-                    <ChevronRight className="w-4 h-4 ml-1" />
+                    <span className="hidden xs:inline">Voir toutes les tâches</span>
+                    <span className="xs:hidden">Voir tout</span>
+                    ({incompleteTasks.length - 3} <span className="hidden xs:inline">de plus</span>)
+                    <ChevronRight className="w-3.5 h-3.5 xs:w-4 xs:h-4 ml-1" />
                   </Link>
                 </Button>
               </motion.div>
@@ -534,12 +550,12 @@ export function ProfileCompletionCard({ data, className }: ProfileCompletionCard
         {/* Tâches complétées (collapsées) */}
         {completedTasks.length > 0 && (
           <details className="group">
-            <summary className="flex items-center gap-2 px-2 py-2 cursor-pointer text-xs font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors">
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
+            <summary className="flex items-center gap-1.5 xs:gap-2 px-1 xs:px-2 py-1.5 xs:py-2 cursor-pointer text-[10px] xs:text-xs font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors touch-target">
+              <CheckCircle2 className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-green-500" />
               <span>{completedTasks.length} tâche{completedTasks.length > 1 ? "s" : ""} complétée{completedTasks.length > 1 ? "s" : ""}</span>
-              <ChevronRight className="w-4 h-4 ml-auto group-open:rotate-90 transition-transform" />
+              <ChevronRight className="w-3.5 h-3.5 xs:w-4 xs:h-4 ml-auto group-open:rotate-90 transition-transform" />
             </summary>
-            <div className="space-y-2 mt-2">
+            <div className="space-y-1.5 xs:space-y-2 mt-1.5 xs:mt-2">
               {completedTasks.map((task, index) => (
                 <TaskItem key={task.id} task={task} index={index} />
               ))}
@@ -548,19 +564,19 @@ export function ProfileCompletionCard({ data, className }: ProfileCompletionCard
         )}
       </div>
 
-      {/* Footer motivant */}
-      <div className="relative px-6 py-4 bg-gradient-to-r from-slate-50 to-blue-50/50 border-t border-slate-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <Rocket className="w-4 h-4 text-blue-500" />
-            <span>
-              Encore <strong className="text-blue-600">{100 - percentage}%</strong> pour débloquer toutes les fonctionnalités
+      {/* Footer motivant - Toujours en ligne */}
+      <div className="relative px-3 xs:px-4 sm:px-6 py-2.5 xs:py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-blue-50/50 border-t border-slate-100">
+        <div className="flex flex-row items-center justify-between gap-2 xs:gap-3">
+          <div className="flex items-center gap-1.5 xs:gap-2 text-[10px] xs:text-xs sm:text-sm text-slate-600 min-w-0">
+            <Rocket className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 text-blue-500 shrink-0" />
+            <span className="truncate">
+              <strong className="text-blue-600">{100 - percentage}%</strong> <span className="hidden xs:inline">pour débloquer tout</span>
             </span>
           </div>
-          <Button size="sm" asChild className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600">
+          <Button size="sm" asChild className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 h-7 xs:h-8 sm:h-9 px-2.5 xs:px-3 sm:px-4 text-[10px] xs:text-xs sm:text-sm shrink-0">
             <Link href="/owner/profile">
               Compléter
-              <ChevronRight className="w-4 h-4 ml-1" />
+              <ChevronRight className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 ml-0.5 xs:ml-1" />
             </Link>
           </Button>
         </div>
