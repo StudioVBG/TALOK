@@ -180,6 +180,7 @@ export async function GET(request: Request) {
 }
 
 import { maintenanceAiService } from "@/features/tickets/services/maintenance-ai.service";
+import { sendNewTicketNotification } from "@/lib/emails";
 
 /**
  * POST /api/tickets - Créer un nouveau ticket
@@ -268,6 +269,48 @@ export async function POST(request: Request) {
       entity_id: ticket.id,
       metadata: { priority: validated.priorite },
     } as any);
+
+    // Envoyer l'email de notification au propriétaire
+    try {
+      // Récupérer les infos du propriétaire et de la propriété
+      const { data: property } = await serviceClient
+        .from("properties")
+        .select(`
+          owner_id,
+          adresse_complete,
+          owner:profiles!properties_owner_id_fkey(
+            id, prenom, nom, user_id
+          )
+        `)
+        .eq("id", validated.property_id)
+        .single();
+
+      if (property?.owner) {
+        // Récupérer l'email du propriétaire
+        const { data: ownerAuth } = await serviceClient.auth.admin.getUserById(
+          (property.owner as any).user_id
+        );
+
+        if (ownerAuth?.user?.email) {
+          const creatorName = `${profileData.prenom || ""} ${profileData.nom || ""}`.trim() || "Un utilisateur";
+
+          await sendNewTicketNotification({
+            recipientEmail: ownerAuth.user.email,
+            recipientName: `${(property.owner as any).prenom || ""} ${(property.owner as any).nom || ""}`.trim() || "Propriétaire",
+            ticketTitle: validated.titre,
+            ticketDescription: validated.description || "Aucune description",
+            priority: validated.priorite as "basse" | "normale" | "haute",
+            propertyAddress: property.adresse_complete || "Adresse non spécifiée",
+            createdBy: creatorName,
+            ticketId: ticket.id,
+          });
+          console.log(`[tickets] Email de nouveau ticket envoyé au propriétaire ${ownerAuth.user.email}`);
+        }
+      }
+    } catch (emailError) {
+      // Ne pas bloquer la création si l'email échoue
+      console.error("[tickets] Erreur envoi email nouveau ticket:", emailError);
+    }
 
     return NextResponse.json({ ticket });
   } catch (error: unknown) {

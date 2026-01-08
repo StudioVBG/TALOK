@@ -10,6 +10,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
+import { sendLeaseSignedNotification } from "@/lib/emails";
 
 /**
  * POST /api/leases/[id]/sign - Signer un bail avec Audit Trail conforme
@@ -185,6 +186,56 @@ export async function POST(
       entity_id: leaseId,
       metadata: { role: rights.role, proof_id: proof.proofId },
     } as any);
+
+    // 11. Envoyer l'email de notification au propriétaire
+    try {
+      // Si ce n'est pas le propriétaire qui vient de signer, notifier le propriétaire
+      if (!isOwner && lease?.property) {
+        const property = lease.property as any;
+        const { data: ownerProfile } = await serviceClient
+          .from("profiles")
+          .select("id, prenom, nom, user_id")
+          .eq("id", property.owner_id)
+          .single();
+
+        if (ownerProfile) {
+          const { data: ownerAuth } = await serviceClient.auth.admin.getUserById(
+            (ownerProfile as any).user_id
+          );
+
+          if (ownerAuth?.user?.email) {
+            const signerName = `${profile.prenom || ""} ${profile.nom || ""}`.trim() || "Un signataire";
+            const ownerName = `${(ownerProfile as any).prenom || ""} ${(ownerProfile as any).nom || ""}`.trim() || "Propriétaire";
+            const allSigned = newLeaseStatus === "fully_signed";
+
+            // Déterminer le rôle en français
+            const roleLabels: Record<string, string> = {
+              locataire_principal: "Locataire principal",
+              locataire: "Locataire",
+              tenant: "Locataire",
+              colocataire: "Colocataire",
+              garant: "Garant",
+              proprietaire: "Propriétaire",
+              owner: "Propriétaire",
+            };
+
+            await sendLeaseSignedNotification({
+              ownerEmail: ownerAuth.user.email,
+              ownerName,
+              signerName,
+              signerRole: roleLabels[rights.role || "locataire"] || "Signataire",
+              propertyAddress: property.adresse_complete || "Adresse non spécifiée",
+              allSigned,
+              leaseId,
+            });
+            console.log(`[Sign-Lease] Email de signature envoyé au propriétaire ${ownerAuth.user.email}`);
+          }
+        }
+      }
+    } catch (emailError) {
+      // Ne pas bloquer si l'email échoue
+      console.error("[Sign-Lease] Erreur envoi email notification:", emailError);
+    }
 
     return NextResponse.json({
       success: true,
