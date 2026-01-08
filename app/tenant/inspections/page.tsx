@@ -186,7 +186,7 @@ export default function TenantInspectionsPage() {
                           )}
                         >
                           <Link href={edl.needsMySignature ? `/signature-edl/${edl.invitation_token}` : `/tenant/inspections/${edl.id}`}>
-                            {edl.needsMySignature ? "Signer maintenant" : "Consulter"}
+                            {edl.needsMySignature ? "Signer l'EDL" : "Consulter"}
                             <ChevronRight className="ml-2 h-4 w-4" />
                           </Link>
                         </Button>

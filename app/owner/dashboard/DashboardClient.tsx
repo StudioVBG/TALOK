@@ -332,24 +332,7 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
               </motion.p>
             </div>
             
-            {hasProperties && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.5, type: "spring" }}
-              >
-                <Button
-                  asChild
-                  size="lg"
-                  className="bg-white text-slate-900 hover:bg-slate-100 shadow-lg border-0 font-semibold"
-                >
-                  <Link href={`${OWNER_ROUTES.properties.path}/new`}>
-                    <Plus className="mr-2 h-5 w-5" />
-                    Ajouter un bien
-                  </Link>
-                </Button>
-              </motion.div>
-            )}
+            {/* ✅ SOTA 2026: Bouton "Ajouter un bien" supprimé du header - déjà présent dans quick-links */}
           </div>
 
           {/* Quick Stats in Header */}

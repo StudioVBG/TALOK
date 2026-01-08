@@ -336,19 +336,7 @@ export function DashboardClient() {
                     </Link>
                   </Button>
                 )}
-                {/* ✅ FIX: Vérifier que le locataire n'a pas déjà signé */}
-                {hasLeaseData && currentLease?.statut === 'pending_signature' && !hasSignedLease && (
-                  <Button 
-                    asChild 
-                    className="bg-white text-indigo-700 hover:bg-white/90 font-bold rounded-xl h-12 px-6 shadow-lg"
-                  >
-                    <Link href="/tenant/onboarding/sign" className="flex items-center gap-2">
-                      <PenTool className="h-4 w-4" />
-                      Signer mon bail
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                )}
+                {/* ✅ SOTA 2026: Bouton "Signer mon bail" supprimé ici car déjà présent dans pendingActions */}
                 {dashboard?.kyc_status !== 'verified' && (
                   <Button 
                     asChild 

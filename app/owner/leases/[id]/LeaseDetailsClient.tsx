@@ -332,7 +332,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         title: "À votre tour de signer !",
         description: "Le locataire a signé. Signez pour valider le bail.",
         action: () => setShowSignatureModal(true),
-        actionLabel: "Signer maintenant",
+        actionLabel: "Signer le bail",
         color: "blue",
         urgent: true
       };
