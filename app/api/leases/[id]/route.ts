@@ -55,41 +55,53 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Utiliser le service client pour bypass RLS
     const serviceClient = getServiceClient();
 
-    // ✅ Récupérer le bail avec les données COMPLÈTES de la propriété (source unique)
+    // ✅ SOTA 2026: Récupérer le bail avec LEFT JOIN (pas !inner)
+    // Permet d'accéder aux baux même si la propriété est soft-deleted
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select(`
         *,
-        property:properties!inner(
-          *
-        )
+        property:properties(*)
       `)
       .eq("id", leaseId)
       .single();
 
     if (leaseError || !lease) {
+      console.error("[GET /api/leases] Erreur:", leaseError?.message);
       return NextResponse.json(
         { error: "Bail non trouvé" },
         { status: 404 }
       );
     }
 
-    // Vérifier les permissions
+    // Vérifier si la propriété existe et n'est pas supprimée
     const property = lease.property as any;
+    const isPropertyDeleted = !property || property.etat === "deleted" || property.deleted_at;
+    
+    if (isPropertyDeleted && profile.role !== "admin") {
+      // Pour les non-admins, indiquer que le logement a été supprimé
+      // mais permettre l'accès aux données du bail pour l'historique
+      console.log(`[GET /api/leases] Propriété supprimée pour bail ${leaseId}`);
+    }
+
+    // Vérifier les permissions
     const isOwner = property?.owner_id === profile.id;
     const isAdmin = profile.role === "admin";
 
     // Vérifier si l'utilisateur est signataire du bail (locataire, colocataire, garant)
     let isSigner = false;
-    if (!isOwner && !isAdmin) {
-      const { data: signer } = await serviceClient
-        .from("lease_signers")
-        .select("id, role")
-        .eq("lease_id", leaseId)
-        .eq("profile_id", profile.id)
-        .maybeSingle();
-      
-      isSigner = !!signer;
+    let signerRole: string | null = null;
+    
+    const { data: signer } = await serviceClient
+      .from("lease_signers")
+      .select("id, role")
+      .eq("lease_id", leaseId)
+      .eq("profile_id", profile.id)
+      .maybeSingle();
+    
+    if (signer) {
+      isSigner = true;
+      signerRole = signer.role;
     }
 
     if (!isOwner && !isAdmin && !isSigner) {
@@ -161,8 +173,11 @@ export async function GET(request: Request, { params }: RouteParams) {
         clauses_particulieres: lease.clauses_particulieres || "",
         property: property,
         signers: signers || [],
+        // ✅ SOTA 2026: Indicateur de propriété supprimée
+        property_deleted: isPropertyDeleted,
       },
-      viewer_role: isAdmin ? "admin" : isOwner ? "owner" : "tenant",
+      viewer_role: isAdmin ? "admin" : isOwner ? "owner" : isSigner ? "tenant" : "viewer",
+      signer_role: signerRole,
     });
 
   } catch (error: any) {
@@ -226,7 +241,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
         loyer,
         type_bail,
         depot_de_garantie,
-        property:properties!inner(
+        statut,
+        property:properties(
           id,
           owner_id
         )
@@ -238,6 +254,15 @@ export async function PUT(request: Request, { params }: RouteParams) {
       return NextResponse.json(
         { error: "Bail non trouvé" },
         { status: 404 }
+      );
+    }
+
+    // Vérifier si le bail peut être modifié
+    const leaseData = lease as any;
+    if (leaseData.statut === "terminated" || leaseData.statut === "archived") {
+      return NextResponse.json(
+        { error: "Ce bail est terminé et ne peut plus être modifié" },
+        { status: 400 }
       );
     }
 
@@ -356,6 +381,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
 /**
  * DELETE /api/leases/[id]
  * Supprimer un bail et toutes ses données associées
+ * 
+ * ✅ SOTA 2026: Seuls les baux en brouillon ou en attente de signature peuvent être supprimés.
+ * Les baux actifs/terminés/archivés doivent être conservés pour l'historique légal.
  */
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
@@ -396,14 +424,22 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     // Utiliser le service client pour bypass RLS
     const serviceClient = getServiceClient();
 
-    // Vérifier que le bail existe et appartient au propriétaire
+    // ✅ SOTA 2026: Récupérer le bail avec son statut (LEFT JOIN pour propriétés supprimées)
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select(`
         id,
-        property:properties!inner(
+        statut,
+        type_bail,
+        property:properties(
           id,
-          owner_id
+          owner_id,
+          adresse_complete
+        ),
+        signers:lease_signers(
+          profile_id,
+          role,
+          profile:profiles(prenom, nom, email)
         )
       `)
       .eq("id", leaseId)
@@ -417,7 +453,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     }
 
     // Vérifier les permissions
-    const property = lease.property as any;
+    const property = (lease as any).property;
     const isOwner = property?.owner_id === profile.id;
     const isAdmin = profile.role === "admin";
 
@@ -428,38 +464,130 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       );
     }
 
+    // ✅ SOTA 2026: Bloquer la suppression des baux actifs/terminés/archivés
+    const NON_DELETABLE_STATUS = ["fully_signed", "active", "terminated", "archived"];
+    const leaseStatus = (lease as any).statut;
+    
+    if (!isAdmin && NON_DELETABLE_STATUS.includes(leaseStatus)) {
+      // Trouver le locataire principal pour le message
+      const tenantSigner = (lease as any).signers?.find((s: any) => 
+        isTenantRole(s.role)
+      );
+      const tenantName = tenantSigner?.profile 
+        ? `${tenantSigner.profile.prenom || ""} ${tenantSigner.profile.nom || ""}`.trim() || tenantSigner.profile.email
+        : null;
+
+      let errorMessage = "";
+      let suggestion = "";
+      
+      switch (leaseStatus) {
+        case "active":
+          errorMessage = `Ce bail est actif${tenantName ? ` avec ${tenantName}` : ""}. Il ne peut pas être supprimé.`;
+          suggestion = "Terminez d'abord le bail via la procédure de fin de bail (EDL sortie + restitution caution).";
+          break;
+        case "fully_signed":
+          errorMessage = "Ce bail est entièrement signé et en attente d'activation. Il ne peut pas être supprimé.";
+          suggestion = "Activez le bail ou demandez une annulation aux signataires.";
+          break;
+        case "terminated":
+        case "archived":
+          errorMessage = "Ce bail est terminé et conservé pour l'historique légal (5 ans minimum).";
+          suggestion = "Les baux terminés ne peuvent pas être supprimés pour des raisons légales.";
+          break;
+        default:
+          errorMessage = "Ce bail ne peut pas être supprimé dans son état actuel.";
+      }
+
+      return NextResponse.json({
+        error: errorMessage,
+        suggestion,
+        leaseStatus,
+        canDelete: false,
+      }, { status: 400 });
+    }
+
+    // ✅ Notifier les locataires avant suppression (si bail en attente de signature)
+    if (leaseStatus === "pending_signature" || leaseStatus === "partially_signed") {
+      const tenantSigners = (lease as any).signers?.filter((s: any) => 
+        isTenantRole(s.role) && s.profile_id
+      ) || [];
+      
+      for (const signer of tenantSigners) {
+        await serviceClient
+          .from("notifications")
+          .insert({
+            recipient_id: signer.profile_id,
+            type: "alert",
+            title: "Bail annulé",
+            message: `Le bail pour "${property?.adresse_complete || 'le logement'}" a été annulé par le propriétaire.`,
+            link: "/tenant/dashboard",
+            related_id: leaseId,
+            related_type: "lease"
+          });
+      }
+    }
+
     // Supprimer dans l'ordre pour respecter les contraintes FK
-    // 1. Supprimer les documents liés
+    // Note: La plupart sont ON DELETE CASCADE, mais on supprime explicitement pour plus de sécurité
+
+    // 1. Supprimer les EDL et leurs items
+    const { data: edls } = await serviceClient
+      .from("edl")
+      .select("id")
+      .eq("lease_id", leaseId);
+    
+    if (edls && edls.length > 0) {
+      const edlIds = edls.map(e => e.id);
+      await serviceClient.from("edl_items").delete().in("edl_id", edlIds);
+      await serviceClient.from("edl_media").delete().in("edl_id", edlIds);
+      await serviceClient.from("edl_signatures").delete().in("edl_id", edlIds);
+      await serviceClient.from("edl").delete().in("id", edlIds);
+    }
+
+    // 2. Supprimer les documents liés
     await serviceClient
       .from("documents")
       .delete()
       .eq("lease_id", leaseId);
 
-    // 2. Supprimer les paiements liés
-    await serviceClient
-      .from("payments")
-      .delete()
-      .match({ lease_id: leaseId });
+    // 3. Supprimer les paiements liés aux factures
+    const { data: invoices } = await serviceClient
+      .from("invoices")
+      .select("id")
+      .eq("lease_id", leaseId);
+    
+    if (invoices && invoices.length > 0) {
+      await serviceClient
+        .from("payments")
+        .delete()
+        .in("invoice_id", invoices.map(i => i.id));
+    }
 
-    // 3. Supprimer les factures liées
+    // 4. Supprimer les factures liées
     await serviceClient
       .from("invoices")
       .delete()
       .eq("lease_id", leaseId);
 
-    // 4. Supprimer les signataires
+    // 5. Supprimer les signataires
     await serviceClient
       .from("lease_signers")
       .delete()
       .eq("lease_id", leaseId);
 
-    // 5. Supprimer les roommates
+    // 6. Supprimer les roommates
     await serviceClient
       .from("roommates")
       .delete()
       .eq("lease_id", leaseId);
 
-    // 6. Enfin, supprimer le bail
+    // 7. Supprimer les mouvements de dépôt
+    await serviceClient
+      .from("deposit_movements")
+      .delete()
+      .eq("lease_id", leaseId);
+
+    // 8. Enfin, supprimer le bail
     const { error: deleteError } = await serviceClient
       .from("leases")
       .delete()
@@ -476,6 +604,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     return NextResponse.json({
       success: true,
       message: "Bail supprimé avec succès",
+      notifiedTenants: (lease as any).signers?.filter((s: any) => isTenantRole(s.role)).length || 0,
     });
 
   } catch (error: any) {

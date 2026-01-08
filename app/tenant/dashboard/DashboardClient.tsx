@@ -131,6 +131,13 @@ export function DashboardClient() {
 
   const currentProperty = useMemo(() => currentLease?.property, [currentLease]);
 
+  // ✅ SOTA 2026: Vérifier si la propriété a été supprimée (soft-delete)
+  const isPropertyDeleted = useMemo(() => {
+    return currentLease?.property_deleted || 
+           currentProperty?.etat === "deleted" || 
+           currentProperty?.deleted_at != null;
+  }, [currentLease, currentProperty]);
+
   // 1. Logique de tri du flux d'activité unifié (inclut les événements temps réel)
   const activityFeed = useMemo(() => {
     if (!dashboard) return [];
@@ -296,8 +303,52 @@ export function DashboardClient() {
     <PageTransition>
       <div className="container mx-auto px-4 py-6 max-w-7xl space-y-8">
         
+        {/* ✅ SOTA 2026: Alerte si la propriété a été supprimée */}
+        {isPropertyDeleted && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-red-600 via-red-700 to-red-800 p-6 text-white shadow-xl"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm shrink-0">
+                <AlertCircle className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black mb-2">Logement supprimé</h3>
+                <p className="text-white/90 text-sm mb-4">
+                  Le propriétaire a retiré ce logement de la plateforme. Votre bail reste accessible pour consultation, 
+                  mais certaines fonctionnalités ne sont plus disponibles.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button 
+                    asChild 
+                    variant="secondary"
+                    className="bg-white/20 hover:bg-white/30 text-white border-0"
+                  >
+                    <Link href="/tenant/documents">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Mes documents
+                    </Link>
+                  </Button>
+                  <Button 
+                    asChild 
+                    variant="secondary"
+                    className="bg-white/20 hover:bg-white/30 text-white border-0"
+                  >
+                    <Link href="/tenant/support">
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Contacter le support
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        
         {/* --- SECTION 0 : ONBOARDING PROGRESS (SOTA 2026) --- */}
-        {isOnboardingIncomplete && (
+        {isOnboardingIncomplete && !isPropertyDeleted && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
