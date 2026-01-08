@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { apiError, apiSuccess, validateBody, logAudit } from "@/lib/api/middleware";
 import { RegisterSchema } from "@/lib/api/schemas";
+import { sendWelcomeEmail } from "@/lib/emails";
 
 /**
  * POST /api/v1/auth/register
@@ -90,6 +91,19 @@ export async function POST(request: NextRequest) {
         profile.id,
         authData.user.id
       );
+
+      // Envoyer l'email de bienvenue
+      try {
+        await sendWelcomeEmail({
+          userEmail: data.email,
+          userName: `${data.prenom || ""} ${data.nom || ""}`.trim() || "Utilisateur",
+          role: data.role as "owner" | "tenant" | "provider",
+        });
+        console.log(`[register] Email de bienvenue envoyé à ${data.email}`);
+      } catch (emailError) {
+        // Ne pas bloquer l'inscription si l'email échoue
+        console.error("[register] Erreur envoi email de bienvenue:", emailError);
+      }
     }
 
     return apiSuccess(
