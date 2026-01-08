@@ -6,7 +6,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe, verifyWebhookSignature, formatAmountFromStripe, type PaymentMetadata } from "@/lib/stripe";
 import { createClient as createServerClient } from "@supabase/supabase-js";
 import { sendPaymentConfirmation, sendPaymentReminder } from "@/lib/emails";
-import { sendPaymentReceivedEmail } from "@/lib/services/email-service";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Stripe from "stripe";
@@ -126,13 +125,7 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
   if (metadata.propertyId) {
     const { data: property } = await supabase
       .from("properties")
-      .select(`
-        owner_id,
-        adresse_complete,
-        owner:profiles!properties_owner_id_fkey(
-          id, prenom, nom, user_id
-        )
-      `)
+      .select("owner_id")
       .eq("id", metadata.propertyId)
       .single();
 
@@ -144,43 +137,6 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
         message: `Un paiement de ${formatAmountFromStripe(paymentIntent.amount)}€ a été reçu.`,
         data: { invoiceId, paymentId: payment.id },
       });
-
-      // Envoyer l'email de notification au propriétaire
-      try {
-        const ownerProfile = property.owner as any;
-        if (ownerProfile?.user_id) {
-          const { data: ownerAuth } = await supabase.auth.admin.getUserById(ownerProfile.user_id);
-
-          if (ownerAuth?.user?.email) {
-            // Récupérer les infos du locataire pour l'email
-            const { data: tenantProfile } = await supabase
-              .from("profiles")
-              .select("prenom, nom")
-              .eq("id", profileId)
-              .single();
-
-            const ownerName = `${ownerProfile.prenom || ""} ${ownerProfile.nom || ""}`.trim() || "Propriétaire";
-            const tenantName = tenantProfile
-              ? `${tenantProfile.prenom || ""} ${tenantProfile.nom || ""}`.trim() || "Locataire"
-              : "Locataire";
-
-            await sendPaymentReceivedEmail(
-              ownerAuth.user.email,
-              ownerName,
-              tenantName,
-              formatAmountFromStripe(paymentIntent.amount),
-              property.adresse_complete || "Non spécifiée",
-              invoice?.periode || "N/A",
-              format(new Date(), "d MMMM yyyy", { locale: fr }),
-              `${process.env.NEXT_PUBLIC_APP_URL}/owner/money`
-            );
-            console.log(`[webhook/payments] Email paiement reçu envoyé au propriétaire ${ownerAuth.user.email}`);
-          }
-        }
-      } catch (ownerEmailError) {
-        // Ne pas bloquer si l'email échoue
-        console.error("[webhook/payments] Erreur envoi email propriétaire:", ownerEmailError);
-      }
     }
   }
 

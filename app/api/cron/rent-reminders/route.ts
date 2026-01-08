@@ -9,9 +9,6 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
-import { sendPaymentReminder } from "@/lib/emails";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 
 // Vérifier le secret CRON pour sécuriser l'endpoint
 function verifyCronSecret(request: Request): boolean {
@@ -152,36 +149,6 @@ export async function GET(request: Request) {
               reminder_level: reminderLevel,
             },
           });
-
-          // Envoyer l'email de rappel au locataire
-          try {
-            const { data: tenantAuth } = await supabase.auth.admin.getUserById(
-              invoice.tenant.user_id
-            );
-
-            if (tenantAuth?.user?.email) {
-              const tenantName = `${invoice.tenant.prenom || ""} ${invoice.tenant.nom || ""}`.trim() || "Locataire";
-              const createdDate = new Date(invoice.created_at);
-              const dueDate = format(
-                new Date(createdDate.getTime() + 5 * 24 * 60 * 60 * 1000), // 5 jours après création
-                "d MMMM yyyy",
-                { locale: fr }
-              );
-
-              await sendPaymentReminder({
-                tenantEmail: tenantAuth.user.email,
-                tenantName,
-                amount: invoice.montant_total,
-                dueDate,
-                daysLate,
-                invoiceId: invoice.id,
-              });
-              console.log(`[rent-reminders] Email de rappel J+${daysLate} envoyé à ${tenantAuth.user.email}`);
-            }
-          } catch (emailError) {
-            // Ne pas bloquer si l'email échoue
-            console.error(`[rent-reminders] Erreur envoi email rappel pour facture ${invoice.id}:`, emailError);
-          }
 
           // Marquer la facture comme "late" si pas déjà fait
           if (daysLate >= 15) {

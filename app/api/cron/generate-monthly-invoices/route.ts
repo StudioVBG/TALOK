@@ -14,9 +14,6 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { sendInvoiceNotification } from "@/lib/emails";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 
 // Vérifier que c'est bien un appel CRON (via secret)
 function verifyCronSecret(request: NextRequest): boolean {
@@ -191,45 +188,6 @@ export async function GET(request: NextRequest) {
           p_related_id: newInvoice.id,
           p_related_type: "invoice",
         });
-
-        // 5. Envoyer l'email de notification au locataire
-        try {
-          // Récupérer les infos du locataire
-          const { data: tenantProfile } = await supabase
-            .from("profiles")
-            .select("prenom, nom, user_id")
-            .eq("id", tenantSigner.profile_id)
-            .single();
-
-          if (tenantProfile) {
-            const { data: tenantAuth } = await supabase.auth.admin.getUserById(
-              tenantProfile.user_id
-            );
-
-            if (tenantAuth?.user?.email) {
-              const tenantName = `${tenantProfile.prenom || ""} ${tenantProfile.nom || ""}`.trim() || "Locataire";
-              const periodLabel = format(
-                new Date(now.getFullYear(), now.getMonth(), 1),
-                "MMMM yyyy",
-                { locale: fr }
-              );
-
-              await sendInvoiceNotification({
-                tenantEmail: tenantAuth.user.email,
-                tenantName,
-                propertyAddress: lease.properties.adresse_complete || "Adresse non spécifiée",
-                period: periodLabel,
-                amount: montantTotal,
-                dueDate: format(dateEcheance, "d MMMM yyyy", { locale: fr }),
-                invoiceId: newInvoice.id,
-              });
-              console.log(`[CRON] Email de facture envoyé au locataire ${tenantAuth.user.email}`);
-            }
-          }
-        } catch (emailError) {
-          // Ne pas bloquer si l'email échoue
-          console.error(`[CRON] Erreur envoi email facture pour bail ${lease.id}:`, emailError);
-        }
         
       } catch (leaseError: any) {
         console.error(`[CRON] Error processing lease ${lease.id}:`, leaseError);
