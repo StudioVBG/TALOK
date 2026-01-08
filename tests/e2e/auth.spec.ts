@@ -13,7 +13,7 @@ import { test, expect } from "@playwright/test";
 
 const TEST_CREDENTIALS = {
   admin: {
-    email: "volberg.thomas@gmail.com",
+    email: "support@talok.fr",
     password: "Test12345!2025",
   },
   owner: {

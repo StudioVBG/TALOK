@@ -11,7 +11,7 @@ import { createClient } from "@supabase/supabase-js";
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 // Note: En mode gratuit Resend, on ne peut envoyer qu'à l'adresse du compte
-const RECIPIENT = "volberg.thomas@gmail.com";
+const RECIPIENT = "support@talok.fr";
 // IMPORTANT: Utiliser l'adresse de test Resend (pas besoin de vérification de domaine)
 const FROM = "Talok <onboarding@resend.dev>";
 

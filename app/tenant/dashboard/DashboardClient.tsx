@@ -277,6 +277,7 @@ export function DashboardClient() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 p-8 text-white shadow-2xl"
+            data-tour="tenant-onboarding"
           >
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10">
@@ -420,6 +421,7 @@ export function DashboardClient() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
+            data-tour="tenant-financial"
           >
             <GlassCard className="p-6 bg-white shadow-xl border-l-4 border-l-indigo-600 h-full flex flex-col justify-between">
               <div>
@@ -483,6 +485,7 @@ export function DashboardClient() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
+            data-tour="tenant-property"
           >
             {hasLeaseData ? (
               <GlassCard className="relative overflow-hidden h-full border-none shadow-2xl bg-slate-900 text-white min-h-[300px]">
@@ -588,7 +591,7 @@ export function DashboardClient() {
             <ConsumptionChart type="electricity" className="h-full" />
           </motion.div>
 
-          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} data-tour="tenant-activity">
             <GlassCard className="h-full p-0 overflow-hidden border-slate-200 shadow-xl bg-white">
               <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                 <h3 className="font-bold text-slate-900 flex items-center gap-2">

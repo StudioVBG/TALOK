@@ -55,7 +55,7 @@ interface TestAccount {
 const testAccounts: TestAccount[] = [
   // ========== ADMIN ==========
   {
-    email: "admin@test.lokatif.fr",
+    email: "support@talok.fr",
     role: "admin",
     prenom: "Thomas",
     nom: "Admin",

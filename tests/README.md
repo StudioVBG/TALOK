@@ -65,7 +65,7 @@ npm run test:e2e -- auth.spec.ts
 
 ⚠️ **IMPORTANT**: Ces credentials sont réels et utilisent de vrais comptes Supabase.
 
-- **Admin**: `volberg.thomas@gmail.com` / `Test12345!2025`
+- **Admin**: `support@talok.fr` / `Test12345!2025`
 - **Propriétaire**: `contact.explore.mq@gmail.com` / `Test12345!2025`
 - **Locataire**: `garybissol@yahoo.fr` / `Test12345!2025`
 

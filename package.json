@@ -21,10 +21,19 @@
     "check-env": "bash scripts/check-env.sh",
     "check-env:local": "bash scripts/check-env-local.sh",
     "compare-env": "bash scripts/compare-env.sh",
-    "start-app": "bash scripts/start.sh"
+    "start-app": "bash scripts/start.sh",
+    "cap:sync": "NEXT_PUBLIC_CAPACITOR=true next build && npx cap sync",
+    "cap:open:ios": "npx cap open ios",
+    "cap:open:android": "npx cap open android"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.74",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/keyboard": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
     "@hookform/resolvers": "^3.9.0",
     "@langchain/core": "^1.0.6",
     "@langchain/langgraph": "^1.0.2",
@@ -98,6 +107,8 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
     "@netlify/plugin-nextjs": "^5.15.3",
     "@next/bundle-analyzer": "^16.0.6",
     "@playwright/test": "^1.40.1",

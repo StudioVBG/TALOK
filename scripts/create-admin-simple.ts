@@ -24,7 +24,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function createAdminUser() {
-  const email = "volberg.thomas@gmail.com";
+  const email = "support@talok.fr";
   const password = "Test12345!2025";
 
   try {

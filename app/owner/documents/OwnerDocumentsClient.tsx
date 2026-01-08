@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, FileText, Upload, Download, Trash2, Eye, Tag, FolderOpen, Loader2 } from "lucide-react";
+import { Search, FileText, Upload, Download, Trash2, Eye, Tag, FolderOpen, Loader2, LayoutGrid, List, Home } from "lucide-react";
 import { formatDateShort } from "@/lib/helpers/format";
 import { DOCUMENT_TYPES, DOCUMENT_STATUS_LABELS } from "@/lib/owner/constants";
 import { ownerDocumentRoutes } from "@/lib/owner/routes";
@@ -39,8 +39,10 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PDFPreviewModal } from "@/components/documents/pdf-preview-modal";
+import { DocumentGroups } from "@/components/documents/document-groups";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Props optionnel pour compatibilité
 interface OwnerDocumentsClientProps {
@@ -64,6 +66,9 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  
+  // 🎨 Mode d'affichage : "table" (tableau) ou "cascade" (groupé par bien)
+  const [viewMode, setViewMode] = useState<"table" | "cascade">("cascade");
   
   // Catégories disponibles pour le filtre
   const CATEGORIES = [
@@ -418,12 +423,27 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
                 Bibliothèque de tous vos documents
               </p>
             </div>
-            <Button asChild className="shadow-lg hover:shadow-xl transition-all duration-300 bg-indigo-600 hover:bg-indigo-700">
-              <Link href={ownerDocumentRoutes.upload()}>
-                <Upload className="mr-2 h-4 w-4" />
-                Téléverser
-              </Link>
-            </Button>
+            <div className="flex items-center gap-3">
+              {/* Toggle vue */}
+              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "table" | "cascade")} className="bg-white/80 rounded-lg border shadow-sm">
+                <TabsList className="grid grid-cols-2 h-9">
+                  <TabsTrigger value="cascade" className="flex items-center gap-1.5 text-xs px-3">
+                    <Home className="h-3.5 w-3.5" />
+                    Par bien
+                  </TabsTrigger>
+                  <TabsTrigger value="table" className="flex items-center gap-1.5 text-xs px-3">
+                    <List className="h-3.5 w-3.5" />
+                    Liste
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <Button asChild className="shadow-lg hover:shadow-xl transition-all duration-300 bg-indigo-600 hover:bg-indigo-700">
+                <Link href={ownerDocumentRoutes.upload()}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Téléverser
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {/* Filtres */}
@@ -510,7 +530,21 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
                     variant: "outline"
                 }}
             />
+          ) : viewMode === "cascade" ? (
+            /* 🏠 Vue cascade groupée par bien */
+            <DocumentGroups
+              documents={filteredDocuments.map((doc: any) => ({
+                ...doc,
+                properties: doc.properties || doc.property,
+                tenant: doc.tenant,
+              }))}
+              groupBy="property"
+              onPreview={openPreview}
+              onDownload={handleDownload}
+              onDelete={openDeleteDialog}
+            />
           ) : (
+            /* 📋 Vue tableau classique */
             <GlassCard className="p-0 overflow-hidden shadow-md">
                 <ResponsiveTable 
                     data={filteredDocuments}

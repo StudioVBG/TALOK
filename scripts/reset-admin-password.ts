@@ -20,7 +20,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 async function resetAdminPassword() {
-  const adminEmail = "volberg.thomas@gmail.com";
+  const adminEmail = "support@talok.fr";
   const newPassword = "Admin2025!";
 
   console.log("🔑 Réinitialisation du mot de passe admin...\n");

@@ -423,11 +423,15 @@ async function getCheckpointer(): Promise<PostgresSaver> {
 }
 
 // ============================================
-// COMPILED GRAPH (LAZY)
+// COMPILED GRAPH (LAZY & PERSISTENT)
 // ============================================
 
 let compiledGraph: ReturnType<typeof workflow.compile> | null = null;
 
+/**
+ * Récupère le graph assistant compilé avec le checkpointer approprié.
+ * Priorise PostgresSaver pour la persistance SOTA 2026.
+ */
 export async function getPropertyAssistantGraph() {
   if (!compiledGraph) {
     const checkpointer = await getCheckpointer();
@@ -436,11 +440,12 @@ export async function getPropertyAssistantGraph() {
   return compiledGraph;
 }
 
-// Export pour compatibilité (utilise MemorySaver par défaut si pas de DB)
-// En production, utiliser getPropertyAssistantGraph() pour PostgresSaver
+// Export par défaut (utilise MemorySaver pour les cas synchrones/développement)
+// En production, il est fortement recommandé d'utiliser getPropertyAssistantGraph()
 import { MemorySaver } from "@langchain/langgraph";
+const defaultCheckpointer = new MemorySaver();
 export const propertyAssistantGraph = workflow.compile({
-  checkpointer: new MemorySaver(),
+  checkpointer: defaultCheckpointer,
 });
 
 // ============================================

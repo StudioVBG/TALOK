@@ -48,6 +48,7 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { SubscriptionProvider } from "@/components/subscription/subscription-provider";
 import { PostHogProvider } from "@/components/analytics/posthog-provider";
 import { AIProvider } from "@/components/providers/ai-provider";
+import { CapacitorProvider } from "@/components/providers/capacitor-provider";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -147,21 +148,23 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning>
       <body className={`${inter.className} ${dancingScript.variable} ${greatVibes.variable} ${pacifico.variable} ${satisfy.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <QueryProvider>
-            <PostHogProvider>
-              <SubscriptionProvider>
-                <AIProvider showCopilotButton={true}>
-                  <div className="min-h-screen flex flex-col">
-                    <Navbar />
-                    <PageTransition>
-                      <main className="flex-1">{children}</main>
-                    </PageTransition>
-                    <Toaster />
-                  </div>
-                </AIProvider>
-              </SubscriptionProvider>
-            </PostHogProvider>
-          </QueryProvider>
+          <CapacitorProvider>
+            <QueryProvider>
+              <PostHogProvider>
+                <SubscriptionProvider>
+                  <AIProvider showCopilotButton={true}>
+                    <div className="min-h-screen flex flex-col">
+                      <Navbar />
+                      <PageTransition>
+                        <main className="flex-1">{children}</main>
+                      </PageTransition>
+                      <Toaster />
+                    </div>
+                  </AIProvider>
+                </SubscriptionProvider>
+              </PostHogProvider>
+            </QueryProvider>
+          </CapacitorProvider>
         </ThemeProvider>
       </body>
     </html>

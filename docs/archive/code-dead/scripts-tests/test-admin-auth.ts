@@ -112,7 +112,7 @@ const passwordArg = process.argv[3];
 
 if (!emailArg || !passwordArg) {
   console.error("Usage: tsx scripts/test-admin-auth.ts <email> <password>");
-  console.error("Exemple: tsx scripts/test-admin-auth.ts volberg.thomas@gmail.com votre_mot_de_passe");
+  console.error("Exemple: tsx scripts/test-admin-auth.ts support@talok.fr votre_mot_de_passe");
   process.exit(1);
 }
 

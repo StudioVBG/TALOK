@@ -147,6 +147,67 @@ const ownerTourSteps: TourStep[] = [
   },
 ];
 
+// Étapes du tour pour les locataires
+const tenantTourSteps: TourStep[] = [
+  {
+    id: "welcome-tenant",
+    title: "Bienvenue dans votre nouveau chez-vous ! 🏠",
+    description: "Talok vous accompagne dans toute votre vie locative. Laissez-nous vous montrer comment tirer le meilleur parti de votre espace.",
+    position: "center",
+    icon: Sparkles,
+  },
+  {
+    id: "onboarding-tenant",
+    title: "Votre Installation",
+    description: "Suivez ici les étapes clés de votre emménagement : signature du bail, état des lieux et vérification d'identité.",
+    target: "[data-tour='tenant-onboarding']",
+    position: "bottom",
+    icon: Rocket,
+  },
+  {
+    id: "financial-tenant",
+    title: "Gestion des Loyers",
+    description: "Consultez votre loyer, téléchargez vos quittances et payez en ligne en toute sécurité.",
+    target: "[data-tour='tenant-financial']",
+    position: "right",
+    icon: Euro,
+  },
+  {
+    id: "property-tenant",
+    title: "Votre Logement",
+    description: "Retrouvez toutes les informations sur votre logement, les contacts utiles et les documents du bail.",
+    target: "[data-tour='tenant-property']",
+    position: "top",
+    icon: Building2,
+  },
+  {
+    id: "documents-tenant",
+    title: "Votre Coffre-fort",
+    description: "Tous vos documents (bail, quittances, assurances) sont stockés ici en sécurité et accessibles 24/7.",
+    target: "[data-tour='nav-documents']",
+    position: "right",
+    icon: FileText,
+  },
+  {
+    id: "requests-tenant",
+    title: "Assistance & SAV",
+    description: "Un problème technique ? Une question ? Signalez-le ici et suivez la résolution en temps réel.",
+    target: "[data-tour='nav-requests']",
+    position: "right",
+    icon: Wrench,
+  },
+  {
+    id: "complete-tenant",
+    title: "Tout est prêt ! 🚀",
+    description: "Vous avez maintenant toutes les clés en main. Profitez bien de votre logement !",
+    position: "center",
+    icon: Check,
+    action: {
+      label: "Accéder à mon tableau de bord",
+    },
+  },
+];
+
 // Composant Spotlight (overlay avec trou)
 function Spotlight({ target, isActive }: { target?: string; isActive: boolean }) {
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -392,7 +453,7 @@ export function OnboardingTourProvider({
   const [currentStep, setCurrentStep] = useState(0);
   const [hasCompletedTour, setHasCompletedTour] = useState(true); // Default true pour éviter le flash
 
-  const steps = role === "owner" ? ownerTourSteps : ownerTourSteps; // TODO: tenant steps
+  const steps = role === "owner" ? ownerTourSteps : tenantTourSteps;
   const totalSteps = steps.length;
 
   // Charger l'état depuis localStorage
@@ -561,6 +622,6 @@ export function AutoTourPrompt() {
   );
 }
 
-export { ownerTourSteps };
+export { ownerTourSteps, tenantTourSteps };
 export type { TourStep };
 

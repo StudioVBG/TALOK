@@ -66,11 +66,13 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           name: "Tableau de bord",
           href: "/tenant/dashboard",
           icon: LayoutDashboard,
+          tourId: "nav-dashboard",
         },
         {
           name: "Ma Vie au Logement",
           href: "/tenant/lease",
           icon: Home,
+          tourId: "nav-lease",
         },
       ],
     },
@@ -81,11 +83,13 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           name: "Coffre-fort (Documents)",
           href: "/tenant/documents",
           icon: FileText,
+          tourId: "nav-documents",
         },
         {
           name: "Suivi Juridique (EDL/Sign)",
           href: "/tenant/inspections",
           icon: ClipboardCheck,
+          tourId: "nav-inspections",
         },
       ],
     },
@@ -96,6 +100,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           name: "Loyers & Factures",
           href: "/tenant/payments",
           icon: CreditCard,
+          tourId: "nav-payments",
         },
       ],
     },
@@ -106,6 +111,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           name: "Demandes & SAV",
           href: "/tenant/requests",
           icon: Wrench,
+          tourId: "nav-requests",
         },
         {
           name: "Messagerie",
@@ -256,6 +262,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
                 <Link
                   key={item.name}
                   href={item.href}
+                  data-tour={item.tourId}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                     isCurrent(item.href)

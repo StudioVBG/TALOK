@@ -46,6 +46,7 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig = {
+  output: process.env.NEXT_PUBLIC_CAPACITOR === 'true' ? 'export' : undefined,
   // Server Actions are available by default in Next.js 14
   
   // TypeScript & ESLint - Configuration SOTA 2025
@@ -90,6 +91,7 @@ const nextConfig = {
   
   // Configuration des images (Next/Image)
   images: {
+    unoptimized: process.env.NEXT_PUBLIC_CAPACITOR === 'true',
     remotePatterns: [
       {
         protocol: 'https',

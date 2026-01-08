@@ -76,7 +76,7 @@ tests/e2e/
 
 | Rôle | Email | Mot de passe |
 |------|-------|--------------|
-| Admin | `volberg.thomas@gmail.com` | `Test12345!2025` |
+| Admin | `support@talok.fr` | `Test12345!2025` |
 | Propriétaire | `contact.explore.mq@gmail.com` | `Test12345!2025` |
 | Locataire | `garybissol@yahoo.fr` | `Test12345!2025` |
 
