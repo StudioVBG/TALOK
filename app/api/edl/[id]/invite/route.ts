@@ -27,9 +27,10 @@ function isPlaceholderEmail(email: string | null | undefined): boolean {
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: edlId } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -58,16 +59,16 @@ export async function POST(
         lease:leases(
           id,
           signers:lease_signers(
-            profile_id, 
-            role, 
-            invited_email, 
+            profile_id,
+            role,
+            invited_email,
             invited_name,
             signed_at,
             profile:profiles(id, email, prenom, nom, user_id)
           )
         )
       `)
-      .eq("id", params.id)
+      .eq("id", edlId)
       .single();
 
     if (edlError || !edl) {
@@ -157,7 +158,7 @@ export async function POST(
       let { data: existingSig } = await supabaseAdmin
         .from("edl_signatures")
         .select("*")
-        .eq("edl_id", params.id)
+        .eq("edl_id", edlId)
         .eq("signer_role", "tenant")
         .maybeSingle();
 
@@ -168,7 +169,7 @@ export async function POST(
         const { data: newSig, error: insertError } = await supabaseAdmin
           .from("edl_signatures")
           .insert({
-            edl_id: params.id,
+            edl_id: edlId,
           signer_profile_id: targetProfileId,
           signer_user: targetUserId,
             signer_role: 'tenant',
@@ -212,7 +213,7 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "EDL.InvitationSent",
       payload: {
-        edl_id: params.id,
+        edl_id: edlId,
         signer_id: existingSig?.id,
         signer_profile_id: targetProfileId,
         email: targetEmail,
@@ -229,10 +230,10 @@ export async function POST(
       user_id: user.id,
       action: "edl_invitation_sent",
       entity_type: "edl",
-      entity_id: params.id,
-      metadata: { 
+      entity_id: edlId,
+      metadata: {
         recipient: targetEmail,
-        has_profile: !!targetProfileId 
+        has_profile: !!targetProfileId
       },
     } as any);
 

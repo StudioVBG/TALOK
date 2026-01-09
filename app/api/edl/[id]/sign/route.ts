@@ -18,9 +18,10 @@ import {
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: edlId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -81,7 +82,7 @@ export async function POST(
 
     // Vérifier les permissions avec le helper SOTA
     const accessResult = await verifyEDLAccess({
-      edlId: params.id,
+      edlId,
       userId: user.id,
       profileId: profile.id,
       profileRole: profile.role
@@ -110,7 +111,7 @@ export async function POST(
 
     // 4. Uploader l'image de signature dans Storage (utiliser serviceClient pour éviter RLS)
     const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, "");
-    const fileName = `edl/${params.id}/signatures/${user.id}_${Date.now()}.png`;
+    const fileName = `edl/${edlId}/signatures/${user.id}_${Date.now()}.png`;
     
     const { error: uploadError } = await serviceClient.storage
       .from("documents")
@@ -127,7 +128,7 @@ export async function POST(
     // 5. Générer le Dossier de Preuve (Audit Trail)
     const proof = await generateSignatureProof({
       documentType: "EDL",
-      documentId: params.id,
+      documentId: edlId,
       documentContent: JSON.stringify(edl), // Hash du contenu actuel de l'EDL
       signerName: `${profile.prenom} ${profile.nom}`,
       signerEmail: user.email!,
@@ -146,7 +147,7 @@ export async function POST(
     const { data: signature, error: sigError } = await serviceClient
       .from("edl_signatures")
       .upsert({
-        edl_id: params.id,
+        edl_id: edlId,
         signer_user: user.id,
         signer_role: signerRole,
         signer_profile_id: profile.id,
@@ -172,7 +173,7 @@ export async function POST(
     const { data: allSignatures } = await serviceClient
       .from("edl_signatures")
       .select("signer_role, signature_image_path, signed_at")
-      .eq("edl_id", params.id);
+      .eq("edl_id", edlId);
 
     const hasOwner = allSignatures?.some(
       (s: any) => (s.signer_role === "owner" || s.signer_role === "proprietaire" || s.signer_role === "bailleur") 
@@ -187,12 +188,12 @@ export async function POST(
       await serviceClient
         .from("edl")
         .update({ status: "signed" } as any)
-        .eq("id", params.id);
+        .eq("id", edlId);
 
       await serviceClient.from("outbox").insert({
         event_type: "Inspection.Signed",
         payload: {
-          edl_id: params.id,
+          edl_id: edlId,
           all_signed: true,
         },
       } as any);
@@ -203,9 +204,9 @@ export async function POST(
       user_id: user.id,
       action: "edl_signed",
       entity_type: "edl",
-      entity_id: params.id,
-      metadata: { 
-        signer_role: signerRole, 
+      entity_id: edlId,
+      metadata: {
+        signer_role: signerRole,
         proof_id: proof.proofId,
         ip: proof.metadata.ipAddress
       },
