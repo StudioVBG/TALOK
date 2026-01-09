@@ -75,12 +75,16 @@ function WizardSkeleton() {
   );
 }
 
-async function WizardContent({ profileId }: { profileId: string }) {
+async function WizardContent({ profileId, preselectedLeaseId }: { profileId: string; preselectedLeaseId?: string }) {
   const leases = await fetchLeases(profileId);
-  return <CreateInspectionWizard leases={leases} />;
+  return <CreateInspectionWizard leases={leases} preselectedLeaseId={preselectedLeaseId} />;
 }
 
-export default async function NewInspectionPage() {
+export default async function NewInspectionPage({
+  searchParams,
+}: {
+  searchParams: { lease_id?: string; property_id?: string };
+}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -94,9 +98,11 @@ export default async function NewInspectionPage() {
 
   if (!profile || profile.role !== "owner") redirect("/dashboard");
 
+  const preselectedLeaseId = searchParams?.lease_id;
+
   return (
     <Suspense fallback={<WizardSkeleton />}>
-      <WizardContent profileId={profile.id} />
+      <WizardContent profileId={profile.id} preselectedLeaseId={preselectedLeaseId} />
     </Suspense>
   );
 }

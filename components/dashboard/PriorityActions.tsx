@@ -147,7 +147,7 @@ export function PriorityActions({ leases = [], invoices = [], className }: Prior
           description: `${propertyName} - Bail signé, prêt pour l'EDL d'entrée`,
           icon: ClipboardCheck,
           color: "indigo",
-          href: `/owner/edl/new?lease_id=${lease.id}&property_id=${lease.property?.id}`,
+          href: `/owner/inspections/new?lease_id=${lease.id}&property_id=${lease.property?.id}`,
           metadata: { leaseId: lease.id, propertyName }
         });
       }

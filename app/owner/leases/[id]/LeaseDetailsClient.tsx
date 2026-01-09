@@ -345,7 +345,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         icon: ClipboardCheck,
         title: "Créer l'état des lieux",
         description: "Le bail est signé. Créez l'EDL d'entrée pour l'activer.",
-        href: `/owner/edl/new?lease_id=${leaseId}&property_id=${property.id}`,
+        href: `/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}`,
         actionLabel: "Créer l'EDL",
         color: "indigo"
       };
@@ -422,7 +422,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         type: "milestone",
         nextAction: {
           label: "Créer l'état des lieux",
-          href: `/owner/edl/new?lease_id=${leaseId}&property_id=${property.id}`,
+          href: `/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}`,
         },
       });
       

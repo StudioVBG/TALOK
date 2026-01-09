@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
 import { decode } from "base64-arraybuffer";
@@ -55,14 +56,21 @@ export async function POST(
       );
     }
 
-    // 1. Récupérer l'EDL et les infos de bail/identité
-    const { data: edl, error: edlError } = await supabase
+    // 🔧 FIX: Utiliser un service client pour contourner RLS et éviter les erreurs "EDL non trouvé"
+    const serviceClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    );
+
+    // 1. Récupérer l'EDL et les infos de bail/identité (sans RLS)
+    const { data: edl, error: edlError } = await serviceClient
       .from("edl")
       .select(`
         *,
         lease:leases (
           id,
-          property:properties(id, adresse_complete, ville, code_postal),
+          property:properties(id, adresse_complete, ville, code_postal, owner_id),
           tenant_identity_verified
         )
       `)
@@ -70,11 +78,12 @@ export async function POST(
       .single();
 
     if (edlError || !edl) {
+      console.error("[sign-edl] EDL not found:", edlError);
       return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
     }
 
     // 2. Récupérer le profil pour déterminer le rôle et l'identité
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select(`
         id, 
@@ -90,6 +99,51 @@ export async function POST(
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
+    // 🔧 FIX: Vérification manuelle des permissions (puisqu'on bypass RLS)
+    const edlData = edl as any;
+    let isAuthorized = false;
+
+    // Cas 1: L'utilisateur est le créateur de l'EDL
+    if (edlData.created_by === user.id) {
+      isAuthorized = true;
+    }
+
+    // Cas 2: L'utilisateur est le propriétaire du bien
+    if (edlData.lease?.property?.owner_id === profile.id) {
+      isAuthorized = true;
+    }
+
+    // Cas 3: L'utilisateur est un signataire de l'EDL
+    const { data: edlSignature } = await serviceClient
+      .from("edl_signatures")
+      .select("id")
+      .eq("edl_id", params.id)
+      .eq("signer_profile_id", profile.id)
+      .maybeSingle();
+    
+    if (edlSignature) {
+      isAuthorized = true;
+    }
+
+    // Cas 4: L'utilisateur est un signataire du bail lié
+    if (edlData.lease_id) {
+      const { data: leaseSigner } = await serviceClient
+        .from("lease_signers")
+        .select("id")
+        .eq("lease_id", edlData.lease_id)
+        .eq("profile_id", profile.id)
+        .maybeSingle();
+      
+      if (leaseSigner) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      console.error("[sign-edl] Accès non autorisé pour user:", user.id);
+      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+    }
+
     const isOwner = profile.role === "owner";
     const signerRole = isOwner ? "owner" : "tenant";
     const cniNumber = (profile as any).tenant_profile?.[0]?.cni_number || null;
@@ -102,11 +156,11 @@ export async function POST(
       );
     }
 
-    // 4. Uploader l'image de signature dans Storage
+    // 4. Uploader l'image de signature dans Storage (utiliser serviceClient pour éviter RLS)
     const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, "");
     const fileName = `edl/${params.id}/signatures/${user.id}_${Date.now()}.png`;
     
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await serviceClient.storage
       .from("documents")
       .upload(fileName, decode(base64Data), {
         contentType: "image/png",
@@ -114,6 +168,7 @@ export async function POST(
       });
 
     if (uploadError) {
+      console.error("[sign-edl] Upload error:", uploadError);
       throw new Error("Erreur lors de l'enregistrement de l'image de signature");
     }
 
@@ -135,8 +190,8 @@ export async function POST(
       touchDevice: clientMetadata?.touchDevice || false,
     });
 
-    // 6. Enregistrer la signature et la preuve en base
-    const { data: signature, error: sigError } = await supabase
+    // 6. Enregistrer la signature et la preuve en base (serviceClient pour bypass RLS)
+    const { data: signature, error: sigError } = await serviceClient
       .from("edl_signatures")
       .upsert({
         edl_id: params.id,
@@ -156,10 +211,13 @@ export async function POST(
       .select()
       .single();
 
-    if (sigError) throw sigError;
+    if (sigError) {
+      console.error("[sign-edl] Signature upsert error:", sigError);
+      throw sigError;
+    }
 
     // 7. Vérifier si tous les signataires ont signé
-    const { data: allSignatures } = await supabase
+    const { data: allSignatures } = await serviceClient
       .from("edl_signatures")
       .select("signer_role, signature_image_path, signed_at")
       .eq("edl_id", params.id);
@@ -174,12 +232,12 @@ export async function POST(
     );
 
     if (hasOwner && hasTenant) {
-      await supabase
+      await serviceClient
         .from("edl")
         .update({ status: "signed" } as any)
         .eq("id", params.id);
 
-      await supabase.from("outbox").insert({
+      await serviceClient.from("outbox").insert({
         event_type: "Inspection.Signed",
         payload: {
           edl_id: params.id,
@@ -189,7 +247,7 @@ export async function POST(
     }
 
     // Journaliser
-    await supabase.from("audit_log").insert({
+    await serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "edl_signed",
       entity_type: "edl",

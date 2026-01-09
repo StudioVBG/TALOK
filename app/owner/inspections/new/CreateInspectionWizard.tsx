@@ -68,6 +68,7 @@ interface Lease {
 
 interface Props {
   leases: Lease[];
+  preselectedLeaseId?: string;
 }
 
 interface RoomTemplate {
@@ -207,15 +208,18 @@ const METER_TYPES = [
   { type: "water_hot" as const, label: "Eau chaude", unit: "m³", icon: "🚿" },
 ];
 
-export function CreateInspectionWizard({ leases }: Props) {
+export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Form state
-  const [selectedLease, setSelectedLease] = useState<Lease | null>(null);
+  // Form state - Auto-select lease if preselectedLeaseId is provided
+  const initialLease = preselectedLeaseId 
+    ? leases.find(l => l.id === preselectedLeaseId) || null 
+    : null;
+  const [selectedLease, setSelectedLease] = useState<Lease | null>(initialLease);
   const [edlType, setEdlType] = useState<"entree" | "sortie">("entree");
   const [scheduledDate, setScheduledDate] = useState("");
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
@@ -235,6 +239,18 @@ export function CreateInspectionWizard({ leases }: Props) {
   const [keys, setKeys] = useState<KeyItem[]>([
     { type: "Clé Porte d'entrée", count: 1, notes: "" },
   ]);
+
+  // Auto-avancer si bail présélectionné (depuis lien direct)
+  useEffect(() => {
+    if (preselectedLeaseId && initialLease && step === 0) {
+      // Auto-avancer vers l'étape "Type d'EDL"
+      setStep(1);
+      toast({
+        title: "Bail sélectionné",
+        description: `${initialLease.property.adresse_complete} - ${initialLease.tenant_name}`,
+      });
+    }
+  }, [preselectedLeaseId, initialLease]);
 
   // Charger les compteurs existants quand un bail est sélectionné
   useEffect(() => {
