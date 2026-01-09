@@ -28,17 +28,27 @@ const INSTRUCTIONS: Record<LivenessInstruction, string> = {
 export function SelfieCapture({ onCapture, onBack }: SelfieCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
 
   // Liveness detection state
   const [instruction, setInstruction] = useState<LivenessInstruction>("center");
   const [progress, setProgress] = useState(0);
   const [isCapturing, setIsCapturing] = useState(false);
 
+  // SOTA 2026: Initialisation caméra frontale optimisée pour iOS Safari
   const initCamera = useCallback(async () => {
     try {
+      // Arrêter le stream existant si présent
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+
+      setCameraReady(false);
+      setError(null);
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "user",
@@ -47,15 +57,35 @@ export function SelfieCapture({ onCapture, onBack }: SelfieCaptureProps) {
         },
       });
 
+      streamRef.current = mediaStream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
-        setCameraReady(true);
-        setStream(mediaStream);
+        
+        // iOS Safari: Attendre que les métadonnées soient chargées avant de jouer
+        videoRef.current.onloadedmetadata = async () => {
+          try {
+            await videoRef.current?.play();
+            setCameraReady(true);
+          } catch (playError) {
+            console.error("Erreur play() selfie:", playError);
+            setError("Impossible de démarrer la vidéo. Réessayez.");
+          }
+        };
       }
-    } catch (err) {
-      console.error("Erreur caméra:", err);
-      setError("Impossible d'accéder à la caméra frontale.");
+    } catch (err: any) {
+      console.error("Erreur caméra frontale:", err);
+      
+      // Messages d'erreur spécifiques
+      if (err.name === "NotAllowedError") {
+        setError("Accès à la caméra refusé. Autorisez l'accès dans les réglages de votre navigateur.");
+      } else if (err.name === "NotFoundError") {
+        setError("Aucune caméra frontale détectée sur cet appareil.");
+      } else if (err.name === "NotReadableError") {
+        setError("La caméra est utilisée par une autre application.");
+      } else {
+        setError("Impossible d'accéder à la caméra frontale.");
+      }
     }
   }, []);
 
@@ -63,11 +93,12 @@ export function SelfieCapture({ onCapture, onBack }: SelfieCaptureProps) {
     initCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
-  }, [initCamera, stream]);
+  }, [initCamera]);
 
   // Simulation de la détection de vivacité (liveness)
   // Dans une vraie implémentation, utilisez une lib comme face-api.js ou un service externe
@@ -160,6 +191,8 @@ export function SelfieCapture({ onCapture, onBack }: SelfieCaptureProps) {
     setProgress(0);
     setIsCapturing(false);
     setError(null);
+    // Réinitialiser la caméra
+    initCamera();
   };
 
   return (
