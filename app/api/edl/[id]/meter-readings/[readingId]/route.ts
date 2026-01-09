@@ -19,9 +19,10 @@ import { validateEDLMeterReadingSchema } from "@/lib/validations/edl-meters";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string; readingId: string } }
+  { params }: { params: Promise<{ id: string; readingId: string }> }
 ) {
   try {
+    const { id: edlId, readingId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -30,8 +31,6 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-
-    const { id: edlId, readingId } = params;
 
     // Récupérer le relevé avec les infos du compteur
     const { data: reading, error } = await supabase
@@ -78,9 +77,10 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string; readingId: string } }
+  { params }: { params: Promise<{ id: string; readingId: string }> }
 ) {
   try {
+    const { id: edlId, readingId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -90,7 +90,6 @@ export async function PATCH(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { id: edlId, readingId } = params;
     const body = await request.json();
 
     // Valider les données
@@ -210,9 +209,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string; readingId: string } }
+  { params }: { params: Promise<{ id: string; readingId: string }> }
 ) {
   try {
+    const { id: edlId, readingId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -221,8 +221,6 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-
-    const { id: edlId, readingId } = params;
 
     // Vérifier le rôle de l'utilisateur (seul le propriétaire peut supprimer)
     const { data: profile } = await supabase

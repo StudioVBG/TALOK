@@ -24,9 +24,10 @@ const sectionSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: edlId } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -38,7 +39,7 @@ export async function POST(
     const { data: edl, error: edlError } = await supabase
       .from("edl")
       .select("id, lease_id, created_by")
-      .eq("id", params.id)
+      .eq("id", edlId)
       .single();
 
     if (edlError || !edl) {
@@ -80,7 +81,7 @@ export async function POST(
     for (const section of validated.sections) {
       for (const item of section.items) {
         allItems.push({
-          edl_id: params.id,
+          edl_id: edlId,
           room_name: item.room_name || section.room_name,
           item_name: item.item_name,
           condition: item.condition || null,
@@ -107,7 +108,7 @@ export async function POST(
     await supabase
       .from("edl")
       .update({ status: "in_progress" })
-      .eq("id", params.id)
+      .eq("id", edlId)
       .eq("status", "draft");
 
     return NextResponse.json({
@@ -133,9 +134,10 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: edlId } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -147,7 +149,7 @@ export async function GET(
     const { data: items, error } = await supabase
       .from("edl_items")
       .select("*")
-      .eq("edl_id", params.id)
+      .eq("edl_id", edlId)
       .order("room_name", { ascending: true })
       .order("item_name", { ascending: true });
 
