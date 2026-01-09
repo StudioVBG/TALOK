@@ -46,15 +46,10 @@ export function TomAssistant() {
     }
   }, [messages]);
 
+  // SOTA 2026: FAB supprimé - intégré dans UnifiedFAB
+  // L'assistant est maintenant ouvert via UnifiedFAB ou raccourci clavier
   if (!isOpen) {
-    return (
-      <Button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-xl z-50 p-0 bg-gradient-to-br from-blue-600 to-indigo-600 hover:scale-105 transition-transform"
-      >
-        <MessageCircle className="h-8 w-8 text-white" />
-      </Button>
-    );
+    return null;
   }
 
   return (

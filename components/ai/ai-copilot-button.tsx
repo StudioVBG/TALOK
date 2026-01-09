@@ -30,6 +30,8 @@ export function AICopilotButton({
 }: AICopilotButtonProps) {
   const { openChat } = useAICommand();
 
+  // SOTA 2026: FAB floating masqué - intégré dans UnifiedFAB
+  // Visible uniquement sur desktop pour éviter les doublons mobile
   if (variant === "floating") {
     return (
       <TooltipProvider>
@@ -37,7 +39,8 @@ export function AICopilotButton({
           <TooltipTrigger asChild>
             <motion.div
               className={cn(
-                "fixed bottom-6 right-6 z-50",
+                // SOTA 2026: Hidden sur mobile, visible uniquement desktop
+                "hidden lg:block fixed bottom-6 right-6 z-50",
                 className
               )}
               initial={{ scale: 0, opacity: 0 }}

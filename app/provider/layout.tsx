@@ -153,21 +153,27 @@ export default async function VendorLayout({
         {children}
       </main>
 
-      {/* Mobile bottom navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 z-50">
-        <div className="flex justify-around">
-          {navigation.slice(0, 5).map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="flex flex-col items-center gap-1 p-1 text-slate-600 hover:text-orange-600"
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="text-[10px]">{item.name.replace("Mes ", "")}</span>
-            </Link>
-          ))}
+      {/* SOTA 2026 - Mobile bottom navigation avec safe area */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 z-50">
+        <div className="pb-safe">
+          <div className="grid grid-cols-5 h-14">
+            {navigation.slice(0, 5).map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-slate-600 hover:text-orange-600 active:bg-orange-50/50 transition-colors"
+              >
+                <item.icon className="h-5 w-5" />
+                <span className="text-[9px] xs:text-[10px] font-medium truncate max-w-[56px]">
+                  {item.name.replace("Mes ", "")}
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       </nav>
+      {/* Spacer */}
+      <div className="h-14 lg:hidden" />
     </div>
   );
 }

@@ -39,7 +39,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
-import { AssistantPanel } from "@/components/ai/assistant-panel";
+import { UnifiedFAB } from "@/components/layout/unified-fab";
+import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
+import { Home, FileText, CreditCard, Wrench } from "lucide-react";
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
@@ -354,8 +356,19 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         {children}
       </main>
 
-      {/* AI Assistant */}
-      <AssistantPanel />
+      {/* SOTA 2026 - Bottom Navigation Mobile */}
+      <SharedBottomNav 
+        items={[
+          { href: "/tenant/dashboard", label: "Accueil", icon: LayoutDashboard },
+          { href: "/tenant/lease", label: "Logement", icon: Home },
+          { href: "/tenant/payments", label: "Paiements", icon: CreditCard },
+          { href: "/tenant/requests", label: "Demandes", icon: Wrench },
+        ]}
+        hiddenOnPaths={['/tenant/onboarding']}
+      />
+
+      {/* SOTA 2026 - FAB Unifié (Assistant + Actions) */}
+      <UnifiedFAB />
     </div>
   );
 }

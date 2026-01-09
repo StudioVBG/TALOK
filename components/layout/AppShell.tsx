@@ -445,35 +445,50 @@ interface MobileBottomNavProps {
   isCurrent: (href: string) => boolean;
 }
 
+// SOTA 2026: Bottom nav unifiée avec safe area et touch targets
 function MobileBottomNav({ role, navigation, isCurrent }: MobileBottomNavProps) {
   // Get first 4 items from navigation for bottom nav
   const bottomItems = navigation[0]?.items.slice(0, 4) || [];
 
   return (
     <>
-      <div className="h-16 lg:hidden" /> {/* Spacer */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t lg:hidden safe-area-bottom">
-        <div className="flex items-center justify-around h-16 px-2">
-          {bottomItems.map((item) => {
-            const isActive = isCurrent(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground"
-                )}
-              >
-                <item.icon className={cn("h-5 w-5", isActive && "text-primary")} />
-                <span className="text-[10px] font-medium truncate max-w-[60px]">
-                  {item.name}
-                </span>
-              </Link>
-            );
-          })}
+      {/* Spacer pour éviter que le contenu soit caché */}
+      <div className="h-14 xs:h-16 lg:hidden" aria-hidden="true" />
+      
+      {/* Navigation avec safe area iOS/Android */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t lg:hidden">
+        <div className="pb-safe">
+          <div className="grid grid-cols-4 h-14 xs:h-16">
+            {bottomItems.map((item) => {
+              const isActive = isCurrent(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    // Layout + touch target minimum 44px
+                    "flex flex-col items-center justify-center gap-0.5 xs:gap-1",
+                    "min-h-[44px] min-w-[44px]",
+                    // Transitions et feedback tactile
+                    "transition-colors active:bg-muted/50",
+                    // États
+                    isActive
+                      ? "text-primary"
+                      : "text-muted-foreground"
+                  )}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <item.icon className={cn(
+                    "h-5 w-5 xs:h-6 xs:w-6",
+                    isActive && "text-primary"
+                  )} />
+                  <span className="text-[9px] xs:text-[10px] sm:text-xs font-medium truncate max-w-[56px] xs:max-w-[64px]">
+                    {item.name}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </nav>
     </>
