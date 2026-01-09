@@ -17,9 +17,10 @@ import {
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: edlId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -28,8 +29,6 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-
-    const edlId = params.id;
     const serviceClient = createServiceClient();
 
     // Récupérer le profil
@@ -123,9 +122,10 @@ export async function GET(
  */
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: edlId } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -133,7 +133,6 @@ export async function PUT(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const edlId = params.id;
     const body = await request.json();
     const { observations_generales, keys, sections } = body;
 
@@ -257,9 +256,10 @@ export async function PUT(
  */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: edlId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -268,8 +268,6 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-
-    const edlId = params.id;
     const serviceClient = createServiceClient();
 
     // Récupérer le profil

@@ -28,9 +28,9 @@ import {
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const edlId = params.id;
+  const { id: edlId } = await params;
   console.log(`[GET /api/edl/${edlId}/meter-readings] Entering`);
 
   try {
@@ -139,9 +139,9 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const edlId = params.id;
+  const { id: edlId } = await params;
   console.log(`[POST /api/edl/${edlId}/meter-readings] Entering`);
 
   try {
