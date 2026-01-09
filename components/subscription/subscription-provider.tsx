@@ -437,6 +437,36 @@ export function useCurrentPlan() {
   };
 }
 
+/**
+ * Hook spécifique pour les signatures avec détails complets
+ */
+export function useSignatureQuota() {
+  const { usage, currentPlan, loading } = useSubscription();
+  const plan = PLANS[currentPlan];
+
+  const used = usage?.signatures?.used ?? 0;
+  const limit = usage?.signatures?.limit ?? plan.limits.signatures_monthly_quota;
+  const isUnlimited = limit === -1;
+  const remaining = isUnlimited ? Infinity : Math.max(0, limit - used);
+  const percentage = isUnlimited ? 0 : (limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : (used > 0 ? 100 : 0));
+
+  // Prix par signature supplémentaire (en centimes)
+  const pricePerExtra = (plan.features.signature_price as number) || 590;
+
+  return {
+    used,
+    limit,
+    remaining,
+    percentage,
+    isUnlimited,
+    canSign: isUnlimited || used < limit,
+    isAtLimit: !isUnlimited && used >= limit,
+    pricePerExtra,
+    pricePerExtraFormatted: `${(pricePerExtra / 100).toFixed(2)}€`,
+    loading,
+  };
+}
+
 // Export default
 export default SubscriptionProvider;
 

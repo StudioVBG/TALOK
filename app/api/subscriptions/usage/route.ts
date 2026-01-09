@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { PLANS, type PlanSlug, getUsagePercentage } from "@/lib/subscriptions/plans";
+import { getSignatureUsageByOwner } from "@/lib/subscriptions/signature-tracking";
 
 export async function GET() {
   try {
@@ -84,27 +85,22 @@ export async function GET() {
     // Compter les utilisateurs (pour multi-users)
     const usersCount = 1;
 
-    // Récupérer l'usage mensuel (signatures) - avec gestion d'erreur si table n'existe pas
+    // Récupérer l'usage des signatures via le nouveau service de tracking
     let signaturesUsed = 0;
+    let signaturesLimit = limits.signatures_monthly_quota;
     let storageUsed = 0;
-    
+
     try {
-      const periodStart = new Date();
-      periodStart.setDate(1);
-      periodStart.setHours(0, 0, 0, 0);
+      const sigUsage = await getSignatureUsageByOwner(profile.id);
+      signaturesUsed = sigUsage.signatures_used;
+      signaturesLimit = sigUsage.signatures_limit;
+    } catch (err) {
+      console.warn("[Usage] Error fetching signature usage:", err);
+    }
 
-      const { data: usageRecord } = await supabase
-        .from("subscription_usage")
-        .select("signatures_used_this_month, storage_used_bytes")
-        .eq("user_id", user.id)
-        .gte("period_start", periodStart.toISOString())
-        .maybeSingle();
-
-      signaturesUsed = usageRecord?.signatures_used_this_month || 0;
-      storageUsed = usageRecord?.storage_used_bytes || 0;
-    } catch {
-      // Table subscription_usage n'existe peut-être pas encore
-      console.warn("[Usage] subscription_usage table not found");
+    // Récupérer le stockage utilisé depuis subscriptions
+    if (subscription?.documents_size_mb) {
+      storageUsed = subscription.documents_size_mb * 1024 * 1024; // Convertir MB en bytes
     }
 
     // Construire le résumé d'usage
@@ -126,8 +122,8 @@ export async function GET() {
       },
       signatures: {
         used: signaturesUsed,
-        limit: limits.signatures_monthly_quota,
-        percentage: getUsagePercentage(signaturesUsed, limits.signatures_monthly_quota),
+        limit: signaturesLimit,
+        percentage: getUsagePercentage(signaturesUsed, signaturesLimit),
       },
       storage: {
         used: Math.round(storageUsed / (1024 * 1024)), // MB

@@ -5,6 +5,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { PLANS, type PlanSlug, getUsagePercentage } from './plans';
+import { getSignatureUsageByOwner } from './signature-tracking';
 import type {
   SubscriptionWithPlan,
   UsageSummary,
@@ -117,11 +118,11 @@ export async function getSubscriptionByProfileId(profileId: string): Promise<Sub
  */
 export async function getUsageSummary(userId: string): Promise<UsageSummary> {
   const subscription = await getUserSubscription(userId);
-  
+
   // Obtenir le slug du plan depuis la BDD ou utiliser gratuit par défaut
   const planSlug = (subscription?.plan?.slug || 'gratuit') as PlanSlug;
   const plan = PLANS[planSlug];
-  
+
   // L'usage est stocké directement dans subscriptions
   const used = {
     properties: subscription?.properties_count || 0,
@@ -138,6 +139,29 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
     max_documents_gb: subscription.plan.max_documents_gb,
   } : plan.limits;
 
+  // Récupérer le profile_id pour le tracking signatures
+  const profileId = await getOwnerProfileId(userId);
+
+  // Récupérer l'usage réel des signatures
+  let signatureUsage = {
+    used: 0,
+    limit: plan.limits.signatures_monthly_quota,
+    percentage: 0,
+  };
+
+  if (profileId) {
+    try {
+      const sigUsage = await getSignatureUsageByOwner(profileId);
+      signatureUsage = {
+        used: sigUsage.signatures_used,
+        limit: sigUsage.signatures_limit,
+        percentage: sigUsage.usage_percentage,
+      };
+    } catch (err) {
+      console.error('[SubscriptionService] Error fetching signature usage:', err);
+    }
+  }
+
   return {
     properties: {
       used: used.properties,
@@ -150,15 +174,11 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
       percentage: getUsagePercentage(used.leases, limits.max_leases),
     },
     users: {
-      used: 1, // TODO: compter les vrais utilisateurs
+      used: 1, // TODO: compter les vrais utilisateurs via team_members
       limit: plan.limits.max_users,
       percentage: getUsagePercentage(1, plan.limits.max_users),
     },
-    signatures: {
-      used: 0, // TODO: tracker les signatures
-      limit: plan.limits.signatures_monthly_quota,
-      percentage: 0,
-    },
+    signatures: signatureUsage,
     storage: {
       used: Math.round(used.storage),
       limit: limits.max_documents_gb * 1024, // Convertir en MB
