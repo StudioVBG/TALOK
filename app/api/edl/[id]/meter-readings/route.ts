@@ -3,7 +3,7 @@ export const runtime = 'nodejs';
 
 /**
  * API Routes pour les relevés de compteurs EDL
- * @version 2026-01-05 - Fix photo_path NOT NULL constraint
+ * @version 2026-01-09 - SOTA: Helper centralisé pour permissions
  * 
  * GET  /api/edl/[id]/meter-readings - Liste les relevés d'un EDL
  * POST /api/edl/[id]/meter-readings - Créer un relevé avec OCR automatique
@@ -15,6 +15,12 @@ import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-li
 import { meterOCRService } from "@/lib/ocr/meter.service";
 import { createEDLMeterReadingSchema, validateMeterPhotoFile } from "@/lib/validations/edl-meters";
 import type { MeterType, EDLMeterReading, MeterInfo } from "@/lib/types/edl-meters";
+import { 
+  verifyEDLAccess, 
+  createServiceClient, 
+  getUserProfile,
+  canEditEDL 
+} from "@/lib/helpers/edl-auth";
 
 // ============================================
 // GET - Liste les relevés de compteurs d'un EDL
@@ -38,76 +44,34 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // 1. Récupérer l'EDL et les infos de propriété
-    const { data: edl, error: edlError } = await supabase
-      .from("edl")
-      .select(`
-        *,
-        lease:leases(
-          *,
-          property:properties(*)
-        )
-      `)
-      .eq("id", edlId)
-      .maybeSingle();
+    const serviceClient = createServiceClient();
 
-    if (edlError) {
-      console.error(`[GET /api/edl/${edlId}/meter-readings] EDL Fetch Error:`, edlError);
-      return NextResponse.json({ error: "Erreur lors de la récupération de l'EDL" }, { status: 500 });
-    }
-
-    if (!edl) {
-      console.log(`[GET /api/edl/${edlId}/meter-readings] 404: EDL non trouvé`);
-      return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
-    }
-
-    const edlData = edl as any;
-    
-    // 2. Vérifier les permissions (Locataire OU Propriétaire)
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
+    // Récupérer le profil
+    const profile = await getUserProfile(serviceClient, user.id);
     if (!profile) {
-      console.log(`[GET /api/edl/${edlId}/meter-readings] 404: Profil non trouvé`);
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    let isAuthorized = false;
-    // Déterminer ownerId de manière sécurisée
-    const leaseData = Array.isArray(edlData.lease) ? edlData.lease[0] : edlData.lease;
-    const propertyData = leaseData?.property || edlData.property || (edlData as any).property_details;
-    const ownerId = propertyData?.owner_id;
-    const actualOwnerId = typeof ownerId === "object" ? ownerId?.id : ownerId;
-
-    console.log(`[GET /api/edl/${edlId}/meter-readings] Auth debug:`, {
-      role: profile.role,
+    // Vérifier les permissions avec le helper SOTA
+    const accessResult = await verifyEDLAccess({
+      edlId,
+      userId: user.id,
       profileId: profile.id,
-      actualOwnerId,
-      createdBy: edlData.created_by
-    });
+      profileRole: profile.role
+    }, serviceClient);
 
-    if (profile.role === "owner" || profile.role === "admin") {
-      if (actualOwnerId === profile.id || edlData.created_by === profile.id) isAuthorized = true;
-    } else {
-      const { data: roommate } = await supabase
-        .from("roommates")
-        .select("id")
-        .eq("lease_id", edlData.lease_id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (roommate) isAuthorized = true;
+    if (!accessResult.authorized) {
+      return NextResponse.json(
+        { error: accessResult.reason || "Accès non autorisé" },
+        { status: accessResult.edl ? 403 : 404 }
+      );
     }
 
-    if (!isAuthorized) {
-      console.warn(`[GET /api/edl/${edlId}/meter-readings] 403: Accès non autorisé`);
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
+    const edlData = accessResult.edl;
+    const leaseData = Array.isArray(edlData.lease) ? edlData.lease[0] : edlData.lease;
 
-    // 3. Récupérer les relevés existants
-    const { data: readings, error: readingsError } = await supabase
+    // Récupérer les relevés existants
+    const { data: readings, error: readingsError } = await serviceClient
       .from("edl_meter_readings")
       .select(`
         *,
@@ -117,14 +81,14 @@ export async function GET(
       .order("created_at", { ascending: true });
 
     if (readingsError) {
-      console.error(`[GET /api/edl/${edlId}/meter-readings] Readings Fetch Error:`, readingsError);
+      console.error(`[GET /api/edl/${edlId}/meter-readings] Readings Error:`, readingsError);
     }
 
-    // 4. Récupérer tous les compteurs actifs du logement
-    let propertyId = edlData.property_id || leaseData?.property_id;
+    // Récupérer tous les compteurs actifs du logement
+    let propertyId = edlData.property_id || leaseData?.property_id || leaseData?.property?.id;
 
     if (!propertyId && edlData.lease_id) {
-       const { data: fallbackLease } = await supabase
+       const { data: fallbackLease } = await serviceClient
          .from("leases")
          .select("property_id")
          .eq("id", edlData.lease_id)
@@ -134,13 +98,13 @@ export async function GET(
 
     let allMeters = [];
     if (propertyId) {
-      const { data: meters, error: metersError } = await supabase
+      const { data: meters, error: metersError } = await serviceClient
         .from("meters")
         .select("*")
         .eq("property_id", propertyId);
       
       if (metersError) {
-        console.error(`[GET /api/edl/${edlId}/meter-readings] Meters Fetch Error:`, metersError);
+        console.error(`[GET /api/edl/${edlId}/meter-readings] Meters Error:`, metersError);
       } else {
         allMeters = meters?.filter(m => m.is_active !== false) || [];
       }
@@ -154,7 +118,7 @@ export async function GET(
       all_meters_recorded: missingMeters.length === 0,
       missing_meters: missingMeters,
       edl: {
-        id: edl.id,
+        id: edlData.id,
         type: edlData.type,
         status: edlData.status,
       },
@@ -211,83 +175,37 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
+    const serviceClient = createServiceClient();
 
+    // Récupérer le profil
+    const profile = await getUserProfile(serviceClient, user.id);
     if (!profile) {
-      console.log(`[POST /api/edl/${edlId}/meter-readings] 404: Profil non trouvé`);
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: edl, error: edlError } = await supabase
-      .from("edl")
-      .select(`
-        id,
-        type,
-        status,
-        lease_id,
-        property_id,
-        lease:leases(
-          id,
-          property_id,
-          property:properties(
-            id,
-            owner_id
-          )
-        )
-      `)
-      .eq("id", edlId)
-      .single();
+    // Vérifier les permissions avec le helper SOTA
+    const accessResult = await verifyEDLAccess({
+      edlId,
+      userId: user.id,
+      profileId: profile.id,
+      profileRole: profile.role
+    }, serviceClient);
 
-    if (edlError) {
-      console.error(`[POST /api/edl/${edlId}/meter-readings] EDL Fetch Error:`, edlError);
-      return NextResponse.json({ error: "EDL non trouvé ou erreur" }, { status: 404 });
-    }
-
-    if (!edl) {
-      return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
-    }
-
-    let isAuthorized = false;
-    const edlDataPost = edl as any;
-
-    const leaseData = Array.isArray(edlDataPost.lease) ? edlDataPost.lease[0] : edlDataPost.lease;
-    const ownerId = leaseData?.property?.owner_id || edlDataPost.property_id;
-    const actualOwnerId = typeof ownerId === "object" ? ownerId.owner_id : ownerId;
-
-    console.log(`[POST /api/edl/${edlId}/meter-readings] Auth check:`, {
-      role: profile.role,
-      actualOwnerId,
-      profileId: profile.id
-    });
-
-    if (profile.role === "owner" || profile.role === "admin") {
-      if (actualOwnerId === profile.id || edlDataPost.created_by === profile.id) isAuthorized = true;
-    } else {
-      const { data: roommate } = await supabase
-        .from("roommates")
-        .select("id")
-        .eq("lease_id", edlDataPost.lease_id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (roommate) isAuthorized = true;
-    }
-
-    if (!isAuthorized) {
-      console.warn(`[POST /api/edl/${edlId}/meter-readings] 403: Accès non autorisé`);
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
-
-    if (!["draft", "in_progress", "completed", "scheduled"].includes(edlDataPost.status)) {
-      console.warn(`[POST /api/edl/${edlId}/meter-readings] 400: EDL déjà signé`);
+    if (!accessResult.authorized) {
       return NextResponse.json(
-        { error: "L'EDL est déjà signé et ne peut plus être modifié" },
-        { status: 400 }
+        { error: accessResult.reason || "Accès non autorisé" },
+        { status: accessResult.edl ? 403 : 404 }
       );
     }
+
+    // Vérifier si l'EDL peut être modifié
+    const editCheck = canEditEDL(accessResult.edl);
+    if (!editCheck.canEdit) {
+      return NextResponse.json({ error: editCheck.reason }, { status: 400 });
+    }
+
+    const edlDataPost = accessResult.edl;
+    const leaseData = Array.isArray(edlDataPost.lease) ? edlDataPost.lease[0] : edlDataPost.lease;
 
     let meterId, photo, photoPath, manualValue, readingUnit, comment, meterNumber, location;
     let ocrResult = { value: null, confidence: 0, rawText: "", needsValidation: true, processingTimeMs: 0 };
@@ -340,7 +258,7 @@ export async function POST(
       
       let existingMeter = null;
       if (meterNumber) {
-        const { data: meters } = await supabase
+        const { data: meters } = await serviceClient
           .from("meters")
           .select("*")
           .eq("property_id", edlPropertyId)
@@ -350,7 +268,7 @@ export async function POST(
       }
       
       if (!existingMeter && !meterNumber) {
-        const { data: meters } = await supabase
+        const { data: meters } = await serviceClient
           .from("meters")
           .select("*")
           .eq("property_id", edlPropertyId)
@@ -378,7 +296,7 @@ export async function POST(
         console.log(`[POST /api/edl/${edlId}/meter-readings] Creating new meter:`, meterPayload);
 
         try {
-          const { data: newMeter, error: createError } = await supabase
+          const { data: newMeter, error: createError } = await serviceClient
             .from("meters")
             .insert({
               ...meterPayload,
@@ -392,7 +310,7 @@ export async function POST(
           if (createError) {
             console.error(`[POST /api/edl/${edlId}/meter-readings] Meter Creation Error:`, createError);
             if ((createError as any).code === '42703') {
-              const { data: fallbackMeter, error: fallbackError } = await supabase
+              const { data: fallbackMeter, error: fallbackError } = await serviceClient
                 .from("meters")
                 .insert(meterPayload)
                 .select()
@@ -413,7 +331,7 @@ export async function POST(
         }
       }
     } else {
-      const { data: meter, error: meterError } = await supabase
+      const { data: meter, error: meterError } = await serviceClient
         .from("meters")
         .select("*")
         .eq("id", meterId)
@@ -438,13 +356,13 @@ export async function POST(
         }
         if (location) updateData.location = location;
         
-        await supabase.from("meters").update(updateData).eq("id", meterId);
+        await serviceClient.from("meters").update(updateData).eq("id", meterId);
       }
       
       actualMeterData = meter;
     }
 
-    const { data: existingReading } = await supabase
+    const { data: existingReading } = await serviceClient
       .from("edl_meter_readings")
       .select("id")
       .eq("edl_id", edlId)
@@ -468,7 +386,7 @@ export async function POST(
       const timestamp = Date.now();
       const fileName = `edl/${edlId}/meters/${actualMeterData.type}_${finalMeterId}_${timestamp}.jpg`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await serviceClient.storage
         .from("documents")
         .upload(fileName, photoBuffer, {
           contentType: photo.type,
@@ -538,7 +456,7 @@ export async function POST(
 
     let finalReading;
     try {
-      const { data: reading, error: insertError } = await supabase
+      const { data: reading, error: insertError } = await serviceClient
         .from("edl_meter_readings")
         .insert({
           ...readingPayload,
@@ -557,7 +475,7 @@ export async function POST(
       if (insertError) {
         console.error(`[POST /api/edl/${edlId}/meter-readings] Insert Error:`, insertError);
         if ((insertError as any).code === '42703') {
-          const { data: minimalReading, error: minimalError } = await supabase
+          const { data: minimalReading, error: minimalError } = await serviceClient
             .from("edl_meter_readings")
             .insert(readingPayload)
             .select(`*, meter:meters(*)`)
