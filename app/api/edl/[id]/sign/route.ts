@@ -2,15 +2,19 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
 import { decode } from "base64-arraybuffer";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
+import { 
+  verifyEDLAccess, 
+  createServiceClient
+} from "@/lib/helpers/edl-auth";
 
 /**
  * POST /api/edl/[id]/sign - Signer un EDL avec Audit Trail
+ * SOTA 2026: Utilise le helper centralisé pour la vérification des permissions
  */
 export async function POST(
   request: Request,
@@ -56,33 +60,9 @@ export async function POST(
       );
     }
 
-    // 🔧 FIX: Utiliser un service client pour contourner RLS et éviter les erreurs "EDL non trouvé"
-    const serviceClient = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+    const serviceClient = createServiceClient();
 
-    // 1. Récupérer l'EDL et les infos de bail/identité (sans RLS)
-    const { data: edl, error: edlError } = await serviceClient
-      .from("edl")
-      .select(`
-        *,
-        lease:leases (
-          id,
-          property:properties(id, adresse_complete, ville, code_postal, owner_id),
-          tenant_identity_verified
-        )
-      `)
-      .eq("id", params.id)
-      .single();
-
-    if (edlError || !edl) {
-      console.error("[sign-edl] EDL not found:", edlError);
-      return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
-    }
-
-    // 2. Récupérer le profil pour déterminer le rôle et l'identité
+    // Récupérer le profil avec les infos tenant
     const { data: profile } = await serviceClient
       .from("profiles")
       .select(`
@@ -99,50 +79,22 @@ export async function POST(
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    // 🔧 FIX: Vérification manuelle des permissions (puisqu'on bypass RLS)
-    const edlData = edl as any;
-    let isAuthorized = false;
+    // Vérifier les permissions avec le helper SOTA
+    const accessResult = await verifyEDLAccess({
+      edlId: params.id,
+      userId: user.id,
+      profileId: profile.id,
+      profileRole: profile.role
+    }, serviceClient);
 
-    // Cas 1: L'utilisateur est le créateur de l'EDL
-    if (edlData.created_by === user.id) {
-      isAuthorized = true;
+    if (!accessResult.authorized) {
+      return NextResponse.json(
+        { error: accessResult.reason || "Accès non autorisé" },
+        { status: accessResult.edl ? 403 : 404 }
+      );
     }
 
-    // Cas 2: L'utilisateur est le propriétaire du bien
-    if (edlData.lease?.property?.owner_id === profile.id) {
-      isAuthorized = true;
-    }
-
-    // Cas 3: L'utilisateur est un signataire de l'EDL
-    const { data: edlSignature } = await serviceClient
-      .from("edl_signatures")
-      .select("id")
-      .eq("edl_id", params.id)
-      .eq("signer_profile_id", profile.id)
-      .maybeSingle();
-    
-    if (edlSignature) {
-      isAuthorized = true;
-    }
-
-    // Cas 4: L'utilisateur est un signataire du bail lié
-    if (edlData.lease_id) {
-      const { data: leaseSigner } = await serviceClient
-        .from("lease_signers")
-        .select("id")
-        .eq("lease_id", edlData.lease_id)
-        .eq("profile_id", profile.id)
-        .maybeSingle();
-      
-      if (leaseSigner) {
-        isAuthorized = true;
-      }
-    }
-
-    if (!isAuthorized) {
-      console.error("[sign-edl] Accès non autorisé pour user:", user.id);
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
+    const edl = accessResult.edl;
 
     const isOwner = profile.role === "owner";
     const signerRole = isOwner ? "owner" : "tenant";

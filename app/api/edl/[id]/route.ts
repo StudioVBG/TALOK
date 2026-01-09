@@ -4,9 +4,16 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { 
+  verifyEDLAccess, 
+  createServiceClient, 
+  getUserProfile,
+  canEditEDL 
+} from "@/lib/helpers/edl-auth";
 
 /**
  * GET /api/edl/[id] - Récupérer les détails d'un EDL
+ * SOTA 2026: Utilise le helper centralisé pour la vérification des permissions
  */
 export async function GET(
   request: Request,
@@ -23,101 +30,74 @@ export async function GET(
     }
 
     const edlId = params.id;
+    const serviceClient = createServiceClient();
 
-    // Récupérer l'EDL
-    const { data: edl, error: edlError } = await supabase
-      .from("edl")
-      .select(`
-        *,
-        lease:leases(id, property:properties(adresse_complete, owner_id))
-      `)
-      .eq("id", edlId as any)
-      .single();
-
-    if (edlError || !edl) {
-      return NextResponse.json(
-        { error: "EDL non trouvé" },
-        { status: 404 }
-      );
-    }
-
-    const edlData = edl as any;
-
-    // 🔧 FIX: Vérifier les permissions (Locataire OU Propriétaire)
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
+    // Récupérer le profil
+    const profile = await getUserProfile(serviceClient, user.id);
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    let isAuthorized = false;
+    // Vérifier les permissions avec le helper SOTA
+    const accessResult = await verifyEDLAccess({
+      edlId,
+      userId: user.id,
+      profileId: profile.id,
+      profileRole: profile.role
+    }, serviceClient);
 
-    if (profile.role === "owner" || profile.role === "admin") {
-      // Si c'est un propriétaire, vérifier qu'il possède le bien
-      const ownerId = edlData.lease?.property?.owner_id || edlData.property_id;
-      // Support si ownerId est un objet suite au join
-      const actualOwnerId = typeof ownerId === "object" ? ownerId.owner_id : ownerId;
-
-      if (actualOwnerId === profile.id) {
-        isAuthorized = true;
-      }
-    } else {
-      // Si c'est un locataire, vérifier sa liaison avec le bail
-      const { data: roommate } = await supabase
-        .from("roommates")
-        .select("id")
-        .eq("lease_id", edlData.lease_id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (roommate) isAuthorized = true;
+    if (!accessResult.authorized) {
+      return NextResponse.json(
+        { error: accessResult.reason || "Accès non autorisé" },
+        { status: accessResult.edl ? 403 : 404 }
+      );
     }
 
-    if (!isAuthorized) {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
+    const edlData = accessResult.edl;
 
     // Récupérer les items
-    const { data: items, error: itemsError } = await supabase
+    const { data: items, error: itemsError } = await serviceClient
       .from("edl_items")
       .select("*")
-      .eq("edl_id", edlId as any)
+      .eq("edl_id", edlId)
       .order("room_name", { ascending: true });
 
-    if (itemsError) throw itemsError;
+    if (itemsError) {
+      console.error("[GET /api/edl/[id]] Items error:", itemsError);
+    }
 
     // Récupérer les médias
-    const { data: media, error: mediaError } = await supabase
+    const { data: media, error: mediaError } = await serviceClient
       .from("edl_media")
       .select("*")
-      .eq("edl_id", edlId as any)
+      .eq("edl_id", edlId)
       .order("created_at", { ascending: true });
 
-    if (mediaError) throw mediaError;
+    if (mediaError) {
+      console.error("[GET /api/edl/[id]] Media error:", mediaError);
+    }
 
-    // Récupérer les signatures
-    const { data: signatures, error: sigError } = await supabase
+    // Récupérer les signatures avec les profils
+    const { data: signatures, error: sigError } = await serviceClient
       .from("edl_signatures")
       .select(`
         *,
         signer:profiles(prenom, nom)
       `)
-      .eq("edl_id", edlId as any);
+      .eq("edl_id", edlId);
 
-    if (sigError) throw sigError;
+    if (sigError) {
+      console.error("[GET /api/edl/[id]] Signatures error:", sigError);
+    }
 
     // Récupérer les relevés de compteurs
-    const { data: meterReadings, error: meterReadingsError } = await supabase
+    const { data: meterReadings, error: meterReadingsError } = await serviceClient
       .from("edl_meter_readings")
       .select("*, meter:meters(*)")
-      .eq("edl_id", edlId as any);
+      .eq("edl_id", edlId);
 
     if (meterReadingsError) {
-      console.warn("Erreur lors de la récupération des relevés de compteurs:", meterReadingsError);
+      console.warn("[GET /api/edl/[id]] Meter readings error:", meterReadingsError);
     }
 
     return NextResponse.json({
@@ -129,6 +109,7 @@ export async function GET(
       keys: edlData.keys || [],
     });
   } catch (error: any) {
+    console.error("[GET /api/edl/[id]] Error:", error);
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },
       { status: 500 }
@@ -138,6 +119,7 @@ export async function GET(
 
 /**
  * PUT /api/edl/[id] - Mettre à jour un EDL (notes, clés, sections)
+ * SOTA 2026: Utilise le helper centralisé pour la vérification des permissions
  */
 export async function PUT(
   request: Request,
@@ -155,54 +137,36 @@ export async function PUT(
     const body = await request.json();
     const { observations_generales, keys, sections } = body;
 
-    // 1. Vérifier les permissions
-    const { data: edl, error: edlError } = await supabase
-      .from("edl")
-      .select("id, status, property_id, lease_id, lease:leases(property:properties(owner_id))")
-      .eq("id", edlId)
-      .single();
+    const serviceClient = createServiceClient();
 
-    if (edlError || !edl) {
-      return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
+    // Récupérer le profil
+    const profile = await getUserProfile(serviceClient, user.id);
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    let isAuthorized = false;
-    const edlData = edl as any;
+    // Vérifier les permissions avec le helper SOTA
+    const accessResult = await verifyEDLAccess({
+      edlId,
+      userId: user.id,
+      profileId: profile.id,
+      profileRole: profile.role
+    }, serviceClient);
 
-    if (profile.role === "owner" || profile.role === "admin") {
-      const ownerId = edlData.lease?.property?.owner_id || edlData.property_id;
-      const actualOwnerId = typeof ownerId === "object" ? ownerId.owner_id : ownerId;
-      if (actualOwnerId === profile.id) isAuthorized = true;
-    } else if (profile.role === "tenant") {
-      const { data: roommate } = await supabase
-        .from("roommates")
-        .select("id")
-        .eq("lease_id", edlData.lease_id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (roommate) isAuthorized = true;
+    if (!accessResult.authorized) {
+      return NextResponse.json(
+        { error: accessResult.reason || "Accès non autorisé" },
+        { status: accessResult.edl ? 403 : 404 }
+      );
     }
 
-    if (!isAuthorized) {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+    // Vérifier si l'EDL peut être modifié
+    const editCheck = canEditEDL(accessResult.edl);
+    if (!editCheck.canEdit) {
+      return NextResponse.json({ error: editCheck.reason }, { status: 400 });
     }
 
-    if (edl.status === "signed") {
-      return NextResponse.json({ error: "Impossible de modifier un EDL déjà signé" }, { status: 400 });
-    }
-
-    // 2. Mettre à jour les notes et les clés
-    // 💡 On utilise une approche progressive pour éviter de tout bloquer si les colonnes manquent
+    // Mettre à jour les notes et les clés
     const updateData: any = {
       updated_at: new Date().toISOString(),
     };
@@ -210,20 +174,18 @@ export async function PUT(
     if (observations_generales !== undefined) updateData.general_notes = observations_generales;
     if (keys !== undefined) updateData.keys = keys || [];
 
-    console.log(`[PUT /api/edl/${edlId}] Attempting update with:`, Object.keys(updateData));
+    console.log(`[PUT /api/edl/${edlId}] Updating with:`, Object.keys(updateData));
 
     try {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await serviceClient
         .from("edl")
         .update(updateData)
         .eq("id", edlId);
 
       if (updateError) {
-        console.warn("[PUT /api/edl/[id]] Main update failed, attempting fallback:", updateError);
-        // Fallback: si l'erreur est liée à une colonne manquante (code 42703 dans Postgres)
+        console.warn("[PUT /api/edl/[id]] Update failed:", updateError);
         if ((updateError as any).code === '42703') {
-          console.log("[PUT /api/edl/[id]] Retrying without new columns...");
-          const { error: fallbackError } = await supabase
+          const { error: fallbackError } = await serviceClient
             .from("edl")
             .update({ updated_at: new Date().toISOString() })
             .eq("id", edlId);
@@ -234,16 +196,14 @@ export async function PUT(
       }
     } catch (err) {
       console.error("[PUT /api/edl/[id]] DB Update Exception:", err);
-      // On continue pour les sections même si le header échoue
     }
 
-    // 3. Mettre à jour les sections (items)
+    // Mettre à jour les sections (items)
     if (sections && Array.isArray(sections) && sections.length > 0) {
       console.log(`[PUT /api/edl/${edlId}] Updating ${sections.length} sections`);
       try {
         for (const section of sections) {
           if (!section.items || !Array.isArray(section.items)) {
-            console.warn(`[PUT /api/edl/${edlId}] Section ${section.name || 'unnamed'} has no items or invalid items`);
             continue;
           }
           
@@ -256,30 +216,28 @@ export async function PUT(
             };
 
             if (item.id && !String(item.id).startsWith("temp_")) {
-              // Update
-              const { error: itemError } = await supabase
+              const { error: itemError } = await serviceClient
                 .from("edl_items")
                 .update(itemData as any)
                 .eq("id", item.id);
               if (itemError) {
-                console.error(`[PUT /api/edl/${edlId}] Error updating item ${item.id}:`, itemError);
+                console.error(`[PUT /api/edl/${edlId}] Item update error:`, itemError);
               }
             } else {
-              // Insert
-              const { error: itemError } = await supabase
+              const { error: itemError } = await serviceClient
                 .from("edl_items")
                 .insert({
                   ...itemData,
                   edl_id: edlId,
                 } as any);
               if (itemError) {
-                console.error(`[PUT /api/edl/${edlId}] Error inserting item:`, itemError);
+                console.error(`[PUT /api/edl/${edlId}] Item insert error:`, itemError);
               }
             }
           }
         }
       } catch (err) {
-        console.error(`[PUT /api/edl/${edlId}] Exception in sections processing:`, err);
+        console.error(`[PUT /api/edl/${edlId}] Sections exception:`, err);
       }
     }
 
@@ -295,6 +253,7 @@ export async function PUT(
 
 /**
  * DELETE /api/edl/[id] - Supprimer un EDL
+ * SOTA 2026: Utilise le helper centralisé pour la vérification des permissions
  */
 export async function DELETE(
   request: Request,
@@ -311,85 +270,68 @@ export async function DELETE(
     }
 
     const edlId = params.id;
+    const serviceClient = createServiceClient();
 
-    // 1. Récupérer l'EDL et vérifier son statut
-    const { data: edl, error: edlError } = await supabase
-      .from("edl")
-      .select(`
-        id,
-        status,
-        property_id,
-        lease:leases(property:properties(owner_id))
-      `)
-      .eq("id", edlId as any)
-      .single();
-
-    if (edlError || !edl) {
-      return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
-    }
-
-    // 2. Vérifier les permissions (Doit être le propriétaire)
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id as any)
-      .single();
-
+    // Récupérer le profil
+    const profile = await getUserProfile(serviceClient, user.id);
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const edlData = edl as any;
-    const ownerId = edlData.lease?.property?.owner_id || edlData.property_id; // Supporte les 2 cas
+    // Vérifier les permissions avec le helper SOTA
+    const accessResult = await verifyEDLAccess({
+      edlId,
+      userId: user.id,
+      profileId: profile.id,
+      profileRole: profile.role
+    }, serviceClient);
 
-    // Si on a récupéré le owner_id via le join ou direct property_id
-    let actualOwnerId = ownerId;
-    if (typeof ownerId === 'object' && ownerId !== null) {
-      // Cas où property_id est un objet suite au join
-      actualOwnerId = (ownerId as any).owner_id;
+    if (!accessResult.authorized) {
+      return NextResponse.json(
+        { error: accessResult.reason || "Accès non autorisé" },
+        { status: accessResult.edl ? 403 : 404 }
+      );
     }
 
-    // Si on n'a toujours pas le owner_id, on le cherche via property_id
-    if (!actualOwnerId && edlData.property_id) {
-      const { data: prop } = await supabase.from("properties").select("owner_id").eq("id", edlData.property_id).single();
-      actualOwnerId = prop?.owner_id;
+    // Seul le propriétaire ou admin peut supprimer
+    if (accessResult.accessType !== "owner" && accessResult.accessType !== "admin" && accessResult.accessType !== "creator") {
+      return NextResponse.json(
+        { error: "Seul le propriétaire peut supprimer cet EDL" },
+        { status: 403 }
+      );
     }
 
-    if (actualOwnerId !== profile.id) {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
-
-    // 3. Interdire la suppression d'un EDL signé
-    if (edlData.status === "signed") {
+    // Interdire la suppression d'un EDL signé
+    if (accessResult.edl.status === "signed") {
       return NextResponse.json(
         { error: "Impossible de supprimer un état des lieux déjà signé" },
         { status: 400 }
       );
     }
 
-    // 4. Supprimer l'EDL (Cascade s'occupera des items et signatures en DB)
-    const { error: deleteError } = await supabase
+    // Supprimer l'EDL
+    const { error: deleteError } = await serviceClient
       .from("edl")
       .delete()
-      .eq("id", edlId as any);
+      .eq("id", edlId);
 
     if (deleteError) throw deleteError;
 
-    // 5. Journaliser l'action
-    await supabase.from("audit_log").insert({
+    // Journaliser
+    await serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "edl_deleted",
       entity_type: "edl",
       entity_id: edlId,
-      metadata: { status: edlData.status },
+      metadata: { status: accessResult.edl.status },
     } as any);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    console.error("[DELETE /api/edl/[id]] Error:", error);
     return NextResponse.json(
       { error: error.message || "Erreur serveur" },
       { status: 500 }
     );
   }
 }
-
