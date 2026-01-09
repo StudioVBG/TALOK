@@ -41,7 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UnifiedFAB } from "@/components/layout/unified-fab";
 import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
-import { Home, FileText, CreditCard, Wrench } from "lucide-react";
+// Note: Home, FileText, CreditCard, Wrench déjà importés ci-dessus
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
