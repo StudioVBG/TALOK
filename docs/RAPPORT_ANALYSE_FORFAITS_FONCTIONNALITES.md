@@ -341,7 +341,116 @@ export async function checkFeatureAccess(
 
 ---
 
-## 8. Annexes
+## 8. Analyse exhaustive par page (100%)
+
+### 8.1 Pages nécessitant un gating URGENT
+
+| Page | Feature requise | Plan min | État actuel | Action |
+|------|-----------------|----------|-------------|--------|
+| `/owner/work-orders/page.tsx` | `work_orders` | Confort | ❌ **AUCUN GATING** | Ajouter `<PlanGate feature="work_orders">` |
+| `/owner/providers/page.tsx` | `providers_management` | Pro | ❌ **AUCUN GATING** | Ajouter `<PlanGate feature="providers_management">` |
+| `/owner/indexation/page.tsx` | `irl_revision` | Confort | ❌ **AUCUN GATING** | Ajouter `<PlanGate feature="irl_revision">` |
+| `/owner/copro/charges/page.tsx` | `copro_module` | Enterprise L+ | ❌ **AUCUN GATING** | Ajouter `<PlanGate feature="copro_module">` |
+| `/owner/copro/regularisation/page.tsx` | `copro_module` | Enterprise L+ | ❌ **AUCUN GATING** | Ajouter `<PlanGate feature="copro_module">` |
+| `/owner/analytics/page.tsx` | `owner_reports` | Confort | ❌ **AUCUN GATING** | Ajouter `<PlanGate feature="owner_reports">` |
+| `/owner/leases/new/ColocationConfig.tsx` | `colocation` | Confort | ❌ **AUCUN GATING** | Ajouter `<PlanGate feature="colocation">` |
+
+### 8.2 Composants nécessitant un gating conditionnel
+
+| Composant | Feature | Contexte | Action |
+|-----------|---------|----------|--------|
+| `LeaseTypeCards.tsx` | `colocation` | Option colocation | Désactiver si pas feature |
+| `PropertySelector.tsx` | `multi_units` | Multi-lots | Désactiver si pas feature |
+| `SignersClient.tsx` | `signatures` | Envoi signature | Vérifier quota avant envoi |
+| `ScoringDashboard.tsx` | `scoring_tenant` | Dashboard scoring | Gate complet |
+| `ScoreDecisionPanel.tsx` | `scoring_tenant` | Décision scoring | Gate inline |
+
+### 8.3 API Routes sans validation de subscription
+
+| Route API | Feature/Limite à vérifier | État |
+|-----------|---------------------------|------|
+| `POST /api/properties` | `max_properties` | ❌ **Aucune vérification** |
+| `POST /api/leases` | `max_leases` | ❌ **Aucune vérification** |
+| `POST /api/signatures/send` | `signatures_monthly_quota` | ⚠️ Tracking sans blocage |
+| `POST /api/work-orders` | `work_orders` | ❌ **Aucune vérification** |
+| `POST /api/indexation` | `irl_revision` | ❌ **Aucune vérification** |
+| `GET /api/copro/*` | `copro_module` | ❌ **Aucune vérification** |
+| `POST /api/scoring/*` | `scoring_tenant` | ❌ **Aucune vérification** |
+
+### 8.4 Features additionnelles (non dans FeatureKey mais utilisées)
+
+Ces features sont utilisées dans les plans mais ne sont pas dans le type `FeatureKey` :
+
+| Feature | Utilisée dans | Devrait être gatée |
+|---------|---------------|-------------------|
+| `open_banking_level` | Plans (basic/advanced/premium) | Différencier les niveaux |
+| `roles_permissions` | Pro+ | Gating page settings/team |
+| `activity_log` | Pro+ | Gating page logs |
+| `work_orders_planning` | Pro+ | Gating planning dans work orders |
+| `scoring_advanced` | Pro+ | Différencier scoring basic/advanced |
+| `white_label_level` | Enterprise M+ | Différencier basic/full |
+| `sla_guarantee` | Enterprise | Informatif uniquement |
+| `account_manager_type` | Enterprise | Informatif uniquement |
+| `multi_mandants` | Enterprise | Gating si fonctionnalité existe |
+| `channel_manager` | Enterprise | Gating si fonctionnalité existe |
+
+### 8.5 Base de données - Vérifications manquantes
+
+**Aucun trigger de blocage n'existe** pour les limites. Le schéma actuel :
+- ✅ Compteurs automatiques (`properties_count`, `leases_count`)
+- ❌ Pas de `RAISE EXCEPTION` si limite dépassée
+- ❌ Pas de RLS policy basée sur les limites
+
+**Migration SQL requise** :
+
+```sql
+-- Trigger pour bloquer l'ajout de biens au-delà de la limite
+CREATE OR REPLACE FUNCTION enforce_property_limit()
+RETURNS TRIGGER AS $$
+DECLARE
+  current_count INTEGER;
+  max_allowed INTEGER;
+  plan_slug TEXT;
+BEGIN
+  -- Récupérer le plan et la limite
+  SELECT s.properties_count, sp.max_properties, s.plan_slug
+  INTO current_count, max_allowed, plan_slug
+  FROM subscriptions s
+  JOIN subscription_plans sp ON sp.slug = s.plan_slug
+  WHERE s.owner_id = NEW.owner_id;
+
+  -- Vérifier la limite (sauf si illimité = -1)
+  IF max_allowed != -1 AND current_count >= max_allowed THEN
+    RAISE EXCEPTION 'Limite de biens atteinte pour le forfait %. Passez à un forfait supérieur.', plan_slug;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_property_limit_before_insert
+BEFORE INSERT ON properties
+FOR EACH ROW EXECUTE FUNCTION enforce_property_limit();
+```
+
+---
+
+## 9. Score de couverture du gating
+
+| Catégorie | Couvert | Total | % |
+|-----------|---------|-------|---|
+| **Features UI** | 2 | 25 | **8%** |
+| **Limites UI** | 2 | 6 | **33%** |
+| **Limites Backend** | 0 | 6 | **0%** |
+| **API Routes** | 0 | 10+ | **0%** |
+
+### Score global : **~10%** 🔴
+
+**Interprétation** : Le système de gating est bien architecturé mais presque non implémenté. 90% des fonctionnalités payantes sont accessibles gratuitement.
+
+---
+
+## 10. Annexes
 
 ### A. Liste complète des FeatureKeys
 
