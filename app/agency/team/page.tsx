@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * TeamPage - Gestion de l'équipe agence
+ * SOTA 2026: Feature multi_users requiert Confort+
+ */
+
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -14,6 +19,7 @@ import {
   Trash2,
   UserPlus,
 } from "lucide-react";
+import { PlanGate } from "@/components/subscription";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +123,7 @@ export default function TeamPage() {
   );
 
   return (
+    <PlanGate feature="multi_users" mode="blur">
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -305,6 +312,7 @@ export default function TeamPage() {
         })}
       </div>
     </motion.div>
+    </PlanGate>
   );
 }
 

@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * ConnectedAccountsList - Liste des comptes bancaires connectés
+ * SOTA 2026: Feature bank_reconciliation requiert Confort+
+ */
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +16,7 @@ import { bankConnectService } from "../services/bank-connect.service";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PlanGate } from "@/components/subscription";
 
 export function ConnectedAccountsList() {
   const [connections, setConnections] = useState<BankConnection[]>([]);
@@ -48,6 +54,7 @@ export function ConnectedAccountsList() {
 
   if (connections.length === 0) {
     return (
+      <PlanGate feature="bank_reconciliation" mode="blur">
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -61,10 +68,12 @@ export function ConnectedAccountsList() {
           <BankConnectButton />
         </CardContent>
       </Card>
+      </PlanGate>
     );
   }
 
   return (
+    <PlanGate feature="bank_reconciliation" mode="blur">
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Comptes connectés</h3>
@@ -134,6 +143,7 @@ export function ConnectedAccountsList() {
         ))}
       </div>
     </div>
+    </PlanGate>
   );
 }
 
