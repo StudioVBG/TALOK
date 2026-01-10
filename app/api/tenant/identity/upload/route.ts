@@ -4,13 +4,14 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 /**
  * POST /api/tenant/identity/upload
  * Upload de CNI pour le renouvellement (locataire authentifié)
  */
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     // Vérifier l'authentification
     const supabase = await createClient();
@@ -252,5 +253,5 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

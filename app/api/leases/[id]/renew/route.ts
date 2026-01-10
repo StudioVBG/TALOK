@@ -4,7 +4,8 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * POST /api/leases/[id]/renew - Renouveler un bail
@@ -16,10 +17,11 @@ import { NextResponse } from "next/server";
  * 
  * Le bail actuel passe en statut "renewed" et le nouveau en "draft"
  */
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -236,17 +238,18 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * GET /api/leases/[id]/renew - Obtenir les informations de renouvellement
  * 
  * Retourne les données nécessaires pour préremplir le formulaire de renouvellement
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -354,5 +357,5 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

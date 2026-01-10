@@ -2,10 +2,11 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { generateCode } from "@/lib/helpers/code-generator";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * Extrait le code département depuis un code postal
@@ -40,7 +41,7 @@ const initSchema = z.object({
   ville: z.string().optional(),
 });
 
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     
@@ -154,5 +155,5 @@ export async function POST(request: Request) {
     console.error("Erreur inattendue:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 

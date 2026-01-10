@@ -2,8 +2,9 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { propertySchema } from "@/lib/validations";
 import { validatePropertyData, safeValidatePropertyData } from "@/lib/validations/property-validator";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
@@ -33,9 +34,9 @@ type SupabaseDbClient = ServiceSupabaseClient | TypedSupabaseClient;
  */
 export const maxDuration = 20;
 
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   const startTime = Date.now();
-  
+
   try {
     // ✅ VALIDATION: Valider les query params avec gestion d'erreur
     const url = new URL(request.url);
@@ -307,7 +308,7 @@ export async function GET(request: Request) {
     // ✅ GESTION ERREURS: Utiliser handleApiError pour une gestion uniforme
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);
 
 async function fetchPropertyMedia(
   serviceClient: ServiceSupabaseClient | TypedSupabaseClient,
@@ -571,7 +572,7 @@ const propertyDraftSchema = z.object({
   usage_principal: usagePrincipalEnum.optional(),
 });
 
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error, supabase } = await getAuthenticatedUser(request);
@@ -702,4 +703,4 @@ export async function POST(request: Request) {
     // ✅ GESTION ERREURS: Utiliser handleApiError pour une gestion uniforme
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);

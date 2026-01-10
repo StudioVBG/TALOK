@@ -2,10 +2,11 @@ export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
-export async function POST(request: Request) {
+async function handlePOST(request: NextRequest) {
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: "2024-10-28.acacia",
@@ -86,3 +87,4 @@ export async function POST(request: Request) {
   }
 }
 
+export const POST = withApiSecurity(handlePOST, securityPresets.payment);

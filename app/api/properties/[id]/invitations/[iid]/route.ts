@@ -3,15 +3,17 @@ export const runtime = 'nodejs';
 
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * DELETE /api/properties/[id]/invitations/[iid] - Révoquer un code d'invitation
  */
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; iid: string } }
-) {
+export const DELETE = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string; iid: string } }
+) => {
+  const params = context?.params || { id: '', iid: '' };
   try {
     const supabase = await createClient();
     const {
@@ -108,7 +110,7 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 
 

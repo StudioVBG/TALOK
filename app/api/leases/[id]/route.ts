@@ -4,7 +4,8 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { LeaseUpdateSchema, getMaxDepotLegal, getMaxDepotMois } from "@/lib/validations/lease-financial";
 import { SIGNER_ROLES, isTenantRole, isOwnerRole } from "@/lib/constants/roles";
 
@@ -16,9 +17,13 @@ interface RouteParams {
  * GET /api/leases/[id]
  * Récupérer les détails d'un bail
  */
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
   try {
-    const { id: leaseId } = await params;
+    const params = context?.params || { id: '' };
+    const leaseId = params.id;
 
     if (!leaseId) {
       return NextResponse.json(
@@ -187,15 +192,19 @@ export async function GET(request: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * PUT /api/leases/[id]
  * Modifier un bail
  */
-export async function PUT(request: Request, { params }: RouteParams) {
+export const PUT = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
   try {
-    const { id: leaseId } = await params;
+    const params = context?.params || { id: '' };
+    const leaseId = params.id;
     const body = await request.json();
 
     if (!leaseId) {
@@ -376,7 +385,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * DELETE /api/leases/[id]
@@ -385,9 +394,13 @@ export async function PUT(request: Request, { params }: RouteParams) {
  * ✅ SOTA 2026: Seuls les baux en brouillon ou en attente de signature peuvent être supprimés.
  * Les baux actifs/terminés/archivés doivent être conservés pour l'historique légal.
  */
-export async function DELETE(request: Request, { params }: RouteParams) {
+export const DELETE = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
   try {
-    const { id: leaseId } = await params;
+    const params = context?.params || { id: '' };
+    const leaseId = params.id;
     
     if (!leaseId) {
       return NextResponse.json(
@@ -614,4 +627,4 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);

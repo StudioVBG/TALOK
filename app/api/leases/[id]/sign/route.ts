@@ -7,7 +7,8 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
@@ -16,10 +17,11 @@ import { SIGNER_ROLES, isOwnerRole, isTenantRole, LEASE_STATUS } from "@/lib/con
 /**
  * POST /api/leases/[id]/sign - Signer un bail avec Audit Trail conforme
  */
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   const leaseId = params.id;
   
   try {
@@ -298,7 +300,7 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * Vérifie les droits de signature d'un utilisateur sur un bail

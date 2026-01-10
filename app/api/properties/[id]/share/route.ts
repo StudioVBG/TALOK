@@ -1,10 +1,11 @@
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getBaseUrl } from "@/lib/helpers/url";
 import { getServiceRoleClient } from "@/lib/server/service-role-client";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 interface ShareRequestBody {
   expiresInHours?: number;
@@ -56,10 +57,11 @@ async function getAuthorizedContext(request: Request, propertyId: string) {
   return { serviceClient, profile, property };
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const { serviceClient, profile, property } = await getAuthorizedContext(request, params.id);
 
@@ -117,12 +119,13 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const { serviceClient } = await getAuthorizedContext(request, params.id);
     const baseUrl = getBaseUrl().replace(/\/$/, "");
@@ -152,6 +155,6 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 

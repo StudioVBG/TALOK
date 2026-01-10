@@ -2,14 +2,16 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
@@ -409,5 +411,5 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

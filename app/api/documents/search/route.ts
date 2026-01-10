@@ -2,17 +2,18 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * GET /api/documents/search - Recherche full-text dans les documents
- * 
+ *
  * Query params:
  * - q: Texte de recherche
  * - category: Catégorie (optionnel)
  * - limit: Nombre max de résultats (défaut: 50)
  */
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const {
@@ -126,5 +127,5 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

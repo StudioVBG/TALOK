@@ -1,14 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  request: Request,
+export const GET = withApiSecurity(async (
+  request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -71,6 +72,6 @@ export async function GET(
     console.error("[Lease Documents] Error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 
 

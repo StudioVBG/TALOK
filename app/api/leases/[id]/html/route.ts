@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { LeaseTemplateService } from "@/lib/templates/bail";
 import type { TypeBail, BailComplet, DiagnosticsTechniques } from "@/lib/templates/bail/types";
 
@@ -15,10 +16,11 @@ import type { TypeBail, BailComplet, DiagnosticsTechniques } from "@/lib/templat
  * GET /api/leases/[id]/html - Récupérer le HTML d'un bail (signé ou non)
  * ✅ FIX: Ajout des diagnostics et fallback pour locataire sans profil
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -336,4 +338,4 @@ export async function GET(
     console.error("[Lease HTML] Error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);

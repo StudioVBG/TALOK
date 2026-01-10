@@ -1,10 +1,11 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
-export async function GET() {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   const supabase = await createClient();
   
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -22,9 +23,9 @@ export async function GET() {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 
-  return NextResponse.json({ 
+  return NextResponse.json({
     lease: data?.lease || null,
     property: data?.property || null
   });
-}
+}, securityPresets.authenticated);
 

@@ -1,13 +1,14 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ticketSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError } from "@/lib/helpers/api-error";
 import { createClient } from "@supabase/supabase-js";
 import type { ProfileRow, TicketRow } from "@/lib/supabase/typed-client";
 import { ticketsQuerySchema, validateQueryParams } from "@/lib/validations/params";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * GET /api/tickets - Récupérer les tickets de l'utilisateur
@@ -15,7 +16,7 @@ import { ticketsQuerySchema, validateQueryParams } from "@/lib/validations/param
  */
 export const maxDuration = 10;
 
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const { user, error } = await getAuthenticatedUser(request);
 
@@ -177,14 +178,14 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 import { maintenanceAiService } from "@/features/tickets/services/maintenance-ai.service";
 
 /**
  * POST /api/tickets - Créer un nouveau ticket
  */
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const { user, error: authError } = await getAuthenticatedUser(request);
 
@@ -273,5 +274,5 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);
 

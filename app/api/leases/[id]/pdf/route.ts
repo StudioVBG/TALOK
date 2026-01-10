@@ -15,7 +15,8 @@ export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { LeaseTemplateService } from "@/lib/templates/bail";
 import type { TypeBail, BailComplet } from "@/lib/templates/bail/types";
 import crypto from "crypto";
@@ -24,9 +25,13 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
   try {
-    const { id: leaseId } = await params;
+    const params = context?.params || { id: '' };
+    const leaseId = params.id;
 
     if (!leaseId) {
       return NextResponse.json(
@@ -370,7 +375,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 // ============================================
 // HELPERS

@@ -2,15 +2,16 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { invoiceSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { invoicesQuerySchema, validateQueryParams } from "@/lib/validations/params";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 /**
  * GET /api/invoices - Récupérer les factures de l'utilisateur
  */
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
@@ -117,12 +118,12 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * POST /api/invoices - Créer une nouvelle facture
  */
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
@@ -261,5 +262,5 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

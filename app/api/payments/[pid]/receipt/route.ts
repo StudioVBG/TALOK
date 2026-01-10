@@ -7,16 +7,17 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextRequest, NextResponse } from "next/server";
 import { generateReceiptPDF, type ReceiptData } from "@/lib/services/receipt-generator";
 import crypto from "crypto";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * GET /api/payments/[pid]/receipt - Télécharger la quittance PDF d'un paiement
- * 
+ *
  * PATTERN: Création unique → Lectures multiples
  * 1. Vérifier si quittance existe déjà dans documents
  * 2. Si oui → retourner URL signée (LECTURE)
  * 3. Si non → générer, stocker, puis retourner (CRÉATION UNIQUE)
  */
-export async function GET(
+async function handleGET(
   request: NextRequest,
   { params }: { params: { pid: string } }
 ) {
@@ -288,3 +289,5 @@ export async function GET(
     );
   }
 }
+
+export const GET = withApiSecurity(handleGET, securityPresets.payment);

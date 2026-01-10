@@ -134,10 +134,10 @@ export const PATCH = withApiSecurity(async (
 /**
  * GET /api/admin/users/[id] - Récupérer un utilisateur
  */
-export async function GET(
-  request: Request,
+export const GET = withApiSecurity(async (
+  request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
   try {
     const supabase = await createClient();
     const {
@@ -179,5 +179,5 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

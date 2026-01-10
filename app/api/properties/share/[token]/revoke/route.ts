@@ -2,19 +2,21 @@ export const runtime = 'nodejs';
 
 // @ts-nocheck
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getServiceRoleClient } from "@/lib/server/service-role-client";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 interface RevokePayload {
   reason?: string;
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: { token: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { token: string } }
+) => {
+  const params = context?.params || { token: '' };
   try {
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);
 
@@ -102,6 +104,6 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 

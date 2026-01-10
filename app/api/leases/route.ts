@@ -1,11 +1,12 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { LeaseCreateSchema, getMaxDepotLegal } from "@/lib/validations/lease-financial";
 import { SIGNER_ROLES } from "@/lib/constants/roles";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * Configuration Vercel: maxDuration: 10s
@@ -25,7 +26,7 @@ interface LeaseSignerWithLeaseId {
   lease_id: string;
 }
 
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
@@ -278,7 +279,7 @@ export async function GET(request: Request) {
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);
 
 interface PropertyWithOwner {
   id: string;
@@ -293,7 +294,7 @@ interface LeaseResult {
 /**
  * POST /api/leases - Créer un nouveau bail
  */
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
@@ -520,5 +521,5 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);
 

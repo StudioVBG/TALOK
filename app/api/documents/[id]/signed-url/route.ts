@@ -3,7 +3,8 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -11,13 +12,14 @@ interface RouteParams {
 
 /**
  * GET /api/documents/[id]/signed-url
- * 
+ *
  * Génère une URL signée temporaire (1h) pour accéder au fichier
  * 🔒 Vérifie les permissions avant de générer l'URL
  */
-export async function GET(request: Request, { params }: RouteParams) {
+export const GET = withApiSecurity(async (request: NextRequest, context?: { params?: Record<string, string> }) => {
+  const params = context?.params || {};
+  const id = params.id || '';
   try {
-    const { id } = await params;
 
     const supabase = await createClient();
     const {
@@ -138,5 +140,5 @@ export async function GET(request: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

@@ -1,14 +1,16 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { ensureDocumentGallerySupport, getDocumentGallerySupportMessage } from "@/lib/server/document-gallery";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const PATCH = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const { user, error } = await getAuthenticatedUser(request);
 
@@ -205,7 +207,7 @@ export async function PATCH(
       { status: error.status || 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 
 

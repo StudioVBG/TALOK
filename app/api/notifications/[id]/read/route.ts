@@ -8,12 +8,13 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 interface RouteParams {
   params: { id: string };
 }
 
-export async function POST(request: NextRequest, { params }: RouteParams) {
+const postHandler = async (request: NextRequest, { params }: RouteParams) => {
   try {
     const supabase = await createClient();
     const {
@@ -54,5 +55,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     console.error('Error in POST /api/notifications/[id]/read:', error);
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
-}
+};
+
+export const POST = withApiSecurity(postHandler, securityPresets.authenticated);
 

@@ -1,17 +1,18 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * GET /api/documents/view?path=xxx
- * 
+ *
  * Retourne le contenu d'un document stocké dans Supabase Storage.
  * Vérifie les droits d'accès avant de servir le document.
  */
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const url = new URL(request.url);
     const storagePath = url.searchParams.get("path");
@@ -120,7 +121,7 @@ export async function GET(request: Request) {
     console.error("[View] Erreur:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 
 
 

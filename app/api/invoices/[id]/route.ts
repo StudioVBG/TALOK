@@ -3,18 +3,20 @@ export const runtime = 'nodejs';
 
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { handleApiError } from "@/lib/helpers/api-error";
 import { invoiceSchema } from "@/lib/validations";
 import type { InvoiceUpdate, InvoiceRow, ProfileRow } from "@/lib/supabase/typed-client";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 /**
  * GET /api/invoices/[id] - Récupérer une facture par ID
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const {
@@ -40,15 +42,16 @@ export async function GET(
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * PUT /api/invoices/[id] - Mettre à jour une facture
  */
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const PUT = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const {
@@ -116,15 +119,16 @@ export async function PUT(
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * DELETE /api/invoices/[id] - Supprimer une facture
  */
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const DELETE = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const {
@@ -168,5 +172,5 @@ export async function DELETE(
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);
 

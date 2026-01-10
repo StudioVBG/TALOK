@@ -4,14 +4,15 @@ export const dynamic = 'force-dynamic';
 /**
  * API Route pour calculer les frais de paiement
  * GET /api/payments/calculate-fees?amount=1000
- * 
+ *
  * Retourne les frais Stripe + plateforme pour un montant donné
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { calculatePaymentFees, calculateDepositAndBalance, DEFAULT_FEE_CONFIG } from '@/lib/types/intervention-flow';
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const amountStr = searchParams.get('amount');
@@ -89,3 +90,4 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export const GET = withApiSecurity(handleGET, securityPresets.payment);

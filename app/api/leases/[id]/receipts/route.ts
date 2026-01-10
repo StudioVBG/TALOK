@@ -3,7 +3,8 @@ export const dynamic = 'force-dynamic';
 
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { pdfService } from "@/lib/services/pdf.service";
 
 async function generateReceiptPDF(receipt: any): Promise<string | null> {
@@ -55,10 +56,11 @@ async function generateReceiptPDF(receipt: any): Promise<string | null> {
 /**
  * GET /api/leases/[id]/receipts - Récupérer les quittances d'un bail
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const {
@@ -153,5 +155,5 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

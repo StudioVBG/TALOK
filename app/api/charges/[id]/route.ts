@@ -6,8 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { chargeSchema } from "@/lib/validations";
 import { handleApiError } from "@/lib/helpers/api-error";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+const getHandler = async (request: Request, { params }: { params: { id: string } }) => {
   try {
     const supabase = await createClient();
     const {
@@ -28,9 +29,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+};
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+const putHandler = async (request: Request, { params }: { params: { id: string } }) => {
   try {
     const supabase = await createClient();
     const {
@@ -55,9 +56,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+};
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+const deleteHandler = async (request: Request, { params }: { params: { id: string } }) => {
   try {
     const supabase = await createClient();
     const {
@@ -74,5 +75,8 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+};
 
+export const GET = withApiSecurity(getHandler, securityPresets.authenticated);
+export const PUT = withApiSecurity(putHandler, securityPresets.authenticated);
+export const DELETE = withApiSecurity(deleteHandler, securityPresets.authenticated);

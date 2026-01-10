@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * POST /api/documents/check
@@ -31,7 +32,7 @@ import { NextRequest, NextResponse } from "next/server";
  *   metadata?: object
  * }
  */
-export async function POST(request: NextRequest) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -159,7 +160,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * GET /api/documents/check
@@ -167,7 +168,7 @@ export async function POST(request: NextRequest) {
  * Recherche rapide par query params
  * Ex: /api/documents/check?type=quittance&payment_id=xxx
  */
-export async function GET(request: NextRequest) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -231,5 +232,5 @@ export async function GET(request: NextRequest) {
     console.error("[documents/check] Erreur GET:", error);
     return NextResponse.json({ exists: false });
   }
-}
+}, securityPresets.authenticated);
 

@@ -4,7 +4,8 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { createClient, createClientFromRequest } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
@@ -53,7 +54,7 @@ const inviteSchema = z.object({
  * POST /api/leases/invite
  * Créer un bail draft et envoyer une invitation au locataire
  */
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     // Essayer d'abord avec createClient standard
     let supabase = await createClient();
@@ -541,4 +542,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);

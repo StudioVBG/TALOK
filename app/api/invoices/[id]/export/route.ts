@@ -3,16 +3,18 @@ export const dynamic = 'force-dynamic';
 
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 /**
  * @deprecated Utiliser POST /api/exports avec type='invoice' pour un export asynchrone sécurisé.
  * GET /api/invoices/[iid]/export - Exporter une facture en CSV (BTN-U03)
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const {
@@ -107,5 +109,5 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

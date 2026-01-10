@@ -4,11 +4,12 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 /**
  * POST /api/charges/reconciliation - Lancer une régularisation des charges (batch ou par bail)
  */
-export async function POST(request: Request) {
+const postHandler = async (request: Request) => {
   try {
     const supabase = await createClient();
     const {
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+};
 
 async function calculateReconciliation(supabase: any, leaseId: string, year: number) {
   // Calculer le total des charges réelles pour l'année
@@ -215,3 +216,4 @@ async function calculateReconciliation(supabase: any, leaseId: string, year: num
   return reconciliation;
 }
 
+export const POST = withApiSecurity(postHandler, securityPresets.authenticated);

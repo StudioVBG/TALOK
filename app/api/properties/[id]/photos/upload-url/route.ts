@@ -2,18 +2,20 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { photoUploadRequestSchema } from "@/lib/validations";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 const PHOTOS_BUCKET = "property-photos";
 const ROOMLESS_ALLOWED_TAGS = new Set(["vue_generale", "exterieur"]);
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const { user, error } = await getAuthenticatedUser(request);
 
@@ -236,4 +238,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);

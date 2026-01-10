@@ -5,8 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
@@ -69,3 +70,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export const POST = withApiSecurity(handlePOST, securityPresets.payment);

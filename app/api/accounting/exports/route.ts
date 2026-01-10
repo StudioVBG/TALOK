@@ -4,12 +4,13 @@ export const dynamic = 'force-dynamic';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 /**
  * @deprecated Utiliser POST /api/exports avec type='accounting' pour un export asynchrone sécurisé.
  * GET /api/accounting/exports - Exporter la comptabilité (CSV/Excel)
  */
-export async function GET(request: Request) {
+const getHandler = async (request: Request) => {
   try {
     const supabase = await createClient();
     const {
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+};
 
 function formatCSV(invoices: any[], payments: any[]): string {
   const rows = ["Date,Type,Libellé,Montant,Statut"];
@@ -130,3 +131,4 @@ function formatFEC(invoices: any[], payments: any[]): any[] {
   return entries;
 }
 
+export const GET = withApiSecurity(getHandler, securityPresets.authenticated);

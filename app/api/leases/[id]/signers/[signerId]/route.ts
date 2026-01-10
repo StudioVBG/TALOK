@@ -4,15 +4,17 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * GET /api/leases/[id]/signers/[signerId] - Récupérer un signataire spécifique
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string; signerId: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string; signerId: string } }
+) => {
+  const params = context?.params || { id: '', signerId: '' };
   try {
     const supabase = await createClient();
     const {
@@ -61,15 +63,16 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * DELETE /api/leases/[id]/signers/[signerId] - Supprimer un signataire
  */
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; signerId: string } }
-) {
+export const DELETE = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string; signerId: string } }
+) => {
+  const params = context?.params || { id: '', signerId: '' };
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -190,4 +193,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);

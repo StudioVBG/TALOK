@@ -4,16 +4,18 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
 
 /**
  * POST /api/leases/[id]/signers/[signerId]/resend - Relancer une invitation
  */
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string; signerId: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string; signerId: string } }
+) => {
+  const params = context?.params || { id: '', signerId: '' };
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -179,5 +181,5 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

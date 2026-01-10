@@ -1,11 +1,12 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { documentSchema } from "@/lib/validations";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 
 function isImage(mimeType: string) {
@@ -14,7 +15,7 @@ function isImage(mimeType: string) {
 
 import { documentAiService } from "@/features/documents/services/document-ai.service";
 
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const { user, error } = await getAuthenticatedUser(request);
 
@@ -320,7 +321,7 @@ export async function POST(request: Request) {
       { status: error.status || 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 
 

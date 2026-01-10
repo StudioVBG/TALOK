@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 /**
  * API SOTA 2026: Données de consommation du locataire
- * 
+ *
  * Retourne les relevés de compteurs (électricité, eau, gaz) pour le bail actif.
  * Si aucune donnée n'existe, retourne hasData: false.
  */
@@ -26,7 +27,7 @@ interface ConsumptionResponse {
   lastUpdate: string | null;
 }
 
-export async function GET() {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -184,5 +185,5 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

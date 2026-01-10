@@ -4,11 +4,12 @@ export const dynamic = 'force-dynamic';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 /**
  * GET /api/accounting/gl - Récupérer le grand-livre agrégé
  */
-export async function GET(request: Request) {
+const getHandler = async (request: Request) => {
   try {
     const supabase = await createClient();
     const {
@@ -100,5 +101,7 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+};
+
+export const GET = withApiSecurity(getHandler, securityPresets.authenticated);
 

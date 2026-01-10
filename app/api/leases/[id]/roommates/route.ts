@@ -3,7 +3,8 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { z } from "zod";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
 
@@ -32,10 +33,11 @@ const updateRoommateSchema = z.object({
  * GET /api/leases/[id]/roommates
  * Récupérer tous les colocataires d'un bail
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -86,16 +88,17 @@ export async function GET(
     console.error("Erreur API roommates GET:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * POST /api/leases/[id]/roommates
  * Ajouter un nouveau colocataire
  */
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -291,23 +294,24 @@ export async function POST(
 
   } catch (error: any) {
     console.error("Erreur API roommates POST:", error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
     }
-    
+
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * PATCH /api/leases/[id]/roommates
  * Mettre à jour un colocataire (départ, changement de poids, etc.)
  */
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const PATCH = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -391,11 +395,11 @@ export async function PATCH(
 
   } catch (error: any) {
     console.error("Erreur API roommates PATCH:", error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
     }
-    
+
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);

@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 import { z } from "zod";
 
 const sendPushSchema = z.object({
@@ -26,7 +27,7 @@ const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:support@talok.fr";
 
-export async function POST(request: NextRequest) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createRouteHandlerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -161,10 +162,10 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 // Route GET pour récupérer la clé publique VAPID
-export async function GET() {
+export const GET = withApiSecurity(async () => {
   if (!VAPID_PUBLIC_KEY) {
     return NextResponse.json(
       { error: "VAPID non configuré" },
@@ -175,7 +176,7 @@ export async function GET() {
   return NextResponse.json({
     publicKey: VAPID_PUBLIC_KEY,
   });
-}
+}, securityPresets.authenticated);
 
 
 

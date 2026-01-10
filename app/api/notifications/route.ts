@@ -9,8 +9,9 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
-export async function GET(request: NextRequest) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const {
@@ -77,9 +78,9 @@ export async function GET(request: NextRequest) {
     console.error('Error in GET /api/notifications:', error);
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 
-export async function POST(request: NextRequest) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const {
@@ -149,4 +150,4 @@ export async function POST(request: NextRequest) {
     console.error('Error in POST /api/notifications:', error);
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);

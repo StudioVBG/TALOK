@@ -3,8 +3,9 @@ export const runtime = 'nodejs';
 
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { z } from "zod";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 const profileUpdateSchema = z.object({
   profileId: z.string().uuid(),
@@ -25,7 +26,7 @@ const profileUpdateSchema = z.object({
  * PUT /api/tenant/profile
  * Met à jour le profil du locataire
  */
-export async function PUT(request: Request) {
+export const PUT = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
 
@@ -160,13 +161,13 @@ export async function PUT(request: Request) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * GET /api/tenant/profile
  * Récupère le profil du locataire connecté
  */
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
 
@@ -236,7 +237,7 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 
 

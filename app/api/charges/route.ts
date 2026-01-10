@@ -6,11 +6,12 @@ import { NextResponse } from "next/server";
 import { chargeSchema } from "@/lib/validations";
 import { handleApiError } from "@/lib/helpers/api-error";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-export async function GET(request: Request) {
+const getHandler = async (request: Request) => {
   try {
     const supabase = await createClient();
     const {
@@ -115,9 +116,9 @@ export async function GET(request: Request) {
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+};
 
-export async function POST(request: Request) {
+const postHandler = async (request: Request) => {
   try {
     const supabase = await createClient();
     const {
@@ -177,5 +178,7 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+};
 
+export const GET = withApiSecurity(getHandler, securityPresets.authenticated);
+export const POST = withApiSecurity(postHandler, securityPresets.authenticated);

@@ -3,16 +3,18 @@ export const runtime = 'nodejs';
 
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * POST /api/tickets/[tid]/quotes/[qid]/approve - Approuver un devis (BTN-P15)
  */
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string; qid: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string; qid: string } }
+) => {
+  const params = context?.params || { id: '', qid: '' };
   try {
     const supabase = await createClient();
     const supabaseClient = getTypedSupabaseClient(supabase);
@@ -135,5 +137,5 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

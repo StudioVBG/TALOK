@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { z } from "zod";
 
 const createRegularizationSchema = z.object({
@@ -26,12 +27,13 @@ const createRegularizationSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function GET(
+export const GET = withApiSecurity(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  context?: { params?: { id: string } }
+) => {
   try {
-    const { id: leaseId } = await params;
+    const params = context?.params || { id: '' };
+    const leaseId = params.id;
     const searchParams = request.nextUrl.searchParams;
     const periodStart = searchParams.get("period_start") || getDefaultPeriodStart();
     const periodEnd = searchParams.get("period_end") || getDefaultPeriodEnd();
@@ -63,14 +65,15 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
-export async function POST(
+export const POST = withApiSecurity(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  context?: { params?: { id: string } }
+) => {
   try {
-    const { id: leaseId } = await params;
+    const params = context?.params || { id: '' };
+    const leaseId = params.id;
     const supabase = await createRouteHandlerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -168,7 +171,7 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 function getDefaultPeriodStart(): string {
   const now = new Date();

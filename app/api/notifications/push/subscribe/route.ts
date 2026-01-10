@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 import { z } from "zod";
 
 const subscribeSchema = z.object({
@@ -20,7 +21,7 @@ const subscribeSchema = z.object({
   browser: z.string().optional(),
 });
 
-export async function POST(request: NextRequest) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createRouteHandlerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -110,9 +111,9 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createRouteHandlerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -142,7 +143,7 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 
 

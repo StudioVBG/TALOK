@@ -3,15 +3,17 @@ export const runtime = 'nodejs';
 
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * GET /api/properties/[id]/meters/[meterId] - Détails d'un compteur
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string; meterId: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string; meterId: string } }
+) => {
+  const params = context?.params || { id: '', meterId: '' };
   try {
     const supabase = await createClient();
     const {
@@ -55,15 +57,16 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * PATCH /api/properties/[id]/meters/[meterId] - Modifier un compteur
  */
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string; meterId: string } }
-) {
+export const PATCH = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string; meterId: string } }
+) => {
+  const params = context?.params || { id: '', meterId: '' };
   try {
     const supabase = await createClient();
     const {
@@ -166,15 +169,16 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * DELETE /api/properties/[id]/meters/[meterId] - Supprimer un compteur
  */
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; meterId: string } }
-) {
+export const DELETE = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string; meterId: string } }
+) => {
+  const params = context?.params || { id: '', meterId: '' };
   try {
     const supabase = await createClient();
     const {
@@ -255,5 +259,5 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

@@ -4,7 +4,8 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { z } from "zod";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
 
@@ -17,10 +18,11 @@ const addSignerSchema = z.object({
 /**
  * GET /api/leases/[id]/signers - Récupérer les signataires d'un bail
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const {
@@ -69,15 +71,16 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * POST /api/leases/[id]/signers - Ajouter un signataire au bail
  */
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -338,4 +341,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);

@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 import { z } from 'zod';
 
 const updatePreferencesSchema = z.object({
@@ -28,7 +29,7 @@ const updatePreferencesSchema = z.object({
   digest_day: z.number().min(0).max(6).optional().nullable(),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const {
@@ -92,9 +93,9 @@ export async function GET(request: NextRequest) {
     console.error('Error in GET /api/notifications/preferences:', error);
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 
-export async function PUT(request: NextRequest) {
+export const PUT = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const {
@@ -152,5 +153,5 @@ export async function PUT(request: NextRequest) {
     console.error('Error in PUT /api/notifications/preferences:', error);
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 

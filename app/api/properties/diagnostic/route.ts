@@ -2,8 +2,9 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * GET /api/properties/diagnostic - Diagnostic complet de l'endpoint /api/properties
@@ -11,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
  * Cet endpoint teste chaque étape isolément et retourne un rapport détaillé
  * pour identifier précisément où l'erreur se produit.
  */
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   const diagnostic: any = {
     timestamp: new Date().toISOString(),
     steps: {},
@@ -268,5 +269,5 @@ export async function GET(request: Request) {
     };
     return NextResponse.json(diagnostic, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 

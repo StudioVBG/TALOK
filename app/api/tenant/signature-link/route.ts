@@ -2,9 +2,10 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 // Génère un token encodé pour la signature
 function generateSignatureToken(leaseId: string, tenantEmail: string): string {
@@ -13,7 +14,7 @@ function generateSignatureToken(leaseId: string, tenantEmail: string): string {
   return Buffer.from(data, "utf-8").toString("base64url");
 }
 
-export async function GET() {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     // Authentifier l'utilisateur
     const supabase = await createClient();
@@ -106,7 +107,7 @@ export async function GET() {
     console.error("[signature-link] Erreur:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 
 
 

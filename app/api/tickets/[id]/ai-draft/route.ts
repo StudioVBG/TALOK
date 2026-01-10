@@ -4,11 +4,13 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { messagingAiService } from "@/features/tickets/services/messaging-ai.service";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
-export async function POST(
+export const POST = withApiSecurity(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const { user, error } = await getAuthenticatedUser(request);
     if (error || !user) {
@@ -16,11 +18,11 @@ export async function POST(
     }
 
     const draft = await messagingAiService.suggestTicketReply(params.id, user.id);
-    
+
     return NextResponse.json({ draft });
   } catch (error: any) {
     console.error("[API] Draft generation failed:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 

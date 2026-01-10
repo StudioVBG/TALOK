@@ -8,10 +8,11 @@ export const dynamic = 'force-dynamic';
  */
 
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
-export async function POST(request: Request) {
+async function handlePOST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
@@ -387,7 +388,7 @@ function convertAmountToWords(amount: number): string {
  * GET /api/payments/cash-receipt
  * Liste les reçus espèces
  */
-export async function GET(request: Request) {
+async function handleGET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
@@ -448,3 +449,5 @@ export async function GET(request: Request) {
   }
 }
 
+export const POST = withApiSecurity(handlePOST, securityPresets.payment);
+export const GET = withApiSecurity(handleGET, securityPresets.payment);

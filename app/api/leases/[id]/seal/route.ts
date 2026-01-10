@@ -1,8 +1,9 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { LeaseTemplateService } from "@/lib/templates/bail/template.service";
 import { mapLeaseToTemplate } from "@/lib/mappers/lease-to-template";
@@ -20,10 +21,11 @@ import { mapLeaseToTemplate } from "@/lib/mappers/lease-to-template";
  * Un bail scellé ne peut plus être modifié (contenu contractuel).
  * Seul le statut peut évoluer (fully_signed → active → terminated).
  */
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   const leaseId = params.id;
   
   try {
@@ -265,20 +267,21 @@ export async function POST(
     
   } catch (error: any) {
     console.error("[Seal] Erreur:", error);
-    return NextResponse.json({ 
-      error: error.message || "Erreur serveur" 
+    return NextResponse.json({
+      error: error.message || "Erreur serveur"
     }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * GET /api/leases/[id]/seal
  * Vérifie si un bail est scellé et retourne ses informations
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   const leaseId = params.id;
   
   try {
@@ -314,7 +317,7 @@ export async function GET(
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 
 
 

@@ -3,15 +3,17 @@ export const runtime = 'nodejs';
 
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * PATCH /api/tickets/[id]/status - Mettre à jour le statut d'un ticket (incluant paused)
  */
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const PATCH = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const supabase = await createClient();
     const {
@@ -145,7 +147,7 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 
 

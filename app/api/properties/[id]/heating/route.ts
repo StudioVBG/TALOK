@@ -1,14 +1,16 @@
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { propertyHeatingSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
@@ -51,12 +53,13 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const PATCH = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
@@ -162,4 +165,4 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);

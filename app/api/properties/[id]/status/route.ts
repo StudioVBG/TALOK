@@ -9,17 +9,19 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 const statusSchema = z.object({
   rental_status: z.enum(["vacant", "end_of_lease", "renovation", "ready_to_rent", "occupied"]),
 });
 
-export async function POST(
+export const POST = withApiSecurity(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
-    const { id } = await params;
+    const id = params.id;
     const supabase = await createServerClient();
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -82,5 +84,5 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

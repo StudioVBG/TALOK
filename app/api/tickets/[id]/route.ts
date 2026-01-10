@@ -3,9 +3,10 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ticketSchema } from "@/lib/validations";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 interface Profile {
   id: string;
@@ -36,12 +37,13 @@ interface PropertyOwner {
 /**
  * GET /api/tickets/[id] - Récupérer un ticket par ID
  */
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
-    const { id } = await params;
+    const { id } = params;
     const supabase = await createClient();
     const serviceClient = getServiceClient();
     
@@ -98,17 +100,18 @@ export async function GET(
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * PUT /api/tickets/[id] - Mettre à jour un ticket
  */
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const PUT = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
-    const { id } = await params;
+    const { id } = params;
     const supabase = await createClient();
     const serviceClient = getServiceClient();
     
@@ -182,17 +185,18 @@ export async function PUT(
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * DELETE /api/tickets/[id] - Supprimer un ticket
  */
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
-    const { id } = await params;
+    const { id } = params;
     const supabase = await createClient();
     const serviceClient = getServiceClient();
     
@@ -241,5 +245,5 @@ export async function DELETE(
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, securityPresets.authenticated);
 

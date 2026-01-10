@@ -3,12 +3,13 @@ export const runtime = 'nodejs';
 
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 /**
  * GET /api/notifications/settings - Récupérer les paramètres de notifications
  */
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const {
@@ -33,12 +34,12 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * PATCH /api/notifications/settings - Mettre à jour les paramètres
  */
-export async function PATCH(request: Request) {
+export const PATCH = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const {
@@ -85,5 +86,5 @@ export async function PATCH(request: Request) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 
 /**
  * API SOTA 2026: Calcul du Credit Score Locataire
- * 
+ *
  * Le score est calculé sur une échelle de 300 à 850 (standard FICO) basé sur:
  * - Historique des paiements de loyer (40%)
  * - Ancienneté du bail (20%)
@@ -24,7 +25,7 @@ interface CreditScoreResponse {
   hasData: boolean;
 }
 
-export async function GET() {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -173,5 +174,5 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

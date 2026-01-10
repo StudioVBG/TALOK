@@ -1,9 +1,10 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * POST /api/leases/[id]/activate
@@ -16,10 +17,11 @@ import { getServiceClient } from "@/lib/supabase/service-client";
  * FLUX LÉGAL FRANÇAIS :
  * - Bail signé → EDL d'entrée → Remise des clés → Bail actif
  */
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   const leaseId = params.id;
   
   try {
@@ -282,17 +284,18 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 /**
  * GET /api/leases/[id]/activate
  * 
  * Vérifie si le bail peut être activé et retourne les conditions manquantes
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   const leaseId = params.id;
   
   try {
@@ -393,4 +396,4 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);

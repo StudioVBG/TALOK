@@ -2,9 +2,10 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { z } from "zod";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 const bulkFeaturesSchema = z.object({
   unit_id: z.string().uuid().optional(),
@@ -19,10 +20,11 @@ const bulkFeaturesSchema = z.object({
 /**
  * POST /api/properties/[id]/features/bulk - Ajouter des équipements en masse
  */
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: { id: string } }
+) => {
+  const params = context?.params || { id: '' };
   try {
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);
 
@@ -163,5 +165,5 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 

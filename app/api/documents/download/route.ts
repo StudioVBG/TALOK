@@ -1,17 +1,18 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * GET /api/documents/download?path=xxx
- * 
+ *
  * Télécharge un document stocké dans Supabase Storage.
  * Force le téléchargement (Content-Disposition: attachment).
  */
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const url = new URL(request.url);
     const storagePath = url.searchParams.get("path");
@@ -120,7 +121,7 @@ export async function GET(request: Request) {
     console.error("[Download] Erreur:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+}, securityPresets.authenticated);
 
 
 

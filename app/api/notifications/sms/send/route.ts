@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
+import { withApiSecurity, securityPresets } from "@/lib/api-security";
 import { z } from "zod";
 
 const sendSmsSchema = z.object({
@@ -45,7 +46,7 @@ const SMS_TEMPLATES: Record<string, (data: any) => string> = {
   custom: (data) => data.message || "",
 };
 
-export async function POST(request: NextRequest) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createRouteHandlerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, securityPresets.authenticated);
 
 // Formater un numéro de téléphone pour Twilio
 function formatPhoneNumber(phone: string): string {
