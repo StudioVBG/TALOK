@@ -29,6 +29,7 @@ import {
   Check,
 } from "lucide-react";
 import Link from "next/link";
+import { DemoVideoModalHero } from "@/components/marketing/DemoVideoModal";
 
 interface HeroSectionProps {
   className?: string;
@@ -221,16 +222,7 @@ export function HeroSection({ className }: HeroSectionProps) {
               </Link>
             </Button>
             
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="h-14 px-8 text-lg font-semibold rounded-full border-2 hover:bg-muted/50 transition-all duration-300"
-            >
-              <Link href="/showcase">
-                Voir la démo
-              </Link>
-            </Button>
+            <DemoVideoModalHero />
           </motion.div>
 
           {/* Social proof */}
