@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { AccountingIntegrationService } from "@/features/accounting/services/accounting-integration.service";
 
 /**
  * POST /api/invoices/[id]/mark-paid - Marquer une facture comme payée manuellement
@@ -149,6 +150,49 @@ export async function POST(
     if (updateError) {
       console.error("[mark-paid] Erreur update invoice:", updateError);
       throw updateError;
+    }
+
+    // =============================================
+    // INTÉGRATION COMPTABLE
+    // =============================================
+    try {
+      const accountingService = new AccountingIntegrationService(supabase);
+
+      // Récupérer les informations nécessaires pour la comptabilité
+      const { data: leaseDetails } = await supabase
+        .from("leases")
+        .select(`
+          id,
+          tenant_id,
+          property:properties!inner(
+            owner_id,
+            code_postal
+          )
+        `)
+        .eq("id", invoiceData.lease_id)
+        .single();
+
+      if (leaseDetails) {
+        const propertyData = leaseDetails.property as any;
+
+        await accountingService.recordRentPayment({
+          invoiceId,
+          leaseId: leaseDetails.id,
+          ownerId: propertyData.owner_id,
+          tenantId: leaseDetails.tenant_id,
+          periode: invoiceData.periode,
+          montantLoyer: invoiceData.montant_loyer || 0,
+          montantCharges: invoiceData.montant_charges || 0,
+          montantTotal: paymentAmount,
+          paymentDate: paymentData.date_paiement as string,
+          propertyCodePostal: propertyData.code_postal || "75000",
+        });
+
+        console.log("[mark-paid] Écritures comptables enregistrées pour invoice:", invoiceId);
+      }
+    } catch (accountingError) {
+      // Log mais ne pas bloquer le paiement si la comptabilité échoue
+      console.error("[mark-paid] Erreur comptabilité (non bloquante):", accountingError);
     }
 
     // Émettre un événement
