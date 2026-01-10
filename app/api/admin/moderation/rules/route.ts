@@ -1,12 +1,11 @@
 export const dynamic = "force-dynamic";
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
-// @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 /**
- * GET /api/admin/moderation/rules - Lister les règles de modération
+ * GET /api/admin/moderation/rules - Lister les règles de modération IA
  */
 export async function GET() {
   try {
@@ -22,41 +21,35 @@ export async function GET() {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Accès refusé" },
-        { status: 403 }
-      );
+    if (profile?.role !== "admin") {
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
     // Récupérer les règles depuis la table moderation_rules
     const { data: rules, error } = await supabase
       .from("moderation_rules")
       .select("*")
+      .order("priority", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (error) {
-      // Table n'existe pas encore, retourner un tableau vide
-      console.log("[GET /api/admin/moderation/rules] Table non trouvée, retour tableau vide");
+      console.log("[GET /api/admin/moderation/rules] Table non trouvée:", error.message);
       return NextResponse.json({ rules: [] });
     }
 
     return NextResponse.json({ rules: rules || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/admin/moderation/rules] Erreur:", error);
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : "Erreur serveur";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
 /**
- * POST /api/admin/moderation/rules - Créer une règle de modération
+ * POST /api/admin/moderation/rules - Créer une règle de modération IA
  */
 export async function POST(request: Request) {
   try {
@@ -72,11 +65,10 @@ export async function POST(request: Request) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
+    if (profile?.role !== "admin") {
       return NextResponse.json(
         { error: "Seul l'admin peut créer des règles de modération" },
         { status: 403 }
@@ -84,50 +76,79 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { flow_type, rule_config, is_active = true } = body;
+    const {
+      name,
+      description,
+      flow_type,
+      ai_enabled = true,
+      ai_model = "gpt-4-turbo",
+      ai_threshold = 0.75,
+      rule_config = {},
+      auto_action = "flag",
+      is_active = true,
+      priority = 50,
+      escalation_delay_hours = 24,
+      notify_admin = true,
+    } = body;
 
-    if (!flow_type || !rule_config) {
+    if (!name || !flow_type) {
       return NextResponse.json(
-        { error: "flow_type et rule_config requis" },
+        { error: "name et flow_type sont requis" },
         { status: 400 }
       );
     }
 
-    // Créer la règle (à stocker dans une table dédiée ou dans api_providers)
-    // Pour l'instant, on simule
-    const rule = {
-      id: crypto.randomUUID(),
-      flow_type,
-      rule_config,
-      is_active,
-      created_by: user.id,
-      created_at: new Date().toISOString(),
-    };
+    // Créer la règle dans la base
+    const { data: rule, error } = await supabase
+      .from("moderation_rules")
+      .insert({
+        name,
+        description,
+        flow_type,
+        ai_enabled,
+        ai_model,
+        ai_threshold,
+        rule_config,
+        auto_action,
+        is_active,
+        priority,
+        escalation_delay_hours,
+        notify_admin,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[POST /api/admin/moderation/rules] Insert error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
     // Émettre un événement
     await supabase.from("outbox").insert({
-      event_type: "Moderation.Actioned",
+      event_type: "Moderation.RuleCreated",
       payload: {
-        action: "rule_created",
+        rule_id: rule.id,
+        name,
         flow_type,
-        rule_config,
+        ai_enabled,
       },
-    } as any);
+    } as Record<string, unknown>);
 
     // Journaliser
     await supabase.from("audit_log").insert({
       user_id: user.id,
       action: "moderation_rule_created",
       entity_type: "moderation_rule",
-      metadata: { flow_type, rule_config },
-    } as any);
+      entity_id: rule.id,
+      metadata: { name, flow_type, ai_enabled, priority },
+    } as Record<string, unknown>);
 
     return NextResponse.json({ rule });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    console.error("[POST /api/admin/moderation/rules] Erreur:", error);
+    const errorMessage = error instanceof Error ? error.message : "Erreur serveur";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
