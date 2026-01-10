@@ -412,3 +412,260 @@ export interface ExportResponse {
   filename: string;
   count: number;
 }
+
+// ============================================================================
+// DATABASE ENTITY TYPES
+// ============================================================================
+
+/**
+ * Journal comptable (VE, AC, BQ, BM, OD, AN)
+ */
+export interface AccountingJournal {
+  id: string;
+  code: string; // 'VE' | 'AC' | 'BQ' | 'BM' | 'OD' | 'AN'
+  libelle: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Compte du plan comptable
+ */
+export interface AccountingAccount {
+  id: string;
+  numero: string;
+  libelle: string;
+  classe: number; // 1-9
+  sens: 'debit' | 'credit' | 'mixte';
+  is_active: boolean;
+  parent_numero?: string;
+  created_at: string;
+}
+
+/**
+ * Écriture comptable (table accounting_entries)
+ */
+export interface AccountingEntry {
+  id: string;
+  journal_code: string;
+  ecriture_num: string;
+  ecriture_date: string;
+  compte_num: string;
+  compte_lib: string;
+  compte_aux_num?: string;
+  compte_aux_lib?: string;
+  piece_ref: string;
+  piece_date: string;
+  ecriture_lib: string;
+  debit: number;
+  credit: number;
+  ecriture_let?: string;
+  date_let?: string;
+  valid_date?: string;
+  montant_devise: number;
+  idevise: string;
+  owner_id?: string;
+  property_id?: string;
+  invoice_id?: string;
+  payment_id?: string;
+  created_at: string;
+  created_by?: string;
+}
+
+/**
+ * Compte mandant (propriétaire ou locataire)
+ */
+export interface MandantAccount {
+  id: string;
+  account_number: string;
+  account_type: 'proprietaire' | 'locataire';
+  profile_id: string;
+  property_id?: string;
+  solde_debit: number;
+  solde_credit: number;
+  solde_net: number; // Calculated: credit - debit
+  last_movement_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Régularisation des charges (table charge_regularisations)
+ */
+export interface ChargeRegularisation {
+  id: string;
+  lease_id: string;
+  property_id: string;
+  tenant_id: string;
+  // Colonnes françaises (originales)
+  annee: number;
+  date_debut: string;
+  date_fin: string;
+  provisions_versees: number;
+  charges_reelles: number;
+  solde: number;
+  detail_charges: object;
+  statut: 'draft' | 'sent' | 'paid' | 'disputed' | 'cancelled';
+  // Colonnes anglaises (aliases)
+  year: number;
+  period_start: string;
+  period_end: string;
+  provisions_received: number;
+  actual_charges: number;
+  balance: number;
+  status: 'draft' | 'sent' | 'applied' | 'paid' | 'disputed' | 'cancelled';
+  details?: {
+    charges_reelles?: ChargeReelleDetail[];
+    detail_provisions?: { periode: string; montant: number }[];
+    prorata?: { jours_occupation: number; jours_annee: number; ratio: number };
+  };
+  date_emission?: string;
+  date_echeance?: string;
+  date_paiement?: string;
+  nouvelle_provision?: number;
+  date_effet_nouvelle_provision?: string;
+  applied_at?: string;
+  invoice_id?: string;
+  credit_note_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
+export interface ChargeReelleDetail {
+  type: string;
+  libelle: string;
+  montant_total: number;
+  quote_part: number;
+  prorata?: number;
+  montant_du?: number;
+}
+
+/**
+ * Opération sur dépôt de garantie
+ */
+export interface DepositOperation {
+  id: string;
+  lease_id: string;
+  property_id: string;
+  tenant_id: string;
+  owner_id: string;
+  operation_type: 'reception' | 'restitution' | 'retenue' | 'complement';
+  montant: number;
+  motif_retenue?: string;
+  detail_retenues?: {
+    type: string;
+    libelle: string;
+    montant: number;
+  }[];
+  payment_id?: string;
+  edl_sortie_id?: string;
+  date_operation: string;
+  date_limite_restitution?: string;
+  statut: 'pending' | 'completed' | 'disputed' | 'cancelled';
+  documents?: { type: string; url: string }[];
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
+/**
+ * Rapprochement bancaire
+ */
+export interface BankReconciliation {
+  id: string;
+  periode: string; // YYYY-MM
+  date_reconciliation: string;
+  compte_type: 'agence' | 'mandant';
+  solde_banque: number;
+  solde_comptable: number;
+  ecart: number; // Calculated: banque - comptable
+  operations_non_pointees?: {
+    id: string;
+    date: string;
+    libelle: string;
+    montant: number;
+    type: 'debit' | 'credit';
+  }[];
+  statut: 'draft' | 'validated' | 'locked';
+  is_balanced: boolean; // Calculated: |ecart| < 0.01
+  validated_at?: string;
+  validated_by?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
+
+/**
+ * Charge récurrente sur propriété (table charges)
+ */
+export interface PropertyCharge {
+  id: string;
+  property_id: string;
+  type: 'eau' | 'electricite' | 'copro' | 'taxe' | 'ordures' | 'assurance' | 'travaux' | 'energie' | 'autre';
+  libelle?: string;
+  montant: number;
+  periodicite: 'mensuelle' | 'trimestrielle' | 'annuelle';
+  refacturable_locataire: boolean;
+  quote_part?: number; // 0-100
+  date_debut?: string;
+  date_fin?: string;
+  categorie_charge?: 'charges_locatives' | 'charges_non_recuperables' | 'taxes' | 'travaux_proprietaire' | 'travaux_locataire' | 'assurances' | 'energie';
+  eligible_pinel?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
+// SERVICE INPUT/OUTPUT TYPES
+// ============================================================================
+
+export interface RecordPaymentInput {
+  invoiceId: string;
+  leaseId: string;
+  ownerId: string;
+  tenantId: string;
+  periode: string;
+  montantLoyer: number;
+  montantCharges: number;
+  montantTotal: number;
+  paymentDate: string;
+  propertyCodePostal?: string;
+}
+
+export interface HonorairesResult {
+  montantHT: number;
+  tauxTVA: number;
+  tvaMontant: number;
+  totalTTC: number;
+  netProprietaire: number;
+}
+
+export interface RegularisationInput {
+  leaseId: string;
+  annee: number;
+  chargesReelles?: ChargeReelleDetail[];
+}
+
+export interface DepositOperationInput {
+  leaseId: string;
+  operationType: 'reception' | 'restitution' | 'retenue' | 'complement';
+  montant: number;
+  dateOperation: string;
+  motifRetenue?: string;
+  detailRetenues?: { type: string; libelle: string; montant: number }[];
+  notes?: string;
+}
+
+export interface ReconciliationInput {
+  periode: string;
+  compteType: 'agence' | 'mandant';
+  soldeBanque: number;
+  soldeComptable: number;
+  operationsNonPointees?: object[];
+}
