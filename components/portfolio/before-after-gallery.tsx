@@ -75,8 +75,9 @@ export function BeforeAfterGallery({ items, className }: BeforeAfterGalleryProps
           size="icon"
           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={() => setIsFullscreen(true)}
+          aria-label="Afficher en plein écran"
         >
-          <Maximize2 className="h-4 w-4" />
+          <Maximize2 className="h-4 w-4" aria-hidden="true" />
         </Button>
         
         {/* Navigation */}
@@ -87,24 +88,26 @@ export function BeforeAfterGallery({ items, className }: BeforeAfterGalleryProps
               size="icon"
               className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={handlePrev}
+              aria-label="Image précédente"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
             </Button>
             <Button
               variant="secondary"
               size="icon"
               className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={handleNext}
+              aria-label="Image suivante"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-5 w-5" aria-hidden="true" />
             </Button>
           </>
         )}
         
         {/* Indicateur */}
         {items.length > 1 && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-            {items.map((_, idx) => (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1" role="tablist">
+            {items.map((item, idx) => (
               <button
                 key={idx}
                 className={cn(
@@ -112,6 +115,9 @@ export function BeforeAfterGallery({ items, className }: BeforeAfterGalleryProps
                   idx === currentIndex ? 'bg-white' : 'bg-white/50'
                 )}
                 onClick={() => setCurrentIndex(idx)}
+                aria-label={`Aller à l'image ${idx + 1}: ${item.title}`}
+                aria-selected={idx === currentIndex}
+                role="tab"
               />
             ))}
           </div>
@@ -178,16 +184,18 @@ export function BeforeAfterGallery({ items, className }: BeforeAfterGalleryProps
                   size="icon"
                   className="absolute left-4 top-1/2 -translate-y-1/2"
                   onClick={handlePrev}
+                  aria-label="Image précédente"
                 >
-                  <ChevronLeft className="h-6 w-6" />
+                  <ChevronLeft className="h-6 w-6" aria-hidden="true" />
                 </Button>
                 <Button
                   variant="secondary"
                   size="icon"
                   className="absolute right-4 top-1/2 -translate-y-1/2"
                   onClick={handleNext}
+                  aria-label="Image suivante"
                 >
-                  <ChevronRight className="h-6 w-6" />
+                  <ChevronRight className="h-6 w-6" aria-hidden="true" />
                 </Button>
               </>
             )}

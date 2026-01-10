@@ -1,3 +1,15 @@
+/**
+ * StatsCardEnhanced - Composant spécialisé avec sparkline
+ *
+ * Ce composant est une extension du KpiCard unifié (@/components/ui/kpi-card)
+ * avec support pour les graphiques sparkline via recharts.
+ *
+ * Utiliser ce composant uniquement quand les sparklines sont nécessaires.
+ * Pour les cas simples, utiliser KpiCard depuis @/components/ui/kpi-card.
+ *
+ * @see @/components/ui/kpi-card pour le composant KPI unifié standard
+ */
+
 "use client";
 
 import * as React from "react";

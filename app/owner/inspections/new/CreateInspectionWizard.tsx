@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -51,6 +50,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Lease {
   id: string;
@@ -211,7 +211,8 @@ const METER_TYPES = [
 export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
   const router = useRouter();
   const { toast } = useToast();
-  
+  const { confirm, ConfirmDialogComponent } = useConfirmDialog();
+
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -595,9 +596,15 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
     });
   };
 
-  const removeItemFromRoom = (roomIndex: number, itemIndex: number) => {
-    if (!window.confirm("Supprimer cet élément de l'inspection ?")) return;
-    
+  const removeItemFromRoom = async (roomIndex: number, itemIndex: number) => {
+    const confirmed = await confirm({
+      title: "Supprimer cet élément ?",
+      description: "L'élément sera retiré de l'inspection. Cette action peut être annulée en ajoutant à nouveau l'élément.",
+      variant: "danger",
+    });
+
+    if (!confirmed) return;
+
     setRoomsData((prev) => {
       const updated = [...prev];
       updated[roomIndex].items.splice(itemIndex, 1);
@@ -1641,6 +1648,9 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           </Button>
         )}
       </div>
+
+      {/* Dialogue de confirmation accessible */}
+      <ConfirmDialogComponent />
     </div>
   );
 }

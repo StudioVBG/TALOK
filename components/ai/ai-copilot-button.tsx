@@ -51,12 +51,13 @@ export function AICopilotButton({
                 onClick={openChat}
                 size="lg"
                 className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+                aria-label="Demander à Tom"
               >
                 <motion.div
                   animate={{ rotate: [0, 10, -10, 0] }}
                   transition={{ repeat: Infinity, duration: 2, repeatDelay: 3 }}
                 >
-                  <Sparkles className="h-6 w-6" />
+                  <Sparkles className="h-6 w-6" aria-hidden="true" />
                 </motion.div>
               </Button>
             </motion.div>
@@ -76,10 +77,11 @@ export function AICopilotButton({
         onClick={openChat}
         variant="outline"
         className={cn("gap-2", className)}
+        aria-label="Demander à Tom"
       >
-        <Sparkles className="h-4 w-4" />
+        <Sparkles className="h-4 w-4" aria-hidden="true" />
         {showLabel && <span>Demander à Tom</span>}
-        <kbd className="ml-2 px-1.5 py-0.5 bg-muted rounded text-xs hidden sm:inline">
+        <kbd className="ml-2 px-1.5 py-0.5 bg-muted rounded text-xs hidden sm:inline" aria-hidden="true">
           ⌘K
         </kbd>
       </Button>
@@ -96,8 +98,9 @@ export function AICopilotButton({
             variant="ghost"
             size="icon"
             className={className}
+            aria-label="Demander à Tom"
           >
-            <MessageCircle className="h-5 w-5" />
+            <MessageCircle className="h-5 w-5" aria-hidden="true" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>

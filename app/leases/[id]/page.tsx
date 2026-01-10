@@ -1,21 +1,49 @@
 "use client";
-// @ts-nocheck
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/protected-route";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { leasesService } from "@/features/leases/services/leases.service";
 import { LeaseSigners } from "@/features/leases/components/lease-signers";
 import { InvoicesList } from "@/features/billing/components/invoices-list";
 import { GenerateInvoiceForm } from "@/features/billing/components/generate-invoice-form";
 import { DocumentsList } from "@/features/documents/components/documents-list";
-import type { Lease } from "@/lib/types";
+import type { Lease, LeaseType, LeaseStatus } from "@/lib/types";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import { useAuth } from "@/lib/hooks/use-auth";
+
+// Labels pour les types de bail
+const LEASE_TYPE_LABELS: Record<LeaseType, string> = {
+  nu: "Bail nu",
+  meuble: "Bail meublé",
+  colocation: "Colocation",
+  saisonnier: "Saisonnier",
+  bail_mobilite: "Bail mobilité",
+  commercial_3_6_9: "Commercial 3/6/9",
+  commercial_derogatoire: "Commercial dérogatoire",
+  professionnel: "Professionnel",
+  contrat_parking: "Contrat parking",
+  location_gerance: "Location gérance",
+};
+
+// Labels pour les statuts de bail
+const LEASE_STATUS_LABELS: Record<LeaseStatus, string> = {
+  draft: "Brouillon",
+  sent: "Envoyé",
+  pending_signature: "En attente de signature",
+  partially_signed: "Partiellement signé",
+  pending_owner_signature: "Attente signature propriétaire",
+  fully_signed: "Entièrement signé",
+  active: "Actif",
+  notice_given: "Préavis en cours",
+  amended: "Avenant en cours",
+  terminated: "Terminé",
+  archived: "Archivé",
+};
 
 function LeaseDetailPageContent() {
   const params = useParams();
@@ -26,29 +54,30 @@ function LeaseDetailPageContent() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    if (params.id) {
-      fetchLease(params.id as string);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
-
-  async function fetchLease(id: string) {
+  const fetchLease = useCallback(async (id: string) => {
     try {
       setLoading(true);
       const data = await leasesService.getLeaseById(id);
       setLease(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Impossible de charger le bail.";
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger le bail.",
+        description: message,
         variant: "destructive",
       });
       router.push("/owner/leases");
     } finally {
       setLoading(false);
     }
-  }
+  }, [toast, router]);
+
+  useEffect(() => {
+    const id = params.id;
+    if (typeof id === "string") {
+      fetchLease(id);
+    }
+  }, [params.id, fetchLease]);
 
   if (loading) {
     return (
@@ -65,24 +94,12 @@ function LeaseDetailPageContent() {
     return null;
   }
 
-  const getTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      nu: "Bail nu",
-      meuble: "Bail meublé",
-      colocation: "Colocation",
-      saisonnier: "Saisonnier",
-    };
-    return labels[type] || type;
+  const getTypeLabel = (type: LeaseType): string => {
+    return LEASE_TYPE_LABELS[type] || type;
   };
 
-  const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      draft: "Brouillon",
-      pending_signature: "En attente de signature",
-      active: "Actif",
-      terminated: "Terminé",
-    };
-    return labels[status] || status;
+  const getStatusLabel = (status: LeaseStatus): string => {
+    return LEASE_STATUS_LABELS[status] || status;
   };
 
   return (
@@ -170,7 +187,10 @@ function LeaseDetailPageContent() {
         </Card>
       </div>
 
-      <LeaseSigners leaseId={lease.id} onUpdate={() => fetchLease(params.id as string)} />
+      <LeaseSigners leaseId={lease.id} onUpdate={() => {
+        const id = params.id;
+        if (typeof id === "string") fetchLease(id);
+      }} />
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">

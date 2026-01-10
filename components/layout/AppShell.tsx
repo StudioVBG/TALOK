@@ -278,8 +278,13 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
                 </div>
                 <h1 className="text-lg font-bold">{APP_CONFIG.name}</h1>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
-                <X className="h-5 w-5" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Fermer le menu"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
               </Button>
             </div>
             <nav className="px-4 py-4 space-y-6">
@@ -328,8 +333,9 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
             size="icon"
             className="lg:hidden"
             onClick={() => setSidebarOpen(true)}
+            aria-label="Ouvrir le menu"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-6 w-6" aria-hidden="true" />
           </Button>
 
           {/* Page Title */}
@@ -347,19 +353,28 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                aria-label={theme === "dark" ? "Passer au mode clair" : "Passer au mode sombre"}
               >
                 {theme === "dark" ? (
-                  <Sun className="h-5 w-5" />
+                  <Sun className="h-5 w-5" aria-hidden="true" />
                 ) : (
-                  <Moon className="h-5 w-5" />
+                  <Moon className="h-5 w-5" aria-hidden="true" />
                 )}
               </Button>
             )}
 
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-rose-500 rounded-full" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              aria-label="Notifications"
+            >
+              <Bell className="h-5 w-5" aria-hidden="true" />
+              <span
+                className="absolute top-1.5 right-1.5 h-2 w-2 bg-rose-500 rounded-full"
+                aria-hidden="true"
+              />
             </Button>
 
             {/* User Menu */}

@@ -204,24 +204,240 @@ export type ChargeCategorie =
   | "assurances"
   | "energie";
 
+// ============================================
+// DOCUMENT TYPES - SOTA 2026
+// Synchronisé avec migration 20251228000000_documents_sota.sql
+// ============================================
 export type DocumentType =
+  // Contrats
   | "bail"
-  | "EDL_entree"
-  | "EDL_sortie"
+  | "avenant"
+  | "engagement_garant"
+  | "bail_signe_locataire"
+  | "bail_signe_proprietaire"
+
+  // Identité
+  | "piece_identite"
+  | "cni_recto"
+  | "cni_verso"
+  | "passeport"
+  | "titre_sejour"
+
+  // Finance
   | "quittance"
-  | "attestation_assurance"
+  | "facture"
+  | "rib"
+  | "avis_imposition"
+  | "bulletin_paie"
   | "attestation_loyer"
   | "justificatif_revenus"
-  | "piece_identite"
-  | "cni_recto"      // CNI recto (propriétaire ou locataire selon owner_id/tenant_id)
-  | "cni_verso"      // CNI verso (propriétaire ou locataire selon owner_id/tenant_id)
-  | "annexe_pinel"
-  | "etat_travaux"
+
+  // Assurance
+  | "attestation_assurance"
+  | "assurance_pno"
+
+  // Diagnostics
+  | "diagnostic"
+  | "dpe"
+  | "diagnostic_gaz"
+  | "diagnostic_electricite"
+  | "diagnostic_plomb"
   | "diagnostic_amiante"
+  | "diagnostic_termites"
   | "diagnostic_tertiaire"
   | "diagnostic_performance"
+  | "erp"
+
+  // États des lieux
+  | "EDL_entree"
+  | "EDL_sortie"
+  | "inventaire"
+
+  // Candidature locataire
+  | "candidature_identite"
+  | "candidature_revenus"
+  | "candidature_domicile"
+  | "candidature_garantie"
+
+  // Garant
+  | "garant_identite"
+  | "garant_revenus"
+  | "garant_domicile"
+  | "garant_engagement"
+
+  // Prestataire
+  | "devis"
+  | "ordre_mission"
+  | "rapport_intervention"
+
+  // Copropriété
+  | "taxe_fonciere"
+  | "taxe_sejour"
+  | "copropriete"
+  | "proces_verbal"
+  | "appel_fonds"
+
+  // Divers
+  | "annexe_pinel"
+  | "etat_travaux"
   | "publication_jal"
+  | "consentement"
+  | "courrier"
+  | "photo"
   | "autre";
+
+// Catégories de documents pour classification automatique
+export type DocumentCategory =
+  | "contrat"
+  | "identite"
+  | "finance"
+  | "assurance"
+  | "diagnostic"
+  | "edl"
+  | "candidature"
+  | "garant"
+  | "prestataire"
+  | "copropriete"
+  | "autre";
+
+// Mapping type -> catégorie
+export const DOCUMENT_TYPE_TO_CATEGORY: Record<DocumentType, DocumentCategory> = {
+  // Contrats
+  bail: "contrat",
+  avenant: "contrat",
+  engagement_garant: "contrat",
+  bail_signe_locataire: "contrat",
+  bail_signe_proprietaire: "contrat",
+
+  // Identité
+  piece_identite: "identite",
+  cni_recto: "identite",
+  cni_verso: "identite",
+  passeport: "identite",
+  titre_sejour: "identite",
+
+  // Finance
+  quittance: "finance",
+  facture: "finance",
+  rib: "finance",
+  avis_imposition: "finance",
+  bulletin_paie: "finance",
+  attestation_loyer: "finance",
+  justificatif_revenus: "finance",
+
+  // Assurance
+  attestation_assurance: "assurance",
+  assurance_pno: "assurance",
+
+  // Diagnostics
+  diagnostic: "diagnostic",
+  dpe: "diagnostic",
+  diagnostic_gaz: "diagnostic",
+  diagnostic_electricite: "diagnostic",
+  diagnostic_plomb: "diagnostic",
+  diagnostic_amiante: "diagnostic",
+  diagnostic_termites: "diagnostic",
+  diagnostic_tertiaire: "diagnostic",
+  diagnostic_performance: "diagnostic",
+  erp: "diagnostic",
+
+  // EDL
+  EDL_entree: "edl",
+  EDL_sortie: "edl",
+  inventaire: "edl",
+
+  // Candidature
+  candidature_identite: "candidature",
+  candidature_revenus: "candidature",
+  candidature_domicile: "candidature",
+  candidature_garantie: "candidature",
+
+  // Garant
+  garant_identite: "garant",
+  garant_revenus: "garant",
+  garant_domicile: "garant",
+  garant_engagement: "garant",
+
+  // Prestataire
+  devis: "prestataire",
+  ordre_mission: "prestataire",
+  rapport_intervention: "prestataire",
+
+  // Copropriété
+  taxe_fonciere: "copropriete",
+  taxe_sejour: "copropriete",
+  copropriete: "copropriete",
+  proces_verbal: "copropriete",
+  appel_fonds: "copropriete",
+
+  // Divers
+  annexe_pinel: "autre",
+  etat_travaux: "autre",
+  publication_jal: "autre",
+  consentement: "autre",
+  courrier: "autre",
+  photo: "autre",
+  autre: "autre",
+};
+
+// Labels pour l'affichage
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  bail: "Contrat de bail",
+  avenant: "Avenant au bail",
+  engagement_garant: "Engagement de caution",
+  bail_signe_locataire: "Bail signé (locataire)",
+  bail_signe_proprietaire: "Bail signé (propriétaire)",
+  piece_identite: "Pièce d'identité",
+  cni_recto: "CNI (recto)",
+  cni_verso: "CNI (verso)",
+  passeport: "Passeport",
+  titre_sejour: "Titre de séjour",
+  quittance: "Quittance de loyer",
+  facture: "Facture",
+  rib: "RIB",
+  avis_imposition: "Avis d'imposition",
+  bulletin_paie: "Bulletin de paie",
+  attestation_loyer: "Attestation de loyer",
+  justificatif_revenus: "Justificatif de revenus",
+  attestation_assurance: "Attestation d'assurance",
+  assurance_pno: "Assurance PNO",
+  diagnostic: "Diagnostic",
+  dpe: "DPE",
+  diagnostic_gaz: "Diagnostic gaz",
+  diagnostic_electricite: "Diagnostic électricité",
+  diagnostic_plomb: "Diagnostic plomb",
+  diagnostic_amiante: "Diagnostic amiante",
+  diagnostic_termites: "Diagnostic termites",
+  diagnostic_tertiaire: "Diagnostic tertiaire",
+  diagnostic_performance: "Diagnostic de performance",
+  erp: "État des risques (ERP)",
+  EDL_entree: "État des lieux d'entrée",
+  EDL_sortie: "État des lieux de sortie",
+  inventaire: "Inventaire mobilier",
+  candidature_identite: "Candidature - Identité",
+  candidature_revenus: "Candidature - Revenus",
+  candidature_domicile: "Candidature - Domicile",
+  candidature_garantie: "Candidature - Garantie",
+  garant_identite: "Garant - Identité",
+  garant_revenus: "Garant - Revenus",
+  garant_domicile: "Garant - Domicile",
+  garant_engagement: "Garant - Engagement",
+  devis: "Devis",
+  ordre_mission: "Ordre de mission",
+  rapport_intervention: "Rapport d'intervention",
+  taxe_fonciere: "Taxe foncière",
+  taxe_sejour: "Taxe de séjour",
+  copropriete: "Document copropriété",
+  proces_verbal: "Procès-verbal",
+  appel_fonds: "Appel de fonds",
+  annexe_pinel: "Annexe Pinel",
+  etat_travaux: "État des travaux",
+  publication_jal: "Publication JAL",
+  consentement: "Consentement",
+  courrier: "Courrier",
+  photo: "Photo",
+  autre: "Autre document",
+};
 
 // Interfaces pour les entités principales
 
