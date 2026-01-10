@@ -11,10 +11,15 @@ import { bankConnectService } from "../services/bank-connect.service";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDeleteDialog } from "@/lib/hooks/use-confirm";
 
 export function ConnectedAccountsList() {
   const [connections, setConnections] = useState<BankConnection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; connection: BankConnection | null }>({
+    open: false,
+    connection: null,
+  });
 
   useEffect(() => {
     loadConnections();
@@ -32,13 +37,15 @@ export function ConnectedAccountsList() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Voulez-vous vraiment déconnecter cette banque ?")) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.connection) return;
     try {
-      await bankConnectService.deleteConnection(id);
-      setConnections((prev) => prev.filter((c) => c.id !== id));
+      await bankConnectService.deleteConnection(deleteConfirm.connection.id);
+      setConnections((prev) => prev.filter((c) => c.id !== deleteConfirm.connection?.id));
     } catch (error) {
       console.error("Failed to delete", error);
+    } finally {
+      setDeleteConfirm({ open: false, connection: null });
     }
   };
 
@@ -125,7 +132,8 @@ export function ConnectedAccountsList() {
                 variant="ghost"
                 size="icon"
                 className="text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                onClick={() => handleDelete(connection.id)}
+                onClick={() => setDeleteConfirm({ open: true, connection })}
+                aria-label={`Déconnecter ${connection.institution_name}`}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -133,6 +141,15 @@ export function ConnectedAccountsList() {
           </Card>
         ))}
       </div>
+
+      <ConfirmDeleteDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+        onConfirm={handleDeleteConfirm}
+        title="Déconnecter cette banque"
+        description="Cette action supprimera la connexion bancaire. Vous pourrez reconnecter votre compte ultérieurement."
+        itemName={deleteConfirm.connection?.institution_name ?? "Banque"}
+      />
     </div>
   );
 }

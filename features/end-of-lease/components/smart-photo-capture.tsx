@@ -2,18 +2,19 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
-import { 
-  Camera, 
-  X, 
-  ChevronLeft, 
-  ChevronRight, 
-  Check, 
-  Trash2, 
+import {
+  Camera,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Trash2,
   Upload,
   Loader2,
   RotateCcw,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Hand
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -208,11 +209,12 @@ export function SmartPhotoCapture({
     )}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent absolute top-0 left-0 right-0 z-20">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onClose} 
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
           className="text-white hover:bg-white/20"
+          aria-label="Fermer le mode capture"
         >
           <X className="h-6 w-6" />
         </Button>
@@ -222,10 +224,10 @@ export function SmartPhotoCapture({
             {photos.length === 0 ? "Mode capture" : `${photos.length} photo${photos.length > 1 ? "s" : ""}`}
           </p>
           {photos.length > 0 && (
-            <p className="font-semibold text-xs">
-              {unassignedCount > 0 
-                ? `${unassignedCount} à assigner` 
-                : "✓ Toutes assignées"}
+            <p className="font-semibold text-xs flex items-center gap-1">
+              {unassignedCount > 0
+                ? `${unassignedCount} à assigner`
+                : <><Check className="h-3 w-3" aria-hidden="true" /><span>Toutes assignées</span></>}
             </p>
           )}
         </div>
@@ -236,6 +238,7 @@ export function SmartPhotoCapture({
             size="icon"
             onClick={() => setIsFullscreen(!isFullscreen)}
             className="text-white hover:bg-white/20"
+            aria-label={isFullscreen ? "Quitter le plein écran" : "Passer en plein écran"}
           >
             {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
           </Button>
@@ -296,6 +299,7 @@ export function SmartPhotoCapture({
                     <button
                       key={room.id}
                       onClick={() => handlePreSelectRoom(room.id)}
+                      aria-pressed={preSelectedRoom === room.id}
                       className={cn(
                         "px-3 py-1.5 rounded-full text-sm transition-all",
                         preSelectedRoom === room.id
@@ -303,7 +307,7 @@ export function SmartPhotoCapture({
                           : "bg-white/10 text-white/80 hover:bg-white/20"
                       )}
                     >
-                      {ROOM_ICONS[room.type] || "📍"} {room.name}
+                      <span aria-hidden="true">{ROOM_ICONS[room.type] || "📍"}</span> {room.name}
                     </button>
                   ))}
                 </div>
@@ -380,18 +384,20 @@ export function SmartPhotoCapture({
 
                   {/* Badge pièce assignée */}
                   {currentPhoto.roomId && (
-                    <motion.div 
+                    <motion.div
                       initial={{ y: -20, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       className="absolute top-4 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-full flex items-center gap-2 shadow-lg"
+                      role="status"
+                      aria-label={`Photo assignée à ${rooms.find((r) => r.id === currentPhoto.roomId)?.name}`}
                     >
-                      <span className="text-lg">
+                      <span className="text-lg" aria-hidden="true">
                         {ROOM_ICONS[rooms.find((r) => r.id === currentPhoto.roomId)?.type || ""] || "📍"}
                       </span>
                       <span className="font-medium">
                         {rooms.find((r) => r.id === currentPhoto.roomId)?.name}
                       </span>
-                      <Check className="w-4 h-4" />
+                      <Check className="w-4 h-4" aria-hidden="true" />
                     </motion.div>
                   )}
 
@@ -414,8 +420,10 @@ export function SmartPhotoCapture({
                       className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white text-center"
                       animate={{ y: [0, -15, 0] }}
                       transition={{ repeat: Infinity, duration: 1.2 }}
+                      role="status"
+                      aria-label="Glissez vers le haut pour assigner cette photo à une pièce"
                     >
-                      <div className="text-4xl mb-2">👆</div>
+                      <Hand className="h-10 w-10 mx-auto mb-2 rotate-180" aria-hidden="true" />
                       <p className="text-sm font-medium bg-black/50 px-3 py-1 rounded-full">
                         Glissez pour assigner
                       </p>
@@ -441,6 +449,7 @@ export function SmartPhotoCapture({
               onClick={goPrev}
               disabled={currentIndex === 0}
               className="absolute left-2 top-1/2 -translate-y-1/2 text-white bg-black/30 hover:bg-black/50 rounded-full h-12 w-12 disabled:opacity-30"
+              aria-label="Photo précédente"
             >
               <ChevronLeft className="h-8 w-8" />
             </Button>
@@ -450,6 +459,7 @@ export function SmartPhotoCapture({
               onClick={goNext}
               disabled={currentIndex === photos.length - 1}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-white bg-black/30 hover:bg-black/50 rounded-full h-12 w-12 disabled:opacity-30"
+              aria-label="Photo suivante"
             >
               <ChevronRight className="h-8 w-8" />
             </Button>
@@ -473,11 +483,13 @@ export function SmartPhotoCapture({
             </div>
 
             {/* Grille de pièces */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-w-lg mx-auto">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-w-lg mx-auto" role="listbox" aria-label="Sélectionnez une pièce">
               {rooms.map((room, idx) => (
                 <motion.button
                   key={room.id}
                   onClick={() => assignRoom(room.id)}
+                  role="option"
+                  aria-label={`Assigner à ${room.name}`}
                   className={cn(
                     "flex flex-col items-center gap-1.5 p-4 rounded-xl transition-all",
                     "bg-white/10 hover:bg-white/20 active:bg-white/30",
@@ -488,7 +500,7 @@ export function SmartPhotoCapture({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.03 }}
                 >
-                  <span className="text-3xl">{ROOM_ICONS[room.type] || "📍"}</span>
+                  <span className="text-3xl" aria-hidden="true">{ROOM_ICONS[room.type] || "📍"}</span>
                   <span className="text-white text-xs font-medium truncate max-w-full text-center">
                     {room.name}
                   </span>
@@ -518,6 +530,7 @@ export function SmartPhotoCapture({
               size="icon"
               onClick={deletePhoto}
               className="text-red-400 hover:text-red-300 hover:bg-red-500/20 flex-shrink-0"
+              aria-label="Supprimer cette photo"
             >
               <Trash2 className="h-5 w-5" />
             </Button>
@@ -580,6 +593,7 @@ export function SmartPhotoCapture({
               size="icon"
               onClick={() => (isMobile ? cameraInputRef : fileInputRef).current?.click()}
               className="text-white bg-white/10 hover:bg-white/20 flex-shrink-0"
+              aria-label="Ajouter des photos"
             >
               <Camera className="h-5 w-5" />
             </Button>

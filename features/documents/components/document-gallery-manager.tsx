@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { documentsService } from "../services/documents.service";
 import type { Document, DocumentType } from "@/lib/types";
 import { Loader2, Upload, ImageIcon, FileText, ArrowUp, ArrowDown, Star, Trash2, AlertCircle } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/lib/hooks/use-confirm";
 
 interface DocumentGalleryManagerProps {
   propertyId: string;
@@ -51,6 +52,10 @@ export function DocumentGalleryManager({
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [advancedFeaturesEnabled, setAdvancedFeaturesEnabled] = useState(true);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; document: Document | null }>({
+    open: false,
+    document: null,
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const sortedDocuments = useMemo(() => {
@@ -221,11 +226,11 @@ export function DocumentGalleryManager({
     }
   };
 
-  const handleDelete = async (document: Document) => {
-    if (!confirm("Voulez-vous vraiment supprimer ce document ?")) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.document) return;
 
     try {
-      await documentsService.deleteDocument(document.id);
+      await documentsService.deleteDocument(deleteConfirm.document.id);
       fetchDocuments();
       toast({
         title: "Document supprimé",
@@ -237,6 +242,8 @@ export function DocumentGalleryManager({
         description: error.message || "Une erreur est survenue lors de la suppression.",
         variant: "destructive",
       });
+    } finally {
+      setDeleteConfirm({ open: false, document: null });
     }
   };
 
@@ -386,8 +393,9 @@ export function DocumentGalleryManager({
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleDelete(document)}
+                        onClick={() => setDeleteConfirm({ open: true, document })}
                         disabled={uploading}
+                        aria-label={`Supprimer ${document.title ?? "ce document"}`}
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Supprimer
@@ -399,6 +407,15 @@ export function DocumentGalleryManager({
             })}
           </div>
         )}
+
+        <ConfirmDeleteDialog
+          open={deleteConfirm.open}
+          onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}
+          onConfirm={handleDeleteConfirm}
+          title="Supprimer le document"
+          description="Cette action supprimera définitivement le document. Cette action est irréversible."
+          itemName={deleteConfirm.document?.title ?? "Document"}
+        />
       </CardContent>
     </Card>
   );

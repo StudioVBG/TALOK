@@ -96,11 +96,11 @@ function DraggablePhoto({ photo, onDelete, onSetMain, onZoom, isMain }: Draggabl
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
-      <Image 
-        src={photo.url} 
-        alt="" 
-        fill 
-        className="object-cover" 
+      <Image
+        src={photo.url}
+        alt={`Photo ${photo.isMain ? "principale" : ""} - ID ${photo.id.slice(0, 6)}`}
+        fill
+        className="object-cover"
         sizes="(max-width: 768px) 25vw, 150px"
       />
       
@@ -129,6 +129,7 @@ function DraggablePhoto({ photo, onDelete, onSetMain, onZoom, isMain }: Draggabl
                 e.stopPropagation();
                 onZoom();
               }}
+              aria-label="Agrandir la photo"
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
@@ -146,6 +147,7 @@ function DraggablePhoto({ photo, onDelete, onSetMain, onZoom, isMain }: Draggabl
                   e.stopPropagation();
                   onSetMain();
                 }}
+                aria-label={isMain ? "Photo principale" : "Définir comme photo principale"}
               >
                 {isMain ? <Star className="h-4 w-4 fill-current" /> : <StarOff className="h-4 w-4" />}
               </Button>
@@ -160,6 +162,7 @@ function DraggablePhoto({ photo, onDelete, onSetMain, onZoom, isMain }: Draggabl
                 e.stopPropagation();
                 onDelete();
               }}
+              aria-label="Supprimer la photo"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -238,7 +241,7 @@ function DroppableRoom({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <span className="text-xl">{icon}</span>
+            <span className="text-xl" aria-hidden="true">{icon}</span>
             {room.name}
             {isComplete && (
               <Badge variant="default" className="bg-green-500 ml-2">
@@ -320,8 +323,9 @@ function DroppableRoom({
                                 setMovingPhotoId(null);
                               }}
                               className="px-2 py-1 text-xs rounded bg-slate-100 hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                              aria-label={`Déplacer vers ${r.name}`}
                             >
-                              {ROOM_ICONS[r.type] || "📍"} {r.name}
+                              <span aria-hidden="true">{ROOM_ICONS[r.type] || "📍"}</span> {r.name}
                             </button>
                           ))}
                       </div>
@@ -342,6 +346,7 @@ function DroppableRoom({
             {/* Bouton ajouter */}
             <motion.button
               onClick={onAddPhotos}
+              aria-label={`Ajouter des photos à ${room.name}`}
               className={cn(
                 "aspect-square rounded-xl border-2 border-dashed transition-all",
                 "flex flex-col items-center justify-center gap-1",
@@ -351,7 +356,7 @@ function DroppableRoom({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Plus className="h-6 w-6" />
+              <Plus className="h-6 w-6" aria-hidden="true" />
               <span className="text-[10px] font-medium">Ajouter</span>
             </motion.button>
           </Reorder.Group>
@@ -465,14 +470,14 @@ export function PhotoOrganizer({
       {/* Modal zoom */}
       <Dialog open={!!zoomedPhoto} onOpenChange={() => setZoomedPhoto(null)}>
         <DialogContent className="max-w-4xl h-[90vh] p-0 bg-black border-none">
-          <DialogClose className="absolute top-4 right-4 z-50 text-white hover:bg-white/20 rounded-full p-2">
+          <DialogClose className="absolute top-4 right-4 z-50 text-white hover:bg-white/20 rounded-full p-2" aria-label="Fermer">
             <X className="h-5 w-5" />
           </DialogClose>
           {zoomedPhoto && (
             <div className="relative w-full h-full flex items-center justify-center">
               <Image
                 src={zoomedPhoto.url}
-                alt=""
+                alt={`Photo agrandie - ID ${zoomedPhoto.id.slice(0, 6)}`}
                 fill
                 className="object-contain"
               />
