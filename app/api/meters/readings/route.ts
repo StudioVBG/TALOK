@@ -134,6 +134,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
+    // Récupérer le profil
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
     const { searchParams } = new URL(request.url);
     const meterId = searchParams.get("meter_id");
 
@@ -141,6 +152,57 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: "meter_id requis" },
         { status: 400 }
+      );
+    }
+
+    // Vérifier que le compteur existe et récupérer la propriété associée
+    const { data: meter } = await supabase
+      .from("meters")
+      .select("id, property_id")
+      .eq("id", meterId)
+      .single();
+
+    if (!meter) {
+      return NextResponse.json({ error: "Compteur non trouvé" }, { status: 404 });
+    }
+
+    // Vérifier l'accès selon le rôle
+    if (profile.role === "tenant" || profile.role === "locataire") {
+      // Le tenant doit avoir un bail actif sur cette propriété
+      const { data: leaseSigners } = await supabase
+        .from("lease_signers")
+        .select("leases!inner(property_id, statut)")
+        .eq("profile_id", profile.id)
+        .eq("leases.property_id", meter.property_id)
+        .eq("leases.statut", "active")
+        .limit(1);
+
+      if (!leaseSigners || leaseSigners.length === 0) {
+        return NextResponse.json(
+          { error: "Vous n'avez pas accès à ce compteur" },
+          { status: 403 }
+        );
+      }
+    } else if (profile.role === "owner" || profile.role === "proprietaire") {
+      // L'owner doit être propriétaire du bien
+      const { data: property } = await supabase
+        .from("properties")
+        .select("id")
+        .eq("id", meter.property_id)
+        .eq("owner_id", profile.id)
+        .single();
+
+      if (!property) {
+        return NextResponse.json(
+          { error: "Vous n'avez pas accès à ce compteur" },
+          { status: 403 }
+        );
+      }
+    } else if (profile.role !== "admin") {
+      // Rôle non autorisé
+      return NextResponse.json(
+        { error: "Rôle non autorisé" },
+        { status: 403 }
       );
     }
 
