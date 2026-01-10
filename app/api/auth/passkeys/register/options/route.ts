@@ -8,9 +8,10 @@ import { generateRegistrationOptions } from "@simplewebauthn/server";
 import { createClient } from "@/lib/supabase/server";
 
 const RP_NAME = "Talok";
-const RP_ID = process.env.NEXT_PUBLIC_APP_URL
-  ? new URL(process.env.NEXT_PUBLIC_APP_URL).hostname
-  : "localhost";
+// Normaliser l'URL avec protocole pour éviter "Invalid URL" avec new URL()
+const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+const normalizedAppUrl = rawAppUrl.startsWith("http") ? rawAppUrl : `https://${rawAppUrl}`;
+const RP_ID = rawAppUrl ? new URL(normalizedAppUrl).hostname : "localhost";
 
 export async function POST(request: NextRequest) {
   try {
