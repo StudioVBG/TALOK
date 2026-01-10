@@ -3,11 +3,13 @@
 /**
  * ScoringDashboard - Dashboard complet d'analyse de solvabilité
  * Design SOTA 2025 avec layout moderne et animations orchestrées
+ * SOTA 2026: Feature scoring_tenant requiert Confort+
  */
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { PlanGate } from "@/components/subscription";
 import {
   User,
   Building2,
@@ -162,6 +164,7 @@ export function ScoringDashboard({
   }
 
   return (
+    <PlanGate feature="scoring_tenant" mode="blur">
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
       <motion.header
@@ -356,6 +359,7 @@ export function ScoringDashboard({
         </motion.div>
       </main>
     </div>
+    </PlanGate>
   );
 }
 
