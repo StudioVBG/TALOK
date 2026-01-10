@@ -268,8 +268,9 @@ export function AdminSidebar({ className }: { className?: string }) {
                   variant="ghost"
                   size="icon"
                   onClick={() => setOpen(false)}
+                  aria-label="Fermer le menu"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
               <Button
