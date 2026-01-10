@@ -3,23 +3,26 @@ export const dynamic = 'force-dynamic';
 
 // @ts-nocheck
 /**
- * Route API pour gérer les secrets d'un projet
- * 
+ * Route API pour gérer les secrets d'un projet - SOTA 2026
+ *
  * GET /api/admin/management-api/secrets?ref=<project_ref>
  * - Liste tous les secrets d'un projet
- * 
+ *
  * POST /api/admin/management-api/secrets
  * - Crée ou met à jour des secrets
- * 
+ *
  * DELETE /api/admin/management-api/secrets
  * - Supprime des secrets
+ *
+ * Sécurisé avec rate limiting admin + CSRF
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { createManagementClient } from "@/lib/supabase/management-api";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
-export async function GET(request: NextRequest) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   const { error, user } = await requireAdmin(request);
 
   if (error || !user) {
@@ -60,9 +63,9 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { ...securityPresets.admin });
 
-export async function POST(request: NextRequest) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   const { error, user } = await requireAdmin(request);
 
   if (error || !user) {
@@ -114,9 +117,9 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { ...securityPresets.admin, csrf: true });
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withApiSecurity(async (request: NextRequest) => {
   const { error, user } = await requireAdmin(request);
 
   if (error || !user) {
@@ -157,5 +160,5 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { ...securityPresets.admin, csrf: true });
 

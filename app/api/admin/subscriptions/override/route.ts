@@ -2,14 +2,16 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 /**
- * POST /api/admin/subscriptions/override
+ * POST /api/admin/subscriptions/override - SOTA 2026
  * Force un changement de plan (admin only)
+ * Sécurisé avec rate limiting admin + CSRF
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { adminOverridePlan } from "@/lib/subscriptions/subscription-service";
 import { z } from "zod";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 const overrideSchema = z.object({
   user_id: z.string().uuid(),
@@ -18,7 +20,7 @@ const overrideSchema = z.object({
   notify_user: z.boolean().default(false),
 });
 
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -65,5 +67,5 @@ export async function POST(request: Request) {
     console.error("[Admin Override POST]", error);
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
-}
+}, { ...securityPresets.admin, csrf: true });
 

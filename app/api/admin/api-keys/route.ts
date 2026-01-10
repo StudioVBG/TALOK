@@ -1,10 +1,16 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
+/**
+ * API Keys Management - SOTA 2026
+ * Sécurisé avec rate limiting admin + CSRF
+ */
+
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 // Fonction pour chiffrer une clé API avec AES-256-GCM
 function encryptAPIKey(apiKey: string, masterKey: string): string {
@@ -43,7 +49,7 @@ function decryptAPIKey(encryptedKey: string, masterKey: string): string {
 /**
  * POST /api/admin/api-keys - Créer une clé API
  */
-export async function POST(request: Request) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const {
@@ -142,12 +148,12 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+}, { ...securityPresets.admin, csrf: true });
 
 /**
  * GET /api/admin/api-keys - Lister les clés API
  */
-export async function GET(request: Request) {
+export const GET = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const {
@@ -189,7 +195,7 @@ export async function GET(request: Request) {
       key_hash: c.key_hash?.substring(0, 8) + "...",
     }));
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       credentials: sanitized,
       keys: sanitized // Alias pour compatibilité
     });
@@ -199,5 +205,5 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+}, { ...securityPresets.admin });
 

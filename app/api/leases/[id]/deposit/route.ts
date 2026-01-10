@@ -3,15 +3,17 @@ export const runtime = 'nodejs';
 
 // @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 /**
  * POST /api/leases/[id]/deposit - Encaisser un dépôt de garantie
  */
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: Record<string, string> }
+) => {
+  const params = { id: context?.params?.id || "" };
   try {
     const supabase = await createClient();
     const {
@@ -117,7 +119,7 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+}, { ...securityPresets.payment, csrf: true });
 
 /**
  * GET /api/leases/[id]/deposit - Récupérer l'historique du dépôt

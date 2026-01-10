@@ -2,18 +2,19 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 /**
- * API Impersonation Admin
- * 
+ * API Impersonation Admin - SOTA 2026
+ *
  * Permet à un admin de se connecter en tant qu'un autre utilisateur
  * pour debug et support client.
- * 
+ *
  * SÉCURITÉ:
  * - Réservé aux admins uniquement
  * - Session limitée à 1 heure
  * - Toutes les actions sont loggées
  * - Badge visuel obligatoire côté client
  * - Impossible d'impersonner un autre admin
- * 
+ * - Rate limiting + CSRF protection
+ *
  * POST /api/admin/impersonate - Démarrer une session
  * DELETE /api/admin/impersonate - Terminer la session
  * GET /api/admin/impersonate - Vérifier session active
@@ -22,6 +23,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 
 const IMPERSONATION_COOKIE = "impersonation_session";
 const MAX_DURATION_HOURS = 1;
@@ -40,7 +42,7 @@ interface ImpersonationSession {
 /**
  * POST - Démarrer une session d'impersonation
  */
-export async function POST(request: NextRequest) {
+export const POST = withApiSecurity(async (request: NextRequest) => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -175,12 +177,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+}, { ...securityPresets.admin, csrf: true });
 
 /**
  * GET - Vérifier si une session d'impersonation est active
  */
-export async function GET() {
+export const GET = withApiSecurity(async () => {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get(IMPERSONATION_COOKIE);
@@ -227,12 +229,12 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+}, { ...securityPresets.admin });
 
 /**
  * DELETE - Terminer la session d'impersonation
  */
-export async function DELETE() {
+export const DELETE = withApiSecurity(async () => {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -288,5 +290,5 @@ export async function DELETE() {
       { status: 500 }
     );
   }
-}
+}, { ...securityPresets.admin, csrf: true });
 

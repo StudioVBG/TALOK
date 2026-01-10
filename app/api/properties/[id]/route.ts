@@ -2,7 +2,8 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // @ts-nocheck
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withApiSecurity, securityPresets } from "@/lib/middleware/api-security";
 import { propertyGeneralUpdateSchema, propertySchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
@@ -131,10 +132,11 @@ export async function GET(
 /**
  * PATCH /api/properties/[id] - Mise à jour progressive (tous types de biens V3)
  */
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const PATCH = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: Record<string, string> }
+) => {
+  const params = { id: context?.params?.id || "" };
   try {
     // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
     const propertyId = propertyIdParamSchema.parse(params.id);
@@ -402,7 +404,7 @@ export async function PATCH(
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, { ...securityPresets.authenticated, csrf: true });
 
 async function fetchSinglePropertyMedia(serviceClient: any, propertyId: string) {
   const baseQuery = serviceClient
@@ -472,10 +474,11 @@ async function fetchSinglePropertyMedia(serviceClient: any, propertyId: string) 
 /**
  * PUT /api/properties/[id] - Mettre à jour une propriété
  */
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const PUT = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: Record<string, string> }
+) => {
+  const params = { id: context?.params?.id || "" };
   try {
     // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
     const propertyId = propertyIdParamSchema.parse(params.id);
@@ -561,15 +564,16 @@ export async function PUT(
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, { ...securityPresets.authenticated, csrf: true });
 
 /**
  * DELETE /api/properties/[id] - Supprimer une propriété
  */
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export const DELETE = withApiSecurity(async (
+  request: NextRequest,
+  context?: { params?: Record<string, string> }
+) => {
+  const params = { id: context?.params?.id || "" };
   try {
     // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
     const propertyId = propertyIdParamSchema.parse(params.id);
@@ -811,14 +815,14 @@ export async function DELETE(
       });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      mode: "soft_delete", 
+      mode: "soft_delete",
       message: "Propriété archivée. Les locataires ont été notifiés.",
       tenantsNotified: allLeases?.length || 0
     });
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, { ...securityPresets.authenticated, csrf: true });
 
