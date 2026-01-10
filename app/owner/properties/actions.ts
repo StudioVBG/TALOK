@@ -6,20 +6,83 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 // ============================================
-// SCHÉMAS DE VALIDATION
+// SCHÉMAS DE VALIDATION - SOTA 2026
 // ============================================
 
-const updatePropertySchema = z.object({
+/**
+ * SOTA 2026: Schéma V3 complet pour la mise à jour de propriétés
+ * Supporte tous les champs du nouveau wizard immersif
+ */
+const updatePropertySchemaV3 = z.object({
   id: z.string().uuid(),
+
+  // === Adresse ===
   adresse_complete: z.string().min(1).optional(),
-  code_postal: z.string().min(5).max(5).optional(),
+  complement_adresse: z.string().optional().nullable(),
+  code_postal: z.string().regex(/^[0-9]{5}$/, "Code postal invalide (5 chiffres)").optional(),
   ville: z.string().min(1).optional(),
-  surface: z.number().positive().optional(),
-  nb_pieces: z.number().int().positive().optional(),
+  departement: z.string().optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+
+  // === Surfaces ===
+  surface: z.number().positive("Surface doit être positive").optional(),
+  surface_habitable_m2: z.number().positive("Surface habitable doit être positive").optional(),
+  surface_terrain: z.number().nonnegative().optional().nullable(),
+
+  // === Configuration logement ===
+  nb_pieces: z.number().int().min(0).optional(),
+  nb_chambres: z.number().int().min(0).optional(),
+  etage: z.number().int().min(0).optional().nullable(),
+  ascenseur: z.boolean().optional().nullable(),
+  meuble: z.boolean().optional().nullable(),
+
+  // === Financier ===
   loyer_base: z.number().nonnegative().optional(),
+  loyer_hc: z.number().nonnegative("Loyer HC doit être positif ou nul").optional(),
   charges_mensuelles: z.number().nonnegative().optional(),
   depot_garantie: z.number().nonnegative().optional(),
-});
+
+  // === DPE / Énergie ===
+  dpe_classe_energie: z.enum(["A", "B", "C", "D", "E", "F", "G", "NC"]).optional().nullable(),
+  dpe_classe_climat: z.enum(["A", "B", "C", "D", "E", "F", "G", "NC"]).optional().nullable(),
+  dpe_consommation: z.number().nonnegative().optional().nullable(),
+  dpe_emissions: z.number().nonnegative().optional().nullable(),
+
+  // === Chauffage ===
+  chauffage_type: z.enum(["individuel", "collectif", "aucun"]).optional().nullable(),
+  chauffage_energie: z.enum(["electricite", "gaz", "fioul", "bois", "reseau_urbain", "autre"]).optional().nullable(),
+  eau_chaude_type: z.enum(["electrique_indiv", "gaz_indiv", "collectif", "solaire", "autre"]).optional().nullable(),
+
+  // === Climatisation ===
+  clim_presence: z.enum(["aucune", "fixe", "mobile"]).optional().nullable(),
+  clim_type: z.enum(["split", "gainable"]).optional().nullable(),
+
+  // === Équipements (tableau V3) ===
+  equipments: z.array(z.string()).optional(),
+
+  // === Parking (V3) ===
+  parking_type: z.string().optional().nullable(),
+  parking_acces: z.array(z.string()).optional().nullable(),
+
+  // === Caractéristiques additionnelles ===
+  has_balcon: z.boolean().optional().nullable(),
+  has_terrasse: z.boolean().optional().nullable(),
+  has_jardin: z.boolean().optional().nullable(),
+  has_cave: z.boolean().optional().nullable(),
+
+  // === Publication ===
+  visibility: z.enum(["public", "private"]).optional(),
+  available_from: z.string().optional().nullable(),
+  etat: z.enum(["draft", "published", "archived"]).optional(),
+
+  // === Médias ===
+  visite_virtuelle_url: z.string().url().optional().nullable().or(z.literal("")),
+  description: z.string().optional().nullable(),
+}).passthrough(); // SOTA 2026: Permet les champs additionnels pour compatibilité future
+
+// Alias pour compatibilité
+const updatePropertySchema = updatePropertySchemaV3;
 
 const deletePropertySchema = z.object({
   id: z.string().uuid(),
@@ -62,22 +125,112 @@ export async function updateProperty(
     return { success: false, error: "Accès non autorisé" };
   }
 
-  // 3. Parser et valider les données
-  const rawData = {
-    id: formData.get("id") as string,
-    adresse_complete: formData.get("adresse_complete") as string || undefined,
-    code_postal: formData.get("code_postal") as string || undefined,
-    ville: formData.get("ville") as string || undefined,
-    surface: formData.get("surface") ? Number(formData.get("surface")) : undefined,
-    nb_pieces: formData.get("nb_pieces") ? Number(formData.get("nb_pieces")) : undefined,
-    loyer_base: formData.get("loyer_base") ? Number(formData.get("loyer_base")) : undefined,
-    charges_mensuelles: formData.get("charges_mensuelles") ? Number(formData.get("charges_mensuelles")) : undefined,
-    depot_garantie: formData.get("depot_garantie") ? Number(formData.get("depot_garantie")) : undefined,
+  // 3. SOTA 2026: Parser et valider les données V3
+  // Helper pour parser les nombres de façon sécurisée
+  const parseNumber = (value: FormDataEntryValue | null): number | undefined => {
+    if (value === null || value === "") return undefined;
+    const num = Number(value);
+    return isNaN(num) ? undefined : num;
   };
 
-  const parsed = updatePropertySchema.safeParse(rawData);
+  // Helper pour parser les booléens
+  const parseBoolean = (value: FormDataEntryValue | null): boolean | undefined => {
+    if (value === null || value === "") return undefined;
+    return value === "true" || value === "1";
+  };
+
+  // Helper pour parser les tableaux JSON
+  const parseArray = (value: FormDataEntryValue | null): string[] | undefined => {
+    if (value === null || value === "") return undefined;
+    try {
+      const parsed = JSON.parse(value as string);
+      return Array.isArray(parsed) ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const rawData: Record<string, any> = {
+    id: formData.get("id") as string,
+
+    // Adresse
+    adresse_complete: formData.get("adresse_complete") as string || undefined,
+    complement_adresse: formData.get("complement_adresse") as string || undefined,
+    code_postal: formData.get("code_postal") as string || undefined,
+    ville: formData.get("ville") as string || undefined,
+    departement: formData.get("departement") as string || undefined,
+    latitude: parseNumber(formData.get("latitude")),
+    longitude: parseNumber(formData.get("longitude")),
+
+    // Surfaces
+    surface: parseNumber(formData.get("surface")),
+    surface_habitable_m2: parseNumber(formData.get("surface_habitable_m2")),
+    surface_terrain: parseNumber(formData.get("surface_terrain")),
+
+    // Configuration
+    nb_pieces: parseNumber(formData.get("nb_pieces")),
+    nb_chambres: parseNumber(formData.get("nb_chambres")),
+    etage: parseNumber(formData.get("etage")),
+    ascenseur: parseBoolean(formData.get("ascenseur")),
+    meuble: parseBoolean(formData.get("meuble")),
+
+    // Financier
+    loyer_base: parseNumber(formData.get("loyer_base")),
+    loyer_hc: parseNumber(formData.get("loyer_hc")),
+    charges_mensuelles: parseNumber(formData.get("charges_mensuelles")),
+    depot_garantie: parseNumber(formData.get("depot_garantie")),
+
+    // DPE
+    dpe_classe_energie: formData.get("dpe_classe_energie") as string || undefined,
+    dpe_classe_climat: formData.get("dpe_classe_climat") as string || undefined,
+    dpe_consommation: parseNumber(formData.get("dpe_consommation")),
+    dpe_emissions: parseNumber(formData.get("dpe_emissions")),
+
+    // Chauffage
+    chauffage_type: formData.get("chauffage_type") as string || undefined,
+    chauffage_energie: formData.get("chauffage_energie") as string || undefined,
+    eau_chaude_type: formData.get("eau_chaude_type") as string || undefined,
+
+    // Climatisation
+    clim_presence: formData.get("clim_presence") as string || undefined,
+    clim_type: formData.get("clim_type") as string || undefined,
+
+    // Équipements
+    equipments: parseArray(formData.get("equipments")),
+
+    // Parking
+    parking_type: formData.get("parking_type") as string || undefined,
+    parking_acces: parseArray(formData.get("parking_acces")),
+
+    // Caractéristiques
+    has_balcon: parseBoolean(formData.get("has_balcon")),
+    has_terrasse: parseBoolean(formData.get("has_terrasse")),
+    has_jardin: parseBoolean(formData.get("has_jardin")),
+    has_cave: parseBoolean(formData.get("has_cave")),
+
+    // Publication
+    visibility: formData.get("visibility") as string || undefined,
+    available_from: formData.get("available_from") as string || undefined,
+    etat: formData.get("etat") as string || undefined,
+
+    // Médias
+    visite_virtuelle_url: formData.get("visite_virtuelle_url") as string || undefined,
+    description: formData.get("description") as string || undefined,
+  };
+
+  // SOTA 2026: Nettoyer les undefined avant validation
+  const cleanedData = Object.fromEntries(
+    Object.entries(rawData).filter(([_, v]) => v !== undefined)
+  );
+
+  const parsed = updatePropertySchema.safeParse(cleanedData);
   if (!parsed.success) {
-    return { success: false, error: "Données invalides: " + parsed.error.message };
+    console.error("[updateProperty] Validation error:", parsed.error.flatten());
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const errorMessages = Object.entries(fieldErrors)
+      .map(([field, errors]) => `${field}: ${errors?.join(", ")}`)
+      .join("; ");
+    return { success: false, error: "Données invalides: " + errorMessages };
   }
 
   const { id, ...updateData } = parsed.data;

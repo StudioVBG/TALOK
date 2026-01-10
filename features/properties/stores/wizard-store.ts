@@ -5,64 +5,144 @@ import type { Property, Room, Photo } from '@/lib/types';
 import type { PropertyTypeV3 } from '@/lib/types/property-v3';
 import type { BuildingUnit } from '@/lib/types/building-v3';
 
-// Types
-export type WizardStep = 
-  | 'type_bien' 
-  | 'address' 
-  | 'details' 
-  | 'rooms' 
-  | 'photos' 
-  | 'features' 
-  | 'publish' 
+// ============================================
+// SOTA 2026: TYPES SÉCURISÉS
+// ============================================
+
+export type WizardStep =
+  | 'type_bien'
+  | 'address'
+  | 'details'
+  | 'rooms'
+  | 'photos'
+  | 'features'
+  | 'publish'
   | 'recap'
-  | 'building_config';  // SOTA 2026 - Configuration immeuble
+  | 'building_config';
 
 export type WizardMode = 'fast' | 'full';
 type SyncStatus = 'idle' | 'saving' | 'saved' | 'error';
 
+/**
+ * SOTA 2026: Interface typée pour les données du formulaire
+ * Remplace le `Record<string, any>` non sécurisé
+ */
+export interface WizardFormData extends Partial<Property> {
+  // Type de bien
+  type?: PropertyTypeV3;
+  type_bien?: PropertyTypeV3;
+
+  // Adresse
+  adresse_complete?: string;
+  complement_adresse?: string;
+  code_postal?: string;
+  ville?: string;
+  departement?: string;
+  latitude?: number;
+  longitude?: number;
+
+  // Surfaces
+  surface?: number;
+  surface_habitable_m2?: number;
+  surface_terrain?: number;
+
+  // Configuration
+  nb_pieces?: number;
+  nb_chambres?: number;
+  etage?: number;
+  ascenseur?: boolean;
+  meuble?: boolean;
+
+  // Financier
+  loyer_hc?: number;
+  loyer_base?: number;
+  charges_mensuelles?: number;
+  depot_garantie?: number;
+
+  // DPE
+  dpe_classe_energie?: string;
+  dpe_classe_climat?: string;
+  dpe_consommation?: number;
+  dpe_emissions?: number;
+
+  // Chauffage
+  chauffage_type?: 'individuel' | 'collectif' | 'aucun';
+  chauffage_energie?: 'electricite' | 'gaz' | 'fioul' | 'bois' | 'reseau_urbain' | 'autre';
+  eau_chaude_type?: 'electrique_indiv' | 'gaz_indiv' | 'collectif' | 'solaire' | 'autre';
+
+  // Climatisation
+  clim_presence?: 'aucune' | 'fixe' | 'mobile';
+  clim_type?: 'split' | 'gainable';
+
+  // Équipements
+  equipments?: string[];
+
+  // Parking
+  parking_type?: string;
+  parking_acces?: string[];
+
+  // Caractéristiques
+  has_balcon?: boolean;
+  has_terrasse?: boolean;
+  has_jardin?: boolean;
+  has_cave?: boolean;
+
+  // Publication
+  visibility?: 'public' | 'private';
+  available_from?: string;
+  etat?: 'draft' | 'published' | 'archived';
+
+  // Médias
+  visite_virtuelle_url?: string;
+  description?: string;
+
+  // SOTA 2026 - Champs spécifiques immeuble
+  building_floors?: number;
+  building_units?: BuildingUnit[];
+  has_ascenseur?: boolean;
+  has_gardien?: boolean;
+  has_interphone?: boolean;
+  has_digicode?: boolean;
+  has_local_velo?: boolean;
+  has_local_poubelles?: boolean;
+}
+
 interface WizardState {
   // État Global
   propertyId: string | null;
-  buildingId: string | null;  // SOTA 2026 - ID de l'immeuble si type="immeuble"
+  buildingId: string | null;
   currentStep: WizardStep;
   mode: WizardMode;
   syncStatus: SyncStatus;
   lastError: string | null;
 
-  // Données
-  formData: Partial<Property> & {
-    // SOTA 2026 - Champs spécifiques immeuble
-    building_floors?: number;
-    building_units?: BuildingUnit[];
-    has_ascenseur?: boolean;
-    has_gardien?: boolean;
-    has_interphone?: boolean;
-    has_digicode?: boolean;
-    has_local_velo?: boolean;
-    has_local_poubelles?: boolean;
-  };
+  // SOTA 2026: Flag pour mutex sur initializeDraft
+  isInitializing: boolean;
+
+  // Données typées
+  formData: WizardFormData;
   rooms: Room[];
   photos: Photo[];
-  
-  // 🆕 Photos à importer depuis scraping
+
+  // Photos à importer depuis scraping
   pendingPhotoUrls: string[];
   photoImportStatus: 'idle' | 'importing' | 'done' | 'error';
   photoImportProgress: { imported: number; total: number };
 
   // Actions
-  reset: () => void; // 🔧 Réinitialise le wizard pour une nouvelle création
+  reset: () => void;
   initializeDraft: (type: PropertyTypeV3) => Promise<void>;
   loadProperty: (id: string) => Promise<void>;
-  updateFormData: (updates: Partial<Property> & Record<string, any>) => void; // Optimiste
-  addRoom: (room: Partial<Room>) => void; // Optimiste
-  updateRoom: (id: string, updates: Partial<Room>) => void; // Optimiste
-  removeRoom: (id: string) => void; // Optimiste
+  updateFormData: (updates: Partial<WizardFormData>) => void;
+  addRoom: (room: Partial<Room>) => void;
+  updateRoom: (id: string, updates: Partial<Room>) => void;
+  removeRoom: (id: string) => void;
   setPhotos: (photos: Photo[]) => void;
-  
-  // 🆕 Import photos
+
+  // Import photos
   setPendingPhotoUrls: (urls: string[]) => void;
   importPendingPhotos: () => Promise<void>;
-  
+
   // Navigation
   setStep: (step: WizardStep) => void;
   setMode: (mode: WizardMode) => void;
@@ -122,29 +202,29 @@ function calculateRoomCounts(rooms: Room[]): { nb_pieces: number; nb_chambres: n
   return { nb_pieces, nb_chambres };
 }
 
-// État initial pour le reset
-const INITIAL_STATE = {
+// SOTA 2026: État initial typé pour le reset
+const INITIAL_STATE: Omit<WizardState, 'reset' | 'initializeDraft' | 'loadProperty' | 'updateFormData' | 'addRoom' | 'updateRoom' | 'removeRoom' | 'setPhotos' | 'setPendingPhotoUrls' | 'importPendingPhotos' | 'setStep' | 'setMode' | 'nextStep' | 'prevStep'> = {
   propertyId: null,
-  buildingId: null,  // SOTA 2026
-  currentStep: 'type_bien' as WizardStep,
-  mode: 'full' as WizardMode,
-  syncStatus: 'idle' as SyncStatus,
+  buildingId: null,
+  currentStep: 'type_bien',
+  mode: 'full',
+  syncStatus: 'idle',
   lastError: null,
-  formData: { 
+  isInitializing: false,
+  formData: {
     etat: 'draft',
-    // SOTA 2026 - Valeurs par défaut immeuble
+    // Valeurs par défaut immeuble
     building_floors: 4,
     building_units: [],
     has_ascenseur: false,
     has_gardien: false,
     has_interphone: false,
     has_digicode: false,
-  } as Partial<Property> & Record<string, any>,
-  rooms: [] as Room[],
-  photos: [] as Photo[],
-  // 🆕 Photos import
-  pendingPhotoUrls: [] as string[],
-  photoImportStatus: 'idle' as 'idle' | 'importing' | 'done' | 'error',
+  },
+  rooms: [],
+  photos: [],
+  pendingPhotoUrls: [],
+  photoImportStatus: 'idle',
   photoImportProgress: { imported: 0, total: 0 },
 };
 
@@ -155,70 +235,133 @@ function generateTempId(): string {
   return `temp-${Date.now()}-${tempIdCounter}-${Math.random().toString(36).substring(2, 7)}`;
 }
 
+// SOTA 2026: Debounce pour updateFormData - évite les appels API excessifs
+let updateDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+const UPDATE_DEBOUNCE_MS = 500;
+
+// SOTA 2026: Pending updates accumulator pour debounce
+let pendingUpdates: Partial<WizardFormData> = {};
+
 export const usePropertyWizardStore = create<WizardState>((set, get) => ({
   ...INITIAL_STATE,
 
   // --- ACTIONS ---
 
-  // 🔧 Réinitialise complètement le wizard pour une nouvelle création
+  // Réinitialise complètement le wizard pour une nouvelle création
   reset: () => {
     console.log('[WizardStore] Reset du wizard');
+    // Clear debounce timer
+    if (updateDebounceTimer) {
+      clearTimeout(updateDebounceTimer);
+      updateDebounceTimer = null;
+    }
+    pendingUpdates = {};
     set(INITIAL_STATE);
   },
 
+  // SOTA 2026: initializeDraft avec MUTEX pour éviter les double-créations
   initializeDraft: async (type) => {
-    set({ syncStatus: 'saving' });
+    const { isInitializing, propertyId } = get();
+
+    // MUTEX: Si déjà en cours d'initialisation, ignorer
+    if (isInitializing) {
+      console.warn('[WizardStore] initializeDraft ignoré - déjà en cours');
+      return;
+    }
+
+    // Si un propertyId existe déjà, ne pas recréer
+    if (propertyId) {
+      console.log('[WizardStore] PropertyId existant, mise à jour du type uniquement');
+      set((state) => ({
+        formData: { ...state.formData, type_bien: type, type }
+      }));
+      return;
+    }
+
+    // Activer le mutex
+    set({ isInitializing: true, syncStatus: 'saving', lastError: null });
+
     try {
-      const { propertyId } = await propertiesService.createDraftPropertyInit(type);
-      set({ 
-        propertyId, 
-        formData: { ...get().formData, type_bien: type, type }, // Sync local
-        syncStatus: 'saved' 
+      const { propertyId: newPropertyId } = await propertiesService.createDraftPropertyInit(type);
+
+      if (!newPropertyId) {
+        throw new Error('Aucun propertyId retourné par le serveur');
+      }
+
+      set({
+        propertyId: newPropertyId,
+        formData: { ...get().formData, type_bien: type, type },
+        syncStatus: 'saved',
+        isInitializing: false
       });
+
+      console.log(`[WizardStore] Draft créé avec succès: ${newPropertyId}`);
     } catch (error: any) {
-      set({ syncStatus: 'error', lastError: error.message || "Erreur création" });
+      console.error('[WizardStore] Erreur création draft:', error);
+      set({
+        syncStatus: 'error',
+        lastError: error.message || "Erreur lors de la création du brouillon",
+        isInitializing: false
+      });
     }
   },
 
   loadProperty: async (id) => {
-    set({ syncStatus: 'saving' }); // Indicateur de chargement
+    set({ syncStatus: 'saving', lastError: null });
     try {
       const [property, rooms, photos] = await Promise.all([
         propertiesService.getPropertyById(id),
         propertiesService.listRooms(id),
         propertiesService.listPhotos(id)
       ]);
-      set({ 
-        propertyId: id, 
-        formData: property, 
-        rooms, 
+      set({
+        propertyId: id,
+        formData: property as WizardFormData,
+        rooms,
         photos,
         syncStatus: 'saved'
       });
     } catch (error: any) {
+      console.error('[WizardStore] Erreur chargement:', error);
       set({ syncStatus: 'error', lastError: "Impossible de charger le bien" });
     }
   },
 
+  // SOTA 2026: updateFormData avec DEBOUNCE pour optimiser les appels API
   updateFormData: (updates) => {
     const { propertyId } = get();
-    
-    // 1. Optimistic Update - ne passer à 'saving' que si on va réellement sauvegarder
-    set((state) => ({ 
+
+    // 1. Optimistic Update immédiat
+    set((state) => ({
       formData: { ...state.formData, ...updates },
-      syncStatus: propertyId ? 'saving' : 'idle' // ✅ Fix: rester 'idle' si pas de propertyId
+      syncStatus: propertyId ? 'saving' : 'idle'
     }));
 
-    // 2. Background Sync seulement si le bien existe déjà en base
-    if (propertyId) {
-      propertiesService.updatePropertyGeneral(propertyId, updates as any)
-        .then(() => set({ syncStatus: 'saved' }))
-        .catch((err) => {
-          console.error('[WizardStore] Erreur sauvegarde:', err);
-          set({ syncStatus: 'error', lastError: "Erreur sauvegarde" });
-        });
+    // 2. Accumuler les updates pour le debounce
+    pendingUpdates = { ...pendingUpdates, ...updates };
+
+    // 3. Si pas de propertyId, pas de sync serveur
+    if (!propertyId) {
+      return;
     }
-    // Si pas de propertyId, les données sont stockées localement en attendant l'initialisation
+
+    // 4. Clear timer précédent et créer nouveau
+    if (updateDebounceTimer) {
+      clearTimeout(updateDebounceTimer);
+    }
+
+    updateDebounceTimer = setTimeout(async () => {
+      const updatesToSend = { ...pendingUpdates };
+      pendingUpdates = {};
+
+      try {
+        await propertiesService.updatePropertyGeneral(propertyId, updatesToSend as any);
+        set({ syncStatus: 'saved' });
+      } catch (err: any) {
+        console.error('[WizardStore] Erreur sauvegarde:', err);
+        set({ syncStatus: 'error', lastError: "Erreur sauvegarde" });
+      }
+    }, UPDATE_DEBOUNCE_MS);
   },
 
   addRoom: (roomData) => {

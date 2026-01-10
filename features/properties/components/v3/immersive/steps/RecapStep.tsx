@@ -1,22 +1,55 @@
 "use client";
 
+import { useMemo } from "react";
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
-import { 
-  MapPin, Home, Ruler, Euro, Image as ImageIcon, 
-  Edit2, AlertCircle, Car, LayoutGrid, 
-  Sparkles, Calendar, Globe, Lock
+import {
+  MapPin, Home, Ruler, Euro, Image as ImageIcon,
+  Edit2, AlertCircle, Car, LayoutGrid,
+  Sparkles, Calendar, Globe, Lock, CheckCircle2, XCircle
 } from "lucide-react";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 const TYPES_WITHOUT_ROOMS = ["parking", "box", "local_commercial", "bureaux", "entrepot", "fonds_de_commerce"];
 
+// SOTA 2026: Liste des champs requis pour la publication
+interface ValidationField {
+  key: string;
+  label: string;
+  check: (formData: any, rooms: any[], photos: any[]) => boolean;
+  required: boolean;
+}
+
+const VALIDATION_FIELDS: ValidationField[] = [
+  { key: "type", label: "Type de bien", check: (f) => !!f.type || !!f.type_bien, required: true },
+  { key: "adresse", label: "Adresse complète", check: (f) => !!f.adresse_complete && !!f.code_postal && !!f.ville, required: true },
+  { key: "surface", label: "Surface", check: (f) => (f.surface || f.surface_habitable_m2) > 0, required: true },
+  { key: "loyer", label: "Loyer", check: (f) => (f.loyer_hc || f.loyer_base) > 0, required: true },
+  { key: "dpe", label: "DPE", check: (f) => !!f.dpe_classe_energie, required: true },
+  { key: "chauffage", label: "Chauffage", check: (f) => !!f.chauffage_type, required: true },
+  { key: "photos", label: "Photos (min. 1)", check: (_, __, p) => p.length >= 1, required: false },
+];
+
 export function RecapStep() {
   const { formData, rooms, photos, setStep, mode } = usePropertyWizardStore();
+
+  // SOTA 2026: Calcul de la validation
+  const validation = useMemo(() => {
+    const results = VALIDATION_FIELDS.map(field => ({
+      ...field,
+      isValid: field.check(formData, rooms, photos),
+    }));
+    const requiredValid = results.filter(r => r.required && r.isValid).length;
+    const requiredTotal = results.filter(r => r.required).length;
+    const allValid = requiredValid === requiredTotal;
+    const score = Math.round((requiredValid / requiredTotal) * 100);
+    return { results, allValid, score, requiredValid, requiredTotal };
+  }, [formData, rooms, photos]);
 
   const propertyType = (formData.type as string) || "";
   const hasRooms = !TYPES_WITHOUT_ROOMS.includes(propertyType);
@@ -175,16 +208,65 @@ export function RecapStep() {
           )}
         </div>
         
-        {/* Warning */}
-        {(!formData.type || !formData.adresse_complete || !formData.loyer_hc) && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 mt-6 shadow-sm">
-            <AlertCircle className="h-5 w-5 flex-shrink-0" />
-            <div>
-              <p className="font-semibold">Informations manquantes</p>
-              <p className="text-sm opacity-90">Certaines informations obligatoires sont nécessaires pour publier l'annonce.</p>
-            </div>
+        {/* SOTA 2026: Panneau de validation détaillé */}
+        <div className={cn(
+          "mt-6 p-4 rounded-xl border shadow-sm",
+          validation.allValid
+            ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800"
+            : "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800"
+        )} role="region" aria-label="État de validation de l'annonce">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-3">
+            {validation.allValid ? (
+              <>
+                <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" aria-hidden="true" />
+                <div>
+                  <p className="font-semibold text-green-800 dark:text-green-200">Prêt pour publication</p>
+                  <p className="text-sm text-green-700 dark:text-green-300">Toutes les informations obligatoires sont remplies.</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" aria-hidden="true" />
+                <div>
+                  <p className="font-semibold text-amber-800 dark:text-amber-200">
+                    Informations manquantes ({validation.requiredValid}/{validation.requiredTotal})
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Complétez les champs ci-dessous pour publier l'annonce.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
-        )}
+
+          {/* Liste de validation */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {validation.results.map((field) => (
+              <div
+                key={field.key}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium",
+                  field.isValid
+                    ? "bg-green-100/50 text-green-700 dark:bg-green-900/20 dark:text-green-300"
+                    : field.required
+                      ? "bg-red-100/50 text-red-700 dark:bg-red-900/20 dark:text-red-300"
+                      : "bg-muted/50 text-muted-foreground"
+                )}
+              >
+                {field.isValid ? (
+                  <CheckCircle2 className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                ) : (
+                  <XCircle className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                )}
+                <span>{field.label}</span>
+                {field.required && !field.isValid && (
+                  <Badge variant="destructive" className="ml-auto text-[8px] px-1 py-0">Requis</Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </TooltipProvider>
   );
