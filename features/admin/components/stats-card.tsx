@@ -1,7 +1,16 @@
+/**
+ * @deprecated Utiliser KpiCard depuis @/components/ui/kpi-card à la place
+ * Ce fichier est maintenu pour rétro-compatibilité.
+ * Migration: import { KpiCard } from "@/components/ui/kpi-card"
+ */
+
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { KpiCard } from "@/components/ui/kpi-card";
 import { LucideIcon } from "lucide-react";
+
+// Réexporter le composant unifié
+export { KpiCard, KpiGrid, type KpiVariant } from "@/components/ui/kpi-card";
 
 interface StatsCardProps {
   title: string;
@@ -14,30 +23,22 @@ interface StatsCardProps {
   };
 }
 
+/**
+ * @deprecated Utiliser KpiCard depuis @/components/ui/kpi-card
+ */
 export function StatsCard({ title, value, description, icon: Icon, trend }: StatsCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
-        {trend && (
-          <p
-            className={`text-xs mt-1 ${
-              trend.isPositive ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {trend.isPositive ? "+" : ""}
-            {trend.value}% par rapport au mois dernier
-          </p>
-        )}
-      </CardContent>
-    </Card>
+    <KpiCard
+      title={title}
+      value={value}
+      description={description}
+      icon={Icon?.displayName?.toLowerCase() as any}
+      trend={trend ? {
+        value: trend.value,
+        direction: trend.isPositive ? "up" : "down",
+        label: "par rapport au mois dernier"
+      } : undefined}
+    />
   );
 }
 

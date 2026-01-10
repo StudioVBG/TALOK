@@ -196,8 +196,14 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
       <CardHeader className="py-3 px-4 border-b flex-shrink-0">
         <div className="flex items-center gap-3">
           {onBack && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onBack}
+              aria-label="Retour à la liste des conversations"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             </Button>
           )}
           <Avatar className="h-10 w-10">
@@ -358,8 +364,9 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
             size="icon"
             className="h-10 w-10 text-muted-foreground hover:text-foreground"
             disabled={sending}
+            aria-label="Ajouter une pièce jointe"
           >
-            <Paperclip className="h-5 w-5" />
+            <Paperclip className="h-5 w-5" aria-hidden="true" />
           </Button>
 
           <Input
@@ -377,11 +384,12 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
             size="icon"
             className="h-10 w-10"
             disabled={!newMessage.trim() || sending}
+            aria-label={sending ? "Envoi en cours..." : "Envoyer le message"}
           >
             {sending ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
             ) : (
-              <Send className="h-5 w-5" />
+              <Send className="h-5 w-5" aria-hidden="true" />
             )}
           </Button>
         </form>

@@ -216,8 +216,13 @@ export function AlertsPanel({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative"
+          aria-label={unreadCount > 0 ? `Alertes (${unreadCount} non lues)` : "Alertes"}
+        >
+          <Bell className="h-5 w-5" aria-hidden="true" />
           {unreadCount > 0 && (
             <motion.span
               initial={{ scale: 0 }}
@@ -226,6 +231,7 @@ export function AlertsPanel({
                 "absolute -top-1 -right-1 h-5 w-5 rounded-full flex items-center justify-center text-xs font-medium text-white",
                 criticalCount > 0 ? "bg-red-500" : "bg-primary"
               )}
+              aria-hidden="true"
             >
               {unreadCount > 9 ? "9+" : unreadCount}
             </motion.span>
