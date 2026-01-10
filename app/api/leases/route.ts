@@ -6,6 +6,7 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { LeaseCreateSchema, getMaxDepotLegal } from "@/lib/validations/lease-financial";
 import { SIGNER_ROLES } from "@/lib/constants/roles";
+import { withSubscriptionLimit } from "@/lib/middleware/subscription-check";
 
 /**
  * Configuration Vercel: maxDuration: 10s
@@ -336,6 +337,15 @@ export async function POST(request: Request) {
     // Seuls les propriétaires et admins peuvent créer des baux
     if (profileData.role !== "owner" && profileData.role !== "admin") {
       throw new ApiError(403, "Accès non autorisé");
+    }
+
+    // ✅ QUOTAS SOTA 2026: Vérifier les limites d'abonnement via middleware
+    if (profileData.role === "owner") {
+      const limitCheck = await withSubscriptionLimit(profileData.id, "leases");
+      if (!limitCheck.allowed) {
+        console.log(`[POST /api/leases] Limite atteinte: ${limitCheck.current}/${limitCheck.max} (plan: ${limitCheck.plan})`);
+        throw new ApiError(403, limitCheck.message || "Limite de baux atteinte pour votre forfait.");
+      }
     }
 
     const body = await request.json();
