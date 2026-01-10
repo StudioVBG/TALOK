@@ -1,6 +1,5 @@
 export const runtime = "nodejs";
 
-// @ts-nocheck
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchPropertyDetails } from "../../_data/fetchPropertyDetails";

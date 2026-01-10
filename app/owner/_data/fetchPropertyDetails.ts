@@ -1,15 +1,14 @@
-// @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
-import type { OwnerProperty } from "@/lib/types/owner-property";
+import type { OwnerProperty, PropertyPhoto, LeaseInfo } from "@/lib/types/owner-property";
 
 export interface PropertyDetails {
   property: OwnerProperty;
-  units: any[];
-  rooms: any[]; // ✅ Ajout des pièces
-  leases: any[];
-  tickets: any[];
-  invoices: any[];
-  photos: any[];
+  units: unknown[];
+  rooms: unknown[];
+  leases: LeaseInfo[];
+  tickets: unknown[];
+  invoices: unknown[];
+  photos: PropertyPhoto[];
 }
 
 export async function fetchPropertyDetails(propertyId: string, ownerId: string): Promise<PropertyDetails | null> {

@@ -1,7 +1,6 @@
 "use client";
-// @ts-nocheck
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutationWithToast } from "@/lib/hooks/use-mutation-with-toast";
 import { apiClient } from "@/lib/api-client";
@@ -12,20 +11,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  ArrowLeft, 
-  Building2, 
-  MapPin, 
-  FolderOpen, 
-  Edit, 
-  X, 
-  Check, 
+import {
+  ArrowLeft,
+  Building2,
+  MapPin,
+  FolderOpen,
+  Edit,
+  X,
+  Check,
   Loader2,
   Camera,
-  Trash2, 
+  Trash2,
   Plus,
   FileText,
-  ImageIcon, 
+  ImageIcon,
   Euro,
   Car,
   Shield,
@@ -51,6 +50,7 @@ import Image from "next/image";
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Navigation, CheckCircle2 } from "lucide-react";
 import dynamic from "next/dynamic";
+import type { OwnerProperty, PropertyPhoto, LeaseInfo, TenantInfo, EdlInfo } from "@/lib/types/owner-property";
 
 // Import dynamique de la carte pour éviter les erreurs SSR
 const PropertyMap = dynamic(
@@ -1655,10 +1655,10 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     <div className="pt-2 border-t">
                       <p className="text-sm text-muted-foreground">Locataire(s)</p>
                       <p className="font-medium">
-                        {existingLease.tenants?.filter((t: any) => t.role === 'locataire_principal' || t.role === 'tenant').length > 0 
-                          ? existingLease.tenants
-                              .filter((t: any) => t.role === 'locataire_principal' || t.role === 'tenant')
-                              .map((t: any) => t.profile ? `${t.profile.prenom} ${t.profile.nom}` : t.invited_name || "Locataire")
+                        {(existingLease?.tenants?.filter((t: TenantInfo) => t.role === 'locataire_principal' || t.role === 'tenant').length ?? 0) > 0
+                          ? existingLease?.tenants
+                              ?.filter((t: TenantInfo) => t.role === 'locataire_principal' || t.role === 'tenant')
+                              .map((t: TenantInfo) => t.profile ? `${t.profile.prenom} ${t.profile.nom}` : t.invited_name || "Locataire")
                               .join(", ")
                           : "En attente"}
                       </p>
