@@ -9,6 +9,7 @@ import { validatePropertyData, safeValidatePropertyData } from "@/lib/validation
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { propertiesQuerySchema, validateQueryParams } from "@/lib/validations/params";
+import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 import type {
   ServiceSupabaseClient,
   TypedSupabaseClient,
@@ -620,24 +621,11 @@ export async function POST(request: Request) {
       throw new ApiError(403, "Seuls les propriétaires peuvent créer des propriétés");
     }
 
-    // ✅ QUOTAS: Vérifier les limites d'abonnement SOTA 2026
-    const { data: canAdd, error: quotaError } = await serviceClient.rpc("check_subscription_limit", {
-      p_owner_id: profile.id,
-      p_resource: "properties",
-      p_increment: 1
-    });
-
-    if (quotaError) {
-      console.error("[POST /api/properties] Erreur vérification quota:", quotaError);
-    } else if (canAdd === false) {
-      // Log tentative de dépassement
-      await serviceClient.from("audit_log").insert({
-        user_id: user.id,
-        action: "quota_reached",
-        entity_type: "property",
-        metadata: { resource: "properties", limit_reached: true }
-      });
-      throw new ApiError(403, "Limite de propriétés atteinte pour votre forfait actuel. Veuillez passer à l'offre supérieure.");
+    // ✅ QUOTAS SOTA 2026: Vérifier les limites d'abonnement via middleware
+    const limitCheck = await withSubscriptionLimit(profile.id, "properties");
+    if (!limitCheck.allowed) {
+      console.log(`[POST /api/properties] Limite atteinte: ${limitCheck.current}/${limitCheck.max} (plan: ${limitCheck.plan})`);
+      throw new ApiError(403, limitCheck.message || "Limite de propriétés atteinte pour votre forfait.");
     }
 
     // ✅ CRÉATION: Créer un draft ou une propriété complète
