@@ -158,6 +158,52 @@ export const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, Idempotency-Key",
 };
 
+/**
+ * SOTA 2026: Check API access feature for v1 routes
+ * Requires Pro plan or higher for api_access
+ */
+export async function requireApiAccess(
+  profile: { id: string; role: string }
+): Promise<NextResponse | null> {
+  // Admins always have API access
+  if (profile.role === "admin") {
+    return null;
+  }
+
+  // Only owners need feature check
+  if (profile.role !== "owner") {
+    return apiError(
+      "L'accès API n'est disponible que pour les propriétaires",
+      403,
+      "API_ACCESS_ROLE_REQUIRED"
+    );
+  }
+
+  const supabase = await createClient();
+
+  // Get subscription
+  const { data: subscription } = await supabase
+    .from("subscriptions")
+    .select("plan_slug")
+    .eq("owner_id", profile.id)
+    .single();
+
+  const planSlug = subscription?.plan_slug || "gratuit";
+
+  // Plans with api_access: pro, enterprise_s, enterprise_m, enterprise_l, enterprise_xl
+  const plansWithApiAccess = ["pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl", "enterprise"];
+
+  if (!plansWithApiAccess.includes(planSlug)) {
+    return apiError(
+      "L'accès API requiert le forfait Pro ou supérieur. Passez à Pro pour débloquer l'API.",
+      403,
+      "API_ACCESS_REQUIRED"
+    );
+  }
+
+  return null;
+}
+
 // Rate limit check (basic implementation)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 

@@ -493,12 +493,24 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
           </div>
         </div>
 
-        {/* SOTA 2025 - Usage Limits & Upgrade Trigger */}
+        {/* SOTA 2026 - Usage Limits & Upgrade Trigger */}
         <motion.section variants={itemVariants} className="space-y-4">
-          <UsageLimitBanner 
-            resource="properties" 
-            variant="inline" 
-            threshold={70}
+          <UsageLimitBanner
+            resource="properties"
+            variant="inline"
+            threshold={80}
+            dismissible={true}
+          />
+          <UsageLimitBanner
+            resource="leases"
+            variant="inline"
+            threshold={80}
+            dismissible={true}
+          />
+          <UsageLimitBanner
+            resource="signatures"
+            variant="inline"
+            threshold={80}
             dismissible={true}
           />
           <UpgradeTrigger variant="prominent" />
