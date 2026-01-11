@@ -28,7 +28,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Aucun fichier fourni" }, { status: 400 });
     }
 
-    // Rediriger vers la route upload-batch pour le traitement
+    // ✅ FIX: Validation du type de fichier (whitelist)
+    const allowedMimeTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "text/html",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    const allowedExtensions = [
+      "pdf", "jpg", "jpeg", "png", "gif", "webp", "html", "doc", "docx"
+    ];
+
+    const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
+    if (!allowedMimeTypes.includes(file.type) && !allowedExtensions.includes(fileExt)) {
+      return NextResponse.json({
+        error: `Type de fichier non autorisé: ${file.type || fileExt}`,
+      }, { status: 400 });
+    }
+
+    // ✅ FIX: Validation de la taille (max 10 MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({
+        error: `Fichier trop volumineux (max 10 MB, reçu ${(file.size / 1024 / 1024).toFixed(2)} MB)`,
+      }, { status: 400 });
+    }
+
+    // ✅ FIX: Validation du propertyId/leaseId (format UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (propertyId && !uuidRegex.test(propertyId)) {
+      return NextResponse.json({ error: "property_id invalide" }, { status: 400 });
+    }
+    if (leaseId && !uuidRegex.test(leaseId)) {
+      return NextResponse.json({ error: "lease_id invalide" }, { status: 400 });
+    }
+
+    // Traitement de l'upload
     // ou implémenter la logique d'upload ici
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -58,8 +97,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    // Créer un nom de fichier unique
-    const fileExt = file.name.split(".").pop();
+    // Créer un nom de fichier unique (fileExt déjà validé ci-dessus)
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = propertyId 
       ? `properties/${propertyId}/${fileName}`

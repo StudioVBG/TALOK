@@ -280,7 +280,7 @@ export const usePropertyWizardStore = create<WizardState>()(
     set(INITIAL_STATE);
   },
 
-  // SOTA 2026: initializeDraft avec MUTEX pour éviter les double-créations
+  // ✅ FIX SOTA 2026: initializeDraft avec MUTEX SYNCHRONE pour éviter les double-créations
   initializeDraft: async (type) => {
     const { isInitializing, propertyId } = get();
 
@@ -299,8 +299,15 @@ export const usePropertyWizardStore = create<WizardState>()(
       return;
     }
 
-    // Activer le mutex
+    // ✅ FIX: Activer le mutex AVANT toute opération async pour éviter race condition
     set({ isInitializing: true, syncStatus: 'saving', lastError: null });
+
+    // Double-check après le set (autre thread pourrait avoir créé)
+    if (get().propertyId) {
+      console.log('[WizardStore] PropertyId créé par autre appel, annulation');
+      set({ isInitializing: false, syncStatus: 'saved' });
+      return;
+    }
 
     try {
       const { propertyId: newPropertyId } = await propertiesService.createDraftPropertyInit(type);

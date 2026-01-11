@@ -402,7 +402,8 @@ export async function POST(request: Request) {
       depot_de_garantie: depotGarantie, // ← Calculé automatiquement si non fourni
       date_debut: validatedData.date_debut,
       date_fin: validatedData.date_fin || null,
-      statut: (body.statut as string) || "draft",
+      // ✅ FIX: Forcer le statut à "draft" à la création (validation enum)
+      statut: "draft",
     };
 
     const { data: lease, error: leaseError } = await serviceClient
@@ -418,27 +419,25 @@ export async function POST(request: Request) {
 
     const leaseResult = lease as LeaseResult;
 
-    // ✅ SSOT 2026: Ajouter le propriétaire comme signataire avec rôle standardisé
-    try {
-      const { error: ownerSignerError } = await serviceClient
-        .from("lease_signers")
-        .insert({
-          lease_id: leaseResult.id,
-          profile_id: profileData.id,
-          role: SIGNER_ROLES.OWNER, // ✅ Utilisation constante
-          signature_status: "pending",
-        });
+    // ✅ FIX SSOT 2026: Ajouter le propriétaire comme signataire (OBLIGATOIRE)
+    const { error: ownerSignerError } = await serviceClient
+      .from("lease_signers")
+      .insert({
+        lease_id: leaseResult.id,
+        profile_id: profileData.id,
+        role: SIGNER_ROLES.OWNER,
+        signature_status: "pending",
+      });
 
-      if (ownerSignerError) {
-        console.warn("[POST /api/leases] Erreur ajout signataire propriétaire:", ownerSignerError);
-      } else {
-        console.log("[POST /api/leases] Propriétaire ajouté comme signataire");
-      }
-    } catch (signerErr) {
-      console.warn("[POST /api/leases] Exception signataire (non bloquant):", signerErr);
+    if (ownerSignerError) {
+      console.error("[POST /api/leases] Erreur ajout signataire propriétaire:", ownerSignerError);
+      // ✅ FIX: Supprimer le bail créé si le signataire échoue
+      await serviceClient.from("leases").delete().eq("id", leaseResult.id);
+      throw new ApiError(500, "Erreur lors de l'ajout du signataire propriétaire");
     }
+    console.log("[POST /api/leases] Propriétaire ajouté comme signataire");
 
-    // ✅ SSOT 2026: Ajouter un signataire locataire avec rôle standardisé
+    // ✅ FIX SSOT 2026: Ajouter un signataire locataire (OBLIGATOIRE)
     try {
       const tenantEmail = validatedData.tenant_email;
       const tenantName = validatedData.tenant_name;
@@ -506,15 +505,24 @@ export async function POST(request: Request) {
       const { error: tenantSignerError } = await serviceClient
         .from("lease_signers")
         .insert(tenantSignerData);
-      
+
       if (tenantSignerError) {
-        console.warn("[POST /api/leases] Erreur ajout signataire locataire:", tenantSignerError);
+        console.error("[POST /api/leases] Erreur ajout signataire locataire:", tenantSignerError);
+        // ✅ FIX: Nettoyer les données créées si le signataire échoue
+        await serviceClient.from("lease_signers").delete().eq("lease_id", leaseResult.id);
+        await serviceClient.from("leases").delete().eq("id", leaseResult.id);
+        throw new ApiError(500, "Erreur lors de l'ajout du signataire locataire");
       }
+      console.log("[POST /api/leases] Locataire ajouté comme signataire");
     } catch (tenantErr) {
-      console.warn("[POST /api/leases] Exception signataire locataire (non bloquant):", tenantErr);
+      // Nettoyer si exception
+      await serviceClient.from("lease_signers").delete().eq("lease_id", leaseResult.id);
+      await serviceClient.from("leases").delete().eq("id", leaseResult.id);
+      console.error("[POST /api/leases] Exception signataire locataire:", tenantErr);
+      throw new ApiError(500, "Erreur lors de l'ajout du signataire locataire");
     }
 
-    console.log("[POST /api/leases] Bail créé avec signataires:", leaseResult.id);
+    console.log("[POST /api/leases] ✅ Bail créé avec signataires:", leaseResult.id);
 
     return NextResponse.json(lease, { status: 201 });
   } catch (error: unknown) {
