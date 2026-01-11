@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, parseISO, isPast } from "date-fns";
+import { format, parse, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   CalendarCheck,
@@ -191,24 +191,36 @@ export function BookingsList({ propertyId, role }: BookingsListProps) {
     },
   });
 
+  // Helper to check if a booking slot is in the past
+  const isSlotPast = (slot: { slot_date: string; start_time: string }) => {
+    // Combine date and time to create a full datetime
+    const dateTimeStr = `${slot.slot_date} ${slot.start_time.slice(0, 5)}`;
+    const slotDateTime = parse(dateTimeStr, "yyyy-MM-dd HH:mm", new Date());
+    return isPast(slotDateTime);
+  };
+
   // Filter bookings
   const upcomingBookings = bookings.filter(
     (b) =>
       ["pending", "confirmed"].includes(b.status) &&
-      !isPast(parseISO(b.slot.start_time))
+      !isSlotPast(b.slot)
   );
   const pastBookings = bookings.filter(
     (b) =>
       !["pending", "confirmed"].includes(b.status) ||
-      isPast(parseISO(b.slot.start_time))
+      isSlotPast(b.slot)
   );
 
   // Format helpers
-  const formatTime = (isoString: string) => format(parseISO(isoString), "HH:mm");
-  const formatDate = (dateString: string) =>
-    format(parseISO(dateString), "EEE d MMM", { locale: fr });
-  const formatFullDate = (dateString: string) =>
-    format(parseISO(dateString), "EEEE d MMMM yyyy", { locale: fr });
+  const formatTime = (timeString: string) => timeString.slice(0, 5);
+  const formatDate = (dateString: string) => {
+    const date = parse(dateString, "yyyy-MM-dd", new Date());
+    return format(date, "EEE d MMM", { locale: fr });
+  };
+  const formatFullDate = (dateString: string) => {
+    const date = parse(dateString, "yyyy-MM-dd", new Date());
+    return format(date, "EEEE d MMMM yyyy", { locale: fr });
+  };
 
   // Handle action
   const handleAction = (booking: VisitBooking, action: typeof actionType) => {
@@ -262,7 +274,7 @@ export function BookingsList({ propertyId, role }: BookingsListProps) {
   const renderBookingCard = (booking: VisitBooking) => {
     const isUpcoming =
       ["pending", "confirmed"].includes(booking.status) &&
-      !isPast(parseISO(booking.slot.start_time));
+      !isSlotPast(booking.slot);
     const isPending = booking.status === "pending";
     const isConfirmed = booking.status === "confirmed";
 

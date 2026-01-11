@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
+import { format, parse } from "date-fns";
 import { fr } from "date-fns/locale";
 import { CalendarCheck, Loader2, MapPin, Clock, User, Phone, Mail } from "lucide-react";
 
@@ -113,12 +113,15 @@ export function BookingForm({
     mutation.mutate(data);
   };
 
-  const formatTime = (isoString: string) => {
-    return format(parseISO(isoString), "HH:mm");
+  // Format time string (HH:mm:ss or HH:mm)
+  const formatTime = (timeString: string) => {
+    return timeString.slice(0, 5);
   };
 
+  // Format date string (YYYY-MM-DD)
   const formatDate = (dateString: string) => {
-    return format(parseISO(dateString), "EEEE d MMMM yyyy", { locale: fr });
+    const date = parse(dateString, "yyyy-MM-dd", new Date());
+    return format(date, "EEEE d MMMM yyyy", { locale: fr });
   };
 
   const maxPartySize = slot.max_visitors - slot.current_visitors;
