@@ -48,8 +48,19 @@ export function TypeStep() {
   const handleSelect = useCallback(async (type: PropertyTypeV3) => {
     if (isTransitioning) return;
     setIsTransitioning(true);
-    await initializeDraft(type);
-    setTimeout(() => nextStep(), 300);
+
+    try {
+      // Attendre que le draft soit créé en BDD AVANT de passer à l'étape suivante
+      await initializeDraft(type);
+
+      // Petit délai pour l'animation visuelle, puis navigation
+      await new Promise(resolve => setTimeout(resolve, 300));
+      nextStep();
+    } catch (error) {
+      console.error('[TypeStep] Erreur création draft:', error);
+      // Reset pour permettre un nouvel essai
+      setIsTransitioning(false);
+    }
   }, [initializeDraft, nextStep, isTransitioning]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent, index: number, totalItems: number) => {

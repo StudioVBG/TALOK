@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
-import { 
-  Euro, Ruler, Coins, ArrowUpDown, Sofa, HelpCircle, 
+import {
+  Euro, Ruler, Coins, ArrowUpDown, Sofa, HelpCircle,
   Flame, Droplet, Snowflake, Zap, Home, ThermometerSun,
-  Building2
+  Building2, FileText, Briefcase
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RentEstimation } from "../RentEstimation";
 import { Badge } from "@/components/ui/badge";
@@ -124,6 +125,48 @@ export function DetailsStepHabitation() {
             )}
           </div>
 
+          {/* Section 1b: Usage principal (OBLIGATOIRE) */}
+          <div className="bg-card p-4 rounded-xl border">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 bg-teal-100 text-teal-600 rounded-lg flex items-center justify-center">
+                <Briefcase className="h-4 w-4" />
+              </div>
+              <Label className="text-sm font-medium">Usage principal</Label>
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Obligatoire</Badge>
+            </div>
+            <Select
+              value={(formData as any).usage_principal || ""}
+              onValueChange={(v) => updateFormData({ usage_principal: v })}
+            >
+              <SelectTrigger className="h-10"><SelectValue placeholder="Sélectionnez l'usage..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="habitation">Habitation principale</SelectItem>
+                <SelectItem value="habitation_secondaire">Résidence secondaire</SelectItem>
+                <SelectItem value="mixte">Usage mixte (habitation + professionnel)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Section 1c: Description (RECOMMANDÉ) */}
+          <div className="bg-card p-4 rounded-xl border">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 bg-slate-100 text-slate-600 rounded-lg flex items-center justify-center">
+                <FileText className="h-4 w-4" />
+              </div>
+              <Label className="text-sm font-medium">Description du bien</Label>
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Recommandé</Badge>
+            </div>
+            <Textarea
+              placeholder="Décrivez votre bien : points forts, caractéristiques, environnement..."
+              className="min-h-[100px] resize-none"
+              value={(formData as any).description || ""}
+              onChange={(e) => updateFormData({ description: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Une bonne description augmente vos chances de trouver un locataire rapidement
+            </p>
+          </div>
+
           {/* Section 2: Ascenseur + Meublé */}
           <div className="grid grid-cols-2 gap-4">
             {showEtage && (
@@ -201,6 +244,34 @@ export function DetailsStepHabitation() {
                     </button>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Valeurs numériques DPE (optionnel mais recommandé) */}
+            <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">
+                  Consommation (kWh/m²/an)
+                </Label>
+                <Input
+                  type="number"
+                  placeholder="Ex: 150"
+                  className="h-9"
+                  value={(formData as any).dpe_consommation || ""}
+                  onChange={(e) => handleChange("dpe_consommation", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">
+                  Émissions GES (kg CO₂/m²/an)
+                </Label>
+                <Input
+                  type="number"
+                  placeholder="Ex: 25"
+                  className="h-9"
+                  value={(formData as any).dpe_emissions || ""}
+                  onChange={(e) => handleChange("dpe_emissions", e.target.value)}
+                />
               </div>
             </div>
           </div>

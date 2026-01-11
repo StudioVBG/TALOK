@@ -25,13 +25,16 @@ interface ValidationField {
   required: boolean;
 }
 
+// SOTA 2026: Aligné avec app/api/properties/[id]/submit/route.ts
 const VALIDATION_FIELDS: ValidationField[] = [
   { key: "type", label: "Type de bien", check: (f) => !!f.type || !!f.type_bien, required: true },
   { key: "adresse", label: "Adresse complète", check: (f) => !!f.adresse_complete && !!f.code_postal && !!f.ville, required: true },
+  { key: "usage", label: "Usage principal", check: (f) => !!f.usage_principal, required: true },
   { key: "surface", label: "Surface", check: (f) => (f.surface || f.surface_habitable_m2) > 0, required: true },
-  { key: "loyer", label: "Loyer", check: (f) => (f.loyer_hc || f.loyer_base) > 0, required: true },
+  { key: "loyer", label: "Loyer", check: (f) => (f.loyer_hc) > 0, required: true },
   { key: "dpe", label: "DPE", check: (f) => !!f.dpe_classe_energie, required: true },
   { key: "chauffage", label: "Chauffage", check: (f) => !!f.chauffage_type, required: true },
+  { key: "eau_chaude", label: "Eau chaude", check: (f) => !!f.eau_chaude_type, required: true },
   { key: "photos", label: "Photos (min. 1)", check: (_, __, p) => p.length >= 1, required: false },
 ];
 

@@ -79,7 +79,7 @@ function sanitizeProperty(property: Record<string, any>) {
   return {
     ...publicFields,
     type_bien: property.type ?? property.type_bien,
-    loyer_hc: property.loyer_base,
+    loyer_hc: property.loyer_hc,
   };
 }
 

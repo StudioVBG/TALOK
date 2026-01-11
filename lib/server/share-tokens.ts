@@ -21,7 +21,7 @@ export const PROPERTY_SHARE_SELECT = [
   "type_location_parking",
   "numero_place",
   "niveau",
-  "loyer_base",
+  "loyer_hc",
   "charges_mensuelles",
   "depot_garantie",
   "charges_forfaitaires",

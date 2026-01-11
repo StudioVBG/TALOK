@@ -96,6 +96,9 @@ export interface WizardFormData extends Partial<Property> {
   visite_virtuelle_url?: string;
   description?: string;
 
+  // Usage
+  usage_principal?: 'habitation' | 'habitation_secondaire' | 'mixte';
+
   // SOTA 2026 - Champs spécifiques immeuble
   building_floors?: number;
   building_units?: BuildingUnit[];
@@ -236,13 +239,32 @@ function generateTempId(): string {
 }
 
 // SOTA 2026: Debounce pour updateFormData - évite les appels API excessifs
-let updateDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const UPDATE_DEBOUNCE_MS = 500;
 
-// SOTA 2026: Pending updates accumulator pour debounce
-let pendingUpdates: Partial<WizardFormData> = {};
+// SOTA 2026: Debounce state par propertyId pour éviter les conflits entre instances
+const debounceState = new Map<string, {
+  timer: ReturnType<typeof setTimeout> | null;
+  pendingUpdates: Partial<WizardFormData>;
+}>();
 
-export const usePropertyWizardStore = create<WizardState>((set, get) => ({
+function getDebounceState(propertyId: string) {
+  if (!debounceState.has(propertyId)) {
+    debounceState.set(propertyId, { timer: null, pendingUpdates: {} });
+  }
+  return debounceState.get(propertyId)!;
+}
+
+function clearDebounceState(propertyId: string) {
+  const state = debounceState.get(propertyId);
+  if (state?.timer) {
+    clearTimeout(state.timer);
+  }
+  debounceState.delete(propertyId);
+}
+
+export const usePropertyWizardStore = create<WizardState>()(
+  persist(
+    (set, get) => ({
   ...INITIAL_STATE,
 
   // --- ACTIONS ---
@@ -250,12 +272,11 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
   // Réinitialise complètement le wizard pour une nouvelle création
   reset: () => {
     console.log('[WizardStore] Reset du wizard');
-    // Clear debounce timer
-    if (updateDebounceTimer) {
-      clearTimeout(updateDebounceTimer);
-      updateDebounceTimer = null;
+    // Clear tous les debounce timers
+    const { propertyId } = get();
+    if (propertyId) {
+      clearDebounceState(propertyId);
     }
-    pendingUpdates = {};
     set(INITIAL_STATE);
   },
 
@@ -327,7 +348,7 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
     }
   },
 
-  // SOTA 2026: updateFormData avec DEBOUNCE pour optimiser les appels API
+  // SOTA 2026: updateFormData avec DEBOUNCE par propertyId pour optimiser les appels API
   updateFormData: (updates) => {
     const { propertyId } = get();
 
@@ -337,29 +358,43 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
       syncStatus: propertyId ? 'saving' : 'idle'
     }));
 
-    // 2. Accumuler les updates pour le debounce
-    pendingUpdates = { ...pendingUpdates, ...updates };
-
-    // 3. Si pas de propertyId, pas de sync serveur
+    // 2. Si pas de propertyId, pas de sync serveur
     if (!propertyId) {
       return;
     }
 
-    // 4. Clear timer précédent et créer nouveau
-    if (updateDebounceTimer) {
-      clearTimeout(updateDebounceTimer);
+    // 3. Récupérer le state de debounce pour CE propertyId
+    const debounce = getDebounceState(propertyId);
+
+    // 4. Accumuler les updates
+    debounce.pendingUpdates = { ...debounce.pendingUpdates, ...updates };
+
+    // 5. Clear timer précédent
+    if (debounce.timer) {
+      clearTimeout(debounce.timer);
     }
 
-    updateDebounceTimer = setTimeout(async () => {
-      const updatesToSend = { ...pendingUpdates };
-      pendingUpdates = {};
+    // 6. Créer nouveau timer avec capture du propertyId
+    const capturedPropertyId = propertyId;
+    debounce.timer = setTimeout(async () => {
+      const currentDebounce = debounceState.get(capturedPropertyId);
+      if (!currentDebounce) return;
+
+      const updatesToSend = { ...currentDebounce.pendingUpdates };
+      currentDebounce.pendingUpdates = {};
+      currentDebounce.timer = null;
 
       try {
-        await propertiesService.updatePropertyGeneral(propertyId, updatesToSend as any);
-        set({ syncStatus: 'saved' });
+        await propertiesService.updatePropertyGeneral(capturedPropertyId, updatesToSend as any);
+        // Vérifier qu'on est toujours sur le même propertyId avant de mettre à jour le status
+        if (get().propertyId === capturedPropertyId) {
+          set({ syncStatus: 'saved' });
+        }
       } catch (err: any) {
         console.error('[WizardStore] Erreur sauvegarde:', err);
-        set({ syncStatus: 'error', lastError: "Erreur sauvegarde" });
+        if (get().propertyId === capturedPropertyId) {
+          set({ syncStatus: 'error', lastError: "Erreur sauvegarde" });
+        }
       }
     }, UPDATE_DEBOUNCE_MS);
   },
@@ -552,5 +587,22 @@ export const usePropertyWizardStore = create<WizardState>((set, get) => ({
       set({ currentStep: applicableSteps[currentIndex - 1] });
     }
   }
-}));
+    }),
+    {
+      name: 'property-wizard-storage',
+      // SOTA 2026: Exclure les champs sensibles et transitoires de la persistance
+      partialize: (state) => ({
+        propertyId: state.propertyId,
+        buildingId: state.buildingId,
+        currentStep: state.currentStep,
+        mode: state.mode,
+        formData: state.formData,
+        rooms: state.rooms,
+        // Ne pas persister: photos (trop lourd), syncStatus, errors, isInitializing
+      }),
+      // Migrer les anciennes versions du store si nécessaire
+      version: 1,
+    }
+  )
+);
 

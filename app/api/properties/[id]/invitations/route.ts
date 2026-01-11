@@ -47,15 +47,22 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("id")
       .eq("user_id", user.id as any)
       .single();
 
+    // SOTA 2026: Vérifier que le profil existe AVANT de comparer
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: "Profil non trouvé" },
+        { status: 404 }
+      );
+    }
+
     const propertyData = property as any;
-    const profileData = profile as any;
-    if (propertyData.owner_id !== profileData?.id) {
+    if (propertyData.owner_id !== profile.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -162,15 +169,22 @@ export async function GET(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("id")
       .eq("user_id", user.id as any)
       .single();
 
+    // SOTA 2026: Vérifier que le profil existe AVANT de comparer
+    if (profileError || !profile) {
+      return NextResponse.json(
+        { error: "Profil non trouvé" },
+        { status: 404 }
+      );
+    }
+
     const propertyData = property as any;
-    const profileData = profile as any;
-    if (propertyData.owner_id !== profileData?.id) {
+    if (propertyData.owner_id !== profile.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }

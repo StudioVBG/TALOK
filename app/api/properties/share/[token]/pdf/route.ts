@@ -87,7 +87,7 @@ async function buildPropertyPdf(
 
   const type = property.type_bien ?? property.type ?? "Logement";
   const address = `${property.adresse_complete ?? ""} ${property.code_postal ?? ""} ${property.ville ?? ""}`.trim();
-  const loyer = Number(property.loyer_base ?? 0);
+  const loyer = Number(property.loyer_hc ?? 0);
   const charges = Number(property.charges_mensuelles ?? 0);
   const depot = Number(property.depot_garantie ?? 0);
 

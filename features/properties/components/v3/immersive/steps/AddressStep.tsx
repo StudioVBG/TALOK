@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -201,6 +201,31 @@ const POSTAL_CODE_TO_CITY: Record<string, string> = {
 export function AddressStep() {
   const { formData, updateFormData } = usePropertyWizardStore();
   const [autoFilledDept, setAutoFilledDept] = useState<string | null>(null);
+
+  // SOTA 2026: Ref pour stocker les timers et éviter les memory leaks
+  const autoFillTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup des timers au démontage du composant
+  useEffect(() => {
+    return () => {
+      if (autoFillTimerRef.current) {
+        clearTimeout(autoFillTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Fonction helper pour auto-effacer le message de département
+  const showAutoFilledDept = (deptName: string) => {
+    // Clear timer précédent
+    if (autoFillTimerRef.current) {
+      clearTimeout(autoFillTimerRef.current);
+    }
+    setAutoFilledDept(deptName);
+    autoFillTimerRef.current = setTimeout(() => {
+      setAutoFilledDept(null);
+      autoFillTimerRef.current = null;
+    }, 3000);
+  };
   
   // Extraire le code postal d'une chaîne d'adresse
   const extractPostalCode = (address: string): string | null => {
@@ -288,8 +313,7 @@ export function AddressStep() {
           updateFormData({ departement: deptCode });
           const deptName = DEPARTEMENT_NAMES[deptCode];
           if (deptName) {
-            setAutoFilledDept(deptName);
-            setTimeout(() => setAutoFilledDept(null), 3000);
+            showAutoFilledDept(deptName);
           }
         }
       }
@@ -307,12 +331,11 @@ export function AddressStep() {
         updateFormData({ departement: deptCode });
         const deptName = DEPARTEMENT_NAMES[deptCode];
         if (deptName) {
-          setAutoFilledDept(deptName);
-          setTimeout(() => setAutoFilledDept(null), 3000);
+          showAutoFilledDept(deptName);
         }
       }
     }
-    
+
     // ✅ NOUVEAU: Si on modifie la ville, essayer de déduire le code postal
     if (field === "ville" && value.length >= 3) {
       const normalizedVille = value.toLowerCase()
@@ -370,8 +393,7 @@ export function AddressStep() {
           updateFormData({ departement: deptCode });
           const deptName = DEPARTEMENT_NAMES[deptCode];
           if (deptName) {
-            setAutoFilledDept(deptName);
-            setTimeout(() => setAutoFilledDept(null), 3000);
+            showAutoFilledDept(deptName);
           }
         }
       }
@@ -418,8 +440,7 @@ export function AddressStep() {
                 if (departement) {
                   const deptName = DEPARTEMENT_NAMES[departement];
                   if (deptName) {
-                    setAutoFilledDept(deptName);
-                    setTimeout(() => setAutoFilledDept(null), 3000);
+                    showAutoFilledDept(deptName);
                   }
                 }
               }}

@@ -104,7 +104,7 @@ export async function GET(request: Request) {
       queryDescription = "Admin query: all properties";
       query = supabase
         .from("properties")
-        .select("id, owner_id, type, type_bien, adresse_complete, code_postal, ville, surface, nb_pieces, loyer_base, created_at, etat")
+        .select("id, owner_id, type, type_bien, adresse_complete, code_postal, ville, surface, nb_pieces, loyer_hc, created_at, etat")
         .order("created_at", { ascending: false });
     } else if (profile.role === "owner") {
       queryDescription = `Owner query: properties where owner_id = ${profile.id}`;
@@ -191,7 +191,7 @@ export async function GET(request: Request) {
       
       query = supabase
         .from("properties")
-        .select("id, owner_id, type, type_bien, adresse_complete, code_postal, ville, surface, nb_pieces, loyer_base, created_at, etat")
+        .select("id, owner_id, type, type_bien, adresse_complete, code_postal, ville, surface, nb_pieces, loyer_hc, created_at, etat")
         .in("id", propertyIds)
         .order("created_at", { ascending: false });
     }
