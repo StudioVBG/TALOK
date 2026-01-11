@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, addDays, isSameDay, parseISO, startOfDay } from "date-fns";
+import { format, addDays, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   CalendarDays,
@@ -105,9 +105,10 @@ export function TimeSlotPicker({
     );
   }, [selectedDate, slotsByDate]);
 
-  // Format time from ISO string
-  const formatTime = (isoString: string) => {
-    return format(parseISO(isoString), "HH:mm");
+  // Format time string (HH:mm:ss or HH:mm)
+  const formatTime = (timeString: string) => {
+    // Handle time strings like "10:00:00" or "10:00"
+    return timeString.slice(0, 5);
   };
 
   // Check if a date has available slots
