@@ -911,3 +911,24 @@ export {
   OWNER_NOTICE_REASONS,
 } from "./end-of-lease";
 
+// ============================================
+// TAX VERIFICATION TYPES
+// ============================================
+export type {
+  TaxNoticeVerificationRequest,
+  TaxVerificationConfig,
+  TaxVerificationMode,
+  TaxDeclarant,
+  TaxFoyerFiscal,
+  TaxSituationFamille,
+  TaxNoticeApiResponse,
+  TaxNoticeConformityStatus,
+  TaxNoticeVerificationResult,
+  TaxNoticeSummary,
+  TaxVerificationErrorCode,
+  TaxVerificationError,
+  TaxNotice2DDocData,
+  TaxNotice2DDocResult,
+  TaxVerificationLog,
+} from "./tax-verification";
+
