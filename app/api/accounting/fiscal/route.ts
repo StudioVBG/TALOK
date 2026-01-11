@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { accountingService } from "@/features/accounting/services/accounting.service";
+import { generateFiscalPDF } from "@/features/accounting/services/pdf-export.service";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -82,12 +83,18 @@ export async function GET(request: Request) {
       });
     }
 
-    // Format PDF (à implémenter)
+    // Format PDF
     if (format === "pdf") {
-      return NextResponse.json(
-        { error: "Export PDF non encore implémenté" },
-        { status: 501 }
-      );
+      const pdfBytes = await generateFiscalPDF(recap);
+
+      return new NextResponse(pdfBytes, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="recap_fiscal_${year}.pdf"`,
+          "Content-Length": pdfBytes.length.toString(),
+        },
+      });
     }
 
     return NextResponse.json({

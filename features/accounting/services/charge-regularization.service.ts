@@ -377,6 +377,153 @@ export class ChargeRegularizationService {
   }
 
   /**
+   * Récupère une régularisation par son ID
+   */
+  async getRegularisationById(regularisationId: string) {
+    const { data, error } = await this.supabase
+      .from("charge_regularisations")
+      .select(`
+        *,
+        lease:leases!inner(
+          id,
+          date_debut,
+          date_fin,
+          loyer,
+          charges_forfaitaires,
+          tenant_id,
+          property:properties!inner(
+            id,
+            nom,
+            adresse_ligne1,
+            ville,
+            code_postal,
+            owner_id
+          )
+        )
+      `)
+      .eq("id", regularisationId)
+      .single();
+
+    if (error) {
+      console.error("[ChargeRegularization] Erreur récupération:", error);
+      return null;
+    }
+
+    return data;
+  }
+
+  /**
+   * Annule une régularisation (seulement si en brouillon)
+   */
+  async cancelRegularisation(regularisationId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    // Récupérer la régularisation
+    const { data: regul } = await this.supabase
+      .from("charge_regularisations")
+      .select("id, status, year, lease_id")
+      .eq("id", regularisationId)
+      .single();
+
+    if (!regul) {
+      throw new Error("Régularisation non trouvée");
+    }
+
+    if (regul.status === "applied") {
+      throw new Error("Impossible d'annuler une régularisation déjà appliquée");
+    }
+
+    if (regul.status === "cancelled") {
+      throw new Error("Cette régularisation est déjà annulée");
+    }
+
+    // Mettre à jour le statut
+    const { error } = await this.supabase
+      .from("charge_regularisations")
+      .update({
+        status: "cancelled",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", regularisationId);
+
+    if (error) {
+      console.error("[ChargeRegularization] Erreur annulation:", error);
+      throw new Error("Erreur lors de l'annulation de la régularisation");
+    }
+
+    return {
+      success: true,
+      message: `Régularisation ${regul.year} annulée`,
+    };
+  }
+
+  /**
+   * Met à jour une régularisation en brouillon
+   */
+  async updateRegularisation(
+    regularisationId: string,
+    updates: {
+      charges_reelles?: any[];
+      notes?: string;
+      nouvelle_provision?: number;
+      date_effet_nouvelle_provision?: string;
+    }
+  ): Promise<{ success: boolean }> {
+    const { data: regul } = await this.supabase
+      .from("charge_regularisations")
+      .select("id, status")
+      .eq("id", regularisationId)
+      .single();
+
+    if (!regul) {
+      throw new Error("Régularisation non trouvée");
+    }
+
+    if (regul.status !== "draft") {
+      throw new Error("Seules les régularisations en brouillon peuvent être modifiées");
+    }
+
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (updates.charges_reelles) {
+      const totalCharges = updates.charges_reelles.reduce(
+        (sum, c) => sum + (c.montant_du || c.quote_part || 0),
+        0
+      );
+      updateData.details = { charges_reelles: updates.charges_reelles };
+      updateData.actual_charges = totalCharges;
+      updateData.charges_reelles = totalCharges;
+    }
+
+    if (updates.notes !== undefined) {
+      updateData.notes = updates.notes;
+    }
+
+    if (updates.nouvelle_provision !== undefined) {
+      updateData.nouvelle_provision = updates.nouvelle_provision;
+    }
+
+    if (updates.date_effet_nouvelle_provision !== undefined) {
+      updateData.date_effet_nouvelle_provision = updates.date_effet_nouvelle_provision;
+    }
+
+    const { error } = await this.supabase
+      .from("charge_regularisations")
+      .update(updateData)
+      .eq("id", regularisationId);
+
+    if (error) {
+      console.error("[ChargeRegularization] Erreur mise à jour:", error);
+      throw new Error("Erreur lors de la mise à jour");
+    }
+
+    return { success: true };
+  }
+
+  /**
    * Calcule le prorata d'occupation
    */
   private calculateProrata(

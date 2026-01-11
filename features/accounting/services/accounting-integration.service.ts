@@ -491,4 +491,169 @@ export class AccountingIntegrationService {
 
     return data || [];
   }
+
+  /**
+   * Crée une écriture d'extourne pour annuler une écriture
+   */
+  async reverseEntry(params: {
+    entryId: string;
+    motif: string;
+    date?: string;
+  }): Promise<{ success: boolean; reversal_id?: string }> {
+    const reversalDate = params.date || new Date().toISOString().split("T")[0];
+
+    // Récupérer l'écriture originale
+    const { data: original, error: fetchError } = await this.supabase
+      .from("accounting_entries")
+      .select("*")
+      .eq("id", params.entryId)
+      .single();
+
+    if (fetchError || !original) {
+      console.error("[AccountingIntegration] Écriture non trouvée:", params.entryId);
+      return { success: false };
+    }
+
+    // Créer l'écriture d'extourne (inverse les débits/crédits)
+    const reversal = await this.recordEntry({
+      journal_code: JOURNAUX.OD, // Opérations Diverses pour les extournes
+      entry_date: reversalDate,
+      compte_num: original.compte_num,
+      compte_lib: original.compte_lib,
+      piece_ref: `EXT-${original.piece_ref}`,
+      libelle: `Extourne: ${params.motif} (réf: ${original.piece_ref})`,
+      debit: original.credit, // Inverse
+      credit: original.debit, // Inverse
+      entity_type: "reversal",
+      entity_id: original.id,
+    });
+
+    if (!reversal) {
+      return { success: false };
+    }
+
+    // Mettre à jour l'écriture originale pour indiquer qu'elle a été extournée
+    await this.supabase
+      .from("accounting_entries")
+      .update({
+        reversed: true,
+        reversal_id: reversal.id,
+        reversed_at: reversalDate,
+      })
+      .eq("id", params.entryId);
+
+    return { success: true, reversal_id: reversal.id };
+  }
+
+  /**
+   * Annule un ensemble d'écritures liées à une entité
+   */
+  async reverseEntriesForEntity(params: {
+    entityType: string;
+    entityId: string;
+    motif: string;
+  }): Promise<{ success: boolean; reversals: string[] }> {
+    const entries = await this.getEntriesForEntity(params.entityType, params.entityId);
+    const reversals: string[] = [];
+
+    for (const entry of entries) {
+      if (!entry.reversed) {
+        const result = await this.reverseEntry({
+          entryId: entry.id,
+          motif: params.motif,
+        });
+        if (result.reversal_id) {
+          reversals.push(result.reversal_id);
+        }
+      }
+    }
+
+    return { success: true, reversals };
+  }
+
+  /**
+   * Enregistre les écritures pour un paiement de travaux
+   */
+  async recordWorkOrderPayment(params: {
+    workOrderId: string;
+    ownerId: string;
+    providerId: string;
+    amount: number;
+    paymentDate: string;
+    description: string;
+  }): Promise<{ success: boolean; entries: string[] }> {
+    const entries: string[] = [];
+    const pieceRef = `WO-${params.workOrderId.substring(0, 8)}`;
+    const compteProprietaire = generateCompteProprietaire(params.ownerId);
+
+    try {
+      // 1. Débit compte propriétaire (charge pour le propriétaire)
+      const entry1 = await this.recordEntry({
+        journal_code: JOURNAUX.ACHATS,
+        entry_date: params.paymentDate,
+        compte_num: compteProprietaire,
+        compte_lib: `Compte propriétaire ${params.ownerId.substring(0, 8)}`,
+        piece_ref: pieceRef,
+        libelle: `Travaux: ${params.description}`,
+        debit: params.amount,
+        credit: 0,
+        entity_type: "work_order",
+        entity_id: params.workOrderId,
+      });
+      if (entry1) entries.push(entry1.id);
+
+      // 2. Crédit fournisseur (dette envers le prestataire)
+      const entry2 = await this.recordEntry({
+        journal_code: JOURNAUX.ACHATS,
+        entry_date: params.paymentDate,
+        compte_num: "401000",
+        compte_lib: `Fournisseur ${params.providerId.substring(0, 8)}`,
+        piece_ref: pieceRef,
+        libelle: `Travaux: ${params.description}`,
+        debit: 0,
+        credit: params.amount,
+        entity_type: "work_order",
+        entity_id: params.workOrderId,
+      });
+      if (entry2) entries.push(entry2.id);
+
+      // 3. Paiement fournisseur - Débit fournisseur
+      const entry3 = await this.recordEntry({
+        journal_code: JOURNAUX.BANQUE_MANDANT,
+        entry_date: params.paymentDate,
+        compte_num: "401000",
+        compte_lib: `Fournisseur ${params.providerId.substring(0, 8)}`,
+        piece_ref: `PAY-${pieceRef}`,
+        libelle: `Règlement travaux`,
+        debit: params.amount,
+        credit: 0,
+        entity_type: "work_order",
+        entity_id: params.workOrderId,
+      });
+      if (entry3) entries.push(entry3.id);
+
+      // 4. Paiement fournisseur - Crédit Banque
+      const entry4 = await this.recordEntry({
+        journal_code: JOURNAUX.BANQUE_MANDANT,
+        entry_date: params.paymentDate,
+        compte_num: "512100",
+        compte_lib: "Banque compte mandant",
+        piece_ref: `PAY-${pieceRef}`,
+        libelle: `Règlement travaux`,
+        debit: 0,
+        credit: params.amount,
+        entity_type: "work_order",
+        entity_id: params.workOrderId,
+      });
+      if (entry4) entries.push(entry4.id);
+
+      // Mettre à jour le solde mandant propriétaire
+      await this.updateMandantBalance(params.ownerId, "owner", -params.amount);
+
+      return { success: true, entries };
+    } catch (error) {
+      console.error("[AccountingIntegration] Erreur paiement travaux:", error);
+      return { success: false, entries };
+    }
+  }
 }

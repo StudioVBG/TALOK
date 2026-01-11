@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { accountingService } from "@/features/accounting/services/accounting.service";
+import { generateCRGPDF } from "@/features/accounting/services/pdf-export.service";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -97,13 +98,19 @@ export async function GET(request: Request) {
       throw new ApiError(404, "Aucun CRG trouvé pour les critères spécifiés");
     }
 
-    // Format PDF (à implémenter)
+    // Format PDF
     if (format === "pdf") {
-      // TODO: Générer PDF avec le service PDF existant
-      return NextResponse.json(
-        { error: "Export PDF non encore implémenté" },
-        { status: 501 }
-      );
+      const crg = filteredCRGs[0]; // Prendre le premier CRG
+      const pdfBytes = await generateCRGPDF(crg);
+
+      return new NextResponse(pdfBytes, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="CRG_${crg.numero || "export"}.pdf"`,
+          "Content-Length": pdfBytes.length.toString(),
+        },
+      });
     }
 
     return NextResponse.json({
