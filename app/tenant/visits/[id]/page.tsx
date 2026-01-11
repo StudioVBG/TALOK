@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, parseISO, isPast } from "date-fns";
+import { format, parse, parseISO, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   ArrowLeft,
@@ -182,13 +182,24 @@ export default function TenantVisitDetailPage() {
     );
   }
 
-  const formatTime = (isoString: string) => format(parseISO(isoString), "HH:mm");
-  const formatDate = (dateString: string) =>
-    format(parseISO(dateString), "EEEE d MMMM yyyy", { locale: fr });
+  // Format time string (HH:mm:ss or HH:mm)
+  const formatTime = (timeString: string) => timeString.slice(0, 5);
+
+  // Format date string (YYYY-MM-DD)
+  const formatDate = (dateString: string) => {
+    const date = parse(dateString, "yyyy-MM-dd", new Date());
+    return format(date, "EEEE d MMMM yyyy", { locale: fr });
+  };
+
+  // Check if the booking slot is in the past
+  const isSlotPast = () => {
+    const dateTimeStr = `${booking.slot.slot_date} ${booking.slot.start_time.slice(0, 5)}`;
+    const slotDateTime = parse(dateTimeStr, "yyyy-MM-dd HH:mm", new Date());
+    return isPast(slotDateTime);
+  };
 
   const isUpcoming =
-    ["pending", "confirmed"].includes(booking.status) &&
-    !isPast(parseISO(booking.slot.start_time));
+    ["pending", "confirmed"].includes(booking.status) && !isSlotPast();
   const canCancel = isUpcoming;
   const canFeedback = booking.status === "completed" && !booking.feedback_rating;
 

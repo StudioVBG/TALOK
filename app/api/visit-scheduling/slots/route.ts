@@ -74,6 +74,7 @@ export async function GET(request: Request) {
       .eq("property_id", queryParams.property_id as any)
       .gte("slot_date", (queryParams.start_date || defaultStartDate) as any)
       .lte("slot_date", (queryParams.end_date || defaultEndDate) as any)
+      .order("slot_date", { ascending: true })
       .order("start_time", { ascending: true });
 
     // Les locataires ne voient que les créneaux disponibles
