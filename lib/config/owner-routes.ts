@@ -62,6 +62,13 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "Wrench",
   },
+  visits: {
+    path: "/owner/visits",
+    name: "Visites",
+    component: "OwnerVisitsPage",
+    auth: ["owner"],
+    icon: "CalendarDays",
+  },
   workOrders: {
     path: "/owner/work-orders",
     name: "Interventions",
@@ -191,6 +198,12 @@ export const TENANT_ROUTES = {
     name: "Demandes",
     auth: ["tenant"],
     icon: "Wrench",
+  },
+  visits: {
+    path: "/tenant/visits",
+    name: "Mes visites",
+    auth: ["tenant"],
+    icon: "CalendarCheck",
   },
   meters: {
     path: "/tenant/meters",

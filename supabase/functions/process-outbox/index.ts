@@ -393,6 +393,127 @@ async function processEvent(supabase: any, event: any) {
       });
       break;
 
+    // ============================================
+    // ✅ SOTA 2026: Visit Scheduling Events
+    // ============================================
+
+    case "VisitScheduling.PatternCreated":
+      // Notification au propriétaire que le pattern a été créé
+      await sendNotification(supabase, {
+        type: "visit_pattern_created",
+        user_id: payload.owner_user_id,
+        title: "📅 Disponibilités configurées",
+        message: `Vos créneaux de visite pour "${payload.property_address}" ont été générés avec succès.`,
+        metadata: { property_id: payload.property_id, pattern_id: payload.pattern_id },
+      });
+      break;
+
+    case "VisitScheduling.BookingCreated":
+      // Notification + Email au propriétaire pour nouvelle demande
+      await sendNotification(supabase, {
+        type: "visit_booking_request",
+        user_id: payload.owner_user_id,
+        title: "📋 Nouvelle demande de visite",
+        message: `${payload.tenant_name} souhaite visiter "${payload.property_address}" le ${payload.visit_date} à ${payload.visit_time}.`,
+        metadata: {
+          booking_id: payload.booking_id,
+          property_id: payload.property_id,
+          action: "review_booking"
+        },
+      });
+
+      // Envoyer email au propriétaire
+      await sendVisitBookingEmail(supabase, {
+        type: "request",
+        owner_user_id: payload.owner_user_id,
+        tenant_name: payload.tenant_name,
+        property_address: payload.property_address,
+        visit_date: payload.visit_date,
+        visit_time: payload.visit_time,
+        tenant_message: payload.tenant_message,
+        booking_id: payload.booking_id,
+      });
+      break;
+
+    case "VisitScheduling.BookingConfirmed":
+      // Notification + Email au locataire pour confirmation
+      await sendNotification(supabase, {
+        type: "visit_booking_confirmed",
+        user_id: payload.tenant_user_id,
+        title: "✅ Visite confirmée !",
+        message: `Votre visite pour "${payload.property_address}" est confirmée le ${payload.visit_date} à ${payload.visit_time}.`,
+        metadata: {
+          booking_id: payload.booking_id,
+          property_id: payload.property_id
+        },
+      });
+
+      // Envoyer email au locataire
+      await sendVisitBookingEmail(supabase, {
+        type: "confirmed",
+        tenant_user_id: payload.tenant_user_id,
+        owner_name: payload.owner_name,
+        owner_phone: payload.owner_phone,
+        property_address: payload.property_address,
+        visit_date: payload.visit_date,
+        visit_time: payload.visit_time,
+        booking_id: payload.booking_id,
+      });
+      break;
+
+    case "VisitScheduling.BookingCancelled":
+      // Notification à la partie affectée
+      const recipientId = payload.cancelled_by === "owner"
+        ? payload.tenant_user_id
+        : payload.owner_user_id;
+
+      const cancelMessage = payload.cancelled_by === "owner"
+        ? `Le propriétaire a annulé la visite pour "${payload.property_address}" prévue le ${payload.visit_date}.`
+        : `${payload.tenant_name} a annulé sa visite pour "${payload.property_address}" prévue le ${payload.visit_date}.`;
+
+      await sendNotification(supabase, {
+        type: "visit_booking_cancelled",
+        user_id: recipientId,
+        title: "❌ Visite annulée",
+        message: cancelMessage,
+        metadata: {
+          booking_id: payload.booking_id,
+          cancellation_reason: payload.cancellation_reason
+        },
+      });
+
+      // Envoyer email au locataire si c'est le proprio qui annule
+      if (payload.cancelled_by === "owner") {
+        await sendVisitBookingEmail(supabase, {
+          type: "cancelled",
+          tenant_user_id: payload.tenant_user_id,
+          property_address: payload.property_address,
+          visit_date: payload.visit_date,
+          visit_time: payload.visit_time,
+          cancellation_reason: payload.cancellation_reason,
+          cancelled_by: payload.cancelled_by,
+          booking_id: payload.booking_id,
+        });
+      }
+      break;
+
+    case "VisitScheduling.BookingCompleted":
+      // Demande de feedback au locataire après visite
+      await sendNotification(supabase, {
+        type: "visit_feedback_request",
+        user_id: payload.tenant_user_id,
+        title: "⭐ Comment s'est passée la visite ?",
+        message: `Partagez votre avis sur la visite de "${payload.property_address}".`,
+        metadata: {
+          booking_id: payload.booking_id,
+          action: "give_feedback"
+        },
+      });
+
+      // Envoyer email de demande de feedback
+      await sendVisitFeedbackRequestEmail(supabase, payload);
+      break;
+
     // Autres événements (à étendre selon besoins)
     default:
       console.log(`Événement non géré: ${event_type}`);
@@ -1040,7 +1161,328 @@ async function generateReceiptAutomatically(supabase: any, invoiceId: string, pa
   }
 }
 
+// ============================================
+// ✅ SOTA 2026: Visit Scheduling Email Helpers
+// ============================================
 
+/**
+ * Envoie un email lié aux réservations de visite
+ */
+async function sendVisitBookingEmail(supabase: any, params: any) {
+  const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
+  const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
 
+  if (!emailServiceUrl) {
+    console.log(`[Email] Service non configuré pour visit booking ${params.type}`);
+    return;
+  }
 
+  let recipientEmail: string | null = null;
+  let recipientName: string = "";
+  let emailSubject: string = "";
+  let emailHtml: string = "";
+
+  if (params.type === "request") {
+    // Email au propriétaire pour nouvelle demande
+    const { data: authUser } = await supabase.auth.admin.getUserById(params.owner_user_id);
+    recipientEmail = authUser?.user?.email;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("prenom, nom")
+      .eq("user_id", params.owner_user_id)
+      .single();
+
+    recipientName = profile?.prenom || "Bonjour";
+
+    emailSubject = `📋 Nouvelle demande de visite - ${params.property_address}`;
+    emailHtml = `
+      <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 40px 30px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Nouvelle demande de visite</h1>
+        </div>
+
+        <div style="padding: 40px 30px;">
+          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+            ${recipientName},
+          </p>
+
+          <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
+            <p style="color: #1e40af; margin: 0 0 8px; font-size: 16px; font-weight: 600;">
+              ${params.tenant_name} souhaite visiter votre bien
+            </p>
+            <p style="color: #3b82f6; margin: 0;">
+              ${params.property_address}
+            </p>
+          </div>
+
+          <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+            <div style="display: flex; gap: 24px;">
+              <div>
+                <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">📅 Date</p>
+                <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 600;">${params.visit_date}</p>
+              </div>
+              <div>
+                <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">🕐 Horaire</p>
+                <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 600;">${params.visit_time}</p>
+              </div>
+            </div>
+          </div>
+
+          ${params.tenant_message ? `
+            <div style="background: #f1f5f9; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+              <p style="color: #64748b; margin: 0 0 8px; font-size: 12px; text-transform: uppercase;">Message du candidat</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; font-style: italic;">"${params.tenant_message}"</p>
+            </div>
+          ` : ""}
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${appUrl}/owner/visits"
+               style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #ffffff;
+                      text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; margin-right: 12px;">
+              Confirmer
+            </a>
+            <a href="${appUrl}/owner/visits"
+               style="display: inline-block; background: #f1f5f9; color: #64748b;
+                      text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+              Voir les détails
+            </a>
+          </div>
+        </div>
+
+        <div style="background: #f8fafc; padding: 24px 30px; border-top: 1px solid #e2e8f0;">
+          <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
+            Répondez rapidement pour ne pas perdre ce candidat potentiel !
+          </p>
+        </div>
+      </div>
+    `;
+  } else if (params.type === "confirmed") {
+    // Email au locataire pour confirmation
+    const { data: authUser } = await supabase.auth.admin.getUserById(params.tenant_user_id);
+    recipientEmail = authUser?.user?.email;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("prenom, nom")
+      .eq("user_id", params.tenant_user_id)
+      .single();
+
+    recipientName = profile?.prenom || "Bonjour";
+
+    emailSubject = `✅ Visite confirmée - ${params.property_address}`;
+    emailHtml = `
+      <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 40px 30px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px;">✅ Visite confirmée !</h1>
+        </div>
+
+        <div style="padding: 40px 30px;">
+          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+            ${recipientName},
+          </p>
+
+          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+            Bonne nouvelle ! Votre demande de visite a été acceptée.
+          </p>
+
+          <div style="background: #f0fdf4; border: 2px solid #22c55e; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+            <h3 style="color: #166534; margin: 0 0 16px; font-size: 18px;">📍 ${params.property_address}</h3>
+            <div style="display: flex; gap: 24px;">
+              <div>
+                <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">📅 Date</p>
+                <p style="color: #1e293b; margin: 0; font-size: 18px; font-weight: 600;">${params.visit_date}</p>
+              </div>
+              <div>
+                <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">🕐 Horaire</p>
+                <p style="color: #1e293b; margin: 0; font-size: 18px; font-weight: 600;">${params.visit_time}</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+            <p style="color: #64748b; margin: 0 0 8px; font-size: 14px;">Contact propriétaire</p>
+            <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 600;">${params.owner_name}</p>
+            ${params.owner_phone ? `<p style="color: #3b82f6; margin: 8px 0 0; font-size: 14px;">📞 ${params.owner_phone}</p>` : ""}
+          </div>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${appUrl}/tenant/visits/${params.booking_id}"
+               style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #ffffff;
+                      text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+              Voir ma visite
+            </a>
+          </div>
+
+          <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-top: 24px;">
+            <p style="color: #92400e; margin: 0; font-size: 14px;">
+              💡 <strong>Conseil :</strong> Préparez vos questions sur le logement et n'oubliez pas d'arriver à l'heure !
+            </p>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (params.type === "cancelled") {
+    // Email au locataire pour annulation
+    const { data: authUser } = await supabase.auth.admin.getUserById(params.tenant_user_id);
+    recipientEmail = authUser?.user?.email;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("prenom, nom")
+      .eq("user_id", params.tenant_user_id)
+      .single();
+
+    recipientName = profile?.prenom || "Bonjour";
+
+    emailSubject = `❌ Visite annulée - ${params.property_address}`;
+    emailHtml = `
+      <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 40px 30px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Visite annulée</h1>
+        </div>
+
+        <div style="padding: 40px 30px;">
+          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+            ${recipientName},
+          </p>
+
+          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+            Nous sommes désolés, la visite prévue a été annulée par le propriétaire.
+          </p>
+
+          <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
+            <p style="color: #991b1b; margin: 0 0 8px; font-size: 16px; font-weight: 600;">
+              ${params.property_address}
+            </p>
+            <p style="color: #dc2626; margin: 0;">
+              ${params.visit_date} à ${params.visit_time}
+            </p>
+          </div>
+
+          ${params.cancellation_reason ? `
+            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+              <p style="color: #64748b; margin: 0 0 8px; font-size: 12px; text-transform: uppercase;">Raison</p>
+              <p style="color: #475569; margin: 0; font-size: 14px;">${params.cancellation_reason}</p>
+            </div>
+          ` : ""}
+
+          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+            Ne vous découragez pas ! Continuez à chercher le logement idéal.
+          </p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${appUrl}/search"
+               style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #ffffff;
+                      text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+              Rechercher d'autres logements
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (!recipientEmail) {
+    console.log(`[Email] Pas d'email trouvé pour visit booking ${params.type}`);
+    return;
+  }
+
+  try {
+    await fetch(emailServiceUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
+      },
+      body: JSON.stringify({
+        to: recipientEmail,
+        subject: emailSubject,
+        html: emailHtml,
+      }),
+    });
+    console.log(`[Email] ✅ Visit booking ${params.type} envoyé à ${recipientEmail}`);
+  } catch (error) {
+    console.error(`[Email] Erreur envoi visit booking:`, error);
+  }
+}
+
+/**
+ * Envoie un email de demande de feedback après visite
+ */
+async function sendVisitFeedbackRequestEmail(supabase: any, payload: any) {
+  const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
+  const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
+
+  if (!emailServiceUrl) return;
+
+  const { data: authUser } = await supabase.auth.admin.getUserById(payload.tenant_user_id);
+  const recipientEmail = authUser?.user?.email;
+
+  if (!recipientEmail) return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("prenom, nom")
+    .eq("user_id", payload.tenant_user_id)
+    .single();
+
+  const recipientName = profile?.prenom || "Bonjour";
+
+  const emailHtml = `
+    <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+      <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 40px 30px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">⭐ Comment s'est passée la visite ?</h1>
+      </div>
+
+      <div style="padding: 40px 30px;">
+        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+          ${recipientName},
+        </p>
+
+        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+          Vous avez visité <strong>${payload.property_address}</strong> le ${payload.visit_date}.
+          Votre avis nous intéresse !
+        </p>
+
+        <div style="background: #f5f3ff; padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
+          <p style="color: #6b21a8; margin: 0 0 16px; font-size: 16px;">
+            Partagez votre expérience en 1 minute
+          </p>
+          <div style="font-size: 32px;">⭐⭐⭐⭐⭐</div>
+        </div>
+
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${appUrl}/tenant/visits/${payload.booking_id}/feedback"
+             style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: #ffffff;
+                    text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
+            Donner mon avis
+          </a>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 14px; text-align: center;">
+          Votre feedback aide les autres locataires à trouver leur logement idéal.
+        </p>
+      </div>
+    </div>
+  `;
+
+  try {
+    await fetch(emailServiceUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
+      },
+      body: JSON.stringify({
+        to: recipientEmail,
+        subject: `⭐ Comment s'est passée votre visite ? - ${payload.property_address}`,
+        html: emailHtml,
+      }),
+    });
+    console.log(`[Email] ✅ Feedback request envoyé à ${recipientEmail}`);
+  } catch (error) {
+    console.error(`[Email] Erreur envoi feedback request:`, error);
+  }
+}
 
