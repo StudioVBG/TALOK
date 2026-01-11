@@ -467,8 +467,10 @@ export class EndOfLeaseService {
     }
 
     // Calculer la retenue DG
-    const dgRetentionAmount = Math.min(tenantDamageCost, process.dg_amount);
-    const dgRefundAmount = process.dg_amount - dgRetentionAmount;
+    // ✅ FIX: Null check sur dg_amount pour éviter NaN
+    const dgAmount = process.dg_amount ?? 0;
+    const dgRetentionAmount = Math.min(tenantDamageCost, dgAmount);
+    const dgRefundAmount = dgAmount - dgRetentionAmount;
 
     // Budget total = vétusté + rénovation conseillée (hors dommages locataire)
     const totalBudget = vetustyCost + renovationCost - tenantDamageCost;

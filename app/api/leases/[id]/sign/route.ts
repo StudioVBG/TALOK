@@ -525,7 +525,7 @@ async function determineLeaseStatus(leaseId: string): Promise<string> {
   const tenantSigner = signers.find(s => isTenantRole(s.role));
   
   const allSigned = signers.every(s => s.signature_status === "signed");
-  
+
   if (allSigned) {
     // ✅ FIX: Ne pas activer si le locataire n'a pas de profil réel
     if (!tenantSigner?.profile_id) {
@@ -536,11 +536,9 @@ async function determineLeaseStatus(leaseId: string): Promise<string> {
     console.log("[determineLeaseStatus] All signers signed with valid profiles, lease fully signed:", leaseId);
     return LEASE_STATUS.FULLY_SIGNED;
   }
-  
-  const someSigned = signers.some(s => s.signature_status === "signed");
-  if (someSigned) {
-    return LEASE_STATUS.PENDING_SIGNATURE;
-  }
-  
+
+  // ✅ FIX: Code simplifié - si pas tous signés, c'est pending_signature
+  // Note: En cas de signatures simultanées, la dernière requête déterminera le statut final correct
+  // grâce à la lecture après mise à jour (eventual consistency)
   return LEASE_STATUS.PENDING_SIGNATURE;
 }

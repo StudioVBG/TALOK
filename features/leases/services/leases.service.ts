@@ -107,7 +107,11 @@ export class LeasesService {
     );
     // Récupérer le signataire mis à jour
     const signers = await this.getLeaseSigners(leaseId);
-    const updatedSigner = signers.find((s) => s.id === signerId) || signers[0];
+    // ✅ FIX: Gérer le cas où signers est vide pour éviter undefined
+    if (!signers || signers.length === 0) {
+      throw new Error("Aucun signataire trouvé après signature");
+    }
+    const updatedSigner = signers.find((s) => s.id === signerId) ?? signers[0];
     return updatedSigner;
   }
 

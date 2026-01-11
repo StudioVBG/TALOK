@@ -58,6 +58,7 @@ export function LeaseEndWizard({
       ]);
 
       // Mapper les items d'inspection avec les catégories
+      // ✅ FIX: Inclure estimated_cost depuis l'API au lieu de le hardcoder
       const mappedItems = items.map((item) => ({
         category: item.category,
         label: getCategoryLabel(item.category),
@@ -66,6 +67,8 @@ export function LeaseEndWizard({
         status: item.status,
         photos: item.photos || [],
         problemDescription: item.problem_description,
+        estimatedCost: item.estimated_cost ?? 0,
+        damageType: item.damage_type ?? "tenant_damage",
       }));
 
       setInspectionItems(mappedItems);
@@ -218,16 +221,17 @@ export function LeaseEndWizard({
   };
 
   // Calculer les données pour les composants
+  // ✅ FIX: Utiliser les coûts estimés depuis l'API au lieu de hardcoder 150€
   const damages = inspectionItems
     .filter((item) => item.status === "problem")
     .map((item) => ({
       id: item.category,
       category: item.label,
       description: item.problemDescription || "Dégradation constatée",
-      damageType: "tenant_damage" as const,
-      estimatedCost: 150, // À calculer depuis l'API
-      tenantShare: 100,
-      ownerShare: 50,
+      damageType: item.damageType ?? ("tenant_damage" as const),
+      estimatedCost: item.estimatedCost ?? 0,
+      tenantShare: item.estimatedCost ?? 0, // 100% pour dommage locataire
+      ownerShare: item.damageType === "normal_wear" ? (item.estimatedCost ?? 0) : 0,
     }));
 
   const budgetSummary = {
