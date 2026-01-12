@@ -138,7 +138,16 @@ export interface SubscriptionEvent {
 // INVOICES
 // ============================================
 
-export type InvoiceStatus = 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
+/**
+ * Statut de facture d'abonnement (aligné Stripe)
+ */
+export type SubscriptionInvoiceStatus = 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
+
+/**
+ * @deprecated Utilisez SubscriptionInvoiceStatus à la place
+ * Sera supprimé dans 4 semaines
+ */
+export type InvoiceStatus = SubscriptionInvoiceStatus;
 
 export interface SubscriptionInvoice {
   id: string;
@@ -146,7 +155,7 @@ export interface SubscriptionInvoice {
   owner_id: string;
   stripe_invoice_id: string | null;
   invoice_number: string | null;
-  
+
   subtotal: number;
   discount: number;
   tax: number;
@@ -154,8 +163,8 @@ export interface SubscriptionInvoice {
   amount_paid: number;
   amount_due: number;
   currency: string;
-  
-  status: InvoiceStatus;
+
+  status: SubscriptionInvoiceStatus;
   
   invoice_pdf_url: string | null;
   hosted_invoice_url: string | null;

@@ -8,9 +8,9 @@
 export type InvoiceDocumentType = 'invoice' | 'quote' | 'credit_note';
 
 /**
- * Statut de facture
+ * Statut de facture prestataire
  */
-export type InvoiceStatus =
+export type ProviderInvoiceStatus =
   | 'draft'
   | 'sent'
   | 'viewed'
@@ -20,6 +20,12 @@ export type InvoiceStatus =
   | 'disputed'
   | 'cancelled'
   | 'credited';
+
+/**
+ * @deprecated Utilisez ProviderInvoiceStatus à la place
+ * Sera supprimé dans 4 semaines
+ */
+export type InvoiceStatus = ProviderInvoiceStatus;
 
 /**
  * Type de paiement
@@ -60,7 +66,7 @@ export interface ProviderInvoice {
   late_fees_amount: number;
   early_payment_discount_rate: number | null;
   early_payment_discount_days: number | null;
-  status: InvoiceStatus;
+  status: ProviderInvoiceStatus;
   sent_at: string | null;
   sent_to_email: string | null;
   viewed_at: string | null;
