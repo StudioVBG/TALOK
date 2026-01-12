@@ -187,16 +187,23 @@ export type SignatureStatus = typeof SIGNATURE_STATUS[keyof typeof SIGNATURE_STA
 // STATUTS DE BAIL
 // ============================================
 
+// Ré-export du type canonique
+export type { LeaseStatus } from "@/lib/types";
+
+/**
+ * Constantes pour les statuts de bail les plus courants
+ * @see LeaseStatus pour tous les statuts disponibles
+ */
 export const LEASE_STATUS = {
   DRAFT: "draft",
   PENDING_SIGNATURE: "pending_signature",
   PARTIALLY_SIGNED: "partially_signed",
   FULLY_SIGNED: "fully_signed",
   ACTIVE: "active",
+  NOTICE_GIVEN: "notice_given",
   TERMINATED: "terminated",
-} as const;
-
-export type LeaseStatus = typeof LEASE_STATUS[keyof typeof LEASE_STATUS];
+  ARCHIVED: "archived",
+} as const satisfies Record<string, import("@/lib/types").LeaseStatus>;
 
 /**
  * Retourne le libellé français d'un statut de bail

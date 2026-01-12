@@ -2,11 +2,21 @@
  * Types centralisés pour le Compte Propriétaire
  */
 
+// Ré-export des types canoniques depuis lib/types
+export type { LeaseStatus, InvoiceStatus } from "@/lib/types";
+
 export type OwnerModuleKey = "habitation" | "lcd" | "pro" | "parking";
 
-export type PropertyStatus = "loue" | "en_preavis" | "vacant" | "a_completer";
-export type LeaseStatus = "draft" | "pending_signature" | "active" | "terminated";
-export type InvoiceStatus = "draft" | "sent" | "paid" | "late";
+/**
+ * Statut opérationnel d'un bien (différent du statut de publication)
+ */
+export type PropertyOperationalStatus = "loue" | "en_preavis" | "vacant" | "a_completer";
+
+/**
+ * @deprecated Utilisez PropertyOperationalStatus à la place
+ */
+export type PropertyStatus = PropertyOperationalStatus;
+
 export type DocumentStatus = "active" | "expiring_soon" | "expired" | "archived";
 export type TodoPriority = "high" | "medium" | "low";
 export type RiskSeverity = "high" | "medium" | "low";

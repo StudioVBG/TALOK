@@ -2,6 +2,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
+// Import du type canonique LeaseStatus
+export type { LeaseStatus } from "@/lib/types";
+
 // ✅ SOTA 2026: Types stricts pour l'intégrité des données
 
 /** Statuts possibles d'un EDL */
@@ -18,20 +21,6 @@ export interface EDLEntry {
   scheduled_at?: string | null;
   completed_date?: string | null;
 }
-
-/** Statuts possibles d'un bail */
-export type LeaseStatus = 
-  | "draft" 
-  | "sent" 
-  | "pending_signature" 
-  | "partially_signed" 
-  | "pending_owner_signature" 
-  | "fully_signed" 
-  | "active" 
-  | "notice_given" 
-  | "amended" 
-  | "terminated" 
-  | "archived";
 
 /** Statuts possibles d'une signature */
 export type SignatureStatus = "pending" | "signed" | "refused" | "expired";

@@ -3,26 +3,35 @@
  * Architecture SOTA 2025 - Composition Pattern
  */
 
+// Import du type canonique LeaseStatus
+export type { LeaseStatus } from "@/lib/types";
+
 // ============================================
 // TYPES DE BASE
 // ============================================
 
-export type PropertyType = 
-  | "appartement" 
-  | "maison" 
-  | "studio" 
-  | "colocation" 
+export type PropertyType =
+  | "appartement"
+  | "maison"
+  | "studio"
+  | "colocation"
   | "saisonnier"
-  | "parking" 
+  | "parking"
   | "box"
-  | "local_commercial" 
-  | "bureaux" 
-  | "entrepot" 
+  | "local_commercial"
+  | "bureaux"
+  | "entrepot"
   | "fonds_de_commerce";
 
-export type PropertyStatus = "vacant" | "loue" | "en_travaux" | "signature_en_cours";
+/**
+ * Statut opérationnel d'un bien pour l'affichage UI
+ */
+export type PropertyDisplayStatus = "vacant" | "loue" | "en_travaux" | "signature_en_cours";
 
-export type LeaseStatus = "draft" | "pending_signature" | "active" | "terminated" | "expired";
+/**
+ * @deprecated Utilisez PropertyDisplayStatus à la place
+ */
+export type PropertyStatus = PropertyDisplayStatus;
 
 // ============================================
 // INTERFACES PRINCIPALES

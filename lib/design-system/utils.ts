@@ -12,7 +12,7 @@ import {
   ticketStatusStyles,
   priorityStyles,
   type InvoiceStatus,
-  type LeaseStatus,
+  type StyledLeaseStatus,
   type TicketStatus,
   type PriorityVariant,
 } from './tokens';
@@ -43,11 +43,15 @@ export const invoiceStatusLabels: Record<InvoiceStatus, string> = {
   cancelled: 'Annulée',
 };
 
-export const leaseStatusLabels: Record<LeaseStatus, string> = {
+export const leaseStatusLabels: Record<StyledLeaseStatus, string> = {
   draft: 'Brouillon',
   pending_signature: 'En attente de signature',
+  partially_signed: 'Partiellement signé',
+  fully_signed: 'Entièrement signé',
   active: 'Actif',
+  notice_given: 'Préavis',
   terminated: 'Résilié',
+  archived: 'Archivé',
 };
 
 export const ticketStatusLabels: Record<TicketStatus, string> = {
@@ -133,7 +137,7 @@ export function getInvoiceStatusStyle(status: string): string {
  * Récupère les styles d'un statut de bail
  */
 export function getLeaseStatusStyle(status: string): string {
-  return leaseStatusStyles[status as LeaseStatus] || leaseStatusStyles.draft;
+  return leaseStatusStyles[status as StyledLeaseStatus] || leaseStatusStyles.draft;
 }
 
 /**
@@ -161,7 +165,7 @@ export function getInvoiceStatusLabel(status: string): string {
  * Récupère le label d'un statut de bail
  */
 export function getLeaseStatusLabel(status: string): string {
-  return leaseStatusLabels[status as LeaseStatus] || status;
+  return leaseStatusLabels[status as StyledLeaseStatus] || status;
 }
 
 /**

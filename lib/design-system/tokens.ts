@@ -99,11 +99,19 @@ export type InvoiceStatus = keyof typeof invoiceStatusStyles;
 export const leaseStatusStyles = {
   draft: 'text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-800',
   pending_signature: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/50',
+  partially_signed: 'text-amber-500 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30',
+  fully_signed: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/50',
   active: 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/50',
+  notice_given: 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/50',
   terminated: 'text-slate-500 bg-slate-100 dark:text-slate-500 dark:bg-slate-800',
+  archived: 'text-gray-400 bg-gray-100 dark:text-gray-500 dark:bg-gray-800',
 } as const;
 
-export type LeaseStatus = keyof typeof leaseStatusStyles;
+/**
+ * Statuts de bail avec styling défini
+ * @see LeaseStatus dans lib/types pour le type canonique complet
+ */
+export type StyledLeaseStatus = keyof typeof leaseStatusStyles;
 
 // ============================================================================
 // TICKET STATUS

@@ -35,17 +35,10 @@ export type PropertyOperationalStatus =
 // ============================================
 
 /**
- * Statuts de bail - cycle de vie complet
+ * Statuts de bail - ré-exporté depuis lib/types/index.ts
+ * @see lib/types/index.ts pour la définition canonique
  */
-export type LeaseStatus =
-  | "draft"                   // Brouillon
-  | "pending_signature"       // En attente de signatures
-  | "partially_signed"        // Partiellement signé
-  | "fully_signed"            // Entièrement signé (avant EDL)
-  | "active"                  // Bail actif
-  | "notice_given"            // Congé donné (préavis en cours)
-  | "terminated"              // Terminé
-  | "archived";               // Archivé
+export { type LeaseStatus } from './index';
 
 // ============================================
 // INVOICE STATUS
