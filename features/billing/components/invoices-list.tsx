@@ -1,3 +1,11 @@
+/**
+ * @deprecated Utilisez InvoiceListUnified à la place
+ * @see ./invoice-list-unified.tsx pour la version unifiée supportant tous les rôles
+ *
+ * Migration:
+ * - import { InvoiceListUnified } from "./invoice-list-unified"
+ * - <InvoiceListUnified leaseId={leaseId} role="owner|tenant" />
+ */
 "use client";
 
 import { useEffect, useState, useMemo } from "react";

@@ -1,3 +1,13 @@
+/**
+ * @deprecated Utilisez OwnerPropertyCard pour les vues owner ou PropertyCard pour les vues génériques
+ * @see @/components/owner/cards/OwnerPropertyCard.tsx pour les propriétaires
+ * @see @/components/properties/PropertyCard.tsx pour les vues portfolio/dashboard
+ *
+ * Ce composant combine affichage et actions de gestion (delete/submit).
+ * Préférez séparer les responsabilités en utilisant:
+ * - OwnerPropertyCard + actions externes
+ * - Ou PropertyCard avec variant="management"
+ */
 "use client";
 
 import { useState } from "react";

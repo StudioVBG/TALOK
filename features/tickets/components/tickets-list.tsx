@@ -1,3 +1,11 @@
+/**
+ * @deprecated Utilisez TicketListUnified à la place
+ * @see ./ticket-list-unified.tsx pour la version unifiée supportant tous les rôles
+ *
+ * Migration:
+ * - import { TicketListUnified } from "./ticket-list-unified"
+ * - <TicketListUnified propertyId={propertyId} role="owner|tenant|provider" />
+ */
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
