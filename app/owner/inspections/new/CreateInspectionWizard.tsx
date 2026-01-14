@@ -756,34 +756,66 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
 
       // 5. Uploader les photos des items et photos globales
       let itemOffset = 0;
+      let totalPhotosUploaded = 0;
+      let totalPhotosExpected = 0;
+
       for (const room of roomsData) {
         // Photos globales de la pièce
         if (room.globalPhotos && room.globalPhotos.length > 0) {
+          totalPhotosExpected += room.globalPhotos.length;
           const formData = new FormData();
           room.globalPhotos.forEach(photo => formData.append("files", photo));
           formData.append("section", room.name);
-          
-          await fetch(`/api/inspections/${edl.id}/photos`, {
-            method: "POST",
-            body: formData,
-          });
+
+          try {
+            const response = await fetch(`/api/inspections/${edl.id}/photos`, {
+              method: "POST",
+              body: formData,
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              totalPhotosUploaded += data.files?.length || 0;
+            } else {
+              console.error(`Erreur upload photos globales ${room.name}:`, await response.text());
+            }
+          } catch (uploadError) {
+            console.error(`Exception upload photos globales ${room.name}:`, uploadError);
+          }
         }
 
         // Photos des items
         for (const item of room.items) {
           const insertedItem = insertedItems[itemOffset];
           if (item.photos.length > 0 && insertedItem) {
+            totalPhotosExpected += item.photos.length;
             const formData = new FormData();
             item.photos.forEach(photo => formData.append("files", photo));
             formData.append("section", room.name);
-            
-            await fetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
-              method: "POST",
-              body: formData,
-            });
+
+            try {
+              const response = await fetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
+                method: "POST",
+                body: formData,
+              });
+
+              if (response.ok) {
+                const data = await response.json();
+                totalPhotosUploaded += data.files?.length || 0;
+              } else {
+                console.error(`Erreur upload photos item ${item.name}:`, await response.text());
+              }
+            } catch (uploadError) {
+              console.error(`Exception upload photos item ${item.name}:`, uploadError);
+            }
           }
           itemOffset++;
         }
+      }
+
+      // Avertir si certaines photos n'ont pas été uploadées
+      if (totalPhotosUploaded < totalPhotosExpected) {
+        console.warn(`Upload photos: ${totalPhotosUploaded}/${totalPhotosExpected} photos uploadées`);
       }
 
       toast({

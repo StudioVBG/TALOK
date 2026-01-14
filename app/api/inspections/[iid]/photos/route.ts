@@ -99,8 +99,13 @@ export async function POST(
 
     // Uploader les fichiers
     const uploadedFiles = [];
-    for (const file of files) {
-      const fileName = `edl/${params.iid}/${Date.now()}_${file.name}`;
+    const timestamp = Date.now();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      // Utiliser un index unique pour éviter les collisions de noms de fichiers
+      // quand plusieurs photos sont uploadées en même temps
+      const uniqueSuffix = `${timestamp}_${i}_${Math.random().toString(36).substring(2, 8)}`;
+      const fileName = `edl/${params.iid}/${uniqueSuffix}_${file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("documents")
         .upload(fileName, file, {
