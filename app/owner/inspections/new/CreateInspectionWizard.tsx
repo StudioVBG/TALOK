@@ -1696,12 +1696,12 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex-1 sm:flex-none min-w-[120px] sm:min-w-[140px]"
+            className="flex-1 sm:flex-none min-w-[120px] sm:min-w-[160px]"
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {uploadProgress}%
+                Création... {uploadProgress}%
               </>
             ) : (
               <>
@@ -1714,54 +1714,69 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       </div>
 
       {/* Overlay de progression lors de la création */}
-      <AnimatePresence>
-        {isSubmitting && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-card border rounded-xl shadow-lg p-6 w-[90%] max-w-md mx-4"
-            >
-              <div className="text-center space-y-4">
-                <div className="flex justify-center">
-                  <div className="relative">
-                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-bold">{uploadProgress}%</span>
-                    </div>
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 w-[90%] max-w-md mx-4 border">
+            <div className="text-center space-y-5">
+              {/* Icône animée */}
+              <div className="flex justify-center">
+                <div className="relative w-20 h-20">
+                  <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      fill="none"
+                      className="text-slate-200 dark:text-slate-700"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      fill="none"
+                      strokeLinecap="round"
+                      className="text-primary transition-all duration-300"
+                      strokeDasharray={`${uploadProgress * 2.83} 283`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xl font-bold">{uploadProgress}%</span>
                   </div>
                 </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    Création en cours...
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {uploadStep}
-                  </p>
-                  {uploadDetails && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {uploadDetails}
-                    </p>
-                  )}
-                </div>
-
-                <Progress value={uploadProgress} className="h-2" />
-
-                <p className="text-xs text-muted-foreground">
-                  Ne fermez pas cette page pendant la création
-                </p>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              {/* Texte de progression */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  {uploadStep || "Création en cours..."}
+                </h3>
+                {uploadDetails && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    {uploadDetails}
+                  </p>
+                )}
+              </div>
+
+              {/* Barre de progression linéaire */}
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-blue-500 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+
+              {/* Message d'avertissement */}
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Ne fermez pas cette page pendant la création
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Dialogue de confirmation accessible */}
       <ConfirmDialogComponent />
