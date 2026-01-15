@@ -41,6 +41,8 @@ interface CashReceiptFlowProps {
   ownerName: string;
   propertyAddress: string;
   periode: string;
+  /** Mode rapide: combine info + signature proprio en une seule étape */
+  quickMode?: boolean;
   onComplete?: (receiptData: ReceiptResult) => void;
   onCancel?: () => void;
 }
@@ -52,7 +54,7 @@ interface ReceiptResult {
   documentHash: string;
 }
 
-type Step = "info" | "owner-sign" | "tenant-sign" | "generating" | "complete";
+type Step = "info" | "owner-sign" | "combined" | "tenant-sign" | "generating" | "complete";
 
 // Animation variants
 const slideVariants = {
@@ -77,6 +79,7 @@ export function CashReceiptFlow({
   ownerName,
   propertyAddress,
   periode,
+  quickMode = true, // Par défaut en mode rapide
   onComplete,
   onCancel,
 }: CashReceiptFlowProps) {
@@ -86,8 +89,8 @@ export function CashReceiptFlow({
   const ownerSignatureRef = useRef<SignaturePadRef>(null);
   const tenantSignatureRef = useRef<SignaturePadRef>(null);
 
-  // État
-  const [step, setStep] = useState<Step>("info");
+  // État - en mode rapide, commencer par l'étape combinée
+  const [step, setStep] = useState<Step>(quickMode ? "combined" : "info");
   const [direction, setDirection] = useState(0);
   const [ownerSignature, setOwnerSignature] = useState<string | null>(null);
   const [ownerSignedAt, setOwnerSignedAt] = useState<Date | null>(null);
@@ -241,14 +244,10 @@ export function CashReceiptFlow({
 
         {/* Barre de progression */}
         <div className="flex gap-1 mt-4">
-          {["info", "owner-sign", "tenant-sign", "complete"].map((s, i) => {
-            const steps: Step[] = [
-              "info",
-              "owner-sign",
-              "tenant-sign",
-              "generating",
-              "complete",
-            ];
+          {(quickMode ? ["combined", "tenant-sign", "complete"] : ["info", "owner-sign", "tenant-sign", "complete"]).map((s, i) => {
+            const steps: Step[] = quickMode
+              ? ["combined", "tenant-sign", "generating", "complete"]
+              : ["info", "owner-sign", "tenant-sign", "generating", "complete"];
             const currentIndex = steps.indexOf(step);
             const stepIndex = i;
 
@@ -266,10 +265,20 @@ export function CashReceiptFlow({
 
         {/* Labels des étapes */}
         <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-          <span>Infos</span>
-          <span>Propriétaire</span>
-          <span>Locataire</span>
-          <span>Terminé</span>
+          {quickMode ? (
+            <>
+              <span>Propriétaire</span>
+              <span>Locataire</span>
+              <span>Terminé</span>
+            </>
+          ) : (
+            <>
+              <span>Infos</span>
+              <span>Propriétaire</span>
+              <span>Locataire</span>
+              <span>Terminé</span>
+            </>
+          )}
         </div>
       </CardHeader>
 
@@ -390,7 +399,94 @@ export function CashReceiptFlow({
             </motion.div>
           )}
 
-          {/* ÉTAPE 2: Signature Propriétaire */}
+          {/* MODE RAPIDE: Étape combinée (infos + signature propriétaire) */}
+          {step === "combined" && (
+            <motion.div
+              key="combined"
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="space-y-4"
+            >
+              {/* Résumé compact */}
+              <div className="bg-muted/50 rounded-xl p-3 space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">De</span>
+                  <span className="font-medium">{tenantName}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">À</span>
+                  <span className="font-medium">{ownerName}</span>
+                </div>
+                <hr className="border-border/50" />
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Montant</span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={actualAmount}
+                      onChange={(e) => setActualAmount(e.target.value)}
+                      className="w-24 h-8 text-right font-bold"
+                      step="0.01"
+                    />
+                    <span className="text-lg font-bold">€</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Signature propriétaire intégrée */}
+              <div className="border-2 border-primary/20 rounded-xl p-4 bg-primary/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <User className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">{ownerName} - Je confirme recevoir ce paiement</span>
+                </div>
+                <SignaturePad
+                  ref={ownerSignatureRef}
+                  label="Signez ici"
+                  onSignatureChange={(isEmpty) => setCanProceed(!isEmpty)}
+                  height={140}
+                />
+              </div>
+
+              {/* Métadonnées compactes */}
+              <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {format(new Date(), "dd/MM HH:mm", { locale: fr })}
+                </div>
+                {geolocation ? (
+                  <div className="flex items-center gap-1 text-green-600">
+                    <MapPin className="w-3 h-3" />
+                    GPS OK
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={onCancel}
+                  className="gap-2"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleOwnerSign}
+                  disabled={!canProceed}
+                  className="flex-1 gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  Passer au locataire
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ÉTAPE 2: Signature Propriétaire (mode classique) */}
           {step === "owner-sign" && (
             <motion.div
               key="owner-sign"
