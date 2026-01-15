@@ -137,6 +137,21 @@ export async function POST(request: Request) {
             .select("*, meter:meters(*)")
             .eq("edl_id", edlId);
 
+          // 🔧 FIX: Générer des URLs signées pour les photos de compteurs
+          if (meterReadings && meterReadings.length > 0) {
+            for (const reading of meterReadings) {
+              if (reading.photo_path) {
+                const { data: signedUrlData } = await adminClient.storage
+                  .from("documents")
+                  .createSignedUrl(reading.photo_path, 3600);
+
+                if (signedUrlData?.signedUrl) {
+                  (reading as any).photo_signed_url = signedUrlData.signedUrl;
+                }
+              }
+            }
+          }
+
           // 🔧 FIX: Récupérer tous les compteurs du bien pour les inclure dans le PDF même sans relevé
           const propertyId = (edl as any).property_id || (edl as any).lease?.property_id;
           let allMeters = [];
@@ -157,7 +172,7 @@ export async function POST(request: Request) {
             meter_number: r.meter?.meter_number || r.meter?.serial_number,
             reading: String(r.reading_value),
             unit: r.reading_unit || r.meter?.unit || "kWh",
-            photo_url: r.photo_path,
+            photo_url: r.photo_signed_url || null, // 🔧 FIX: Utiliser l'URL signée au lieu du chemin brut
           }));
 
           // Ajouter les compteurs manquants avec mention "À relever"

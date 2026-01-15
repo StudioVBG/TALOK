@@ -15,31 +15,42 @@ import {
 import { formatDate, formatCurrency } from "@/lib/helpers/format";
 
 /**
- * Génère le HTML d'un compteur
+ * Génère le HTML d'un compteur avec sa photo
  */
 function generateMeterHTML(
   type: string,
   meterNumber: string | undefined,
   reading: string,
-  unit: string
+  unit: string,
+  photoUrl?: string
 ): string {
   const label = METER_TYPE_LABELS[type] || type;
   const icon = METER_TYPE_ICONS[type] || "📊";
-  
+
   // Formatage de la valeur du relevé
   const isNotRead = reading === "Non relevé" || !reading;
   const displayValue = isNotRead ? "À relever" : reading;
   const displayUnit = isNotRead ? "" : unit;
   const valueClass = isNotRead ? "meter-value pending" : "meter-value";
 
+  // Photo du compteur si disponible
+  const photoHTML = photoUrl ? `
+    <div class="meter-photo" style="margin-top: 8px;">
+      <img src="${photoUrl}" alt="Photo compteur ${label}" style="max-width: 120px; max-height: 80px; border-radius: 4px; border: 1px solid #e2e8f0;" />
+    </div>
+  ` : "";
+
   return `
-    <div class="meter-card">
-      <div class="meter-icon">${icon}</div>
-      <div class="meter-info">
-        <div class="meter-type">${label}</div>
-        ${meterNumber ? `<div class="meter-number">N° ${meterNumber}</div>` : ""}
-        <div class="${valueClass}" style="${isNotRead ? 'color: #d97706; font-style: italic; font-size: 0.9em;' : ''}">${displayValue} ${displayUnit}</div>
+    <div class="meter-card" style="display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: flex-start;">
+        <div class="meter-icon">${icon}</div>
+        <div class="meter-info">
+          <div class="meter-type">${label}</div>
+          ${meterNumber ? `<div class="meter-number">N° ${meterNumber}</div>` : ""}
+          <div class="${valueClass}" style="${isNotRead ? 'color: #d97706; font-style: italic; font-size: 0.9em;' : ''}">${displayValue} ${displayUnit}</div>
+        </div>
       </div>
+      ${photoHTML}
     </div>
   `;
 }
@@ -258,9 +269,9 @@ export function mapEDLToTemplateVariables(edl: EDLComplet): EDLTemplateVariables
   // Neuf + Bon sont considérés comme "bon état" pour le pourcentage global
   const pourcentageBon = totalElements > 0 ? Math.round(((nbNeuf + nbBon) / totalElements) * 100) : 0;
 
-  // Générer HTML des compteurs
+  // Générer HTML des compteurs (avec photos si disponibles)
   const compteursHTML = edl.compteurs
-    .map((c) => generateMeterHTML(c.type, c.meter_number, c.reading, c.unit))
+    .map((c) => generateMeterHTML(c.type, c.meter_number, c.reading, c.unit, c.photo_url))
     .join("");
 
   // Générer HTML des pièces
