@@ -482,16 +482,16 @@ export default function RegularisationPage() {
               className="space-y-6"
             >
               <Card className="border-white/10 bg-white">
-                <CardContent className="p-8 text-gray-800">
+                <CardContent className="p-4 sm:p-6 md:p-8 text-gray-800">
                   {/* Document preview */}
-                  <div className="space-y-6">
+                  <div className="space-y-4 md:space-y-6">
                     <div className="text-center border-b pb-4">
-                      <h2 className="text-xl font-bold">DÉCOMPTE DE RÉGULARISATION</h2>
-                      <h3 className="text-lg">DES CHARGES LOCATIVES</h3>
+                      <h2 className="text-lg md:text-xl font-bold">DÉCOMPTE DE RÉGULARISATION</h2>
+                      <h3 className="text-base md:text-lg">DES CHARGES LOCATIVES</h3>
                       <p className="text-sm text-gray-500">Année {regularisationData.fiscal_year}</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
                       <div>
                         <p className="font-semibold">Bailleur</p>
                         <p>Nom du propriétaire</p>
@@ -602,16 +602,16 @@ export default function RegularisationPage() {
               className="space-y-6"
             >
               <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/20 to-emerald-600/10">
-                <CardContent className="p-8 text-center">
+                <CardContent className="p-4 sm:p-6 md:p-8 text-center">
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", delay: 0.2 }}
-                    className="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center"
+                    className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 rounded-full bg-emerald-500/20 flex items-center justify-center"
                   >
-                    <CheckCircle2 className="w-12 h-12 text-emerald-400" />
+                    <CheckCircle2 className="w-10 h-10 md:w-12 md:h-12 text-emerald-400" />
                   </motion.div>
-                  <h2 className="text-2xl font-bold text-white mb-2">
+                  <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
                     Régularisation envoyée !
                   </h2>
                   <p className="text-slate-300 mb-6">

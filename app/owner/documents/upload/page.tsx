@@ -203,7 +203,7 @@ export default function OwnerDocumentsUploadPage() {
             onDrop={handleDrop}
             onClick={openFilePicker}
             className={cn(
-              "relative border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer",
+              "relative border-2 border-dashed rounded-xl p-4 sm:p-6 md:p-8 transition-all duration-200 cursor-pointer",
               "hover:border-indigo-400 hover:bg-indigo-50/50",
               isDragOver 
                 ? "border-indigo-500 bg-indigo-50 scale-[1.02]" 

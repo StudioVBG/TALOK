@@ -53,18 +53,18 @@ export default function TenantRewardsPage() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-[2.5rem] p-12 text-white relative overflow-hidden shadow-2xl"
+          className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-2xl md:rounded-[2.5rem] p-6 md:p-12 text-white relative overflow-hidden shadow-2xl"
         >
-          <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
+          <div className="relative z-10 grid md:grid-cols-2 gap-6 md:gap-12 items-center">
+            <div className="space-y-4 md:space-y-6">
               <p className="text-xs font-black uppercase tracking-[0.3em] opacity-80">Solde Actuel</p>
-              <h2 className="text-7xl font-black tracking-tighter">
-                {data?.total_points.toLocaleString()} <span className="text-2xl font-bold opacity-60">Points</span>
+              <h2 className="text-4xl md:text-7xl font-black tracking-tighter">
+                {data?.total_points.toLocaleString()} <span className="text-lg md:text-2xl font-bold opacity-60">Points</span>
               </h2>
               <p className="text-indigo-100 max-w-sm leading-relaxed">
                 Vous avez gagné 120 points ce mois-ci. Vous êtes à 250 points de votre prochain bon d'achat IKEA.
               </p>
-              <Button size="lg" className="bg-white text-indigo-600 hover:bg-slate-50 font-black rounded-2xl h-14 px-10 shadow-xl">
+              <Button size="lg" className="bg-white text-indigo-600 hover:bg-slate-50 font-black rounded-2xl h-12 md:h-14 px-6 md:px-10 shadow-xl w-full sm:w-auto">
                 Découvrir la boutique <ShoppingBag className="ml-2 h-5 w-5" />
               </Button>
             </div>
@@ -84,7 +84,7 @@ export default function TenantRewardsPage() {
           <Sparkles className="absolute top-10 right-10 h-24 w-24 text-white/10 rotate-12" />
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-8">
           
           {/* Historique - 7/12 */}
           <div className="lg:col-span-7 space-y-6">

@@ -393,7 +393,7 @@ export function DashboardClient() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 p-8 text-white shadow-2xl"
+            className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 p-4 sm:p-6 md:p-8 text-white shadow-2xl"
             data-tour="tenant-onboarding"
           >
             {/* Background Pattern */}
@@ -643,7 +643,7 @@ export function DashboardClient() {
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
                 </div>
 
-                <CardContent className="relative z-10 p-8 flex flex-col h-full justify-between">
+                <CardContent className="relative z-10 p-4 sm:p-6 md:p-8 flex flex-col h-full justify-between">
                   <div>
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-2">
@@ -684,7 +684,7 @@ export function DashboardClient() {
             ) : (
               /* État vide - Pas de logement lié */
               <GlassCard className="relative overflow-hidden h-full border-2 border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-slate-100 min-h-[300px]">
-                <CardContent className="p-8 flex flex-col items-center justify-center h-full text-center">
+                <CardContent className="p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center h-full text-center">
                   <div className="relative mb-6">
                     <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-2xl animate-pulse" />
                     <div className="relative p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl shadow-xl">

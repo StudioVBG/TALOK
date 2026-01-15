@@ -621,7 +621,7 @@ export function ContractsClient() {
             {/* Locataires & garants */}
             <TabsContent value="tenants">
               <GlassCard>
-                <div className="p-8 text-center">
+                <div className="p-4 sm:p-6 md:p-8 text-center">
                     <h2 className="text-xl font-semibold mb-2">Locataires & Garants</h2>
                     <p className="text-muted-foreground mb-4">
                         Vue consolidée de tous vos contacts locataires (Bientôt disponible).
