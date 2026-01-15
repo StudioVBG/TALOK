@@ -432,10 +432,10 @@ export function SubscriptionManagerDialog({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-slate-400 hover:text-white">
+              <Button variant="ghost" size="icon" onClick={handleRefresh} className="text-slate-400 hover:text-white" aria-label="Actualiser">
                 <RefreshCw className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-white">
+              <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-white" aria-label="Fermer">
                 <X className="w-4 h-4" />
               </Button>
             </div>

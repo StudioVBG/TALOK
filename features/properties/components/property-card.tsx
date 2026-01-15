@@ -158,6 +158,11 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
               ? "Suppression bloquée pendant la validation"
               : "Supprimer définitivement"
           }
+          aria-label={
+            cannotEdit
+              ? "Suppression bloquée pendant la validation"
+              : "Supprimer le logement"
+          }
           className="relative overflow-hidden border border-destructive/30 bg-gradient-to-br from-destructive via-destructive to-red-600 shadow-lg transition hover:scale-[1.02] hover:shadow-destructive/40 disabled:opacity-60"
         >
           <span className="absolute inset-0 bg-white/10 opacity-0 transition group-hover:opacity-50" />
@@ -358,6 +363,7 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
               onClick={handleSubmit}
               disabled={updateProperty.isPending}
               title="Soumettre à validation"
+              aria-label="Soumettre à validation"
             >
               {updateProperty.isPending ? "…" : "↗"}
             </Button>

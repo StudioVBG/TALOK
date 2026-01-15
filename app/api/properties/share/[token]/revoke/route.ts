@@ -1,7 +1,5 @@
 export const runtime = 'nodejs';
 
-// @ts-nocheck
-
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getServiceRoleClient } from "@/lib/server/service-role-client";

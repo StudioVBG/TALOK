@@ -160,7 +160,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                     </div>
                     <h1 className="text-lg font-bold text-slate-900">Talok</h1>
                   </div>
-                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
+                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} aria-label="Fermer le menu">
                   <X className="h-5 w-5" />
                 </Button>
               </div>
@@ -201,6 +201,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               size="icon"
               className="lg:hidden"
               onClick={() => setSidebarOpen(true)}
+              aria-label="Ouvrir le menu"
             >
               <Menu className="h-6 w-6" />
             </Button>

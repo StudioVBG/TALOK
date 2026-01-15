@@ -1,6 +1,5 @@
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { getServiceRoleClient } from "@/lib/server/service-role-client";

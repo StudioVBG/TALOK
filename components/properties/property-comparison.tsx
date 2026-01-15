@@ -269,6 +269,7 @@ function PropertyCard({ property, onRemove, isHighlighted }: PropertyCardProps) 
           size="icon"
           className="absolute top-2 right-2 h-7 w-7"
           onClick={onRemove}
+          aria-label="Retirer de la comparaison"
         >
           <X className="h-4 w-4" />
         </Button>

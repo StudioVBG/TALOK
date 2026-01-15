@@ -125,7 +125,7 @@ export function TicketCard({ ticket, onDelete }: TicketCardProps) {
               Voir détails
             </Button>
           </Link>
-          <Button variant="destructive" size="icon" onClick={handleDelete} disabled={deleting}>
+          <Button variant="destructive" size="icon" onClick={handleDelete} disabled={deleting} aria-label="Supprimer le ticket">
             {deleting ? "..." : "🗑️"}
           </Button>
         </div>

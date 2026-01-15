@@ -4,10 +4,11 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { AccountingIntegrationService } from "@/features/accounting/services/accounting-integration.service";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
  * POST /api/invoices/[id]/mark-paid - Marquer une facture comme payée manuellement
- * 
+ *
  * Utilisé par les propriétaires pour enregistrer un paiement reçu
  * (espèces, chèque, virement manuel, etc.)
  */
@@ -16,6 +17,12 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Rate limiting pour les paiements (5 req/min)
+    const rateLimitResponse = applyRateLimit(request, "payment");
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const supabase = await createClient();
     const {
       data: { user },

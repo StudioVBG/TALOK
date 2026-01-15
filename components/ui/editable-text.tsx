@@ -119,6 +119,7 @@ export function EditableText({
             className="h-8 w-8 bg-green-600 hover:bg-green-700 text-white shadow-md"
             onClick={handleSave}
             disabled={isLoading}
+            aria-label="Enregistrer"
           >
             <Check className="h-4 w-4" />
           </Button>
@@ -128,6 +129,7 @@ export function EditableText({
             className="h-8 w-8 bg-slate-200 text-slate-700 hover:bg-slate-300 shadow-md"
             onClick={handleCancel}
             disabled={isLoading}
+            aria-label="Annuler"
           >
             <X className="h-4 w-4" />
           </Button>

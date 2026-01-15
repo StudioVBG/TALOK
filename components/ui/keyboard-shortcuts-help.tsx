@@ -80,6 +80,7 @@ export function KeyboardShortcutsHelp({
             variant="ghost"
             size="icon"
             className={cn("h-9 w-9", className)}
+            aria-label="Raccourcis clavier"
           >
             <Keyboard className="h-4 w-4" />
             <span className="sr-only">Raccourcis clavier</span>

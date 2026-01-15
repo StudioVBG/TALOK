@@ -166,6 +166,7 @@ const NotificationItem = forwardRef<
               onMarkAsRead(notification.id);
             }}
             title="Marquer comme lu"
+            aria-label="Marquer comme lu"
           >
             <Check className="h-3.5 w-3.5" />
           </Button>
@@ -180,6 +181,7 @@ const NotificationItem = forwardRef<
             onDelete(notification.id);
           }}
           title="Supprimer"
+          aria-label="Supprimer la notification"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -248,7 +250,7 @@ export function NotificationCenter() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <motion.span
@@ -285,6 +287,7 @@ export function NotificationCenter() {
               onClick={handleRefresh}
               disabled={isRefreshing}
               title="Actualiser"
+              aria-label="Actualiser les notifications"
             >
               {isRefreshing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -308,6 +311,7 @@ export function NotificationCenter() {
               size="icon"
               className="h-7 w-7"
               asChild
+              aria-label="Paramètres des notifications"
             >
               <Link href="/owner/settings/notifications">
                 <Settings className="h-3.5 w-3.5" />

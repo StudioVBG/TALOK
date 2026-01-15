@@ -47,6 +47,7 @@ export function FavoritesList({ className }: FavoritesListProps) {
           variant="ghost"
           size="icon"
           className={cn("relative", className)}
+          aria-label="Mes favoris"
         >
           <Star className="h-5 w-5" />
           {count > 0 && (
@@ -106,6 +107,7 @@ export function FavoritesList({ className }: FavoritesListProps) {
                         e.stopPropagation();
                         removeFavorite(item.id, item.type);
                       }}
+                      aria-label="Retirer des favoris"
                     >
                       <X className="h-3 w-3" />
                     </Button>

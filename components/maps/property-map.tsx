@@ -295,6 +295,7 @@ export function PropertyMap({
             size="icon"
             className="h-8 w-8 bg-white/90 hover:bg-white shadow-md"
             onClick={handleZoomIn}
+            aria-label="Zoomer"
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
@@ -303,6 +304,7 @@ export function PropertyMap({
             size="icon"
             className="h-8 w-8 bg-white/90 hover:bg-white shadow-md"
             onClick={handleZoomOut}
+            aria-label="Dézoomer"
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
@@ -312,6 +314,7 @@ export function PropertyMap({
             className="h-8 w-8 bg-white/90 hover:bg-white shadow-md"
             onClick={handleOpenMaps}
             title="Ouvrir dans Google Maps"
+            aria-label="Ouvrir dans Google Maps"
           >
             <Maximize2 className="h-4 w-4" />
           </Button>

@@ -131,7 +131,7 @@ export function LeaseCard({ lease, onDelete }: LeaseCardProps) {
               Modifier
             </Button>
           </Link>
-          <Button variant="destructive" size="icon" onClick={handleDelete} disabled={deleting}>
+          <Button variant="destructive" size="icon" onClick={handleDelete} disabled={deleting} aria-label="Supprimer le bail">
             {deleting ? "..." : "🗑️"}
           </Button>
         </div>

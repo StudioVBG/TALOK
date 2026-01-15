@@ -201,6 +201,7 @@ export function EntityNotes({
                       variant="ghost"
                       className="h-6 w-6"
                       onClick={() => togglePin(note.id)}
+                      aria-label={note.pinned ? "Désépingler la note" : "Épingler la note"}
                     >
                       <Pin
                         className={cn(
@@ -214,6 +215,7 @@ export function EntityNotes({
                       variant="ghost"
                       className="h-6 w-6"
                       onClick={() => handleStartEdit(note)}
+                      aria-label="Modifier la note"
                     >
                       <Edit2 className="h-3 w-3" />
                     </Button>
@@ -222,6 +224,7 @@ export function EntityNotes({
                       variant="ghost"
                       className="h-6 w-6 text-red-500 hover:text-red-600"
                       onClick={() => deleteNote(note.id)}
+                      aria-label="Supprimer la note"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

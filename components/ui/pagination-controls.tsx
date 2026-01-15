@@ -146,6 +146,7 @@ export function PaginationControls({
               onClick={() => onPageChange(1)}
               disabled={!hasPrevPage || isLoading}
               title="Première page"
+              aria-label="Première page"
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
@@ -159,6 +160,7 @@ export function PaginationControls({
             onClick={() => onPageChange(page - 1)}
             disabled={!hasPrevPage || isLoading}
             title="Page précédente"
+            aria-label="Page précédente"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -199,6 +201,7 @@ export function PaginationControls({
             onClick={() => onPageChange(page + 1)}
             disabled={!hasNextPage || isLoading}
             title="Page suivante"
+            aria-label="Page suivante"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -212,6 +215,7 @@ export function PaginationControls({
               onClick={() => onPageChange(totalPages)}
               disabled={!hasNextPage || isLoading}
               title="Dernière page"
+              aria-label="Dernière page"
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>

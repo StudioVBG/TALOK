@@ -254,7 +254,7 @@ export function LeaseEndWizard({
             <ArrowLeft className="w-4 h-4 mr-2" />
             {currentStep === "checklist" ? "Fermer" : "Retour au sommaire"}
           </Button>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer">
             <X className="w-5 h-5" />
           </Button>
         </div>

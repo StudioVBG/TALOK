@@ -1,7 +1,6 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// @ts-nocheck
 /**
  * API Route: Génération du PDF de bail signé complet
  * GET /api/leases/[id]/pdf-signed

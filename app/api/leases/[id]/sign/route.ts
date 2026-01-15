@@ -1,7 +1,3 @@
-// @ts-nocheck
-// Note: Type checking disabled due to Supabase client not having generated types
-// TODO: Generate Supabase types and remove this directive
-
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 

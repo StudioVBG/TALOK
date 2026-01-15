@@ -70,10 +70,10 @@ export function TomAssistant() {
           </div>
         </div>
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }}>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }} aria-label={isMinimized ? "Agrandir" : "Réduire"}>
             {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} aria-label="Fermer l'assistant">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -141,7 +141,7 @@ export function TomAssistant() {
                 placeholder="Décrivez votre bien..."
                 className="flex-1"
               />
-              <Button type="submit" size="icon" disabled={!input.trim()}>
+              <Button type="submit" size="icon" disabled={!input.trim()} aria-label="Envoyer le message">
                 <Send className="h-4 w-4" />
               </Button>
             </form>
