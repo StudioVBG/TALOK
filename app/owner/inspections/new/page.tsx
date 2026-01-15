@@ -67,10 +67,10 @@ async function fetchLeases(profileId: string) {
 
 function WizardSkeleton() {
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <Skeleton className="h-10 w-72" />
-      <Skeleton className="h-4 w-96" />
-      <Skeleton className="h-96 rounded-xl" />
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 w-full max-w-4xl mx-auto">
+      <Skeleton className="h-8 md:h-10 w-48 md:w-72" />
+      <Skeleton className="h-4 w-full max-w-[280px] md:max-w-[384px]" />
+      <Skeleton className="h-64 md:h-96 rounded-xl w-full" />
     </div>
   );
 }
