@@ -65,8 +65,8 @@ export default async function VendorLayout({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50/20 to-slate-50">
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+      {/* Desktop Sidebar - SOTA 2026: Largeur unifiée 64 (comme Owner/Tenant/Admin) */}
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white border-r border-slate-200 px-6 pb-4">
           {/* Logo */}
           <div className="flex h-16 shrink-0 items-center gap-2">
@@ -129,8 +129,8 @@ export default async function VendorLayout({
         </div>
       </div>
 
-      {/* Main content */}
-      <main className="lg:pl-72">
+      {/* Main content - SOTA 2026: Padding unifié */}
+      <main className="lg:pl-64">
         {/* Desktop header */}
         <div className="sticky top-0 z-40 hidden lg:flex h-16 shrink-0 items-center gap-x-4 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-6">
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6 justify-end items-center">
@@ -150,7 +150,9 @@ export default async function VendorLayout({
           </div>
         </div>
 
-        {children}
+        <div className="py-6 px-4 sm:px-6 lg:px-8">
+          {children}
+        </div>
       </main>
 
       {/* SOTA 2026 - Mobile bottom navigation avec safe area */}

@@ -75,9 +75,9 @@ export default async function AgencyLayout({
             agencyName={agencyProfile?.nom_agence || "Mon Agence"}
           />
 
-          {/* Main content */}
+          {/* Main content - SOTA 2026: lg breakpoint unifié */}
           <main
-            className="md:pl-64 flex-1"
+            className="lg:pl-64 flex-1"
             role="main"
             aria-label="Contenu principal"
           >

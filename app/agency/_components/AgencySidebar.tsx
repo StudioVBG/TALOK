@@ -90,9 +90,9 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
 
   return (
     <>
-      {/* Sidebar Desktop */}
+      {/* Sidebar Desktop - SOTA 2026: Breakpoint lg unifié */}
       <aside
-        className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0"
+        className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0"
         role="navigation"
         aria-label="Navigation principale agence"
       >
@@ -171,35 +171,40 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation - SOTA 2026: lg breakpoint + safe area + touch targets */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50"
         role="navigation"
         aria-label="Navigation mobile"
       >
-        <div className="flex justify-around py-2">
-          {navigation.slice(0, 5).map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "flex flex-col items-center gap-1 p-2 transition-colors",
-                  isActive
-                    ? "text-indigo-600 dark:text-indigo-400"
-                    : "text-slate-400 hover:text-indigo-500"
-                )}
-                aria-label={item.name}
-                aria-current={isActive ? "page" : undefined}
-              >
-                <item.icon className="w-5 h-5" aria-hidden="true" />
-                <span className="text-xs">{item.name.slice(0, 8)}</span>
-              </Link>
-            );
-          })}
+        <div className="pb-safe">
+          <div className="grid grid-cols-5 h-14">
+            {navigation.slice(0, 5).map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-0.5 min-h-[44px] transition-colors",
+                    isActive
+                      ? "text-indigo-600 dark:text-indigo-400"
+                      : "text-slate-400 hover:text-indigo-500"
+                  )}
+                  aria-label={item.name}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <item.icon className="w-5 h-5" aria-hidden="true" />
+                  <span className="text-[9px] xs:text-[10px] font-medium truncate max-w-[56px]">{item.name.slice(0, 8)}</span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </nav>
+
+      {/* Spacer pour bottom nav mobile */}
+      <div className="h-14 lg:hidden" aria-hidden="true" />
     </>
   );
 }
