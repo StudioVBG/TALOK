@@ -1,6 +1,5 @@
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 /**
  * GET /api/cron/lease-expiry-alerts
  * Cron job pour alerter des baux arrivant à expiration

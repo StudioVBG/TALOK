@@ -1,5 +1,18 @@
 /**
  * Service de notifications Push, SMS et Email
+ *
+ * @deprecated This file is deprecated. Use the following alternatives:
+ * - For in-app notifications: Use `notification-service.ts` (primary notification service)
+ * - For SMS: Use `sms.service.ts` (sendSMS, sendOTPSMS)
+ * - For templates: Import from this file via `lib/services/index.ts` exports
+ *
+ * This file will be removed in a future version.
+ * Migration guide:
+ * - `sendPushNotification` -> Still available via deprecated export
+ * - `sendSMS` -> Use `sms.service.ts` sendSMS
+ * - `formatPhoneNumber` -> Use `sms.service.ts` smsUtils
+ * - `NOTIFICATION_TEMPLATES` -> Available via deprecated export from index.ts
+ * - `generateNotificationContent` -> Available via deprecated export from index.ts
  */
 
 // ============================================
@@ -52,6 +65,7 @@ const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 
 /**
  * Envoyer une notification push
+ * @deprecated Use notification-service.ts with push channel for unified notification management
  */
 export async function sendPushNotification(
   subscription: PushSubscription,
@@ -89,6 +103,7 @@ export async function sendPushNotification(
 
 /**
  * Envoyer une notification push à plusieurs abonnés
+ * @deprecated Use notification-service.ts with push channel for unified notification management
  */
 export async function sendPushToMultiple(
   subscriptions: PushSubscription[],
@@ -128,6 +143,7 @@ const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 
 /**
  * Envoyer un SMS via Twilio
+ * @deprecated Use sendSMS from sms.service.ts instead
  */
 export async function sendSMS(
   payload: SMSPayload
@@ -175,6 +191,7 @@ export async function sendSMS(
 
 /**
  * Formater un numéro de téléphone français pour Twilio
+ * @deprecated Use smsUtils.formatPhoneNumber from sms.service.ts instead
  */
 export function formatPhoneNumber(phone: string): string {
   // Supprimer tous les caractères non numériques
@@ -199,6 +216,7 @@ export function formatPhoneNumber(phone: string): string {
 
 /**
  * Envoyer une notification via tous les canaux appropriés
+ * @deprecated Use createNotification from notification-service.ts instead
  */
 export async function notifyUser(
   profileId: string,
@@ -302,6 +320,7 @@ export const NOTIFICATION_TEMPLATES = {
 
 /**
  * Générer le contenu d'une notification à partir d'un template
+ * @deprecated Import from lib/services/index.ts for backward compatibility. Consider using notification-service.ts predefined functions instead.
  */
 export function generateNotificationContent<K extends keyof typeof NOTIFICATION_TEMPLATES>(
   templateKey: K,

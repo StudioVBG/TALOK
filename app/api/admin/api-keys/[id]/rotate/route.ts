@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 /**
  * API Route: Rotation d'une clé API
  * POST /api/admin/api-keys/[id]/rotate

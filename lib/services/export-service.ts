@@ -1,11 +1,24 @@
 /**
- * Service d'export de données
- * 
- * Permet d'exporter les données en différents formats :
+ * Service d'export de donnees - Client-side
+ *
+ * @deprecated Pour les nouveaux developpements, preferez utiliser le service serveur
+ * {@link ExportService} de `@/lib/services/export.service` qui offre :
+ * - Protection contre les injections CSV
+ * - URLs signees pour les telechargements securises
+ * - Journalisation d'audit
+ * - Gestion des jobs d'export asynchrones
+ *
+ * Ce module reste disponible pour la retrocompatibilite et les exports
+ * rapides cote client (navigateur) sans passer par le serveur.
+ *
+ * Permet d'exporter les donnees en differents formats :
  * - CSV
  * - Excel (XLSX)
- * - PDF
+ * - PDF (HTML pour impression)
  * - JSON
+ *
+ * @module ClientExportService
+ * @see {@link ExportService} pour les exports serveur securises
  */
 
 // Types
@@ -64,7 +77,8 @@ function formatValue(value: any, format?: ExportColumn["format"]): string {
 }
 
 /**
- * Génère un fichier CSV
+ * Genere un fichier CSV
+ * @deprecated Utilisez ExportService.generateCSV de export.service.ts pour une meilleure securite
  */
 export function generateCSV(data: any[], options: ExportOptions): string {
   const { columns, includeTimestamp } = options;
@@ -334,7 +348,8 @@ export function generateXLSX(data: any[], options: ExportOptions): Blob {
 }
 
 /**
- * Exporte les données dans le format spécifié
+ * Exporte les donnees dans le format specifie
+ * @deprecated Pour les nouveaux developpements, utilisez ExportService.startExport de export.service.ts
  */
 export function exportData(data: any[], options: ExportOptions): void {
   const { filename, format, includeTimestamp } = options;
@@ -455,7 +470,8 @@ export const exportConfigs = {
 };
 
 /**
- * Exporte les propriétés
+ * Exporte les proprietes
+ * @deprecated Pour les nouveaux developpements, utilisez l'API /api/exports
  */
 export function exportProperties(properties: any[], format: ExportFormat = "csv") {
   exportData(properties, {
@@ -469,6 +485,7 @@ export function exportProperties(properties: any[], format: ExportFormat = "csv"
 
 /**
  * Exporte les factures
+ * @deprecated Pour les nouveaux developpements, utilisez l'API /api/exports
  */
 export function exportInvoices(invoices: any[], format: ExportFormat = "csv") {
   exportData(invoices, {
@@ -482,6 +499,7 @@ export function exportInvoices(invoices: any[], format: ExportFormat = "csv") {
 
 /**
  * Exporte les paiements
+ * @deprecated Pour les nouveaux developpements, utilisez l'API /api/exports
  */
 export function exportPayments(payments: any[], format: ExportFormat = "csv") {
   exportData(payments, {
@@ -494,6 +512,7 @@ export function exportPayments(payments: any[], format: ExportFormat = "csv") {
 
 /**
  * Exporte les baux
+ * @deprecated Pour les nouveaux developpements, utilisez l'API /api/exports
  */
 export function exportLeases(leases: any[], format: ExportFormat = "csv") {
   exportData(leases, {

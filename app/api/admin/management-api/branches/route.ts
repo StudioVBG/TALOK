@@ -1,7 +1,6 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// @ts-nocheck
 /**
  * Route API pour gérer les branches de base de données
  * 

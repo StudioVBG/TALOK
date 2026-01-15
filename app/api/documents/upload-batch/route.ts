@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// @ts-nocheck
+
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";

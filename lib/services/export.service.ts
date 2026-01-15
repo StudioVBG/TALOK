@@ -1,5 +1,22 @@
+/**
+ * Service d'export de donnees - Server-side (CANONICAL)
+ *
+ * Service centralise et securise pour la gestion des exports de donnees.
+ * C'est le service recommande pour tous les nouveaux developpements.
+ *
+ * Fonctionnalites de securite :
+ * - Protection contre les injections CSV (caracteres speciaux prefixes)
+ * - URLs signees avec TTL de 15 minutes
+ * - Journalisation d'audit complete
+ * - Gestion des jobs d'export avec statuts (pending, processing, completed, failed)
+ * - Stockage securise via Supabase Storage
+ *
+ * Formats supportes : CSV, JSON
+ *
+ * @module ServerExportService
+ * @see Pour les exports rapides cote client, voir `@/lib/services/export-service`
+ */
 import { createClient } from "@/lib/supabase/server";
-import { crypto } from "@/lib/utils"; // Assuming a crypto helper exists or using global crypto
 
 export interface ExportOptions {
   userId: string;
@@ -10,8 +27,23 @@ export interface ExportOptions {
 }
 
 /**
- * Service centralisé pour la gestion des exports de données.
- * Respecte les standards de sécurité (CSV Injection, Signed URLs) et de conformité (Audit).
+ * Service centralise pour la gestion des exports de donnees.
+ * Respecte les standards de securite (CSV Injection, Signed URLs) et de conformite (Audit).
+ *
+ * @example
+ * ```typescript
+ * // Demarrer un export
+ * const jobId = await ExportService.startExport({
+ *   userId: user.id,
+ *   type: 'accounting',
+ *   format: 'csv',
+ *   data: invoices,
+ *   columns: ['date', 'montant', 'statut']
+ * });
+ *
+ * // Recuperer l'URL de telechargement
+ * const url = await ExportService.getSignedUrl(jobId, user.id);
+ * ```
  */
 export class ExportService {
   /**

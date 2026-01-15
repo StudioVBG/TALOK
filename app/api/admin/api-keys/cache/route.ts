@@ -1,7 +1,6 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// @ts-nocheck
 /**
  * API Route: Gestion du cache des clés API
  * DELETE /api/admin/api-keys/cache - Vider le cache

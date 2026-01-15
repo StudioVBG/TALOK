@@ -1,6 +1,5 @@
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 /**
  * GET /api/cron/rent-reminders
  * Cron job pour envoyer des relances de loyers impayés

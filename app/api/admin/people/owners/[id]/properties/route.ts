@@ -1,6 +1,5 @@
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";

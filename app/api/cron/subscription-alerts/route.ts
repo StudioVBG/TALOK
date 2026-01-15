@@ -1,6 +1,5 @@
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 /**
  * GET /api/cron/subscription-alerts
  * Cron job pour alerter des abonnements arrivant à expiration

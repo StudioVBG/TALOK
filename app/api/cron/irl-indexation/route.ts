@@ -1,6 +1,5 @@
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 /**
  * GET /api/cron/irl-indexation
  * Cron job pour calculer et notifier les indexations IRL annuelles

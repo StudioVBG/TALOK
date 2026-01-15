@@ -1,6 +1,5 @@
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email/send-email";
