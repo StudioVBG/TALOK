@@ -51,6 +51,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Progress } from "@/components/ui/progress";
 
 interface Lease {
   id: string;
@@ -215,6 +216,11 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
 
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // État pour la barre de progression lors de la création
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStep, setUploadStep] = useState("");
+  const [uploadDetails, setUploadDetails] = useState("");
   
   // Form state - Auto-select lease if preselectedLeaseId is provided
   const initialLease = preselectedLeaseId 
@@ -615,8 +621,23 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
   const handleSubmit = async () => {
     if (!selectedLease) return;
 
+    // Calculer le nombre total d'opérations pour la progression
+    const validMeterReadings = meterReadings.filter(m => m.reading.trim() !== "");
+    const totalPhotos = roomsData.reduce((acc, room) => {
+      const roomPhotos = room.globalPhotos?.length || 0;
+      const itemPhotos = room.items.reduce((sum, item) => sum + item.photos.length, 0);
+      return acc + roomPhotos + itemPhotos;
+    }, 0);
+
+    // Étapes: création EDL (10%) + compteurs (20%) + sections (10%) + photos (60%)
+    const hasMeters = validMeterReadings.length > 0;
+    const hasPhotos = totalPhotos > 0;
+
     try {
       setIsSubmitting(true);
+      setUploadProgress(0);
+      setUploadStep("Création de l'état des lieux...");
+      setUploadDetails("");
 
       // 1. Créer l'EDL
       const response = await fetch(`/api/properties/${selectedLease.property.id}/inspections`, {
@@ -640,13 +661,18 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       }
 
       const { edl } = await response.json();
+      setUploadProgress(10);
 
       // 2. Gérer les relevés des compteurs
+      setUploadStep("Enregistrement des compteurs...");
       // On récupère d'abord les compteurs existants pour ne pas recréer
       const metersRes = await fetch(`/api/properties/${selectedLease.property.id}/meters`);
       const { meters: existingMeters } = await metersRes.json();
 
-      for (const mr of meterReadings.filter(m => m.reading.trim() !== "")) {
+      let meterIndex = 0;
+      for (const mr of validMeterReadings) {
+        meterIndex++;
+        setUploadDetails(`Compteur ${meterIndex}/${validMeterReadings.length}`);
         // Distinguer eau chaude et froide dans le type ou provider si besoin
         const meterType = mr.type === "water_hot" ? "water" : mr.type;
         const meterLabel = mr.type === "water_hot" ? "Eau chaude" : mr.type === "water" ? "Eau froide" : mr.type;
@@ -707,8 +733,11 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           });
         }
       }
+      setUploadProgress(30);
 
       // 3. Créer les sections et items
+      setUploadStep("Enregistrement des pièces...");
+      setUploadDetails(`${roomsData.length} pièce(s)`);
       const sections = roomsData.map((room) => ({
         room_name: room.name,
         items: room.items.map((item) => ({
@@ -753,38 +782,54 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       } catch (e) {
         console.error("Erreur sauvegarde structure pièces:", e);
       }
+      setUploadProgress(40);
 
       // 5. Uploader les photos des items et photos globales
-      let itemOffset = 0;
-      for (const room of roomsData) {
-        // Photos globales de la pièce
-        if (room.globalPhotos && room.globalPhotos.length > 0) {
-          const formData = new FormData();
-          room.globalPhotos.forEach(photo => formData.append("files", photo));
-          formData.append("section", room.name);
-          
-          await fetch(`/api/inspections/${edl.id}/photos`, {
-            method: "POST",
-            body: formData,
-          });
-        }
+      if (totalPhotos > 0) {
+        setUploadStep("Upload des photos...");
+        let uploadedPhotos = 0;
+        let itemOffset = 0;
 
-        // Photos des items
-        for (const item of room.items) {
-          const insertedItem = insertedItems[itemOffset];
-          if (item.photos.length > 0 && insertedItem) {
+        for (const room of roomsData) {
+          // Photos globales de la pièce
+          if (room.globalPhotos && room.globalPhotos.length > 0) {
+            setUploadDetails(`Photo ${uploadedPhotos + 1}/${totalPhotos} (${room.name})`);
             const formData = new FormData();
-            item.photos.forEach(photo => formData.append("files", photo));
+            room.globalPhotos.forEach(photo => formData.append("files", photo));
             formData.append("section", room.name);
-            
-            await fetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
+
+            await fetch(`/api/inspections/${edl.id}/photos`, {
               method: "POST",
               body: formData,
             });
+            uploadedPhotos += room.globalPhotos.length;
+            setUploadProgress(40 + Math.round((uploadedPhotos / totalPhotos) * 55));
           }
-          itemOffset++;
+
+          // Photos des items
+          for (const item of room.items) {
+            const insertedItem = insertedItems[itemOffset];
+            if (item.photos.length > 0 && insertedItem) {
+              setUploadDetails(`Photo ${uploadedPhotos + 1}/${totalPhotos} (${item.name})`);
+              const formData = new FormData();
+              item.photos.forEach(photo => formData.append("files", photo));
+              formData.append("section", room.name);
+
+              await fetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
+                method: "POST",
+                body: formData,
+              });
+              uploadedPhotos += item.photos.length;
+              setUploadProgress(40 + Math.round((uploadedPhotos / totalPhotos) * 55));
+            }
+            itemOffset++;
+          }
         }
       }
+
+      setUploadProgress(100);
+      setUploadStep("Finalisation...");
+      setUploadDetails("");
 
       toast({
         title: "État des lieux créé",
@@ -800,6 +845,9 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       });
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
+      setUploadStep("");
+      setUploadDetails("");
     }
   };
 
@@ -1633,11 +1681,15 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="min-w-[140px]"
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Création...
+                {uploadProgress}%
               </>
             ) : (
               <>
@@ -1648,6 +1700,56 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           </Button>
         )}
       </div>
+
+      {/* Overlay de progression lors de la création */}
+      <AnimatePresence>
+        {isSubmitting && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card border rounded-xl shadow-lg p-6 w-[90%] max-w-md mx-4"
+            >
+              <div className="text-center space-y-4">
+                <div className="flex justify-center">
+                  <div className="relative">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs font-bold">{uploadProgress}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    Création en cours...
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {uploadStep}
+                  </p>
+                  {uploadDetails && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {uploadDetails}
+                    </p>
+                  )}
+                </div>
+
+                <Progress value={uploadProgress} className="h-2" />
+
+                <p className="text-xs text-muted-foreground">
+                  Ne fermez pas cette page pendant la création
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Dialogue de confirmation accessible */}
       <ConfirmDialogComponent />
