@@ -1,8 +1,19 @@
 /**
  * Service d'envoi de SMS via Twilio
- * 
- * Récupère automatiquement les credentials depuis la base de données
- * ou utilise les variables d'environnement en fallback
+ *
+ * @deprecated Ce service est obsolète. Utilisez plutôt `sms.service.ts` qui offre :
+ * - Gestion centralisée des credentials via `credentials-service.ts`
+ * - Meilleur support des territoires français (DROM-COM)
+ * - Validation des numéros de téléphone
+ * - Support de la librairie officielle Twilio
+ *
+ * Migration :
+ * - `sendSms` -> `sendSMS` from './sms.service'
+ * - `sendOtpSms` -> `sendOTPSMS` from './sms.service'
+ * - `SmsOptions` -> `SMSOptions` from './sms.service'
+ * - `SmsResult` -> `SMSResult` from './sms.service'
+ *
+ * Ce fichier sera supprimé dans une future version.
  */
 
 import { createClient } from "@/lib/supabase/server";

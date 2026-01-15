@@ -1,7 +1,6 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// @ts-nocheck
 /**
  * POST /api/payments/cash-receipt
  * Crée un reçu de paiement en espèces avec signatures

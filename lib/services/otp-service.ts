@@ -4,7 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { sendOtpSms, SmsResult } from "./sms-service";
+import { sendOTPSMS, type SMSResult } from "./sms.service";
 import { logger } from "@/lib/monitoring";
 import crypto from "crypto";
 
@@ -115,7 +115,7 @@ export async function sendOtp(
     }
 
     // Envoyer le SMS
-    const smsResult = await sendOtpSms(phoneNumber, code);
+    const smsResult = await sendOTPSMS(phoneNumber, code);
 
     if (!smsResult.success) {
       logger.error("Failed to send OTP SMS", { error: smsResult.error });

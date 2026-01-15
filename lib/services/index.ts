@@ -28,14 +28,22 @@ export {
 } from "./email-service";
 
 // Service SMS (Twilio)
+// Note: sms-service.ts is deprecated, use sms.service.ts instead
 export {
-  sendSms,
-  sendOtpSms,
-  sendRentReminderSms,
-  SMS_TEMPLATES,
-  type SmsOptions,
-  type SmsResult,
-} from "./sms-service";
+  sendSMS,
+  sendSMS as sendSms, // Backward compatibility alias
+  sendOTPSMS,
+  sendOTPSMS as sendOtpSms, // Backward compatibility alias
+  sendNotificationSMS,
+  isSMSServiceAvailable,
+  detectTerritory,
+  smsUtils,
+  type SMSOptions,
+  type SMSOptions as SmsOptions, // Backward compatibility alias
+  type SMSResult,
+  type SMSResult as SmsResult, // Backward compatibility alias
+  type SMSProvider,
+} from "./sms.service";
 
 // Service OTP (codes de vérification)
 export {

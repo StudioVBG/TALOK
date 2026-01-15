@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { leasesService } from "@/features/leases/services/leases.service";
 import { LeaseSigners } from "@/features/leases/components/lease-signers";
-import { InvoicesList } from "@/features/billing/components/invoices-list";
+import { InvoiceListUnified } from "@/features/billing/components/invoice-list-unified";
+import { invoicesService } from "@/features/billing/services/invoices.service";
+import type { Invoice } from "@/lib/types";
 import { GenerateInvoiceForm } from "@/features/billing/components/generate-invoice-form";
 import { DocumentsList } from "@/features/documents/components/documents-list";
 import type { Lease, LeaseType, LeaseStatus } from "@/lib/types";
@@ -51,8 +53,9 @@ function LeaseDetailPageContent() {
   const { toast } = useToast();
   const { profile } = useAuth();
   const [lease, setLease] = useState<Lease | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
 
   const fetchLease = useCallback(async (id: string) => {
     try {
@@ -72,12 +75,35 @@ function LeaseDetailPageContent() {
     }
   }, [toast, router]);
 
+  const fetchInvoices = useCallback(async (leaseId: string) => {
+    try {
+      setInvoicesLoading(true);
+      const data = await invoicesService.getInvoicesByLease(leaseId);
+      setInvoices(data);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Impossible de charger les factures.";
+      toast({
+        title: "Erreur",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setInvoicesLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     const id = params.id;
     if (typeof id === "string") {
       fetchLease(id);
     }
   }, [params.id, fetchLease]);
+
+  useEffect(() => {
+    if (lease?.id) {
+      fetchInvoices(lease.id);
+    }
+  }, [lease?.id, fetchInvoices]);
 
   if (loading) {
     return (
@@ -199,10 +225,19 @@ function LeaseDetailPageContent() {
         {(profile?.role === "owner" || profile?.role === "admin") && lease.statut === "active" && (
           <GenerateInvoiceForm
             leaseId={lease.id}
-            onSuccess={() => setRefreshKey((k) => k + 1)}
+            onSuccess={() => fetchInvoices(lease.id)}
           />
         )}
-        <InvoicesList key={refreshKey} leaseId={lease.id} />
+        {invoicesLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <InvoiceListUnified
+            invoices={invoices}
+            variant={profile?.role === "owner" || profile?.role === "admin" ? "owner" : "tenant"}
+          />
+        )}
       </div>
 
       <div className="space-y-4">
