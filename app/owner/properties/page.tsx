@@ -387,11 +387,11 @@ export default function OwnerPropertiesPage() {
           variants={containerVariants}
           className="bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 min-h-screen"
         >
-          <div className="container mx-auto px-4 py-8 max-w-7xl">
+          <div className="container mx-auto px-4 py-4 md:py-8 max-w-7xl">
             {/* Header avec animation moderne */}
             <motion.div
               variants={itemVariants}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8"
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8"
             >
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
@@ -399,7 +399,7 @@ export default function OwnerPropertiesPage() {
                 transition={{ duration: 0.5 }}
               >
                 <motion.h1
-                  className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent"
+                  className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent"
                   animate={{
                     backgroundPosition: ["0%", "100%", "0%"],
                   }}
@@ -418,7 +418,7 @@ export default function OwnerPropertiesPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.5 }}
-                  className="text-muted-foreground mt-2 text-lg"
+                  className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-lg"
                 >
                   Gérez votre portefeuille locatif
                 </motion.p>
@@ -427,17 +427,18 @@ export default function OwnerPropertiesPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-                className="flex gap-2"
+                className="flex flex-wrap gap-2"
               >
                 {/* Bouton Export CSV */}
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => exportProperties(filteredProperties, "csv")}
                   disabled={filteredProperties.length === 0}
-                  className="border-slate-300 hover:bg-slate-100"
+                  className="border-slate-300 hover:bg-slate-100 h-9 md:h-10"
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  Exporter
+                  <span className="hidden sm:inline">Exporter</span>
                 </Button>
                 
                 {/* Bouton Ajouter */}
