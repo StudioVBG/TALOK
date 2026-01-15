@@ -541,7 +541,7 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
                     <div className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-slate-700/50 overflow-hidden shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50">
                       {/* Header avec gradient */}
                       <div
-                        className={`relative h-32 bg-gradient-to-br ${config.gradient} flex items-center justify-center overflow-hidden`}
+                        className={`relative h-24 sm:h-32 bg-gradient-to-br ${config.gradient} flex items-center justify-center overflow-hidden`}
                       >
                         {/* Pattern de fond */}
                         <div className="absolute inset-0 opacity-10">
@@ -787,7 +787,7 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
             </TabsList>
 
             <TabsContent value="bailleur" className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nom</Label>
                   <Input
@@ -852,7 +852,7 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
             </TabsContent>
 
             <TabsContent value="locataire" className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nom</Label>
                   <Input
@@ -906,7 +906,7 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
             </TabsContent>
 
             <TabsContent value="logement" className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2 space-y-2">
                   <Label>Adresse complète</Label>
                   <Input
@@ -973,7 +973,7 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
             </TabsContent>
 
             <TabsContent value="conditions" className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Loyer HC (€)</Label>
                   <Input

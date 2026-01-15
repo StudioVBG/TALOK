@@ -2393,7 +2393,7 @@ function PlanEditSheet({
                 <Label>Description</Label>
                 <Textarea value={plan.description} onChange={(e) => onUpdate({ description: e.target.value })} className="resize-none" rows={2} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Prix mensuel</Label>
                   <div className="relative">
@@ -2419,7 +2419,7 @@ function PlanEditSheet({
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />Limites
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2"><Home className="h-3 w-3" />Biens max</Label>
                 <Input type="number" value={plan.max_properties === -1 ? "" : plan.max_properties} onChange={(e) => onUpdate({ max_properties: e.target.value ? parseInt(e.target.value) : -1 })} placeholder="∞ Illimité" />

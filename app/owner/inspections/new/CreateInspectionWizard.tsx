@@ -51,6 +51,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Progress } from "@/components/ui/progress";
 
 interface Lease {
   id: string;
@@ -215,6 +216,11 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
 
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // État pour la barre de progression lors de la création
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStep, setUploadStep] = useState("");
+  const [uploadDetails, setUploadDetails] = useState("");
   
   // Form state - Auto-select lease if preselectedLeaseId is provided
   const initialLease = preselectedLeaseId 
@@ -615,11 +621,44 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
   const handleSubmit = async () => {
     if (!selectedLease) return;
 
+    // Calculer le nombre total d'opérations pour la progression
+    const validMeterReadings = meterReadings.filter(m => m.reading.trim() !== "");
+    const totalPhotos = roomsData.reduce((acc, room) => {
+      const roomPhotos = room.globalPhotos?.length || 0;
+      const itemPhotos = room.items.reduce((sum, item) => sum + item.photos.length, 0);
+      return acc + roomPhotos + itemPhotos;
+    }, 0);
+
+    // Étapes: création EDL (10%) + compteurs (20%) + sections (10%) + photos (60%)
+    const hasMeters = validMeterReadings.length > 0;
+    const hasPhotos = totalPhotos > 0;
+
     try {
       setIsSubmitting(true);
+      setUploadProgress(0);
+      setUploadStep("Création de l'état des lieux...");
+      setUploadDetails("");
+
+      // Helper pour les requêtes avec meilleure gestion d'erreur
+      const safeFetch = async (url: string, options?: RequestInit) => {
+        try {
+          const res = await fetch(url, options);
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || `Erreur ${res.status}`);
+          }
+          return res;
+        } catch (err: any) {
+          // Améliorer les messages d'erreur réseau
+          if (err.message === "Load failed" || err.message === "Failed to fetch") {
+            throw new Error("Erreur réseau - vérifiez votre connexion internet");
+          }
+          throw err;
+        }
+      };
 
       // 1. Créer l'EDL
-      const response = await fetch(`/api/properties/${selectedLease.property.id}/inspections`, {
+      const response = await safeFetch(`/api/properties/${selectedLease.property.id}/inspections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -635,25 +674,26 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Erreur lors de la création de l'EDL");
-      }
-
       const { edl } = await response.json();
+      setUploadProgress(10);
 
       // 2. Gérer les relevés des compteurs
+      setUploadStep("Enregistrement des compteurs...");
       // On récupère d'abord les compteurs existants pour ne pas recréer
-      const metersRes = await fetch(`/api/properties/${selectedLease.property.id}/meters`);
+      const metersRes = await safeFetch(`/api/properties/${selectedLease.property.id}/meters`);
       const { meters: existingMeters } = await metersRes.json();
 
-      for (const mr of meterReadings.filter(m => m.reading.trim() !== "")) {
+      let meterIndex = 0;
+      for (const mr of validMeterReadings) {
+        meterIndex++;
+        setUploadDetails(`Compteur ${meterIndex}/${validMeterReadings.length}`);
         // Distinguer eau chaude et froide dans le type ou provider si besoin
         const meterType = mr.type === "water_hot" ? "water" : mr.type;
         const meterLabel = mr.type === "water_hot" ? "Eau chaude" : mr.type === "water" ? "Eau froide" : mr.type;
-        
+
         // Chercher par numéro ou par type si pas de numéro
-        let meter = existingMeters.find((em: any) => 
-          (mr.meterNumber && em.meter_number === mr.meterNumber) || 
+        let meter = existingMeters.find((em: any) =>
+          (mr.meterNumber && em.meter_number === mr.meterNumber) ||
           (!mr.meterNumber && em.type === meterType)
         );
 
@@ -661,7 +701,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
 
         if (!meterId) {
           // Créer le compteur
-          const newMeterRes = await fetch(`/api/properties/${selectedLease.property.id}/meters`, {
+          const newMeterRes = await safeFetch(`/api/properties/${selectedLease.property.id}/meters`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -683,9 +723,9 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           if (mr.photo) {
             formData.append("photo", mr.photo);
           }
-          
+
           // 2a. Sauvegarder dans l'historique général
-          const readingRes = await fetch(`/api/meters/${meterId}/readings`, {
+          const readingRes = await safeFetch(`/api/meters/${meterId}/readings`, {
             method: "POST",
             body: formData,
           });
@@ -693,7 +733,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           const photoPath = readingData.reading?.photo_url || null;
 
           // 2b. Sauvegarder spécifiquement pour cet EDL (snapshot)
-          await fetch(`/api/edl/${edl.id}/meter-readings`, {
+          await safeFetch(`/api/edl/${edl.id}/meter-readings`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -707,8 +747,11 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           });
         }
       }
+      setUploadProgress(30);
 
       // 3. Créer les sections et items
+      setUploadStep("Enregistrement des pièces...");
+      setUploadDetails(`${roomsData.length} pièce(s)`);
       const sections = roomsData.map((room) => ({
         room_name: room.name,
         items: room.items.map((item) => ({
@@ -719,15 +762,11 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
         })),
       }));
 
-      const sectionsResponse = await fetch(`/api/edl/${edl.id}/sections`, {
+      const sectionsResponse = await safeFetch(`/api/edl/${edl.id}/sections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sections }),
       });
-      
-      if (!sectionsResponse.ok) {
-        throw new Error("Erreur lors de la création des sections");
-      }
 
       const { items: insertedItems } = await sectionsResponse.json();
       
@@ -753,38 +792,54 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       } catch (e) {
         console.error("Erreur sauvegarde structure pièces:", e);
       }
+      setUploadProgress(40);
 
       // 5. Uploader les photos des items et photos globales
-      let itemOffset = 0;
-      for (const room of roomsData) {
-        // Photos globales de la pièce
-        if (room.globalPhotos && room.globalPhotos.length > 0) {
-          const formData = new FormData();
-          room.globalPhotos.forEach(photo => formData.append("files", photo));
-          formData.append("section", room.name);
-          
-          await fetch(`/api/inspections/${edl.id}/photos`, {
-            method: "POST",
-            body: formData,
-          });
-        }
+      if (totalPhotos > 0) {
+        setUploadStep("Upload des photos...");
+        let uploadedPhotos = 0;
+        let itemOffset = 0;
 
-        // Photos des items
-        for (const item of room.items) {
-          const insertedItem = insertedItems[itemOffset];
-          if (item.photos.length > 0 && insertedItem) {
+        for (const room of roomsData) {
+          // Photos globales de la pièce
+          if (room.globalPhotos && room.globalPhotos.length > 0) {
+            setUploadDetails(`Photo ${uploadedPhotos + 1}/${totalPhotos} (${room.name})`);
             const formData = new FormData();
-            item.photos.forEach(photo => formData.append("files", photo));
+            room.globalPhotos.forEach(photo => formData.append("files", photo));
             formData.append("section", room.name);
-            
-            await fetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
+
+            await safeFetch(`/api/inspections/${edl.id}/photos`, {
               method: "POST",
               body: formData,
             });
+            uploadedPhotos += room.globalPhotos.length;
+            setUploadProgress(40 + Math.round((uploadedPhotos / totalPhotos) * 55));
           }
-          itemOffset++;
+
+          // Photos des items
+          for (const item of room.items) {
+            const insertedItem = insertedItems[itemOffset];
+            if (item.photos.length > 0 && insertedItem) {
+              setUploadDetails(`Photo ${uploadedPhotos + 1}/${totalPhotos} (${item.name})`);
+              const formData = new FormData();
+              item.photos.forEach(photo => formData.append("files", photo));
+              formData.append("section", room.name);
+
+              await safeFetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
+                method: "POST",
+                body: formData,
+              });
+              uploadedPhotos += item.photos.length;
+              setUploadProgress(40 + Math.round((uploadedPhotos / totalPhotos) * 55));
+            }
+            itemOffset++;
+          }
         }
       }
+
+      setUploadProgress(100);
+      setUploadStep("Finalisation...");
+      setUploadDetails("");
 
       toast({
         title: "État des lieux créé",
@@ -800,27 +855,30 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       });
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
+      setUploadStep("");
+      setUploadDetails("");
     }
   };
 
   const currentRoom = roomsData[currentRoomIndex];
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 w-full max-w-4xl mx-auto space-y-4 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Nouvel état des lieux</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Nouvel état des lieux</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           Créez un EDL d&apos;entrée ou de sortie en quelques étapes
         </p>
       </div>
 
-      {/* Progress Steps */}
-      <div className="flex items-center justify-between mb-8">
+      {/* Progress Steps - Responsive */}
+      <div className="flex items-center justify-between mb-4 md:mb-8 overflow-x-auto pb-2">
         {STEPS.map((s, i) => (
-          <div key={s.id} className="flex items-center">
+          <div key={s.id} className="flex items-center flex-shrink-0">
             <div
-              className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${
+              className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full border-2 transition-colors text-sm md:text-base ${
                 i < step
                   ? "bg-primary border-primary text-primary-foreground"
                   : i === step
@@ -828,11 +886,11 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
                   : "border-muted text-muted-foreground"
               }`}
             >
-              {i < step ? <Check className="h-5 w-5" /> : i + 1}
+              {i < step ? <Check className="h-4 w-4 md:h-5 md:w-5" /> : i + 1}
             </div>
             {i < STEPS.length - 1 && (
               <div
-                className={`w-12 md:w-24 h-1 mx-2 rounded ${
+                className={`w-6 sm:w-8 md:w-16 lg:w-24 h-0.5 md:h-1 mx-1 md:mx-2 rounded ${
                   i < step ? "bg-primary" : "bg-muted"
                 }`}
               />
@@ -933,7 +991,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
                 <RadioGroup
                   value={edlType}
                   onValueChange={(v) => setEdlType(v as "entree" | "sortie")}
-                  className="grid grid-cols-2 gap-4"
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4"
                 >
                   <Label
                     htmlFor="entree"
@@ -1019,7 +1077,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
                         )}
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor={`meter-number-${index}`}>N° Compteur</Label>
                           <Input
@@ -1532,28 +1590,28 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
                   Vérifiez les informations avant de créer l&apos;EDL
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 md:space-y-6">
                 {/* Lease Info */}
-                <div className="p-4 rounded-lg bg-muted/30 space-y-2">
-                  <p className="text-sm text-muted-foreground">Logement</p>
-                  <p className="font-semibold">
+                <div className="p-3 md:p-4 rounded-lg bg-muted/30 space-y-1 md:space-y-2">
+                  <p className="text-xs md:text-sm text-muted-foreground">Logement</p>
+                  <p className="font-semibold text-sm md:text-base break-words">
                     {selectedLease?.property.adresse_complete}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs md:text-sm text-muted-foreground">
                     {selectedLease?.property.code_postal} {selectedLease?.property.ville}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-lg bg-muted/30">
-                    <p className="text-sm text-muted-foreground">Type</p>
-                    <p className="font-semibold">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                  <div className="p-3 md:p-4 rounded-lg bg-muted/30">
+                    <p className="text-xs md:text-sm text-muted-foreground">Type</p>
+                    <p className="font-semibold text-sm md:text-base">
                       EDL d&apos;{edlType === "entree" ? "entrée" : "sortie"}
                     </p>
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/30">
-                    <p className="text-sm text-muted-foreground">Date prévue</p>
-                    <p className="font-semibold">
+                  <div className="p-3 md:p-4 rounded-lg bg-muted/30">
+                    <p className="text-xs md:text-sm text-muted-foreground">Date prévue</p>
+                    <p className="font-semibold text-sm md:text-base">
                       {scheduledDate
                         ? new Date(scheduledDate).toLocaleString("fr-FR")
                         : "Non définie"}
@@ -1615,29 +1673,35 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       </AnimatePresence>
 
       {/* Navigation */}
-      <div className="flex justify-between pt-4">
+      <div className="flex justify-between gap-3 pt-4">
         <Button
           variant="outline"
           onClick={handlePrev}
           disabled={step === 0}
+          className="flex-1 sm:flex-none"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
-          Précédent
+          <span className="hidden sm:inline">Précédent</span>
+          <span className="sm:hidden">Retour</span>
         </Button>
 
         {step < STEPS.length - 1 ? (
-          <Button onClick={handleNext} disabled={!canProceed()}>
-            {step === 4 && currentRoomIndex < roomsData.length - 1 
-              ? "Pièce suivante" 
+          <Button onClick={handleNext} disabled={!canProceed()} className="flex-1 sm:flex-none">
+            {step === 4 && currentRoomIndex < roomsData.length - 1
+              ? "Pièce suivante"
               : "Suivant"}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex-1 sm:flex-none min-w-[120px] sm:min-w-[160px]"
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Création...
+                Création... {uploadProgress}%
               </>
             ) : (
               <>
@@ -1648,6 +1712,71 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           </Button>
         )}
       </div>
+
+      {/* Overlay de progression lors de la création */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 w-[90%] max-w-md mx-4 border">
+            <div className="text-center space-y-5">
+              {/* Icône animée */}
+              <div className="flex justify-center">
+                <div className="relative w-20 h-20">
+                  <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      fill="none"
+                      className="text-slate-200 dark:text-slate-700"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      fill="none"
+                      strokeLinecap="round"
+                      className="text-primary transition-all duration-300"
+                      strokeDasharray={`${uploadProgress * 2.83} 283`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xl font-bold">{uploadProgress}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Texte de progression */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  {uploadStep || "Création en cours..."}
+                </h3>
+                {uploadDetails && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    {uploadDetails}
+                  </p>
+                )}
+              </div>
+
+              {/* Barre de progression linéaire */}
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-blue-500 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+
+              {/* Message d'avertissement */}
+              <p className="text-xs text-slate-400 dark:text-slate-500">
+                Ne fermez pas cette page pendant la création
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Dialogue de confirmation accessible */}
       <ConfirmDialogComponent />

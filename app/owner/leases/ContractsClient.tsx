@@ -416,24 +416,25 @@ export function ContractsClient() {
       </AlertDialog>
 
       <div className="bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 min-h-screen">
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="container mx-auto px-4 py-4 md:py-8 max-w-7xl">
           {/* Header avec animation */}
-          <div className="flex items-center justify-between mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-transparent">
+              <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-transparent">
                 Baux & locataires
               </h1>
-              <p className="text-muted-foreground mt-2 text-lg">
+              <p className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-lg">
                 Gérez vos contrats et vos locataires
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {/* Bouton Sync Statuts */}
               <Button
                 variant="outline"
                 onClick={handleSyncStatuses}
                 disabled={isSyncing}
-                className="border-slate-300 hover:bg-slate-100"
+                size="sm"
+                className="border-slate-300 hover:bg-slate-100 h-9 md:h-10"
                 title="Corriger les statuts des baux signés"
               >
                 {isSyncing ? (
@@ -442,7 +443,7 @@ export function ContractsClient() {
                   <RefreshCw className="h-4 w-4" />
                 )}
               </Button>
-              
+
               {/* Bouton Export CSV */}
               <Button
                 variant="outline"
@@ -451,21 +452,23 @@ export function ContractsClient() {
                   return {
                     ...lease,
                     property_address: property?.adresse_complete || 'N/A',
-                    tenant_name: lease.signers?.find((s: any) => s.role === 'locataire_principal')?.profile?.prenom + ' ' + 
+                    tenant_name: lease.signers?.find((s: any) => s.role === 'locataire_principal')?.profile?.prenom + ' ' +
                       lease.signers?.find((s: any) => s.role === 'locataire_principal')?.profile?.nom || 'N/A',
                   };
                 }), "csv")}
                 disabled={filteredLeases.length === 0}
-                className="border-slate-300 hover:bg-slate-100"
+                size="sm"
+                className="border-slate-300 hover:bg-slate-100 h-9 md:h-10"
               >
                 <Download className="mr-2 h-4 w-4" />
-                Exporter
+                <span className="hidden sm:inline">Exporter</span>
               </Button>
-              
-              <Button asChild className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+
+              <Button asChild size="sm" className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 h-9 md:h-10">
                 <Link href="/owner/leases/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Créer un bail
+                  <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Créer un bail</span>
+                  <span className="sm:hidden">Bail</span>
                 </Link>
               </Button>
             </div>
@@ -528,17 +531,17 @@ export function ContractsClient() {
           </div>
 
           {/* Onglets */}
-          <Tabs defaultValue="leases" className="space-y-6">
-            <TabsList className="bg-white/50 backdrop-blur-sm border">
-              <TabsTrigger value="leases">Baux & contrats</TabsTrigger>
-              <TabsTrigger value="tenants">Locataires & garants</TabsTrigger>
+          <Tabs defaultValue="leases" className="space-y-4 md:space-y-6">
+            <TabsList className="bg-white/50 backdrop-blur-sm border w-full sm:w-auto overflow-x-auto">
+              <TabsTrigger value="leases" className="text-xs sm:text-sm">Baux & contrats</TabsTrigger>
+              <TabsTrigger value="tenants" className="text-xs sm:text-sm">Locataires & garants</TabsTrigger>
             </TabsList>
 
             {/* Baux & contrats */}
             <TabsContent value="leases">
               {/* Filtres */}
-              <div className="grid gap-4 md:grid-cols-4 mb-6">
-                <div className="md:col-span-2">
+              <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 mb-4 md:mb-6">
+                <div className="sm:col-span-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -621,7 +624,7 @@ export function ContractsClient() {
             {/* Locataires & garants */}
             <TabsContent value="tenants">
               <GlassCard>
-                <div className="p-8 text-center">
+                <div className="p-4 sm:p-6 md:p-8 text-center">
                     <h2 className="text-xl font-semibold mb-2">Locataires & Garants</h2>
                     <p className="text-muted-foreground mb-4">
                         Vue consolidée de tous vos contacts locataires (Bientôt disponible).

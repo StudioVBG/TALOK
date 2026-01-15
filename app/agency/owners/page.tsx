@@ -238,7 +238,7 @@ export default function OwnersPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
                   <div className="text-center">
                     <p className="text-2xl font-bold text-indigo-600">{owner.biensCount}</p>
                     <p className="text-xs text-muted-foreground">Biens</p>

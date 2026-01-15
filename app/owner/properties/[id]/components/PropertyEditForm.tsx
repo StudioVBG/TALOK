@@ -43,7 +43,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
   if (isParking) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Type de parking */}
           <div>
             <Label className="text-xs">Type de parking</Label>
@@ -69,7 +69,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Niveau */}
           <div>
             <Label className="text-xs">Niveau</Label>
@@ -161,7 +161,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
   if (isPro) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Surface */}
           <div>
             <Label className="text-xs">Surface totale (m²)</Label>
@@ -328,7 +328,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
       {/* DPE */}
       <div className="p-3 bg-green-50 rounded-lg">
         <Label className="text-xs font-medium mb-3 block">DPE - Diagnostic de Performance Énergétique</Label>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label className="text-xs text-muted-foreground">Classe énergie</Label>
             <div className="flex gap-1 mt-1">
@@ -377,7 +377,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
       </div>
 
       {/* Chauffage & Eau chaude */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="p-3 bg-orange-50 rounded-lg">
           <Label className="text-xs font-medium mb-2 block">Chauffage</Label>
           <Select value={String(getValue("chauffage_type") || "")} onValueChange={(v) => handleFieldChange("chauffage_type", v)}>

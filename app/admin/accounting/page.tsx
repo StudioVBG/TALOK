@@ -905,7 +905,7 @@ export default function AdminAccountingPage() {
                   </div>
 
                   {/* Montant & retard */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
                       <p className="text-sm text-muted-foreground">Montant dû</p>
                       <p className="text-2xl font-bold text-red-600">

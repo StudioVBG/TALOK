@@ -77,7 +77,7 @@ export default async function GlobalDiagnosticsPage() {
             CONFORMITÉ LÉGALE (DDT)
           </Badge>
           <h2 className="text-3xl font-bold text-slate-900">Sélectionnez un logement</h2>
-          <p className="text-slate-500 max-w-xl mx-auto">
+          <p className="text-slate-500 w-full max-w-xl mx-auto">
             Pour demander ou mettre à jour vos diagnostics (DPE, Amiante, ERP), choisissez le bien concerné ci-dessous.
           </p>
         </div>

@@ -519,7 +519,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
         {/* Message si aucun résultat */}
         {filteredTenants.length === 0 && tenants.length > 0 && (
           <motion.div variants={itemVariants}>
-            <Card className="p-12 text-center">
+            <Card className="p-6 sm:p-8 md:p-12 text-center">
               <Search className="h-12 w-12 mx-auto text-slate-300 mb-4" />
               <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucun résultat</h3>
               <p className="text-slate-500 mb-4">

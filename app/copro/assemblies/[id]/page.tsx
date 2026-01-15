@@ -202,7 +202,7 @@ export default function CoproAssemblyDetailPage() {
               <CardTitle>Informations</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
                     <Calendar className="h-5 w-5 text-indigo-600" />

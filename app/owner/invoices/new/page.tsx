@@ -122,7 +122,7 @@ export default function NewInvoicePage() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto p-6"
+      className="w-full max-w-2xl mx-auto p-6"
     >
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
@@ -205,7 +205,7 @@ export default function NewInvoicePage() {
             </div>
 
             {/* Montants */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="loyer">Loyer (€) *</Label>
                 <div className="relative">

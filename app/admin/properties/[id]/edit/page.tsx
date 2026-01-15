@@ -154,7 +154,7 @@ export default function AdminPropertyEditPage() {
       animate={{ opacity: 1, y: 0 }}
       className="p-6"
     >
-      <div className="max-w-3xl mx-auto">
+      <div className="w-full max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <Link

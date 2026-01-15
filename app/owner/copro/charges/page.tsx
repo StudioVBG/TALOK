@@ -488,7 +488,7 @@ function PageSkeleton() {
           <Skeleton className="h-10 w-64 bg-white/10" />
           <Skeleton className="h-10 w-40 bg-white/10" />
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-28 bg-white/10" />
           ))}

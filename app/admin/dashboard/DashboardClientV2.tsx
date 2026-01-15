@@ -365,7 +365,7 @@ export function DashboardClientV2({ stats }: DashboardClientV2Props) {
                   <CardTitle className="text-lg font-semibold">Évolution des revenus</CardTitle>
                   <CardDescription>Données en cours de calcul...</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center h-64">
+                <CardContent className="flex flex-col items-center justify-center h-40 sm:h-64">
                   <DollarSign className="h-12 w-12 text-muted-foreground/30 mb-4" aria-hidden="true" />
                   <p className="text-muted-foreground text-center">
                     Les données de revenus seront disponibles<br />

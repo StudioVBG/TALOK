@@ -34,7 +34,7 @@ export default async function OwnerDetailPage({ params }: PageProps) {
 
   if (!ownerDetails) {
     return (
-      <div className="max-w-2xl mx-auto py-12">
+      <div className="w-full max-w-2xl mx-auto py-12">
         <Card className="border-amber-500/30 bg-amber-500/5">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-amber-500/10 flex items-center justify-center">

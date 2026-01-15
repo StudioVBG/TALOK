@@ -335,7 +335,7 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
                          currentLease.statut}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                       <div>
                         <p className="text-muted-foreground">Loyer</p>
                         <p className="font-semibold text-primary">

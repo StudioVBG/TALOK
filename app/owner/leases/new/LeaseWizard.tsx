@@ -563,7 +563,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         {/* Stepper (masqué à l'étape 3 pour maximiser l'espace) */}
         {currentStep < 3 && (
           <div className="mb-8">
-            <div className="flex items-center justify-between max-w-xl mx-auto">
+            <div className="flex items-center justify-between w-full max-w-xl mx-auto">
               {STEPS.map((step, index) => {
                 const Icon = step.icon;
                 const isActive = currentStep === step.id;
@@ -769,7 +769,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-medium text-sm text-muted-foreground uppercase">Ajustements rapides</h4>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <Label className="text-xs">Loyer</Label>
                           <Input type="number" className="h-8" value={loyer} onChange={(e) => setLoyer(parseFloat(e.target.value) || 0)} />

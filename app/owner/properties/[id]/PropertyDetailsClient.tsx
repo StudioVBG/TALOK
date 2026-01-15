@@ -365,7 +365,7 @@ function _PropertyEditForm_LEGACY({ property, editedValues, handleFieldChange, g
   if (isParking) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Type de parking */}
           <div>
             <Label className="text-xs">Type de parking</Label>
@@ -391,7 +391,7 @@ function _PropertyEditForm_LEGACY({ property, editedValues, handleFieldChange, g
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Niveau */}
           <div>
             <Label className="text-xs">Niveau</Label>
@@ -483,7 +483,7 @@ function _PropertyEditForm_LEGACY({ property, editedValues, handleFieldChange, g
   if (isPro) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Surface */}
           <div>
             <Label className="text-xs">Surface totale (m²)</Label>
@@ -650,7 +650,7 @@ function _PropertyEditForm_LEGACY({ property, editedValues, handleFieldChange, g
       {/* DPE */}
       <div className="p-3 bg-green-50 rounded-lg">
         <Label className="text-xs font-medium mb-3 block">DPE - Diagnostic de Performance Énergétique</Label>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label className="text-xs text-muted-foreground">Classe énergie</Label>
             <div className="flex gap-1 mt-1">
@@ -699,7 +699,7 @@ function _PropertyEditForm_LEGACY({ property, editedValues, handleFieldChange, g
       </div>
 
       {/* Chauffage & Eau chaude */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="p-3 bg-orange-50 rounded-lg">
           <Label className="text-xs font-medium mb-2 block">Chauffage</Label>
           <Select value={getValue("chauffage_type") || ""} onValueChange={(v) => handleFieldChange("chauffage_type", v)}>
@@ -1205,8 +1205,8 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Bouton retour */}
-      <div className="flex items-center justify-between mb-6">
-        <Button asChild variant="ghost" className="pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-900">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <Button asChild variant="ghost" className="pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-900 w-fit">
           <Link href="/owner/properties">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Retour à la liste
@@ -1214,7 +1214,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         </Button>
 
         {/* Boutons d'action */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Bouton Favori */}
           <FavoriteButton
             id={propertyId}

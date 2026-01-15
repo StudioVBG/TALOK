@@ -76,7 +76,7 @@ export default function TenantMarketplacePage() {
   };
   return (
     <PageTransition>
-      <div className="container mx-auto px-4 py-8 max-w-6xl space-y-12">
+      <div className="container mx-auto px-4 py-6 md:py-8 max-w-6xl space-y-6 md:space-y-12">
         
         {/* Header SOTA */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 text-center md:text-left">
@@ -103,16 +103,16 @@ export default function TenantMarketplacePage() {
         </div>
 
         {/* Offers Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
           {OFFERS.map((offer, i) => (
-            <motion.div 
+            <motion.div
               key={offer.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
             >
               <GlassCard className="group hover:shadow-2xl hover:border-indigo-200 transition-all duration-500 border-slate-200 bg-white overflow-hidden flex flex-col h-full">
-                <div className="p-8 space-y-6 flex-1">
+                <div className="p-4 sm:p-6 md:p-8 space-y-4 md:space-y-6 flex-1">
                   <div className="flex items-start justify-between">
                     <div className={cn("p-4 rounded-2xl shadow-inner transition-transform group-hover:scale-110", offer.bg)}>
                       <offer.icon className={cn("h-8 w-8", offer.color)} />
@@ -153,13 +153,13 @@ export default function TenantMarketplacePage() {
         </div>
 
         {/* SOTA Hint Section */}
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mt-12 p-10 rounded-[3rem] bg-slate-900 text-white relative overflow-hidden shadow-2xl">
-          <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mt-6 md:mt-12 p-6 md:p-10 rounded-2xl md:rounded-[3rem] bg-slate-900 text-white relative overflow-hidden shadow-2xl">
+          <div className="relative z-10 grid md:grid-cols-2 gap-6 md:gap-12 items-center">
+            <div className="space-y-4 md:space-y-6">
               <div className="h-14 w-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <Sparkles className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-4xl font-black tracking-tight">Besoin d'un coup de main ?</h2>
+              <h2 className="text-2xl md:text-4xl font-black tracking-tight">Besoin d'un coup de main ?</h2>
               <p className="text-slate-400 text-lg leading-relaxed">
                 Notre assistant <strong>Tom</strong> peut s'occuper de toutes les démarches administratives liées à votre emménagement.
               </p>

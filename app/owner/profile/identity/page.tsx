@@ -441,7 +441,7 @@ export default function OwnerIdentityPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-3xl mx-auto space-y-6"
+        className="w-full max-w-3xl mx-auto space-y-6"
       >
         {/* Header */}
         <div className="flex items-center gap-4">

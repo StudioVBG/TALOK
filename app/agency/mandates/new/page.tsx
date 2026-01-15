@@ -223,7 +223,7 @@ export default function NewMandatePage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Type de mandat *</Label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {[
                       { value: "gestion", label: "Gestion locative", desc: "Gestion complète des biens" },
                       { value: "location", label: "Mise en location", desc: "Recherche de locataires" },
@@ -245,7 +245,7 @@ export default function NewMandatePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="dateDebut">Date de début *</Label>
                     <Input

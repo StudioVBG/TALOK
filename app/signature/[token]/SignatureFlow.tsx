@@ -712,7 +712,7 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Nom *</Label>
                       <Input
@@ -968,7 +968,7 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                   </div>
 
                   {/* Résumé rapide */}
-                  <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                     <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30">
                       <p className="text-lg font-bold text-blue-600">{formatCurrency(lease.loyer)}</p>
                       <p className="text-xs text-muted-foreground">Loyer</p>

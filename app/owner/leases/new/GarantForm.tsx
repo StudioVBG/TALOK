@@ -146,7 +146,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
             {/* Personne physique - Formulaire complet */}
             {currentGarant.type_garantie === "personne_physique" && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Prénom du garant</Label>
                     <Input
@@ -177,7 +177,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Code postal</Label>
                     <Input
@@ -198,7 +198,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Email (optionnel)</Label>
                     <Input
@@ -275,7 +275,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Code postal</Label>
                     <Input
@@ -296,7 +296,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Nom du représentant</Label>
                     <Input

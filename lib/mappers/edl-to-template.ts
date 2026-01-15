@@ -111,9 +111,20 @@ interface RawEDLMedia {
 interface RawMeterReading {
   type: string;
   meter_number?: string | null;
-  reading: string;
-  unit: string;
+  // Support both field names: 'reading' (legacy) and 'reading_value' (database)
+  reading?: string | null;
+  reading_value?: number | null;
+  unit?: string;
+  reading_unit?: string;
   photo_url?: string | null;
+  photo_path?: string | null;
+  // Meter info from join
+  meter?: {
+    type: string;
+    meter_number?: string | null;
+    unit?: string;
+    location?: string | null;
+  };
 }
 
 interface RawEDLSignature {
@@ -313,14 +324,34 @@ export function mapRawEDLToTemplate(
     email: ownerProfile?.profile?.email || undefined,
   };
 
-  // Convertir les compteurs
-  const compteurs: EDLMeterReading[] = meterReadings.map((m) => ({
-    type: m.type as EDLMeterReading["type"],
-    meter_number: m.meter_number || undefined,
-    reading: m.reading,
-    unit: m.unit,
-    photo_url: m.photo_url ? getPublicUrl(m.photo_url) : undefined,
-  }));
+  // Convertir les compteurs - gère les deux formats (legacy et BDD)
+  const compteurs: EDLMeterReading[] = meterReadings.map((m) => {
+    // 🔧 FIX: Résoudre la valeur du relevé avec fallbacks
+    // La BDD utilise 'reading_value', mais certains flux utilisent 'reading'
+    const readingValue = m.reading_value !== undefined && m.reading_value !== null
+      ? String(m.reading_value)
+      : m.reading || "Non relevé";
+
+    // Résoudre le type de compteur (peut venir du meter join ou directement)
+    const meterType = m.meter?.type || m.type;
+
+    // Résoudre le numéro de compteur
+    const meterNumber = m.meter?.meter_number || m.meter_number;
+
+    // Résoudre l'unité
+    const unit = m.reading_unit || m.unit || m.meter?.unit || "kWh";
+
+    // Résoudre la photo
+    const photoPath = m.photo_url || m.photo_path;
+
+    return {
+      type: meterType as EDLMeterReading["type"],
+      meter_number: meterNumber || undefined,
+      reading: readingValue,
+      unit: unit,
+      photo_url: photoPath ? getPublicUrl(photoPath) : undefined,
+    };
+  });
 
   // ✅ SOTA 2026: Convertir les signatures avec gestion robuste des URLs
   const edlSignatures: EDLSignature[] = signatures.map((sig) => {
