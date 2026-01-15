@@ -202,7 +202,7 @@ export function InspectionDetailClient({ data }: Props) {
     meter_number: r.meter?.meter_number || r.meter?.serial_number,
     reading: String(r.reading_value),
     unit: r.reading_unit || r.meter?.unit || "kWh",
-    photo_url: r.photo_path,
+    photo_url: r.photo_signed_url || null, // 🔧 FIX: Utiliser l'URL signée au lieu du chemin brut
   }));
 
   const missingMeters = (propertyMeters || [])

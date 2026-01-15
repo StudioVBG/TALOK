@@ -98,6 +98,21 @@ export async function GET(
       console.warn("[GET /api/edl/[id]] Meter readings error:", meterReadingsError);
     }
 
+    // 🔧 FIX: Générer des URLs signées pour les photos de compteurs (bucket privé)
+    if (meterReadings && meterReadings.length > 0) {
+      for (const reading of meterReadings) {
+        if (reading.photo_path) {
+          const { data: signedUrlData } = await serviceClient.storage
+            .from("documents")
+            .createSignedUrl(reading.photo_path, 3600);
+
+          if (signedUrlData?.signedUrl) {
+            (reading as any).photo_signed_url = signedUrlData.signedUrl;
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       edl: edlData,
       items: items || [],

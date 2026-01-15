@@ -52,6 +52,7 @@ interface MeterReading {
   reading_value: string;
   unit: string;
   photo_path?: string;
+  photo_signed_url?: string; // 🔧 FIX: URL signée pour l'affichage
 }
 
 interface KeyItem {
@@ -126,7 +127,8 @@ export default function EditInspectionPage() {
           location: r.meter?.location || "",
           reading_value: r.reading_value != null && !isNaN(parseFloat(r.reading_value)) ? String(r.reading_value) : "",
           unit: r.reading_unit || r.meter?.unit,
-          photo_path: r.photo_path
+          photo_path: r.photo_path,
+          photo_signed_url: r.photo_signed_url // 🔧 FIX: Utiliser l'URL signée
         }));
 
         const missingReadings = (metersData.missing_meters || []).map(m => ({
@@ -430,7 +432,18 @@ export default function EditInspectionPage() {
                         </div>
                       </div>
                     </div>
-                    {mr.photo_path && <p className="text-[10px] text-green-600 font-medium flex items-center gap-1">✅ Photo enregistrée</p>}
+                    {mr.photo_path && (
+                      <div className="flex items-center gap-2 mt-2">
+                        {mr.photo_signed_url && (
+                          <img
+                            src={mr.photo_signed_url}
+                            alt="Photo compteur"
+                            className="w-16 h-12 object-cover rounded border border-green-200"
+                          />
+                        )}
+                        <p className="text-[10px] text-green-600 font-medium flex items-center gap-1">✅ Photo enregistrée</p>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {inspection.meter_readings.length === 0 && (

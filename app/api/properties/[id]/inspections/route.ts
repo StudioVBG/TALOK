@@ -86,13 +86,14 @@ export async function POST(
     }
 
     // Créer l'EDL
+    // Note: Le champ en BDD est "scheduled_date" (DATE), pas "scheduled_at"
     const { data: edl, error } = await supabase
       .from("edl")
       .insert({
         property_id: params.id,
         lease_id: lease_id || null,
         type,
-        scheduled_at: scheduled_at,
+        scheduled_date: scheduled_at, // Mapper scheduled_at du formulaire vers scheduled_date en BDD
         status: "scheduled",
         general_notes: notes,
         keys: keys || [],

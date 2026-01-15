@@ -298,6 +298,22 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
       console.log(`[fetchInspectionDetail] Fetched ${meterReadings.length} meter readings`);
     }
 
+    // 🔧 FIX: Générer des URLs signées pour les photos de compteurs (bucket privé)
+    if (meterReadings.length > 0) {
+      for (const reading of meterReadings) {
+        if (reading.photo_path) {
+          const { data: signedUrlData } = await supabase.storage
+            .from("documents")
+            .createSignedUrl(reading.photo_path, 3600);
+
+          if (signedUrlData?.signedUrl) {
+            (reading as any).photo_signed_url = signedUrlData.signedUrl;
+            console.log("[fetchInspectionDetail] ✅ Generated signed URL for meter photo");
+          }
+        }
+      }
+    }
+
     // Récupérer également tous les compteurs du bien
     const { data: meters, error: metersError } = await serviceClient
       .from("meters")

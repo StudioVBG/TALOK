@@ -110,6 +110,21 @@ export async function GET(
       }
     }
 
+    // 🔧 FIX: Générer des URLs signées pour les photos de compteurs (bucket privé)
+    if (readings && readings.length > 0) {
+      for (const reading of readings) {
+        if (reading.photo_path) {
+          const { data: signedUrlData } = await serviceClient.storage
+            .from("documents")
+            .createSignedUrl(reading.photo_path, 3600);
+
+          if (signedUrlData?.signedUrl) {
+            (reading as any).photo_signed_url = signedUrlData.signedUrl;
+          }
+        }
+      }
+    }
+
     const recordedMeterIds = new Set((readings || []).map((r: any) => r.meter_id));
     const missingMeters = allMeters.filter((m: any) => !recordedMeterIds.has(m.id));
 

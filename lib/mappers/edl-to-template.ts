@@ -195,9 +195,9 @@ export function mapRawEDLToTemplate(
   // Convertir la Map en tableau
   const pieces = Array.from(roomsMap.entries()).map(([nom, items]) => {
     // Trouver les photos globales de la pièce (item_id est nul)
-    // 🔧 FIX: Vérifier room_name OU section pour la compatibilité
+    // Le champ "section" contient le nom de la pièce (edl_media n'a pas de champ room_name)
     const roomPhotos = media
-      .filter((m) => !m.item_id && (m.room_name === nom || (m as any).section === nom) && (m.type === "photo" || (m as any).media_type === "photo"))
+      .filter((m) => !m.item_id && (m as any).section === nom && (m.type === "photo" || (m as any).media_type === "photo"))
       .map((m) => (m as any).signed_url || getPublicUrl(m.file_path || (m as any).storage_path));
 
     return {

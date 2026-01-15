@@ -799,19 +799,33 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
         setUploadStep("Upload des photos...");
         let uploadedPhotos = 0;
         let itemOffset = 0;
+        let totalPhotosUploaded = 0;
+        let totalPhotosExpected = 0;
 
         for (const room of roomsData) {
           // Photos globales de la pièce
           if (room.globalPhotos && room.globalPhotos.length > 0) {
+            totalPhotosExpected += room.globalPhotos.length;
             setUploadDetails(`Photo ${uploadedPhotos + 1}/${totalPhotos} (${room.name})`);
             const formData = new FormData();
             room.globalPhotos.forEach(photo => formData.append("files", photo));
             formData.append("section", room.name);
 
-            await safeFetch(`/api/inspections/${edl.id}/photos`, {
-              method: "POST",
-              body: formData,
-            });
+            try {
+              const response = await fetch(`/api/inspections/${edl.id}/photos`, {
+                method: "POST",
+                body: formData,
+              });
+
+              if (response.ok) {
+                const data = await response.json();
+                totalPhotosUploaded += data.files?.length || 0;
+              } else {
+                console.error(`Erreur upload photos globales ${room.name}:`, await response.text());
+              }
+            } catch (uploadError) {
+              console.error(`Exception upload photos globales ${room.name}:`, uploadError);
+            }
             uploadedPhotos += room.globalPhotos.length;
             setUploadProgress(40 + Math.round((uploadedPhotos / totalPhotos) * 55));
           }
@@ -820,20 +834,37 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           for (const item of room.items) {
             const insertedItem = insertedItems[itemOffset];
             if (item.photos.length > 0 && insertedItem) {
+              totalPhotosExpected += item.photos.length;
               setUploadDetails(`Photo ${uploadedPhotos + 1}/${totalPhotos} (${item.name})`);
               const formData = new FormData();
               item.photos.forEach(photo => formData.append("files", photo));
               formData.append("section", room.name);
 
-              await safeFetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
-                method: "POST",
-                body: formData,
-              });
+              try {
+                const response = await fetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
+                  method: "POST",
+                  body: formData,
+                });
+
+                if (response.ok) {
+                  const data = await response.json();
+                  totalPhotosUploaded += data.files?.length || 0;
+                } else {
+                  console.error(`Erreur upload photos item ${item.name}:`, await response.text());
+                }
+              } catch (uploadError) {
+                console.error(`Exception upload photos item ${item.name}:`, uploadError);
+              }
               uploadedPhotos += item.photos.length;
               setUploadProgress(40 + Math.round((uploadedPhotos / totalPhotos) * 55));
             }
             itemOffset++;
           }
+        }
+
+        // Avertir si certaines photos n'ont pas été uploadées
+        if (totalPhotosUploaded < totalPhotosExpected) {
+          console.warn(`Upload photos: ${totalPhotosUploaded}/${totalPhotosExpected} photos uploadées`);
         }
       }
 
