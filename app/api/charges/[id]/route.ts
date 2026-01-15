@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { chargeSchema } from "@/lib/validations";
 import { handleApiError } from "@/lib/helpers/api-error";
+import type { z } from "zod";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
