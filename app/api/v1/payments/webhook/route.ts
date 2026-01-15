@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { apiError, apiSuccess, logAudit } from "@/lib/api/middleware";

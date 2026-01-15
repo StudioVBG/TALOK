@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";

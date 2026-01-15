@@ -48,7 +48,9 @@ import { propertiesService } from "@/features/properties/services/properties.ser
 import { CLASSES_EXTENDED, SHADOWS, GRADIENTS, FOCUS_STATES } from "@/lib/design-system/design-tokens";
 import { stepTransitionVariants, containerVariants, itemVariants, cardVariants } from "@/lib/design-system/animations";
 import { LeasesList } from "@/features/leases/components/leases-list";
-import { TicketsList } from "@/features/tickets/components/tickets-list";
+import { TicketListUnified } from "@/features/tickets/components/ticket-list-unified";
+import { ticketsService } from "@/features/tickets/services/tickets.service";
+import type { Ticket } from "@/lib/types";
 import { DocumentGalleryManager } from "@/features/documents/components/document-gallery-manager";
 import { ChargesList } from "@/features/billing/components/charges-list";
 
@@ -96,12 +98,20 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
   const router = useRouter();
   const { toast } = useToast();
   const [property, setProperty] = useState<Property | null>(null);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     fetchProperty();
   }, [propertyId]);
+
+  useEffect(() => {
+    if (activeTab === "maintenance" && property?.id) {
+      fetchTickets();
+    }
+  }, [activeTab, property?.id]);
 
   async function fetchProperty() {
     try {
@@ -117,6 +127,22 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
       router.push("/properties");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchTickets() {
+    try {
+      setTicketsLoading(true);
+      const data = await ticketsService.getTicketsByProperty(propertyId);
+      setTickets(data);
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de charger les tickets.",
+        variant: "destructive",
+      });
+    } finally {
+      setTicketsLoading(false);
     }
   }
 
@@ -1012,7 +1038,13 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold">Tickets de maintenance</h2>
                 </div>
-                <TicketsList propertyId={property.id} />
+                {ticketsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <TicketListUnified tickets={tickets} variant="owner" />
+                )}
               </motion.div>
             </TabsContent>
 
