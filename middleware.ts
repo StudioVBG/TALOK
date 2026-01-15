@@ -2,13 +2,20 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Middleware SOTA 2025 - Edge Safe
- * 
- * RÈGLE D'OR : Zéro import @supabase/* ici pour éviter les erreurs 
+ *
+ * RÈGLE D'OR : Zéro import @supabase/* ici pour éviter les erreurs
  * "Node API used in Edge runtime" (process.version).
- * 
+ *
  * On se contente d'une vérification de la présence des cookies de session.
  * La validation forte est faite dans les layouts serveurs Node.js.
+ *
+ * WHITE-LABEL: Détection des domaines personnalisés via le header Host.
+ * La résolution complète se fait via l'API /api/white-label/resolve.
  */
+
+// Domaine principal de l'application
+const MAIN_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || "talok.fr";
+const MAIN_DOMAINS = [MAIN_DOMAIN, `www.${MAIN_DOMAIN}`, "localhost"];
 
 // Routes publiques qui ne nécessitent aucune vérification
 const publicRoutes = [
@@ -29,6 +36,28 @@ const publicRoutes = [
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = request.headers.get("host") || "";
+  const hostname = host.split(":")[0]; // Enlever le port si présent
+
+  // 0. WHITE-LABEL: Détection de domaine personnalisé
+  const isCustomDomain = !MAIN_DOMAINS.some(
+    (d) => hostname === d || hostname.endsWith(`.${d}`)
+  );
+
+  if (isCustomDomain && hostname) {
+    // Ajouter le header X-Custom-Domain pour que l'app puisse le détecter
+    const response = NextResponse.next();
+    response.headers.set("X-Custom-Domain", hostname);
+    response.headers.set("X-White-Label", "true");
+
+    // Pour les routes API, laisser passer sans modification
+    if (pathname.startsWith("/api/")) {
+      return response;
+    }
+
+    // Le reste de la logique s'applique normalement
+    // L'app résoudra le branding via l'API /api/white-label/resolve
+  }
 
   // 1. Laisser passer les assets statiques, les webhooks et les routes publiques
   if (
