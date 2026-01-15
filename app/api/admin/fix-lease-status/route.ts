@@ -123,19 +123,39 @@ export async function POST(request: Request) {
 /**
  * GET /api/admin/fix-lease-status?leaseId=xxx&fix=true
  * Vérifie le statut d'un bail et le corrige si fix=true
- * 
+ *
  * NOTE: Cette route utilise le service client pour le debug
+ * SECURITY: Requiert authentification admin
  */
 export async function GET(request: Request) {
   try {
+    // SECURITY: Vérifier l'authentification
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur est admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profile?.role !== "admin") {
+      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+    }
+
     const url = new URL(request.url);
     const leaseId = url.searchParams.get("leaseId");
     const shouldFix = url.searchParams.get("fix") === "true";
-    
+
     if (!leaseId) {
       return NextResponse.json({ error: "leaseId requis" }, { status: 400 });
     }
-    
+
     const serviceClient = getServiceClient();
     
     // 1. Vérifier le bail

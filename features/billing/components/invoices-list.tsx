@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * @deprecated Ce composant est déprécié. Utilisez `InvoiceListUnified` depuis
+ * `@/features/billing/components/invoice-list-unified` pour les nouvelles implémentations.
+ *
+ * Ce composant est conservé pour la compatibilité avec les pages existantes:
+ * - app/leases/[id]/page.tsx
+ *
+ * Différences avec InvoiceListUnified:
+ * - Ce composant récupère ses propres données (leaseId prop)
+ * - InvoiceListUnified reçoit les données en props (invoices, variant)
+ */
+
 import { useEffect, useState, useMemo } from "react";
 import { InvoiceCard } from "./invoice-card";
 import { Button } from "@/components/ui/button";

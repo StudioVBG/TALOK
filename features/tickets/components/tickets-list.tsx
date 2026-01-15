@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * @deprecated Ce composant est déprécié. Utilisez `TicketListUnified` depuis
+ * `@/features/tickets/components/ticket-list-unified` pour les nouvelles implémentations.
+ *
+ * Ce composant est conservé pour la compatibilité avec les pages existantes:
+ * - features/properties/components/v3/property-detail-premium.tsx
+ *
+ * Différences avec TicketListUnified:
+ * - Ce composant récupère ses propres données (propertyId prop)
+ * - TicketListUnified reçoit les données en props (tickets, variant)
+ */
+
 import { useEffect, useState, useMemo } from "react";
 import { TicketCard } from "./ticket-card";
 import { Button } from "@/components/ui/button";

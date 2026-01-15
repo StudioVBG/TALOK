@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-// @ts-nocheck
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError } from "@/lib/helpers/api-error";
@@ -79,8 +78,10 @@ export async function PATCH(request: Request) {
     if (validated.telephone !== undefined) updatePayload.telephone = validated.telephone;
     if (validated.date_naissance !== undefined) updatePayload.date_naissance = validated.date_naissance;
     // ✅ SOTA 2026: Support du lieu de naissance
-    if ((validated as any).lieu_naissance !== undefined) {
-      (updatePayload as any).lieu_naissance = (validated as any).lieu_naissance;
+    // @ts-expect-error - lieu_naissance n'est pas encore dans le type ProfileUpdate
+    if (validated.lieu_naissance !== undefined) {
+      // @ts-expect-error - lieu_naissance sera ajouté dans une future mise à jour du type
+      updatePayload.lieu_naissance = validated.lieu_naissance;
     }
 
     if (Object.keys(updatePayload).length === 0) {

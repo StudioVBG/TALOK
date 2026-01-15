@@ -14,8 +14,17 @@ export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
   const secret = searchParams.get("secret");
   
-  const expectedSecret = process.env.MIGRATION_SECRET || "apply-signers-migration-2024";
-  
+  const expectedSecret = process.env.MIGRATION_SECRET;
+
+  // SECURITY: Ne jamais autoriser sans secret en production
+  if (!expectedSecret) {
+    console.error("[apply-migration] MIGRATION_SECRET non configuré");
+    return NextResponse.json(
+      { error: "Configuration manquante - MIGRATION_SECRET requis" },
+      { status: 500 }
+    );
+  }
+
   if (process.env.NODE_ENV !== "development" && secret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
