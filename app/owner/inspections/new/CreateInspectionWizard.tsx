@@ -854,21 +854,21 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
   const currentRoom = roomsData[currentRoomIndex];
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 w-full max-w-4xl mx-auto space-y-4 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Nouvel état des lieux</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Nouvel état des lieux</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           Créez un EDL d&apos;entrée ou de sortie en quelques étapes
         </p>
       </div>
 
-      {/* Progress Steps */}
-      <div className="flex items-center justify-between mb-8">
+      {/* Progress Steps - Responsive */}
+      <div className="flex items-center justify-between mb-4 md:mb-8 overflow-x-auto pb-2">
         {STEPS.map((s, i) => (
-          <div key={s.id} className="flex items-center">
+          <div key={s.id} className="flex items-center flex-shrink-0">
             <div
-              className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${
+              className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full border-2 transition-colors text-sm md:text-base ${
                 i < step
                   ? "bg-primary border-primary text-primary-foreground"
                   : i === step
@@ -876,11 +876,11 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
                   : "border-muted text-muted-foreground"
               }`}
             >
-              {i < step ? <Check className="h-5 w-5" /> : i + 1}
+              {i < step ? <Check className="h-4 w-4 md:h-5 md:w-5" /> : i + 1}
             </div>
             {i < STEPS.length - 1 && (
               <div
-                className={`w-12 md:w-24 h-1 mx-2 rounded ${
+                className={`w-6 sm:w-8 md:w-16 lg:w-24 h-0.5 md:h-1 mx-1 md:mx-2 rounded ${
                   i < step ? "bg-primary" : "bg-muted"
                 }`}
               />
@@ -1580,28 +1580,28 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
                   Vérifiez les informations avant de créer l&apos;EDL
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 md:space-y-6">
                 {/* Lease Info */}
-                <div className="p-4 rounded-lg bg-muted/30 space-y-2">
-                  <p className="text-sm text-muted-foreground">Logement</p>
-                  <p className="font-semibold">
+                <div className="p-3 md:p-4 rounded-lg bg-muted/30 space-y-1 md:space-y-2">
+                  <p className="text-xs md:text-sm text-muted-foreground">Logement</p>
+                  <p className="font-semibold text-sm md:text-base break-words">
                     {selectedLease?.property.adresse_complete}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs md:text-sm text-muted-foreground">
                     {selectedLease?.property.code_postal} {selectedLease?.property.ville}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-lg bg-muted/30">
-                    <p className="text-sm text-muted-foreground">Type</p>
-                    <p className="font-semibold">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                  <div className="p-3 md:p-4 rounded-lg bg-muted/30">
+                    <p className="text-xs md:text-sm text-muted-foreground">Type</p>
+                    <p className="font-semibold text-sm md:text-base">
                       EDL d&apos;{edlType === "entree" ? "entrée" : "sortie"}
                     </p>
                   </div>
-                  <div className="p-4 rounded-lg bg-muted/30">
-                    <p className="text-sm text-muted-foreground">Date prévue</p>
-                    <p className="font-semibold">
+                  <div className="p-3 md:p-4 rounded-lg bg-muted/30">
+                    <p className="text-xs md:text-sm text-muted-foreground">Date prévue</p>
+                    <p className="font-semibold text-sm md:text-base">
                       {scheduledDate
                         ? new Date(scheduledDate).toLocaleString("fr-FR")
                         : "Non définie"}
@@ -1663,20 +1663,22 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       </AnimatePresence>
 
       {/* Navigation */}
-      <div className="flex justify-between pt-4">
+      <div className="flex justify-between gap-3 pt-4">
         <Button
           variant="outline"
           onClick={handlePrev}
           disabled={step === 0}
+          className="flex-1 sm:flex-none"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
-          Précédent
+          <span className="hidden sm:inline">Précédent</span>
+          <span className="sm:hidden">Retour</span>
         </Button>
 
         {step < STEPS.length - 1 ? (
-          <Button onClick={handleNext} disabled={!canProceed()}>
-            {step === 4 && currentRoomIndex < roomsData.length - 1 
-              ? "Pièce suivante" 
+          <Button onClick={handleNext} disabled={!canProceed()} className="flex-1 sm:flex-none">
+            {step === 4 && currentRoomIndex < roomsData.length - 1
+              ? "Pièce suivante"
               : "Suivant"}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
@@ -1684,7 +1686,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="min-w-[140px]"
+            className="flex-1 sm:flex-none min-w-[120px] sm:min-w-[140px]"
           >
             {isSubmitting ? (
               <>
