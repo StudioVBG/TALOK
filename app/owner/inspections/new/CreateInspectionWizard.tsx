@@ -639,8 +639,26 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       setUploadStep("Création de l'état des lieux...");
       setUploadDetails("");
 
+      // Helper pour les requêtes avec meilleure gestion d'erreur
+      const safeFetch = async (url: string, options?: RequestInit) => {
+        try {
+          const res = await fetch(url, options);
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || `Erreur ${res.status}`);
+          }
+          return res;
+        } catch (err: any) {
+          // Améliorer les messages d'erreur réseau
+          if (err.message === "Load failed" || err.message === "Failed to fetch") {
+            throw new Error("Erreur réseau - vérifiez votre connexion internet");
+          }
+          throw err;
+        }
+      };
+
       // 1. Créer l'EDL
-      const response = await fetch(`/api/properties/${selectedLease.property.id}/inspections`, {
+      const response = await safeFetch(`/api/properties/${selectedLease.property.id}/inspections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -656,17 +674,13 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Erreur lors de la création de l'EDL");
-      }
-
       const { edl } = await response.json();
       setUploadProgress(10);
 
       // 2. Gérer les relevés des compteurs
       setUploadStep("Enregistrement des compteurs...");
       // On récupère d'abord les compteurs existants pour ne pas recréer
-      const metersRes = await fetch(`/api/properties/${selectedLease.property.id}/meters`);
+      const metersRes = await safeFetch(`/api/properties/${selectedLease.property.id}/meters`);
       const { meters: existingMeters } = await metersRes.json();
 
       let meterIndex = 0;
@@ -676,10 +690,10 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
         // Distinguer eau chaude et froide dans le type ou provider si besoin
         const meterType = mr.type === "water_hot" ? "water" : mr.type;
         const meterLabel = mr.type === "water_hot" ? "Eau chaude" : mr.type === "water" ? "Eau froide" : mr.type;
-        
+
         // Chercher par numéro ou par type si pas de numéro
-        let meter = existingMeters.find((em: any) => 
-          (mr.meterNumber && em.meter_number === mr.meterNumber) || 
+        let meter = existingMeters.find((em: any) =>
+          (mr.meterNumber && em.meter_number === mr.meterNumber) ||
           (!mr.meterNumber && em.type === meterType)
         );
 
@@ -687,7 +701,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
 
         if (!meterId) {
           // Créer le compteur
-          const newMeterRes = await fetch(`/api/properties/${selectedLease.property.id}/meters`, {
+          const newMeterRes = await safeFetch(`/api/properties/${selectedLease.property.id}/meters`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -709,9 +723,9 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           if (mr.photo) {
             formData.append("photo", mr.photo);
           }
-          
+
           // 2a. Sauvegarder dans l'historique général
-          const readingRes = await fetch(`/api/meters/${meterId}/readings`, {
+          const readingRes = await safeFetch(`/api/meters/${meterId}/readings`, {
             method: "POST",
             body: formData,
           });
@@ -719,7 +733,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           const photoPath = readingData.reading?.photo_url || null;
 
           // 2b. Sauvegarder spécifiquement pour cet EDL (snapshot)
-          await fetch(`/api/edl/${edl.id}/meter-readings`, {
+          await safeFetch(`/api/edl/${edl.id}/meter-readings`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -748,15 +762,11 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
         })),
       }));
 
-      const sectionsResponse = await fetch(`/api/edl/${edl.id}/sections`, {
+      const sectionsResponse = await safeFetch(`/api/edl/${edl.id}/sections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sections }),
       });
-      
-      if (!sectionsResponse.ok) {
-        throw new Error("Erreur lors de la création des sections");
-      }
 
       const { items: insertedItems } = await sectionsResponse.json();
       
@@ -798,7 +808,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
             room.globalPhotos.forEach(photo => formData.append("files", photo));
             formData.append("section", room.name);
 
-            await fetch(`/api/inspections/${edl.id}/photos`, {
+            await safeFetch(`/api/inspections/${edl.id}/photos`, {
               method: "POST",
               body: formData,
             });
@@ -815,7 +825,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
               item.photos.forEach(photo => formData.append("files", photo));
               formData.append("section", room.name);
 
-              await fetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
+              await safeFetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
                 method: "POST",
                 body: formData,
               });
