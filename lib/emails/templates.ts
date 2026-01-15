@@ -1140,5 +1140,357 @@ export const emailTemplates = {
       </div>
     `, `Donnez votre avis sur la visite du ${data.visitDate}`),
   }),
+
+  // ============================================
+  // ONBOARDING EMAILS
+  // ============================================
+
+  /**
+   * Email de bienvenue amélioré avec guide de démarrage
+   */
+  welcomeOnboarding: (data: {
+    userName: string;
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    onboardingUrl: string;
+    supportEmail?: string;
+  }) => {
+    const roleConfig = {
+      owner: {
+        emoji: '🏠',
+        title: 'propriétaire',
+        steps: [
+          'Complétez votre profil et informations bancaires',
+          'Ajoutez votre premier bien immobilier',
+          'Invitez vos locataires à rejoindre Talok',
+          'Créez et faites signer vos baux en ligne',
+        ],
+        benefits: [
+          'Encaissement automatique des loyers',
+          'Quittances générées automatiquement',
+          'Suivi des incidents de maintenance',
+          'Tableau de bord financier complet',
+        ],
+      },
+      tenant: {
+        emoji: '🔑',
+        title: 'locataire',
+        steps: [
+          'Rejoignez votre logement avec le code fourni',
+          'Complétez votre dossier locataire',
+          'Vérifiez votre identité en quelques clics',
+          'Configurez votre mode de paiement',
+        ],
+        benefits: [
+          'Paiement du loyer en 2 clics',
+          'Quittances disponibles instantanément',
+          'Signalement de problèmes simplifié',
+          'Historique de tous vos documents',
+        ],
+      },
+      provider: {
+        emoji: '🔧',
+        title: 'prestataire',
+        steps: [
+          'Complétez votre profil professionnel',
+          'Définissez vos services et spécialités',
+          'Configurez votre zone d\'intervention',
+          'Commencez à recevoir des demandes',
+        ],
+        benefits: [
+          'Visibilité auprès des propriétaires',
+          'Gestion simplifiée des devis',
+          'Paiement sécurisé des interventions',
+          'Historique de vos missions',
+        ],
+      },
+      guarantor: {
+        emoji: '🤝',
+        title: 'garant',
+        steps: [
+          'Vérifiez votre identité',
+          'Renseignez vos informations financières',
+          'Signez l\'acte de cautionnement',
+        ],
+        benefits: [
+          'Processus 100% dématérialisé',
+          'Signature électronique sécurisée',
+          'Suivi du bail en temps réel',
+        ],
+      },
+    };
+
+    const config = roleConfig[data.role];
+
+    return {
+      subject: `${config.emoji} Bienvenue sur Talok, ${data.userName} !`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <div style="display: inline-block; width: 80px; height: 80px; background: linear-gradient(135deg, ${COLORS.primary} 0%, #8b5cf6 100%); border-radius: 20px; line-height: 80px; font-size: 40px;">
+              ${config.emoji}
+            </div>
+          </div>
+
+          <h1 style="text-align: center;">Bienvenue sur Talok !</h1>
+          <p style="text-align: center; font-size: 18px;">
+            Bonjour ${data.userName}, votre espace ${config.title} est prêt.
+          </p>
+
+          <div class="divider"></div>
+
+          <h2 style="font-size: 18px; margin-bottom: 16px;">🚀 Pour bien démarrer</h2>
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin-bottom: 24px;">
+            ${config.steps.map((step, i) => `
+              <tr>
+                <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+                  <div style="display: flex; align-items: center;">
+                    <div style="width: 28px; height: 28px; background-color: ${COLORS.primary}; color: white; border-radius: 50%; text-align: center; line-height: 28px; font-weight: 600; font-size: 14px; margin-right: 12px;">
+                      ${i + 1}
+                    </div>
+                    <span style="color: ${COLORS.gray[700]};">${step}</span>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </table>
+
+          <div class="highlight-box" style="background: linear-gradient(135deg, ${COLORS.gray[50]} 0%, #ede9fe 100%);">
+            <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 12px;">✨ Ce que vous pouvez faire avec Talok</p>
+            <ul style="margin: 0; padding-left: 20px; color: ${COLORS.gray[700]};">
+              ${config.benefits.map(b => `<li style="margin-bottom: 8px;">${b}</li>`).join('')}
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin-top: 32px;">
+            <a href="${data.onboardingUrl}" class="button" style="font-size: 18px; padding: 16px 40px;">
+              Configurer mon espace
+            </a>
+          </div>
+
+          <p style="text-align: center; font-size: 14px; color: ${COLORS.gray[500]}; margin-top: 24px;">
+            La configuration ne prend que quelques minutes.<br>
+            ${data.supportEmail ? `Des questions ? Écrivez-nous à ${data.supportEmail}` : ''}
+          </p>
+        </div>
+      `, `Bienvenue ${data.userName} ! Configurez votre espace ${config.title} sur Talok.`),
+    };
+  },
+
+  /**
+   * Rappel d'onboarding après 24h
+   */
+  onboardingReminder24h: (data: {
+    userName: string;
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    progressPercent: number;
+    nextStepLabel: string;
+    onboardingUrl: string;
+  }) => ({
+    subject: `⏰ ${data.userName}, finalisez votre inscription sur Talok`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Votre profil vous attend !</h1>
+        <p>Bonjour ${data.userName},</p>
+        <p>Vous avez commencé à configurer votre espace Talok hier, mais n'avez pas encore terminé.</p>
+
+        <div class="highlight-box">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 4px;">Votre progression</p>
+              <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin: 0;">Prochaine étape : ${data.nextStepLabel}</p>
+            </div>
+            <div style="font-size: 32px; font-weight: 700; color: ${COLORS.primary};">
+              ${data.progressPercent}%
+            </div>
+          </div>
+          <div style="margin-top: 16px; height: 8px; background-color: ${COLORS.gray[200]}; border-radius: 4px; overflow: hidden;">
+            <div style="width: ${data.progressPercent}%; height: 100%; background: linear-gradient(90deg, ${COLORS.primary} 0%, #8b5cf6 100%);"></div>
+          </div>
+        </div>
+
+        <p>Quelques minutes suffisent pour terminer et profiter de toutes les fonctionnalités.</p>
+
+        <div style="text-align: center;">
+          <a href="${data.onboardingUrl}" class="button">Reprendre où j'en étais</a>
+        </div>
+
+        <p style="font-size: 14px; color: ${COLORS.gray[500]}; text-align: center;">
+          Si vous avez des questions, n'hésitez pas à nous contacter.
+        </p>
+      </div>
+    `, `Vous êtes à ${data.progressPercent}% - Finalisez votre profil Talok`),
+  }),
+
+  /**
+   * Rappel d'onboarding après 72h
+   */
+  onboardingReminder72h: (data: {
+    userName: string;
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    progressPercent: number;
+    onboardingUrl: string;
+  }) => {
+    const roleMessages = {
+      owner: 'Vos futurs locataires vous attendent ! Finalisez votre espace pour commencer à gérer vos biens.',
+      tenant: 'Votre propriétaire attend votre dossier complet. Finalisez votre inscription pour signer votre bail.',
+      provider: 'Des propriétaires recherchent des prestataires comme vous. Complétez votre profil pour être visible.',
+      guarantor: 'Le locataire que vous accompagnez a besoin de votre cautionnement. Finalisez votre inscription.',
+    };
+
+    return {
+      subject: `📋 ${data.userName}, votre espace Talok n'est pas encore prêt`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge badge-warning">PROFIL INCOMPLET</span>
+          </div>
+
+          <h1 style="text-align: center;">On vous attend, ${data.userName} !</h1>
+          <p style="text-align: center;">${roleMessages[data.role]}</p>
+
+          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
+            <p style="font-size: 14px; color: #92400e; margin-bottom: 8px;">Votre progression actuelle</p>
+            <p style="font-size: 48px; font-weight: 700; color: #d97706; margin: 0;">${data.progressPercent}%</p>
+            <p style="font-size: 14px; color: #92400e; margin-top: 8px;">Plus que quelques étapes !</p>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${data.onboardingUrl}" class="button button-warning">Terminer mon inscription</a>
+          </div>
+
+          <p style="font-size: 13px; color: ${COLORS.gray[500]}; text-align: center; margin-top: 24px;">
+            Vous ne souhaitez plus recevoir ces rappels ?<br>
+            <a href="${data.onboardingUrl}" style="color: ${COLORS.primary};">Connectez-vous et finalisez votre profil</a>
+          </p>
+        </div>
+      `, `Plus que ${100 - data.progressPercent}% pour finaliser votre profil !`),
+    };
+  },
+
+  /**
+   * Rappel d'onboarding après 7 jours
+   */
+  onboardingReminder7d: (data: {
+    userName: string;
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    onboardingUrl: string;
+  }) => ({
+    subject: `💭 ${data.userName}, nous pensons à vous`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Vous nous manquez, ${data.userName} !</h1>
+        <p>Cela fait une semaine que vous avez créé votre compte Talok.</p>
+        <p>Votre espace est toujours prêt à être configuré. Il ne vous faudra que quelques minutes pour profiter de toutes nos fonctionnalités.</p>
+
+        <div class="highlight-box">
+          <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">💡 Le saviez-vous ?</p>
+          <p style="color: ${COLORS.gray[700]}; margin: 0;">
+            Les utilisateurs qui complètent leur profil dans la première semaine ont 3x plus de chances de gagner du temps sur leur gestion locative.
+          </p>
+        </div>
+
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="${data.onboardingUrl}" class="button">Reprendre là où j'en étais</a>
+        </div>
+
+        <div class="divider"></div>
+
+        <p style="font-size: 14px; color: ${COLORS.gray[500]}; text-align: center;">
+          Besoin d'aide pour démarrer ?<br>
+          Notre équipe est là pour vous accompagner.
+        </p>
+      </div>
+    `, `Votre espace Talok vous attend depuis une semaine`),
+  }),
+
+  /**
+   * Félicitations - Onboarding complété
+   */
+  onboardingCompleted: (data: {
+    userName: string;
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    dashboardUrl: string;
+  }) => {
+    const roleConfig = {
+      owner: {
+        emoji: '🏠',
+        title: 'propriétaire',
+        nextSteps: [
+          { label: 'Ajouter un bien', url: '/owner/properties/new' },
+          { label: 'Créer un bail', url: '/owner/leases/new' },
+          { label: 'Inviter un locataire', url: '/owner/tenants/invite' },
+        ],
+      },
+      tenant: {
+        emoji: '🔑',
+        title: 'locataire',
+        nextSteps: [
+          { label: 'Consulter mon bail', url: '/tenant/lease' },
+          { label: 'Payer mon loyer', url: '/tenant/payments' },
+          { label: 'Mes documents', url: '/tenant/documents' },
+        ],
+      },
+      provider: {
+        emoji: '🔧',
+        title: 'prestataire',
+        nextSteps: [
+          { label: 'Voir mes missions', url: '/provider/jobs' },
+          { label: 'Gérer mes devis', url: '/provider/quotes' },
+          { label: 'Mon profil public', url: '/provider/profile' },
+        ],
+      },
+      guarantor: {
+        emoji: '🤝',
+        title: 'garant',
+        nextSteps: [
+          { label: 'Voir le bail', url: '/guarantor/lease' },
+          { label: 'Mes documents', url: '/guarantor/documents' },
+        ],
+      },
+    };
+
+    const config = roleConfig[data.role];
+
+    return {
+      subject: `🎉 Bravo ${data.userName}, votre espace est prêt !`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <div style="display: inline-block; width: 100px; height: 100px; background: linear-gradient(135deg, ${COLORS.success} 0%, #059669 100%); border-radius: 50%; line-height: 100px; font-size: 50px;">
+              🎉
+            </div>
+          </div>
+
+          <h1 style="text-align: center;">Félicitations, ${data.userName} !</h1>
+          <p style="text-align: center; font-size: 18px;">
+            Votre espace ${config.title} est maintenant entièrement configuré.
+          </p>
+
+          <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
+            <p style="font-size: 14px; color: #065f46; margin-bottom: 8px;">Votre profil</p>
+            <p style="font-size: 48px; font-weight: 700; color: ${COLORS.success}; margin: 0;">100%</p>
+            <p style="font-size: 14px; color: #065f46; margin-top: 8px;">Complété !</p>
+          </div>
+
+          <h2 style="font-size: 18px; margin-bottom: 16px;">🚀 Prochaines étapes suggérées</h2>
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+            ${config.nextSteps.map((step, i) => `
+              <tr>
+                <td style="padding: 12px 0; border-bottom: ${i < config.nextSteps.length - 1 ? `1px solid ${COLORS.gray[200]}` : 'none'};">
+                  <a href="${data.dashboardUrl.replace('/dashboard', step.url)}" style="color: ${COLORS.primary}; text-decoration: none; font-weight: 500;">
+                    → ${step.label}
+                  </a>
+                </td>
+              </tr>
+            `).join('')}
+          </table>
+
+          <div style="text-align: center; margin-top: 32px;">
+            <a href="${data.dashboardUrl}" class="button button-success">Accéder à mon espace</a>
+          </div>
+        </div>
+      `, `Votre espace Talok est prêt à 100% !`),
+    };
+  },
 };
 
