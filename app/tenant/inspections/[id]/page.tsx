@@ -242,16 +242,22 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
     }
   }
 
-  // Récupérer les relevés de compteurs
+  // Récupérer les relevés de compteurs (serviceClient pour bypass RLS et garantir meter_id)
   let meterReadings: any[] = [];
   try {
-    const { data: readings } = await supabase
+    const { data: readings, error: readingsError } = await serviceClient
       .from("edl_meter_readings")
-      .select("*, meter:meters(*)")
+      .select("id, edl_id, meter_id, reading_value, reading_unit, photo_path, ocr_value, ocr_confidence, is_validated, created_at, meter:meters(*)")
       .eq("edl_id", edlId);
-    meterReadings = readings || [];
+
+    if (readingsError) {
+      console.warn("[fetchTenantEDL] edl_meter_readings fetch error:", readingsError.message);
+    } else {
+      meterReadings = readings || [];
+      console.log(`[fetchTenantEDL] Fetched ${meterReadings.length} meter readings`);
+    }
   } catch (e) {
-    console.warn("[fetchTenantEDL] edl_meter_readings fetch failed");
+    console.warn("[fetchTenantEDL] edl_meter_readings fetch failed:", e);
   }
 
   // 🔧 NOUVEAU: Récupérer tous les compteurs actifs du logement pour le locataire

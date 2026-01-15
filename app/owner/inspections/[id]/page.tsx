@@ -2,6 +2,7 @@
 import { Suspense } from "react";
 export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect, notFound } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InspectionDetailClient } from "./InspectionDetailClient";
@@ -280,25 +281,29 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
     .eq("profile_id", profileId)
     .single();
 
-  // Fetch meter readings (resilient to missing table)
+  // Fetch meter readings (serviceClient pour bypass RLS et garantir meter_id)
+  const serviceClient = getServiceClient();
   let meterReadings: any[] = [];
   let propertyMeters: any[] = [];
   try {
-    const { data: readings } = await supabase
+    const { data: readings, error: readingsError } = await serviceClient
       .from("edl_meter_readings")
-      .select(`
-        *,
-        meter:meters(*)
-      `)
+      .select("id, edl_id, meter_id, reading_value, reading_unit, photo_path, ocr_value, ocr_confidence, is_validated, created_at, meter:meters(*)")
       .eq("edl_id", edlId);
-    meterReadings = readings || [];
+
+    if (readingsError) {
+      console.warn("[fetchInspectionDetail] edl_meter_readings fetch error:", readingsError.message);
+    } else {
+      meterReadings = readings || [];
+      console.log(`[fetchInspectionDetail] Fetched ${meterReadings.length} meter readings`);
+    }
 
     // Récupérer également tous les compteurs du bien
-    const { data: meters, error: metersError } = await supabase
+    const { data: meters, error: metersError } = await serviceClient
       .from("meters")
       .select("*")
       .eq("property_id", property.id);
-    
+
     if (metersError) {
       console.warn("[fetchInspectionDetail] property meters fetch failed:", metersError);
     } else {
