@@ -107,7 +107,7 @@ export function AIVoiceRecorder({
           return d + 1;
         });
       }, 1000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[VoiceRecorder] Error starting:", error);
       setErrorMessage(
         error.name === "NotAllowedError"
@@ -166,7 +166,7 @@ export function AIVoiceRecorder({
       } else {
         throw new Error("Transcription vide");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[VoiceRecorder] Transcription error:", error);
       setErrorMessage(error.message);
       setState("error");

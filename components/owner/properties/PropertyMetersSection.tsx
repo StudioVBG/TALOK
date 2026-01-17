@@ -166,10 +166,10 @@ export function PropertyMetersSection({ propertyId, className }: PropertyMetersS
       } else {
         throw new Error(data.error || "Erreur lors du chargement");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -258,10 +258,10 @@ export function PropertyMetersSection({ propertyId, className }: PropertyMetersS
       resetForm();
       fetchMeters();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -290,10 +290,10 @@ export function PropertyMetersSection({ propertyId, className }: PropertyMetersS
 
       fetchMeters();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     }
