@@ -134,10 +134,10 @@ export function DepositRefundWizard({
       }
 
       setDeductions(initialDeductions);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les données",
+        description: error instanceof Error ? error.message : "Impossible de charger les données",
         variant: "destructive",
       });
       onOpenChange(false);
@@ -232,10 +232,10 @@ export function DepositRefundWizard({
 
       onSuccess?.();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {

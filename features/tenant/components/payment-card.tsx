@@ -28,7 +28,7 @@ export function PaymentCard({ leaseId, month }: PaymentCardProps) {
       setLoading(true);
       const { own } = await paymentSharesService.getPaymentShares(leaseId, month);
       setPaymentShare(own);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
         description: "Erreur lors du chargement du paiement",
@@ -57,10 +57,10 @@ export function PaymentCard({ leaseId, month }: PaymentCardProps) {
         description: "Paiement initié avec succès",
       });
       await loadPaymentShare();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Erreur lors du paiement",
+        description: error instanceof Error ? error.message : "Erreur lors du paiement",
         variant: "destructive",
       });
     } finally {
@@ -85,10 +85,10 @@ export function PaymentCard({ leaseId, month }: PaymentCardProps) {
           : "Autopay activé",
       });
       await loadPaymentShare();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Erreur",
+        description: error instanceof Error ? error.message : "Erreur",
         variant: "destructive",
       });
     }

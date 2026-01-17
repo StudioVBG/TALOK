@@ -150,10 +150,10 @@ export function TenantNoticeWizard({
       }
       const data = await response.json();
       setConditions(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les conditions",
+        description: error instanceof Error ? error.message : "Impossible de charger les conditions",
         variant: "destructive",
       });
       onOpenChange(false);
@@ -239,10 +239,10 @@ export function TenantNoticeWizard({
 
       onSuccess?.();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'enregistrer le congé",
+        description: error instanceof Error ? error.message : "Impossible d'enregistrer le congé",
         variant: "destructive",
       });
     } finally {

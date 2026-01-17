@@ -67,7 +67,7 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
       setRemoved(true);
       onRemove?.(property.id);
       onRefresh?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       const notFound =
         error instanceof ResourceNotFoundError ||
         error?.message?.includes("Ressource introuvable") ||
@@ -77,7 +77,7 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
         title: notFound ? "Déjà supprimé" : "Erreur",
         description: notFound
           ? "Ce logement n'existe plus ou a déjà été supprimé. Liste mise à jour."
-          : error.message || "Une erreur est survenue lors de la suppression.",
+          : error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression.",
         variant: notFound ? "default" : "destructive",
       });
 
@@ -103,7 +103,7 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
         description: "Votre logement est maintenant en attente de validation.",
       });
       onRefresh?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Impossible de soumettre",
         description:

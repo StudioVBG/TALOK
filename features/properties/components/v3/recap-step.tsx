@@ -97,8 +97,8 @@ export function RecapStep({
     setValidationErrors([]);
     try {
       await onSubmit();
-    } catch (error: any) {
-      setValidationErrors([error.message || "Erreur lors de la soumission"]);
+    } catch (error: unknown) {
+      setValidationErrors([error instanceof Error ? error.message : "Erreur lors de la soumission"]);
     }
   };
 

@@ -32,7 +32,7 @@ export class GuarantorProfilesService {
     try {
       const data = await apiClient.get<GuarantorProfile | null>("/guarantors/me");
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.status === 404) {
         return null;
       }
@@ -47,7 +47,7 @@ export class GuarantorProfilesService {
     try {
       const data = await apiClient.get<GuarantorProfile>(`/guarantors/${profileId}`);
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.status === 404) {
         return null;
       }
@@ -94,7 +94,7 @@ export class GuarantorProfilesService {
     try {
       const data = await apiClient.get<GuarantorDashboardData>("/guarantors/dashboard");
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.status === 404) {
         return null;
       }
@@ -125,7 +125,7 @@ export class GuarantorProfilesService {
         `/guarantors/engagements/${engagementId}`
       );
       return engagement;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.status === 404) {
         return null;
       }

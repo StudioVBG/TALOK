@@ -43,7 +43,7 @@ export class EndOfLeaseService {
         `/end-of-lease/notices/${noticeId}`
       );
       return notice;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.status === 404) return null;
       throw error;
     }
@@ -58,7 +58,7 @@ export class EndOfLeaseService {
         `/leases/${leaseId}/notice`
       );
       return notice;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.status === 404) return null;
       throw error;
     }
@@ -153,7 +153,7 @@ export class EndOfLeaseService {
         `/end-of-lease/settlements/${settlementId}`
       );
       return settlement;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.status === 404) return null;
       throw error;
     }
@@ -168,7 +168,7 @@ export class EndOfLeaseService {
         `/end-of-lease/${leaseId}/settlement`
       );
       return settlement;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.status === 404) return null;
       throw error;
     }

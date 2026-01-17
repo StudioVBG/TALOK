@@ -69,10 +69,10 @@ export function DocumentGalleryManager({
       const docs = await documentsService.getDocumentsByProperty(propertyId, collection);
       setDocuments(docs);
       onChange?.(docs);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les documents.",
+        description: error instanceof Error ? error.message : "Impossible de charger les documents.",
         variant: "destructive",
       });
     } finally {
@@ -135,10 +135,10 @@ export function DocumentGalleryManager({
 
       resetFileInput();
       fetchDocuments();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Upload impossible",
-        description: error.message || "Une erreur est survenue lors de l'upload.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'upload.",
         variant: "destructive",
       });
     } finally {
@@ -180,7 +180,7 @@ export function DocumentGalleryManager({
     try {
       await documentsService.reorderDocument(document.id, newPosition);
       fetchDocuments();
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (handleAdvancedFeatureError(error?.message)) {
         return;
       }
@@ -209,7 +209,7 @@ export function DocumentGalleryManager({
         title: "Mise à jour",
         description: "Ce document est désormais mis en avant.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (handleAdvancedFeatureError(error?.message)) {
         return;
       }
@@ -231,10 +231,10 @@ export function DocumentGalleryManager({
         title: "Document supprimé",
         description: "Le fichier a été supprimé avec succès.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Suppression impossible",
-        description: error.message || "Une erreur est survenue lors de la suppression.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression.",
         variant: "destructive",
       });
     }

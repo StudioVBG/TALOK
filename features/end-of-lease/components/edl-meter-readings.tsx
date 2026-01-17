@@ -218,10 +218,10 @@ export function EDLMeterReadings({
         setSelectedMeter(null);
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -271,10 +271,10 @@ export function EDLMeterReadings({
       setManualValue("");
       setPreviewImage(null);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -323,10 +323,10 @@ export function EDLMeterReadings({
       setEditingReading(null);
       setManualValue("");
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -358,10 +358,10 @@ export function EDLMeterReadings({
         title: "Relevé supprimé",
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     }

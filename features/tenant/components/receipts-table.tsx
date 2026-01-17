@@ -40,10 +40,10 @@ export function ReceiptsTable({ leaseId, month }: ReceiptsTableProps) {
       setLoading(true);
       const data = await paymentSharesService.getReceipts(leaseId, month);
       setReceipts(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Erreur lors du chargement des quittances",
+        description: error instanceof Error ? error.message : "Erreur lors du chargement des quittances",
         variant: "destructive",
       });
       console.error(error);
@@ -92,11 +92,11 @@ export function ReceiptsTable({ leaseId, month }: ReceiptsTableProps) {
         title: "Téléchargement réussi",
         description: "Votre quittance a été téléchargée",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur téléchargement:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Erreur lors du téléchargement",
+        description: error instanceof Error ? error.message : "Erreur lors du téléchargement",
         variant: "destructive",
       });
     } finally {
