@@ -88,10 +88,10 @@ export async function POST(
       success: true,
       message: "Devis refusé"
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/quotes/[id]/reject] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

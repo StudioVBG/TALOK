@@ -57,10 +57,11 @@ export function ChargeForm({ charge, propertyId, onSuccess, onCancel }: ChargeFo
       } else {
         router.push("/charges");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

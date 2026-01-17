@@ -49,7 +49,7 @@ export async function GET(
         "Content-Disposition": `attachment; filename="gl-logement-${propertyData.id}.pdf"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET /api/properties/share/[token]/pdf error", error);
     return NextResponse.json(
       { error: error?.message ?? "Impossible de générer le PDF." },

@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     return apiSuccess({ invitations });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /invitations] Error:", error);
     return apiError("Erreur serveur", 500);
   }
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
       201
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /invitations] Error:", error);
     return apiError("Erreur serveur", 500);
   }

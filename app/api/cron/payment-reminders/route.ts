@@ -190,10 +190,10 @@ export async function GET(request: Request) {
       stats,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[CRON] Erreur payment-reminders:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -101,7 +101,7 @@ export function useMutationWithToast<TData, TVariables, TContext = unknown>({
       
       toast({
         title: "Erreur",
-        description: message || error.message || "Une erreur est survenue",
+        description: message || error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
 

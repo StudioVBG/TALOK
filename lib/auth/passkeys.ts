@@ -53,7 +53,7 @@ export async function registerPasskey(
   try {
     const response = await startRegistration({ optionsJSON: options });
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "InvalidStateError") {
       throw new Error("Cette passkey est déjà enregistrée sur cet appareil.");
     }
@@ -77,7 +77,7 @@ export async function authenticateWithPasskey(
       useBrowserAutofill: useAutofill,
     });
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "NotAllowedError") {
       throw new Error("L'authentification avec passkey a été annulée.");
     }

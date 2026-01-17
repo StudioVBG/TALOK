@@ -55,9 +55,9 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ occupants: roommates });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -209,10 +209,10 @@ export async function POST(request: Request) {
       occupant: newOccupant,
       message: "Occupant ajouté avec succès",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API occupants POST:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -277,9 +277,9 @@ export async function DELETE(
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

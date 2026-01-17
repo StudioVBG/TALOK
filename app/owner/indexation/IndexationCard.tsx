@@ -61,10 +61,10 @@ export function IndexationCard({ indexation, showActions = false }: IndexationCa
       });
 
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -90,10 +90,10 @@ export function IndexationCard({ indexation, showActions = false }: IndexationCa
       });
 
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {

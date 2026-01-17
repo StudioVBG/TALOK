@@ -263,10 +263,10 @@ export async function POST(
       sealed_at: new Date().toISOString(),
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Seal] Erreur:", error);
     return NextResponse.json({ 
-      error: error.message || "Erreur serveur" 
+      error: error instanceof Error ? error.message : "Erreur serveur" 
     }, { status: 500 });
   }
 }
@@ -311,8 +311,8 @@ export async function GET(
       is_editable: !isSealed && ["draft", "sent", "pending_signature"].includes(lease.statut || ""),
     });
     
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

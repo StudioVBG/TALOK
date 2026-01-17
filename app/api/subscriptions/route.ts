@@ -61,9 +61,9 @@ export async function GET(request: Request) {
       subscription,
       addon_subscriptions: addonSubscriptions
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/subscriptions]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -163,9 +163,9 @@ export async function POST(request: Request) {
       message: "Abonnement créé"
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/subscriptions]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

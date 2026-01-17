@@ -185,11 +185,11 @@ async function sendViaTwilio(options: SMSOptions): Promise<SMSResult> {
       success: true,
       messageId: message.sid,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[SMS] ❌ Erreur Twilio:", error.message);
     return {
       success: false,
-      error: error.message || "Erreur d'envoi SMS",
+      error: error instanceof Error ? error.message : "Erreur d'envoi SMS",
     };
   }
 }

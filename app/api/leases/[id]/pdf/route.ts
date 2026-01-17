@@ -362,10 +362,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur génération PDF bail:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

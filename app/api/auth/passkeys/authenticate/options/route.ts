@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       ...options,
       challengeId, // Renvoyer l'ID pour la vérification
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Passkeys] Erreur génération options auth:", error);
     return NextResponse.json(
       { error: "Erreur lors de la génération des options" },

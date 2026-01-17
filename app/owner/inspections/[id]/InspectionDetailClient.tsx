@@ -277,7 +277,7 @@ export function InspectionDetailClient({ data }: Props) {
         title: "Succès",
         description: "Le PDF a été généré et téléchargé.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur téléchargement PDF:", error);
       toast({
         title: "Erreur",
@@ -312,10 +312,10 @@ export function InspectionDetailClient({ data }: Props) {
 
       setIsSignModalOpen(false);
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -346,10 +346,10 @@ export function InspectionDetailClient({ data }: Props) {
       });
       
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {

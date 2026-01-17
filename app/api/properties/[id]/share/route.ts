@@ -109,7 +109,7 @@ export async function POST(
         pdfUrl: `${baseUrl}/api/properties/share/${token}/pdf`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST /api/properties/[id]/share error", error);
     return NextResponse.json(
       { error: error?.message ?? "Erreur serveur durant la génération du lien." },
@@ -144,7 +144,7 @@ export async function GET(
     }));
 
     return NextResponse.json({ shares: normalized });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET /api/properties/[id]/share error", error);
     return NextResponse.json(
       { error: error?.message ?? "Erreur lors du chargement de l'historique." },

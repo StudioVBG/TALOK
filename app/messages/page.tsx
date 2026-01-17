@@ -35,12 +35,8 @@ import {
   Filter,
   RefreshCw,
   Send,
-  Paperclip,
   MoreVertical,
-  Plus,
   ArrowLeft,
-  Check,
-  CheckCheck,
 } from "lucide-react";
 import {
   unifiedChatService,

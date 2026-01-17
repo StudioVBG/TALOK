@@ -21,10 +21,10 @@ function EditBlogPostPageContent() {
       setLoading(true);
       const data = await blogService.getPostById(id);
       setPost(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger l'article.",
+        description: error instanceof Error ? error.message : "Impossible de charger l'article.",
         variant: "destructive",
       });
       router.push("/admin/blog");

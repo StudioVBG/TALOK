@@ -150,7 +150,7 @@ export function useOnboarding(
         analyticsId,
         error: null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur chargement état onboarding:", error);
       setState((prev) => ({
         ...prev,

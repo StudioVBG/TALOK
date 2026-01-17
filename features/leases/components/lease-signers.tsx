@@ -29,10 +29,10 @@ export function LeaseSigners({ leaseId, onUpdate }: LeaseSignersProps) {
       setLoading(true);
       const data = await leasesService.getLeaseSigners(leaseId);
       setSigners(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les signataires.",
+        description: error instanceof Error ? error.message : "Impossible de charger les signataires.",
         variant: "destructive",
       });
     } finally {
@@ -49,10 +49,10 @@ export function LeaseSigners({ leaseId, onUpdate }: LeaseSignersProps) {
       });
       fetchSigners();
       onUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de signer le bail.",
+        description: error instanceof Error ? error.message : "Impossible de signer le bail.",
         variant: "destructive",
       });
     }
@@ -69,10 +69,10 @@ export function LeaseSigners({ leaseId, onUpdate }: LeaseSignersProps) {
       });
       fetchSigners();
       onUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de refuser le bail.",
+        description: error instanceof Error ? error.message : "Impossible de refuser le bail.",
         variant: "destructive",
       });
     }

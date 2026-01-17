@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Erreur récupération processus:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     return NextResponse.json({ processes: processes || [] });

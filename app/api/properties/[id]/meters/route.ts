@@ -106,10 +106,10 @@ export async function GET(
     );
 
     return NextResponse.json({ meters: metersWithLastReading });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/properties/[id]/meters] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -267,10 +267,10 @@ export async function POST(
     } as any);
 
     return NextResponse.json({ meter: meterData });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/properties/[id]/meters] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

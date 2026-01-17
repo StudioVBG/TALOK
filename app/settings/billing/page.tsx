@@ -139,8 +139,8 @@ export default function BillingPage() {
         setAddonSubscriptions(subData.addon_subscriptions || []);
       }
       setPlans(plansData.plans || []);
-    } catch (error: any) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -167,8 +167,8 @@ export default function BillingPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         window.location.href = data.url;
-      } catch (error: any) {
-        toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      } catch (error: unknown) {
+        toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
       } finally {
         setActionLoading(null);
       }
@@ -181,8 +181,8 @@ export default function BillingPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       window.location.href = data.url;
-    } catch (error: any) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
     } finally {
       setActionLoading(null);
     }
@@ -197,8 +197,8 @@ export default function BillingPage() {
       toast({ title: "✅ Conditions acceptées" });
       await fetchData();
       setPriceChangeDialog({ open: false });
-    } catch (error: any) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
     } finally {
       setActionLoading(null);
     }

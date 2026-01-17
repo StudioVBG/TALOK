@@ -88,10 +88,10 @@ export default function GuarantorContextPage() {
         title: "Fichier uploadé",
         description: "Votre pièce d'identité a été uploadée avec succès.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Erreur lors de l'upload du fichier.",
+        description: error instanceof Error ? error.message : "Erreur lors de l'upload du fichier.",
         variant: "destructive",
       });
     }
@@ -142,10 +142,10 @@ export default function GuarantorContextPage() {
 
       // Rediriger vers la capacité financière
       router.push("/guarantor/onboarding/financial");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

@@ -170,9 +170,9 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
           console.error("[Preview] ❌ Erreur:", data.error);
           setPreviewError(data.error || "Erreur lors du chargement de l'aperçu");
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("[Preview] ❌ Erreur:", error);
-        setPreviewError(error.message || "Erreur de connexion");
+        setPreviewError(error instanceof Error ? error.message : "Erreur de connexion");
       } finally {
         setPreviewLoading(false);
       }
@@ -208,9 +208,9 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
       } else {
         setPreviewError(data.error || "Erreur lors du chargement");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur rafraîchissement aperçu:", error);
-      setPreviewError(error.message || "Erreur de connexion");
+      setPreviewError(error instanceof Error ? error.message : "Erreur de connexion");
     } finally {
       setPreviewLoading(false);
     }
@@ -331,10 +331,10 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
         title: method === "sms" ? "📱 Code envoyé" : "📧 Code envoyé",
         description: data.message,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'envoyer le code",
+        description: error instanceof Error ? error.message : "Impossible d'envoyer le code",
         variant: "destructive",
       });
     } finally {
@@ -374,10 +374,10 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
       
       // Rediriger vers la page de succès
       window.location.href = `/signature/success?lease_id=${lease.id}`;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de signer le bail",
+        description: error instanceof Error ? error.message : "Impossible de signer le bail",
         variant: "destructive",
       });
     } finally {
@@ -419,10 +419,10 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
       
       // Rediriger vers la page de succès
       window.location.href = `/signature/success?lease_id=${lease.id}&proof=${result.proof_id}`;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de signer le bail",
+        description: error instanceof Error ? error.message : "Impossible de signer le bail",
         variant: "destructive",
       });
     } finally {

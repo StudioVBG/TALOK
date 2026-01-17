@@ -73,7 +73,7 @@ async function testAgents() {
       const { getMultiAgentGraph } = await import("../features/assistant/ai/multi-agent-graph");
       const graph = await getMultiAgentGraph();
       console.log("   ✅ Graph multi-agent compilé avec succès\n");
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.message?.includes("DATABASE_URL")) {
         console.log("   ⚠️ Graph multi-agent nécessite DATABASE_URL (utilisera MemorySaver en fallback)\n");
       } else {
@@ -89,7 +89,7 @@ async function testAgents() {
       );
       const graph = await getPropertyAssistantGraph();
       console.log("   ✅ Graph simple compilé avec succès\n");
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.message?.includes("DATABASE_URL")) {
         console.log("   ⚠️ Graph simple nécessite DATABASE_URL (utilisera MemorySaver en fallback)\n");
       } else {
@@ -106,7 +106,7 @@ async function testAgents() {
     console.log("   3. Testez l'assistant avec : assistantService.sendMessage()");
     console.log("   4. Testez le multi-agent avec : assistantService.sendMessageMultiAgent()\n");
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("\n❌ Erreur lors des tests:", error.message);
     console.error("\nStack trace:", error.stack);
     process.exit(1);

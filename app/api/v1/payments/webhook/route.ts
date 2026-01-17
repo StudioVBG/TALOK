@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     }
 
     return apiSuccess({ received: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[webhook] Error:", error);
     return apiError("Webhook processing error", 500);
   }

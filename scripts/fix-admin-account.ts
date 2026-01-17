@@ -204,7 +204,7 @@ async function main() {
     console.log(`\n🔗 URL: https://talok.fr/auth/signin`);
     console.log("");
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("\n❌ Erreur fatale:", error.message);
   }
 }

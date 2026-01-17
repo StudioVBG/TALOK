@@ -14,7 +14,7 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message, details: (error as any).details },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
         { status: error.status || 401 }
       );
     }
@@ -198,10 +198,10 @@ export async function PATCH(
     }
 
     return NextResponse.json({ document: updatedDocument });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in PATCH /api/documents/[id]/reorder:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: error.status || 500 }
     );
   }

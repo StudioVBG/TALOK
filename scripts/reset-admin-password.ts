@@ -62,7 +62,7 @@ async function resetAdminPassword() {
     console.log(`   Mot de passe: ${newPassword}`);
     console.log("\n🔗 URL de connexion: http://localhost:3000/auth/signin");
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Erreur:", error.message);
   }
 }

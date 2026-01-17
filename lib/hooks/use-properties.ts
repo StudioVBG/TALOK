@@ -51,7 +51,7 @@ export function useProperties() {
         
         console.warn("[useProperties] Unexpected response format:", response);
         return [];
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("[useProperties] Error fetching properties:", error);
         console.error("[useProperties] Error details:", {
           message: error?.message,
@@ -120,7 +120,7 @@ export function usePropertiesInfinite() {
           data: properties,
           nextPage: hasMore ? (pageParam as number) + ITEMS_PER_PAGE : null,
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("[usePropertiesInfinite] Error fetching properties:", error);
         throw error;
       }

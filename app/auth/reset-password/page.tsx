@@ -71,10 +71,10 @@ export default function ResetPasswordPage() {
         description: "Vous pouvez maintenant vous connecter.",
       });
       router.push("/auth/signin");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Impossible de mettre à jour le mot de passe",
-        description: error.message || "Lien expiré ou invalide.",
+        description: error instanceof Error ? error.message : "Lien expiré ou invalide.",
         variant: "destructive",
       });
     } finally {

@@ -141,7 +141,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })),
       // TODO: Add signing URLs from eIDAS provider
     }, 201);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /signature-sessions] Error:", error);
     return apiError("Erreur serveur", 500);
   }

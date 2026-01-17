@@ -103,18 +103,18 @@ export function ProcessTestsContent() {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setResults((prev) => ({
         ...prev,
         [scenario.id]: {
           success: false,
-          error: error.message || "Erreur inconnue",
+          error: error instanceof Error ? error.message : "Erreur inconnue",
           logs: [],
         },
       }));
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de l'exécution du test.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'exécution du test.",
         variant: "destructive",
       });
     } finally {

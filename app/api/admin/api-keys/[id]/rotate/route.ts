@@ -136,10 +136,10 @@ export async function POST(
       api_key: newApiKey, // Afficher une seule fois
       warning: "Cette clé ne sera plus affichée. Veuillez la sauvegarder.",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur rotation clé:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

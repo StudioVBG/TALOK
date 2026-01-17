@@ -36,7 +36,7 @@ export function useInvoices(leaseId?: string | null) {
         
         // Par défaut, récupérer toutes les factures (admin)
         return await invoicesService.getInvoices();
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Gérer les erreurs silencieusement pour éviter les erreurs 500 dans la console
         console.error("[useInvoices] Error fetching invoices:", error);
         return [];

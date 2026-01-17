@@ -262,7 +262,7 @@ async function main() {
         monthlyPriceId: monthlyPrice?.id || null,
         yearlyPriceId: yearlyPrice?.id || null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`❌ Erreur pour ${plan.slug}: ${error.message}`);
     }
   }

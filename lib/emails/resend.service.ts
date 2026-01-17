@@ -82,7 +82,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
       success: true,
       id: data?.id,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Email] Erreur:', error);
     return {
       success: false,

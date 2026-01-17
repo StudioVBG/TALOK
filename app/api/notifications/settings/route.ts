@@ -26,9 +26,9 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ settings: settings || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -78,9 +78,9 @@ export async function PATCH(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ setting });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

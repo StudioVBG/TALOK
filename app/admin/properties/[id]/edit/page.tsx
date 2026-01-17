@@ -125,10 +125,10 @@ export default function AdminPropertyEditPage() {
         const error = await response.json();
         throw new Error(error.error || "Erreur lors de la mise à jour");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {

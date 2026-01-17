@@ -384,7 +384,7 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
       
       return extractedData;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Gestion des erreurs avec message explicite
       const errorMsg = error?.message || String(error) || "Erreur inconnue";
       console.error("[OCR Client] Erreur:", errorMsg);

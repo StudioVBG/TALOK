@@ -86,10 +86,10 @@ export async function POST(
         unit: "kwh" // Par défaut, l'UI ajustera
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("OCR API Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur lors de l'analyse OCR" },
+      { error: error instanceof Error ? error.message : "Erreur lors de l'analyse OCR" },
       { status: 500 }
     );
   }

@@ -171,10 +171,10 @@ export async function POST(
         : `Rappel créé. Lien d'invitation: ${inviteUrl}`,
       invite_url: inviteUrl,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[resend] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

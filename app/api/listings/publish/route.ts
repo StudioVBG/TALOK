@@ -175,7 +175,7 @@ export async function POST(request: Request) {
       listing_id: updatedUnit?.id,
       unit: updatedUnit,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
@@ -191,7 +191,7 @@ export async function POST(request: Request) {
 
     console.error("[POST /api/listings/publish] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -39,10 +39,10 @@ export async function POST(request: Request) {
       revalidated: { path, tag },
       timestamp: Date.now(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[revalidate] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur lors de la revalidation" },
+      { error: error instanceof Error ? error.message : "Erreur lors de la revalidation" },
       { status: 500 }
     );
   }

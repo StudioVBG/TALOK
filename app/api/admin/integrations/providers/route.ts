@@ -85,10 +85,10 @@ export async function GET() {
       byCategory,
       categories: Object.keys(byCategory).sort(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur GET providers:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -188,10 +188,10 @@ export async function POST(request: Request) {
       },
       message: `${provider.name} configuré avec succès`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur POST provider:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -253,10 +253,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ html });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[EDL Preview] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur lors de la génération de l'aperçu" },
+      { error: error instanceof Error ? error.message : "Erreur lors de la génération de l'aperçu" },
       { status: 500 }
     );
   }

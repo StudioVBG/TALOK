@@ -139,10 +139,10 @@ export async function POST(
       workOrder: updated,
       message: "Intervention refusée",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[reject] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

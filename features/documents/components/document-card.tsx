@@ -32,10 +32,10 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
         description: "Le document a été supprimé avec succès.",
       });
       onDelete?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la suppression.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression.",
         variant: "destructive",
       });
     } finally {
@@ -48,10 +48,10 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
     try {
       const url = await documentsService.getSignedUrl(document);
       window.open(url, "_blank");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de télécharger le document.",
+        description: error instanceof Error ? error.message : "Impossible de télécharger le document.",
         variant: "destructive",
       });
     } finally {

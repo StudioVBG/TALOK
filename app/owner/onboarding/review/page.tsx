@@ -67,11 +67,11 @@ export default function OwnerReviewPage() {
 
       const docs = await documentsService.getDocumentsByProperty(propertyId, "property_media");
       setDocuments(docs);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger la revue finale.",
+        description: error instanceof Error ? error.message : "Impossible de charger la revue finale.",
         variant: "destructive",
       });
       router.push("/owner/dashboard");
@@ -187,10 +187,10 @@ export default function OwnerReviewPage() {
         description: "Votre logement est désormais en attente de validation.",
       });
       router.push("/owner/dashboard");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Soumission impossible",
-        description: error.message || "Vérifiez que toutes les informations sont complètes.",
+        description: error instanceof Error ? error.message : "Vérifiez que toutes les informations sont complètes.",
         variant: "destructive",
       });
     } finally {

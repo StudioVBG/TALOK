@@ -65,10 +65,10 @@ export function TicketsList({ propertyId }: TicketsListProps) {
       }
 
       setTickets(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les tickets.",
+        description: error instanceof Error ? error.message : "Impossible de charger les tickets.",
         variant: "destructive",
       });
     } finally {

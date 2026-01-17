@@ -144,7 +144,7 @@ export async function PUT(request: Request) {
       message: "Profil mis à jour avec succès",
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[TenantProfile] Erreur:", error);
 
     if (error instanceof z.ZodError) {
@@ -155,7 +155,7 @@ export async function PUT(request: Request) {
     }
 
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -228,10 +228,10 @@ export async function GET(request: Request) {
       tenantProfile,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[TenantProfile GET] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

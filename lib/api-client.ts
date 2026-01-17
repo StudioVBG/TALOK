@@ -99,7 +99,7 @@ export class ApiClient {
         console.log(`[api-client] ${options.method || 'GET'} ${url} - ${response.status}`);
       }
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }

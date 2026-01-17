@@ -205,7 +205,7 @@ export async function processRentReminders(
       reminders,
       errors,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     errors.push(`Erreur globale: ${error.message}`);
     return { processed: 0, reminders, errors };
   }

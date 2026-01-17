@@ -168,10 +168,10 @@ export async function POST(request: NextRequest) {
       message: `Session d'impersonation active pour ${(targetProfile as any).prenom} ${(targetProfile as any).nom}`,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[admin/impersonate] Erreur POST:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -220,10 +220,10 @@ export async function GET() {
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[admin/impersonate] Erreur GET:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -281,10 +281,10 @@ export async function DELETE() {
       message: "Session d'impersonation terminée",
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[admin/impersonate] Erreur DELETE:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

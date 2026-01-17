@@ -149,7 +149,7 @@ async function sendViaResend(options: EmailOptions): Promise<EmailResult> {
     if (!response.ok) {
       const error = await response.json();
       console.error("[Email] ❌ Erreur Resend:", error);
-      return { success: false, error: error.message || "Erreur Resend" };
+      return { success: false, error: error instanceof Error ? error.message : "Erreur Resend" };
     }
 
     const data = await response.json();

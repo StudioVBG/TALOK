@@ -17,9 +17,9 @@ export async function POST(
     const draft = await messagingAiService.suggestTicketReply(params.id, user.id);
     
     return NextResponse.json({ draft });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[API] Draft generation failed:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

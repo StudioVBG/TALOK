@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         total_pages: Math.ceil((count || 0) / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /properties] Error:", error);
     return apiError("Erreur serveur", 500);
   }
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     }
 
     return apiSuccess(response, 201);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /properties] Error:", error);
     return apiError("Erreur serveur", 500);
   }

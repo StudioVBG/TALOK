@@ -62,10 +62,10 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ patterns });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET /api/visit-scheduling/availability error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -158,7 +158,7 @@ export async function POST(request: Request) {
     } as any);
 
     return NextResponse.json({ pattern }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST /api/visit-scheduling/availability error:", error);
     if (error.name === "ZodError") {
       return NextResponse.json(
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

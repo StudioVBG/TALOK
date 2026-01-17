@@ -110,10 +110,10 @@ export function DpeUploadForm({ propertyId, requestId }: DpeUploadFormProps) {
         title: "DPE importé !",
         description: "Le diagnostic a été enregistré et validé avec succès.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de l'import.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'import.",
         variant: "destructive",
       });
     } finally {

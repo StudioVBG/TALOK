@@ -119,10 +119,10 @@ export default function FirstPropertyPage() {
 
       // Rediriger vers la revue finale
       router.push("/owner/onboarding/review");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

@@ -145,7 +145,7 @@ export async function POST(
       features: insertedFeatures,
       count: insertedFeatures?.length || 0,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
@@ -158,7 +158,7 @@ export async function POST(
 
     console.error("[POST /api/properties/[id]/features/bulk] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

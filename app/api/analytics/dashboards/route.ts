@@ -59,9 +59,9 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ dashboards: dashboards || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -145,9 +145,9 @@ export async function POST(request: Request) {
     } as any);
 
     return NextResponse.json({ dashboard });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

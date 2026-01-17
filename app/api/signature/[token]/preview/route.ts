@@ -329,10 +329,10 @@ export async function GET(request: Request, { params }: PageProps) {
       leaseId: lease.id,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Preview] Erreur API:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -468,10 +468,10 @@ export async function POST(request: Request, { params }: PageProps) {
       leaseId: lease.id,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Preview POST] Erreur API:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

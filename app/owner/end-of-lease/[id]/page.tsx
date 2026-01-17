@@ -89,7 +89,7 @@ export default function EndOfLeasePage() {
           const calc = await endOfLeaseService.calculateSettlement(leaseId);
           setCalculation(calc);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Erreur chargement:", error);
       } finally {
         setLoading(false);
@@ -108,11 +108,11 @@ export default function EndOfLeasePage() {
         title: "Solde généré",
         description: "Le solde de tout compte a été créé.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: error.message || "Impossible de générer le solde",
+        description: error instanceof Error ? error.message : "Impossible de générer le solde",
       });
     } finally {
       setGenerating(false);
@@ -128,11 +128,11 @@ export default function EndOfLeasePage() {
         title: "Envoyé",
         description: "Le solde a été envoyé au locataire pour validation.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
       });
     }
   };

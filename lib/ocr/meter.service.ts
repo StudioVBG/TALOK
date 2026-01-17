@@ -157,7 +157,7 @@ class MeterOCRService {
         needsValidation,
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[MeterOCR] Erreur:', error.message);
       return {
         value: null,

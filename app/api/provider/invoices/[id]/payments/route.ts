@@ -78,13 +78,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (error) {
       console.error('Error fetching payments:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     return NextResponse.json({ payments });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in GET /api/provider/invoices/[id]/payments:', error);
-    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -200,9 +200,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       invoice_status: updatedInvoice?.status,
       message: updatedInvoice?.status === 'paid' ? 'Facture entièrement payée' : 'Paiement enregistré',
     }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in POST /api/provider/invoices/[id]/payments:', error);
-    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
   }
 }
 

@@ -271,10 +271,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       new_status: actionConfig.to,
       message: `Action "${action}" effectuée avec succès`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in POST /api/work-orders/[id]/flow:', error);
     return NextResponse.json(
-      { error: error.message || 'Erreur serveur' },
+      { error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' },
       { status: 500 }
     );
   }
@@ -394,10 +394,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       payments: payments || [],
       user_role: isProvider ? 'provider' : isOwner ? 'owner' : 'other',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in GET /api/work-orders/[id]/flow:', error);
     return NextResponse.json(
-      { error: error.message || 'Erreur serveur' },
+      { error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' },
       { status: 500 }
     );
   }

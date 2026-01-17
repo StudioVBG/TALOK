@@ -127,7 +127,7 @@ export async function analyzeImageQuality(
       issues,
       suggestions: [...new Set(suggestions)], // Dédupliquer
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ImageQuality] Erreur analyse:", error);
     return {
       isValid: true, // On laisse passer si l'analyse échoue

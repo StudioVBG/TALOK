@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
       twilio_sid: twilioResponse.sid,
       status: twilioResponse.status,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Données invalides", details: error.errors },
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("Erreur envoi SMS:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -262,7 +262,7 @@ async function sendTwilioSms(
       sid: data.sid,
       status: data.status,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       errorMessage: error.message,

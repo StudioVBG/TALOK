@@ -317,11 +317,11 @@ export const usePropertyWizardStore = create<WizardState>()(
       });
 
       console.log(`[WizardStore] Draft créé avec succès: ${newPropertyId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[WizardStore] Erreur création draft:', error);
       set({
         syncStatus: 'error',
-        lastError: error.message || "Erreur lors de la création du brouillon",
+        lastError: error instanceof Error ? error.message : "Erreur lors de la création du brouillon",
         isInitializing: false
       });
     }
@@ -342,7 +342,7 @@ export const usePropertyWizardStore = create<WizardState>()(
         photos,
         syncStatus: 'saved'
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[WizardStore] Erreur chargement:', error);
       set({ syncStatus: 'error', lastError: "Impossible de charger le bien" });
     }
@@ -554,7 +554,7 @@ export const usePropertyWizardStore = create<WizardState>()(
         photoImportProgress: { imported: result.imported, total: result.total }
       });
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[WizardStore] Erreur import photos:', error);
       set({ 
         photoImportStatus: 'error',

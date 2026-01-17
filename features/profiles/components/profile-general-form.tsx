@@ -99,10 +99,10 @@ export function ProfileGeneralForm() {
         date_naissance: updatedProfile.date_naissance ?? "",
         lieu_naissance: (updatedProfile as any).lieu_naissance ?? "", // ✅ SOTA 2026
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de mettre à jour votre profil.",
+        description: error instanceof Error ? error.message : "Impossible de mettre à jour votre profil.",
         variant: "destructive",
       });
     } finally {
@@ -154,10 +154,10 @@ export function ProfileGeneralForm() {
       await refreshProfile();
       // Forcer le rechargement des données serveur
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de mettre à jour l'avatar.",
+        description: error instanceof Error ? error.message : "Impossible de mettre à jour l'avatar.",
         variant: "destructive",
       });
     } finally {

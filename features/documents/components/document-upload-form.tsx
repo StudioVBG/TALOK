@@ -73,10 +73,10 @@ export function DocumentUploadForm({
         description: "Le document a été uploadé avec succès.",
       });
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de l'upload.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'upload.",
         variant: "destructive",
       });
     } finally {

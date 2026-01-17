@@ -109,7 +109,7 @@ export async function POST(
       success: true,
       status: newStatus,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/signatures/requests/[id]/validate] Error:", error);
     
     if (error.name === "ZodError") {
@@ -119,7 +119,7 @@ export async function POST(
       );
     }
     
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

@@ -29,10 +29,10 @@ export function LeaseCard({ lease, onDelete }: LeaseCardProps) {
         description: "Le bail a été supprimé avec succès.",
       });
       onDelete?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la suppression.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression.",
         variant: "destructive",
       });
     } finally {

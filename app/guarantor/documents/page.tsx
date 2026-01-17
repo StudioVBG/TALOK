@@ -58,7 +58,7 @@ export default function GuarantorDocumentsPage() {
     try {
       const docs = await guarantorProfilesService.getDocuments();
       setDocuments(docs);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erreur",
@@ -107,11 +107,11 @@ export default function GuarantorDocumentsPage() {
       });
       setSelectedType("");
       await loadDocuments();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erreur d'upload",
-        description: error.message || "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
       });
     } finally {
       setUploading(false);
@@ -130,7 +130,7 @@ export default function GuarantorDocumentsPage() {
         description: "Le document a été supprimé.",
       });
       await loadDocuments();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erreur",

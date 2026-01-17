@@ -138,7 +138,7 @@ export function useApiMutation<TData, TVariables>({
       // Toast d'erreur
       toast({
         title: "Erreur",
-        description: errorMessage || error.message || "Une erreur est survenue",
+        description: errorMessage || error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
 

@@ -34,7 +34,7 @@ export async function GET(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
         { status: error.status }
       );
     }
@@ -251,10 +251,10 @@ export async function GET(
     };
 
     return NextResponse.json(metrics);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/admin/people/owners/[id]/financials]", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -162,7 +162,7 @@ async function createTenant(email: string, password: string) {
     console.log(`   Mot de passe: ${password}`);
     console.log(`   Rôle: tenant`);
     console.log(`\n💡 Vous pouvez maintenant vous connecter avec ces identifiants.`);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Erreur inattendue:", error);
   }
 }

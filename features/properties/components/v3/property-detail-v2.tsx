@@ -127,10 +127,10 @@ export function PropertyDetailV2({ propertyId }: PropertyDetailV2Props) {
       setLoading(true);
       const data = await propertiesService.getPropertyById(propertyId);
       setProperty(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger le logement.",
+        description: error instanceof Error ? error.message : "Impossible de charger le logement.",
         variant: "destructive",
       });
       router.push("/properties");
@@ -147,7 +147,7 @@ export function PropertyDetailV2({ propertyId }: PropertyDetailV2Props) {
         title: "Succès",
         description: "Les modifications ont été enregistrées.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Propager l'erreur pour que les composants enfants puissent la gérer
       // (notamment pour active_lease_blocking dans PropertyAnnouncementTab)
       throw error;

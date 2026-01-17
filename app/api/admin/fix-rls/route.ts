@@ -28,16 +28,16 @@ export async function POST() {
     if (error) {
       console.error("Erreur RPC apply_admin_rls_fixes:", error);
       return NextResponse.json(
-        { error: error.message || "Erreur lors de l'application des corrections" },
+        { error: error instanceof Error ? error.message : "Erreur lors de l'application des corrections" },
         { status: 500 }
       );
     }
 
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur fix-rls:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

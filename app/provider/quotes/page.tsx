@@ -130,11 +130,11 @@ export default function ProviderQuotesPage() {
         rejected: 0,
         total_accepted_amount: 0,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur chargement devis:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les devis",
+        description: error instanceof Error ? error.message : "Impossible de charger les devis",
         variant: "destructive",
       });
     } finally {

@@ -65,10 +65,11 @@ export function InvoicesList({ leaseId }: InvoicesListProps) {
       }
 
       setInvoices(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Impossible de charger les factures";
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les factures.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

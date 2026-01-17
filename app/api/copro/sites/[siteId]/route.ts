@@ -86,9 +86,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     };
     
     return NextResponse.json({ ...site, stats });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur GET /api/copro/sites/[siteId]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -126,9 +126,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (error) throw error;
     
     return NextResponse.json(site);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur PUT /api/copro/sites/[siteId]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -156,9 +156,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (error) throw error;
     
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur DELETE /api/copro/sites/[siteId]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

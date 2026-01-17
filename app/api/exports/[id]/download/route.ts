@@ -25,9 +25,9 @@ export async function GET(
 
     // Rediriger vers l'URL signée
     return NextResponse.redirect(signedUrl);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Download error:", error);
-    return NextResponse.json({ error: error.message }, { status: 403 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 403 });
   }
 }
 

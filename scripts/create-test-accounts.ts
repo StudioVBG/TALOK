@@ -213,7 +213,7 @@ async function createAccount(account: TestAccount): Promise<boolean> {
 
     console.log(`  ✅ ${email} créé avec succès`);
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`  ❌ Exception ${email}:`, error.message);
     return false;
   }

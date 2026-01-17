@@ -177,10 +177,10 @@ export async function GET() {
       hasData: true,
       lastUpdate,
     } as ConsumptionResponse);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Consumption API] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

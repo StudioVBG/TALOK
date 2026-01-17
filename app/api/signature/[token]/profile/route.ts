@@ -330,7 +330,7 @@ export async function POST(request: Request, { params }: PageProps) {
             throw profileError;
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("[Signature] Erreur création profil:", error?.message || error);
         return NextResponse.json(
           { error: "Erreur lors de la création du profil" },
@@ -506,7 +506,7 @@ export async function POST(request: Request, { params }: PageProps) {
       tenant_profile_id: tenantProfileId,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API profile:", error);
     
     if (error instanceof z.ZodError) {
@@ -517,7 +517,7 @@ export async function POST(request: Request, { params }: PageProps) {
     }
 
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

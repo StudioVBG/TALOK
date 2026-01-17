@@ -93,7 +93,7 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
 
       setOpen(false);
       resetForm();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur upload:", error);
       toast({
         title: "Erreur",

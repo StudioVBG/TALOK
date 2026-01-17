@@ -59,7 +59,7 @@ async function executeSql(sql: string, name: string): Promise<boolean> {
       console.error(`  ❌ Erreur HTTP ${response.status}:`, errorText.substring(0, 200));
       return false;
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`  ❌ Exception:`, error.message);
     return false;
   }

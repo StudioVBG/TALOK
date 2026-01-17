@@ -12,7 +12,7 @@ import { onboardingService } from "@/features/onboarding/services/onboarding.ser
 import { invitationsService } from "@/features/onboarding/services/invitations.service";
 import { propertyCodesService } from "@/features/onboarding/services/property-codes.service";
 import { tenantContextSchema } from "@/lib/validations/onboarding";
-import { Home, Key, ArrowRight, Mail } from "lucide-react";
+import { Home, Key, ArrowRight } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -87,10 +87,10 @@ export default function TenantContextPage() {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {
@@ -127,10 +127,10 @@ export default function TenantContextPage() {
 
       // Rediriger vers le dossier locataire
       router.push("/tenant/onboarding/file");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

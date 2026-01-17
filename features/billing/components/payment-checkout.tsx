@@ -119,7 +119,7 @@ function CheckoutForm({ invoiceId, amount, description, showFees = true, feePerc
         setPaymentStatus("error");
         toast({
           title: "Erreur de paiement",
-          description: error.message,
+          description: error instanceof Error ? error.message : "Une erreur est survenue",
           variant: "destructive",
         });
       } else if (paymentIntent?.status === "succeeded") {

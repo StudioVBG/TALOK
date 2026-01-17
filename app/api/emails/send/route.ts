@@ -65,10 +65,10 @@ export async function POST(request: NextRequest) {
       message: "Email envoyé avec succès",
       id: result.id 
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[API Email] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur interne" },
+      { error: error instanceof Error ? error.message : "Erreur interne" },
       { status: 500 }
     );
   }

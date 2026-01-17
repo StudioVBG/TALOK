@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
       preferences = newPrefs;
     } else if (error) {
       console.error('Error fetching preferences:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     // Récupérer aussi les templates disponibles pour la config
@@ -88,9 +88,9 @@ export async function GET(request: NextRequest) {
       preferences,
       templates: templates || [],
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in GET /api/notifications/preferences:', error);
-    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -144,13 +144,13 @@ export async function PUT(request: NextRequest) {
 
     if (error) {
       console.error('Error updating preferences:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     return NextResponse.json({ preferences });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in PUT /api/notifications/preferences:', error);
-    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
   }
 }
 

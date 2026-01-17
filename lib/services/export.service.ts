@@ -146,7 +146,7 @@ export class ExportService {
       });
 
       return job.id;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // En cas d'échec, on marque le job en erreur
       await supabase
         .from("export_jobs")

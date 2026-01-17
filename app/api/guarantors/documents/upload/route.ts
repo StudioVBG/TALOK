@@ -130,10 +130,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(document, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API upload document garant:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

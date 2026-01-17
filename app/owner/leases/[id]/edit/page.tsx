@@ -186,10 +186,10 @@ export default function EditLeasePage() {
       });
 
       router.push(`/owner/leases/${leaseId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de sauvegarder les modifications.",
+        description: error instanceof Error ? error.message : "Impossible de sauvegarder les modifications.",
         variant: "destructive",
       });
     } finally {

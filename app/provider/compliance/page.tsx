@@ -164,10 +164,10 @@ export default function ProviderCompliancePage() {
       if (!response.ok) throw new Error("Erreur lors du chargement");
       const data = await response.json();
       setStatus(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -210,10 +210,10 @@ export default function ProviderCompliancePage() {
       setSelectedFile(null);
       setExpirationDate("");
       fetchStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -238,10 +238,10 @@ export default function ProviderCompliancePage() {
       });
 
       fetchStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     }

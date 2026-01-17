@@ -76,11 +76,11 @@ export async function POST(request: NextRequest) {
       language: result.language,
       duration: result.duration,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Transcribe] Error:", error);
 
     return NextResponse.json(
-      { error: error.message || "Erreur de transcription" },
+      { error: error instanceof Error ? error.message : "Erreur de transcription" },
       { status: 500 }
     );
   }

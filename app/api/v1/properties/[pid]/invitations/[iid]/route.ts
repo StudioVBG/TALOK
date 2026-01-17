@@ -94,7 +94,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
 
     return apiSuccess({ message: "Invitation révoquée (code brûlé à vie)" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[DELETE /invitations] Error:", error);
     return apiError("Erreur serveur", 500);
   }

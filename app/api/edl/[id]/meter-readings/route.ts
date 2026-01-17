@@ -124,10 +124,10 @@ export async function GET(
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[GET /api/edl/${edlId}/meter-readings] Fatal Error:`, error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -500,10 +500,10 @@ export async function POST(
       all_meters_recorded: false, // Simplifié pour le débug
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[POST /api/edl/${edlId}/meter-readings] Fatal Error:`, error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

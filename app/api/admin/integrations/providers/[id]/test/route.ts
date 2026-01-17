@@ -134,10 +134,10 @@ export async function POST(request: Request, { params }: RouteParams) {
     });
 
     return NextResponse.json(testResult);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur test provider:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -174,7 +174,7 @@ async function testResend(apiKey: string, adminEmail: string | undefined, config
       const error = await response.json();
       return {
         success: false,
-        message: error.message || "Erreur Resend",
+        message: error instanceof Error ? error.message : "Erreur Resend",
         details: error,
       };
     }
@@ -185,10 +185,10 @@ async function testResend(apiKey: string, adminEmail: string | undefined, config
       message: `Email de test envoyé à ${adminEmail}`,
       details: { messageId: result.id },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      message: error.message || "Erreur de connexion à Resend",
+      message: error instanceof Error ? error.message : "Erreur de connexion à Resend",
     };
   }
 }
@@ -219,10 +219,10 @@ async function testStripe(apiKey: string): Promise<{ success: boolean; message: 
         available: balance.available?.map((b: any) => `${b.amount / 100} ${b.currency.toUpperCase()}`),
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      message: error.message || "Erreur de connexion à Stripe",
+      message: error instanceof Error ? error.message : "Erreur de connexion à Stripe",
     };
   }
 }
@@ -260,10 +260,10 @@ async function testTwilio(apiKey: string, config: any): Promise<{ success: boole
         status: account.status,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      message: error.message || "Erreur de connexion à Twilio",
+      message: error instanceof Error ? error.message : "Erreur de connexion à Twilio",
     };
   }
 }
@@ -290,10 +290,10 @@ async function testYousign(apiKey: string): Promise<{ success: boolean; message:
       success: true,
       message: "Connexion Yousign OK",
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      message: error.message || "Erreur de connexion à Yousign",
+      message: error instanceof Error ? error.message : "Erreur de connexion à Yousign",
     };
   }
 }

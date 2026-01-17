@@ -83,7 +83,7 @@ export class AuthService {
 
       console.log("[AuthService] Connexion réussie pour:", normalizedEmail);
       return authData;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Logger toutes les erreurs pour le debug (sauf les 400 normales)
       if (error.status !== 400) {
         console.error("[AuthService] Erreur d'authentification:", {
@@ -259,7 +259,7 @@ export class AuthService {
 
       console.log("[AuthService] Profil récupéré:", profile?.role);
       return profile;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[AuthService] Erreur dans getProfile:", error);
       throw error;
     }
@@ -410,10 +410,10 @@ export async function signInWithPasskey(email?: string): Promise<{
       success: true,
       user: verifyData.user,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error: error.message || "Erreur d'authentification passkey",
+      error: error instanceof Error ? error.message : "Erreur d'authentification passkey",
     };
   }
 }

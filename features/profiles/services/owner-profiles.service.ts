@@ -22,7 +22,7 @@ export class OwnerProfilesService {
     try {
       const data = await apiClient.get<OwnerProfile | null>("/me/owner-profile");
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Ignorer les erreurs 404 (profil non trouvé)
       if (error.status === 404) {
         return null;
@@ -39,7 +39,7 @@ export class OwnerProfilesService {
     try {
       const data = await apiClient.get<OwnerProfile | null>("/me/owner-profile");
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Ignorer les erreurs 404 (profil non trouvé)
       if (error.status === 404) {
         return null;

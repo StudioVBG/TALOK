@@ -68,10 +68,10 @@ export default function RoleChoicePage() {
         params.set("code", options.propertyCode);
       }
       router.push(`/signup/account?${params.toString()}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {
@@ -103,10 +103,10 @@ export default function RoleChoicePage() {
       });
 
       await handleRoleChoice("tenant", { propertyCode: propertyCode.trim() });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Code introuvable",
-        description: error.message || "Nous n'avons pas trouvé ce code logement.",
+        description: error instanceof Error ? error.message : "Nous n'avons pas trouvé ce code logement.",
         variant: "destructive",
       });
     } finally {

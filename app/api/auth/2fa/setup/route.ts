@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       qrCodeUrl: totpSetup.qrCodeUrl,
       recoveryCodes: recoveryCodes.map((c) => c.code),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[2FA] Erreur setup:", error);
     return NextResponse.json(
       { error: "Erreur lors de la configuration 2FA" },

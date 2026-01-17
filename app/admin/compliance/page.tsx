@@ -125,7 +125,7 @@ export default function AdminCompliancePage() {
       //   const data = await expiringResponse.json();
       //   setExpiringDocs(data.documents || []);
       // }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
         description: "Impossible de charger les données",
@@ -198,10 +198,10 @@ export default function AdminCompliancePage() {
       setSelectedDoc(null);
       setPreviewUrl(null);
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {

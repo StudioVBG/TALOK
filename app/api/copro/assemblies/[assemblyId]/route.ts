@@ -123,9 +123,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
     
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur GET /api/copro/assemblies/[assemblyId]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -161,9 +161,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (error) throw error;
     
     return NextResponse.json(assembly);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur PUT /api/copro/assemblies/[assemblyId]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -232,9 +232,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (error) throw error;
     
     return NextResponse.json({ success: true, assembly });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur POST /api/copro/assemblies/[assemblyId]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -273,9 +273,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (error) throw error;
     
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur DELETE /api/copro/assemblies/[assemblyId]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

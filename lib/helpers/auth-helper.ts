@@ -121,11 +121,11 @@ export async function requireAdmin(request: Request) {
         supabase: null,
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("requireAdmin: Unexpected error:", error);
     console.error("requireAdmin: Error stack:", error.stack);
     return {
-      error: { message: error.message || "Erreur inattendue lors de la vérification", status: 500 },
+      error: { message: error instanceof Error ? error.message : "Erreur inattendue lors de la vérification", status: 500 },
       user: null,
       profile: null,
       supabase: null,

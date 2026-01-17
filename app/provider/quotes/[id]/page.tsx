@@ -123,10 +123,10 @@ export default function QuoteDetailPage() {
       
       const data = await response.json();
       setQuote(data.quote);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger le devis",
+        description: error instanceof Error ? error.message : "Impossible de charger le devis",
         variant: "destructive",
       });
       router.push("/provider/quotes");
@@ -153,10 +153,10 @@ export default function QuoteDetailPage() {
       });
 
       fetchQuote();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -182,10 +182,10 @@ export default function QuoteDetailPage() {
       });
 
       router.push("/provider/quotes");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
       setDeleting(false);

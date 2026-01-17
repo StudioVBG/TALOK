@@ -30,10 +30,11 @@ export function ChargesList({ propertyId }: ChargesListProps) {
         ? await chargesService.getChargesByProperty(propertyId)
         : await chargesService.getCharges();
       setCharges(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Impossible de charger les charges";
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les charges.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -53,10 +54,11 @@ export function ChargesList({ propertyId }: ChargesListProps) {
         description: "La charge a été supprimée avec succès.",
       });
       loadCharges();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Impossible de supprimer la charge";
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de supprimer la charge.",
+        description: errorMessage,
         variant: "destructive",
       });
     }

@@ -134,9 +134,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ jobId, status: "processing" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Export error:", error);
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

@@ -15,8 +15,8 @@ export async function POST(request: Request) {
     const validation = await propertyCodesService.validatePropertyCode(code);
 
     return NextResponse.json(validation);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

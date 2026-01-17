@@ -287,10 +287,10 @@ export async function POST(
       new_status: newLeaseStatus
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Sign-Lease] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
