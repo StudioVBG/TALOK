@@ -55,10 +55,11 @@ export function InvoiceCard({
         description: "La facture a été supprimée avec succès.",
       });
       onDelete?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression";
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la suppression.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -83,10 +84,11 @@ export function InvoiceCard({
         title: "Relance envoyée",
         description: "Un email de rappel a été envoyé au locataire.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Impossible d'envoyer la relance";
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'envoyer la relance.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -114,10 +116,11 @@ export function InvoiceCard({
         description: "Le statut a été mis à jour avec succès.",
       });
       onStatusChange?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Impossible de mettre à jour le statut";
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de mettre à jour le statut.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

@@ -88,9 +88,9 @@ export async function GET(request: Request) {
       scope,
       count: invoices?.length || 0,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

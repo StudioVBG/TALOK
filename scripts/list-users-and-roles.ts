@@ -77,7 +77,7 @@ async function listUsersAndRoles() {
     });
 
     console.log("\n✅ Liste terminée\n");
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Erreur:", error);
   }
 }

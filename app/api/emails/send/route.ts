@@ -196,11 +196,11 @@ export async function POST(request: NextRequest) {
       id: result.id,
       recipientCount: emailValidation.validEmails.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[API Email] Erreur:", error);
     return NextResponse.json(
       {
-        error: error.message || "Erreur interne",
+        error: error instanceof Error ? error.message : "Erreur interne",
         code: "INTERNAL_ERROR",
       },
       { status: 500 }

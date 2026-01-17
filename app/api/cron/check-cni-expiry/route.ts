@@ -251,10 +251,10 @@ export async function GET(request: Request) {
       ...results,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[CRON CNI] Erreur globale:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

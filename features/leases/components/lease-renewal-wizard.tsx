@@ -105,10 +105,10 @@ export function LeaseRenewalWizard({
       setNewCharges(result.current_lease.charges);
       setStartDate(result.suggestions.start_date);
       setDurationMonths(result.suggestions.duration_months);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les données",
+        description: error instanceof Error ? error.message : "Impossible de charger les données",
         variant: "destructive",
       });
       onOpenChange(false);
@@ -158,10 +158,10 @@ export function LeaseRenewalWizard({
 
       onSuccess?.(result.new_lease.id);
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de renouveler le bail",
+        description: error instanceof Error ? error.message : "Impossible de renouveler le bail",
         variant: "destructive",
       });
     } finally {

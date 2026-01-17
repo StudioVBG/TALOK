@@ -15,7 +15,7 @@ export async function POST(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
         { status: error.status }
       );
     }
@@ -70,10 +70,10 @@ export async function POST(
     } as any);
 
     return NextResponse.json({ success: true, message: "Prestataire mis en standby" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/admin/providers/[id]/suspend:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -91,7 +91,7 @@ export async function DELETE(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
         { status: error.status }
       );
     }
@@ -129,10 +129,10 @@ export async function DELETE(
     } as any);
 
     return NextResponse.json({ success: true, message: "Prestataire réactivé" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in DELETE /api/admin/providers/[id]/suspend:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

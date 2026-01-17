@@ -46,7 +46,7 @@ export async function runTestScenario(scenario: TestScenario): Promise<TestResul
       default:
         throw new Error(`Scénario de test inconnu: ${scenario.id}`);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     log(`Erreur: ${error.message}`, logs);
     return {
       success: false,
@@ -99,7 +99,7 @@ async function testCreateFastT2Habitation(logs: string[]): Promise<TestResult> {
         logs,
         data: { propertyId: draft.id },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Si la soumission échoue à cause des photos manquantes, c'est attendu
       if (error.message?.includes("photo") || error.message?.includes("Photo")) {
         log("Soumission échouée (photos manquantes - attendu)", logs);
@@ -111,7 +111,7 @@ async function testCreateFastT2Habitation(logs: string[]): Promise<TestResult> {
       }
       throw error;
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     log(`Erreur: ${error.message}`, logs);
     return {
       success: false,
@@ -165,7 +165,7 @@ async function testCreateDetailedT3Habitation(logs: string[]): Promise<TestResul
         logs,
         data: { propertyId: draft.id },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       log(`Soumission échouée: ${error.message}`, logs);
       return {
         success: false,
@@ -173,7 +173,7 @@ async function testCreateDetailedT3Habitation(logs: string[]): Promise<TestResul
         logs,
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     log(`Erreur: ${error.message}`, logs);
     return {
       success: false,
@@ -218,7 +218,7 @@ async function testCreateParking(logs: string[]): Promise<TestResult> {
         logs,
         data: { propertyId: draft.id },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       log(`Soumission échouée: ${error.message}`, logs);
       return {
         success: false,
@@ -226,7 +226,7 @@ async function testCreateParking(logs: string[]): Promise<TestResult> {
         logs,
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     log(`Erreur: ${error.message}`, logs);
     return {
       success: false,
@@ -274,7 +274,7 @@ async function testSubmitWithoutPhotos(logs: string[]): Promise<TestResult> {
         error: "La validation devrait échouer sans photos",
         logs,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // C'est attendu que ça échoue
       log(`Soumission échouée comme attendu: ${error.message}`, logs);
       return {
@@ -283,7 +283,7 @@ async function testSubmitWithoutPhotos(logs: string[]): Promise<TestResult> {
         data: { expectedError: error.message },
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     log(`Erreur: ${error.message}`, logs);
     return {
       success: false,
@@ -335,9 +335,9 @@ async function testSwitchModeLocationWithActiveLease(logs: string[]): Promise<Te
         error: "Le changement de mode_location devrait être bloqué avec un bail actif",
         logs,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Vérifier que c'est bien l'erreur active_lease_blocking
-      const errorMessage = error.message || "";
+      const errorMessage = error instanceof Error ? error.message : "";
       const errorData = error.data || {};
       if (
         errorData.error === "active_lease_blocking" ||
@@ -359,7 +359,7 @@ async function testSwitchModeLocationWithActiveLease(logs: string[]): Promise<Te
         };
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     log(`Erreur: ${error.message}`, logs);
     return {
       success: false,

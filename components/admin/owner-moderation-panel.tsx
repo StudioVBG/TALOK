@@ -335,10 +335,10 @@ export function OwnerModerationPanel({
         description: `${actionTypeLabels[currentAction]} appliqué avec succès.`,
       });
       setActionDialogOpen(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -357,10 +357,10 @@ export function OwnerModerationPanel({
         description: "La note a été enregistrée.",
       });
       setNoteDialogOpen(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {

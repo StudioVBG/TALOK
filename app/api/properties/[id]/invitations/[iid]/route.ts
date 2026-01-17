@@ -101,9 +101,9 @@ export async function DELETE(
     } as any);
 
     return NextResponse.json({ success: true, access_code: updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

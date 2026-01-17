@@ -239,10 +239,10 @@ export async function POST(
       message: "Facture marquée comme payée",
       payment: payment,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[mark-paid] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

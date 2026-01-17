@@ -175,7 +175,7 @@ export function PhotosStep() {
         cleanupTempPhoto(tempPhoto.id);
         successCount++;
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`[PhotosStep] Erreur upload ${tempPhoto.file.name}:`, error);
         errors.push(tempPhoto.file.name);
 
@@ -245,7 +245,7 @@ export function PhotosStep() {
     try {
       await propertiesService.deletePhoto(photoId);
       toast({ title: "Photo supprimée" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[PhotosStep] Erreur suppression:', error);
       // Rollback
       setPhotos(previousPhotos);

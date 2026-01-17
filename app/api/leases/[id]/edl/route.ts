@@ -157,10 +157,10 @@ export async function GET(
     }));
 
     return NextResponse.json({ edls: transformedEdls });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/leases/[id]/edl]", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -270,10 +270,10 @@ export async function POST(
     }
 
     return NextResponse.json({ edl: newEdl }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/leases/[id]/edl]", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

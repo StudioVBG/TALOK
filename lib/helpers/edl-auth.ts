@@ -181,12 +181,12 @@ export async function verifyEDLAccess(
       reason: "Accès non autorisé à cet état des lieux" 
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[verifyEDLAccess] Error:`, error);
     return { 
       authorized: false, 
       edl: null, 
-      reason: error.message || "Erreur lors de la vérification des permissions" 
+      reason: error instanceof Error ? error.message : "Erreur lors de la vérification des permissions" 
     };
   }
 }

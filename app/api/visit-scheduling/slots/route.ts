@@ -103,7 +103,7 @@ export async function GET(request: Request) {
       slotsByDate,
       total: slots?.length || 0,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET /api/visit-scheduling/slots error:", error);
     if (error.name === "ZodError") {
       return NextResponse.json(
@@ -112,7 +112,7 @@ export async function GET(request: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
       slotsGenerated: count,
       message: `${count} créneaux générés avec succès`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST /api/visit-scheduling/slots error:", error);
     if (error.name === "ZodError") {
       return NextResponse.json(
@@ -191,7 +191,7 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

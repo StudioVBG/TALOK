@@ -100,9 +100,9 @@ export async function GET(request: NextRequest) {
     }
     
     return NextResponse.json({ error: 'siteId ou unitId requis' }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur GET /api/copro/charges:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -183,9 +183,9 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json({ error: 'expense_id ou site_id + période requis' }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur POST /api/copro/charges:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

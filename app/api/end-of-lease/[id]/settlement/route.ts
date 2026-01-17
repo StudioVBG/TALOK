@@ -38,7 +38,7 @@ export async function GET(
 
     if (error) {
       console.error("Erreur récupération solde:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     if (!settlement) {
@@ -46,10 +46,10 @@ export async function GET(
     }
 
     return NextResponse.json(settlement);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API settlement GET:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -136,10 +136,10 @@ export async function POST(
     }
 
     return NextResponse.json(settlement, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API settlement POST:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

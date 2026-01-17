@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message, details: (error as any).details },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
         { status: error.status || 401 }
       );
     }
@@ -313,10 +313,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ documents: refreshedDocs });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/documents/upload-batch:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: error.status || 500 }
     );
   }

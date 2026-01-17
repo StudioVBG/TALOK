@@ -54,10 +54,10 @@ export function LeasesList({ propertyId, showPropertyFilter = false }: LeasesLis
       }
 
       setLeases(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les baux.",
+        description: error instanceof Error ? error.message : "Impossible de charger les baux.",
         variant: "destructive",
       });
     } finally {

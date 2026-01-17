@@ -185,7 +185,7 @@ async function verifyDebugEndpoint() {
       console.log("❌ Des erreurs ont été détectées. Consultez les détails ci-dessus.\n");
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.log("❌ ERREUR LORS DE L'APPEL\n");
     console.log(`   Type: ${error.name || "Error"}`);
     console.log(`   Message: ${error.message}\n`);

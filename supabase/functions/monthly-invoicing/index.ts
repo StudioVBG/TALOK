@@ -131,12 +131,12 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Monthly Invoicing] Error:", error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || "Erreur lors de la génération des factures" 
+        error: error instanceof Error ? error.message : "Erreur lors de la génération des factures" 
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -106,10 +106,10 @@ export async function GET(
       meterReadings: meterReadings || [],
       keys: edlData.keys || [],
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/edl/[id]] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -240,10 +240,10 @@ export async function PUT(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[PUT /api/edl/[id]] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -324,10 +324,10 @@ export async function DELETE(
     } as any);
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[DELETE /api/edl/[id]] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

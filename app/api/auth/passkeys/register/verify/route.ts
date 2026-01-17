@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Passkey enregistrée avec succès",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Passkeys] Erreur vérification:", error);
     return NextResponse.json(
       { error: "Erreur lors de la vérification" },

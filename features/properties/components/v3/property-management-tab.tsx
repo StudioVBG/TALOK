@@ -40,10 +40,10 @@ export function PropertyManagementTab({ property, onPropertyUpdate }: PropertyMa
         title: "Succès",
         description: "Les montants ont été mis à jour.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de mettre à jour les montants.",
+        description: error instanceof Error ? error.message : "Impossible de mettre à jour les montants.",
         variant: "destructive",
       });
     }

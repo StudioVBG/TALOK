@@ -132,7 +132,7 @@ class TesseractOCRService {
         requiresManualVerification: extractedData.requiresManualVerification,
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Tesseract] Erreur OCR:', error.message);
       return {
         documentType: "other",

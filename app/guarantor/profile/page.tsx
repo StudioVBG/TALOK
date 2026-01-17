@@ -74,7 +74,7 @@ export default function GuarantorProfilePage() {
             }
           });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Erreur chargement profil:", error);
       } finally {
         setLoading(false);
@@ -101,11 +101,11 @@ export default function GuarantorProfilePage() {
         });
         router.push("/guarantor/dashboard");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: error.message || "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
       });
     } finally {
       setSaving(false);

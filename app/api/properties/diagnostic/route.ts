@@ -225,7 +225,7 @@ export async function GET(request: Request) {
       count,
       hasError: !!error,
       error: error ? {
-        message: error.message,
+        message: error instanceof Error ? error.message : "Une erreur est survenue",
         code: error.code,
         details: error.details,
         hint: error.hint,
@@ -236,7 +236,7 @@ export async function GET(request: Request) {
     if (error) {
       diagnostic.errors.push({ 
         step: 5, 
-        error: error.message,
+        error: error instanceof Error ? error.message : "Une erreur est survenue",
         code: error.code,
         details: error.details,
         hint: error.hint,

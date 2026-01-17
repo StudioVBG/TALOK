@@ -118,10 +118,10 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
       setLoading(true);
       const data = await propertiesService.getPropertyById(propertyId);
       setProperty(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger le logement.",
+        description: error instanceof Error ? error.message : "Impossible de charger le logement.",
         variant: "destructive",
       });
       router.push("/properties");
@@ -135,10 +135,10 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
       setTicketsLoading(true);
       const data = await ticketsService.getTicketsByProperty(propertyId);
       setTickets(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les tickets.",
+        description: error instanceof Error ? error.message : "Impossible de charger les tickets.",
         variant: "destructive",
       });
     } finally {

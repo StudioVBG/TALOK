@@ -93,7 +93,7 @@ export default function OwnerProfileOnboardingPage() {
 
       // Rediriger vers les paramètres financiers
       router.push("/owner/onboarding/finance");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       toast({
         title: "Erreur de sauvegarde",

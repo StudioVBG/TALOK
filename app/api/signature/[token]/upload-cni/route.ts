@@ -397,10 +397,10 @@ export async function POST(request: Request, { params }: PageProps) {
         : "Photo verso enregistrée avec succès",
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Upload CNI] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

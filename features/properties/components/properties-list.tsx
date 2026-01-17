@@ -50,10 +50,10 @@ export function PropertiesList() {
           title: "Logement supprimé",
           description: "Le logement a été supprimé avec succès.",
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         toast({
           title: "Erreur",
-          description: error.message || "Impossible de supprimer le logement.",
+          description: error instanceof Error ? error.message : "Impossible de supprimer le logement.",
           variant: "destructive",
         });
       }

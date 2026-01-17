@@ -120,10 +120,10 @@ export function DpeRequestForm({ property }: DpeRequestFormProps) {
         title: "Demande envoyée !",
         description: "Votre demande de DPE a été enregistrée avec succès.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de l'envoi.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'envoi.",
         variant: "destructive",
       });
     } finally {

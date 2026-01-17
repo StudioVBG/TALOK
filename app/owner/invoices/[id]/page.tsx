@@ -163,8 +163,8 @@ export default function InvoiceDetailPage() {
       };
 
       poll();
-    } catch (error: any) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
     }
   };
 

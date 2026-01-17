@@ -24,7 +24,7 @@ export async function GET() {
 
     if (error) {
       console.error("Erreur dashboard syndic:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     if (!data) {
@@ -35,10 +35,10 @@ export async function GET() {
     }
 
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API syndic dashboard:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

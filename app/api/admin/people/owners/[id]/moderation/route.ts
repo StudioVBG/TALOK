@@ -19,7 +19,7 @@ export async function GET(
     const { error, user } = await requireAdmin(request);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: error.status });
     }
 
     if (!user) {
@@ -124,9 +124,9 @@ export async function GET(
       notes,
       lastLogin,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/admin/people/owners/[id]/moderation]", error);
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 
@@ -143,7 +143,7 @@ export async function POST(
     const { error, user, supabase: adminSupabase } = await requireAdmin(request);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: error.status });
     }
 
     if (!user || !adminSupabase) {
@@ -307,9 +307,9 @@ export async function POST(
       success: true,
       message: `Action "${action}" effectuée avec succès`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/admin/people/owners/[id]/moderation]", error);
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

@@ -65,8 +65,8 @@ export function ChargeRegularisationCard({
       await createRegularisation(parseInt(selectedYear));
       toast.success("Régularisation créée avec succès");
       setIsCreating(false);
-    } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la création");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la création");
     } finally {
       setIsSubmitting(false);
     }
@@ -76,8 +76,8 @@ export function ChargeRegularisationCard({
     try {
       await applyRegularisation(id);
       toast.success("Régularisation appliquée");
-    } catch (error: any) {
-      toast.error(error.message || "Erreur lors de l'application");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'application");
     }
   };
 

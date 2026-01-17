@@ -72,14 +72,14 @@ export async function GET() {
 
     if (error) {
       console.error("Erreur récupération engagements:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     return NextResponse.json({ engagements: engagements || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API engagements GET:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
     // TODO: Envoyer notification au garant
 
     return NextResponse.json(engagement, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Données invalides", details: error.errors },
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("Erreur API engagements POST:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

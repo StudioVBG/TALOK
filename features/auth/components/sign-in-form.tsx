@@ -58,11 +58,12 @@ export function SignInForm() {
     try {
       await authService.signInWithGoogle();
       // La redirection est gérée par Supabase
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[SignIn] Erreur OAuth Google:", error);
+      const errorMessage = error instanceof Error ? error.message : "Impossible de se connecter avec Google";
       toast({
         title: "Erreur de connexion",
-        description: error.message || "Impossible de se connecter avec Google",
+        description: errorMessage,
         variant: "destructive",
       });
       setGoogleLoading(false);
@@ -74,11 +75,12 @@ export function SignInForm() {
     try {
       await authService.signInWithApple();
       // La redirection est gérée par Supabase
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[SignIn] Erreur OAuth Apple:", error);
+      const errorMessage = error instanceof Error ? error.message : "Impossible de se connecter avec Apple";
       toast({
         title: "Erreur de connexion",
-        description: error.message || "Impossible de se connecter avec Apple",
+        description: errorMessage,
         variant: "destructive",
       });
       setAppleLoading(false);
@@ -147,16 +149,20 @@ export function SignInForm() {
       }
       
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[SignIn] Erreur de connexion:", error);
-      
+
+      // Extraire le message et le status de manière type-safe
+      const rawMessage = error instanceof Error ? error.message : "";
+      const errorMessage = rawMessage.toLowerCase();
+      const errorStatus = (error as { status?: number })?.status;
+
       // Vérifier si l'erreur est liée à l'email non confirmé
-      const errorMessage = error.message?.toLowerCase() || "";
       if (
         errorMessage.includes("email not confirmed") ||
         errorMessage.includes("email_not_confirmed") ||
         errorMessage.includes("confirmer votre email") ||
-        (error.status === 400 && errorMessage.includes("email"))
+        (errorStatus === 400 && errorMessage.includes("email"))
       ) {
         toast({
           title: "Email non confirmé",
@@ -176,7 +182,7 @@ export function SignInForm() {
       } else {
         toast({
           title: "Erreur de connexion",
-          description: error.message || "Une erreur est survenue lors de la connexion. Veuillez réessayer.",
+          description: rawMessage || "Une erreur est survenue lors de la connexion. Veuillez réessayer.",
           variant: "destructive",
         });
       }

@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(reading, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/meters/readings] Error:", error);
 
     if (error instanceof z.ZodError) {
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -159,10 +159,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(readings);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/meters/readings] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

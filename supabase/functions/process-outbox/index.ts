@@ -73,7 +73,7 @@ serve(async (req) => {
             .from("outbox")
             .update({
               status: "failed",
-              error_message: error.message,
+              error_message: error instanceof Error ? error.message : "Erreur",
             } as any)
             .eq("id", event.id);
         } else {
@@ -87,7 +87,7 @@ serve(async (req) => {
               status: "pending",
               retry_count: retryCount,
               scheduled_at: nextScheduled,
-              error_message: error.message,
+              error_message: error instanceof Error ? error.message : "Erreur",
             } as any)
             .eq("id", event.id);
         }

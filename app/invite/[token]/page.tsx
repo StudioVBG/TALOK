@@ -67,10 +67,10 @@ export default function InvitePage() {
       
       // Recharger la page pour afficher le nouveau token
       window.location.reload();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de renvoyer l'invitation.",
+        description: error instanceof Error ? error.message : "Impossible de renvoyer l'invitation.",
         variant: "destructive",
       });
     } finally {

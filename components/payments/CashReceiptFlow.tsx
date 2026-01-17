@@ -215,10 +215,10 @@ export function CashReceiptFlow({
       });
 
       onComplete?.(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
       goToStep("tenant-sign", -1);

@@ -189,10 +189,10 @@ export function SignersClient({
         title: "Invitation relancée",
         description: `Un nouvel email a été envoyé à ${email}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -218,10 +218,10 @@ export function SignersClient({
         description: "Le signataire a été retiré du bail",
       });
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {

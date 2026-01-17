@@ -129,7 +129,7 @@ function SetupForm({ onSuccess, onCancel }: PaymentMethodSetupProps) {
       if (error) {
         toast({
           title: "Erreur de paiement",
-          description: translateStripeError(error.message || "Une erreur est survenue"),
+          description: translateStripeError(error instanceof Error ? error.message : "Une erreur est survenue"),
           variant: "destructive",
         });
       } else if (setupIntent?.status === "succeeded") {

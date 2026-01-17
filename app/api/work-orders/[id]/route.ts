@@ -25,8 +25,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
     if (error) throw error;
     return NextResponse.json({ workOrder });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 
@@ -73,11 +73,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     return NextResponse.json({ workOrder });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 
@@ -96,8 +96,8 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     if (error) throw error;
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

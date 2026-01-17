@@ -61,7 +61,7 @@ function PreviewContent() {
         setShareError(null);
         const shares = await propertiesService.listShareLinks(id);
         setShareLinks(shares);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("listShareLinks error", error);
         setShareError(error?.message ?? "Impossible de charger les liens.");
       } finally {
@@ -78,7 +78,7 @@ function PreviewContent() {
         const data = await propertiesService.getPropertyById(id);
         setProperty(data);
         await loadShareLinks(id);
-      } catch (error: any) {
+      } catch (error: unknown) {
         toast({
           title: "Impossible d'afficher le logement",
           description: error?.message ?? "Vérifiez que le logement existe toujours.",
@@ -112,7 +112,7 @@ function PreviewContent() {
         description: "Le nouveau lien public a été copié dans le presse-papiers.",
       });
       await loadShareLinks(property.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("generateShareLink error", error);
       toast({
         title: "Lien impossible à générer",
@@ -172,7 +172,7 @@ function PreviewContent() {
       if (property) {
         await loadShareLinks(property.id);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Révocation impossible",
         description: error?.message ?? "Réessayez dans quelques instants.",

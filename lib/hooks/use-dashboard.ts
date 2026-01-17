@@ -111,7 +111,7 @@ export function useDashboard() {
             compliance: [],
           },
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("[useDashboard] Error fetching dashboard:", error);
         
         // Si c'est une erreur de timeout ou réseau

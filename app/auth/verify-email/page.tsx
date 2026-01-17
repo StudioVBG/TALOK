@@ -98,10 +98,10 @@ export default function VerifyEmailPage() {
         title: "Email envoyé",
         description: "Un nouvel email de confirmation a été envoyé. Vérifiez votre boîte de réception.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'envoyer l'email de confirmation.",
+        description: error instanceof Error ? error.message : "Impossible d'envoyer l'email de confirmation.",
         variant: "destructive",
       });
     } finally {
@@ -139,10 +139,10 @@ export default function VerifyEmailPage() {
         description:
           "Votre email n'a pas encore été confirmé. Cliquez sur le lien dans l'email que vous avez reçu pour confirmer votre compte.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de vérifier le statut.",
+        description: error instanceof Error ? error.message : "Impossible de vérifier le statut.",
         variant: "destructive",
       });
     } finally {

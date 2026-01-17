@@ -177,11 +177,11 @@ export async function sendSms(options: SmsOptions): Promise<SmsResult> {
       success: true,
       messageId: result.sid,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[SMS] Erreur envoi:", error);
     return {
       success: false,
-      error: error.message || "Erreur d'envoi SMS",
+      error: error instanceof Error ? error.message : "Erreur d'envoi SMS",
     };
   }
 }

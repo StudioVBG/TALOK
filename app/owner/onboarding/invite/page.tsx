@@ -74,8 +74,8 @@ export default function OwnerInvitePage() {
             role,
           });
           results.push({ email, status: "success", invitation });
-        } catch (error: any) {
-          results.push({ email, status: "error", message: error.message || "Erreur lors de la création" });
+        } catch (error: unknown) {
+          results.push({ email, status: "error", message: error instanceof Error ? error.message : "Erreur lors de la création" });
         }
       }
 
@@ -113,10 +113,10 @@ export default function OwnerInvitePage() {
       setTimeout(() => {
         router.push("/owner");
       }, 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de l'envoi des invitations.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'envoi des invitations.",
         variant: "destructive",
       });
     } finally {

@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("[Reset Password] Update error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     return NextResponse.json({ 
@@ -72,9 +72,9 @@ export async function POST(request: Request) {
       userId: user.id 
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Reset Password] Exception:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

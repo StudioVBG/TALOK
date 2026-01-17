@@ -139,11 +139,11 @@ export function TenantSettingsClient({
         description: "Vos informations ont été enregistrées avec succès.",
       });
       setHasChanges(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: error.message || "Impossible de sauvegarder le profil",
+        description: error instanceof Error ? error.message : "Impossible de sauvegarder le profil",
       });
     } finally {
       setIsSubmitting(false);

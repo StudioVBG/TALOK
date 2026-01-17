@@ -95,7 +95,7 @@ class WhisperService {
         duration: response.duration || 0,
         confidence: undefined, // Whisper ne retourne pas de score de confiance
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[Whisper] Transcription error:", error.message);
       throw new Error(`Erreur de transcription: ${error.message}`);
     }

@@ -1548,8 +1548,8 @@ export default function AdminPlansPage() {
       setAddons(addonsData.addons || []);
       setHistory([JSON.parse(JSON.stringify(sortedPlans))]);
       setHistoryIndex(0);
-    } catch (error: any) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -1721,9 +1721,9 @@ export default function AdminPlansPage() {
       setOriginalPlans(JSON.parse(JSON.stringify(plans)));
       toast({ title: "✅ Sauvegardé", description: `${modifiedPlans.length} plan(s) mis à jour` });
       setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setSaveStatus("error");
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
     } finally {
       setSaving(false);
     }

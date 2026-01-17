@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message, details: (error as any).details },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
         { status: error.status || 401 }
       );
     }
@@ -110,9 +110,9 @@ export async function GET(request: Request) {
         total: totalCount || invoices?.length || 0,
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message, details: (error as any).details },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
         { status: error.status || 401 }
       );
     }
@@ -248,7 +248,7 @@ export async function POST(request: Request) {
     } as any);
 
     return NextResponse.json({ invoice });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Données invalides", details: error.errors },
@@ -256,7 +256,7 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

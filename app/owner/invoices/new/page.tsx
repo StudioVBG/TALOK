@@ -94,7 +94,7 @@ export default function NewInvoicePage() {
 
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.message || "Erreur lors de la création");
+          throw new Error(error instanceof Error ? error.message : "Erreur lors de la création");
         }
 
         const invoice = await response.json();
@@ -105,10 +105,10 @@ export default function NewInvoicePage() {
         });
 
         router.push(`/owner/invoices/${invoice.id}`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         toast({
           title: "Erreur",
-          description: error.message || "Impossible de créer la facture",
+          description: error instanceof Error ? error.message : "Impossible de créer la facture",
           variant: "destructive",
         });
       }

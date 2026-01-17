@@ -137,7 +137,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("[POST /api/admin/moderation/queue] Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     // Journaliser l'action

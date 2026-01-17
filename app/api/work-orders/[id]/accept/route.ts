@@ -141,10 +141,10 @@ export async function POST(
       workOrder: updated,
       message: "Intervention acceptée avec succès",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[accept] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

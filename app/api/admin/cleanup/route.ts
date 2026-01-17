@@ -149,10 +149,10 @@ export async function GET() {
       lastCheck: new Date().toISOString(),
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Cleanup Report] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -287,10 +287,10 @@ export async function POST(request: Request) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Cleanup Execute] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

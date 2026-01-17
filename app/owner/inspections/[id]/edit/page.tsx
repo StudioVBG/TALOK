@@ -322,8 +322,8 @@ export default function EditInspectionPage() {
         const err = await response.json();
         throw new Error(err.error || "Erreur lors de l'upload");
       }
-    } catch (error: any) {
-      toast({ title: "Erreur", description: error.message || "Impossible d'uploader la photo.", variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Impossible d'uploader la photo.", variant: "destructive" });
     }
   };
 

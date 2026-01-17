@@ -50,9 +50,9 @@ export async function GET(
     if (error) throw error;
 
     return NextResponse.json({ messages: (messages || []).reverse() });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -141,9 +141,9 @@ export async function POST(
     if (error) throw error;
 
     return NextResponse.json({ message });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

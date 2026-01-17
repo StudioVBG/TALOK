@@ -119,10 +119,10 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ results });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur recherche documents:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -80,10 +80,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur traitement webhook:", error);
     return NextResponse.json(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : "Une erreur est survenue" },
       { status: 500 }
     );
   }

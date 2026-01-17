@@ -240,7 +240,7 @@ export async function GET(request: Request) {
       timestamp: now.toISOString(),
       ...results,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Visit Reminders] Fatal error:", error);
     return NextResponse.json(
       { error: "Internal server error", details: error.message },

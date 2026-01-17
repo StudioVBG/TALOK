@@ -229,7 +229,7 @@ async function createUser(account: TestAccount): Promise<string | null> {
     }
 
     return newUser.user.id;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`  ❌ Exception création user ${email}:`, error.message);
     return null;
   }
@@ -275,7 +275,7 @@ async function createProfile(userId: string, account: TestAccount): Promise<stri
     }
 
     return newProfile?.id || null;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`  ❌ Exception profil ${email}:`, error.message);
     return null;
   }
@@ -293,7 +293,7 @@ async function createOwnerProfile(profileId: string, account: TestAccount): Prom
       iban: "FR7630006000011234567890189",
       adresse_facturation: "15 rue de la Paix, 75001 Paris",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`  ⚠️  Erreur owner_profile:`, error.message);
   }
 }
@@ -310,7 +310,7 @@ async function createTenantProfile(profileId: string, account: TestAccount): Pro
       nb_enfants: account.tenantData.nb_enfants,
       garant_required: account.tenantData.revenus_mensuels < 2500,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`  ⚠️  Erreur tenant_profile:`, error.message);
   }
 }
@@ -330,7 +330,7 @@ async function createProviderProfile(profileId: string, account: TestAccount): P
       hourly_rate: 45,
       travel_fee: 25,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`  ⚠️  Erreur provider_profile:`, error.message);
   }
 }
@@ -363,7 +363,7 @@ async function createAgencyProfile(profileId: string, account: TestAccount): Pro
       taux_commission_gestion: 8.0,
       taux_commission_location: 100,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`  ⚠️  Erreur agency_profile:`, error.message);
   }
 }
@@ -391,7 +391,7 @@ async function createGuarantorProfile(profileId: string, account: TestAccount): 
       employeur: "Société Générale",
       lien_avec_locataire: "parent",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`  ⚠️  Erreur guarantor_profile:`, error.message);
   }
 }
@@ -428,7 +428,7 @@ async function createAccount(account: TestAccount): Promise<boolean> {
 
     console.log(`  ✅ Compte créé avec succès`);
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`  ❌ Erreur:`, error.message);
     return false;
   }
@@ -639,7 +639,7 @@ async function createTestData(accounts: CreatedAccounts): Promise<void> {
 
     console.log("\n  ✅ Données de test créées avec succès !");
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("  ❌ Erreur création données:", error.message);
   }
 }

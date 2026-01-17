@@ -40,10 +40,10 @@ export default function ForgotPasswordPage() {
         description: "Consultez votre boîte mail pour créer un nouveau mot de passe.",
       });
       router.push("/auth/signin");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Impossible d’envoyer l’email",
-        description: error.message || "Réessayez dans quelques instants.",
+        description: error instanceof Error ? error.message : "Réessayez dans quelques instants.",
         variant: "destructive",
       });
     } finally {

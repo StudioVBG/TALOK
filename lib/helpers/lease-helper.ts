@@ -59,11 +59,11 @@ export async function hasActiveLeaseForProperty(
       hasActive,
       lease: hasActive ? activeLeases[0] : undefined,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[hasActiveLeaseForProperty] Exception:", error);
     return {
       hasActive: false,
-      error: error.message || "Unknown error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -150,9 +150,9 @@ export async function getActiveLeaseWithTenant(
       lease,
       tenant: profile,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
-      error: error.message || "Unknown error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }

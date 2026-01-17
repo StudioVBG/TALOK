@@ -62,10 +62,10 @@ export function OwnerProfileForm({ onSuccess }: OwnerProfileFormProps) {
       // Forcer le rechargement des données serveur (ex: complétion du profil sur le dashboard)
       router.refresh();
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

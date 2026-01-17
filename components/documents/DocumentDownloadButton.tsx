@@ -115,7 +115,7 @@ export function DocumentDownloadButton({
         title: "Téléchargement démarré",
         description: "Votre document est en cours de préparation.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur téléchargement:", error);
       toast({
         title: "Erreur",

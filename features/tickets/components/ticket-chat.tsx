@@ -103,7 +103,7 @@ export function TicketChat({ ticketId, currentUserId }: TicketChatProps) {
       if (!response.ok) throw new Error("Failed to send message");
       
       setNewMessage("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
         description: "Impossible d'envoyer le message",

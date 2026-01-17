@@ -130,7 +130,7 @@ async function createAdminUser() {
     console.log(`   Email: ${email}`);
     console.log(`   Mot de passe: ${password}`);
     console.log("\n💡 Vous pouvez maintenant vous connecter avec ces identifiants");
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Erreur lors de la création du compte admin:");
     console.error(error.message);
     process.exit(1);

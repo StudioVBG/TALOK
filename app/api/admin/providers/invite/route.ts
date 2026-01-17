@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
         { status: error.status }
       );
     }
@@ -157,10 +157,10 @@ export async function POST(request: Request) {
       message: "Invitation envoyée avec succès",
       profile_id: profileId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/admin/providers/invite:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

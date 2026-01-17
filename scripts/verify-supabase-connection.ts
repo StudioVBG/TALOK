@@ -112,7 +112,7 @@ async function verifyConnection() {
       results.push({
         name: "Connexion anon",
         status: "❌",
-        message: error.message,
+        message: error instanceof Error ? error.message : "Erreur",
       });
     } else {
       console.log(`   ✅ Connexion réussie`);
@@ -123,12 +123,12 @@ async function verifyConnection() {
         message: `Connecté avec succès (${count || 0} profils)`,
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.log(`   ❌ Exception: ${error.message}`);
     results.push({
       name: "Connexion anon",
       status: "❌",
-      message: error.message,
+      message: error instanceof Error ? error.message : "Erreur",
     });
   }
 
@@ -151,7 +151,7 @@ async function verifyConnection() {
         results.push({
           name: "Connexion service_role",
           status: "❌",
-          message: error.message,
+          message: error instanceof Error ? error.message : "Erreur",
         });
       } else {
         console.log(`   ✅ Connexion réussie`);
@@ -162,12 +162,12 @@ async function verifyConnection() {
           message: `Connecté avec succès (${count || 0} propriétés)`,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.log(`   ❌ Exception: ${error.message}`);
       results.push({
         name: "Connexion service_role",
         status: "❌",
-        message: error.message,
+        message: error instanceof Error ? error.message : "Erreur",
       });
     }
   }
@@ -218,7 +218,7 @@ async function verifyConnection() {
           message: "Fonction disponible",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.log(`   ❌ Exception: ${error.message}`);
     }
   }
@@ -244,7 +244,7 @@ async function verifyConnection() {
           results.push({
             name: `Table ${table}`,
             status: "❌",
-            message: error.message,
+            message: error instanceof Error ? error.message : "Erreur",
           });
         } else {
           console.log(`   ✅ ${table}: ${count || 0} lignes`);
@@ -255,7 +255,7 @@ async function verifyConnection() {
           });
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.log(`   ❌ Exception: ${error.message}`);
     }
   }

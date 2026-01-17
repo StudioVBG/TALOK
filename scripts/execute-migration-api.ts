@@ -54,7 +54,7 @@ async function executeMigration() {
     console.log("✅ Migration exécutée avec succès !");
     console.log("📊 Résultat:", JSON.stringify(result, null, 2));
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Erreur:", error.message);
   }
 }

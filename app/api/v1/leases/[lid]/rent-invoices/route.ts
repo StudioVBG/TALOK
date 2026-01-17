@@ -155,7 +155,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     return apiSuccess(response, 201);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /rent-invoices] Error:", error);
     return apiError("Erreur serveur", 500);
   }

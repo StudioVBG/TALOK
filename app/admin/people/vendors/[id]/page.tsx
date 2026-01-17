@@ -55,10 +55,10 @@ function VendorDetailContent({ vendorId }: { vendorId: string }) {
     try {
       const data = await peopleService.getVendor(vendorId);
       setVendor(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger le prestataire.",
+        description: error instanceof Error ? error.message : "Impossible de charger le prestataire.",
         variant: "destructive",
       });
       router.replace("/admin/people");

@@ -328,7 +328,7 @@ export async function GET(
       html,
       fileName: `Bail_${typeBail}_${lease.property?.ville || "document"}.pdf`
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Lease HTML] Error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }

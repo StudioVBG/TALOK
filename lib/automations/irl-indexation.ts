@@ -283,7 +283,7 @@ export async function processIRLIndexations(): Promise<IRLProcessResult> {
       calculations,
       errors,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     errors.push(`Erreur globale: ${error.message}`);
     return { processed: 0, updated: 0, skipped: 0, calculations: [], errors };
   }
@@ -363,7 +363,7 @@ export async function applyIRLIndexation(
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, error: error.message };
   }
 }

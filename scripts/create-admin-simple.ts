@@ -96,7 +96,7 @@ WHERE user_id = '${authData.user.id}';
     console.log(`   Mot de passe: ${password}`);
     console.log("\n💡 Vous pouvez maintenant vous connecter avec ces identifiants");
     console.log("⚠️  Note: Vous devrez confirmer votre email avant de pouvoir vous connecter");
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Erreur lors de la création du compte admin:");
     console.error(error.message);
     process.exit(1);

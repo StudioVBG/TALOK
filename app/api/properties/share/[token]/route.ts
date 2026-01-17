@@ -53,7 +53,7 @@ export async function GET(
         pdfUrl: `${baseUrl}/api/properties/share/${params.token}/pdf`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET /api/properties/share/[token] error", error);
     return NextResponse.json(
       { error: error?.message ?? "Erreur serveur lors du chargement du lien public." },

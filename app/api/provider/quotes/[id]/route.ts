@@ -101,9 +101,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         property_address: quote.property ? `${quote.property.adresse_complete}, ${quote.property.ville}` : null,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in GET /api/provider/quotes/[id]:', error);
-    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -164,9 +164,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in DELETE /api/provider/quotes/[id]:', error);
-    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
   }
 }
 

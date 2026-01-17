@@ -121,10 +121,10 @@ export async function GET(
         updated_at: ticket.updated_at,
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/tickets/[id]/history] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

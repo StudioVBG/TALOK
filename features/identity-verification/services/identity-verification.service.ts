@@ -145,7 +145,7 @@ export class IdentityVerificationService {
         confidence: 98.2, // Higher confidence for SOTA
         extractedData,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (profile) {
         await this.supabase.from("tenant_profiles").update({ kyc_status: 'rejected' }).eq("profile_id", profile.id);
       }
@@ -153,7 +153,7 @@ export class IdentityVerificationService {
         success: false,
         confidence: 0,
         errorCode: "verification_failed",
-        errorMessage: error.message || "La vérification a échoué",
+        errorMessage: error instanceof Error ? error.message : "La vérification a échoué",
       };
     }
   }

@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       },
       requires_2fa: requires2FA,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[login] Error:", error);
     return apiError("Erreur serveur", 500, "SERVER_ERROR");
   }

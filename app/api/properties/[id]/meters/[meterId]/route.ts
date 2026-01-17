@@ -47,10 +47,10 @@ export async function GET(
       meter,
       readings: readings || [],
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/properties/[id]/meters/[meterId]] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -158,10 +158,10 @@ export async function PATCH(
     });
 
     return NextResponse.json({ meter });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[PATCH /api/properties/[id]/meters/[meterId]] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -247,10 +247,10 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[DELETE /api/properties/[id]/meters/[meterId]] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

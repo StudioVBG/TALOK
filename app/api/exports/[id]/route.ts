@@ -39,8 +39,8 @@ export async function GET(
       created_at: job.created_at,
       expires_at: job.expires_at
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

@@ -92,10 +92,10 @@ export async function POST(
     const html = generateEDLHTML(fullEdlData);
 
     return NextResponse.json({ html });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[EDL Token Preview] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur lors de la génération de l'aperçu" },
+      { error: error instanceof Error ? error.message : "Erreur lors de la génération de l'aperçu" },
       { status: 500 }
     );
   }

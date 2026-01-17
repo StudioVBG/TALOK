@@ -137,9 +137,9 @@ export async function POST(
       visale: visaleData,
       message: "Attestation Visale validée",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

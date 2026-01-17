@@ -130,7 +130,7 @@ export default function TenantEDLDetailClient({
       if (!response.ok) throw new Error("Erreur lors de la signature");
       setIsSignModalOpen(false);
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       alert(error.message);
     } finally {
       setIsSigning(false);

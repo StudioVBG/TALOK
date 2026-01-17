@@ -44,10 +44,10 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
       }
 
       setDocuments(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les documents.",
+        description: error instanceof Error ? error.message : "Impossible de charger les documents.",
         variant: "destructive",
       });
     } finally {

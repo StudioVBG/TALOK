@@ -89,10 +89,10 @@ export function PropertyRoomsPhotosTab({
         description: "Pièce ajoutée avec succès",
       });
       setSelectedRoomId(newRoom.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'ajouter la pièce",
+        description: error instanceof Error ? error.message : "Impossible d'ajouter la pièce",
         variant: "destructive",
       });
     }
@@ -108,10 +108,10 @@ export function PropertyRoomsPhotosTab({
       if (selectedRoomId === roomId) {
         setSelectedRoomId(null);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de supprimer la pièce",
+        description: error instanceof Error ? error.message : "Impossible de supprimer la pièce",
         variant: "destructive",
       });
     }
@@ -148,10 +148,10 @@ export function PropertyRoomsPhotosTab({
       });
       // Invalider le cache React Query pour rafraîchir les photos
       queryClient.invalidateQueries({ queryKey: ["photos", propertyId] });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'uploader les photos",
+        description: error instanceof Error ? error.message : "Impossible d'uploader les photos",
         variant: "destructive",
       });
     } finally {
@@ -363,10 +363,10 @@ export function PropertyRoomsPhotosTab({
                                   title: "Succès",
                                   description: "Photo définie comme principale",
                                 });
-                              } catch (error: any) {
+                              } catch (error: unknown) {
                                 toast({
                                   title: "Erreur",
-                                  description: error.message || "Impossible de définir la photo principale",
+                                  description: error instanceof Error ? error.message : "Impossible de définir la photo principale",
                                   variant: "destructive",
                                 });
                               }
@@ -385,10 +385,10 @@ export function PropertyRoomsPhotosTab({
                                 title: "Succès",
                                 description: "Photo supprimée",
                               });
-                            } catch (error: any) {
+                            } catch (error: unknown) {
                               toast({
                                 title: "Erreur",
-                                description: error.message || "Impossible de supprimer la photo",
+                                description: error instanceof Error ? error.message : "Impossible de supprimer la photo",
                                 variant: "destructive",
                               });
                             }

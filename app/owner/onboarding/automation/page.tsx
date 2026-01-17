@@ -75,10 +75,10 @@ export default function OwnerAutomationPage() {
 
       // Rediriger vers les invitations
       router.push("/owner/onboarding/invite");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

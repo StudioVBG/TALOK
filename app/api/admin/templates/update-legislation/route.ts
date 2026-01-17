@@ -271,10 +271,10 @@ export async function POST(request: Request) {
         ? `Mise à jour législative appliquée. ${pendingUpdatesCreated.length} bail(s) actif(s) ont des mises à jour en attente.`
         : "Mise à jour législative appliquée avec succès.",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur mise à jour législation:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

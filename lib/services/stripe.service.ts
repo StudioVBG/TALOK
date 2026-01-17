@@ -151,7 +151,7 @@ export async function createPaymentIntent(
       clientSecret: data.client_secret,
       status: data.status,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Stripe] Erreur création PaymentIntent:", error);
     return {
       success: false,
@@ -177,7 +177,7 @@ export async function confirmPayment(
       paymentIntentId: data.id,
       status: data.status,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Stripe] Erreur confirmation:", error);
     return {
       success: false,
@@ -198,7 +198,7 @@ export async function getPaymentStatus(paymentIntentId: string): Promise<Payment
       paymentIntentId: data.id,
       status: data.status,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       error: error.message,
@@ -229,7 +229,7 @@ export async function createCustomer(customer: CustomerData): Promise<CustomerRe
       success: true,
       customerId: data.id,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Stripe] Erreur création client:", error);
     return {
       success: false,
@@ -256,7 +256,7 @@ export async function findCustomerByEmail(email: string): Promise<CustomerResult
       success: true,
       customerId: undefined,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       error: error.message,
@@ -289,7 +289,7 @@ export async function createRefund(
       refundId: data.id,
       status: data.status,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Stripe] Erreur remboursement:", error);
     return {
       success: false,
@@ -345,7 +345,7 @@ export async function verifyWebhookSignature(
       success: true,
       event: JSON.parse(payload),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       error: error.message,

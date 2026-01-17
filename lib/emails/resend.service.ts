@@ -177,16 +177,17 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
       retried: attempts > 1,
       attempts,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
     console.error(
-      `[Email] ❌ Échec définitif | To: ${options.to} | Erreur: ${error.message} | ` +
+      `[Email] ❌ Échec définitif | To: ${options.to} | Erreur: ${errorMessage} | ` +
       `Durée: ${duration}ms | Tentatives: ${attempts}`
     );
 
     return {
       success: false,
-      error: error.message,
+      error: errorMessage,
       retried: attempts > 1,
       attempts,
     };

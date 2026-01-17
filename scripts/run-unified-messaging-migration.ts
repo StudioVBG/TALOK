@@ -109,7 +109,7 @@ async function runMigration() {
       console.log("\n✨ Migration terminée avec succès !");
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Erreur fatale:", error.message);
     process.exit(1);
   }

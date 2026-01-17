@@ -184,14 +184,14 @@ export async function GET(request: Request) {
       message: `${results.alerts_sent} alertes envoyées`,
       ...results,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur cron lease-expiry-alerts:", error);
 
     await supabase.from("audit_log").insert({
       action: "cron_lease_expiry_alerts_error",
       entity_type: "cron",
       metadata: {
-        error: error.message,
+        error: error instanceof Error ? error.message : "Une erreur est survenue",
         executed_at: new Date().toISOString(),
       },
     });
@@ -199,7 +199,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : "Une erreur est survenue",
         ...results,
       },
       { status: 500 }

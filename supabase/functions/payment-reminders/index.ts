@@ -180,12 +180,12 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Payment Reminders] Error:", error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || "Erreur lors des relances" 
+        error: error instanceof Error ? error.message : "Erreur lors des relances" 
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

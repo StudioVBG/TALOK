@@ -95,10 +95,10 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
         });
       }
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

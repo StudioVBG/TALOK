@@ -67,7 +67,7 @@ export async function GET(
     };
 
     return NextResponse.json(results);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Lease Documents] Error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }

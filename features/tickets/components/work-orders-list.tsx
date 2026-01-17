@@ -39,10 +39,10 @@ export function WorkOrdersList({ ticketId, providerId }: WorkOrdersListProps) {
         data = await workOrdersService.getWorkOrders();
       }
       setWorkOrders(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les interventions.",
+        description: error instanceof Error ? error.message : "Impossible de charger les interventions.",
         variant: "destructive",
       });
     } finally {

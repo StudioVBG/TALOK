@@ -40,7 +40,7 @@ export function ColocBoard({ leaseId, month }: ColocBoardProps) {
         statusMap[share.roommate_id] = share;
       });
       setPaymentStatuses(statusMap);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
         description: "Erreur lors du chargement",

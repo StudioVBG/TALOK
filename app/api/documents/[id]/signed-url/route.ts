@@ -131,10 +131,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       documentType: document.type,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Signed URL] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

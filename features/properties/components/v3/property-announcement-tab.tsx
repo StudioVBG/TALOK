@@ -68,7 +68,7 @@ export function PropertyAnnouncementTab({
         title: "Succès",
         description: "Le mode de location a été mis à jour.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Vérifier si c'est l'erreur active_lease_blocking
       // L'erreur peut venir de différentes structures selon le client API
       const errorMessage = error?.message || "";

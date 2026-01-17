@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Erreur déclenchement processus:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     return NextResponse.json({ 

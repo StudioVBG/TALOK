@@ -57,7 +57,7 @@ async function testRoute(name: string, url: string, requiresAuth: boolean = true
       });
       console.log(`❌ ${name} - Status: ${status}`, data);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     results.push({
       route: name,
       status: "error",
@@ -104,7 +104,7 @@ async function testSupabaseConnection() {
         message: "✅ Supabase connection successful",
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     results.push({
       route: "Supabase Connection",
       status: "error",
@@ -151,7 +151,7 @@ async function testServiceRoleConnection() {
         message: "✅ Service role connection successful",
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     results.push({
       route: "Service Role Connection",
       status: "error",

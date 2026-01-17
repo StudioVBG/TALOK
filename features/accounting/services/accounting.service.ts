@@ -1,6 +1,10 @@
 /**
  * Service Comptabilité - Gestion Locative
  * Calculs et génération des documents comptables
+ *
+ * Refactored: Pure calculations extracted to ./calculations.ts
+ * Refactored: Helpers extracted to ./helpers.ts
+ * Refactored: FEC export extracted to ./fec-export.service.ts
  */
 
 import { createClient } from "@/lib/supabase/client";
@@ -9,33 +13,37 @@ import {
   MouvementMandant,
   BalanceMandants,
   CompteMandant,
-  GrandLivreMandant,
   SituationLocataire,
   RecapitulatifFiscal,
-  RegularisationCharges,
   EcritureFEC,
   CalculHonoraires,
   CalculReversement,
   Periode,
   ChargesDeductibles,
-  DetailHonoraires,
 } from "../types";
 import {
-  TAUX_TVA,
   TAUX_HONORAIRES,
-  JOURNAUX,
   generateCompteProprietaire,
   generateCompteLocataire,
-  getTauxTVA,
   formatDateFEC,
-  CHARGES_RECUPERABLES,
 } from "../constants/plan-comptable";
+
+// Import extracted modules
+import {
+  calculateHonoraires as calcHonoraires,
+  calculateReversement as calcReversement,
+  calculateProrata as calcProrata,
+  calculateTotauxMouvements,
+  calculateRecapitulatif,
+} from "./calculations";
+import { formatPeriode, getDateReversement } from "./helpers";
+import { fecExportService } from "./fec-export.service";
 
 export class AccountingService {
   private supabase = createClient();
 
   // ============================================================================
-  // CALCULS DE BASE
+  // CALCULS DE BASE (delegated to ./calculations.ts)
   // ============================================================================
 
   /**
@@ -46,21 +54,7 @@ export class AccountingService {
     tauxHT: number = TAUX_HONORAIRES.GESTION_LOCATIVE,
     codePostal: string = "75000"
   ): CalculHonoraires {
-    const tauxTVA = getTauxTVA(codePostal);
-    const montantHT = loyerHC * tauxHT;
-    const tvaMontant = montantHT * tauxTVA;
-    const totalTTC = montantHT + tvaMontant;
-    const netProprietaire = loyerHC - totalTTC;
-
-    return {
-      loyer_hc: Math.round(loyerHC * 100) / 100,
-      taux_ht: tauxHT,
-      montant_ht: Math.round(montantHT * 100) / 100,
-      tva_taux: tauxTVA,
-      tva_montant: Math.round(tvaMontant * 100) / 100,
-      total_ttc: Math.round(totalTTC * 100) / 100,
-      net_proprietaire: Math.round(netProprietaire * 100) / 100,
-    };
+    return calcHonoraires(loyerHC, tauxHT, codePostal);
   }
 
   /**
@@ -74,23 +68,14 @@ export class AccountingService {
     autresDeductions: number = 0,
     codePostal: string = "75000"
   ): CalculReversement {
-    const honoraires = this.calculateHonoraires(loyerEncaisse, tauxHonoraires, codePostal);
-
-    const montantReverse =
-      loyerEncaisse +
-      chargesEncaissees -
-      honoraires.total_ttc -
-      travauxDeduits -
-      autresDeductions;
-
-    return {
-      loyer_encaisse: loyerEncaisse,
-      charges_encaissees: chargesEncaissees,
-      honoraires_ttc: honoraires.total_ttc,
-      travaux_deduits: travauxDeduits,
-      autres_deductions: autresDeductions,
-      montant_reverse: Math.round(montantReverse * 100) / 100,
-    };
+    return calcReversement(
+      loyerEncaisse,
+      chargesEncaissees,
+      tauxHonoraires,
+      travauxDeduits,
+      autresDeductions,
+      codePostal
+    );
   }
 
   /**
@@ -101,17 +86,7 @@ export class AccountingService {
     dateFin: string,
     annee: number
   ): { jours_occupation: number; jours_annee: number; ratio: number } {
-    const debut = new Date(Math.max(new Date(dateDebut).getTime(), new Date(`${annee}-01-01`).getTime()));
-    const fin = new Date(Math.min(new Date(dateFin).getTime(), new Date(`${annee}-12-31`).getTime()));
-
-    const joursOccupation = Math.ceil((fin.getTime() - debut.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    const joursAnnee = annee % 4 === 0 ? 366 : 365;
-
-    return {
-      jours_occupation: Math.max(0, joursOccupation),
-      jours_annee: joursAnnee,
-      ratio: Math.round((joursOccupation / joursAnnee) * 10000) / 10000,
-    };
+    return calcProrata(dateDebut, dateFin, annee);
   }
 
   // ============================================================================
@@ -308,7 +283,7 @@ export class AccountingService {
         id: `LOY-${invoice.id}`,
         date: datePaiement,
         piece: `QT-${invoice.id.substring(0, 8)}`,
-        libelle: `Loyer ${this.formatPeriode(invoice.periode)}`,
+        libelle: `Loyer ${formatPeriode(invoice.periode)}`,
         type: "credit",
         montant: invoice.montant_total || 0,
         categorie: "loyer",
@@ -321,9 +296,9 @@ export class AccountingService {
 
       mouvements.push({
         id: `HON-${invoice.id}`,
-        date: this.getDateReversement(datePaiement),
+        date: getDateReversement(datePaiement),
         piece: `FA-${invoice.id.substring(0, 8)}`,
-        libelle: `Honoraires gestion ${this.formatPeriode(invoice.periode)}`,
+        libelle: `Honoraires gestion ${formatPeriode(invoice.periode)}`,
         type: "debit",
         montant: honoraires.total_ttc,
         categorie: "honoraires",
@@ -346,9 +321,9 @@ export class AccountingService {
 
       mouvements.push({
         id: `REV-${invoice.id}`,
-        date: this.getDateReversement(datePaiement),
+        date: getDateReversement(datePaiement),
         piece: `VIR-${invoice.id.substring(0, 8)}`,
-        libelle: `Reversement ${this.formatPeriode(invoice.periode)}`,
+        libelle: `Reversement ${formatPeriode(invoice.periode)}`,
         type: "debit",
         montant: reversement.montant_reverse,
         categorie: "reversement",
@@ -452,66 +427,20 @@ export class AccountingService {
   }
 
   /**
-   * Calcule les totaux des mouvements
+   * Calcule les totaux des mouvements (delegated to ./calculations.ts)
    */
   private calculateTotauxMouvements(mouvements: MouvementMandant[]): {
     total_debits: number;
     total_credits: number;
   } {
-    let totalDebits = 0;
-    let totalCredits = 0;
-
-    for (const mouvement of mouvements) {
-      if (mouvement.type === "credit") {
-        totalCredits += mouvement.montant;
-      } else {
-        totalDebits += mouvement.montant;
-      }
-    }
-
-    return {
-      total_debits: Math.round(totalDebits * 100) / 100,
-      total_credits: Math.round(totalCredits * 100) / 100,
-    };
+    return calculateTotauxMouvements(mouvements);
   }
 
   /**
-   * Calcule le récapitulatif du CRG
+   * Calcule le récapitulatif du CRG (delegated to ./calculations.ts)
    */
   private calculateRecapitulatif(mouvements: MouvementMandant[]) {
-    let loyersEncaisses = 0;
-    let honorairesPreleves = 0;
-    let travauxInterventions = 0;
-    let reversementsEffectues = 0;
-
-    for (const mouvement of mouvements) {
-      switch (mouvement.categorie) {
-        case "loyer":
-        case "charges":
-          loyersEncaisses += mouvement.montant;
-          break;
-        case "honoraires":
-          honorairesPreleves += mouvement.montant;
-          break;
-        case "travaux":
-          travauxInterventions += mouvement.montant;
-          break;
-        case "reversement":
-          reversementsEffectues += mouvement.montant;
-          break;
-      }
-    }
-
-    const soldeDisponible =
-      loyersEncaisses - honorairesPreleves - travauxInterventions - reversementsEffectues;
-
-    return {
-      loyers_encaisses: Math.round(loyersEncaisses * 100) / 100,
-      honoraires_preleves: Math.round(honorairesPreleves * 100) / 100,
-      travaux_interventions: Math.round(travauxInterventions * 100) / 100,
-      reversements_effectues: Math.round(reversementsEffectues * 100) / 100,
-      solde_disponible: Math.round(soldeDisponible * 100) / 100,
-    };
+    return calculateRecapitulatif(mouvements);
   }
 
   // ============================================================================
@@ -1045,227 +974,29 @@ export class AccountingService {
   // ============================================================================
   // EXPORT FEC
   // ============================================================================
+  // FEC Export (delegated to ./fec-export.service.ts)
+  // ============================================================================
 
   /**
    * Génère l'export FEC pour une année
    */
   async generateExportFEC(annee: number): Promise<EcritureFEC[]> {
-    const ecritures: EcritureFEC[] = [];
-    let ecritureNum = 1;
-
-    // Récupérer toutes les factures de l'année
-    const { data: invoices } = await this.supabase
-      .from("invoices")
-      .select(`
-        id,
-        periode,
-        montant_loyer,
-        montant_charges,
-        montant_total,
-        statut,
-        date_paiement,
-        lease:leases!inner(
-          loyer,
-          property:properties!inner(
-            owner_id,
-            owner:profiles!properties_owner_id_fkey(prenom, nom)
-          )
-        )
-      `)
-      .eq("statut", "payee")
-      .gte("periode", `${annee}-01`)
-      .lte("periode", `${annee}-12`);
-
-    for (const invoice of invoices || []) {
-      const leaseData = invoice.lease as any;
-      const owner = leaseData?.property?.owner;
-      const ownerName = owner ? `${owner.prenom || ""} ${owner.nom || ""}`.trim() : "N/A";
-      const ownerId = leaseData?.property?.owner_id || "";
-
-      const datePaiement = invoice.date_paiement || `${invoice.periode}-05`;
-      const dateReversement = this.getDateReversement(datePaiement);
-
-      // Écriture 1: Facturation honoraires (Ventes)
-      const honoraires = this.calculateHonoraires(leaseData?.loyer || invoice.montant_loyer || 0);
-
-      // Débit client
-      ecritures.push({
-        JournalCode: "VE",
-        JournalLib: "Ventes",
-        EcritureNum: `VE-${annee}-${String(ecritureNum).padStart(6, "0")}`,
-        EcritureDate: formatDateFEC(datePaiement),
-        CompteNum: `411${ownerId.substring(0, 5).toUpperCase()}`,
-        CompteLib: `Client ${ownerName}`,
-        PieceRef: `FA-${invoice.id.substring(0, 8)}`,
-        PieceDate: formatDateFEC(datePaiement),
-        EcritureLib: `Honoraires gestion ${invoice.periode}`,
-        Debit: honoraires.total_ttc,
-        Credit: 0,
-        Montantdevise: 0,
-        Idevise: "EUR",
-      });
-
-      // Crédit produits
-      ecritures.push({
-        JournalCode: "VE",
-        JournalLib: "Ventes",
-        EcritureNum: `VE-${annee}-${String(ecritureNum).padStart(6, "0")}`,
-        EcritureDate: formatDateFEC(datePaiement),
-        CompteNum: "706100",
-        CompteLib: "Honoraires de gestion locative",
-        PieceRef: `FA-${invoice.id.substring(0, 8)}`,
-        PieceDate: formatDateFEC(datePaiement),
-        EcritureLib: `Honoraires gestion ${invoice.periode}`,
-        Debit: 0,
-        Credit: honoraires.montant_ht,
-        Montantdevise: 0,
-        Idevise: "EUR",
-      });
-
-      // Crédit TVA collectée
-      ecritures.push({
-        JournalCode: "VE",
-        JournalLib: "Ventes",
-        EcritureNum: `VE-${annee}-${String(ecritureNum).padStart(6, "0")}`,
-        EcritureDate: formatDateFEC(datePaiement),
-        CompteNum: "445710",
-        CompteLib: "TVA collectée",
-        PieceRef: `FA-${invoice.id.substring(0, 8)}`,
-        PieceDate: formatDateFEC(datePaiement),
-        EcritureLib: `TVA sur honoraires ${invoice.periode}`,
-        Debit: 0,
-        Credit: honoraires.tva_montant,
-        Montantdevise: 0,
-        Idevise: "EUR",
-      });
-
-      ecritureNum++;
-
-      // Écriture 2: Encaissement (Banque)
-      ecritures.push({
-        JournalCode: "BQ",
-        JournalLib: "Banque Agence",
-        EcritureNum: `BQ-${annee}-${String(ecritureNum).padStart(6, "0")}`,
-        EcritureDate: formatDateFEC(dateReversement),
-        CompteNum: "512000",
-        CompteLib: "Banque compte courant",
-        PieceRef: `ENC-${invoice.id.substring(0, 8)}`,
-        PieceDate: formatDateFEC(dateReversement),
-        EcritureLib: `Encaissement honoraires ${invoice.periode}`,
-        Debit: honoraires.total_ttc,
-        Credit: 0,
-        Montantdevise: 0,
-        Idevise: "EUR",
-      });
-
-      ecritures.push({
-        JournalCode: "BQ",
-        JournalLib: "Banque Agence",
-        EcritureNum: `BQ-${annee}-${String(ecritureNum).padStart(6, "0")}`,
-        EcritureDate: formatDateFEC(dateReversement),
-        CompteNum: `411${ownerId.substring(0, 5).toUpperCase()}`,
-        CompteLib: `Client ${ownerName}`,
-        PieceRef: `ENC-${invoice.id.substring(0, 8)}`,
-        PieceDate: formatDateFEC(dateReversement),
-        EcritureLib: `Encaissement honoraires ${invoice.periode}`,
-        Debit: 0,
-        Credit: honoraires.total_ttc,
-        Montantdevise: 0,
-        Idevise: "EUR",
-      });
-
-      ecritureNum++;
-    }
-
-    return ecritures;
+    return fecExportService.generateExportFEC(annee);
   }
 
   /**
    * Convertit les écritures FEC en CSV
    */
   exportFECToCSV(ecritures: EcritureFEC[]): string {
-    const headers = [
-      "JournalCode",
-      "JournalLib",
-      "EcritureNum",
-      "EcritureDate",
-      "CompteNum",
-      "CompteLib",
-      "CompAuxNum",
-      "CompAuxLib",
-      "PieceRef",
-      "PieceDate",
-      "EcritureLib",
-      "Debit",
-      "Credit",
-      "EcritureLet",
-      "DateLet",
-      "ValidDate",
-      "Montantdevise",
-      "Idevise",
-    ];
-
-    const lines = ecritures.map((e) =>
-      [
-        e.JournalCode,
-        e.JournalLib,
-        e.EcritureNum,
-        e.EcritureDate,
-        e.CompteNum,
-        e.CompteLib,
-        e.CompAuxNum || "",
-        e.CompAuxLib || "",
-        e.PieceRef,
-        e.PieceDate,
-        e.EcritureLib,
-        e.Debit.toFixed(2).replace(".", ","),
-        e.Credit.toFixed(2).replace(".", ","),
-        e.EcritureLet || "",
-        e.DateLet || "",
-        e.ValidDate || "",
-        e.Montantdevise.toFixed(2).replace(".", ","),
-        e.Idevise,
-      ].join(";")
-    );
-
-    return [headers.join(";"), ...lines].join("\n");
+    return fecExportService.exportFECToCSV(ecritures);
   }
 
   // ============================================================================
   // HELPERS
   // ============================================================================
-
-  /**
-   * Formate une période YYYY-MM en texte lisible
-   */
-  private formatPeriode(periode: string): string {
-    const [year, month] = periode.split("-");
-    const mois = [
-      "janvier",
-      "février",
-      "mars",
-      "avril",
-      "mai",
-      "juin",
-      "juillet",
-      "août",
-      "septembre",
-      "octobre",
-      "novembre",
-      "décembre",
-    ];
-    return `${mois[parseInt(month) - 1]} ${year}`;
-  }
-
-  /**
-   * Calcule la date de reversement (15 du mois suivant)
-   */
-  private getDateReversement(datePaiement: string): string {
-    const date = new Date(datePaiement);
-    date.setMonth(date.getMonth() + 1);
-    date.setDate(15);
-    return date.toISOString().split("T")[0];
-  }
+  // Helpers moved to ./helpers.ts: formatPeriode, getDateReversement
+  // FEC export moved to ./fec-export.service.ts
+  // ============================================================================
 }
 
 // Export singleton

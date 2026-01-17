@@ -228,10 +228,10 @@ export async function POST(
         },
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[renew] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -346,10 +346,10 @@ export async function GET(
         ? `Le bail doit être actif pour être renouvelé (statut actuel: ${leaseData.statut})`
         : null,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[renew/GET] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

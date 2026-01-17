@@ -112,7 +112,7 @@ export async function POST(
         confidence: ocrResult?.confidence || 0,
         extracted_fields: ocrResult?.extracted_fields || {},
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur appel Edge Function:", error);
       // Fallback: marquer comme en cours
       await supabase
@@ -123,12 +123,12 @@ export async function POST(
       return NextResponse.json({
         success: false,
         message: "Erreur lors de l'analyse",
-        error: error.message,
+        error: error instanceof Error ? error.message : "Une erreur est survenue",
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

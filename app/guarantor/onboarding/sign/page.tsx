@@ -35,10 +35,10 @@ export default function GuarantorSignPage() {
       setTimeout(() => {
         router.push("/guarantor");
       }, 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la signature.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la signature.",
         variant: "destructive",
       });
     } finally {

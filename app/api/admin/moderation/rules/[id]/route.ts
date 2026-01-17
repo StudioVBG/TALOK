@@ -119,7 +119,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (error) {
       console.error("[PATCH /api/admin/moderation/rules/[id]] Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     // Journaliser
@@ -184,7 +184,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       .eq("id", id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     // Journaliser

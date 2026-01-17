@@ -34,18 +34,18 @@ export async function POST(request: Request) {
           lease_id: validated.lease_id,
         });
         invitations.push(invitation);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`Erreur création invitation pour ${email}:`, error);
         // Continuer avec les autres emails
       }
     }
 
     return NextResponse.json({ success: true, invitations });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
     }
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 
@@ -79,8 +79,8 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ invitations });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

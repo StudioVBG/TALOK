@@ -245,10 +245,10 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Cron notifications error:", error);
     return NextResponse.json(
-      { error: error.message, results },
+      { error: error instanceof Error ? error.message : "Une erreur est survenue", results },
       { status: 500 }
     );
   }

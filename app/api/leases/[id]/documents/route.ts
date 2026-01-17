@@ -67,9 +67,9 @@ export async function GET(
     );
 
     return NextResponse.json({ documents: documentsWithUrls });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

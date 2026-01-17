@@ -91,9 +91,9 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
     
     return NextResponse.json(data || []);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur GET /api/copro/invites:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
             .single();
           
           if (error) {
-            errors.push({ email: invite.email, error: error.message });
+            errors.push({ email: invite.email, error: error instanceof Error ? error.message : "Une erreur est survenue" });
             continue;
           }
           
@@ -191,9 +191,9 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
     
     return NextResponse.json(invite, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur POST /api/copro/invites:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

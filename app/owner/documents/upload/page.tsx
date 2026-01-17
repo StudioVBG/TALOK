@@ -156,10 +156,10 @@ export default function OwnerDocumentsUploadPage() {
         ? ownerDocumentRoutes.withFilter({ lease_id: leaseId })
         : ownerDocumentRoutes.list();
       router.push(redirectUrl);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Erreur lors du téléversement",
+        description: error instanceof Error ? error.message : "Erreur lors du téléversement",
         variant: "destructive",
       });
     } finally {

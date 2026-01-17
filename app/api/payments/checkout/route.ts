@@ -77,10 +77,10 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Stripe Checkout] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur lors de la création de la session de paiement" },
+      { error: error instanceof Error ? error.message : "Erreur lors de la création de la session de paiement" },
       { status: 500 }
     );
   }

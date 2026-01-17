@@ -61,10 +61,10 @@ export async function GET(
     }
 
     return NextResponse.json({ signers });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[signers/GET] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -322,7 +322,7 @@ export async function POST(
         : `Signataire ajouté. Lien d'invitation: ${inviteUrl}`,
       invite_url: inviteUrl,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[signers/POST] Erreur:", error);
 
     if (error instanceof z.ZodError) {
@@ -333,7 +333,7 @@ export async function POST(
     }
 
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -104,10 +104,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ document }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/documents/upload] Unexpected error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -179,10 +179,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       signer_role: signerRole,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API get lease:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -368,10 +368,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
       lease: updatedLease,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API update lease:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -606,10 +606,10 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       notifiedTenants: (lease as any).signers?.filter((s: any) => isTenantRole(s.role)).length || 0,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API delete lease:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

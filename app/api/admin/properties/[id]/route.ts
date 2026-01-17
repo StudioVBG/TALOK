@@ -213,9 +213,9 @@ export async function GET(
         loyer: pendingLease.loyer
       } : null
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/admin/properties/[id]] Erreur serveur:", error);
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

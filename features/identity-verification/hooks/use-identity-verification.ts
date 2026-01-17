@@ -147,12 +147,12 @@ export function useIdentityVerification(): UseIdentityVerificationReturn {
 
       setResult(verificationResult);
       setStep(verificationResult.success ? "success" : "error");
-    } catch (error: any) {
+    } catch (error: unknown) {
       setResult({
         success: false,
         confidence: 0,
         errorCode: "upload_error",
-        errorMessage: error.message || "Erreur lors de l'upload",
+        errorMessage: error instanceof Error ? error.message : "Erreur lors de l'upload",
       });
       setStep("error");
     } finally {

@@ -61,10 +61,10 @@ export async function GET(
     }
 
     return NextResponse.json({ media });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/edl-media/[id]]", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -159,10 +159,10 @@ export async function PATCH(
     }
 
     return NextResponse.json({ media: updatedMedia });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[PATCH /api/edl-media/[id]]", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -252,10 +252,10 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[DELETE /api/edl-media/[id]]", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

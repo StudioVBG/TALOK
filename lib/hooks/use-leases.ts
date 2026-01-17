@@ -38,7 +38,7 @@ export function useLeases(propertyId?: string | null, options?: { enabled?: bool
         
         // Par défaut, récupérer tous les baux (admin)
         return await leasesService.getLeases();
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("[useLeases] Error fetching leases:", error);
         
         // Retourner un tableau vide pour éviter de bloquer l'UI

@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       },
       201
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[register] Error:", error);
     return apiError("Erreur serveur", 500, "SERVER_ERROR");
   }

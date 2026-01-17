@@ -178,7 +178,7 @@ export async function POST(request: Request) {
       url: session.url,
       session_id: session.id,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur création checkout:", error);
     
     // Gérer les erreurs Stripe spécifiques
@@ -193,7 +193,7 @@ export async function POST(request: Request) {
     }
     
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -201,11 +201,11 @@ export default function OwnerIdentityPage() {
         title: "✅ Document uploadé",
         description: `CNI ${side === "recto" ? "recto" : "verso"} enregistrée avec succès.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur upload:", error);
       toast({
         title: "Erreur d'upload",
-        description: error.message || "Impossible d'uploader le document.",
+        description: error instanceof Error ? error.message : "Impossible d'uploader le document.",
         variant: "destructive",
       });
     } finally {
@@ -235,7 +235,7 @@ export default function OwnerIdentityPage() {
         title: "Document supprimé",
         description: `CNI ${side === "recto" ? "recto" : "verso"} supprimée.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
         description: "Impossible de supprimer le document.",

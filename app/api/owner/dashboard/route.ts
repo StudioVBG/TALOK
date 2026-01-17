@@ -540,10 +540,10 @@ export async function GET(request: Request) {
         'Cache-Control': 'private, s-maxage=300, stale-while-revalidate=60'
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in GET /api/owner/dashboard:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

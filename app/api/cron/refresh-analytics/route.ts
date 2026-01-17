@@ -103,10 +103,10 @@ export async function GET(request: NextRequest) {
       results,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[cron/refresh-analytics] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

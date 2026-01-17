@@ -36,7 +36,7 @@ export function useTickets(propertyId?: string | null) {
         
         // Par défaut, récupérer tous les tickets (admin)
         return await ticketsService.getTickets();
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Gérer les erreurs silencieusement pour éviter les erreurs 500 dans la console
         console.error("[useTickets] Error fetching tickets:", error);
         return [];

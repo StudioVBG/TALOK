@@ -128,9 +128,9 @@ export async function POST(
       confidence: bestField.confidence,
       user_age: userAge,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

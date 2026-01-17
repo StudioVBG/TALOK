@@ -329,8 +329,8 @@ function ProviderSearchModal({
         const data = await res.json();
         throw new Error(data.error || "Erreur lors de l'envoi");
       }
-    } catch (error: any) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
     } finally {
       setRequesting(false);
     }
