@@ -12,7 +12,7 @@ import { onboardingService } from "@/features/onboarding/services/onboarding.ser
 import { invitationsService } from "@/features/onboarding/services/invitations.service";
 import { propertyCodesService } from "@/features/onboarding/services/property-codes.service";
 import { tenantContextSchema } from "@/lib/validations/onboarding";
-import { Home, Key, ArrowRight, Mail } from "lucide-react";
+import { Home, Key, ArrowRight } from "lucide-react";
 import {
   Select,
   SelectContent,
