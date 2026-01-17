@@ -1,11 +1,20 @@
 /**
  * Service d'envoi d'emails avec Resend
- * 
+ *
  * Documentation: https://resend.com/docs
+ *
+ * Fonctionnalités:
+ * - Retry automatique avec exponential backoff (3 tentatives)
+ * - Rate limiting (5/min/destinataire, 100/min global)
+ * - Validation des adresses email
+ * - Logging structuré
  */
 
 import { Resend } from 'resend';
 import { emailTemplates } from './templates';
+import { withRetry } from './utils/retry';
+import { checkRateLimitBatch } from './utils/rate-limit';
+import { validateEmails, isValidEmail } from './utils/validation';
 
 // Client Resend (singleton)
 let resendClient: Resend | null = null;
@@ -25,6 +34,14 @@ function getResendClient(): Resend {
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Talok <noreply@talok.fr>';
 const REPLY_TO = process.env.RESEND_REPLY_TO || 'support@talok.fr';
 
+// Configuration retry
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelayMs: 1000,
+  backoffMultiplier: 2,
+  maxDelayMs: 10000,
+};
+
 export interface SendEmailOptions {
   to: string | string[];
   subject: string;
@@ -41,52 +58,137 @@ export interface SendEmailOptions {
     name: string;
     value: string;
   }>;
+  /** Désactiver le rate limiting pour cet envoi */
+  skipRateLimit?: boolean;
+  /** Désactiver le retry pour cet envoi */
+  skipRetry?: boolean;
 }
 
 export interface EmailResult {
   success: boolean;
   id?: string;
   error?: string;
+  /** Indique si l'envoi a nécessité des retries */
+  retried?: boolean;
+  /** Nombre de tentatives effectuées */
+  attempts?: number;
 }
 
 /**
  * Envoie un email via Resend
+ *
+ * Fonctionnalités intégrées:
+ * - Validation des adresses email
+ * - Rate limiting (protection contre l'envoi massif)
+ * - Retry automatique en cas d'échec réseau (3 tentatives)
  */
 export async function sendEmail(options: SendEmailOptions): Promise<EmailResult> {
-  try {
-    const resend = getResendClient();
-    
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: Array.isArray(options.to) ? options.to : [options.to],
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-      reply_to: options.replyTo || REPLY_TO,
-      cc: options.cc,
-      bcc: options.bcc,
-      attachments: options.attachments,
-      tags: options.tags,
-    });
+  const startTime = Date.now();
+  let attempts = 0;
 
-    if (error) {
-      console.error('[Email] Erreur Resend:', error);
+  try {
+    // 1. Valider et normaliser les destinataires
+    const recipients = Array.isArray(options.to) ? options.to : [options.to];
+    const validation = validateEmails(recipients);
+
+    if (!validation.valid || validation.validEmails.length === 0) {
+      const invalidList = validation.invalidEmails.map(e => e.email).join(', ');
+      console.error('[Email] Adresses invalides:', invalidList);
       return {
         success: false,
-        error: error.message,
+        error: `Adresses email invalides: ${invalidList || 'aucune adresse fournie'}`,
+        attempts: 0,
       };
     }
 
-    console.log('[Email] Envoyé avec succès:', data?.id);
+    // Log si certaines adresses ont été filtrées
+    if (validation.invalidEmails.length > 0) {
+      console.warn(
+        `[Email] ${validation.invalidEmails.length} adresse(s) invalide(s) ignorée(s):`,
+        validation.invalidEmails.map(e => e.email)
+      );
+    }
+
+    // 2. Vérifier le rate limit
+    if (!options.skipRateLimit) {
+      const rateLimitCheck = checkRateLimitBatch(validation.validEmails);
+
+      if (!rateLimitCheck.allowed) {
+        console.warn('[Email] Rate limit atteint:', rateLimitCheck.reason);
+        return {
+          success: false,
+          error: rateLimitCheck.reason,
+          attempts: 0,
+        };
+      }
+    }
+
+    // 3. Fonction d'envoi (sera retryée si nécessaire)
+    const doSend = async (): Promise<{ id: string }> => {
+      attempts++;
+      const resend = getResendClient();
+
+      const { data, error } = await resend.emails.send({
+        from: FROM_EMAIL,
+        to: validation.validEmails,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        reply_to: options.replyTo || REPLY_TO,
+        cc: options.cc,
+        bcc: options.bcc,
+        attachments: options.attachments,
+        tags: options.tags,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return { id: data?.id || 'unknown' };
+    };
+
+    // 4. Exécuter avec ou sans retry
+    let result: { id: string };
+
+    if (options.skipRetry) {
+      result = await doSend();
+    } else {
+      result = await withRetry(doSend, {
+        ...RETRY_CONFIG,
+        onRetry: (error, attempt, delay) => {
+          console.warn(
+            `[Email] Tentative ${attempt}/${RETRY_CONFIG.maxRetries} échouée pour ${validation.validEmails.join(', ')}: ${error.message}. Retry dans ${delay}ms`
+          );
+        },
+      });
+    }
+
+    // 5. Log succès
+    const duration = Date.now() - startTime;
+    console.log(
+      `[Email] ✅ Envoyé avec succès | ID: ${result.id} | To: ${validation.validEmails.join(', ')} | ` +
+      `Durée: ${duration}ms | Tentatives: ${attempts}`
+    );
+
     return {
       success: true,
-      id: data?.id,
+      id: result.id,
+      retried: attempts > 1,
+      attempts,
     };
   } catch (error: any) {
-    console.error('[Email] Erreur:', error);
+    const duration = Date.now() - startTime;
+    console.error(
+      `[Email] ❌ Échec définitif | To: ${options.to} | Erreur: ${error.message} | ` +
+      `Durée: ${duration}ms | Tentatives: ${attempts}`
+    );
+
     return {
       success: false,
       error: error.message,
+      retried: attempts > 1,
+      attempts,
     };
   }
 }

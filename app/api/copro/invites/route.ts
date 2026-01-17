@@ -205,26 +205,77 @@ async function sendInviteEmail(invite: any, supabase: any) {
     .select('name')
     .eq('id', invite.site_id)
     .single();
-  
-  // Appeler l'API d'envoi d'email
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  
-  await fetch(`${appUrl}/api/emails/send`, {
+  const firstName = invite.first_name || 'Futur copropriétaire';
+  const siteName = site?.name || 'votre copropriété';
+  const inviteUrl = `${appUrl}/invite/copro?token=${invite.token}`;
+
+  // Générer le HTML de l'email
+  const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invitation Copropriété</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 32px; text-align: center;">
+        <span style="font-size: 24px; font-weight: 700; color: white;">🏢 Talok</span>
+      </div>
+      <div style="padding: 40px;">
+        <h1 style="margin: 0 0 16px 0; font-size: 24px; color: #111827;">Invitation à rejoindre ${siteName}</h1>
+        <p style="color: #374151; font-size: 16px; line-height: 1.6;">Bonjour ${firstName},</p>
+        <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+          Vous êtes invité(e) à rejoindre la copropriété <strong>${siteName}</strong> sur Talok.
+        </p>
+        ${invite.personal_message ? `
+        <div style="background: #f9fafb; border-left: 4px solid #2563eb; padding: 16px 20px; margin: 24px 0; border-radius: 0 8px 8px 0;">
+          <p style="margin: 0; color: #374151; font-style: italic;">${invite.personal_message}</p>
+        </div>
+        ` : ''}
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+            Accepter l'invitation
+          </a>
+        </div>
+        <p style="color: #6b7280; font-size: 14px;">
+          Ce lien expire le ${new Date(invite.expires_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}.
+        </p>
+      </div>
+      <div style="background: #f9fafb; padding: 24px; text-align: center;">
+        <p style="margin: 0; color: #6b7280; font-size: 13px;">
+          © ${new Date().getFullYear()} Talok. Tous droits réservés.
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  // Appeler l'API d'envoi d'email avec la clé API interne
+  const response = await fetch(`${appUrl}/api/emails/send`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-api-key': process.env.INTERNAL_EMAIL_API_KEY || '',
+    },
     body: JSON.stringify({
       to: invite.email,
-      template: 'copro-invite',
-      data: {
-        first_name: invite.first_name || 'Futur copropriétaire',
-        site_name: site?.name || 'votre copropriété',
-        invite_url: `${appUrl}/invite/copro?token=${invite.token}`,
-        personal_message: invite.personal_message,
-        expires_at: invite.expires_at,
-      },
+      subject: `🏢 Invitation à rejoindre ${siteName}`,
+      html,
     }),
   });
-  
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Email send failed: ${response.status}`);
+  }
+
   // Mettre à jour le statut
   await supabase
     .from('copro_invites')
