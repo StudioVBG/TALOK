@@ -162,7 +162,7 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
         console.error("Erreur suppression:", error);
         toast({
           title: "Erreur",
-          description: error.message || "Impossible de supprimer le document",
+          description: error instanceof Error ? error.message : "Impossible de supprimer le document",
           variant: "destructive",
         });
       },

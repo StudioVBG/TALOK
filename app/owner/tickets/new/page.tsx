@@ -144,7 +144,7 @@ export default function NewOwnerTicketPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Erreur lors de la création");
+        throw new Error(error instanceof Error ? error.message : "Erreur lors de la création");
       }
 
       toast({
@@ -153,10 +153,10 @@ export default function NewOwnerTicketPage() {
       });
 
       router.push("/owner/tickets");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de créer le ticket.",
+        description: error instanceof Error ? error.message : "Impossible de créer le ticket.",
         variant: "destructive",
       });
     } finally {

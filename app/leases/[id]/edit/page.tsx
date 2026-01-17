@@ -21,10 +21,10 @@ function EditLeasePageContent() {
       setLoading(true);
       const data = await leasesService.getLeaseById(id);
       setLease(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger le bail.",
+        description: error instanceof Error ? error.message : "Impossible de charger le bail.",
         variant: "destructive",
       });
       router.push("/leases");

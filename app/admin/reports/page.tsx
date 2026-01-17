@@ -31,10 +31,10 @@ function ReportsPageContent() {
         endDate || undefined
       );
       setReportData(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de générer le rapport.",
+        description: error instanceof Error ? error.message : "Impossible de générer le rapport.",
         variant: "destructive",
       });
     } finally {
@@ -54,10 +54,10 @@ function ReportsPageContent() {
       a.download = `rapport-${new Date().toISOString().split("T")[0]}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'exporter le rapport.",
+        description: error instanceof Error ? error.message : "Impossible d'exporter le rapport.",
         variant: "destructive",
       });
     }
@@ -75,10 +75,10 @@ function ReportsPageContent() {
       a.download = `rapport-${new Date().toISOString().split("T")[0]}.json`;
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'exporter le rapport.",
+        description: error instanceof Error ? error.message : "Impossible d'exporter le rapport.",
         variant: "destructive",
       });
     }

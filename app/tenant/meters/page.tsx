@@ -129,7 +129,7 @@ export default function TenantMetersPage() {
       const metersResponse = await fetch(`/api/properties/${leaseData.lease.property_id}/meters`);
       const metersData = await metersResponse.json();
       setMeters(metersData.meters || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur chargement compteurs:", error);
     } finally {
       setIsLoading(false);
@@ -175,7 +175,7 @@ export default function TenantMetersPage() {
         setIsDialogOpen(false);
         fetchMeters();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({ title: "Erreur", description: "Impossible d'enregistrer le relevé.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);

@@ -72,10 +72,10 @@ export default function ProviderProfileOnboardingPage() {
         title: "Fichier uploadé",
         description: "Votre RC Pro a été uploadé avec succès.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Erreur lors de l'upload du fichier.",
+        description: error instanceof Error ? error.message : "Erreur lors de l'upload du fichier.",
         variant: "destructive",
       });
     }
@@ -121,10 +121,10 @@ export default function ProviderProfileOnboardingPage() {
 
       // Rediriger vers les services
       router.push("/provider/onboarding/services");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

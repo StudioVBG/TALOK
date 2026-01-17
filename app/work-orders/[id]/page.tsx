@@ -51,10 +51,10 @@ function WorkOrderDetailPageContent() {
       setLoading(true);
       const data = await workOrdersService.getWorkOrderById(id);
       setWorkOrder(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger l'intervention.",
+        description: error instanceof Error ? error.message : "Impossible de charger l'intervention.",
         variant: "destructive",
       });
       router.push("/work-orders");
@@ -78,10 +78,10 @@ function WorkOrderDetailPageContent() {
         description: "L'intervention a été mise à jour avec succès.",
       });
       fetchWorkOrder(workOrder.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de mettre à jour l'intervention.",
+        description: error instanceof Error ? error.message : "Impossible de mettre à jour l'intervention.",
         variant: "destructive",
       });
     } finally {

@@ -77,10 +77,10 @@ export default function GuarantorFinancialPage() {
         title: "Fichier uploadé",
         description: "Votre document a été uploadé avec succès.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Erreur lors de l'upload du fichier.",
+        description: error instanceof Error ? error.message : "Erreur lors de l'upload du fichier.",
         variant: "destructive",
       });
     }
@@ -110,10 +110,10 @@ export default function GuarantorFinancialPage() {
 
       // Rediriger vers la signature
       router.push("/guarantor/onboarding/sign");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

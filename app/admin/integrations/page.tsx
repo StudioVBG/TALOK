@@ -165,11 +165,11 @@ export default function AdminIntegrationsPage() {
         const error = await response.json();
         throw new Error(error.error || "Erreur de chargement");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur chargement:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les intégrations",
+        description: error instanceof Error ? error.message : "Impossible de charger les intégrations",
         variant: "destructive",
       });
     } finally {
@@ -246,10 +246,10 @@ export default function AdminIntegrationsPage() {
         const error = await response.json();
         throw new Error(error.error);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de sauvegarder",
+        description: error instanceof Error ? error.message : "Impossible de sauvegarder",
         variant: "destructive",
       });
     } finally {
@@ -281,10 +281,10 @@ export default function AdminIntegrationsPage() {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de tester la connexion",
+        description: error instanceof Error ? error.message : "Impossible de tester la connexion",
         variant: "destructive",
       });
     } finally {

@@ -521,11 +521,11 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       });
 
       router.push(`/owner/leases/${result.lease_id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur création bail:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {

@@ -230,10 +230,10 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
       });
 
       setLastUpdate("À l'instant");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de mettre à jour les législations",
+        description: error instanceof Error ? error.message : "Impossible de mettre à jour les législations",
         variant: "destructive",
       });
     } finally {

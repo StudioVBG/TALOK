@@ -139,10 +139,10 @@ export default function NewQuotePage() {
       });
 
       router.push("/provider/quotes");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de créer le devis.",
+        description: error instanceof Error ? error.message : "Impossible de créer le devis.",
         variant: "destructive",
       });
     } finally {

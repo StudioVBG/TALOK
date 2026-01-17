@@ -100,11 +100,11 @@ export default function VerifyEmailOnboardingPage() {
         title: "Email envoyé ✅",
         description: "Un nouvel email de confirmation a été envoyé. Vérifiez aussi vos spams !",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[VerifyEmail] Erreur finale:", error);
       
       // Messages d'erreur plus explicites
-      let errorMessage = error.message || "Impossible d'envoyer l'email.";
+      let errorMessage = error instanceof Error ? error.message : "Impossible d'envoyer l'email.";
       
       if (error.message?.includes("rate limit") || error.message?.includes("too many")) {
         errorMessage = "Trop de tentatives. Attendez quelques minutes avant de réessayer.";
@@ -157,10 +157,10 @@ export default function VerifyEmailOnboardingPage() {
         description:
           "Votre email n'a pas encore été confirmé. Cliquez sur le lien dans l'email que vous avez reçu pour confirmer votre compte.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de vérifier le statut.",
+        description: error instanceof Error ? error.message : "Impossible de vérifier le statut.",
         variant: "destructive",
       });
     } finally {

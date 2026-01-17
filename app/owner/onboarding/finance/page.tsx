@@ -96,10 +96,10 @@ export default function OwnerFinancePage() {
 
       // Rediriger vers l'ajout du premier logement
       router.push("/owner/onboarding/property");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

@@ -34,10 +34,10 @@ function TicketDetailPageContent() {
       setLoading(true);
       const data = await ticketsService.getTicketById(id);
       setTicket(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger le ticket.",
+        description: error instanceof Error ? error.message : "Impossible de charger le ticket.",
         variant: "destructive",
       });
       router.push("/tickets");
@@ -56,10 +56,10 @@ function TicketDetailPageContent() {
         description: "Le statut du ticket a été modifié.",
       });
       fetchTicket(ticket.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de modifier le statut.",
+        description: error instanceof Error ? error.message : "Impossible de modifier le statut.",
         variant: "destructive",
       });
     }

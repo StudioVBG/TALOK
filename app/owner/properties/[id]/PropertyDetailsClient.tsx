@@ -1102,11 +1102,11 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         title: "Modifications enregistrées",
         description: "Toutes les modifications ont été sauvegardées avec succès.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur sauvegarde globale:", error);
       
       // Extraire le message d'erreur détaillé
-      let errorMessage = error.message || "Erreur lors de la sauvegarde";
+      let errorMessage = error instanceof Error ? error.message : "Erreur lors de la sauvegarde";
       let errorDetails = "";
       
       if (error.response?.error) {

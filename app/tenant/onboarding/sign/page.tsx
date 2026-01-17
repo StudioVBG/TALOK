@@ -124,11 +124,11 @@ export default function TenantSignLeasePage() {
       setTimeout(() => {
         router.push("/tenant/dashboard");
       }, 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[SignLease] Error:", error);
       toast({
         title: "Erreur de signature",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

@@ -847,10 +847,10 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       });
 
       router.push(`/owner/inspections/${edl.id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de créer l'EDL",
+        description: error instanceof Error ? error.message : "Impossible de créer l'EDL",
         variant: "destructive",
       });
     } finally {

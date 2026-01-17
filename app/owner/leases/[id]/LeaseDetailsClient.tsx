@@ -427,11 +427,11 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       });
       
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur signature:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de signer le bail",
+        description: error instanceof Error ? error.message : "Impossible de signer le bail",
         variant: "destructive",
       });
       throw error; // Re-throw pour le modal
@@ -457,11 +457,11 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       });
       router.push("/owner/leases");
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur suppression:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de supprimer le bail",
+        description: error instanceof Error ? error.message : "Impossible de supprimer le bail",
         variant: "destructive",
       });
     } finally {
@@ -491,11 +491,11 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         description: "Le bail a été terminé avec succès.",
       });
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur résiliation:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de résilier le bail",
+        description: error instanceof Error ? error.message : "Impossible de résilier le bail",
         variant: "destructive",
       });
     } finally {
@@ -557,11 +557,11 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       });
       
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur activation:", error);
       toast({
         title: "Action requise",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {

@@ -21,10 +21,10 @@ function EditChargePageContent() {
       setLoading(true);
       const data = await chargesService.getChargeById(id);
       setCharge(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger la charge.",
+        description: error instanceof Error ? error.message : "Impossible de charger la charge.",
         variant: "destructive",
       });
       router.push("/charges");

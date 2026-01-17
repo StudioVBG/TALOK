@@ -102,10 +102,10 @@ export function ContractsClient() {
       } else {
         throw new Error(leaseResult.error || edlResult.error);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de synchroniser les statuts",
+        description: error instanceof Error ? error.message : "Impossible de synchroniser les statuts",
         variant: "destructive",
       });
     } finally {
@@ -130,7 +130,7 @@ export function ContractsClient() {
         console.error("Erreur suppression:", error);
         toast({
           title: "Erreur",
-          description: error.message || "Impossible de supprimer le bail",
+          description: error instanceof Error ? error.message : "Impossible de supprimer le bail",
           variant: "destructive",
         });
       },

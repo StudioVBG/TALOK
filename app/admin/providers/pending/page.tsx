@@ -147,10 +147,10 @@ function PendingProvidersContent() {
       const data = await response.json();
       setProviders(data.items || []);
       setTotal(data.total || 0);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger les prestataires",
+        description: error instanceof Error ? error.message : "Impossible de charger les prestataires",
         variant: "destructive",
       });
     } finally {
@@ -211,10 +211,10 @@ function PendingProvidersContent() {
           }
         }, 100);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'approuver le prestataire",
+        description: error instanceof Error ? error.message : "Impossible d'approuver le prestataire",
         variant: "destructive",
       });
     }
@@ -283,10 +283,10 @@ function PendingProvidersContent() {
           }
         }, 100);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de rejeter le prestataire",
+        description: error instanceof Error ? error.message : "Impossible de rejeter le prestataire",
         variant: "destructive",
       });
     }
@@ -325,10 +325,10 @@ function PendingProvidersContent() {
         zones_intervention: data.zones_intervention || "",
         certifications: data.certifications || "",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -374,10 +374,10 @@ function PendingProvidersContent() {
         fetchProviderDetails(providerDetails.id),
         fetchData()
       ]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     }
@@ -424,10 +424,10 @@ function PendingProvidersContent() {
         zones_intervention: "",
       });
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     }
@@ -472,10 +472,10 @@ function PendingProvidersContent() {
         fetchProviderDetails(providerDetails.id),
         fetchData()
       ]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     }

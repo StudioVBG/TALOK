@@ -169,11 +169,11 @@ export default function EDLPhotosPage() {
       };
 
       setEdlData(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur chargement EDL:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger l'état des lieux",
+        description: error instanceof Error ? error.message : "Impossible de charger l'état des lieux",
         variant: "destructive",
       });
       router.push("/owner/inspections");

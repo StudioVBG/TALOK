@@ -111,10 +111,10 @@ export default function TenantFilePage() {
 
       // Rediriger vers la vérification d'identité
       router.push("/tenant/onboarding/identity");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: error instanceof Error ? error.message : "Une erreur est survenue.",
         variant: "destructive",
       });
     } finally {

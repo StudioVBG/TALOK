@@ -275,7 +275,7 @@ export default function AccountCreationPage() {
 
         router.push(`/signup/verify-email?email=${encodeURIComponent(validated.email)}${role ? `&role=${role}` : ""}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       const message = error.message?.toLowerCase() || "";
 
       if (message.includes("already registered") || message.includes("already exists") || error.code === "PGRST301") {
@@ -293,7 +293,7 @@ export default function AccountCreationPage() {
       } else {
         toast({
           title: "Erreur",
-          description: error.message || "Impossible de créer le compte.",
+          description: error instanceof Error ? error.message : "Impossible de créer le compte.",
           variant: "destructive",
         });
       }
