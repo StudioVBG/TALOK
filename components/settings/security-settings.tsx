@@ -91,10 +91,11 @@ export function SecuritySettings() {
       setTotpSecret(data.secret);
       setRecoveryCodes(data.recoveryCodes);
       setShowTOTPSetup(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";
       toast({
         title: "Erreur",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -135,10 +136,11 @@ export function SecuritySettings() {
       setShowTOTPSetup(false);
       setVerificationCode("");
       fetchSecurityStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";
       toast({
         title: "Erreur",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -195,10 +197,11 @@ export function SecuritySettings() {
 
       setPasskeyName("");
       fetchSecurityStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";
       toast({
         title: "Erreur",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -224,10 +227,11 @@ export function SecuritySettings() {
       });
 
       fetchSecurityStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";
       toast({
         title: "Erreur",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }

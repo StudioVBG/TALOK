@@ -37,10 +37,11 @@ export function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
       setPayments(paymentsData);
       const paid = await paymentsService.getTotalPaidForInvoice(invoiceId);
       setTotalPaid(paid);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Impossible de charger la facture";
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de charger la facture.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -58,10 +59,11 @@ export function InvoiceDetail({ invoiceId }: InvoiceDetailProps) {
         description: "La facture a été envoyée au locataire.",
       });
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Impossible d'envoyer la facture";
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'envoyer la facture.",
+        description: errorMessage,
         variant: "destructive",
       });
     }

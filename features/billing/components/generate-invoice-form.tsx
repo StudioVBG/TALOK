@@ -32,10 +32,11 @@ export function GenerateInvoiceForm({ leaseId, onSuccess }: GenerateInvoiceFormP
         description: "La facture a été créée avec succès.",
       });
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue lors de la génération";
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la génération.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
