@@ -75,7 +75,7 @@ export async function GET(
         "Content-Disposition": `attachment; filename="${document.name || 'quittance'}.pdf"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Receipt Download] Error:", error);
     return NextResponse.json(
       { error: "Erreur serveur" },

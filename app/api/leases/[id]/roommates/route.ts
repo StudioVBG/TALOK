@@ -60,7 +60,7 @@ export async function GET(
 
     if (error) {
       console.error("Erreur récupération roommates:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     // Récupérer les parts de paiement du mois en cours
@@ -82,9 +82,9 @@ export async function GET(
       count: roommates?.length || 0,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API roommates GET:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -289,14 +289,14 @@ export async function POST(
         : `Invitation envoyée à ${validated.email}.`,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API roommates POST:", error);
     
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
     }
     
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -389,13 +389,13 @@ export async function PATCH(
         : "Colocataire mis à jour",
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API roommates PATCH:", error);
     
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
     }
     
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }

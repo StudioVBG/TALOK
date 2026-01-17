@@ -243,10 +243,10 @@ export async function POST(
       has_profile: !!targetProfileId
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[EDL Invite] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -51,9 +51,9 @@ export async function GET(request: Request) {
     );
 
     return NextResponse.json({ plans: plansWithCounts });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Admin Plans GET]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -283,9 +283,9 @@ export async function PUT(request: Request) {
       features_changed: featuresChanged,
       affected_subscribers: affectedSubscribers
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Admin Plans PUT]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -377,9 +377,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ plan });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Admin Plans POST]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

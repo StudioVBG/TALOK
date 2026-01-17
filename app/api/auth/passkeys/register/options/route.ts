@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(options);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Passkeys] Erreur génération options:", error);
     return NextResponse.json(
       { error: "Erreur lors de la génération des options" },

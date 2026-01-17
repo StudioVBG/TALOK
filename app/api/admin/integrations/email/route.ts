@@ -53,10 +53,10 @@ export async function GET() {
       testAddress: "onboarding@resend.dev",
       documentation: "https://resend.com/docs"
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur config email:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

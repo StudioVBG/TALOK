@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
       results,
       duration: Date.now() - startTime,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur cron onboarding-reminders:", error);
     return NextResponse.json(
       { error: "Internal server error", details: error.message },

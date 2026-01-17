@@ -152,10 +152,10 @@ export async function POST(request: NextRequest) {
       created_at: existingDoc.created_at,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[documents/check] Erreur:", error);
     return NextResponse.json(
-      { exists: false, error: error.message },
+      { exists: false, error: error instanceof Error ? error.message : "Une erreur est survenue" },
       { status: 500 }
     );
   }
@@ -227,7 +227,7 @@ export async function GET(request: NextRequest) {
       path: existingDoc.storage_path,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[documents/check] Erreur GET:", error);
     return NextResponse.json({ exists: false });
   }

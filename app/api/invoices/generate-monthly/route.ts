@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
         { status: error.status || 401 }
       );
     }
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ invoice }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Données invalides", details: error.errors },
@@ -161,7 +161,7 @@ export async function POST(request: Request) {
     }
     console.error("Error in POST /api/invoices/generate-monthly:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

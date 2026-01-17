@@ -207,10 +207,10 @@ export async function POST(
       success: true,
       score,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur calcul score:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -255,9 +255,9 @@ export async function GET(
     }
 
     return NextResponse.json({ score });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

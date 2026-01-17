@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       passkeys: passkeys || [],
       passkeyCount: passkeys?.length || 0,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[2FA] Erreur statut:", error);
     return NextResponse.json(
       { error: "Erreur lors de la récupération du statut" },

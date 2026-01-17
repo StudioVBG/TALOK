@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error("Erreur récupération garants:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
       }
 
       return NextResponse.json({
@@ -78,14 +78,14 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Erreur récupération profil garant:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     return NextResponse.json(guarantorProfile);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API guarantors GET:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(newProfile, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Données invalides", details: error.errors },
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("Erreur API guarantors POST:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

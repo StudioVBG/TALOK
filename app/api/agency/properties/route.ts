@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Erreur récupération biens agence:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     // Ajouter les infos de bail actif pour chaque bien
@@ -123,9 +123,9 @@ export async function GET(request: NextRequest) {
       page,
       limit,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API agency properties GET:", error);
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

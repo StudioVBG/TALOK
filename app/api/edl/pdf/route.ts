@@ -197,10 +197,10 @@ export async function POST(request: Request) {
       fallback: true,
       message: "Utilisez l'impression du navigateur ou html2pdf.js côté client"
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[EDL PDF] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur lors de la génération du HTML" },
+      { error: error instanceof Error ? error.message : "Erreur lors de la génération du HTML" },
       { status: 500 }
     );
   }

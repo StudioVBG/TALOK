@@ -1059,7 +1059,7 @@ export async function POST(request: Request) {
       data: merged,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Scrape] ❌ Erreur:", error.message);
     return NextResponse.json(
       { error: "Erreur lors de l'analyse de l'annonce", details: error.message },

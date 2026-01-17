@@ -93,9 +93,9 @@ export async function GET(request: Request) {
       scope,
       period: { start_date: startDate, end_date: endDate },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

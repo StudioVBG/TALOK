@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ documents });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in GET /api/provider/compliance/documents:', error);
-    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -146,9 +146,9 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ document }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in POST /api/provider/compliance/documents:', error);
-    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
   }
 }
 

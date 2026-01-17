@@ -183,9 +183,9 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
     
     return NextResponse.json(data || []);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur GET /api/copro/units:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -242,9 +242,9 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
     
     return NextResponse.json(unit, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur POST /api/copro/units:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -286,9 +286,9 @@ export async function PUT(request: NextRequest) {
       success: true, 
       updated: updates.length 
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur PUT /api/copro/units:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

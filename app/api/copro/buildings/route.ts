@@ -76,9 +76,9 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
     
     return NextResponse.json(buildings || []);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur GET /api/copro/buildings:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -193,9 +193,9 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
     
     return NextResponse.json(building, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur POST /api/copro/buildings:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

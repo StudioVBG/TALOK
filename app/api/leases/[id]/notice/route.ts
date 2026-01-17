@@ -161,10 +161,10 @@ export async function GET(
         reduced_reasons: canHaveReducedNotice ? REDUCED_NOTICE_REASONS : [],
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[notice] GET error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -373,10 +373,10 @@ export async function POST(
         is_reduced_notice: !!reduced_notice,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[notice] POST error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -160,7 +160,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     await storeIdempotency(supabase, idempotencyKey, "payment", response, 201);
 
     return apiSuccess(response, 201);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /payments] Error:", error);
     return apiError("Erreur serveur", 500);
   }

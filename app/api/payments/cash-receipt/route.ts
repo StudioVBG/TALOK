@@ -277,10 +277,10 @@ export async function POST(request: Request) {
       pdf_url: pdfUrl,
       document_hash: documentHash,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur création reçu espèces:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -439,9 +439,9 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ receipts: data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -338,10 +338,10 @@ export async function POST(request: Request, { params }: PageProps) {
       new_status: newStatus,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API sign:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

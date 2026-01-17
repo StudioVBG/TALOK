@@ -145,9 +145,9 @@ export async function POST(request: Request) {
       results,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Sync Signatures] Erreur:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -203,9 +203,9 @@ export async function GET(request: Request) {
         : "Toutes les signatures sont synchronisées",
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Sync Signatures GET] Erreur:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

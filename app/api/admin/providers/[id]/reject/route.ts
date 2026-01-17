@@ -15,7 +15,7 @@ export async function POST(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message, details: (error as any).details },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
         { status: error.status }
       );
     }
@@ -111,10 +111,10 @@ export async function POST(
       success: true,
       provider: updated,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/admin/providers/[id]/reject:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

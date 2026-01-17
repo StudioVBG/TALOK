@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
         email: authUser.user.email,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Passkeys] Erreur vérification auth:", error);
     return NextResponse.json(
       { error: "Erreur lors de la vérification" },

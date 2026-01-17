@@ -208,10 +208,10 @@ export async function POST(request: Request) {
       ...results,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[sync-edl-lease-status] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -329,10 +329,10 @@ export async function GET(request: Request) {
         : "Aucune incohérence détectée",
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[sync-edl-lease-status] Erreur GET:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

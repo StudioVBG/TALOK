@@ -208,12 +208,12 @@ export async function GET(request: NextRequest) {
       timestamp: now.toISOString(),
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[CRON] Fatal error:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : "Une erreur est survenue",
         result,
       },
       { status: 500 }

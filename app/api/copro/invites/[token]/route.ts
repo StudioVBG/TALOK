@@ -35,9 +35,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       is_valid: false,
       error_message: 'Invitation non trouvée',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur GET /api/copro/invites/[token]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -95,9 +95,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       success: false,
       error_message: 'Erreur lors de l\'acceptation',
     }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur POST /api/copro/invites/[token]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -122,9 +122,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (error) throw error;
     
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur DELETE /api/copro/invites/[token]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -170,9 +170,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // TODO: Renvoyer l'email
     
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erreur PATCH /api/copro/invites/[token]:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

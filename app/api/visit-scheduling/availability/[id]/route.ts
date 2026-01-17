@@ -41,10 +41,10 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     return NextResponse.json({ pattern });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET /api/visit-scheduling/availability/[id] error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -136,7 +136,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     return NextResponse.json({ pattern });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("PUT /api/visit-scheduling/availability/[id] error:", error);
     if (error.name === "ZodError") {
       return NextResponse.json(
@@ -145,7 +145,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       );
     }
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -215,10 +215,10 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("DELETE /api/visit-scheduling/availability/[id] error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

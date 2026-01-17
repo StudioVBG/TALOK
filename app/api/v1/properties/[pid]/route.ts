@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     return apiSuccess({ property });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /properties/:pid] Error:", error);
     return apiError("Erreur serveur", 500);
   }
@@ -121,7 +121,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     );
 
     return apiSuccess({ property });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[PATCH /properties/:pid] Error:", error);
     return apiError("Erreur serveur", 500);
   }
@@ -192,7 +192,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
 
     return apiSuccess({ message: "Propriété archivée" }, 200);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[DELETE /properties/:pid] Error:", error);
     return apiError("Erreur serveur", 500);
   }

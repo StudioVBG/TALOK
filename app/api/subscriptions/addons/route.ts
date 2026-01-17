@@ -20,9 +20,9 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ addons: addons || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Subscriptions Addons GET]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

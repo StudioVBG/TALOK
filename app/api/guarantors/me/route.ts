@@ -39,7 +39,7 @@ export async function GET() {
 
     if (error) {
       console.error("Erreur récupération profil garant:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     if (!guarantorProfile) {
@@ -47,10 +47,10 @@ export async function GET() {
     }
 
     return NextResponse.json(guarantorProfile);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API guarantors/me GET:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -105,7 +105,7 @@ export async function PUT(request: NextRequest) {
     }
 
     return NextResponse.json(updatedProfile);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Données invalides", details: error.errors },
@@ -114,7 +114,7 @@ export async function PUT(request: NextRequest) {
     }
     console.error("Erreur API guarantors/me PUT:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

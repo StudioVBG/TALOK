@@ -114,7 +114,7 @@ export async function POST(
       items: insertedItems,
       count: insertedItems?.length || 0,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/edl/[id]/sections] Error:", error);
 
     if (error instanceof z.ZodError) {
@@ -125,7 +125,7 @@ export async function POST(
     }
 
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -175,10 +175,10 @@ export async function GET(
         items,
       })),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/edl/[id]/sections] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

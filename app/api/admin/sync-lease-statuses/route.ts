@@ -125,10 +125,10 @@ export async function POST(request: Request) {
       ...results,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[sync-lease-statuses] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -215,10 +215,10 @@ export async function GET(request: Request) {
         : "Tous les baux ont un statut correct.",
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[sync-lease-statuses] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

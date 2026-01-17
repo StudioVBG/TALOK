@@ -46,8 +46,8 @@ export async function POST(
     const newInvitation = await invitationsService.resendInvitation(invitationId);
 
     return NextResponse.json({ success: true, invitation: newInvitation });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

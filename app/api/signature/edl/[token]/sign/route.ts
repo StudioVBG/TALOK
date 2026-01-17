@@ -122,10 +122,10 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true, proof_id: proof.proofId });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[sign-edl-token] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

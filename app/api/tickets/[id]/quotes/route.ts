@@ -212,10 +212,10 @@ export async function POST(
     }
 
     return NextResponse.json({ quote });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur POST quotes:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -288,9 +288,9 @@ export async function GET(
     if (error) throw error;
 
     return NextResponse.json({ quotes: quotes || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

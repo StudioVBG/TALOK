@@ -275,10 +275,10 @@ export async function POST(
       warning: dateWarning
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Activate Lease] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -386,10 +386,10 @@ export async function GET(
       })) || []
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Check Activation] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

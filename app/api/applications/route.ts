@@ -23,9 +23,9 @@ export async function POST(request: Request) {
     const application = await applicationsService.createApplication(body);
 
     return NextResponse.json({ application });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -54,9 +54,9 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ applications: applications || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

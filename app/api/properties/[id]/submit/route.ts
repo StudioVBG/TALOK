@@ -14,7 +14,7 @@ export async function POST(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message, details: (error as any).details },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
         { status: error.status || 401 }
       );
     }
@@ -401,10 +401,10 @@ export async function POST(
     });
 
     return NextResponse.json({ property: updatedProperty });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/properties/[id]/submit:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -148,10 +148,10 @@ export async function GET(
       } : null,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Meter Consumption] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

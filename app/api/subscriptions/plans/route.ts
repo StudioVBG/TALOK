@@ -20,9 +20,9 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ plans: plans || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Subscriptions Plans GET]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

@@ -17,7 +17,7 @@ export async function GET(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
         { status: error.status }
       );
     }
@@ -94,10 +94,10 @@ export async function GET(
       created_at: providerProfile.created_at,
       updated_at: providerProfile.updated_at,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in GET /api/admin/providers/[id]:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -115,7 +115,7 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
         { status: error.status }
       );
     }
@@ -217,10 +217,10 @@ export async function PATCH(
     } as any);
 
     return NextResponse.json({ success: true, message: "Prestataire mis à jour avec succès" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in PATCH /api/admin/providers/[id]:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

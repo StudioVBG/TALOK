@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     return NextResponse.json(fullRequest, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST /api/signatures/requests] Error:", error);
     
     if (error.name === "ZodError") {
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -243,13 +243,13 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("[GET /api/signatures/requests] Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
     return NextResponse.json(requests);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/signatures/requests] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

@@ -119,9 +119,9 @@ export async function POST(request: Request) {
       reconciliations,
       count: reconciliations.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

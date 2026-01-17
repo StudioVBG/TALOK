@@ -116,10 +116,10 @@ export async function POST(
       success: true,
       message: "Révision refusée",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[decline] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

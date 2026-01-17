@@ -201,9 +201,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       new_status: newStatus,
       message: `Intervention mise à jour avec succès`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in POST /api/provider/jobs/[id]/status:', error);
-    return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
   }
 }
 

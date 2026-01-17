@@ -126,10 +126,10 @@ export async function GET() {
       },
       recent_mandates: mandates?.slice(0, 5) || [],
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur API agency dashboard:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

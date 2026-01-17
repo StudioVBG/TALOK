@@ -51,9 +51,9 @@ export async function GET(request: Request) {
     );
 
     return NextResponse.json({ addons: addonsWithStats });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Admin Addons GET]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -125,9 +125,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ addon });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Admin Addons POST]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -200,9 +200,9 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json({ addon });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Admin Addons PUT]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 
@@ -265,9 +265,9 @@ export async function DELETE(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Admin Addons DELETE]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
 

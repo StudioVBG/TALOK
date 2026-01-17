@@ -157,10 +157,10 @@ export async function POST(
       message: "Révision appliquée avec succès",
       new_rent: indexData.new_rent,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[apply] Erreur:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

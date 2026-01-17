@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message, details: (error as any).details },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
         { status: error.status }
       );
     }
@@ -209,10 +209,10 @@ export async function GET(request: Request) {
         properties_with_tva: propertiesWithTva.length,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in GET /api/admin/overview:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -26,7 +26,7 @@ export async function GET(
     const { error, user } = await requireAdmin(request);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: error.status });
     }
 
     if (!user) {
@@ -209,9 +209,9 @@ export async function GET(
       activities: limitedActivities,
       total: activities.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[GET /api/admin/people/owners/[id]/activity]", error);
-    return NextResponse.json({ error: error.message || "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

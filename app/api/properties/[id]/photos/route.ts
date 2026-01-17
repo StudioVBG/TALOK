@@ -13,7 +13,7 @@ export async function GET(
 
     if (error) {
       return NextResponse.json(
-        { error: error.message, details: (error as any).details },
+        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
         { status: error.status || 401 }
       );
     }
@@ -69,9 +69,9 @@ export async function GET(
     }
 
     return NextResponse.json({ photos: photos ?? [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -310,10 +310,10 @@ export async function GET(
         "Content-Disposition": `inline; filename="lettre_conge_${leaseId}.html"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[notice/letter] GET error:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

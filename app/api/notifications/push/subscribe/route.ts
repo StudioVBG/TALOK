@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       });
 
     return NextResponse.json({ success: true, created: true }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Données invalides", details: error.errors },
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("Erreur subscribe push:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -135,10 +135,10 @@ export async function DELETE(request: NextRequest) {
       .eq("endpoint", endpoint);
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur unsubscribe push:", error);
     return NextResponse.json(
-      { error: error.message || "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

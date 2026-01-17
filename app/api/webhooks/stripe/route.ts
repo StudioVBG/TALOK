@@ -641,7 +641,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ received: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Stripe Webhook] Error processing event:", error);
 
     // Log l'erreur
@@ -649,13 +649,13 @@ export async function POST(request: NextRequest) {
       provider: "stripe",
       event_type: event.type,
       event_id: event.id,
-      error: error.message,
+      error: error instanceof Error ? error.message : "Une erreur est survenue",
       processed_at: new Date().toISOString(),
       status: "error",
     }).catch(() => {});
 
     return NextResponse.json(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : "Une erreur est survenue" },
       { status: 500 }
     );
   }
