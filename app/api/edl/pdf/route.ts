@@ -137,21 +137,33 @@ export async function POST(request: Request) {
             .select("*, meter:meters(*)")
             .eq("edl_id", edlId);
 
+          console.log(`[EDL PDF] Found ${meterReadings?.length || 0} meter readings for EDL ${edlId}`);
+
           // 🔧 FIX: Récupérer tous les compteurs du bien pour les inclure dans le PDF même sans relevé
-          const propertyId = (edl as any).property_id || (edl as any).lease?.property_id;
-          let allMeters = [];
+          const propertyId = (edl as any).property_id || (edl as any).lease?.property_id || (edl as any).lease?.property?.id;
+          console.log(`[EDL PDF] Property ID for meters: ${propertyId}`);
+
+          let allMeters: any[] = [];
           if (propertyId) {
             const { data: meters } = await adminClient
               .from("meters")
               .select("*")
               .eq("property_id", propertyId);
-            
+
             // Filtrer en JS pour éviter l'erreur si la colonne is_active n'existe pas
             allMeters = meters?.filter(m => m.is_active !== false) || [];
+            console.log(`[EDL PDF] Found ${allMeters.length} active meters for property ${propertyId}`);
           }
 
-          // Mapper les relevés existants
+          // 🔧 FIX AMÉLIORÉ: Mapper les relevés existants
+          // Les compteurs des relevés sont la source de vérité pour les valeurs
           const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
+
+          // Créer un Set des types de compteurs déjà relevés pour éviter les doublons par type
+          const recordedMeterTypes = new Set(
+            (meterReadings || []).map((r: any) => r.meter?.type || "electricity")
+          );
+
           const finalMeterReadings = (meterReadings || []).map((r: any) => ({
             type: r.meter?.type || "electricity",
             meter_number: r.meter?.meter_number || r.meter?.serial_number,
@@ -161,8 +173,12 @@ export async function POST(request: Request) {
           }));
 
           // Ajouter les compteurs manquants avec mention "À relever"
+          // Vérifier à la fois par ID ET par type pour éviter les doublons
           allMeters.forEach((m: any) => {
-            if (!recordedMeterIds.has(m.id)) {
+            const alreadyRecordedById = recordedMeterIds.has(m.id);
+            const alreadyRecordedByType = recordedMeterTypes.has(m.type) && !alreadyRecordedById;
+
+            if (!alreadyRecordedById && !alreadyRecordedByType) {
               finalMeterReadings.push({
                 type: m.type || "electricity",
                 meter_number: m.meter_number || m.serial_number,
@@ -172,6 +188,8 @@ export async function POST(request: Request) {
               });
             }
           });
+
+          console.log(`[EDL PDF] Final meter readings count: ${finalMeterReadings.length}`);
 
           fullEdlData = mapDatabaseToEDLComplet(
             { ...edl, meter_readings: finalMeterReadings },

@@ -202,21 +202,33 @@ export async function POST(request: Request) {
             .select("*, meter:meters(*)")
             .eq("edl_id", edlId);
 
+          console.log(`[EDL Preview] Found ${meterReadings?.length || 0} meter readings for EDL ${edlId}`);
+
           // 🔧 FIX: Récupérer tous les compteurs du bien pour les inclure dans l'aperçu même sans relevé
-          const propertyId = (edl as any).property_id || (edl as any).lease?.property_id;
-          let allMeters = [];
+          const propertyId = (edl as any).property_id || (edl as any).lease?.property_id || (edl as any).lease?.property?.id;
+          console.log(`[EDL Preview] Property ID for meters: ${propertyId}`);
+
+          let allMeters: any[] = [];
           if (propertyId) {
             const { data: meters } = await adminClient
               .from("meters")
               .select("*")
               .eq("property_id", propertyId);
-            
+
             // Filtrer en JS pour éviter l'erreur si la colonne is_active n'existe pas
             allMeters = meters?.filter(m => m.is_active !== false) || [];
+            console.log(`[EDL Preview] Found ${allMeters.length} active meters for property ${propertyId}`);
           }
 
-          // Mapper les relevés existants
+          // 🔧 FIX AMÉLIORÉ: Mapper les relevés existants
+          // Les compteurs des relevés sont la source de vérité pour les valeurs
           const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
+
+          // Créer un Set des types de compteurs déjà relevés pour éviter les doublons par type
+          const recordedMeterTypes = new Set(
+            (meterReadings || []).map((r: any) => r.meter?.type || "electricity")
+          );
+
           const finalMeterReadings = (meterReadings || []).map((r: any) => ({
             type: r.meter?.type || "electricity",
             meter_number: r.meter?.meter_number || r.meter?.serial_number,
@@ -225,18 +237,36 @@ export async function POST(request: Request) {
             photo_url: r.photo_path,
           }));
 
+          console.log(`[EDL Preview] Recorded meter IDs: ${Array.from(recordedMeterIds).join(', ')}`);
+          console.log(`[EDL Preview] Recorded meter types: ${Array.from(recordedMeterTypes).join(', ')}`);
+
           // Ajouter les compteurs manquants avec mention "À relever"
+          // Vérifier à la fois par ID ET par type pour éviter les doublons
           allMeters.forEach((m: any) => {
-            if (!recordedMeterIds.has(m.id)) {
-              finalMeterReadings.push({
-                type: m.type || "electricity",
-                meter_number: m.meter_number || m.serial_number,
-                reading: "Non relevé", // Utilisé par le template pour afficher "À relever"
-                unit: m.unit || "kWh",
-                photo_url: null,
-              });
+            const alreadyRecordedById = recordedMeterIds.has(m.id);
+            // Ne pas ajouter un compteur du même type s'il existe déjà un relevé pour ce type
+            // (sauf si c'est un compteur différent avec le même type - dans ce cas on le garde)
+            const alreadyRecordedByType = recordedMeterTypes.has(m.type) && !alreadyRecordedById;
+
+            console.log(`[EDL Preview] Checking meter ${m.id} (${m.type}): byId=${alreadyRecordedById}, byType=${alreadyRecordedByType}`);
+
+            if (!alreadyRecordedById) {
+              // Ajouter seulement si ce compteur spécifique n'a pas de relevé
+              // ET qu'il n'y a pas déjà un compteur du même type avec un relevé
+              // (on évite d'afficher "À relever" si un relevé existe pour ce type)
+              if (!alreadyRecordedByType) {
+                finalMeterReadings.push({
+                  type: m.type || "electricity",
+                  meter_number: m.meter_number || m.serial_number,
+                  reading: "Non relevé", // Utilisé par le template pour afficher "À relever"
+                  unit: m.unit || "kWh",
+                  photo_url: null,
+                });
+              }
             }
           });
+
+          console.log(`[EDL Preview] Final meter readings count: ${finalMeterReadings.length}`);
 
           // Construire l'objet EDLComplet
           fullEdlData = mapDatabaseToEDLComplet(
