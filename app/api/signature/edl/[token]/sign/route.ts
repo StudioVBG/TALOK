@@ -28,7 +28,8 @@ export async function POST(
       return NextResponse.json({ error: "Lien invalide ou expiré" }, { status: 404 });
     }
 
-    if (signatureEntry.signed_at) {
+    // Vérifier si déjà signé (on vérifie signature_image_path car c'est la preuve réelle)
+    if (signatureEntry.signature_image_path) {
       return NextResponse.json({ error: "Ce document a déjà été signé" }, { status: 400 });
     }
 
