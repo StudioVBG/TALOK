@@ -54,8 +54,13 @@ export function TomAssistant() {
 
   return (
     <Card className={cn(
-      "fixed right-6 z-50 shadow-2xl border-slate-200 transition-all duration-300 flex flex-col bg-white",
-      isMinimized ? "bottom-6 w-72 h-16" : "bottom-6 w-[400px] h-[600px]"
+      "fixed z-50 shadow-2xl border-slate-200 transition-all duration-300 flex flex-col bg-white",
+      // Position responsive : centré sur mobile, à droite sur desktop
+      "right-2 sm:right-6 left-2 sm:left-auto",
+      // Taille responsive
+      isMinimized
+        ? "bottom-20 sm:bottom-6 w-auto sm:w-72 h-16"
+        : "bottom-20 sm:bottom-6 w-auto sm:w-[400px] h-[calc(100vh-6rem)] sm:h-[600px] max-h-[600px]"
     )}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-slate-50 rounded-t-lg cursor-pointer"

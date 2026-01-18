@@ -1,18 +1,42 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
-      {...props}
-    />
-  </div>
-));
+interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  /** Afficher un indicateur de scroll horizontal sur mobile */
+  showScrollHint?: boolean;
+}
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, showScrollHint = false, ...props }, ref) => (
+    <div className="relative w-full">
+      {/* Conteneur avec scroll horizontal et indicateur visuel */}
+      <div
+        className={cn(
+          "overflow-x-auto overflow-y-visible",
+          // Indicateur de scroll sur mobile avec gradient
+          "sm:overflow-visible",
+          showScrollHint && [
+            "relative",
+            "before:absolute before:right-0 before:top-0 before:bottom-0 before:w-8",
+            "before:bg-gradient-to-l before:from-background before:to-transparent",
+            "before:pointer-events-none before:z-10 before:sm:hidden",
+          ]
+        )}
+      >
+        <table
+          ref={ref}
+          className={cn(
+            "w-full caption-bottom text-sm",
+            // Min-width pour forcer le scroll sur petits écrans si nécessaire
+            "min-w-full",
+            className
+          )}
+          {...props}
+        />
+      </div>
+    </div>
+  )
+);
 Table.displayName = "Table";
 
 const TableHeader = React.forwardRef<
@@ -72,7 +96,16 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      // Padding responsive
+      "h-10 sm:h-12 px-2 sm:px-4",
+      // Texte
+      "text-left align-middle font-medium text-muted-foreground",
+      // Taille de texte responsive
+      "text-xs sm:text-sm",
+      // Whitespace
+      "whitespace-nowrap",
+      // Checkbox
+      "[&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -86,7 +119,17 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    className={cn(
+      // Padding responsive
+      "p-2 sm:p-4",
+      // Alignement
+      "align-middle",
+      // Taille de texte responsive
+      "text-xs sm:text-sm",
+      // Checkbox
+      "[&:has([role=checkbox])]:pr-0",
+      className
+    )}
     {...props}
   />
 ));

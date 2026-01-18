@@ -147,7 +147,7 @@ export function NotificationCenter({ className }: NotificationCenterProps) {
         </Button>
       </PopoverTrigger>
       
-      <PopoverContent className="w-[400px] p-0" align="end">
+      <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] max-w-[400px] p-0" align="end">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-semibold text-lg">Notifications</h3>
@@ -189,7 +189,7 @@ export function NotificationCenter({ className }: NotificationCenterProps) {
           </TabsList>
 
           <TabsContent value={activeTab} className="m-0">
-            <ScrollArea className="h-[400px]">
+            <ScrollArea className="h-[50vh] sm:h-[400px] max-h-[400px]">
               {isLoading ? (
                 <div className="p-4 space-y-4">
                   {[...Array(3)].map((_, i) => (

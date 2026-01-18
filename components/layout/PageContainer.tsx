@@ -6,6 +6,8 @@ interface PageContainerProps {
   children: React.ReactNode;
   className?: string;
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "full";
+  /** Appliquer le padding responsive standard */
+  withPadding?: boolean;
 }
 
 const maxWidthClasses = {
@@ -17,13 +19,22 @@ const maxWidthClasses = {
   full: "max-w-full",
 };
 
-export function PageContainer({ 
-  children, 
+export function PageContainer({
+  children,
   className,
-  maxWidth = "2xl" 
+  maxWidth = "2xl",
+  withPadding = false,
 }: PageContainerProps) {
   return (
-    <div className={cn("mx-auto", maxWidthClasses[maxWidth], className)}>
+    <div className={cn(
+      // Base: pleine largeur avec overflow contrôlé
+      "w-full mx-auto overflow-x-hidden",
+      // Max-width selon la prop
+      maxWidthClasses[maxWidth],
+      // Padding responsive optionnel
+      withPadding && "px-4 sm:px-6 lg:px-8",
+      className
+    )}>
       {children}
     </div>
   );

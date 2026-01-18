@@ -92,16 +92,17 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="relative bg-slate-100 min-h-[600px]">
+        {/* Conteneur responsive avec hauteur adaptative */}
+        <div className="relative bg-slate-100 min-h-[300px] sm:min-h-[400px] md:min-h-[500px]">
           {loading ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-2" />
-              <p className="text-sm text-muted-foreground">Chargement du contrat...</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+              <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-blue-600 mb-2" />
+              <p className="text-xs sm:text-sm text-muted-foreground text-center">Chargement du contrat...</p>
             </div>
           ) : (
             <iframe
               ref={iframeRef}
-              className="w-full h-[700px] border-0 bg-white"
+              className="w-full h-[50vh] sm:h-[60vh] md:h-[70vh] max-h-[700px] border-0 bg-white"
               title="Aperçu du bail"
             />
           )}

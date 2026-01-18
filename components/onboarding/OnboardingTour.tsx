@@ -294,10 +294,16 @@ function TourTooltip({
   const Icon = step.icon;
 
   useEffect(() => {
+    // Largeur du tooltip responsive : plus petit sur mobile
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+    const tooltipWidth = isMobile ? Math.min(window.innerWidth - 32, 400) : 400;
+    const tooltipHeight = 250;
+    const padding = 16;
+
     if (isCentered) {
       setPosition({
-        top: window.innerHeight / 2 - 150,
-        left: window.innerWidth / 2 - 200,
+        top: window.innerHeight / 2 - tooltipHeight / 2,
+        left: window.innerWidth / 2 - tooltipWidth / 2,
       });
       return;
     }
@@ -308,31 +314,43 @@ function TourTooltip({
     if (!element) return;
 
     const rect = element.getBoundingClientRect();
-    const tooltipWidth = 400;
-    const tooltipHeight = 250;
-    const padding = 16;
 
     let top = 0;
     let left = 0;
 
-    switch (step.position) {
-      case "top":
-        top = rect.top - tooltipHeight - padding;
-        left = rect.left + rect.width / 2 - tooltipWidth / 2;
-        break;
-      case "bottom":
+    // Sur mobile, on positionne toujours en bas ou au centre pour éviter les débordements
+    if (isMobile) {
+      // Position centrale horizontale sur mobile
+      left = (window.innerWidth - tooltipWidth) / 2;
+      // Position sous l'élément ou au centre de l'écran si pas assez de place
+      if (rect.bottom + tooltipHeight + padding < window.innerHeight) {
         top = rect.bottom + padding;
-        left = rect.left + rect.width / 2 - tooltipWidth / 2;
-        break;
-      case "left":
-        top = rect.top + rect.height / 2 - tooltipHeight / 2;
-        left = rect.left - tooltipWidth - padding;
-        break;
-      case "right":
-      default:
-        top = rect.top + rect.height / 2 - tooltipHeight / 2;
-        left = rect.right + padding;
-        break;
+      } else if (rect.top - tooltipHeight - padding > 0) {
+        top = rect.top - tooltipHeight - padding;
+      } else {
+        top = Math.max(padding, (window.innerHeight - tooltipHeight) / 2);
+      }
+    } else {
+      // Logique desktop originale
+      switch (step.position) {
+        case "top":
+          top = rect.top - tooltipHeight - padding;
+          left = rect.left + rect.width / 2 - tooltipWidth / 2;
+          break;
+        case "bottom":
+          top = rect.bottom + padding;
+          left = rect.left + rect.width / 2 - tooltipWidth / 2;
+          break;
+        case "left":
+          top = rect.top + rect.height / 2 - tooltipHeight / 2;
+          left = rect.left - tooltipWidth - padding;
+          break;
+        case "right":
+        default:
+          top = rect.top + rect.height / 2 - tooltipHeight / 2;
+          left = rect.right + padding;
+          break;
+      }
     }
 
     // S'assurer que le tooltip reste visible
@@ -349,12 +367,15 @@ function TourTooltip({
       exit={{ opacity: 0, scale: 0.9, y: -10 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className={cn(
-        "fixed z-[9999] w-[400px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden",
+        // Largeur responsive : pleine largeur sur mobile avec marges, max-width sur desktop
+        "fixed z-[9999] w-[calc(100%-2rem)] sm:w-[400px] max-w-[400px]",
+        "bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden",
+        "mx-4 sm:mx-0", // Marges sur mobile
         isCentered && "transform -translate-x-1/2 -translate-y-1/2"
       )}
       style={{
         top: isCentered ? "50%" : position.top,
-        left: isCentered ? "50%" : position.left,
+        left: isCentered ? "50%" : Math.max(16, Math.min(position.left, typeof window !== 'undefined' ? window.innerWidth - 320 : position.left)),
       }}
     >
       {/* Header */}

@@ -65,68 +65,77 @@ export function PDFPreviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
+      <DialogContent
         className={cn(
-          "max-w-5xl h-[85vh] flex flex-col p-0",
-          isFullscreen && "max-w-[100vw] h-[100vh] m-0 rounded-none"
+          // Taille responsive : plein écran sur mobile, contrainte sur desktop
+          "w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-w-5xl",
+          "h-[calc(100vh-1rem)] sm:h-[85vh]",
+          "flex flex-col p-0",
+          // Fullscreen override
+          isFullscreen && "max-w-[100vw] w-screen h-screen m-0 rounded-none"
         )}
       >
-        {/* Header */}
-        <DialogHeader className="px-4 py-3 border-b bg-slate-50 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <FileText className="h-5 w-5 text-indigo-600" />
+        {/* Header - Responsive avec toolbar adaptative */}
+        <DialogHeader className="px-3 sm:px-4 py-2 sm:py-3 border-b bg-slate-50 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+            {/* Titre du document */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="p-1.5 sm:p-2 bg-indigo-100 rounded-lg flex-shrink-0">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
               </div>
-              <div>
-                <DialogTitle className="text-lg font-semibold">{documentTitle}</DialogTitle>
+              <div className="min-w-0">
+                <DialogTitle className="text-sm sm:text-lg font-semibold truncate">{documentTitle}</DialogTitle>
                 {documentType && (
-                  <span className="text-xs text-muted-foreground uppercase">{documentType}</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground uppercase">{documentType}</span>
                 )}
               </div>
             </div>
-            
-            {/* Toolbar */}
-            <div className="flex items-center gap-1" role="toolbar" aria-label="Outils de visualisation">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleZoomOut}
-                disabled={zoom <= 50}
-                className="h-11 w-11"
-                aria-label="Dézoomer"
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-medium w-12 text-center" aria-live="polite">{zoom}%</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleZoomIn}
-                disabled={zoom >= 200}
-                className="h-11 w-11"
-                aria-label="Zoomer"
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-              
-              <div className="w-px h-6 bg-slate-200 mx-2" aria-hidden="true" />
-              
+
+            {/* Toolbar - Layout adaptatif mobile/desktop */}
+            <div className="flex items-center justify-between sm:justify-end gap-1 overflow-x-auto" role="toolbar" aria-label="Outils de visualisation">
+              {/* Groupe zoom - caché sur très petit écran */}
+              <div className="hidden xs:flex items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomOut}
+                  disabled={zoom <= 50}
+                  className="h-9 w-9 sm:h-11 sm:w-11"
+                  aria-label="Dézoomer"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="text-xs sm:text-sm font-medium w-10 sm:w-12 text-center" aria-live="polite">{zoom}%</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomIn}
+                  disabled={zoom >= 200}
+                  className="h-9 w-9 sm:h-11 sm:w-11"
+                  aria-label="Zoomer"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+                <div className="w-px h-5 sm:h-6 bg-slate-200 mx-1 sm:mx-2 hidden sm:block" aria-hidden="true" />
+              </div>
+
+              {/* Rotation */}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleRotate}
-                className="h-11 w-11"
+                className="h-9 w-9 sm:h-11 sm:w-11"
                 aria-label="Pivoter le document"
               >
                 <RotateCw className="h-4 w-4" />
               </Button>
-              
+
+              {/* Plein écran */}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleFullscreen}
-                className="h-11 w-11"
+                className="h-9 w-9 sm:h-11 sm:w-11"
                 aria-label={isFullscreen ? "Quitter le plein écran" : "Afficher en plein écran"}
               >
                 {isFullscreen ? (
@@ -135,43 +144,44 @@ export function PDFPreviewModal({
                   <Maximize2 className="h-4 w-4" />
                 )}
               </Button>
-              
-              <div className="w-px h-6 bg-slate-200 mx-2" aria-hidden="true" />
-              
+
+              <div className="w-px h-5 sm:h-6 bg-slate-200 mx-1 sm:mx-2" aria-hidden="true" />
+
+              {/* Télécharger - texte caché sur mobile */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleDownload}
-                className="gap-2 h-11"
+                className="gap-1 sm:gap-2 h-9 sm:h-11 px-2 sm:px-3"
                 aria-label={`Télécharger ${documentTitle}`}
               >
                 <Download className="h-4 w-4" />
-                Télécharger
+                <span className="hidden sm:inline">Télécharger</span>
               </Button>
             </div>
           </div>
         </DialogHeader>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto bg-slate-100 relative">
+        {/* Content - Zone de prévisualisation responsive */}
+        <div className="flex-1 overflow-auto bg-slate-100 relative min-h-0">
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
-              <div className="flex flex-col items-center gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-                <span className="text-sm text-muted-foreground">Chargement du document...</span>
+              <div className="flex flex-col items-center gap-3 px-4 text-center">
+                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-indigo-600" />
+                <span className="text-xs sm:text-sm text-muted-foreground">Chargement du document...</span>
               </div>
             </div>
           )}
 
           {error && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
-              <div className="flex flex-col items-center gap-3 text-center p-6">
-                <div className="p-3 bg-red-100 rounded-full">
-                  <X className="h-6 w-6 text-red-600" />
+              <div className="flex flex-col items-center gap-3 text-center p-4 sm:p-6 max-w-sm">
+                <div className="p-2 sm:p-3 bg-red-100 rounded-full">
+                  <X className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
                 </div>
-                <p className="text-sm text-red-600 font-medium">Impossible de charger le document</p>
-                <p className="text-xs text-muted-foreground">{error}</p>
-                <Button variant="outline" size="sm" onClick={handleDownload}>
+                <p className="text-xs sm:text-sm text-red-600 font-medium">Impossible de charger le document</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">{error}</p>
+                <Button variant="outline" size="sm" onClick={handleDownload} className="mt-2">
                   Télécharger à la place
                 </Button>
               </div>
@@ -179,8 +189,8 @@ export function PDFPreviewModal({
           )}
 
           {documentUrl && (
-            <div 
-              className="flex items-center justify-center min-h-full p-4"
+            <div
+              className="flex items-center justify-center w-full h-full p-2 sm:p-4"
               style={{
                 transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
                 transformOrigin: "center center",
@@ -190,7 +200,7 @@ export function PDFPreviewModal({
               {isPDF ? (
                 <iframe
                   src={`${documentUrl}#toolbar=0&navpanes=0`}
-                  className="w-full h-full min-h-[70vh] bg-white shadow-lg rounded-lg"
+                  className="w-full h-full min-h-[50vh] sm:min-h-[60vh] bg-white shadow-lg rounded-lg"
                   onLoad={() => setIsLoading(false)}
                   onError={() => {
                     setIsLoading(false);
@@ -210,12 +220,12 @@ export function PDFPreviewModal({
                   }}
                 />
               ) : (
-                <div className="flex flex-col items-center gap-4 text-center p-8">
-                  <FileText className="h-16 w-16 text-slate-400" />
-                  <p className="text-muted-foreground">
+                <div className="flex flex-col items-center gap-3 sm:gap-4 text-center p-4 sm:p-8">
+                  <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-slate-400" />
+                  <p className="text-sm sm:text-base text-muted-foreground">
                     Prévisualisation non disponible pour ce type de fichier
                   </p>
-                  <Button onClick={handleDownload}>
+                  <Button onClick={handleDownload} size="sm" className="sm:text-base">
                     <Download className="mr-2 h-4 w-4" />
                     Télécharger le fichier
                   </Button>
