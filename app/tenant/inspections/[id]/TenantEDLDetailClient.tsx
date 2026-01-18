@@ -125,13 +125,21 @@ export default function TenantEDLDetailClient({
       const response = await fetch(`/api/edl/${edl.id}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signature: signatureData.data }),
+        body: JSON.stringify({
+          signature: signatureData.data,
+          metadata: signatureData.metadata
+        }),
       });
-      if (!response.ok) throw new Error("Erreur lors de la signature");
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erreur lors de la signature");
+      }
+
       setIsSignModalOpen(false);
       router.refresh();
     } catch (error: unknown) {
-      alert(error.message);
+      alert(error instanceof Error ? error.message : "Erreur lors de la signature");
     } finally {
       setIsSigning(false);
     }
