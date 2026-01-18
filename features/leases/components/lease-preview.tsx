@@ -551,21 +551,21 @@ export function LeasePreview({
           </div>
         )}
 
-        {/* Zone de prévisualisation */}
-        <div className="flex-1 border rounded-lg overflow-hidden bg-slate-50 relative min-h-[500px]">
+        {/* Zone de prévisualisation - Responsive */}
+        <div className="flex-1 border rounded-lg overflow-hidden bg-slate-50 relative min-h-[300px] sm:min-h-[400px] md:min-h-[500px]">
           {loading ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
-               <div className="flex flex-col items-center gap-3">
-                 <RefreshCw className="h-8 w-8 text-blue-600 animate-spin" />
-                 <p className="text-sm text-slate-500 font-medium">Génération de l'aperçu...</p>
-                 <p className="text-xs text-slate-400">Mise à jour automatique après saisie</p>
+            <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10 px-4">
+               <div className="flex flex-col items-center gap-2 sm:gap-3 text-center">
+                 <RefreshCw className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 animate-spin" />
+                 <p className="text-xs sm:text-sm text-slate-500 font-medium">Génération de l'aperçu...</p>
+                 <p className="text-[10px] sm:text-xs text-slate-400">Mise à jour automatique après saisie</p>
                </div>
             </div>
           ) : (
             <iframe
               ref={iframeRef}
               srcDoc={html}
-              className="w-full h-full border-0 bg-white"
+              className="w-full h-[50vh] sm:h-[60vh] md:h-full min-h-[300px] border-0 bg-white"
               title="Prévisualisation du bail"
             />
           )}

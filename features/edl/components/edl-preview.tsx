@@ -514,24 +514,24 @@ export function EDLPreview({
           )}
         </AnimatePresence>
 
-        {/* Aperçu iframe */}
-        <div className="relative bg-white border rounded-lg overflow-hidden shadow-inner min-h-[400px]">
+        {/* Aperçu iframe - Responsive */}
+        <div className="relative bg-white border rounded-lg overflow-hidden shadow-inner min-h-[300px] sm:min-h-[400px]">
           {loading ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
-              <RefreshCw className="h-8 w-8 animate-spin text-primary mb-3" />
-              <p className="text-sm text-muted-foreground">Génération de l'aperçu...</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 px-4">
+              <RefreshCw className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary mb-3" />
+              <p className="text-xs sm:text-sm text-muted-foreground text-center">Génération de l'aperçu...</p>
             </div>
           ) : validationErrors.length > 0 && !isVierge ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50">
-              <FileText className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-sm text-muted-foreground text-center px-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 px-4">
+              <FileText className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/50 mb-3" />
+              <p className="text-xs sm:text-sm text-muted-foreground text-center">
                 Complétez les informations requises pour voir l'aperçu
               </p>
             </div>
           ) : (
             <iframe
               ref={iframeRef}
-              className="w-full h-[500px] border-0"
+              className="w-full h-[50vh] sm:h-[60vh] md:h-[500px] border-0"
               title="Aperçu de l'état des lieux"
             />
           )}
