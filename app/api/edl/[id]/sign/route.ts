@@ -63,20 +63,143 @@ export async function POST(
 
     const serviceClient = createServiceClient();
 
-    // Récupérer le profil avec les infos tenant
-    const { data: profile } = await serviceClient
+    // ===============================
+    // STRATÉGIE DE RÉSOLUTION DU PROFIL (SOTA 2026)
+    // ===============================
+    // 1. Chercher par user_id (cas standard)
+    // 2. Si non trouvé, chercher par email et lier
+    // 3. Si non trouvé, chercher dans edl_signatures pour cet EDL
+    // ===============================
+
+    let profile: {
+      id: string;
+      prenom: string;
+      nom: string;
+      role: string;
+      tenant_profile?: { cni_number: string | null }[];
+    } | null = null;
+
+    // Étape 1: Chercher par user_id (cas le plus courant)
+    const { data: profileByUserId } = await serviceClient
       .from("profiles")
       .select(`
-        id, 
-        prenom, 
-        nom, 
+        id,
+        prenom,
+        nom,
         role,
         tenant_profile:tenant_profiles(cni_number)
       `)
       .eq("user_id", user.id)
       .single();
 
+    if (profileByUserId) {
+      profile = profileByUserId;
+      console.log("[sign-edl] ✅ Profil trouvé par user_id:", profile.id);
+    }
+
+    // Étape 2: Si non trouvé, chercher par email et lier au compte
+    if (!profile && user.email) {
+      const { data: profileByEmail } = await serviceClient
+        .from("profiles")
+        .select(`
+          id,
+          prenom,
+          nom,
+          role,
+          user_id,
+          tenant_profile:tenant_profiles(cni_number)
+        `)
+        .eq("email", user.email)
+        .is("user_id", null) // Profil non lié à un compte
+        .maybeSingle();
+
+      if (profileByEmail) {
+        // Lier le profil au compte auth
+        await serviceClient
+          .from("profiles")
+          .update({ user_id: user.id })
+          .eq("id", profileByEmail.id);
+
+        profile = profileByEmail;
+        console.log("[sign-edl] ✅ Profil trouvé par email et lié:", profile.id);
+      }
+    }
+
+    // Étape 3: Chercher dans edl_signatures pour cet EDL spécifique
     if (!profile) {
+      const { data: edlSignature } = await serviceClient
+        .from("edl_signatures")
+        .select(`
+          signer_profile_id,
+          signer_email,
+          profile:profiles!edl_signatures_signer_profile_id_fkey(
+            id,
+            prenom,
+            nom,
+            role,
+            user_id,
+            tenant_profile:tenant_profiles(cni_number)
+          )
+        `)
+        .eq("edl_id", edlId)
+        .or(`signer_user.eq.${user.id},signer_email.eq.${user.email}`)
+        .maybeSingle();
+
+      if (edlSignature?.profile) {
+        const sigProfile = edlSignature.profile as any;
+
+        // Lier le profil au compte si pas déjà fait
+        if (!sigProfile.user_id) {
+          await serviceClient
+            .from("profiles")
+            .update({ user_id: user.id })
+            .eq("id", sigProfile.id);
+          console.log("[sign-edl] 🔗 Profil lié au compte via edl_signatures");
+        }
+
+        profile = {
+          id: sigProfile.id,
+          prenom: sigProfile.prenom,
+          nom: sigProfile.nom,
+          role: sigProfile.role,
+          tenant_profile: sigProfile.tenant_profile
+        };
+        console.log("[sign-edl] ✅ Profil trouvé via edl_signatures:", profile.id);
+      }
+    }
+
+    // Étape 4: Dernier recours - créer un profil minimal
+    if (!profile && user.email) {
+      console.log("[sign-edl] ⚠️ Création d'un profil minimal pour:", user.email);
+
+      const { data: newProfile, error: createError } = await serviceClient
+        .from("profiles")
+        .insert({
+          user_id: user.id,
+          email: user.email,
+          role: "tenant",
+          prenom: user.user_metadata?.prenom || user.email.split("@")[0],
+          nom: user.user_metadata?.nom || "",
+        })
+        .select(`
+          id,
+          prenom,
+          nom,
+          role,
+          tenant_profile:tenant_profiles(cni_number)
+        `)
+        .single();
+
+      if (!createError && newProfile) {
+        profile = newProfile;
+        console.log("[sign-edl] ✅ Profil minimal créé:", profile.id);
+      } else {
+        console.error("[sign-edl] Erreur création profil:", createError);
+      }
+    }
+
+    if (!profile) {
+      console.error("[sign-edl] ❌ Impossible de trouver ou créer un profil pour:", user.id, user.email);
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
