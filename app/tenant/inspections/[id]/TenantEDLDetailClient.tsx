@@ -91,13 +91,30 @@ export default function TenantEDLDetailClient({
     signedAt: s.signed_at
   })), null, 2));
 
-  const adaptedMeterReadings = (meterReadings || []).map((r: any) => ({
+  // 🔧 FIX: Utiliser les compteurs des relevés ET ceux du bien pour éviter les doublons
+  const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
+
+  // Compteurs avec relevés existants
+  const existingReadings = (meterReadings || []).map((r: any) => ({
     type: r.meter?.type || "electricity",
     meter_number: r.meter?.serial_number || r.meter?.meter_number,
     reading: String(r.reading_value),
     unit: r.reading_unit || "kWh",
     photo_url: r.photo_path,
   }));
+
+  // Compteurs du bien sans relevé
+  const missingMeters = (allPropertyMeters || [])
+    .filter((m: any) => !recordedMeterIds.has(m.id))
+    .map((m: any) => ({
+      type: m.type || "electricity",
+      meter_number: m.meter_number || m.serial_number,
+      reading: "Non relevé",
+      unit: m.unit || "kWh",
+      photo_url: null,
+    }));
+
+  const adaptedMeterReadings = [...existingReadings, ...missingMeters];
 
   const adaptedMedia = (edl.edl_media || []).map((m: any) => ({
     id: m.id,

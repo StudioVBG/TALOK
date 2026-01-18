@@ -195,8 +195,10 @@ export function InspectionDetailClient({ data }: Props) {
   }));
 
   // 2. Adapter les relevés de compteurs (et inclure les compteurs sans relevé)
+  // 🔧 FIX: Utiliser les compteurs des relevés ET ceux du bien pour éviter les doublons
   const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
-  
+
+  // Compteurs avec relevés (provenant des meterReadings)
   const existingReadings = (meterReadings || []).map((r: any) => ({
     type: r.meter?.type || "electricity",
     meter_number: r.meter?.meter_number || r.meter?.serial_number,
@@ -205,6 +207,7 @@ export function InspectionDetailClient({ data }: Props) {
     photo_url: r.photo_path,
   }));
 
+  // Compteurs du bien sans relevé (seulement ceux qui n'ont pas de relevé)
   const missingMeters = (propertyMeters || [])
     .filter((m: any) => !recordedMeterIds.has(m.id))
     .map((m: any) => ({
@@ -216,6 +219,35 @@ export function InspectionDetailClient({ data }: Props) {
     }));
 
   const adaptedMeterReadings = [...existingReadings, ...missingMeters];
+
+  // 🔧 FIX: Créer une liste unifiée de compteurs pour l'affichage dans "Données techniques"
+  // Cette liste combine les compteurs des relevés (avec valeur) et ceux du bien (sans relevé)
+  const unifiedMetersForDisplay = [
+    // Compteurs avec relevés existants
+    ...(meterReadings || []).map((r: any) => ({
+      id: r.meter_id || r.id,
+      type: r.meter?.type || "electricity",
+      meter_number: r.meter?.meter_number || r.meter?.serial_number,
+      serial_number: r.meter?.serial_number,
+      location: r.meter?.location,
+      hasReading: true,
+      readingValue: r.reading_value,
+      readingUnit: r.reading_unit || r.meter?.unit || "kWh",
+    })),
+    // Compteurs du bien sans relevé
+    ...(propertyMeters || [])
+      .filter((m: any) => !recordedMeterIds.has(m.id))
+      .map((m: any) => ({
+        id: m.id,
+        type: m.type || "electricity",
+        meter_number: m.meter_number || m.serial_number,
+        serial_number: m.serial_number,
+        location: m.location,
+        hasReading: false,
+        readingValue: null,
+        readingUnit: m.unit || "kWh",
+      })),
+  ];
 
   // 3. Adapter les médias
   const adaptedMedia = (edl.edl_media || []).map((m: any) => ({
@@ -677,8 +709,8 @@ export function InspectionDetailClient({ data }: Props) {
               </CardContent>
             </Card>
 
-            {/* Compteurs du bien */}
-            {(propertyMeters || []).length > 0 && (
+            {/* Compteurs du bien - 🔧 FIX: Utiliser unifiedMetersForDisplay */}
+            {unifiedMetersForDisplay.length > 0 && (
               <Card className="border-none shadow-sm bg-white overflow-hidden">
                 <CardHeader className="pb-2 border-b border-slate-50">
                   <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
@@ -687,23 +719,23 @@ export function InspectionDetailClient({ data }: Props) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-3">
-                  {propertyMeters.map((meter: any) => {
-                    const hasReading = recordedMeterIds.has(meter.id);
-                    return (
-                      <div key={meter.id} className="p-2 rounded-lg border border-slate-100 bg-slate-50/50">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="text-[9px] font-bold uppercase text-slate-500">
-                            {meter.type === 'electricity' ? 'Électricité' : meter.type === 'gas' ? 'Gaz' : 'Eau'}
-                          </span>
-                          <Badge variant={hasReading ? "secondary" : "outline"} className={`text-[8px] h-4 px-1 ${hasReading ? "bg-green-100 text-green-700 border-none" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
-                            {hasReading ? "Relevé effectué" : "À relever"}
-                          </Badge>
-                        </div>
-                        <p className="text-[11px] font-medium text-slate-900 leading-none">N° {meter.meter_number || meter.serial_number}</p>
-                        {meter.location && <p className="text-[9px] text-muted-foreground mt-1 italic">{meter.location}</p>}
+                  {unifiedMetersForDisplay.map((meter: any, index: number) => (
+                    <div key={meter.id || `meter-${index}`} className="p-2 rounded-lg border border-slate-100 bg-slate-50/50">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-[9px] font-bold uppercase text-slate-500">
+                          {meter.type === 'electricity' ? 'Électricité' : meter.type === 'gas' ? 'Gaz' : meter.type === 'water' ? 'Eau' : meter.type}
+                        </span>
+                        <Badge variant={meter.hasReading ? "secondary" : "outline"} className={`text-[8px] h-4 px-1 ${meter.hasReading ? "bg-green-100 text-green-700 border-none" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                          {meter.hasReading ? "Relevé effectué" : "À relever"}
+                        </Badge>
                       </div>
-                    );
-                  })}
+                      <p className="text-[11px] font-medium text-slate-900 leading-none">N° {meter.meter_number || meter.serial_number || "Non renseigné"}</p>
+                      {meter.hasReading && meter.readingValue !== null && (
+                        <p className="text-[10px] text-blue-600 font-semibold mt-1">{meter.readingValue.toLocaleString('fr-FR')} {meter.readingUnit}</p>
+                      )}
+                      {meter.location && <p className="text-[9px] text-muted-foreground mt-1 italic">{meter.location}</p>}
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             )}
