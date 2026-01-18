@@ -77,7 +77,13 @@ export function EDLPreview({
       bailleur_nom: edlData.bailleur?.nom_complet,
       locataires: edlData.locataires?.map((l) => l.nom_complet),
       nb_pieces: edlData.pieces?.length,
-      nb_compteurs: edlData.compteurs?.length,
+      // 🔧 FIX: Inclure les valeurs des relevés de compteurs pour forcer la regénération
+      compteurs: edlData.compteurs?.map((c) => ({
+        type: c.type,
+        meter_number: c.meter_number,
+        reading: c.reading,
+        unit: c.unit,
+      })),
       scheduled_date: edlData.scheduled_date,
       isVierge,
       rooms: isVierge ? rooms : undefined,
