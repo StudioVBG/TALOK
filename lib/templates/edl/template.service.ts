@@ -428,6 +428,8 @@ function formatBailType(type: string): string {
     colocation: "Colocation",
     saisonnier: "Location saisonnière",
     bail_mobilite: "Bail mobilité",
+    mobilite: "Bail mobilité",
+    etudiant: "Bail étudiant",
     commercial_3_6_9: "Bail commercial 3/6/9",
     professionnel: "Bail professionnel",
     contrat_parking: "Contrat de parking",

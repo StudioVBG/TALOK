@@ -13,7 +13,7 @@
 import { z } from "zod";
 
 // Types de bail supportés
-export const BAIL_TYPES = ["nu", "meuble", "colocation", "saisonnier", "mobilite"] as const;
+export const BAIL_TYPES = ["nu", "meuble", "colocation", "saisonnier", "mobilite", "etudiant"] as const;
 export type BailType = typeof BAIL_TYPES[number];
 
 /**
@@ -22,6 +22,7 @@ export type BailType = typeof BAIL_TYPES[number];
 export function getMaxDepotLegal(typeBail: BailType | string, loyerHC: number): number {
   switch (typeBail) {
     case "nu":
+    case "etudiant": // Bail étudiant = 1 mois max (meublé 9 mois)
       return loyerHC; // 1 mois max
     case "meuble":
     case "colocation":
@@ -40,7 +41,8 @@ export function getMaxDepotLegal(typeBail: BailType | string, loyerHC: number): 
  */
 export function getMaxDepotMois(typeBail: BailType | string): number {
   switch (typeBail) {
-    case "nu": return 1;
+    case "nu":
+    case "etudiant": return 1; // Bail étudiant = 1 mois max
     case "meuble":
     case "colocation":
     case "saisonnier": return 2;
