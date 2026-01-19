@@ -220,49 +220,56 @@ export async function POST(request: Request) {
             console.log(`[EDL Preview] Found ${allMeters.length} active meters for property ${propertyId}`);
           }
 
-          // 🔧 FIX AMÉLIORÉ: Mapper les relevés existants
+          // 🔧 FIX AMÉLIORÉ: Mapper les relevés existants avec URLs signées
           // Les compteurs des relevés sont la source de vérité pour les valeurs
           const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
 
-          // Créer un Set des types de compteurs déjà relevés pour éviter les doublons par type
-          const recordedMeterTypes = new Set(
-            (meterReadings || []).map((r: any) => r.meter?.type || "electricity")
-          );
-
-          const finalMeterReadings = (meterReadings || []).map((r: any) => ({
-            type: r.meter?.type || "electricity",
-            meter_number: r.meter?.meter_number || r.meter?.serial_number,
-            reading: String(r.reading_value),
-            unit: r.reading_unit || r.meter?.unit || "kWh",
-            photo_url: r.photo_path,
-          }));
-
           console.log(`[EDL Preview] Recorded meter IDs: ${Array.from(recordedMeterIds).join(', ')}`);
-          console.log(`[EDL Preview] Recorded meter types: ${Array.from(recordedMeterTypes).join(', ')}`);
 
-          // Ajouter les compteurs manquants avec mention "À relever"
-          // Vérifier à la fois par ID ET par type pour éviter les doublons
+          // 🔧 FIX: Générer des URLs signées pour les photos des compteurs
+          const finalMeterReadings = [];
+          for (const r of (meterReadings || [])) {
+            // 🔧 FIX: Gérer les valeurs null/undefined - afficher "À valider" si photo mais pas de valeur
+            const hasValue = r.reading_value !== null && r.reading_value !== undefined;
+            const readingDisplay = hasValue ? String(r.reading_value) : (r.photo_path ? "À valider" : "Non relevé");
+
+            let photoUrl = null;
+            if (r.photo_path) {
+              const { data: signedUrlData } = await adminClient.storage
+                .from("documents")
+                .createSignedUrl(r.photo_path, 3600);
+              photoUrl = signedUrlData?.signedUrl || null;
+              if (photoUrl) {
+                console.log(`[EDL Preview] ✅ Signed meter photo URL: ${r.photo_path}`);
+              }
+            }
+
+            finalMeterReadings.push({
+              type: r.meter?.type || "electricity",
+              meter_number: r.meter?.meter_number || r.meter?.serial_number,
+              reading: readingDisplay,
+              reading_value: r.reading_value, // Conserver la valeur numérique originale
+              unit: r.reading_unit || r.meter?.unit || "kWh",
+              photo_url: photoUrl,
+            });
+          }
+
+          // 🔧 FIX: Ajouter les compteurs manquants - vérifier uniquement par ID
+          // Ne plus vérifier par type pour éviter de masquer des compteurs multiples du même type
           allMeters.forEach((m: any) => {
             const alreadyRecordedById = recordedMeterIds.has(m.id);
-            // Ne pas ajouter un compteur du même type s'il existe déjà un relevé pour ce type
-            // (sauf si c'est un compteur différent avec le même type - dans ce cas on le garde)
-            const alreadyRecordedByType = recordedMeterTypes.has(m.type) && !alreadyRecordedById;
 
-            console.log(`[EDL Preview] Checking meter ${m.id} (${m.type}): byId=${alreadyRecordedById}, byType=${alreadyRecordedByType}`);
+            console.log(`[EDL Preview] Checking meter ${m.id} (${m.type}): recorded=${alreadyRecordedById}`);
 
             if (!alreadyRecordedById) {
-              // Ajouter seulement si ce compteur spécifique n'a pas de relevé
-              // ET qu'il n'y a pas déjà un compteur du même type avec un relevé
-              // (on évite d'afficher "À relever" si un relevé existe pour ce type)
-              if (!alreadyRecordedByType) {
-                finalMeterReadings.push({
-                  type: m.type || "electricity",
-                  meter_number: m.meter_number || m.serial_number,
-                  reading: "Non relevé", // Utilisé par le template pour afficher "À relever"
-                  unit: m.unit || "kWh",
-                  photo_url: null,
-                });
-              }
+              finalMeterReadings.push({
+                type: m.type || "electricity",
+                meter_number: m.meter_number || m.serial_number,
+                reading: "Non relevé",
+                reading_value: null,
+                unit: m.unit || "kWh",
+                photo_url: null,
+              });
             }
           });
 

@@ -78,10 +78,12 @@ export function EDLPreview({
       locataires: edlData.locataires?.map((l) => l.nom_complet),
       nb_pieces: edlData.pieces?.length,
       // 🔧 FIX: Inclure les valeurs des relevés de compteurs pour forcer la regénération
-      compteurs: edlData.compteurs?.map((c) => ({
+      // Normaliser la valeur: supporte 'reading' (string) et 'reading_value' (number)
+      compteurs: edlData.compteurs?.map((c: any) => ({
         type: c.type,
         meter_number: c.meter_number,
-        reading: c.reading,
+        // Normaliser: utiliser reading_value si disponible, sinon reading
+        reading_value: c.reading_value !== undefined ? String(c.reading_value) : c.reading,
         unit: c.unit,
       })),
       scheduled_date: edlData.scheduled_date,
@@ -144,7 +146,11 @@ export function EDLPreview({
     if (!edlData.compteurs || edlData.compteurs.length === 0) {
       warnings.push("Aucun compteur enregistré pour ce logement");
     } else {
-      const unreadMeters = edlData.compteurs.filter(c => c.reading === "Non relevé" || !c.reading);
+      // 🔧 FIX: Vérifier les deux formats possibles (reading et reading_value)
+      const unreadMeters = edlData.compteurs.filter((c: any) => {
+        const readingVal = c.reading_value !== undefined ? String(c.reading_value) : c.reading;
+        return readingVal === "Non relevé" || readingVal === "null" || !readingVal;
+      });
       if (unreadMeters.length > 0) {
         warnings.push(`${unreadMeters.length} relevé(s) de compteur à saisir`);
       }
