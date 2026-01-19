@@ -328,9 +328,21 @@ export function mapRawEDLToTemplate(
   const compteurs: EDLMeterReading[] = meterReadings.map((m) => {
     // 🔧 FIX: Résoudre la valeur du relevé avec fallbacks
     // La BDD utilise 'reading_value', mais certains flux utilisent 'reading'
-    const readingValue = m.reading_value !== undefined && m.reading_value !== null
-      ? String(m.reading_value)
-      : m.reading || "Non relevé";
+    // Gérer les valeurs null/undefined: afficher "À valider" si photo mais pas de valeur
+    const hasNumericValue = m.reading_value !== undefined && m.reading_value !== null;
+    const hasStringValue = m.reading && m.reading !== "null" && m.reading !== "undefined";
+    const hasPhoto = !!(m.photo_url || m.photo_path);
+
+    let readingValue: string;
+    if (hasNumericValue) {
+      readingValue = String(m.reading_value);
+    } else if (hasStringValue) {
+      readingValue = m.reading!;
+    } else if (hasPhoto) {
+      readingValue = "À valider"; // Photo présente mais pas de valeur OCR/manuelle
+    } else {
+      readingValue = "Non relevé";
+    }
 
     // Résoudre le type de compteur (peut venir du meter join ou directement)
     const meterType = m.meter?.type || m.type;
@@ -341,15 +353,23 @@ export function mapRawEDLToTemplate(
     // Résoudre l'unité
     const unit = m.reading_unit || m.unit || m.meter?.unit || "kWh";
 
-    // Résoudre la photo
-    const photoPath = m.photo_url || m.photo_path;
+    // 🔧 FIX: Résoudre la photo - utiliser URL signée si disponible
+    // Priorité: photo_url déjà signée > photo_path à convertir
+    let photoUrl: string | undefined = undefined;
+    if (m.photo_url && m.photo_url.startsWith("http")) {
+      // URL déjà signée ou publique
+      photoUrl = m.photo_url;
+    } else if (m.photo_path) {
+      // Chemin relatif - générer URL publique (fallback, peut ne pas marcher si bucket privé)
+      photoUrl = getPublicUrl(m.photo_path);
+    }
 
     return {
       type: meterType as EDLMeterReading["type"],
       meter_number: meterNumber || undefined,
       reading: readingValue,
       unit: unit,
-      photo_url: photoPath ? getPublicUrl(photoPath) : undefined,
+      photo_url: photoUrl,
     };
   });
 
