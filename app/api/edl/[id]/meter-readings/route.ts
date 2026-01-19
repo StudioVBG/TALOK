@@ -418,21 +418,32 @@ export async function POST(
 
     let finalValue: number | null = null;
     let isValidated = false;
+    let needsManualValidation = false;
 
     if (manualValue && !isNaN(parseFloat(manualValue))) {
+      // Valeur saisie manuellement - considérée comme validée
       finalValue = parseFloat(manualValue);
       isValidated = true;
+      console.log(`[POST /api/edl/${edlId}/meter-readings] Manual value: ${finalValue}`);
     } else if (ocrResult.value !== null) {
+      // Valeur OCR - validée si confiance >= 80%
       finalValue = ocrResult.value;
       isValidated = ocrResult.confidence >= 80;
+      needsManualValidation = !isValidated;
+      console.log(`[POST /api/edl/${edlId}/meter-readings] OCR value: ${finalValue}, confidence: ${ocrResult.confidence}%, validated: ${isValidated}`);
+    } else if (finalPhotoPath) {
+      // 🔧 FIX: Photo présente mais OCR a échoué - marquer comme nécessitant validation
+      needsManualValidation = true;
+      console.log(`[POST /api/edl/${edlId}/meter-readings] Photo uploaded but OCR failed - needs manual validation`);
     }
 
     if (finalValue === null && !finalPhotoPath) {
+      // Pas de valeur et pas de photo - on ne peut pas créer de relevé
       console.log(`[POST /api/edl/${edlId}/meter-readings] No value or photo, just updating meter.`);
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         message: "Compteur mis à jour (sans relevé)",
-        meter: actualMeterData 
+        meter: actualMeterData
       });
     }
 
@@ -498,6 +509,7 @@ export async function POST(
     return NextResponse.json({
       reading: finalReading,
       all_meters_recorded: false, // Simplifié pour le débug
+      needs_validation: needsManualValidation, // 🔧 FIX: Informer le client si la valeur doit être validée manuellement
     });
 
   } catch (error: unknown) {
