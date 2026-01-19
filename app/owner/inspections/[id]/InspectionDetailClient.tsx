@@ -199,13 +199,22 @@ export function InspectionDetailClient({ data }: Props) {
   const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
 
   // Compteurs avec relevés (provenant des meterReadings)
-  const existingReadings = (meterReadings || []).map((r: any) => ({
-    type: r.meter?.type || "electricity",
-    meter_number: r.meter?.meter_number || r.meter?.serial_number,
-    reading: String(r.reading_value),
-    unit: r.reading_unit || r.meter?.unit || "kWh",
-    photo_url: r.photo_path,
-  }));
+  // 🔧 FIX: Gérer correctement les valeurs null/undefined et 0
+  const existingReadings = (meterReadings || []).map((r: any) => {
+    const hasValue = r.reading_value !== null && r.reading_value !== undefined;
+    const readingDisplay = hasValue
+      ? String(r.reading_value)
+      : (r.photo_path ? "À valider" : "Non relevé");
+
+    return {
+      type: r.meter?.type || "electricity",
+      meter_number: r.meter?.meter_number || r.meter?.serial_number,
+      reading: readingDisplay,
+      reading_value: r.reading_value, // Conserver la valeur numérique pour le mapper
+      unit: r.reading_unit || r.meter?.unit || "kWh",
+      photo_url: r.photo_path,
+    };
+  });
 
   // Compteurs du bien sans relevé (seulement ceux qui n'ont pas de relevé)
   const missingMeters = (propertyMeters || [])
