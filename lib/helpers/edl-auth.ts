@@ -62,7 +62,21 @@ export async function verifyEDLAccess(
   serviceClient?: SupabaseClient
 ): Promise<EDLAccessResult> {
   const { edlId, userId, profileId, profileRole } = params;
-  
+
+  // Validation des paramètres requis
+  if (!edlId || !userId || !profileId) {
+    console.error(`[verifyEDLAccess] Missing required params:`, {
+      hasEdlId: !!edlId,
+      hasUserId: !!userId,
+      hasProfileId: !!profileId
+    });
+    return {
+      authorized: false,
+      edl: null,
+      reason: "Paramètres de vérification manquants"
+    };
+  }
+
   // Créer le service client si non fourni
   const client = serviceClient || createServiceClient();
 
@@ -74,6 +88,8 @@ export async function verifyEDLAccess(
 
   try {
     // 1. Récupérer l'EDL avec les relations nécessaires
+    // Note: La table EDL n'a PAS de colonne property_id directe
+    // La relation passe par: edl.lease_id -> leases.id -> leases.property_id -> properties.id
     const { data: edl, error: edlError } = await client
       .from("edl")
       .select(`
@@ -87,12 +103,21 @@ export async function verifyEDLAccess(
       .eq("id", edlId)
       .single();
 
-    if (edlError || !edl) {
-      console.log(`[verifyEDLAccess] EDL not found:`, edlError?.message);
-      return { 
-        authorized: false, 
-        edl: null, 
-        reason: "EDL non trouvé" 
+    if (edlError) {
+      console.error(`[verifyEDLAccess] Supabase error:`, edlError);
+      return {
+        authorized: false,
+        edl: null,
+        reason: `Erreur lors de la récupération: ${edlError.message}`
+      };
+    }
+
+    if (!edl) {
+      console.log(`[verifyEDLAccess] EDL not found for id: ${edlId}`);
+      return {
+        authorized: false,
+        edl: null,
+        reason: "EDL non trouvé"
       };
     }
 
@@ -110,24 +135,38 @@ export async function verifyEDLAccess(
       return { authorized: true, edl: edlData, accessType: "creator" };
     }
 
-    // 4. Propriétaire du bien (via property.owner_id)
+    // 4. Propriétaire du bien (via lease -> property -> owner_id)
+    // Supabase retourne un objet pour les relations 1-to-1 (via FK)
     const leaseData = Array.isArray(edlData.lease) ? edlData.lease[0] : edlData.lease;
     const propertyOwnerId = leaseData?.property?.owner_id;
-    
-    // Aussi vérifier si property_id direct (EDL sans bail)
-    let directOwnerId = null;
-    if (edlData.property_id && !propertyOwnerId) {
-      const { data: property } = await client
-        .from("properties")
-        .select("owner_id")
-        .eq("id", edlData.property_id)
-        .single();
-      directOwnerId = property?.owner_id;
-    }
 
-    if (propertyOwnerId === profileId || directOwnerId === profileId) {
+    console.log(`[verifyEDLAccess] Checking owner access:`, {
+      leaseId: edlData.lease_id,
+      leaseFound: !!leaseData,
+      propertyId: leaseData?.property_id,
+      propertyOwnerId,
+      profileId
+    });
+
+    if (propertyOwnerId && propertyOwnerId === profileId) {
       console.log(`[verifyEDLAccess] ✅ Owner access granted`);
       return { authorized: true, edl: edlData, accessType: "owner" };
+    }
+
+    // 4b. Fallback: si la relation lease n'a pas été chargée, récupérer directement
+    if (!propertyOwnerId && edlData.lease_id) {
+      console.log(`[verifyEDLAccess] Fallback: fetching lease directly for lease_id: ${edlData.lease_id}`);
+      const { data: leaseWithProperty } = await client
+        .from("leases")
+        .select("property:properties(owner_id)")
+        .eq("id", edlData.lease_id)
+        .single();
+
+      const fallbackOwnerId = leaseWithProperty?.property?.owner_id;
+      if (fallbackOwnerId && fallbackOwnerId === profileId) {
+        console.log(`[verifyEDLAccess] ✅ Owner access granted (via fallback)`);
+        return { authorized: true, edl: edlData, accessType: "owner" };
+      }
     }
 
     // 5. Signataire de l'EDL (dans edl_signatures)
