@@ -4,7 +4,7 @@
 # ==============================================================================
 
 [build]
-  command = "npm run build"
+  command = "rm -rf .next && npm run build"
   # Ne pas spécifier publish - le plugin Next.js le gère automatiquement
 
 # Plugin Next.js pour Netlify (requis)
