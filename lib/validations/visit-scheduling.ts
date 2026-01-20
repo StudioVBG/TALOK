@@ -80,13 +80,22 @@ export const createAvailabilityPatternSchema = availabilityPatternBaseSchema.ref
 
 /**
  * Schéma pour mettre à jour un pattern de disponibilité
- * Note: .partial() doit être appelé sur ZodObject, pas sur ZodEffects
+ * Champs explicitement optionnels pour éviter .partial()
  */
-export const updateAvailabilityPatternSchema = availabilityPatternBaseSchema
-  .partial()
-  .extend({
-    is_active: z.boolean().optional(),
-  });
+export const updateAvailabilityPatternSchema = z.object({
+  property_id: z.string().uuid().nullable().optional(),
+  recurrence_type: z.enum(["daily", "weekly", "monthly", "custom"]).optional(),
+  day_of_week: z.array(z.number().int().min(0).max(6)).optional(),
+  start_time: z.string().regex(timeRegex).optional(),
+  end_time: z.string().regex(timeRegex).optional(),
+  slot_duration_minutes: z.number().int().min(15).max(180).optional(),
+  buffer_minutes: z.number().int().min(0).max(60).optional(),
+  valid_from: z.string().regex(isoDateRegex).optional(),
+  valid_until: z.string().regex(isoDateRegex).nullable().optional(),
+  max_bookings_per_slot: z.number().int().min(1).max(10).optional(),
+  auto_confirm: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+});
 
 // ============================================
 // AVAILABILITY EXCEPTION SCHEMAS

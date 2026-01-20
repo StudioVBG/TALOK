@@ -560,7 +560,15 @@ const roomRefine = (value: z.infer<typeof roomBaseSchema>, ctx: z.RefinementCtx)
 };
 
 export const roomSchema = roomBaseSchema.superRefine(roomRefine);
-export const roomUpdateSchema = roomBaseSchema.partial().superRefine((value, ctx) => {
+// Version update avec champs explicitement optionnels (évite .partial())
+export const roomUpdateSchema = z.object({
+  type_piece: roomTypeEnum.optional(),
+  label_affiche: z.string().min(1).max(120).optional(),
+  surface_m2: z.number().min(0).optional().nullable(),
+  chauffage_present: z.boolean().optional(),
+  chauffage_type_emetteur: roomEmitterEnum.optional().nullable(),
+  clim_presente: z.boolean().optional(),
+}).superRefine((value, ctx) => {
   if (value.chauffage_present === false && value.chauffage_type_emetteur) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -644,8 +652,32 @@ export const leaseSchema = z.object({
   next_indexation_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
 });
 
-// Schéma partiel pour les mises à jour
-export const leaseUpdateSchema = leaseSchema.partial();
+// Schéma partiel pour les mises à jour (champs explicitement optionnels)
+export const leaseUpdateSchema = z.object({
+  property_id: z.string().uuid().optional().nullable(),
+  unit_id: z.string().uuid().optional().nullable(),
+  type_bail: z.enum(["nu", "meuble", "colocation", "saisonnier", "bail_mobilite", "commercial_3_6_9", "commercial_derogatoire", "professionnel", "contrat_parking", "location_gerance"]).optional(),
+  loyer: z.number().positive().optional(),
+  charges_forfaitaires: z.number().min(0).optional(),
+  depot_de_garantie: z.number().min(0).optional(),
+  date_debut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  indice_reference: z.enum(["IRL", "ILC", "ILAT"]).optional().nullable(),
+  indice_base: z.number().min(0).optional().nullable(),
+  indice_courant: z.number().min(0).optional().nullable(),
+  indexation_periodicite: z.enum(["annuelle", "triennale", "quinquennale"]).optional().nullable(),
+  indexation_lissage_deplafonnement: z.boolean().optional(),
+  tva_applicable: z.boolean().optional(),
+  tva_taux: z.number().min(0).max(100).optional().nullable(),
+  loyer_ht: z.number().min(0).optional().nullable(),
+  loyer_ttc: z.number().min(0).optional().nullable(),
+  pinel_travaux_3_derniers: z.array(z.record(z.unknown())).optional(),
+  pinel_travaux_3_prochains: z.array(z.record(z.unknown())).optional(),
+  pinel_repartition_charges: z.record(z.unknown()).optional(),
+  droit_preference_active: z.boolean().optional(),
+  last_diagnostic_check: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  next_indexation_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+});
 
 // Validation des factures
 export const invoiceSchema = z.object({
@@ -659,8 +691,17 @@ export const invoiceSchema = z.object({
   is_professional_lease: z.boolean().optional(),
 });
 
-// Schéma partiel pour les mises à jour
-export const invoiceUpdateSchema = invoiceSchema.partial();
+// Schéma partiel pour les mises à jour (champs explicitement optionnels)
+export const invoiceUpdateSchema = z.object({
+  lease_id: z.string().uuid().optional(),
+  periode: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+  montant_loyer: z.number().positive().optional(),
+  montant_charges: z.number().min(0).optional(),
+  montant_ht: z.number().min(0).optional(),
+  montant_tva: z.number().min(0).optional(),
+  taux_tva: z.number().min(0).max(100).optional(),
+  is_professional_lease: z.boolean().optional(),
+});
 
 // Validation des paiements
 export const paymentSchema = z.object({
@@ -672,8 +713,15 @@ export const paymentSchema = z.object({
   montant_ttc: z.number().min(0).optional(),
 });
 
-// Schéma partiel pour les mises à jour
-export const paymentUpdateSchema = paymentSchema.partial();
+// Schéma partiel pour les mises à jour (champs explicitement optionnels)
+export const paymentUpdateSchema = z.object({
+  invoice_id: z.string().uuid().optional(),
+  montant: z.number().positive().optional(),
+  moyen: z.enum(["cb", "virement", "prelevement"]).optional(),
+  montant_ht: z.number().min(0).optional(),
+  montant_tva: z.number().min(0).optional(),
+  montant_ttc: z.number().min(0).optional(),
+});
 
 // Validation des charges
 export const chargeSchema = z.object({
@@ -706,8 +754,16 @@ export const chargeSchema = z.object({
   eligible_pinel: z.boolean().optional(),
 });
 
-// Schéma partiel pour les mises à jour (évite l'appel dynamique .partial())
-export const chargeUpdateSchema = chargeSchema.partial();
+// Schéma partiel pour les mises à jour (champs explicitement optionnels)
+export const chargeUpdateSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  type: z.enum(["eau", "electricite", "copro", "taxe", "ordures", "assurance", "travaux", "energie", "autre"]).optional(),
+  montant: z.number().positive().optional(),
+  periodicite: z.enum(["mensuelle", "trimestrielle", "annuelle"]).optional(),
+  refacturable_locataire: z.boolean().optional(),
+  categorie_charge: z.enum(["charges_locatives", "charges_non_recuperables", "taxes", "travaux_proprietaire", "travaux_locataire", "assurances", "energie"]).optional(),
+  eligible_pinel: z.boolean().optional(),
+});
 
 // Validation des tickets
 export const ticketSchema = z.object({
@@ -718,8 +774,14 @@ export const ticketSchema = z.object({
   priorite: z.enum(["basse", "normale", "haute"]),
 });
 
-// Schéma partiel pour les mises à jour
-export const ticketUpdateSchema = ticketSchema.partial();
+// Schéma partiel pour les mises à jour (champs explicitement optionnels)
+export const ticketUpdateSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  lease_id: z.string().uuid().optional().nullable(),
+  titre: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
+  priorite: z.enum(["basse", "normale", "haute"]).optional(),
+});
 
 // Validation des ordres de travail
 export const workOrderSchema = z.object({
@@ -729,8 +791,13 @@ export const workOrderSchema = z.object({
   cout_estime: z.number().positive().optional().nullable(),
 });
 
-// Schéma partiel pour les mises à jour
-export const workOrderUpdateSchema = workOrderSchema.partial();
+// Schéma partiel pour les mises à jour (champs explicitement optionnels)
+export const workOrderUpdateSchema = z.object({
+  ticket_id: z.string().uuid().optional(),
+  provider_id: z.string().uuid().optional(),
+  date_intervention_prevue: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  cout_estime: z.number().positive().optional().nullable(),
+});
 
 // Validation des documents
 export const documentSchema = z.object({
@@ -766,8 +833,17 @@ export const documentSchema = z.object({
   is_cover: z.boolean().optional(),
 });
 
-// Schéma partiel pour les mises à jour
-export const documentUpdateSchema = documentSchema.partial();
+// Schéma partiel pour les mises à jour (champs explicitement optionnels)
+export const documentUpdateSchema = z.object({
+  type: z.enum(["bail", "EDL_entree", "EDL_sortie", "quittance", "attestation_assurance", "attestation_loyer", "justificatif_revenus", "piece_identite", "cni_recto", "cni_verso", "annexe_pinel", "etat_travaux", "diagnostic_amiante", "diagnostic_tertiaire", "diagnostic_performance", "publication_jal", "autre"]).optional(),
+  property_id: z.string().uuid().optional().nullable(),
+  lease_id: z.string().uuid().optional().nullable(),
+  collection: z.string().max(120).optional().nullable(),
+  position: z.number().int().min(1).optional().nullable(),
+  title: z.string().max(255).optional().nullable(),
+  notes: z.string().optional().nullable(),
+  is_cover: z.boolean().optional(),
+});
 
 // Validation des articles de blog
 export const blogPostSchema = z.object({
@@ -778,8 +854,14 @@ export const blogPostSchema = z.object({
   is_published: z.boolean(),
 });
 
-// Schéma partiel pour les mises à jour
-export const blogPostUpdateSchema = blogPostSchema.partial();
+// Schéma partiel pour les mises à jour (champs explicitement optionnels)
+export const blogPostUpdateSchema = z.object({
+  slug: z.string().min(1).optional(),
+  titre: z.string().min(1).optional(),
+  contenu: z.string().min(1).optional(),
+  tags: z.array(z.string()).optional(),
+  is_published: z.boolean().optional(),
+});
 
 // ============================================
 // Validation des relevés de compteurs EDL
