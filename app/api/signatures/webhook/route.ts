@@ -3,22 +3,72 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import crypto from "crypto";
+
+/**
+ * Vérifie la signature HMAC du webhook Yousign
+ * @see https://developers.yousign.com/docs/webhooks#signature-verification
+ */
+function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
+  // En mode développement, on peut bypasser la vérification si pas de secret configuré
+  const secret = process.env.YOUSIGN_WEBHOOK_SECRET;
+
+  if (!secret) {
+    console.warn("[Webhook] YOUSIGN_WEBHOOK_SECRET non configuré - vérification désactivée en dev");
+    // En production, rejeter si pas de secret
+    if (process.env.NODE_ENV === "production") {
+      return false;
+    }
+    return true; // Permettre en dev sans secret
+  }
+
+  if (!signature) {
+    console.error("[Webhook] Signature manquante dans les headers");
+    return false;
+  }
+
+  try {
+    // Yousign utilise HMAC-SHA256
+    const expectedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(rawBody, "utf8")
+      .digest("hex");
+
+    // Comparaison timing-safe pour éviter les attaques par timing
+    const signatureBuffer = Buffer.from(signature, "hex");
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+
+    if (signatureBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+  } catch (error) {
+    console.error("[Webhook] Erreur lors de la vérification de signature:", error);
+    return false;
+  }
+}
 
 /**
  * POST /api/signatures/webhook - Handler pour les webhooks des providers de signature (Yousign/DocuSign)
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const body = await request.json();
-    const eventType = body.type || body.event_type;
+    // Lire le body brut pour la vérification de signature
+    const rawBody = await request.text();
     const signature = request.headers.get("x-signature") || request.headers.get("yousign-signature");
 
-    // Vérifier la signature du webhook (à implémenter selon le provider)
-    // const isValid = verifyWebhookSignature(body, signature);
-    // if (!isValid) {
-    //   return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
-    // }
+    // Vérifier la signature du webhook
+    if (!verifyWebhookSignature(rawBody, signature)) {
+      console.error("[Webhook] Signature invalide - requête rejetée");
+      return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
+    }
+
+    const supabase = await createClient();
+    const body = JSON.parse(rawBody);
+    const eventType = body.type || body.event_type;
+
+    console.log("[Webhook] Événement reçu:", eventType);
 
     // Traiter selon le type d'événement
     switch (eventType) {

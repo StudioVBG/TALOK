@@ -152,8 +152,45 @@ export async function logAudit(
 }
 
 // CORS headers for API routes
+// Domaines autorisés pour les requêtes cross-origin
+const ALLOWED_ORIGINS = [
+  process.env.NEXT_PUBLIC_APP_URL,
+  process.env.NEXT_PUBLIC_SITE_URL,
+  "https://talok.fr",
+  "https://www.talok.fr",
+  "https://app.talok.fr",
+  // Domaines de développement
+  ...(process.env.NODE_ENV === "development"
+    ? ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"]
+    : []),
+].filter(Boolean) as string[];
+
+/**
+ * Génère les headers CORS sécurisés en fonction de l'origine de la requête
+ * @param requestOrigin - L'origine de la requête (header Origin)
+ * @returns Headers CORS avec origine spécifique ou rejet
+ */
+export function getCorsHeaders(requestOrigin?: string | null): Record<string, string> {
+  // Vérifier si l'origine est autorisée
+  const origin = requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)
+    ? requestOrigin
+    : ALLOWED_ORIGINS[0] || "";
+
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, Idempotency-Key, X-Requested-With",
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Max-Age": "86400", // Cache preflight pour 24h
+  };
+}
+
+/**
+ * @deprecated Utiliser getCorsHeaders(request.headers.get("origin")) à la place
+ * Conservé pour rétrocompatibilité - sera retiré dans la prochaine version majeure
+ */
 export const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0] || "https://talok.fr",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, Idempotency-Key",
 };
@@ -204,27 +241,100 @@ export async function requireApiAccess(
   return null;
 }
 
-// Rate limit check (basic implementation)
+/**
+ * Rate limiting avec stockage en mémoire
+ *
+ * ⚠️  LIMITATION: Ce rate limiter utilise un Map en mémoire, ce qui signifie:
+ * - Non partagé entre les instances serverless (chaque instance a son propre compteur)
+ * - Reset à chaque redéploiement ou cold start
+ * - Non adapté pour une protection efficace en production à grande échelle
+ *
+ * TODO: Migrer vers une solution persistante pour la production:
+ * - Option 1: Upstash Redis (@upstash/ratelimit) - Recommandé pour Vercel
+ *   ```
+ *   import { Ratelimit } from "@upstash/ratelimit";
+ *   import { Redis } from "@upstash/redis";
+ *   const ratelimit = new Ratelimit({
+ *     redis: Redis.fromEnv(),
+ *     limiter: Ratelimit.slidingWindow(100, "1 m"),
+ *   });
+ *   ```
+ * - Option 2: Vercel KV (si déjà utilisé)
+ * - Option 3: Supabase avec table rate_limits et fonction RPC
+ *
+ * Variables d'environnement requises pour Upstash:
+ * - UPSTASH_REDIS_REST_URL
+ * - UPSTASH_REDIS_REST_TOKEN
+ */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
+// Nettoyage périodique de la map pour éviter les fuites mémoire (toutes les 5 minutes)
+const CLEANUP_INTERVAL = 5 * 60 * 1000;
+let lastCleanup = Date.now();
+
+function cleanupExpiredEntries(): void {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL) return;
+
+  lastCleanup = now;
+  for (const [key, record] of rateLimitMap.entries()) {
+    if (record.resetAt < now) {
+      rateLimitMap.delete(key);
+    }
+  }
+}
+
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  resetAt: number;
+}
+
+/**
+ * Vérifie si une requête est autorisée selon le rate limit
+ * @param identifier - Identifiant unique (user_id, IP, API key, etc.)
+ * @param maxRequests - Nombre maximum de requêtes par fenêtre (défaut: 100)
+ * @param windowMs - Durée de la fenêtre en ms (défaut: 60000 = 1 minute)
+ * @returns true si la requête est autorisée, false sinon
+ */
 export function checkRateLimit(
   identifier: string,
   maxRequests: number = 100,
   windowMs: number = 60000
 ): boolean {
+  const result = checkRateLimitWithInfo(identifier, maxRequests, windowMs);
+  return result.allowed;
+}
+
+/**
+ * Version enrichie du rate limiter avec informations détaillées
+ * Utile pour ajouter les headers X-RateLimit-* dans la réponse
+ */
+export function checkRateLimitWithInfo(
+  identifier: string,
+  maxRequests: number = 100,
+  windowMs: number = 60000
+): RateLimitResult {
+  cleanupExpiredEntries();
+
   const now = Date.now();
   const record = rateLimitMap.get(identifier);
 
   if (!record || record.resetAt < now) {
-    rateLimitMap.set(identifier, { count: 1, resetAt: now + windowMs });
-    return true;
+    const resetAt = now + windowMs;
+    rateLimitMap.set(identifier, { count: 1, resetAt });
+    return { allowed: true, remaining: maxRequests - 1, resetAt };
   }
 
   if (record.count >= maxRequests) {
-    return false;
+    return { allowed: false, remaining: 0, resetAt: record.resetAt };
   }
 
   record.count++;
-  return true;
+  return {
+    allowed: true,
+    remaining: maxRequests - record.count,
+    resetAt: record.resetAt,
+  };
 }
 
