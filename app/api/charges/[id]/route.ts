@@ -6,9 +6,10 @@ import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
 
-// Schéma de validation défini localement pour éviter les problèmes de bundling
+// Schéma de validation défini localement avec tous les champs optionnels
+// (équivalent à .partial() mais sans appel de méthode dynamique)
 const chargeUpdateSchema = z.object({
-  property_id: z.string().uuid(),
+  property_id: z.string().uuid().optional(),
   type: z.enum([
     "eau",
     "electricite",
@@ -19,10 +20,10 @@ const chargeUpdateSchema = z.object({
     "travaux",
     "energie",
     "autre",
-  ]),
-  montant: z.number().positive(),
-  periodicite: z.enum(["mensuelle", "trimestrielle", "annuelle"]),
-  refacturable_locataire: z.boolean(),
+  ]).optional(),
+  montant: z.number().positive().optional(),
+  periodicite: z.enum(["mensuelle", "trimestrielle", "annuelle"]).optional(),
+  refacturable_locataire: z.boolean().optional(),
   categorie_charge: z
     .enum([
       "charges_locatives",
@@ -35,7 +36,7 @@ const chargeUpdateSchema = z.object({
     ])
     .optional(),
   eligible_pinel: z.boolean().optional(),
-}).partial();
+});
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
