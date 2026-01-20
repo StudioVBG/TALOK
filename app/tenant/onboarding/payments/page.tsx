@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { tenantPaymentSchema } from "@/lib/validations/onboarding";
-import { CreditCard, ArrowRight, Banknote, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { CreditCard, ArrowRight, Banknote, ShieldCheck, CheckCircle2, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
