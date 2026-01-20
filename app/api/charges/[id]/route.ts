@@ -3,9 +3,39 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { chargeUpdateSchema } from "@/lib/validations";
 import { handleApiError } from "@/lib/helpers/api-error";
-import type { z } from "zod";
+import { z } from "zod";
+
+// Schéma de validation défini localement pour éviter les problèmes de bundling
+const chargeUpdateSchema = z.object({
+  property_id: z.string().uuid(),
+  type: z.enum([
+    "eau",
+    "electricite",
+    "copro",
+    "taxe",
+    "ordures",
+    "assurance",
+    "travaux",
+    "energie",
+    "autre",
+  ]),
+  montant: z.number().positive(),
+  periodicite: z.enum(["mensuelle", "trimestrielle", "annuelle"]),
+  refacturable_locataire: z.boolean(),
+  categorie_charge: z
+    .enum([
+      "charges_locatives",
+      "charges_non_recuperables",
+      "taxes",
+      "travaux_proprietaire",
+      "travaux_locataire",
+      "assurances",
+      "energie",
+    ])
+    .optional(),
+  eligible_pinel: z.boolean().optional(),
+}).partial();
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
