@@ -242,11 +242,15 @@ export async function POST(
       );
     }
 
-    console.log(`[POST /api/edl/${edlId}/meter-readings] Data:`, {
+    // 🔧 DEBUG: Tracer les données reçues pour diagnostic
+    console.log(`[POST /api/edl/${edlId}/meter-readings] Received data:`, {
       meterId,
       meterNumber,
       manualValue,
-      edlPropertyId
+      manualValueType: typeof manualValue,
+      edlPropertyId,
+      hasPhoto: !!photo,
+      hasPhotoPath: !!photoPath
     });
 
     let finalMeterId = meterId;
@@ -420,9 +424,17 @@ export async function POST(
     let isValidated = false;
     let needsManualValidation = false;
 
-    if (manualValue && !isNaN(parseFloat(manualValue))) {
+    // 🔧 FIX: Gérer correctement les valeurs numériques y compris 0
+    // manualValue peut être un nombre (du JSON) ou une string (du FormData)
+    const parsedManualValue = typeof manualValue === 'number'
+      ? manualValue
+      : (manualValue !== null && manualValue !== undefined && manualValue !== '')
+        ? parseFloat(String(manualValue))
+        : NaN;
+
+    if (!isNaN(parsedManualValue)) {
       // Valeur saisie manuellement - considérée comme validée
-      finalValue = parseFloat(manualValue);
+      finalValue = parsedManualValue;
       isValidated = true;
       console.log(`[POST /api/edl/${edlId}/meter-readings] Manual value: ${finalValue}`);
     } else if (ocrResult.value !== null) {
