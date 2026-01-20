@@ -100,22 +100,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
     }
 
-    // Ajouter les infos de bail actif pour chaque bien
-    const propertiesWithLeases = await Promise.all(
-      (properties || []).map(async (property) => {
-        const { data: lease } = await supabase
-          .from("leases")
-          .select("id, loyer, charges_forfaitaires, statut, date_debut")
-          .eq("property_id", property.id)
-          .eq("statut", "active")
-          .single();
+    // Récupérer tous les baux actifs en une seule requête (évite N+1)
+    const propertyIds = (properties || []).map((p: { id: string }) => p.id);
+    let leaseMap = new Map<string, {
+      id: string;
+      loyer: number;
+      charges_forfaitaires: number;
+      statut: string;
+      date_debut: string;
+    }>();
 
-        return {
-          ...property,
-          active_lease: lease || null,
-        };
-      })
-    );
+    if (propertyIds.length > 0) {
+      const { data: leases } = await supabase
+        .from("leases")
+        .select("id, property_id, loyer, charges_forfaitaires, statut, date_debut")
+        .in("property_id", propertyIds)
+        .eq("statut", "active");
+
+      // Indexer les baux par property_id pour un accès O(1)
+      if (leases) {
+        for (const lease of leases) {
+          // Un bien peut avoir plusieurs baux actifs (rare mais possible)
+          // On prend le premier trouvé
+          if (!leaseMap.has(lease.property_id)) {
+            leaseMap.set(lease.property_id, {
+              id: lease.id,
+              loyer: lease.loyer,
+              charges_forfaitaires: lease.charges_forfaitaires,
+              statut: lease.statut,
+              date_debut: lease.date_debut,
+            });
+          }
+        }
+      }
+    }
+
+    // Associer les baux aux propriétés
+    const propertiesWithLeases = (properties || []).map((property: { id: string }) => ({
+      ...property,
+      active_lease: leaseMap.get(property.id) || null,
+    }));
 
     return NextResponse.json({
       properties: propertiesWithLeases,
