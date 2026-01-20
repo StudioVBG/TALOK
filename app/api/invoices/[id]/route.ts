@@ -4,7 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/helpers/api-error";
-import { invoiceSchema } from "@/lib/validations";
+import { invoiceUpdateSchema } from "@/lib/validations";
 import type { InvoiceUpdate, InvoiceRow, ProfileRow } from "@/lib/supabase/typed-client";
 
 /**
@@ -59,7 +59,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const validated = invoiceSchema.partial().parse(body) as InvoiceUpdate;
+    const validated = invoiceUpdateSchema.parse(body) as InvoiceUpdate;
 
     // Vérifier que l'utilisateur est propriétaire de la facture
     const { data: invoice } = await supabase

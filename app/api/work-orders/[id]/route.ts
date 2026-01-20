@@ -4,7 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
-import { workOrderSchema } from "@/lib/validations";
+import { workOrderUpdateSchema } from "@/lib/validations";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -42,7 +42,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const body = await request.json();
-    const validated = workOrderSchema.partial().parse(body);
+    const validated = workOrderUpdateSchema.parse(body);
 
     const { data: workOrder, error } = await supabaseClient
       .from("work_orders")

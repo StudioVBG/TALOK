@@ -40,7 +40,15 @@ export interface CreateThreadData {
 }
 
 export class ChatService {
-  private supabase = createClient();
+  private _supabase: ReturnType<typeof createClient> | null = null;
+
+  // Lazy getter pour éviter la création du client au niveau du module (erreur de build)
+  private get supabase() {
+    if (!this._supabase) {
+      this._supabase = createClient();
+    }
+    return this._supabase;
+  }
 
   /**
    * Récupérer les threads d'un bail

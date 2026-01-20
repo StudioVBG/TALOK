@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import { ticketSchema } from "@/lib/validations";
+import { ticketSchema, ticketUpdateSchema } from "@/lib/validations";
 import type { Ticket, TicketStatus, TicketPriority } from "@/lib/types";
 
 export interface CreateTicketData {
@@ -81,7 +81,7 @@ export class TicketsService {
   }
 
   async updateTicket(id: string, data: UpdateTicketData): Promise<Ticket> {
-    const validatedData = ticketSchema.partial().parse(data);
+    const validatedData = ticketUpdateSchema.parse(data);
     const response = await apiClient.put<{ ticket: Ticket }>(`/tickets/${id}`, validatedData);
     return response.ticket;
   }

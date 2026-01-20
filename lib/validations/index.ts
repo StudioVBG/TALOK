@@ -652,6 +652,45 @@ export const leaseSchema = z.object({
   next_indexation_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
 });
 
+// Lease update schema (defined explicitly to avoid runtime .partial() issues with webpack)
+export const leaseUpdateSchema = z.object({
+  property_id: z.string().uuid().optional().nullable(),
+  unit_id: z.string().uuid().optional().nullable(),
+  type_bail: z.enum([
+    "nu",
+    "meuble",
+    "colocation",
+    "saisonnier",
+    "bail_mobilite",
+    "commercial_3_6_9",
+    "commercial_derogatoire",
+    "professionnel",
+    "contrat_parking",
+    "location_gerance",
+  ]).optional(),
+  loyer: z.number().positive("Le loyer doit être positif").optional(),
+  charges_forfaitaires: z.number().min(0, "Les charges ne peuvent pas être négatives").optional(),
+  depot_de_garantie: z.number().min(0, "Le dépôt de garantie ne peut pas être négatif").optional(),
+  date_debut: isoDateString.optional(),
+  date_fin: isoDateString.optional().nullable(),
+  indice_reference: z.enum(["IRL", "ILC", "ILAT"]).optional().nullable(),
+  indice_base: z.number().min(0).optional().nullable(),
+  indice_courant: z.number().min(0).optional().nullable(),
+  indexation_periodicite: z.enum(["annuelle", "triennale", "quinquennale"]).optional().nullable(),
+  indexation_lissage_deplafonnement: z.boolean().optional(),
+  tva_applicable: z.boolean().optional(),
+  tva_taux: z.number().min(0).max(100).optional().nullable(),
+  loyer_ht: z.number().min(0).optional().nullable(),
+  loyer_ttc: z.number().min(0).optional().nullable(),
+  pinel_travaux_3_derniers: z.array(z.record(z.unknown())).optional(),
+  pinel_travaux_3_prochains: z.array(z.record(z.unknown())).optional(),
+  pinel_repartition_charges: z.record(z.unknown()).optional(),
+  droit_preference_active: z.boolean().optional(),
+  last_diagnostic_check: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  next_indexation_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  statut: z.enum(["active", "expired", "terminated"]).optional(),
+});
+
 // Validation des factures
 export const invoiceSchema = z.object({
   lease_id: z.string().uuid(),
@@ -662,6 +701,20 @@ export const invoiceSchema = z.object({
   montant_tva: z.number().min(0).optional(),
   taux_tva: z.number().min(0).max(100).optional(),
   is_professional_lease: z.boolean().optional(),
+  statut: z.enum(["draft", "sent", "paid", "late", "cancelled"]).optional(),
+});
+
+// Invoice update schema (defined explicitly to avoid runtime .partial() issues with webpack)
+export const invoiceUpdateSchema = z.object({
+  lease_id: z.string().uuid().optional(),
+  periode: z.string().regex(/^\d{4}-\d{2}$/, "Format période invalide (YYYY-MM)").optional(),
+  montant_loyer: z.number().positive().optional(),
+  montant_charges: z.number().min(0).optional(),
+  montant_ht: z.number().min(0).optional(),
+  montant_tva: z.number().min(0).optional(),
+  taux_tva: z.number().min(0).max(100).optional(),
+  is_professional_lease: z.boolean().optional(),
+  statut: z.enum(["draft", "sent", "paid", "late", "cancelled"]).optional(),
 });
 
 // Validation des paiements
@@ -743,6 +796,17 @@ export const ticketSchema = z.object({
   titre: z.string().min(1, "Le titre est requis"),
   description: z.string().min(1, "La description est requise"),
   priorite: z.enum(["basse", "normale", "haute"]),
+  statut: z.enum(["open", "in_progress", "resolved", "closed"]).optional(),
+});
+
+// Ticket update schema (defined explicitly to avoid runtime .partial() issues with webpack)
+export const ticketUpdateSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  lease_id: z.string().uuid().optional().nullable(),
+  titre: z.string().min(1, "Le titre est requis").optional(),
+  description: z.string().min(1, "La description est requise").optional(),
+  priorite: z.enum(["basse", "normale", "haute"]).optional(),
+  statut: z.enum(["open", "in_progress", "resolved", "closed"]).optional(),
 });
 
 // Validation des ordres de travail
@@ -751,6 +815,16 @@ export const workOrderSchema = z.object({
   provider_id: z.string().uuid(),
   date_intervention_prevue: isoDateString.optional().nullable(),
   cout_estime: z.number().positive().optional().nullable(),
+  statut: z.enum(["pending", "scheduled", "in_progress", "done", "cancelled"]).optional(),
+});
+
+// Work order update schema (defined explicitly to avoid runtime .partial() issues with webpack)
+export const workOrderUpdateSchema = z.object({
+  ticket_id: z.string().uuid().optional(),
+  provider_id: z.string().uuid().optional(),
+  date_intervention_prevue: isoDateString.optional().nullable(),
+  cout_estime: z.number().positive().optional().nullable(),
+  statut: z.enum(["pending", "scheduled", "in_progress", "done", "cancelled"]).optional(),
 });
 
 // Validation des documents
@@ -787,6 +861,40 @@ export const documentSchema = z.object({
   is_cover: z.boolean().optional(),
 });
 
+// Document update schema (defined explicitly to avoid runtime .partial() issues with webpack)
+export const documentUpdateSchema = z.object({
+  type: z.enum([
+    "bail",
+    "EDL_entree",
+    "EDL_sortie",
+    "quittance",
+    "attestation_assurance",
+    "attestation_loyer",
+    "justificatif_revenus",
+    "piece_identite",
+    "cni_recto",
+    "cni_verso",
+    "annexe_pinel",
+    "etat_travaux",
+    "diagnostic_amiante",
+    "diagnostic_tertiaire",
+    "diagnostic_performance",
+    "publication_jal",
+    "autre",
+  ]).optional(),
+  property_id: z.string().uuid().optional().nullable(),
+  lease_id: z.string().uuid().optional().nullable(),
+  collection: z
+    .string()
+    .max(120, "La collection ne peut pas dépasser 120 caractères")
+    .optional()
+    .nullable(),
+  position: z.number().int().min(1).optional().nullable(),
+  title: z.string().max(255).optional().nullable(),
+  notes: z.string().optional().nullable(),
+  is_cover: z.boolean().optional(),
+});
+
 // Validation des articles de blog
 export const blogPostSchema = z.object({
   slug: z.string().min(1, "Le slug est requis"),
@@ -794,6 +902,15 @@ export const blogPostSchema = z.object({
   contenu: z.string().min(1, "Le contenu est requis"),
   tags: z.array(z.string()),
   is_published: z.boolean(),
+});
+
+// Blog post update schema (defined explicitly to avoid runtime .partial() issues with webpack)
+export const blogPostUpdateSchema = z.object({
+  slug: z.string().min(1, "Le slug est requis").optional(),
+  titre: z.string().min(1, "Le titre est requis").optional(),
+  contenu: z.string().min(1, "Le contenu est requis").optional(),
+  tags: z.array(z.string()).optional(),
+  is_published: z.boolean().optional(),
 });
 
 // ============================================

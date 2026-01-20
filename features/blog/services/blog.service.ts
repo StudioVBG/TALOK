@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import { blogPostSchema } from "@/lib/validations";
+import { blogPostSchema, blogPostUpdateSchema } from "@/lib/validations";
 import type { BlogPost } from "@/lib/types";
 
 export interface CreateBlogPostData {
@@ -15,7 +15,15 @@ export interface UpdateBlogPostData extends Partial<CreateBlogPostData> {
 }
 
 export class BlogService {
-  private supabase = createClient();
+  private _supabase: ReturnType<typeof createClient> | null = null;
+
+  // Lazy getter pour éviter la création du client au niveau du module (erreur de build)
+  private get supabase() {
+    if (!this._supabase) {
+      this._supabase = createClient();
+    }
+    return this._supabase;
+  }
 
   async getPublishedPosts() {
     const { data, error } = await this.supabase
@@ -98,7 +106,7 @@ export class BlogService {
   }
 
   async updatePost(id: string, data: UpdateBlogPostData) {
-    const validatedData = blogPostSchema.partial().parse(data);
+    const validatedData = blogPostUpdateSchema.parse(data);
 
     // Si on publie l'article, mettre à jour published_at
     const updateData: Record<string, any> = { ...validatedData };

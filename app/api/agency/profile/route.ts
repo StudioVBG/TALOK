@@ -33,6 +33,27 @@ const agencyProfileSchema = z.object({
   commission_gestion_defaut: z.number().min(0).max(100).optional(),
 });
 
+// Schéma de mise à jour (défini explicitement pour éviter les problèmes webpack avec .partial())
+const agencyProfileUpdateSchema = z.object({
+  raison_sociale: z.string().min(2, "Raison sociale requise").optional(),
+  forme_juridique: z.enum(["SARL", "SAS", "SASU", "SCI", "EURL", "EI", "SA", "autre"]).optional(),
+  siret: z.string().optional(),
+  numero_carte_pro: z.string().optional(),
+  carte_pro_delivree_par: z.string().optional(),
+  carte_pro_validite: z.string().optional(),
+  garantie_financiere_montant: z.number().optional(),
+  garantie_financiere_organisme: z.string().optional(),
+  assurance_rcp: z.string().optional(),
+  assurance_rcp_organisme: z.string().optional(),
+  adresse_siege: z.string().optional(),
+  logo_url: z.string().url().optional().nullable(),
+  website: z.string().url().optional().nullable(),
+  description: z.string().optional(),
+  zones_intervention: z.array(z.string()).optional(),
+  services_proposes: z.array(z.string()).optional(),
+  commission_gestion_defaut: z.number().min(0).max(100).optional(),
+});
+
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -172,7 +193,7 @@ export async function PUT(request: NextRequest) {
 
     // Valider les données
     const body = await request.json();
-    const validatedData = agencyProfileSchema.partial().parse(body);
+    const validatedData = agencyProfileUpdateSchema.parse(body);
 
     // Mettre à jour le profil
     const { data: updatedProfile, error: updateError } = await supabase

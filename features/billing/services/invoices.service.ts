@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import { invoiceSchema } from "@/lib/validations";
+import { invoiceSchema, invoiceUpdateSchema } from "@/lib/validations";
 import type { Invoice, InvoiceStatus } from "@/lib/types";
 
 export interface CreateInvoiceData {
@@ -58,7 +58,7 @@ export class InvoicesService {
   }
 
   async updateInvoice(id: string, data: UpdateInvoiceData): Promise<Invoice> {
-    const validatedData = invoiceSchema.partial().parse(data);
+    const validatedData = invoiceUpdateSchema.parse(data);
     const response = await apiClient.put<{ invoice: Invoice }>(`/invoices/${id}`, validatedData);
     return response.invoice;
   }

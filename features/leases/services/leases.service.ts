@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import { leaseSchema } from "@/lib/validations";
+import { leaseSchema, leaseUpdateSchema } from "@/lib/validations";
 import type { Lease, LeaseSigner, LeaseType, LeaseStatus } from "@/lib/types";
 
 export interface CreateLeaseData {
@@ -68,7 +68,7 @@ export class LeasesService {
   }
 
   async updateLease(id: string, data: UpdateLeaseData) {
-    const validatedData = leaseSchema.partial().parse(data);
+    const validatedData = leaseUpdateSchema.parse(data);
     const response = await apiClient.patch<{ lease: Lease }>(`/leases/${id}`, validatedData);
     return response.lease;
   }

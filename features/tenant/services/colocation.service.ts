@@ -32,7 +32,15 @@ export interface ChoreSchedule {
 }
 
 export class ColocationService {
-  private supabase = createClient();
+  private _supabase: ReturnType<typeof createClient> | null = null;
+
+  // Lazy getter pour éviter la création du client au niveau du module (erreur de build)
+  private get supabase() {
+    if (!this._supabase) {
+      this._supabase = createClient();
+    }
+    return this._supabase;
+  }
 
   /**
    * Récupérer le règlement de colocation actuel

@@ -4,7 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
-import { ticketSchema } from "@/lib/validations";
+import { ticketUpdateSchema } from "@/lib/validations";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 
 interface Profile {
@@ -121,7 +121,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const validated = ticketSchema.partial().parse(body);
+    const validated = ticketUpdateSchema.parse(body);
 
     // Vérifier les permissions avec service client
     const { data: ticket } = await serviceClient

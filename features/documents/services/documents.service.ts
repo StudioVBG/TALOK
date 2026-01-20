@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/client";
-import { documentSchema } from "@/lib/validations";
+import { documentSchema, documentUpdateSchema } from "@/lib/validations";
 import type { Document, DocumentType } from "@/lib/types";
 import { isDocumentGalleryColumnError } from "@/lib/features/document-gallery";
 
@@ -28,7 +28,15 @@ export interface UpdateDocumentData {
 }
 
 export class DocumentsService {
-  private supabase = createClient();
+  private _supabase: ReturnType<typeof createClient> | null = null;
+
+  // Lazy getter pour éviter la création du client au niveau du module (erreur de build)
+  private get supabase() {
+    if (!this._supabase) {
+      this._supabase = createClient();
+    }
+    return this._supabase;
+  }
   private supportsGallery: boolean | null = null;
 
   private sortDocuments(data: Document[]) {
@@ -171,7 +179,7 @@ export class DocumentsService {
   }
 
   async updateDocument(id: string, data: UpdateDocumentData) {
-    const validatedData = documentSchema.partial().parse(data);
+    const validatedData = documentUpdateSchema.parse(data);
 
     const { data: document, error } = await (this.supabase
       .from("documents") as any)
