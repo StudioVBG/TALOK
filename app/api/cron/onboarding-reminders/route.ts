@@ -8,18 +8,29 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { emailTemplates } from "@/lib/emails/templates";
 import { Resend } from "resend";
 
-// Créer un client Supabase avec la clé service (pour contourner RLS)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Fonctions pour créer les clients à l'intérieur des handlers (évite les erreurs build)
+function getSupabaseAdmin(): SupabaseClient {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Client Resend pour l'envoi d'emails
-const resend = new Resend(process.env.RESEND_API_KEY);
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Missing Supabase environment variables");
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
+
+function getResendClient(): Resend {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) {
+    throw new Error("Missing RESEND_API_KEY environment variable");
+  }
+  return new Resend(resendKey);
+}
 
 // Vérifier l'autorisation (clé secrète pour le cron)
 function isAuthorized(request: NextRequest): boolean {
@@ -39,6 +50,10 @@ export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Créer les clients à l'intérieur du handler
+  const supabase = getSupabaseAdmin();
+  const resend = getResendClient();
 
   const startTime = Date.now();
   const results = {
@@ -95,7 +110,7 @@ export async function GET(request: NextRequest) {
         const profile = reminder.profiles as any;
         if (!profile) {
           results.skipped++;
-          await markReminderFailed(reminder.id, "Profile not found");
+          await markReminderFailed(supabase, reminder.id, "Profile not found");
           continue;
         }
 
@@ -109,7 +124,7 @@ export async function GET(request: NextRequest) {
         if (profileData?.onboarding_completed_at) {
           // Onboarding complété, annuler les rappels
           results.skipped++;
-          await markReminderCancelled(reminder.id, "Onboarding completed");
+          await markReminderCancelled(supabase, reminder.id, "Onboarding completed");
           continue;
         }
 
@@ -161,7 +176,7 @@ export async function GET(request: NextRequest) {
 
           default:
             results.skipped++;
-            await markReminderFailed(reminder.id, `Unknown reminder type: ${reminder.reminder_type}`);
+            await markReminderFailed(supabase, reminder.id, `Unknown reminder type: ${reminder.reminder_type}`);
             continue;
         }
 
@@ -176,15 +191,15 @@ export async function GET(request: NextRequest) {
         if (sendError) {
           results.failed++;
           results.errors.push(`Failed to send to ${email}: ${sendError.message}`);
-          await markReminderFailed(reminder.id, sendError.message);
+          await markReminderFailed(supabase, reminder.id, sendError.message);
         } else {
           results.sent++;
-          await markReminderSent(reminder.id);
+          await markReminderSent(supabase, reminder.id);
         }
       } catch (err: any) {
         results.failed++;
         results.errors.push(`Error processing reminder ${reminder.id}: ${err.message}`);
-        await markReminderFailed(reminder.id, err.message);
+        await markReminderFailed(supabase, reminder.id, err.message);
       }
     }
 
@@ -264,7 +279,7 @@ function getNextStepLabel(role: string, progressData: any[]): string {
   return "Finalisation";
 }
 
-async function markReminderSent(reminderId: string) {
+async function markReminderSent(supabase: SupabaseClient, reminderId: string) {
   await supabase
     .from("onboarding_reminders")
     .update({
@@ -274,7 +289,7 @@ async function markReminderSent(reminderId: string) {
     .eq("id", reminderId);
 }
 
-async function markReminderFailed(reminderId: string, errorMessage: string) {
+async function markReminderFailed(supabase: SupabaseClient, reminderId: string, errorMessage: string) {
   await supabase
     .from("onboarding_reminders")
     .update({
@@ -284,7 +299,7 @@ async function markReminderFailed(reminderId: string, errorMessage: string) {
     .eq("id", reminderId);
 }
 
-async function markReminderCancelled(reminderId: string, reason: string) {
+async function markReminderCancelled(supabase: SupabaseClient, reminderId: string, reason: string) {
   await supabase
     .from("onboarding_reminders")
     .update({

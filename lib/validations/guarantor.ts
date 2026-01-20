@@ -99,7 +99,24 @@ export const createGuarantorProfileSchema = z.object({
   ville: z.string().max(255).optional().nullable(),
 });
 
-export const updateGuarantorProfileSchema = createGuarantorProfileSchema.partial().extend({
+// Schéma update défini explicitement pour éviter les problèmes webpack avec .partial()
+export const updateGuarantorProfileSchema = z.object({
+  relation_to_tenant: guarantorRelationEnum.optional(),
+  relation_details: z.string().max(255).optional().nullable(),
+  situation_pro: guarantorSituationProEnum.optional().nullable(),
+  employeur_nom: z.string().max(255).optional().nullable(),
+  employeur_adresse: z.string().max(500).optional().nullable(),
+  anciennete_mois: z.number().int().min(0).max(600).optional().nullable(),
+  revenus_mensuels_nets: z.number().min(0).max(1000000).optional().nullable(),
+  revenus_fonciers: z.number().min(0).optional(),
+  autres_revenus: z.number().min(0).optional(),
+  charges_mensuelles: z.number().min(0).optional(),
+  credits_en_cours: z.number().min(0).optional(),
+  est_proprietaire: z.boolean().optional(),
+  valeur_patrimoine_immobilier: z.number().min(0).optional().nullable(),
+  adresse_complete: z.string().max(500).optional().nullable(),
+  code_postal: z.string().regex(/^[0-9]{5}$/).optional().nullable(),
+  ville: z.string().max(255).optional().nullable(),
   consent_garant: z.boolean().optional(),
   consent_data_processing: z.boolean().optional(),
 });

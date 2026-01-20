@@ -39,6 +39,13 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['var(--font-sans)'],
+        'dancing-script': ['var(--font-dancing-script)'],
+        'great-vibes': ['var(--font-great-vibes)'],
+        'pacifico': ['var(--font-pacifico)'],
+        'satisfy': ['var(--font-satisfy)'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

@@ -560,7 +560,15 @@ const roomRefine = (value: z.infer<typeof roomBaseSchema>, ctx: z.RefinementCtx)
 };
 
 export const roomSchema = roomBaseSchema.superRefine(roomRefine);
-export const roomUpdateSchema = roomBaseSchema.partial().superRefine((value, ctx) => {
+// Version partielle définie explicitement pour éviter les problèmes webpack
+export const roomUpdateSchema = z.object({
+  type_piece: roomTypeEnum.optional(),
+  label_affiche: z.string().min(1).max(120).optional(),
+  surface_m2: z.number().min(0).optional().nullable(),
+  chauffage_present: z.boolean().optional(),
+  chauffage_type_emetteur: roomEmitterEnum.optional().nullable(),
+  clim_presente: z.boolean().optional(),
+}).superRefine((value, ctx) => {
   if (value.chauffage_present === false && value.chauffage_type_emetteur) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -697,8 +705,36 @@ export const chargeSchema = z.object({
   eligible_pinel: z.boolean().optional(),
 });
 
-// Partial schema for charge updates (pre-computed to avoid runtime .partial() issues)
-export const chargeUpdateSchema = chargeSchema.partial();
+// Partial schema for charge updates (defined explicitly to avoid runtime .partial() issues with webpack)
+export const chargeUpdateSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  type: z.enum([
+    "eau",
+    "electricite",
+    "copro",
+    "taxe",
+    "ordures",
+    "assurance",
+    "travaux",
+    "energie",
+    "autre",
+  ]).optional(),
+  montant: z.number().positive().optional(),
+  periodicite: z.enum(["mensuelle", "trimestrielle", "annuelle"]).optional(),
+  refacturable_locataire: z.boolean().optional(),
+  categorie_charge: z
+    .enum([
+      "charges_locatives",
+      "charges_non_recuperables",
+      "taxes",
+      "travaux_proprietaire",
+      "travaux_locataire",
+      "assurances",
+      "energie",
+    ])
+    .optional(),
+  eligible_pinel: z.boolean().optional(),
+});
 
 // Validation des tickets
 export const ticketSchema = z.object({

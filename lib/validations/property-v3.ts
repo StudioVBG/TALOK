@@ -287,18 +287,88 @@ export const propertySchemaV3 = propertySchemaV3Base.superRefine((data, ctx) => 
 // SCHÉMAS POUR UPDATE (PARTIELS)
 // ============================================
 // Source : Besoin pour les PATCH (mise à jour progressive)
-// Décision : Schémas partiels pour chaque type
+// Décision : Schémas définis explicitement pour éviter les problèmes webpack avec .partial()
 
-export const habitationUpdateSchemaV3 = habitationSchemaV3Base.partial().extend({
+export const habitationUpdateSchemaV3 = z.object({
   type_bien: z.enum(["appartement", "maison", "studio", "colocation"]).optional(),
+  adresse_complete: z.string().min(1).optional(),
+  complement_adresse: z.string().optional().nullable(),
+  code_postal: z.string().regex(/^[0-9]{5}$/).optional(),
+  ville: z.string().min(1).optional(),
+  departement: z.string().min(2).max(3).optional(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
+  loyer_hc: z.number().positive().optional(),
+  charges_mensuelles: z.number().min(0).optional(),
+  depot_garantie: z.number().min(0).optional(),
+  surface_habitable_m2: z.number().positive().optional(),
+  nb_pieces: z.number().int().min(1).optional(),
+  nb_chambres: z.number().int().min(0).optional(),
+  etage: z.number().int().optional().nullable(),
+  ascenseur: z.boolean().optional(),
+  meuble: z.boolean().optional(),
+  has_balcon: z.boolean().optional(),
+  has_terrasse: z.boolean().optional(),
+  has_jardin: z.boolean().optional(),
+  has_cave: z.boolean().optional(),
+  chauffage_type: z.enum(["individuel", "collectif", "aucun"]).optional(),
+  chauffage_energie: z.enum(["electricite", "gaz", "fioul", "bois", "reseau_urbain", "autre"]).optional().nullable(),
+  eau_chaude_type: z.enum(["electrique_indiv", "gaz_indiv", "collectif", "solaire", "autre"]).optional(),
+  clim_presence: z.enum(["aucune", "mobile", "fixe"]).optional(),
+  clim_type: z.enum(["split", "gainable"]).optional().nullable(),
+  equipments: z.array(equipmentEnum).optional(),
+  type_bail: typeBailHabitationEnum.optional(),
+  preavis_mois: z.number().int().min(1).max(12).optional().nullable(),
 });
 
-export const parkingUpdateSchemaV3 = parkingSchemaV3.partial().extend({
+export const parkingUpdateSchemaV3 = z.object({
   type_bien: z.enum(["parking", "box"]).optional(),
+  adresse_complete: z.string().min(1).optional(),
+  complement_adresse: z.string().optional().nullable(),
+  code_postal: z.string().regex(/^[0-9]{5}$/).optional(),
+  ville: z.string().min(1).optional(),
+  departement: z.string().min(2).max(3).optional(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
+  loyer_hc: z.number().positive().optional(),
+  charges_mensuelles: z.number().min(0).optional(),
+  depot_garantie: z.number().min(0).optional(),
+  parking_type: parkingTypeEnum.optional(),
+  parking_numero: z.string().max(50).optional().nullable(),
+  parking_niveau: z.string().max(20).optional().nullable(),
+  parking_gabarit: parkingGabaritEnum.optional(),
+  parking_acces: z.array(parkingAccesEnum).optional(),
+  parking_portail_securise: z.boolean().optional(),
+  parking_video_surveillance: z.boolean().optional(),
+  parking_gardien: z.boolean().optional(),
+  type_bail: typeBailParkingEnum.optional(),
+  preavis_mois: z.number().int().min(1).max(12).optional().nullable(),
 });
 
-export const localProUpdateSchemaV3 = localProSchemaV3.partial().extend({
+export const localProUpdateSchemaV3 = z.object({
   type_bien: z.enum(["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"]).optional(),
+  adresse_complete: z.string().min(1).optional(),
+  complement_adresse: z.string().optional().nullable(),
+  code_postal: z.string().regex(/^[0-9]{5}$/).optional(),
+  ville: z.string().min(1).optional(),
+  departement: z.string().min(2).max(3).optional(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
+  loyer_hc: z.number().positive().optional(),
+  charges_mensuelles: z.number().min(0).optional(),
+  depot_garantie: z.number().min(0).optional(),
+  local_surface_totale: z.number().positive().optional(),
+  local_type: localTypeEnum.optional(),
+  local_has_vitrine: z.boolean().optional(),
+  local_access_pmr: z.boolean().optional(),
+  local_clim: z.boolean().optional(),
+  local_fibre: z.boolean().optional(),
+  local_alarme: z.boolean().optional(),
+  local_rideau_metal: z.boolean().optional(),
+  local_acces_camion: z.boolean().optional(),
+  local_parking_clients: z.boolean().optional(),
+  type_bail: typeBailProEnum.optional(),
+  preavis_mois: z.number().int().min(1).max(12).optional().nullable(),
 });
 
 export const propertyUpdateSchemaV3 = z.union([

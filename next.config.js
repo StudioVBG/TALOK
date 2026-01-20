@@ -65,19 +65,8 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   
-  // Transpiler les packages qui posent problème avec ESM
-  transpilePackages: ['zod'],
-  
-  // Fix pour Zod v3.24+ avec Next.js (problème de module resolution)
+  // Configuration webpack
   webpack: (config, { isServer }) => {
-    // Fix pour les exports ESM de Zod
-    const path = require('path');
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'zod': path.resolve(__dirname, 'node_modules/zod'),
-      'zod/v3': path.resolve(__dirname, 'node_modules/zod'),
-    };
-    
     // Éviter les problèmes de résolution de modules côté serveur
     if (isServer) {
       config.resolve.extensionAlias = {
@@ -85,7 +74,7 @@ const nextConfig = {
         '.mjs': ['.mjs', '.mts'],
       };
     }
-    
+
     return config;
   },
   
@@ -136,7 +125,8 @@ const nextConfig = {
   // Optimisations expérimentales pour améliorer les performances
   experimental: {
     // Packages à ne pas bundler côté serveur (résout les problèmes de syntaxe moderne)
-    serverComponentsExternalPackages: ['cheerio', 'undici'],
+    // zod ajouté pour éviter les problèmes avec .partial() lors du bundling
+    serverComponentsExternalPackages: ['cheerio', 'undici', 'zod'],
     
     // Optimiser le tree-shaking et réduire la taille des bundles
     optimizePackageImports: [
@@ -163,7 +153,7 @@ const nextConfig = {
       // Autres packages lourds
       "framer-motion",
       "date-fns",
-      "zod",
+      // Note: zod retiré car cause des problèmes avec .partial() lors du bundling
       "@tanstack/react-query",
       "class-variance-authority",
       "clsx",
