@@ -6,20 +6,21 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
-import { 
-  CreditCard, 
-  Receipt, 
-  Search, 
-  Download, 
-  ChevronRight, 
-  TrendingUp, 
+import {
+  CreditCard,
+  Receipt,
+  Search,
+  Download,
+  ChevronRight,
+  TrendingUp,
   AlertCircle,
   FileText,
   Filter,
   Euro,
   PartyPopper,
   Sparkles,
-  History
+  History,
+  CheckCircle2
 } from "lucide-react";
 import { PaymentCheckout } from "@/features/billing/components/payment-checkout";
 import { Input } from "@/components/ui/input";
