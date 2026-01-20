@@ -18,6 +18,7 @@ import {
   Loader2,
   Trash2,
   Key,
+  DoorOpen,
 } from "lucide-react";
 import {
   Card,
