@@ -697,6 +697,9 @@ export const chargeSchema = z.object({
   eligible_pinel: z.boolean().optional(),
 });
 
+// Partial schema for charge updates (pre-computed to avoid runtime .partial() issues)
+export const chargeUpdateSchema = chargeSchema.partial();
+
 // Validation des tickets
 export const ticketSchema = z.object({
   property_id: z.string().uuid(),
