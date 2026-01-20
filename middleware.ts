@@ -59,15 +59,16 @@ export function middleware(request: NextRequest) {
     // L'app résoudra le branding via l'API /api/white-label/resolve
   }
 
-  // 1. Laisser passer les assets statiques, les webhooks et les routes publiques
+  // 1. Laisser passer les assets statiques, les routes API et les routes publiques
+  // IMPORTANT: Les routes /api/* gèrent leur propre authentification et retournent des erreurs JSON.
+  // Ne pas les rediriger vers /auth/signin car cela causerait des erreurs JSON parse côté client.
   if (
     pathname.startsWith("/_next") ||
     pathname.includes(".") ||
-    publicRoutes.some((route) => 
+    pathname.startsWith("/api/") ||
+    publicRoutes.some((route) =>
       route === "/" ? pathname === "/" : pathname.startsWith(route)
     ) ||
-    pathname.startsWith("/api/webhooks") ||
-    pathname.startsWith("/api/public") ||
     pathname.startsWith("/auth/callback")
   ) {
     return NextResponse.next();
