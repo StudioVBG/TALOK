@@ -317,6 +317,466 @@ export const AnonymizeRequestSchema = z.object({
 });
 
 // ==========================================
+// UNIFIED SIGNATURE SCHEMAS (P1 SOTA 2026)
+// ==========================================
+
+/**
+ * Document types that can be signed
+ */
+export const SignatureDocumentTypeEnum = z.enum([
+  "lease",           // Bail
+  "edl_entree",      // État des lieux d'entrée
+  "edl_sortie",      // État des lieux de sortie
+  "amendment",       // Avenant au bail
+  "notice",          // Congé (préavis)
+  "receipt",         // Quittance de loyer
+  "mandate",         // Mandat de gestion
+  "inventory",       // Inventaire mobilier
+  "other"            // Autre document
+]);
+
+/**
+ * eIDAS signature levels
+ */
+export const SignatureLevelEnum = z.enum([
+  "SES",  // Simple Electronic Signature
+  "AES",  // Advanced Electronic Signature
+  "QES"   // Qualified Electronic Signature
+]);
+
+/**
+ * Signature session status
+ */
+export const SignatureSessionStatusEnum = z.enum([
+  "draft",              // Brouillon, configuration en cours
+  "pending",            // En attente de signatures
+  "partially_signed",   // Au moins un signataire a signé
+  "completed",          // Tous ont signé
+  "expired",            // Session expirée
+  "cancelled",          // Annulée
+  "rejected"            // Refusée par un signataire
+]);
+
+/**
+ * Participant status in a signature session
+ */
+export const SignatureParticipantStatusEnum = z.enum([
+  "pending",    // En attente
+  "notified",   // Notifié par email/SMS
+  "viewed",     // A consulté le document
+  "signed",     // A signé
+  "declined",   // A refusé
+  "expired"     // Délai dépassé
+]);
+
+/**
+ * Roles for signature participants
+ */
+export const SignatureRoleEnum = z.enum([
+  "owner",              // Propriétaire
+  "tenant",             // Locataire principal
+  "co_tenant",          // Colocataire
+  "guarantor",          // Garant
+  "manager",            // Gestionnaire/mandataire
+  "witness",            // Témoin
+  "provider"            // Prestataire
+]);
+
+/**
+ * Create a new signature session
+ */
+export const CreateSignatureSessionSchema = z.object({
+  document_type: SignatureDocumentTypeEnum,
+  entity_id: z.string().uuid("ID de l'entité invalide"),
+  entity_type: z.enum(["lease", "edl", "amendment", "notice", "mandate", "other"]),
+  signature_level: SignatureLevelEnum.default("SES"),
+  document_url: z.string().url().optional(),
+  document_hash: z.string().optional(),
+  expires_at: z.string().datetime().optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+/**
+ * Add a participant to a signature session
+ */
+export const AddSignatureParticipantSchema = z.object({
+  profile_id: z.string().uuid("ID de profil invalide"),
+  role: SignatureRoleEnum,
+  signing_order: z.number().int().min(1).max(20).default(1),
+  is_required: z.boolean().default(true),
+  email_notification: z.boolean().default(true),
+  sms_notification: z.boolean().default(false),
+  phone: z.string().regex(/^\+?\d{10,15}$/, "Numéro de téléphone invalide").optional(),
+});
+
+/**
+ * Record a signature proof
+ */
+export const RecordSignatureProofSchema = z.object({
+  participant_id: z.string().uuid(),
+  signature_level: SignatureLevelEnum,
+  signature_data: z.string().min(1, "Données de signature requises"),
+  certificate_info: z.object({
+    issuer: z.string().optional(),
+    subject: z.string().optional(),
+    serial_number: z.string().optional(),
+    valid_from: z.string().datetime().optional(),
+    valid_to: z.string().datetime().optional(),
+  }).optional(),
+  ip_address: z.string().ip().optional(),
+  user_agent: z.string().optional(),
+  geolocation: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+    accuracy: z.number().optional(),
+  }).optional(),
+  timestamp_authority: z.string().optional(),
+  timestamp_token: z.string().optional(),
+});
+
+/**
+ * Update signature session status
+ */
+export const UpdateSignatureSessionSchema = z.object({
+  status: SignatureSessionStatusEnum.optional(),
+  expires_at: z.string().datetime().optional(),
+  completed_document_url: z.string().url().optional(),
+  completed_document_hash: z.string().optional(),
+});
+
+/**
+ * Bulk invite participants
+ */
+export const BulkInviteParticipantsSchema = z.object({
+  participants: z.array(AddSignatureParticipantSchema).min(1).max(20),
+  send_notifications: z.boolean().default(true),
+  custom_message: z.string().max(500).optional(),
+});
+
+// ==========================================
+// EXPANDED EDL SCHEMAS (P3)
+// ==========================================
+
+/**
+ * Create an EDL room
+ */
+export const CreateEDLRoomSchema = z.object({
+  edl_id: z.string().uuid(),
+  nom: z.string().min(1, "Nom de pièce requis"),
+  type: z.enum([
+    "entree",
+    "salon",
+    "sejour",
+    "cuisine",
+    "chambre",
+    "sdb",
+    "wc",
+    "couloir",
+    "balcon",
+    "terrasse",
+    "cave",
+    "parking",
+    "buanderie",
+    "dressing",
+    "bureau",
+    "autre"
+  ]),
+  surface: z.number().positive().optional(),
+  ordre: z.number().int().min(0).default(0),
+});
+
+/**
+ * Update an EDL room
+ */
+export const UpdateEDLRoomSchema = z.object({
+  nom: z.string().min(1).optional(),
+  type: z.enum([
+    "entree", "salon", "sejour", "cuisine", "chambre", "sdb", "wc",
+    "couloir", "balcon", "terrasse", "cave", "parking", "buanderie",
+    "dressing", "bureau", "autre"
+  ]).optional(),
+  surface: z.number().positive().optional().nullable(),
+  ordre: z.number().int().min(0).optional(),
+});
+
+/**
+ * Add media (photo/video) to EDL item
+ */
+export const AddEDLMediaSchema = z.object({
+  edl_item_id: z.string().uuid(),
+  type: z.enum(["photo", "video", "audio", "document"]),
+  storage_path: z.string().min(1, "Chemin de stockage requis"),
+  file_name: z.string().min(1),
+  mime_type: z.string().optional(),
+  file_size: z.number().int().positive().optional(),
+  metadata: z.object({
+    width: z.number().int().positive().optional(),
+    height: z.number().int().positive().optional(),
+    duration: z.number().positive().optional(),
+    geolocation: z.object({
+      latitude: z.number(),
+      longitude: z.number(),
+    }).optional(),
+    captured_at: z.string().datetime().optional(),
+  }).optional(),
+});
+
+/**
+ * Complete EDL item assessment
+ */
+export const UpdateEDLItemSchema = z.object({
+  etat: z.enum(["neuf", "tres_bon", "bon", "moyen", "mauvais", "hors_service"]).optional(),
+  proprete: z.enum(["propre", "acceptable", "sale"]).optional(),
+  fonctionnement: z.enum(["fonctionne", "partiel", "ne_fonctionne_pas", "non_applicable"]).optional(),
+  commentaire: z.string().max(1000).optional(),
+  quantite: z.number().int().min(0).optional(),
+});
+
+/**
+ * Sign/validate EDL
+ */
+export const SignEDLSchema = z.object({
+  role: z.enum(["owner", "tenant", "manager", "witness"]),
+  signature_data: z.string().min(1, "Signature requise"),
+  signature_level: SignatureLevelEnum.default("SES"),
+  ip_address: z.string().ip().optional(),
+  device_info: z.string().optional(),
+});
+
+/**
+ * Complete/finalize EDL
+ */
+export const CompleteEDLSchema = z.object({
+  observations_generales: z.string().max(2000).optional(),
+  releves_compteurs: z.array(z.object({
+    type: z.enum(["electricity", "gas", "water"]),
+    meter_id: z.string().uuid().optional(),
+    index_value: z.number().nonnegative(),
+    photo_path: z.string().optional(),
+  })).optional(),
+  cles_remises: z.array(z.object({
+    type: z.string(),
+    quantite: z.number().int().positive(),
+    description: z.string().optional(),
+  })).optional(),
+});
+
+/**
+ * Compare entry/exit EDL
+ */
+export const CompareEDLSchema = z.object({
+  edl_entree_id: z.string().uuid(),
+  edl_sortie_id: z.string().uuid(),
+  auto_calculate_deductions: z.boolean().default(true),
+});
+
+// ==========================================
+// ROOMMATE / COLOCATION SCHEMAS (P3)
+// ==========================================
+
+/**
+ * Add a roommate to a unit/colocation
+ */
+export const CreateRoommateSchema = z.object({
+  unit_id: z.string().uuid(),
+  profile_id: z.string().uuid().optional(),
+  email: z.string().email().optional(),
+  role: z.enum(["principal", "colocataire", "occupant", "sous_locataire"]).default("colocataire"),
+  share_percentage: z.number().min(0).max(100).optional(),
+  date_entree: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format: YYYY-MM-DD"),
+  date_sortie: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+}).refine(
+  (data) => data.profile_id || data.email,
+  "profile_id ou email requis"
+);
+
+/**
+ * Update roommate info
+ */
+export const UpdateRoommateSchema = z.object({
+  role: z.enum(["principal", "colocataire", "occupant", "sous_locataire"]).optional(),
+  share_percentage: z.number().min(0).max(100).optional(),
+  date_sortie: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  is_active: z.boolean().optional(),
+});
+
+/**
+ * Define payment share for a roommate
+ */
+export const CreatePaymentShareSchema = z.object({
+  roommate_id: z.string().uuid(),
+  invoice_id: z.string().uuid(),
+  montant: z.number().positive("Montant positif requis"),
+  pourcentage: z.number().min(0).max(100).optional(),
+});
+
+/**
+ * Define deposit share for a roommate
+ */
+export const CreateDepositShareSchema = z.object({
+  roommate_id: z.string().uuid(),
+  lease_id: z.string().uuid(),
+  montant: z.number().nonnegative(),
+  statut: z.enum(["pending", "paid", "refunded", "partial_refund"]).default("pending"),
+});
+
+/**
+ * Invite roommate by email
+ */
+export const InviteRoommateSchema = z.object({
+  unit_id: z.string().uuid(),
+  email: z.string().email("Email invalide"),
+  prenom: z.string().min(1).optional(),
+  nom: z.string().min(1).optional(),
+  role: z.enum(["colocataire", "occupant"]).default("colocataire"),
+  share_percentage: z.number().min(0).max(100).optional(),
+  message: z.string().max(500).optional(),
+});
+
+// ==========================================
+// EXPANDED METER SCHEMAS (P3)
+// ==========================================
+
+/**
+ * Update meter info
+ */
+export const UpdateMeterSchema = z.object({
+  type: z.enum(["electricity", "gas", "water", "heating", "cold_water", "hot_water"]).optional(),
+  meter_number: z.string().optional(),
+  provider: z.string().optional(),
+  location: z.string().optional(),
+  is_active: z.boolean().optional(),
+  metadata: z.object({
+    brand: z.string().optional(),
+    model: z.string().optional(),
+    installation_date: z.string().datetime().optional(),
+    next_verification: z.string().datetime().optional(),
+  }).optional(),
+});
+
+/**
+ * Create meter reading with optional photo
+ */
+export const CreateMeterReadingWithPhotoSchema = z.object({
+  meter_id: z.string().uuid(),
+  reading_value: z.number().nonnegative("Valeur positive requise"),
+  reading_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  source: z.enum(["manual", "api", "ocr", "smart_meter"]).default("manual"),
+  photo_path: z.string().optional(),
+  notes: z.string().max(500).optional(),
+  validated: z.boolean().default(false),
+});
+
+/**
+ * Bulk meter readings (for EDL)
+ */
+export const BulkMeterReadingsSchema = z.object({
+  readings: z.array(z.object({
+    meter_id: z.string().uuid(),
+    reading_value: z.number().nonnegative(),
+    photo_path: z.string().optional(),
+  })).min(1),
+  reading_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  source: z.enum(["manual", "edl_entree", "edl_sortie"]).default("manual"),
+});
+
+// ==========================================
+// EXPANDED CHARGE SCHEMAS (P3)
+// ==========================================
+
+/**
+ * Update charge info
+ */
+export const UpdateChargeSchema = z.object({
+  type: z.enum(["eau", "electricite", "gaz", "copro", "taxe", "ordures", "assurance", "travaux", "entretien", "autre"]).optional(),
+  montant: z.number().positive().optional(),
+  periodicite: z.enum(["mensuelle", "trimestrielle", "semestrielle", "annuelle", "ponctuelle"]).optional(),
+  refacturable_locataire: z.boolean().optional(),
+  description: z.string().max(500).optional(),
+  date_debut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+});
+
+/**
+ * Record charge payment
+ */
+export const ChargePaymentSchema = z.object({
+  charge_id: z.string().uuid(),
+  montant: z.number().positive("Montant positif requis"),
+  date_paiement: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  moyen: z.enum(["cb", "virement", "prelevement", "cheque", "especes"]),
+  reference: z.string().optional(),
+});
+
+/**
+ * Create recurring charge
+ */
+export const CreateRecurringChargeSchema = z.object({
+  property_id: z.string().uuid(),
+  type: z.enum(["eau", "electricite", "gaz", "copro", "taxe", "ordures", "assurance", "travaux", "entretien", "autre"]),
+  libelle: z.string().min(1, "Libellé requis"),
+  montant: z.number().positive("Montant positif requis"),
+  periodicite: z.enum(["mensuelle", "trimestrielle", "semestrielle", "annuelle"]),
+  jour_prelevement: z.number().int().min(1).max(28).default(5),
+  refacturable_locataire: z.boolean().default(false),
+  pourcentage_refacturable: z.number().min(0).max(100).default(100),
+  date_debut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+});
+
+/**
+ * Charge regularization (régularisation annuelle)
+ */
+export const ChargeRegularizationSchema = z.object({
+  lease_id: z.string().uuid(),
+  periode_debut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  periode_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  charges_reelles: z.number().nonnegative(),
+  provisions_versees: z.number().nonnegative(),
+  detail_charges: z.array(z.object({
+    type: z.string(),
+    montant_reel: z.number().nonnegative(),
+    quote_part: z.number().min(0).max(100),
+  })).optional(),
+});
+
+// ==========================================
+// WORK ORDER SCHEMAS (P3)
+// ==========================================
+
+/**
+ * Create work order from ticket
+ */
+export const CreateWorkOrderSchema = z.object({
+  ticket_id: z.string().uuid(),
+  provider_id: z.string().uuid(),
+  description: z.string().min(10, "Description: 10 caractères minimum"),
+  budget_max: z.number().positive().optional(),
+  date_intervention: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  urgence: z.enum(["normale", "urgente", "tres_urgente"]).default("normale"),
+});
+
+/**
+ * Update work order status
+ */
+export const UpdateWorkOrderSchema = z.object({
+  status: z.enum(["pending", "accepted", "scheduled", "in_progress", "completed", "cancelled"]).optional(),
+  date_intervention: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  notes: z.string().max(1000).optional(),
+  completion_report: z.string().optional(),
+  actual_cost: z.number().nonnegative().optional(),
+});
+
+/**
+ * Accept/reject quote
+ */
+export const QuoteResponseSchema = z.object({
+  accepted: z.boolean(),
+  rejection_reason: z.string().max(500).optional(),
+  negotiated_amount: z.number().positive().optional(),
+});
+
+// ==========================================
 // Type exports
 // ==========================================
 
@@ -326,4 +786,32 @@ export type CreatePropertyInput = z.infer<typeof CreatePropertySchema>;
 export type CreateLeaseInput = z.infer<typeof CreateLeaseSchema>;
 export type CreateTicketInput = z.infer<typeof CreateTicketSchema>;
 export type CreatePaymentInput = z.infer<typeof CreatePaymentSchema>;
+
+// P3 Signature types
+export type CreateSignatureSessionInput = z.infer<typeof CreateSignatureSessionSchema>;
+export type AddSignatureParticipantInput = z.infer<typeof AddSignatureParticipantSchema>;
+export type RecordSignatureProofInput = z.infer<typeof RecordSignatureProofSchema>;
+
+// P3 EDL types
+export type CreateEDLRoomInput = z.infer<typeof CreateEDLRoomSchema>;
+export type AddEDLMediaInput = z.infer<typeof AddEDLMediaSchema>;
+export type SignEDLInput = z.infer<typeof SignEDLSchema>;
+export type CompleteEDLInput = z.infer<typeof CompleteEDLSchema>;
+
+// P3 Roommate types
+export type CreateRoommateInput = z.infer<typeof CreateRoommateSchema>;
+export type UpdateRoommateInput = z.infer<typeof UpdateRoommateSchema>;
+export type InviteRoommateInput = z.infer<typeof InviteRoommateSchema>;
+
+// P3 Meter types
+export type CreateMeterReadingWithPhotoInput = z.infer<typeof CreateMeterReadingWithPhotoSchema>;
+export type BulkMeterReadingsInput = z.infer<typeof BulkMeterReadingsSchema>;
+
+// P3 Charge types
+export type CreateRecurringChargeInput = z.infer<typeof CreateRecurringChargeSchema>;
+export type ChargeRegularizationInput = z.infer<typeof ChargeRegularizationSchema>;
+
+// P3 Work Order types
+export type CreateWorkOrderInput = z.infer<typeof CreateWorkOrderSchema>;
+export type QuoteResponseInput = z.infer<typeof QuoteResponseSchema>;
 
