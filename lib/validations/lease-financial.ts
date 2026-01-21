@@ -172,7 +172,19 @@ export const LeaseUpdateSchema = z.object({
   depot_de_garantie: z.number().min(0).optional(),
   date_debut: z.string().optional(),
   date_fin: z.string().optional().nullable(),
-  statut: z.enum(["draft", "pending_signature", "partially_signed", "fully_signed", "active", "terminated"]).optional(),
+  statut: z.enum([
+    "draft",
+    "sent",
+    "pending_signature",
+    "partially_signed",
+    "pending_owner_signature",
+    "fully_signed",
+    "active",
+    "notice_given",
+    "amended",
+    "terminated",
+    "archived"
+  ]).optional(),
 }).passthrough(); // Permet d'autres champs
 
 /**

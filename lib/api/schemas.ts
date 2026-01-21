@@ -127,15 +127,17 @@ export const UpdateLeaseSchema = z.object({
   date_debut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format date: YYYY-MM-DD").optional(),
   date_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
   statut: z.enum([
-    "draft",              // Brouillon
-    "sent",               // Envoyé pour signature
-    "pending_signature",  // En attente de signatures
-    "partially_signed",   // Partiellement signé
-    "fully_signed",       // Entièrement signé (avant entrée/EDL)
-    "active",             // Actif (après EDL d'entrée)
-    "amended",            // Avenant
-    "terminated",         // Terminé
-    "archived"            // Archivé
+    "draft",                   // Brouillon
+    "sent",                    // Envoyé pour signature
+    "pending_signature",       // En attente de signatures
+    "partially_signed",        // Partiellement signé
+    "pending_owner_signature", // Locataire signé, attente propriétaire
+    "fully_signed",            // Entièrement signé (avant entrée/EDL)
+    "active",                  // Actif (après EDL d'entrée)
+    "notice_given",            // Congé donné (préavis)
+    "amended",                 // Avenant
+    "terminated",              // Terminé
+    "archived"                 // Archivé
   ]).optional(),
 });
 
