@@ -180,7 +180,19 @@ export const leasesQuerySchema = z.object({
   owner_id: uuidParamSchema.optional(),
   tenantId: uuidParamSchema.optional(),
   tenant_id: uuidParamSchema.optional(),
-  status: z.enum(["draft", "pending_signature", "active", "terminated"]).optional(),
+  status: z.enum([
+    "draft",
+    "sent",
+    "pending_signature",
+    "partially_signed",
+    "pending_owner_signature",
+    "fully_signed",
+    "active",
+    "notice_given",
+    "amended",
+    "terminated",
+    "archived"
+  ]).optional(),
 }).merge(paginationQuerySchema);
 
 /**

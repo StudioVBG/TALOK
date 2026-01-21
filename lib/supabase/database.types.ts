@@ -64,6 +64,7 @@ export interface PropertyRow {
   ges: string | null
   unique_code: string
   statut?: string
+  etat?: string  // draft | incomplete | ready_to_let | active | archived
   cover_url?: string | null
   loyer_reference?: number | null
   nb_chambres?: number | null
@@ -82,6 +83,24 @@ export interface PropertyRow {
   syndic_name?: string | null
   syndic_email?: string | null
   syndic_phone?: string | null
+  // P0.3: Colonnes financières et réglementaires ajoutées
+  loyer_base?: number | null
+  loyer_hc?: number | null
+  charges_mensuelles?: number | null
+  depot_garantie?: number | null
+  zone_encadrement?: boolean
+  dpe_classe_energie?: string | null
+  dpe_classe_climat?: string | null
+  permis_louer_requis?: boolean
+  permis_louer_numero?: string | null
+  // P0.3: Colonnes commerciales
+  usage_principal?: string | null
+  sous_usage?: string | null
+  erp_type?: string | null
+  plan_url?: string | null
+  places_parking?: number | null
+  // Soft delete
+  deleted_at?: string | null
   created_at: string
   updated_at: string
   [key: string]: any
@@ -101,6 +120,9 @@ export interface ProfileRow {
   code_postal?: string | null
   ville?: string | null
   pays?: string | null
+  // P0.3: Colonnes manquantes ajoutées
+  lieu_naissance?: string | null
+  nationalite?: string | null
   account_status?: string
   suspended_at?: string | null
   suspended_reason?: string | null
@@ -122,6 +144,22 @@ export interface LeaseRow {
   date_debut: string
   date_fin: string | null
   statut: string
+  // P0.3: Colonnes de charges et colocation ajoutées
+  charges_type?: 'forfaitaires' | 'provisions' | null
+  coloc_config?: Json | null  // Configuration colocation (nb_places, split_mode, etc.)
+  // P0.3: Colonnes d'invitation ajoutées
+  invite_token?: string | null
+  invite_token_expires_at?: string | null
+  tenant_email_pending?: string | null
+  tenant_name_pending?: string | null
+  tenant_identity_verified?: boolean
+  tenant_identity_method?: string | null
+  tenant_identity_data?: Json | null
+  // P0.3: Colonnes Yousign ajoutées
+  yousign_signature_request_id?: string | null
+  yousign_document_id?: string | null
+  signature_started_at?: string | null
+  signature_completed_at?: string | null
   signature_status?: string | null
   pdf_url?: string | null
   pdf_signed_url?: string | null
@@ -243,6 +281,279 @@ export interface PaymentRow {
   date_paiement?: string | null
   reference?: string | null
   created_at: string
+  [key: string]: any
+}
+
+// ============================================
+// EDL (ÉTATS DES LIEUX) TYPES
+// ============================================
+
+export interface EDLRow {
+  id: string
+  lease_id: string
+  type: 'entree' | 'sortie'
+  status: 'draft' | 'in_progress' | 'completed' | 'signed' | 'disputed'
+  scheduled_date: string | null
+  completed_date: string | null
+  created_by: string
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+export interface EDLItemRow {
+  id: string
+  edl_id: string
+  room_name: string
+  item_name: string
+  condition: 'neuf' | 'bon' | 'moyen' | 'mauvais' | 'tres_mauvais' | null
+  notes: string | null
+  created_at: string
+  [key: string]: any
+}
+
+export interface EDLMediaRow {
+  id: string
+  edl_id: string
+  item_id: string | null
+  storage_path: string
+  media_type: 'photo' | 'video'
+  thumbnail_path: string | null
+  taken_at: string
+  created_at: string
+  [key: string]: any
+}
+
+export interface EDLSignatureRow {
+  id: string
+  edl_id: string
+  signer_user: string
+  signer_role: 'owner' | 'tenant' | 'witness'
+  signed_at: string
+  signature_image_path: string | null
+  ip_inet: string | null
+  user_agent: string | null
+  [key: string]: any
+}
+
+// ============================================
+// SIGNATURE TYPES
+// ============================================
+
+export interface SignatureRow {
+  id: string
+  draft_id: string | null
+  lease_id: string | null
+  signer_user: string
+  signer_profile_id: string
+  level: 'SES' | 'AES' | 'QES'
+  otp_verified: boolean
+  otp_code: string | null
+  otp_expires_at: string | null
+  ip_inet: string | null
+  user_agent: string | null
+  signed_at: string | null
+  signature_image_path: string | null
+  evidence_pdf_url: string | null
+  doc_hash: string
+  provider_ref: string | null
+  provider_data: Json | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+export interface LeaseSignerRow {
+  id: string
+  lease_id: string
+  profile_id: string | null
+  role: 'proprietaire' | 'locataire_principal' | 'colocataire' | 'garant'
+  signature_status: 'pending' | 'signed' | 'refused'
+  signed_at: string | null
+  invited_email: string | null
+  invited_name: string | null
+  invited_at: string | null
+  signature_image: string | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+// ============================================
+// COLOCATION TYPES
+// ============================================
+
+export interface UnitRow {
+  id: string
+  property_id: string
+  nom: string
+  capacite_max: number
+  surface: number | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+export interface RoommateRow {
+  id: string
+  lease_id: string
+  user_id: string
+  profile_id: string
+  role: 'principal' | 'tenant' | 'occupant' | 'guarantor'
+  first_name: string
+  last_name: string
+  weight: number
+  joined_on: string
+  left_on: string | null
+  invitation_status?: 'pending' | 'accepted' | 'rejected' | 'expired'
+  invited_email?: string | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+export interface PaymentShareRow {
+  id: string
+  lease_id: string
+  invoice_id: string | null
+  month: string
+  roommate_id: string
+  expected_amount: number
+  paid_amount: number
+  status: 'pending' | 'partial' | 'paid' | 'late'
+  paid_at: string | null
+  created_at: string
+  [key: string]: any
+}
+
+export interface DepositShareRow {
+  id: string
+  lease_id: string
+  roommate_id: string
+  amount: number
+  status: 'pending' | 'paid' | 'returned' | 'partial_deduction'
+  paid_at: string | null
+  returned_at: string | null
+  deduction_amount: number | null
+  deduction_reason: string | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+// ============================================
+// METER (COMPTEUR) TYPES
+// ============================================
+
+export interface MeterRow {
+  id: string
+  lease_id: string
+  property_id: string | null
+  type: 'electricity' | 'gas' | 'water'
+  provider: string | null
+  provider_meter_id: string | null
+  is_connected: boolean
+  meter_number: string | null
+  unit: 'kwh' | 'm3' | 'l'
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+export interface MeterReadingRow {
+  id: string
+  meter_id: string
+  reading_value: number
+  unit: string
+  reading_date: string
+  source: 'manual' | 'api' | 'ocr'
+  photo_path: string | null
+  validated: boolean
+  validated_by: string | null
+  created_at: string
+  [key: string]: any
+}
+
+// ============================================
+// CHARGES & ACCOUNTING TYPES
+// ============================================
+
+export interface ChargeRow {
+  id: string
+  property_id: string
+  type: 'eau' | 'electricite' | 'gaz' | 'copro' | 'taxe' | 'ordures' | 'assurance' | 'travaux' | 'autre'
+  description: string | null
+  montant: number
+  periodicite: 'mensuelle' | 'trimestrielle' | 'annuelle' | 'ponctuelle'
+  refacturable_locataire: boolean
+  date_debut: string | null
+  date_fin: string | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+export interface DepositMovementRow {
+  id: string
+  lease_id: string
+  roommate_id: string | null
+  type: 'encaissement' | 'remboursement' | 'deduction'
+  amount: number
+  reason: string | null
+  status: 'pending' | 'received' | 'returned'
+  processed_at: string | null
+  processed_by: string | null
+  created_at: string
+  [key: string]: any
+}
+
+// ============================================
+// WORK ORDER & PROVIDER TYPES
+// ============================================
+
+export interface WorkOrderRow {
+  id: string
+  ticket_id: string
+  provider_id: string
+  quote_id: string | null
+  statut: 'assigned' | 'scheduled' | 'in_progress' | 'done' | 'cancelled'
+  scheduled_date: string | null
+  completed_date: string | null
+  actual_cost: number | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+export interface QuoteRow {
+  id: string
+  ticket_id: string
+  provider_id: string
+  description: string
+  amount: number
+  validity_days: number
+  status: 'pending' | 'accepted' | 'rejected' | 'expired'
+  submitted_at: string
+  responded_at: string | null
+  created_at: string
+  [key: string]: any
+}
+
+export interface ProviderProfileRow {
+  id: string
+  profile_id: string
+  company_name: string | null
+  siret: string | null
+  specialties: string[]
+  service_area_km: number | null
+  hourly_rate: number | null
+  response_time_hours: number | null
+  rating_avg: number | null
+  rating_count: number | null
+  is_verified: boolean
+  created_at: string
+  updated_at: string
   [key: string]: any
 }
 
@@ -551,6 +862,114 @@ export type Database = {
         Update: Partial<PaymentRow>
         Relationships: any[]
       }
+      // EDL Tables
+      edl: {
+        Row: EDLRow
+        Insert: Partial<EDLRow>
+        Update: Partial<EDLRow>
+        Relationships: any[]
+      }
+      edl_items: {
+        Row: EDLItemRow
+        Insert: Partial<EDLItemRow>
+        Update: Partial<EDLItemRow>
+        Relationships: any[]
+      }
+      edl_media: {
+        Row: EDLMediaRow
+        Insert: Partial<EDLMediaRow>
+        Update: Partial<EDLMediaRow>
+        Relationships: any[]
+      }
+      edl_signatures: {
+        Row: EDLSignatureRow
+        Insert: Partial<EDLSignatureRow>
+        Update: Partial<EDLSignatureRow>
+        Relationships: any[]
+      }
+      // Signature Tables
+      signatures: {
+        Row: SignatureRow
+        Insert: Partial<SignatureRow>
+        Update: Partial<SignatureRow>
+        Relationships: any[]
+      }
+      lease_signers: {
+        Row: LeaseSignerRow
+        Insert: Partial<LeaseSignerRow>
+        Update: Partial<LeaseSignerRow>
+        Relationships: any[]
+      }
+      // Colocation Tables
+      units: {
+        Row: UnitRow
+        Insert: Partial<UnitRow>
+        Update: Partial<UnitRow>
+        Relationships: any[]
+      }
+      roommates: {
+        Row: RoommateRow
+        Insert: Partial<RoommateRow>
+        Update: Partial<RoommateRow>
+        Relationships: any[]
+      }
+      payment_shares: {
+        Row: PaymentShareRow
+        Insert: Partial<PaymentShareRow>
+        Update: Partial<PaymentShareRow>
+        Relationships: any[]
+      }
+      deposit_shares: {
+        Row: DepositShareRow
+        Insert: Partial<DepositShareRow>
+        Update: Partial<DepositShareRow>
+        Relationships: any[]
+      }
+      // Meter Tables
+      meters: {
+        Row: MeterRow
+        Insert: Partial<MeterRow>
+        Update: Partial<MeterRow>
+        Relationships: any[]
+      }
+      meter_readings: {
+        Row: MeterReadingRow
+        Insert: Partial<MeterReadingRow>
+        Update: Partial<MeterReadingRow>
+        Relationships: any[]
+      }
+      // Charges & Accounting
+      charges: {
+        Row: ChargeRow
+        Insert: Partial<ChargeRow>
+        Update: Partial<ChargeRow>
+        Relationships: any[]
+      }
+      deposit_movements: {
+        Row: DepositMovementRow
+        Insert: Partial<DepositMovementRow>
+        Update: Partial<DepositMovementRow>
+        Relationships: any[]
+      }
+      // Work Orders & Providers
+      work_orders: {
+        Row: WorkOrderRow
+        Insert: Partial<WorkOrderRow>
+        Update: Partial<WorkOrderRow>
+        Relationships: any[]
+      }
+      quotes: {
+        Row: QuoteRow
+        Insert: Partial<QuoteRow>
+        Update: Partial<QuoteRow>
+        Relationships: any[]
+      }
+      provider_profiles: {
+        Row: ProviderProfileRow
+        Insert: Partial<ProviderProfileRow>
+        Update: Partial<ProviderProfileRow>
+        Relationships: any[]
+      }
       // Visit Scheduling Tables - SOTA 2026
       owner_availability_patterns: {
         Row: OwnerAvailabilityPatternRow
@@ -648,6 +1067,35 @@ export type Notification = NotificationRow
 export type Subscription = SubscriptionRow
 export type Document = DocumentRow
 export type Payment = PaymentRow
+
+// EDL - P0.2 SOTA 2026
+export type EDL = EDLRow
+export type EDLItem = EDLItemRow
+export type EDLMedia = EDLMediaRow
+export type EDLSignature = EDLSignatureRow
+
+// Signatures - P0.2 SOTA 2026
+export type Signature = SignatureRow
+export type LeaseSigner = LeaseSignerRow
+
+// Colocation - P0.2 SOTA 2026
+export type Unit = UnitRow
+export type Roommate = RoommateRow
+export type PaymentShare = PaymentShareRow
+export type DepositShare = DepositShareRow
+
+// Meters - P0.2 SOTA 2026
+export type Meter = MeterRow
+export type MeterReading = MeterReadingRow
+
+// Charges & Accounting - P0.2 SOTA 2026
+export type Charge = ChargeRow
+export type DepositMovement = DepositMovementRow
+
+// Work Orders & Providers - P0.2 SOTA 2026
+export type WorkOrder = WorkOrderRow
+export type Quote = QuoteRow
+export type ProviderProfile = ProviderProfileRow
 
 // Visit Scheduling - SOTA 2026
 export type OwnerAvailabilityPattern = OwnerAvailabilityPatternRow
