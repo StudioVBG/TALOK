@@ -63,12 +63,13 @@ export async function POST(
     const serviceClient = createServiceClient();
 
     // ===============================
-    // STRATÉGIE DE RÉSOLUTION DU PROFIL (SOTA 2026 - v2)
+    // STRATÉGIE DE RÉSOLUTION DU PROFIL (SOTA 2026 - v3)
     // ===============================
     // 1. Chercher par user_id (cas standard)
     // 2. Chercher par email et lier/mettre à jour si nécessaire
+    // 2.5 (NEW) Chercher via l'EDL (property → owner) pour les propriétaires
     // 3. Chercher dans edl_signatures pour cet EDL spécifique
-    // 4. Créer un profil minimal en dernier recours (avec gestion conflit)
+    // 4. Créer un profil minimal en dernier recours (avec bon rôle)
     // ===============================
 
     console.log("[sign-edl] 🔍 Résolution du profil pour user:", user.id, "email:", user.email);
@@ -80,6 +81,9 @@ export async function POST(
       role: string;
       tenant_profile?: { cni_number: string | null }[];
     } | null = null;
+
+    // Variable pour détecter si l'utilisateur est le propriétaire de l'EDL
+    let isPropertyOwner = false;
 
     // Étape 1: Chercher par user_id (cas le plus courant)
     const { data: profileByUserId, error: step1Error } = await serviceClient
@@ -151,6 +155,91 @@ export async function POST(
       }
     }
 
+    // Étape 2.5 (NEW): Chercher via l'EDL (property → owner) pour les propriétaires
+    if (!profile) {
+      console.log("[sign-edl] 🔍 Étape 2.5: Recherche via EDL/Property pour owner");
+
+      // Récupérer l'EDL avec sa property et le owner associé
+      const { data: edlWithOwner } = await serviceClient
+        .from("edl")
+        .select(`
+          id,
+          property:properties!edl_property_id_fkey(
+            id,
+            owner_id,
+            owner_profile:profiles!properties_owner_id_fkey(
+              id, prenom, nom, role, user_id, email
+            )
+          ),
+          lease:leases!edl_lease_id_fkey(
+            property:properties!leases_property_id_fkey(
+              id,
+              owner_id,
+              owner_profile:profiles!properties_owner_id_fkey(
+                id, prenom, nom, role, user_id, email
+              )
+            )
+          )
+        `)
+        .eq("id", edlId)
+        .single();
+
+      if (edlWithOwner) {
+        // Chercher le owner_profile via property directe ou via lease
+        const propertyData = Array.isArray(edlWithOwner.property)
+          ? edlWithOwner.property[0]
+          : edlWithOwner.property;
+        const leaseData = Array.isArray(edlWithOwner.lease)
+          ? edlWithOwner.lease[0]
+          : edlWithOwner.lease;
+
+        const ownerProfile = propertyData?.owner_profile || leaseData?.property?.owner_profile;
+
+        if (ownerProfile) {
+          // Vérifier si l'utilisateur actuel correspond au owner (par user_id ou email)
+          const ownerData = Array.isArray(ownerProfile) ? ownerProfile[0] : ownerProfile;
+
+          if (ownerData) {
+            const isMatchByUserId = ownerData.user_id === user.id;
+            const isMatchByEmail = user.email && ownerData.email?.toLowerCase() === user.email.toLowerCase();
+
+            if (isMatchByUserId || isMatchByEmail) {
+              console.log("[sign-edl] ✅ Étape 2.5: Owner trouvé via property, match:",
+                isMatchByUserId ? "user_id" : "email");
+
+              // Lier le profil si nécessaire
+              if (!ownerData.user_id || ownerData.user_id !== user.id) {
+                await serviceClient
+                  .from("profiles")
+                  .update({ user_id: user.id })
+                  .eq("id", ownerData.id);
+                console.log("[sign-edl] 🔗 Étape 2.5: Profil owner lié au compte");
+              }
+
+              // Récupérer le profil complet
+              const { data: ownerFullProfile } = await serviceClient
+                .from("profiles")
+                .select(`
+                  id, prenom, nom, role,
+                  tenant_profile:tenant_profiles(cni_number)
+                `)
+                .eq("id", ownerData.id)
+                .single();
+
+              if (ownerFullProfile) {
+                profile = ownerFullProfile;
+                isPropertyOwner = true;
+              }
+            }
+          }
+        }
+      }
+
+      if (!profile) {
+        console.log("[sign-edl] ℹ️ Étape 2.5: Pas de match owner via EDL/property");
+      }
+    }
+
     // Étape 3: Chercher dans edl_signatures pour cet EDL spécifique
     if (!profile) {
       console.log("[sign-edl] 🔍 Étape 3: Recherche dans edl_signatures pour EDL:", edlId);
@@ -218,7 +307,9 @@ export async function POST(
 
     // Étape 4: Dernier recours - créer un profil minimal (avec gestion conflit email)
     if (!profile && user.email) {
-      console.log("[sign-edl] ⚠️ Étape 4: Création d'un profil minimal pour:", user.email);
+      // Détermine le rôle basé sur le contexte (isPropertyOwner détecté à l'étape 2.5)
+      const profileRole = isPropertyOwner ? "owner" : "tenant";
+      console.log("[sign-edl] ⚠️ Étape 4: Création d'un profil minimal pour:", user.email, "role:", profileRole);
 
       // Utiliser upsert avec on_conflict sur user_id pour éviter les doublons
       const { data: newProfile, error: createError } = await serviceClient
@@ -226,9 +317,9 @@ export async function POST(
         .upsert({
           user_id: user.id,
           email: user.email,
-          role: "tenant",
-          prenom: user.user_metadata?.prenom || user.email.split("@")[0],
-          nom: user.user_metadata?.nom || "",
+          role: profileRole,
+          prenom: user.user_metadata?.prenom || user.user_metadata?.first_name || user.email.split("@")[0],
+          nom: user.user_metadata?.nom || user.user_metadata?.last_name || "",
         }, {
           onConflict: "user_id",
           ignoreDuplicates: false
