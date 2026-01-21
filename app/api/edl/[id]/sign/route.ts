@@ -4,7 +4,6 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
-import { decode } from "base64-arraybuffer";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
 import { 
@@ -317,7 +316,7 @@ export async function POST(
     
     const { error: uploadError } = await serviceClient.storage
       .from("documents")
-      .upload(fileName, decode(base64Data), {
+      .upload(fileName, Buffer.from(base64Data, 'base64'), {
         contentType: "image/png",
         upsert: true,
       });
