@@ -558,6 +558,150 @@ export interface ProviderProfileRow {
 }
 
 // ============================================
+// UNIFIED SIGNATURE SYSTEM TYPES - P1 SOTA 2026
+// ============================================
+
+export type SignatureDocumentType =
+  | 'bail'
+  | 'avenant'
+  | 'edl_entree'
+  | 'edl_sortie'
+  | 'quittance'
+  | 'caution'
+  | 'devis'
+  | 'facture'
+  | 'note_service'
+  | 'reglement_interieur'
+  | 'autre'
+
+export type SignatureEntityType = 'lease' | 'edl' | 'quote' | 'invoice' | 'internal'
+
+export type SignatureSessionStatus =
+  | 'draft'
+  | 'pending'
+  | 'ongoing'
+  | 'done'
+  | 'rejected'
+  | 'expired'
+  | 'canceled'
+
+export type SignatureParticipantStatus =
+  | 'pending'
+  | 'notified'
+  | 'opened'
+  | 'signed'
+  | 'refused'
+  | 'error'
+
+export type SignatureRoleType =
+  | 'proprietaire'
+  | 'locataire_principal'
+  | 'colocataire'
+  | 'garant'
+  | 'representant_legal'
+  | 'temoin'
+  | 'autre'
+
+export type SignatureLevelType = 'SES' | 'AES' | 'QES'
+
+export type SignatureAuditAction =
+  | 'session_created'
+  | 'session_sent'
+  | 'session_completed'
+  | 'session_rejected'
+  | 'session_expired'
+  | 'session_canceled'
+  | 'participant_added'
+  | 'participant_notified'
+  | 'participant_opened'
+  | 'participant_signed'
+  | 'participant_refused'
+  | 'proof_generated'
+  | 'proof_verified'
+
+export interface SignatureSessionRow {
+  id: string
+  document_type: SignatureDocumentType
+  entity_type: SignatureEntityType
+  entity_id: string
+  source_document_id: string | null
+  signed_document_id: string | null
+  proof_document_id: string | null
+  name: string
+  description: string | null
+  status: SignatureSessionStatus
+  signature_level: SignatureLevelType
+  is_ordered_signatures: boolean
+  otp_required: boolean
+  created_by: string
+  owner_id: string
+  deadline: string | null
+  sent_at: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+export interface SignatureParticipantRow {
+  id: string
+  session_id: string
+  profile_id: string | null
+  email: string
+  first_name: string
+  last_name: string
+  phone: string | null
+  role: SignatureRoleType
+  signing_order: number | null
+  status: SignatureParticipantStatus
+  signature_image_path: string | null
+  signature_timestamp: string | null
+  signature_ip: string | null
+  signature_user_agent: string | null
+  otp_code: string | null
+  otp_expires_at: string | null
+  otp_verified: boolean
+  refused_reason: string | null
+  refused_at: string | null
+  invitation_token: string | null
+  invitation_token_expires_at: string | null
+  invitation_sent_at: string | null
+  notified_at: string | null
+  opened_at: string | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+export interface SignatureProofRow {
+  id: string
+  participant_id: string
+  session_id: string
+  proof_id: string
+  document_hash: string
+  signature_hash: string
+  proof_hash: string
+  metadata: Json
+  verified_at: string | null
+  verification_errors: string[] | null
+  created_at: string
+  [key: string]: any
+}
+
+export interface SignatureAuditLogRow {
+  id: string
+  session_id: string
+  participant_id: string | null
+  action: SignatureAuditAction
+  actor_id: string | null
+  ip_address: string | null
+  user_agent: string | null
+  metadata: Json | null
+  created_at: string
+  [key: string]: any
+}
+
+// ============================================
 // VISIT SCHEDULING TYPES - SOTA 2026
 // ============================================
 
@@ -970,6 +1114,31 @@ export type Database = {
         Update: Partial<ProviderProfileRow>
         Relationships: any[]
       }
+      // Unified Signature System Tables - P1 SOTA 2026
+      signature_sessions: {
+        Row: SignatureSessionRow
+        Insert: Partial<SignatureSessionRow>
+        Update: Partial<SignatureSessionRow>
+        Relationships: any[]
+      }
+      signature_participants: {
+        Row: SignatureParticipantRow
+        Insert: Partial<SignatureParticipantRow>
+        Update: Partial<SignatureParticipantRow>
+        Relationships: any[]
+      }
+      signature_proofs: {
+        Row: SignatureProofRow
+        Insert: Partial<SignatureProofRow>
+        Update: Partial<SignatureProofRow>
+        Relationships: any[]
+      }
+      signature_audit_log: {
+        Row: SignatureAuditLogRow
+        Insert: Partial<SignatureAuditLogRow>
+        Update: Partial<SignatureAuditLogRow>
+        Relationships: any[]
+      }
       // Visit Scheduling Tables - SOTA 2026
       owner_availability_patterns: {
         Row: OwnerAvailabilityPatternRow
@@ -1096,6 +1265,12 @@ export type DepositMovement = DepositMovementRow
 export type WorkOrder = WorkOrderRow
 export type Quote = QuoteRow
 export type ProviderProfile = ProviderProfileRow
+
+// Unified Signature System - P1 SOTA 2026
+export type SignatureSession = SignatureSessionRow
+export type SignatureParticipant = SignatureParticipantRow
+export type SignatureProof = SignatureProofRow
+export type SignatureAuditLog = SignatureAuditLogRow
 
 // Visit Scheduling - SOTA 2026
 export type OwnerAvailabilityPattern = OwnerAvailabilityPatternRow
