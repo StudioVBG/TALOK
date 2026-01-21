@@ -2,26 +2,33 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, verifyWebhookSignature, formatAmountFromStripe, type PaymentMetadata } from "@/lib/stripe";
-import { createClient as createServerClient } from "@supabase/supabase-js";
-import { sendPaymentConfirmation, sendPaymentReminder } from "@/lib/emails";
+import { verifyWebhookSignature, formatAmountFromStripe, type PaymentMetadata } from "@/lib/stripe";
+import { createClient as createServerClient, SupabaseClient } from "@supabase/supabase-js";
+import { sendPaymentConfirmation } from "@/lib/emails";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Stripe from "stripe";
 
-// Utiliser le service role pour bypasser RLS
-const supabase = createServerClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
+// Type pour le client Supabase
+type SupabaseAdmin = SupabaseClient;
+
+// Créer le client Supabase avec service role (lazy pour éviter les erreurs au build)
+function getSupabaseAdmin(): SupabaseAdmin {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error("Missing Supabase environment variables");
+  }
+  return createServerClient(url, key, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-  }
-);
+  });
+}
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabaseAdmin();
   try {
     // Vérifier la signature du webhook
     const body = await request.text();
@@ -45,15 +52,15 @@ export async function POST(request: NextRequest) {
     // Traiter les événements
     switch (event.type) {
       case "payment_intent.succeeded":
-        await handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
+        await handlePaymentSucceeded(supabase, event.data.object as Stripe.PaymentIntent);
         break;
 
       case "payment_intent.payment_failed":
-        await handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
+        await handlePaymentFailed(supabase, event.data.object as Stripe.PaymentIntent);
         break;
 
       case "payment_intent.canceled":
-        await handlePaymentCanceled(event.data.object as Stripe.PaymentIntent);
+        await handlePaymentCanceled(supabase, event.data.object as Stripe.PaymentIntent);
         break;
 
       default:
@@ -67,7 +74,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+async function handlePaymentSucceeded(supabase: SupabaseAdmin, paymentIntent: Stripe.PaymentIntent) {
   const metadata = paymentIntent.metadata as unknown as PaymentMetadata;
   const { invoiceId, profileId } = metadata;
 
@@ -92,7 +99,7 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
   // 2. Vérifier si la facture est entièrement payée
   const { data: invoice } = await supabase
     .from("invoices")
-    .select("id, montant_total")
+    .select("id, montant_total, periode")
     .eq("id", invoiceId)
     .single();
 
@@ -116,7 +123,7 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
       console.log(`[webhook/payments] Facture ${invoiceId} marquée comme payée`);
 
       // 3. Générer la quittance
-      await generateReceipt(invoiceId, payment.id);
+      await generateReceipt(supabase, invoiceId, payment.id);
     }
   }
 
@@ -150,7 +157,7 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
     if (tenantProfile) {
       // Récupérer l'email depuis auth.users
       const { data: authUser } = await supabase.auth.admin.getUserById(tenantProfile.user_id);
-      
+
       if (authUser?.user?.email) {
         await sendPaymentConfirmation({
           tenantEmail: authUser.user.email,
@@ -170,7 +177,7 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
   }
 }
 
-async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
+async function handlePaymentFailed(supabase: SupabaseAdmin, paymentIntent: Stripe.PaymentIntent) {
   console.log(`[webhook/payments] Paiement échoué: ${paymentIntent.id}`);
 
   // Mettre à jour le statut du paiement
@@ -197,7 +204,7 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
   }
 }
 
-async function handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent) {
+async function handlePaymentCanceled(supabase: SupabaseAdmin, paymentIntent: Stripe.PaymentIntent) {
   console.log(`[webhook/payments] Paiement annulé: ${paymentIntent.id}`);
 
   // Supprimer ou annuler le paiement en attente
@@ -208,7 +215,7 @@ async function handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent) {
     .eq("statut", "pending");
 }
 
-async function generateReceipt(invoiceId: string, paymentId: string) {
+async function generateReceipt(supabase: SupabaseAdmin, invoiceId: string, paymentId: string) {
   console.log(`[webhook/payments] Génération quittance pour facture ${invoiceId}`);
 
   // Récupérer les infos nécessaires

@@ -40,7 +40,14 @@ import { formatPeriode, getDateReversement } from "./helpers";
 import { fecExportService } from "./fec-export.service";
 
 export class AccountingService {
-  private supabase = createClient();
+  private _supabase: ReturnType<typeof createClient> | null = null;
+
+  private get supabase() {
+    if (!this._supabase) {
+      this._supabase = createClient();
+    }
+    return this._supabase;
+  }
 
   // ============================================================================
   // CALCULS DE BASE (delegated to ./calculations.ts)
