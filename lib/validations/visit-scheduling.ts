@@ -15,9 +15,9 @@ const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
 // ============================================
 
 /**
- * Schéma pour créer un pattern de disponibilité
+ * Schéma de base pour les patterns de disponibilité (sans refinement)
  */
-export const createAvailabilityPatternSchema = z.object({
+const availabilityPatternBaseSchema = z.object({
   property_id: z.string().uuid().nullable().optional(),
   recurrence_type: z.enum(["daily", "weekly", "monthly", "custom"]).default("weekly"),
   day_of_week: z
@@ -60,13 +60,21 @@ export const createAvailabilityPatternSchema = z.object({
     .max(10, "Maximum 10 visiteurs par créneau")
     .default(1),
   auto_confirm: z.boolean().default(false),
-}).refine(
-  (data) => {
-    // Vérifier que l'heure de fin est après l'heure de début
-    const [startH, startM] = data.start_time.split(":").map(Number);
-    const [endH, endM] = data.end_time.split(":").map(Number);
-    return endH * 60 + endM > startH * 60 + startM;
-  },
+});
+
+// Fonction de validation des heures (réutilisable)
+const validateTimeRange = (data: { start_time?: string; end_time?: string }) => {
+  if (!data.start_time || !data.end_time) return true;
+  const [startH, startM] = data.start_time.split(":").map(Number);
+  const [endH, endM] = data.end_time.split(":").map(Number);
+  return endH * 60 + endM > startH * 60 + startM;
+};
+
+/**
+ * Schéma pour créer un pattern de disponibilité
+ */
+export const createAvailabilityPatternSchema = availabilityPatternBaseSchema.refine(
+  validateTimeRange,
   {
     message: "L'heure de fin doit être après l'heure de début",
     path: ["end_time"],
@@ -75,11 +83,16 @@ export const createAvailabilityPatternSchema = z.object({
 
 /**
  * Schéma pour mettre à jour un pattern de disponibilité
+ * Note: .partial() doit être appelé sur le ZodObject, pas sur ZodEffects
  */
-export const updateAvailabilityPatternSchema = createAvailabilityPatternSchema
+export const updateAvailabilityPatternSchema = availabilityPatternBaseSchema
   .partial()
   .extend({
     is_active: z.boolean().optional(),
+  })
+  .refine(validateTimeRange, {
+    message: "L'heure de fin doit être après l'heure de début",
+    path: ["end_time"],
   });
 
 // ============================================

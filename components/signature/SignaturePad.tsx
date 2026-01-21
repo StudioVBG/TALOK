@@ -35,12 +35,12 @@ interface SignaturePadProps {
   className?: string;
 }
 
-// Polices cursives pour signature texte (utilisant les variables CSS)
+// Polices cursives pour signature texte (chargées via Google Fonts dans layout.tsx)
 const SIGNATURE_FONTS = [
-  { name: "Dancing Script", style: "var(--font-dancing-script), cursive" },
-  { name: "Great Vibes", style: "var(--font-great-vibes), cursive" },
-  { name: "Pacifico", style: "var(--font-pacifico), cursive" },
-  { name: "Satisfy", style: "var(--font-satisfy), cursive" },
+  { name: "Dancing Script", style: "'Dancing Script', cursive" },
+  { name: "Great Vibes", style: "'Great Vibes', cursive" },
+  { name: "Pacifico", style: "'Pacifico', cursive" },
+  { name: "Satisfy", style: "'Satisfy', cursive" },
 ];
 
 export function SignaturePad({
