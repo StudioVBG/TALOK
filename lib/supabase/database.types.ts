@@ -1189,6 +1189,20 @@ export type Database = {
         Update: Partial<PropertyOwnershipRow>
         Relationships: any[]
       }
+      // P2: Schema Translations Table
+      _schema_translations: {
+        Row: SchemaTranslationRow
+        Insert: Partial<SchemaTranslationRow>
+        Update: Partial<SchemaTranslationRow>
+        Relationships: any[]
+      }
+      // P4: Audit Events Table - Event Sourcing
+      audit_events: {
+        Row: AuditEventRow
+        Insert: Partial<AuditEventRow>
+        Update: never  // Immutable
+        Relationships: any[]
+      }
     }
     Views: Record<string, { Row: GenericRow }>
     Functions: Record<string, { Args: any; Returns: any }>
@@ -1283,6 +1297,176 @@ export type CalendarConnection = CalendarConnectionRow
 export type LegalEntity = LegalEntityRow
 export type EntityAssociate = EntityAssociateRow
 export type PropertyOwnership = PropertyOwnershipRow
+
+// ============================================
+// P2: NAMING NORMALIZATION TYPES (SOTA 2026)
+// ============================================
+
+/**
+ * Translation mapping for FR→EN column names
+ */
+export interface SchemaTranslationRow {
+  id: number
+  table_name: string
+  column_fr: string
+  column_en: string
+  data_type: string | null
+  description: string | null
+  created_at: string
+}
+
+// ============================================
+// P4: EVENT SOURCING & AUDIT TYPES (SOTA 2026)
+// ============================================
+
+/**
+ * Actor types for audit events
+ */
+export type AuditActorType =
+  | 'user'        // Authenticated user action
+  | 'system'      // System/application action
+  | 'webhook'     // External webhook callback
+  | 'cron'        // Scheduled job
+  | 'migration'   // Database migration
+  | 'admin'       // Admin override
+  | 'anonymous'   // Unauthenticated action
+
+/**
+ * Event categories for audit grouping
+ */
+export type AuditEventCategory =
+  | 'auth'          // Authentication events
+  | 'property'      // Property management
+  | 'lease'         // Lease lifecycle
+  | 'signature'     // Signature events
+  | 'inspection'    // EDL events
+  | 'financial'     // Invoices, payments
+  | 'tenant'        // Tenant management
+  | 'ticket'        // Support tickets
+  | 'document'      // Document operations
+  | 'communication' // Messages, notifications
+  | 'admin'         // Admin operations
+  | 'gdpr'          // Privacy/GDPR events
+  | 'system'        // System events
+
+/**
+ * Audit event row - immutable event log
+ */
+export interface AuditEventRow {
+  id: string
+
+  // Event identification
+  event_type: string              // e.g., 'lease.created', 'payment.received'
+  event_category: AuditEventCategory
+  event_version: number
+
+  // Actor information
+  actor_type: AuditActorType
+  actor_id: string | null         // Profile ID if user
+  actor_email: string | null      // For audit trail
+  actor_role: string | null       // Role at time of action
+
+  // Target entity
+  entity_type: string             // e.g., 'lease', 'invoice', 'property'
+  entity_id: string
+  entity_name: string | null      // Human-readable identifier
+
+  // Parent entity (for nested resources)
+  parent_entity_type: string | null
+  parent_entity_id: string | null
+
+  // Payload
+  payload: Json
+  old_values: Json | null         // Previous state (for updates)
+  new_values: Json | null         // New state (for creates/updates)
+
+  // Context
+  request_id: string | null       // Correlation ID
+  session_id: string | null       // User session
+  ip_address: string | null
+  user_agent: string | null
+  origin: string | null           // 'web', 'mobile', 'api'
+
+  // Geolocation
+  geo_country: string | null
+  geo_city: string | null
+
+  // Timestamps (immutable)
+  occurred_at: string
+  server_time: string
+  created_at: string
+}
+
+/**
+ * Daily audit statistics view
+ */
+export interface AuditDailyStatsRow {
+  day: string
+  event_category: AuditEventCategory
+  event_count: number
+  unique_actors: number
+  unique_entities: number
+}
+
+/**
+ * Event distribution view
+ */
+export interface AuditEventDistributionRow {
+  event_type: string
+  event_category: AuditEventCategory
+  total_count: number
+  last_7_days: number
+  last_30_days: number
+}
+
+/**
+ * Entity history result
+ */
+export interface EntityHistoryEntry {
+  event_id: string
+  event_type: string
+  event_category: AuditEventCategory
+  actor_email: string | null
+  actor_role: string | null
+  payload: Json
+  old_values: Json | null
+  new_values: Json | null
+  occurred_at: string
+}
+
+/**
+ * User activity result
+ */
+export interface UserActivityEntry {
+  event_id: string
+  event_type: string
+  event_category: AuditEventCategory
+  entity_type: string
+  entity_id: string
+  entity_name: string | null
+  occurred_at: string
+}
+
+/**
+ * GDPR export result
+ */
+export interface GDPRExportResult {
+  user_id: string
+  exported_at: string
+  events: Array<{
+    event_type: string
+    entity_type: string
+    entity_id: string
+    payload: Json
+    occurred_at: string
+  }>
+}
+
+// Convenience exports for P4
+export type AuditEvent = AuditEventRow
+export type AuditDailyStats = AuditDailyStatsRow
+export type AuditEventDistribution = AuditEventDistributionRow
+export type SchemaTranslation = SchemaTranslationRow
 
 // Alias génériques pour compatibilité
 export type AnyRow = GenericRow

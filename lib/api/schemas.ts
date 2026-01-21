@@ -777,6 +777,128 @@ export const QuoteResponseSchema = z.object({
 });
 
 // ==========================================
+// P4: EVENT SOURCING & AUDIT SCHEMAS (SOTA 2026)
+// ==========================================
+
+/**
+ * Actor types for audit events
+ */
+export const AuditActorTypeEnum = z.enum([
+  "user",        // Authenticated user action
+  "system",      // System/application action
+  "webhook",     // External webhook callback
+  "cron",        // Scheduled job
+  "migration",   // Database migration
+  "admin",       // Admin override
+  "anonymous"    // Unauthenticated action
+]);
+
+/**
+ * Event categories for audit grouping
+ */
+export const AuditEventCategoryEnum = z.enum([
+  "auth",          // Authentication events
+  "property",      // Property management
+  "lease",         // Lease lifecycle
+  "signature",     // Signature events
+  "inspection",    // EDL events
+  "financial",     // Invoices, payments
+  "tenant",        // Tenant management
+  "ticket",        // Support tickets
+  "document",      // Document operations
+  "communication", // Messages, notifications
+  "admin",         // Admin operations
+  "gdpr",          // Privacy/GDPR events
+  "system"         // System events
+]);
+
+/**
+ * Record an audit event
+ */
+export const RecordAuditEventSchema = z.object({
+  event_type: z.string().min(3).max(100).regex(/^[a-z_]+\.[a-z_]+$/, "Format: entity.action"),
+  event_category: AuditEventCategoryEnum,
+  entity_type: z.string().min(1).max(50),
+  entity_id: z.string().uuid(),
+  entity_name: z.string().max(255).optional(),
+  parent_entity_type: z.string().max(50).optional(),
+  parent_entity_id: z.string().uuid().optional(),
+  payload: z.record(z.unknown()).default({}),
+  old_values: z.record(z.unknown()).optional(),
+  new_values: z.record(z.unknown()).optional(),
+});
+
+/**
+ * Query entity history
+ */
+export const GetEntityHistorySchema = z.object({
+  entity_type: z.string().min(1).max(50),
+  entity_id: z.string().uuid(),
+  limit: z.number().int().min(1).max(500).default(100),
+  offset: z.number().int().min(0).default(0),
+});
+
+/**
+ * Query user activity
+ */
+export const GetUserActivitySchema = z.object({
+  user_id: z.string().uuid(),
+  from_date: z.string().datetime().optional(),
+  to_date: z.string().datetime().optional(),
+  limit: z.number().int().min(1).max(500).default(100),
+});
+
+/**
+ * Query audit events with filters
+ */
+export const QueryAuditEventsSchema = z.object({
+  event_type: z.string().optional(),
+  event_category: AuditEventCategoryEnum.optional(),
+  entity_type: z.string().optional(),
+  entity_id: z.string().uuid().optional(),
+  actor_id: z.string().uuid().optional(),
+  from_date: z.string().datetime().optional(),
+  to_date: z.string().datetime().optional(),
+  limit: z.number().int().min(1).max(1000).default(100),
+  offset: z.number().int().min(0).default(0),
+  order_by: z.enum(["occurred_at", "created_at", "event_type"]).default("occurred_at"),
+  order_dir: z.enum(["asc", "desc"]).default("desc"),
+});
+
+/**
+ * GDPR data export request
+ */
+export const GDPRExportRequestSchema = z.object({
+  user_id: z.string().uuid(),
+  include_audit_events: z.boolean().default(true),
+  include_profile_data: z.boolean().default(true),
+  include_documents: z.boolean().default(false),
+  format: z.enum(["json", "csv"]).default("json"),
+});
+
+/**
+ * GDPR data erasure request
+ */
+export const GDPREraseRequestSchema = z.object({
+  user_id: z.string().uuid(),
+  reason: z.string().min(10).max(500),
+  confirm_erasure: z.literal(true, {
+    errorMap: () => ({ message: "Vous devez confirmer la suppression" }),
+  }),
+  preserve_legal_required: z.boolean().default(true),
+});
+
+/**
+ * Audit dashboard date range
+ */
+export const AuditDashboardQuerySchema = z.object({
+  from_date: z.string().datetime().optional(),
+  to_date: z.string().datetime().optional(),
+  categories: z.array(AuditEventCategoryEnum).optional(),
+  group_by: z.enum(["day", "week", "month"]).default("day"),
+});
+
+// ==========================================
 // Type exports
 // ==========================================
 
@@ -814,4 +936,13 @@ export type ChargeRegularizationInput = z.infer<typeof ChargeRegularizationSchem
 // P3 Work Order types
 export type CreateWorkOrderInput = z.infer<typeof CreateWorkOrderSchema>;
 export type QuoteResponseInput = z.infer<typeof QuoteResponseSchema>;
+
+// P4 Audit types
+export type RecordAuditEventInput = z.infer<typeof RecordAuditEventSchema>;
+export type GetEntityHistoryInput = z.infer<typeof GetEntityHistorySchema>;
+export type GetUserActivityInput = z.infer<typeof GetUserActivitySchema>;
+export type QueryAuditEventsInput = z.infer<typeof QueryAuditEventsSchema>;
+export type GDPRExportRequestInput = z.infer<typeof GDPRExportRequestSchema>;
+export type GDPREraseRequestInput = z.infer<typeof GDPREraseRequestSchema>;
+export type AuditDashboardQueryInput = z.infer<typeof AuditDashboardQuerySchema>;
 
