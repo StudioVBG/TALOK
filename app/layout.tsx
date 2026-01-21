@@ -2,7 +2,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import type { Metadata, Viewport } from "next";
-import { Inter, Dancing_Script, Great_Vibes, Pacifico, Satisfy } from "next/font/google";
 import "./globals.css";
 
 /**
@@ -15,30 +14,6 @@ function getMetadataBaseUrl(): URL {
   return new URL(normalizedUrl);
 }
 
-// Polices cursives pour les signatures
-const dancingScript = Dancing_Script({ 
-  subsets: ["latin"], 
-  variable: "--font-dancing-script",
-  display: "swap",
-});
-const greatVibes = Great_Vibes({ 
-  weight: "400",
-  subsets: ["latin"], 
-  variable: "--font-great-vibes",
-  display: "swap",
-});
-const pacifico = Pacifico({ 
-  weight: "400",
-  subsets: ["latin"], 
-  variable: "--font-pacifico",
-  display: "swap",
-});
-const satisfy = Satisfy({ 
-  weight: "400",
-  subsets: ["latin"], 
-  variable: "--font-satisfy",
-  display: "swap",
-});
 import "@/lib/utils/console-filter"; // Filtre les erreurs d'extensions
 import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/components/layout/navbar";
@@ -49,12 +24,6 @@ import { SubscriptionProvider } from "@/components/subscription/subscription-pro
 import { PostHogProvider } from "@/components/analytics/posthog-provider";
 import { AIProvider } from "@/components/providers/ai-provider";
 import { CapacitorProvider } from "@/components/providers/capacitor-provider";
-
-const inter = Inter({ 
-  subsets: ["latin"],
-  display: "swap", // Optimisation du chargement de la police
-  preload: true,
-});
 
 export const viewport: Viewport = {
   themeColor: [
@@ -195,7 +164,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <body className={`${inter.className} ${dancingScript.variable} ${greatVibes.variable} ${pacifico.variable} ${satisfy.variable}`}>
+      <head>
+        {/* Google Fonts - Chargement via <link> pour éviter les erreurs de build réseau */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Dancing+Script:wght@400..700&family=Great+Vibes&family=Pacifico&family=Satisfy&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <CapacitorProvider>
             <QueryProvider>
@@ -219,4 +197,3 @@ export default function RootLayout({
     </html>
   );
 }
-

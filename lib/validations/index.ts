@@ -697,8 +697,36 @@ export const chargeSchema = z.object({
   eligible_pinel: z.boolean().optional(),
 });
 
-// Partial schema for charge updates (pre-computed to avoid runtime .partial() issues)
-export const chargeUpdateSchema = chargeSchema.partial();
+// Partial schema for charge updates (defined explicitly to avoid ESM module resolution issues)
+export const chargeUpdateSchema = z.object({
+  property_id: z.string().uuid().optional(),
+  type: z.enum([
+    "eau",
+    "electricite",
+    "copro",
+    "taxe",
+    "ordures",
+    "assurance",
+    "travaux",
+    "energie",
+    "autre",
+  ]).optional(),
+  montant: z.number().positive().optional(),
+  periodicite: z.enum(["mensuelle", "trimestrielle", "annuelle"]).optional(),
+  refacturable_locataire: z.boolean().optional(),
+  categorie_charge: z
+    .enum([
+      "charges_locatives",
+      "charges_non_recuperables",
+      "taxes",
+      "travaux_proprietaire",
+      "travaux_locataire",
+      "assurances",
+      "energie",
+    ])
+    .optional(),
+  eligible_pinel: z.boolean().optional(),
+});
 
 // Validation des tickets
 export const ticketSchema = z.object({
