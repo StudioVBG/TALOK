@@ -366,20 +366,16 @@ export async function POST(
       actualMeterData = meter;
     }
 
+    // Check if a reading already exists for this EDL and meter - if so, update it
     const { data: existingReading } = await serviceClient
       .from("edl_meter_readings")
-      .select("id")
+      .select("id, photo_path")
       .eq("edl_id", edlId)
       .eq("meter_id", finalMeterId)
       .maybeSingle();
 
-    if (existingReading) {
-      console.warn(`[POST /api/edl/${edlId}/meter-readings] 409: Reading already exists`);
-      return NextResponse.json(
-        { error: "Un relevé existe déjà pour ce compteur. Utilisez PUT pour le modifier." },
-        { status: 409 }
-      );
-    }
+    // Flag to track if we're updating an existing reading
+    const isUpdate = !!existingReading;
 
     const recorderRole = profile.role === "owner" ? "owner" : "tenant";
     let finalPhotoPath = photoPath;
@@ -475,45 +471,93 @@ export async function POST(
       readingPayload.photo_taken_at = new Date().toISOString();
     }
 
-    console.log(`[POST /api/edl/${edlId}/meter-readings] Inserting reading:`, readingPayload);
-
     let finalReading;
-    try {
-      const { data: reading, error: insertError } = await serviceClient
-        .from("edl_meter_readings")
-        .insert({
-          ...readingPayload,
-          ocr_value: ocrResult.value,
-          ocr_confidence: ocrResult.confidence,
-          ocr_provider: "tesseract",
-          ocr_raw_text: ocrResult.rawText,
-          is_validated: isValidated,
-          validated_by: isValidated ? user.id : null,
-          validated_at: isValidated ? new Date().toISOString() : null,
-          validation_comment: comment,
-        })
-        .select(`*, meter:meters(*)`)
-        .single();
 
-      if (insertError) {
-        console.error(`[POST /api/edl/${edlId}/meter-readings] Insert Error:`, insertError);
-        if ((insertError as any).code === '42703') {
-          const { data: minimalReading, error: minimalError } = await serviceClient
-            .from("edl_meter_readings")
-            .insert(readingPayload)
-            .select(`*, meter:meters(*)`)
-            .single();
-          if (minimalError) throw minimalError;
-          finalReading = minimalReading;
-        } else {
-          throw insertError;
-        }
-      } else {
-        finalReading = reading;
+    if (isUpdate) {
+      // Update existing reading
+      console.log(`[POST /api/edl/${edlId}/meter-readings] Updating existing reading:`, existingReading.id);
+
+      const updatePayload: any = {
+        reading_value: finalValue,
+        reading_unit: readingUnit || actualMeterData.unit || "kWh",
+        is_validated: isValidated,
+        validated_by: isValidated ? user.id : null,
+        validated_at: isValidated ? new Date().toISOString() : null,
+        validation_comment: comment,
+      };
+
+      // Update photo only if a new one is provided
+      if (finalPhotoPath && finalPhotoPath !== existingReading.photo_path) {
+        updatePayload.photo_path = finalPhotoPath;
+        updatePayload.photo_taken_at = new Date().toISOString();
       }
-    } catch (err) {
-      console.error(`[POST /api/edl/${edlId}/meter-readings] Insertion Exception:`, err);
-      throw err;
+
+      // Update OCR data if available
+      if (ocrResult.value !== null) {
+        updatePayload.ocr_value = ocrResult.value;
+        updatePayload.ocr_confidence = ocrResult.confidence;
+        updatePayload.ocr_provider = "tesseract";
+        updatePayload.ocr_raw_text = ocrResult.rawText;
+      }
+
+      try {
+        const { data: updatedReading, error: updateError } = await serviceClient
+          .from("edl_meter_readings")
+          .update(updatePayload)
+          .eq("id", existingReading.id)
+          .select(`*, meter:meters(*)`)
+          .single();
+
+        if (updateError) {
+          console.error(`[POST /api/edl/${edlId}/meter-readings] Update Error:`, updateError);
+          throw updateError;
+        }
+        finalReading = updatedReading;
+      } catch (err) {
+        console.error(`[POST /api/edl/${edlId}/meter-readings] Update Exception:`, err);
+        throw err;
+      }
+    } else {
+      // Insert new reading
+      console.log(`[POST /api/edl/${edlId}/meter-readings] Inserting reading:`, readingPayload);
+
+      try {
+        const { data: reading, error: insertError } = await serviceClient
+          .from("edl_meter_readings")
+          .insert({
+            ...readingPayload,
+            ocr_value: ocrResult.value,
+            ocr_confidence: ocrResult.confidence,
+            ocr_provider: "tesseract",
+            ocr_raw_text: ocrResult.rawText,
+            is_validated: isValidated,
+            validated_by: isValidated ? user.id : null,
+            validated_at: isValidated ? new Date().toISOString() : null,
+            validation_comment: comment,
+          })
+          .select(`*, meter:meters(*)`)
+          .single();
+
+        if (insertError) {
+          console.error(`[POST /api/edl/${edlId}/meter-readings] Insert Error:`, insertError);
+          if ((insertError as any).code === '42703') {
+            const { data: minimalReading, error: minimalError } = await serviceClient
+              .from("edl_meter_readings")
+              .insert(readingPayload)
+              .select(`*, meter:meters(*)`)
+              .single();
+            if (minimalError) throw minimalError;
+            finalReading = minimalReading;
+          } else {
+            throw insertError;
+          }
+        } else {
+          finalReading = reading;
+        }
+      } catch (err) {
+        console.error(`[POST /api/edl/${edlId}/meter-readings] Insertion Exception:`, err);
+        throw err;
+      }
     }
 
     if (!finalReading) throw new Error("Erreur lors de l'enregistrement du relevé");

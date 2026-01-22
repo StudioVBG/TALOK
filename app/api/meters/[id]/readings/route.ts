@@ -187,16 +187,65 @@ export async function POST(
       );
     }
 
-    // Verify meter exists
+    // Verify meter exists and get its unit
     const { data: meter, error: meterError } = await supabase
       .from("meters")
-      .select("id, property_id")
+      .select("id, property_id, type, unit")
       .eq("id", meterId)
       .single();
 
     if (meterError || !meter) {
       console.log(`[POST /api/meters/${meterId}/readings] 404: Compteur non trouvé`);
       return NextResponse.json({ error: "Compteur non trouvé" }, { status: 404 });
+    }
+
+    // Check if a reading already exists for this meter and date (UNIQUE constraint)
+    const { data: existingReading } = await supabase
+      .from("meter_readings")
+      .select("id, reading_value, unit, photo_url")
+      .eq("meter_id", meterId)
+      .eq("reading_date", readingDate)
+      .maybeSingle();
+
+    if (existingReading) {
+      console.log(`[POST /api/meters/${meterId}/readings] Reading already exists for date ${readingDate}, updating...`);
+      // Update existing reading instead of inserting
+      const updateData: Record<string, any> = {
+        reading_value: readingValue,
+        source: photoFile ? "ocr" : "manual",
+      };
+
+      let photoUrl: string | null = existingReading.photo_url;
+
+      // Upload new photo if provided
+      if (photoFile) {
+        const fileName = `meters/${meterId}/${Date.now()}_${photoFile.name}`;
+        const { data: uploadData, error: uploadError } =
+          await supabase.storage.from("documents").upload(fileName, photoFile, {
+            contentType: photoFile.type,
+            upsert: false,
+          });
+
+        if (!uploadError && uploadData) {
+          photoUrl = uploadData.path;
+          updateData.photo_url = photoUrl;
+        }
+      }
+
+      const { data: updatedReading, error: updateError } = await supabase
+        .from("meter_readings")
+        .update(updateData)
+        .eq("id", existingReading.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error(`[POST /api/meters/${meterId}/readings] Update Error:`, updateError);
+        throw updateError;
+      }
+
+      console.log(`[POST /api/meters/${meterId}/readings] Updated existing reading:`, updatedReading?.id);
+      return NextResponse.json({ reading: updatedReading });
     }
 
     let photoUrl: string | null = null;
@@ -217,13 +266,16 @@ export async function POST(
       photoUrl = uploadData.path;
     }
 
+    // Determine unit from meter or default based on type
+    const meterUnit = meter.unit || (meter.type === 'water' || meter.type === 'gas' ? 'm3' : 'kwh');
+
     // Créer le relevé - using correct column names from meter_readings table schema
     const { data: reading, error } = await supabase
       .from("meter_readings")
       .insert({
         meter_id: meterId,
         reading_value: readingValue,
-        unit: 'kWh', // Default unit from schema
+        unit: meterUnit,
         reading_date: readingDate,
         photo_url: photoUrl,
         source: photoFile ? "ocr" : "manual",
