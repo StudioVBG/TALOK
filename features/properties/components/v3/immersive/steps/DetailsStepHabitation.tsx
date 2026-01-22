@@ -288,8 +288,8 @@ export function DetailsStepHabitation() {
                 <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Obligatoire</Badge>
               </div>
               <div className="space-y-2">
-                <Select 
-                  value={(formData as any).chauffage_type || ""} 
+                <Select
+                  value={(formData as any).chauffage_type || ""}
                   onValueChange={(v) => updateFormData({ chauffage_type: v })}
                 >
                   <SelectTrigger className="h-10"><SelectValue placeholder="Type..." /></SelectTrigger>
@@ -300,20 +300,30 @@ export function DetailsStepHabitation() {
                   </SelectContent>
                 </Select>
                 {(formData as any).chauffage_type && (formData as any).chauffage_type !== "aucun" && (
-                  <Select 
-                    value={(formData as any).chauffage_energie || ""} 
-                    onValueChange={(v) => updateFormData({ chauffage_energie: v })}
-                  >
-                    <SelectTrigger className="h-10"><SelectValue placeholder="Énergie..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="electricite">Électricité</SelectItem>
-                      <SelectItem value="gaz">Gaz</SelectItem>
-                      <SelectItem value="fioul">Fioul</SelectItem>
-                      <SelectItem value="bois">Bois</SelectItem>
-                      <SelectItem value="reseau_urbain">Réseau urbain</SelectItem>
-                      <SelectItem value="autre">Autre</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">Énergie</span>
+                      {!(formData as any).chauffage_energie && (
+                        <Badge variant="destructive" className="text-[9px] px-1 py-0 animate-pulse">Requis</Badge>
+                      )}
+                    </div>
+                    <Select
+                      value={(formData as any).chauffage_energie || ""}
+                      onValueChange={(v) => updateFormData({ chauffage_energie: v })}
+                    >
+                      <SelectTrigger className={`h-10 ${!(formData as any).chauffage_energie ? 'border-orange-400 bg-orange-50/50 dark:bg-orange-950/20' : ''}`}>
+                        <SelectValue placeholder="Sélectionnez l'énergie..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="electricite">Électricité</SelectItem>
+                        <SelectItem value="gaz">Gaz</SelectItem>
+                        <SelectItem value="fioul">Fioul</SelectItem>
+                        <SelectItem value="bois">Bois</SelectItem>
+                        <SelectItem value="reseau_urbain">Réseau urbain</SelectItem>
+                        <SelectItem value="autre">Autre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </div>
             </div>

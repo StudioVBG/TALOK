@@ -8,7 +8,8 @@ import { CircularProgress } from "@/components/ui/circular-progress";
 import { usePropertyWizardStore, WizardStep } from "@/features/properties/stores/wizard-store";
 import {
   Check, ChevronLeft, ChevronDown, ChevronUp, Save, Sparkles, Home, MapPin,
-  Settings2, LayoutGrid, Camera, FileCheck, Clock, Building, Star, Wrench, CalendarDays
+  Settings2, LayoutGrid, Camera, FileCheck, Clock, Building, Star, Wrench, CalendarDays,
+  AlertCircle
 } from "lucide-react";
 import { PreviewCard } from "./PreviewCard";
 import { cn } from "@/lib/utils";
@@ -55,7 +56,7 @@ export function ImmersiveWizardLayout({
   onNextStep,
   onPrevStep,
 }: ImmersiveWizardLayoutProps) {
-  const { syncStatus, prevStep, nextStep, formData, rooms, photos, currentStep } = usePropertyWizardStore();
+  const { syncStatus, lastError, prevStep, nextStep, formData, rooms, photos, currentStep } = usePropertyWizardStore();
 
   // SOTA 2026: État pour le panneau mobile dépliable
   const [mobileStepsExpanded, setMobileStepsExpanded] = useState(false);
@@ -178,12 +179,26 @@ export function ImmersiveWizardLayout({
             )}
 
             {/* Sync Status */}
-            <div className="mt-auto pt-2">
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-background/50 p-2 rounded-md border">
+            <div className="mt-auto pt-2 space-y-2">
+              {/* SOTA 2026: Afficher les erreurs de sauvegarde */}
+              {syncStatus === 'error' && lastError && (
+                <div className="flex items-start gap-1.5 text-[11px] text-destructive bg-destructive/10 p-2 rounded-md border border-destructive/20">
+                  <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span className="line-clamp-2">{lastError}</span>
+                </div>
+              )}
+              <div className={cn(
+                "flex items-center gap-1.5 text-[11px] p-2 rounded-md border",
+                syncStatus === 'error'
+                  ? "text-destructive bg-destructive/5 border-destructive/20"
+                  : "text-muted-foreground bg-background/50"
+              )}>
                 {syncStatus === 'saving' ? (
                   <><Save className="h-3 w-3 animate-pulse text-primary" />Sauvegarde...</>
                 ) : syncStatus === 'saved' ? (
                   <><Check className="h-3 w-3 text-green-500" />Sauvegardé</>
+                ) : syncStatus === 'error' ? (
+                  <><AlertCircle className="h-3 w-3 text-destructive" />Erreur</>
                 ) : (
                   <><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />Prêt</>
                 )}

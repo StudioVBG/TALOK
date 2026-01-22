@@ -556,9 +556,9 @@ export const usePropertyWizardStore = create<WizardState>()(
       
     } catch (error: unknown) {
       console.error('[WizardStore] Erreur import photos:', error);
-      set({ 
+      set({
         photoImportStatus: 'error',
-        lastError: error.message 
+        lastError: error instanceof Error ? error.message : 'Erreur import photos'
       });
     }
   },
