@@ -8,7 +8,21 @@ import { stripe, formatAmountFromStripe } from "@/lib/stripe";
 import { sendPaymentConfirmation } from "@/lib/emails";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { z } from "zod";
 
+/**
+ * Zod schema for payment confirmation
+ * @version 2026-01-22 - Added Zod validation for security
+ */
+const confirmPaymentSchema = z.object({
+  paymentIntentId: z.string().min(1, "paymentIntentId requis").regex(/^pi_/, "Format paymentIntentId invalide"),
+  invoiceId: z.string().uuid("invoiceId doit être un UUID valide"),
+});
+
+/**
+ * POST /api/payments/confirm - Confirmer un paiement Stripe
+ * @version 2026-01-22 - Added Zod validation
+ */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -40,15 +54,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { paymentIntentId, invoiceId } = body;
+    // Parse and validate request body with Zod
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Corps JSON invalide" }, { status: 400 });
+    }
 
-    if (!paymentIntentId || !invoiceId) {
+    const parseResult = confirmPaymentSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "paymentIntentId et invoiceId requis" },
+        { error: "Validation échouée", details: parseResult.error.flatten() },
         { status: 400 }
       );
     }
+
+    const { paymentIntentId, invoiceId } = parseResult.data;
 
     // Récupérer le profil utilisateur
     const { data: profile } = await supabase
