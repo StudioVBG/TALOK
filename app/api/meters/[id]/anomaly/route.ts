@@ -6,11 +6,16 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/meters/[id]/anomaly - Signaler une anomalie de compteur (P1-3)
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  // Next.js 15: params is now a Promise
+  const { id: meterId } = await params;
+
   try {
     const supabase = await createClient();
     const {
@@ -43,7 +48,7 @@ export async function POST(
           )
         )
       `)
-      .eq("id", params.id as any)
+      .eq("id", meterId as any)
       .single();
 
     if (!meter) {
@@ -77,7 +82,7 @@ export async function POST(
     const { data: recentReadings } = await supabase
       .from("meter_readings")
       .select("reading_value, reading_date")
-      .eq("meter_id", params.id as any)
+      .eq("meter_id", meterId as any)
       .order("reading_date", { ascending: false })
       .limit(3);
 
@@ -96,7 +101,7 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "Energy.AnomalyDetected",
       payload: {
-        meter_id: params.id,
+        meter_id: meterId,
         reading_value,
         expected_range,
         description,
@@ -110,7 +115,7 @@ export async function POST(
       user_id: user.id,
       action: "anomaly_detected",
       entity_type: "meter",
-      entity_id: params.id,
+      entity_id: meterId,
       metadata: {
         reading_value,
         expected_range,

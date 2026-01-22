@@ -6,11 +6,16 @@ import { NextResponse } from "next/server";
 
 /**
  * GET /api/meters/[id]/history - Récupérer l'historique des relevés d'un compteur
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  // Next.js 15: params is now a Promise
+  const { id: meterId } = await params;
+
   try {
     const supabase = await createClient();
     const {
@@ -20,8 +25,6 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-
-    const meterId = params.id;
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "12");
     const startDate = searchParams.get("start_date");

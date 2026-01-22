@@ -2,7 +2,145 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+// Schema for UUID validation
+const uuidSchema = z.string().uuid("Invalid meter ID format");
+
+/**
+ * GET /api/meters/[id]/readings - Récupérer les relevés d'un compteur
+ *
+ * @version 2026-01-22 - Added GET method for fetching meter readings
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: meterId } = await params;
+  console.log(`[GET /api/meters/${meterId}/readings] Entering`);
+
+  try {
+    // Validate meter ID format
+    const parseResult = uuidSchema.safeParse(meterId);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: "Format d'ID compteur invalide" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      console.log(`[GET /api/meters/${meterId}/readings] 401: Non authentifié`);
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    // Get user profile for authorization
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
+    // Verify meter exists and get property_id
+    const { data: meter, error: meterError } = await supabase
+      .from("meters")
+      .select("id, property_id, type, meter_number")
+      .eq("id", meterId)
+      .single();
+
+    if (meterError || !meter) {
+      console.log(`[GET /api/meters/${meterId}/readings] 404: Compteur non trouvé`);
+      return NextResponse.json({ error: "Compteur non trouvé" }, { status: 404 });
+    }
+
+    // Authorization check (owner, tenant with active lease, or admin)
+    const isAdmin = profile.role === "admin";
+
+    if (!isAdmin) {
+      // Check if owner
+      const { data: property } = await supabase
+        .from("properties")
+        .select("owner_id")
+        .eq("id", meter.property_id)
+        .single();
+
+      const isOwner = property && property.owner_id === profile.id;
+
+      if (!isOwner) {
+        // Check if tenant with active lease
+        const { data: signer } = await supabase
+          .from("lease_signers")
+          .select("id, leases!inner(property_id, statut)")
+          .eq("profile_id", profile.id)
+          .eq("leases.property_id", meter.property_id)
+          .eq("leases.statut", "active")
+          .maybeSingle();
+
+        if (!signer) {
+          return NextResponse.json(
+            { error: "Accès non autorisé à ce compteur" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // Parse query params for filtering
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const startDate = searchParams.get("start_date");
+    const endDate = searchParams.get("end_date");
+
+    // Fetch readings
+    let query = supabase
+      .from("meter_readings")
+      .select("*")
+      .eq("meter_id", meterId)
+      .order("reading_date", { ascending: false })
+      .limit(Math.min(limit, 100)); // Cap at 100
+
+    if (startDate) {
+      query = query.gte("reading_date", startDate);
+    }
+    if (endDate) {
+      query = query.lte("reading_date", endDate);
+    }
+
+    const { data: readings, error: readingsError } = await query;
+
+    if (readingsError) {
+      console.error(`[GET /api/meters/${meterId}/readings] DB Error:`, readingsError);
+      return NextResponse.json(
+        { error: readingsError.message },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[GET /api/meters/${meterId}/readings] Success: ${readings?.length || 0} readings`);
+    return NextResponse.json({
+      meter_id: meterId,
+      meter,
+      readings: readings || [],
+      count: readings?.length || 0,
+    });
+  } catch (error: unknown) {
+    console.error(`[GET /api/meters/${meterId}/readings] Fatal Error:`, error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
+  }
+}
 
 /**
  * POST /api/meters/[id]/readings - Ajouter un relevé de compteur
