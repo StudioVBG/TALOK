@@ -34,7 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // Types
-interface CashReceiptFlowProps {
+export interface CashReceiptFlowProps {
   invoiceId: string;
   amount: number;
   tenantName: string;

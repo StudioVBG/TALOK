@@ -156,10 +156,43 @@ export type LeaseStatus =
   | "terminated"              // Terminé
   | "archived";               // Archivé
 
+/**
+ * Statut d'une facture dans le cycle de vie
+ *
+ * @remarks
+ * - `draft`: Brouillon, non envoyée
+ * - `sent`: Envoyée au locataire, en attente de paiement
+ * - `paid`: Payée intégralement
+ * - `late`: En retard de paiement
+ *
+ * @see invoices.statut en base de données
+ */
 export type InvoiceStatus = "draft" | "sent" | "paid" | "late";
 
-// ✅ SOTA 2026: Tous les moyens de paiement synchronisés avec la DB
-// Synchronisé avec: payments_moyen_check dans 20241129000002_cash_payments.sql
+/**
+ * Moyens de paiement supportés par l'application
+ * Synchronisé avec la contrainte CHECK en base de données
+ *
+ * @remarks
+ * - `cb`: Carte bancaire (Stripe)
+ * - `virement`: Virement bancaire manuel
+ * - `prelevement`: Prélèvement SEPA automatique
+ * - `especes`: Paiement en espèces (nécessite reçu signé - CashReceiptFlow)
+ * - `cheque`: Chèque bancaire
+ * - `autre`: Autre moyen (à préciser dans les notes)
+ *
+ * @example
+ * ```typescript
+ * const payment: Payment = {
+ *   moyen: "especes", // Déclenche le flux CashReceiptFlow
+ *   // ...
+ * };
+ * ```
+ *
+ * @see payments_moyen_check dans 20241129000002_cash_payments.sql
+ * @see CashReceiptFlow pour le flux espèces
+ * @since SOTA 2026
+ */
 export type PaymentMethod =
   | "cb"           // Carte bancaire
   | "virement"     // Virement bancaire
@@ -168,6 +201,16 @@ export type PaymentMethod =
   | "cheque"       // Chèque bancaire
   | "autre";       // Autre moyen
 
+/**
+ * Statut d'un paiement dans le cycle de traitement
+ *
+ * @remarks
+ * - `pending`: En attente de confirmation (Stripe webhook, validation manuelle)
+ * - `succeeded`: Paiement confirmé et validé
+ * - `failed`: Paiement échoué (rejet, erreur technique)
+ *
+ * @see payments.statut en base de données
+ */
 export type PaymentStatus = "pending" | "succeeded" | "failed";
 
 export type TicketPriority = "basse" | "normale" | "haute";
