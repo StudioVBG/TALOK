@@ -480,26 +480,144 @@ flowchart TB
 
 - [x] Routes meters analysées
 - [x] Méthode GET ajoutée à `/api/meters/[id]/readings`
-- [x] Pattern params Promise corrigé (4 routes)
+- [x] Pattern params Promise corrigé (4 routes initiales)
 - [x] Schéma Supabase documenté
 - [x] Patterns d'auth documentés
-- [ ] Migration complète params (80 routes restantes)
-- [ ] Tests E2E ajoutés
+- [x] **Migration complète params (118 routes migrées)**
+- [x] **Validation Zod ajoutée aux routes critiques (4 routes)**
+- [x] **Tests E2E créés pour endpoints meters et payments**
 - [ ] Monitoring/alerting configuré
 
 ---
 
-## FICHIERS MODIFIES
+## RESUME DES CORRECTIONS APPLIQUEES
+
+### Phase 1: Migration Next.js 15 Promise Params (118 routes)
 
 ```
-app/api/meters/[id]/readings/route.ts  <- GET ajouté + Promise params
-app/api/meters/[id]/history/route.ts   <- Promise params
-app/api/meters/[id]/anomaly/route.ts   <- Promise params
-app/api/meters/[id]/photo-ocr/route.ts <- Promise params
-docs/audit/DIAGNOSTIC-API-2026-01-22.md <- Ce rapport
+Commit: 22cbc41
+Files changed: 118
+Insertions: +975
+Deletions: -539
+```
+
+**Routes par domaine:**
+- `/api/admin/*` - 16 routes
+- `/api/applications/*` - 4 routes
+- `/api/charges/*` - 1 route
+- `/api/chat/*` - 1 route
+- `/api/documents/*` - 4 routes
+- `/api/edl-media/*` - 1 route
+- `/api/exports/*` - 2 routes
+- `/api/house-rules/*` - 1 route
+- `/api/indexations/*` - 2 routes
+- `/api/inspections/*` - 2 routes
+- `/api/invites/*` - 1 route
+- `/api/invoices/*` - 5 routes
+- `/api/leases/*` - 26 routes
+- `/api/me/*` - 1 route
+- `/api/payments/*` - 1 route
+- `/api/photos/*` - 1 route
+- `/api/properties/*` - 20 routes
+- `/api/quotes/*` - 2 routes
+- `/api/signature/*` - 2 routes
+- `/api/signatures/*` - 3 routes
+- `/api/tenant-applications/*` - 1 route
+- `/api/tenant/*` - 1 route
+- `/api/tickets/*` - 8 routes
+- `/api/unified-chat/*` - 2 routes
+- `/api/units/*` - 6 routes
+- `/api/work-orders/*` - 4 routes
+
+### Phase 2: Validation Zod (4 routes critiques)
+
+```
+Commit: 0802b33
+Files changed: 4
+```
+
+| Route | Validation Ajoutée |
+|-------|-------------------|
+| `/api/payments/confirm` | `paymentIntentId` (pi_* format), `invoiceId` (UUID) |
+| `/api/payments/checkout` | `invoiceId` (UUID) |
+| `/api/payments/calculate-fees` | `amount` (positive number, max 1M), `include_deposit` |
+| `/api/meters/[id]/anomaly` | `id` (UUID), `reading_value` (positive), `description` (max 500) |
+
+### Phase 3: Tests E2E
+
+```
+File: tests/e2e/meters-api.spec.ts
+```
+
+**Couverture des tests:**
+- `GET /api/meters/[id]/readings` - 6 tests (auth, validation, pagination, filtering)
+- `POST /api/meters/[id]/readings` - 5 tests (auth, validation, edge cases)
+- `GET /api/meters/[id]/history` - 3 tests (auth, response structure, params)
+- `POST /api/meters/[id]/anomaly` - 5 tests (auth, Zod validation, success)
+- `GET /api/payments/calculate-fees` - 5 tests (validation, response)
+- `POST /api/payments/checkout` - 2 tests (auth, validation)
+- `POST /api/payments/confirm` - 2 tests (auth, format validation)
+
+---
+
+## FICHIERS MODIFIES (Total)
+
+```
+# Phase 1: Migration params (118 fichiers)
+app/api/admin/**/*.ts
+app/api/applications/**/*.ts
+app/api/charges/**/*.ts
+app/api/chat/**/*.ts
+app/api/documents/**/*.ts
+app/api/edl-media/**/*.ts
+app/api/exports/**/*.ts
+app/api/house-rules/**/*.ts
+app/api/indexations/**/*.ts
+app/api/inspections/**/*.ts
+app/api/invites/**/*.ts
+app/api/invoices/**/*.ts
+app/api/leases/**/*.ts
+app/api/me/**/*.ts
+app/api/meters/**/*.ts
+app/api/payments/**/*.ts
+app/api/photos/**/*.ts
+app/api/properties/**/*.ts
+app/api/quotes/**/*.ts
+app/api/signature/**/*.ts
+app/api/signatures/**/*.ts
+app/api/tenant-applications/**/*.ts
+app/api/tenant/**/*.ts
+app/api/tickets/**/*.ts
+app/api/unified-chat/**/*.ts
+app/api/units/**/*.ts
+app/api/work-orders/**/*.ts
+
+# Phase 2: Validation Zod (4 fichiers)
+app/api/payments/confirm/route.ts
+app/api/payments/checkout/route.ts
+app/api/payments/calculate-fees/route.ts
+app/api/meters/[id]/anomaly/route.ts
+
+# Phase 3: Tests E2E (1 fichier)
+tests/e2e/meters-api.spec.ts
+
+# Documentation
+docs/audit/DIAGNOSTIC-API-2026-01-22.md
 ```
 
 ---
 
+## METRIQUES FINALES
+
+| Métrique | Avant | Après |
+|----------|-------|-------|
+| Routes avec params Promise | ~50 | 168 (100%) |
+| Routes avec validation Zod | 69 | 73 (+4) |
+| Tests E2E endpoints API | 0 | 28 |
+| Erreurs 500 connues | 4 | 0 |
+
+---
+
 *Rapport généré le 2026-01-22 - SOTA 2026*
-*Audit réalisé par Claude (Opus 4.5)*
+*Audit complet réalisé par Claude (Opus 4.5)*
+*Commits: 5abbbcc, 22cbc41, 0802b33*
