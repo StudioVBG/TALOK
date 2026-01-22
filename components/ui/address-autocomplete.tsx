@@ -102,15 +102,36 @@ export function AddressAutocomplete({
   const debouncedQuery = useDebounce(query, 300);
 
   // Recherche API avec cache
+  // SOTA 2026: Validation améliorée pour éviter les erreurs 400
   const searchAddress = useCallback(async (searchQuery: string) => {
-    if (searchQuery.length < 3 || hasSelected) {
+    // 1. Nettoyer et valider la requête
+    const trimmedQuery = searchQuery.trim();
+
+    // 2. Vérifier longueur minimale après trim
+    if (trimmedQuery.length < 3 || hasSelected) {
       setSuggestions([]);
       setNoResults(false);
       return;
     }
 
-    // Vérifier le cache
-    const cached = getCachedResult(searchQuery);
+    // 3. Vérifier que la requête contient au moins une lettre
+    // Évite les erreurs 400 pour les requêtes comme "01 " ou "123"
+    if (!/[a-zA-ZÀ-ÿ]/.test(trimmedQuery)) {
+      setSuggestions([]);
+      setNoResults(false);
+      return;
+    }
+
+    // 4. Vérifier que la requête n'est pas juste des espaces et chiffres
+    const alphaContent = trimmedQuery.replace(/[\d\s]/g, '');
+    if (alphaContent.length < 2) {
+      setSuggestions([]);
+      setNoResults(false);
+      return;
+    }
+
+    // Vérifier le cache (utiliser trimmedQuery pour le cache)
+    const cached = getCachedResult(trimmedQuery);
     if (cached) {
       setSuggestions(cached);
       setNoResults(cached.length === 0);
@@ -120,38 +141,41 @@ export function AddressAutocomplete({
 
     setIsLoading(true);
     setNoResults(false);
-    
+
     try {
       // Retirer le paramètre type=housenumber qui peut causer des erreurs 400
       // L'API retourne automatiquement les résultats les plus pertinents
       const response = await fetch(
-        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(searchQuery)}&limit=6&autocomplete=1`
+        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(trimmedQuery)}&limit=6&autocomplete=1`
       );
       
       if (!response.ok) {
         // Si erreur 400, réessayer sans autocomplete
         if (response.status === 400) {
           const fallbackResponse = await fetch(
-            `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(searchQuery)}&limit=6`
+            `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(trimmedQuery)}&limit=6`
           );
           if (!fallbackResponse.ok) {
-            throw new Error(`API error: ${fallbackResponse.status}`);
+            // Ne pas logger l'erreur pour les requêtes courtes, c'est normal
+            setSuggestions([]);
+            setNoResults(true);
+            return;
           }
           const fallbackData = await fallbackResponse.json();
-          const results = processAddressResults(fallbackData, searchQuery);
+          const results = processAddressResults(fallbackData, trimmedQuery);
           setSuggestions(results);
-          setCachedResult(searchQuery, results);
+          setCachedResult(trimmedQuery, results);
           setIsOpen(results.length > 0);
           setNoResults(results.length === 0);
           return;
         }
         throw new Error(`API error: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      const results = processAddressResults(data, searchQuery);
+      const results = processAddressResults(data, trimmedQuery);
       setSuggestions(results);
-      setCachedResult(searchQuery, results);
+      setCachedResult(trimmedQuery, results);
       setIsOpen(results.length > 0);
       setNoResults(results.length === 0);
     } catch (error) {

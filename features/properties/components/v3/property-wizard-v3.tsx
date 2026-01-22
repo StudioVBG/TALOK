@@ -416,27 +416,46 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
   };
 
   // Validation pour activer le bouton "Continuer"
+  // SOTA 2026: Validation améliorée avec feedback détaillé
   const canGoNext = () => {
-    if (syncStatus === 'saving') return false;
-    
+    // Permettre la navigation même pendant la sauvegarde (optimistic UI)
+    // Seulement bloquer si erreur critique
+    // Note: syncStatus === 'saving' ne bloque plus pour éviter les blocages
+
     switch (currentStep) {
       case 'type_bien': return !!formData.type;
-      case 'address': 
-        return !!formData.adresse_complete && 
-               formData.adresse_complete.length > 5 && 
-               !!formData.code_postal && formData.code_postal !== "00000" && 
+      case 'address':
+        return !!formData.adresse_complete &&
+               formData.adresse_complete.length > 5 &&
+               !!formData.code_postal && formData.code_postal !== "00000" &&
                !!formData.ville && formData.ville !== "Ville à définir";
-      case 'details': 
+      case 'details':
         const hasSurface = (formData.surface_habitable_m2 || formData.surface || 0) > 0;
         const hasLoyer = (formData.loyer_hc || 0) > 0;
         const hasChauffage = !!(formData as any).chauffage_type;
         const needsChauffageEnergie = (formData as any).chauffage_type && (formData as any).chauffage_type !== "aucun";
         const hasChauffageEnergie = needsChauffageEnergie ? !!(formData as any).chauffage_energie : true;
         const hasEauChaude = !!(formData as any).eau_chaude_type;
-        
+
+        // Debug: Log des champs manquants pour faciliter le diagnostic
+        if (process.env.NODE_ENV === 'development') {
+          const missing: string[] = [];
+          if (!hasSurface) missing.push('Surface');
+          if (!hasLoyer) missing.push('Loyer HC');
+          if (!hasChauffage) missing.push('Type chauffage');
+          if (!hasChauffageEnergie) missing.push('Énergie chauffage');
+          if (!hasEauChaude) missing.push('Eau chaude');
+          if (missing.length > 0) {
+            console.log('[Wizard] Champs manquants étape details:', missing.join(', '));
+          }
+        }
+
         return hasSurface && hasLoyer && hasChauffage && hasChauffageEnergie && hasEauChaude;
+      case 'building_config': return true; // SOTA 2026: Étape immeuble
       case 'rooms': return true;
       case 'photos': return true;
+      case 'features': return true;
+      case 'publish': return true;
       case 'recap': return true;
       default: return true;
     }
