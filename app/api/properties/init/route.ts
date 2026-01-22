@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { z } from "zod";
 import { generateCode } from "@/lib/helpers/code-generator";
 
@@ -73,12 +74,21 @@ export async function POST(request: Request) {
 
     const { type, adresse, cp, ville } = validation.data;
 
-    // 4. Générer un code unique pour la propriété
+    // 4. Get service client for bypassing RLS on insert
+    let serviceClient;
+    try {
+      serviceClient = getServiceClient();
+    } catch (err) {
+      console.error("[POST /api/properties/init] Service client error:", err);
+      return NextResponse.json({ error: "Configuration serveur manquante" }, { status: 500 });
+    }
+
+    // 5. Générer un code unique pour la propriété
     let uniqueCode: string;
     let attempts = 0;
     do {
       uniqueCode = await generateCode();
-      const { data: existing } = await supabase
+      const { data: existing } = await serviceClient
         .from("properties")
         .select("id")
         .eq("unique_code", uniqueCode)
@@ -86,14 +96,15 @@ export async function POST(request: Request) {
       if (!existing) break;
       attempts++;
       if (attempts >= 10) {
+        console.error("[POST /api/properties/init] Failed to generate unique code after 10 attempts");
         return NextResponse.json({ error: "Impossible de générer un code unique" }, { status: 500 });
       }
     } while (true);
 
-    // 5. Créer le brouillon (Draft) avec un minimum de données
+    // 6. Créer le brouillon (Draft) avec un minimum de données
     // On utilise des valeurs par défaut sûres pour éviter les erreurs de contraintes
     const departement = getDepartementFromCP(cp);
-    
+
     const insertData: Record<string, any> = {
       owner_id: profile.id,
       type: type, // Correspond au champ 'type' de la table properties
@@ -109,10 +120,12 @@ export async function POST(request: Request) {
       // On initialise les compteurs à 0
       loyer_hc: 0,
       charges_mensuelles: 0,
-      // depot_garantie n'existe pas dans la table properties (c'est dans leases)
     };
 
-    const { data: property, error: insertError } = await supabase
+    console.log("[POST /api/properties/init] Inserting property:", { type, owner_id: profile.id });
+
+    // Use service client to bypass RLS for initial insert
+    const { data: property, error: insertError } = await serviceClient
       .from("properties")
       .insert(insertData)
       .select()
@@ -130,7 +143,7 @@ export async function POST(request: Request) {
 
     // ✅ SOTA 2026: Émettre une notification pour le brouillon créé
     try {
-      await supabase.from("outbox").insert({
+      await serviceClient.from("outbox").insert({
         event_type: "Property.DraftCreated",
         payload: {
           property_id: property.id,
@@ -140,8 +153,10 @@ export async function POST(request: Request) {
       });
     } catch (notifError) {
       // Ne pas bloquer si la notification échoue
-      console.warn("Notification Property.DraftCreated non envoyée:", notifError);
+      console.warn("[POST /api/properties/init] Notification non envoyée:", notifError);
     }
+
+    console.log("[POST /api/properties/init] Success:", property.id);
 
     return NextResponse.json({ 
       success: true, 
@@ -149,9 +164,11 @@ export async function POST(request: Request) {
       status: "draft"
     });
 
-  } catch (error) {
-    console.error("Erreur inattendue:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[POST /api/properties/init] Unexpected error:", error);
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : "Erreur serveur inattendue"
+    }, { status: 500 });
   }
 }
 
