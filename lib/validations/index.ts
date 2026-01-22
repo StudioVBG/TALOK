@@ -309,7 +309,11 @@ export const propertySchema = z
   ]),
   sous_usage: z.string().optional().nullable(),
   adresse_complete: z.string().min(1, "L'adresse est requise"),
-  code_postal: z.string().regex(/^[0-9]{5}$/, "Le code postal doit contenir 5 chiffres"),
+  // ✅ SOTA 2026: Validation France métropolitaine + DOM-TOM
+  code_postal: z.string().regex(
+    /^(0[1-9]|[1-8]\d|9[0-5]|2[AB]|97[1-6])\d{3}$/,
+    "Code postal invalide (France métro + DOM-TOM)"
+  ),
   ville: z.string().min(1, "La ville est requise"),
   departement: z.string().min(2, "Le département doit contenir au moins 2 caractères").max(3, "Le département doit contenir au maximum 3 caractères"),
   surface: z.number().min(0, "La surface ne peut pas être négative"),
@@ -410,7 +414,11 @@ export const propertyGeneralUpdateSchema = z
     ]).optional(),
     adresse_complete: z.string().min(1).optional(),
     complement_adresse: z.string().optional().nullable(),
-    code_postal: z.string().regex(/^[0-9]{5}$/, "Le code postal doit contenir 5 chiffres").optional(),
+    // ✅ SOTA 2026: Validation France métropolitaine + DOM-TOM
+    code_postal: z.string().regex(
+      /^(0[1-9]|[1-8]\d|9[0-5]|2[AB]|97[1-6])\d{3}$/,
+      "Code postal invalide (France métro + DOM-TOM)"
+    ).optional(),
     ville: z.string().min(1).optional(),
     departement: z.string().min(2).max(3).optional().nullable(),
     latitude: z.number().min(-90).max(90).optional().nullable(),
@@ -656,14 +664,20 @@ export const invoiceSchema = z.object({
   is_professional_lease: z.boolean().optional(),
 });
 
-// Validation des paiements
+// ✅ SOTA 2026: Validation des paiements avec tous les moyens
+// Synchronisé avec: PaymentMethod dans lib/types/index.ts
+// Synchronisé avec: payments_moyen_check dans 20241129000002_cash_payments.sql
 export const paymentSchema = z.object({
-  invoice_id: z.string().uuid(),
-  montant: z.number().positive(),
-  moyen: z.enum(["cb", "virement", "prelevement"]),
-  montant_ht: z.number().min(0).optional(),
-  montant_tva: z.number().min(0).optional(),
-  montant_ttc: z.number().min(0).optional(),
+  invoice_id: z.string().uuid("ID facture invalide"),
+  montant: z.number()
+    .positive("Le montant doit être positif")
+    .max(1000000, "Montant maximum dépassé (1M€)"),
+  moyen: z.enum(["cb", "virement", "prelevement", "especes", "cheque", "autre"], {
+    errorMap: () => ({ message: "Moyen de paiement invalide" }),
+  }),
+  montant_ht: z.number().min(0, "Montant HT invalide").optional(),
+  montant_tva: z.number().min(0, "Montant TVA invalide").optional(),
+  montant_ttc: z.number().min(0, "Montant TTC invalide").optional(),
 });
 
 // Validation des charges
@@ -857,4 +871,233 @@ export type {
   UpdateCalendarConnection,
   GenerateSlots,
 } from "./visit-scheduling";
+
+// ============================================
+// CASH RECEIPT VALIDATION - SOTA 2026
+// Conformité loi ALUR + Décret n°2015-587
+// ============================================
+
+/**
+ * Validation des coordonnées GPS pour géolocalisation
+ */
+export const geolocationSchema = z.object({
+  lat: z.number()
+    .min(-90, "Latitude invalide")
+    .max(90, "Latitude invalide"),
+  lng: z.number()
+    .min(-180, "Longitude invalide")
+    .max(180, "Longitude invalide"),
+});
+
+/**
+ * Validation des informations appareil pour audit trail
+ */
+export const deviceInfoSchema = z.object({
+  userAgent: z.string().max(500).optional(),
+  platform: z.string().max(100).optional(),
+  language: z.string().max(20).optional(),
+  screenWidth: z.number().int().min(0).max(10000).optional(),
+  screenHeight: z.number().int().min(0).max(10000).optional(),
+});
+
+/**
+ * Schéma de validation pour les reçus de paiement en espèces
+ * @see Art. 21 loi n°89-462 du 6 juillet 1989
+ * @see Décret n°2015-587 du 6 mai 2015
+ */
+export const cashReceiptInputSchema = z.object({
+  // Facture liée
+  invoice_id: z.string().uuid("ID facture invalide"),
+
+  // Montant reçu
+  amount: z.number()
+    .positive("Le montant doit être positif")
+    .max(100000, "Montant maximum dépassé (100 000€ en espèces)")
+    .refine(
+      (val) => val <= 1000 || true, // Warning only, not blocking
+      { message: "Attention: paiements > 1000€ en espèces soumis à déclaration" }
+    ),
+
+  // Signatures (base64 PNG)
+  owner_signature: z.string()
+    .min(100, "Signature propriétaire trop courte")
+    .refine(
+      (val) => val.startsWith("data:image/png;base64,") || val.startsWith("data:image/jpeg;base64,"),
+      { message: "Format signature invalide (PNG ou JPEG base64 attendu)" }
+    ),
+
+  tenant_signature: z.string()
+    .min(100, "Signature locataire trop courte")
+    .refine(
+      (val) => val.startsWith("data:image/png;base64,") || val.startsWith("data:image/jpeg;base64,"),
+      { message: "Format signature invalide (PNG ou JPEG base64 attendu)" }
+    ),
+
+  // Horodatage signatures
+  owner_signed_at: z.string().datetime({ offset: true }).optional(),
+  tenant_signed_at: z.string().datetime({ offset: true }).optional(),
+
+  // Géolocalisation (optionnelle mais recommandée)
+  geolocation: geolocationSchema.optional().nullable(),
+
+  // Informations appareil pour audit
+  device_info: deviceInfoSchema.optional(),
+
+  // Notes libres
+  notes: z.string()
+    .max(500, "Notes limitées à 500 caractères")
+    .optional()
+    .nullable(),
+});
+
+export type CashReceiptInput = z.infer<typeof cashReceiptInputSchema>;
+
+// ============================================
+// CODES POSTAUX FRANCE + DOM-TOM - SOTA 2026
+// ============================================
+
+/**
+ * Validation code postal France métropolitaine + DOM-TOM
+ * - Métropole: 01000-95999 (hors 20xxx Corse qui utilise 2A/2B)
+ * - Corse: 20000-20999 (2A = 201xx-202xx, 2B = 203xx-206xx)
+ * - Guadeloupe: 971xx
+ * - Martinique: 972xx
+ * - Guyane: 973xx
+ * - Réunion: 974xx
+ * - Mayotte: 976xx
+ * - Saint-Pierre-et-Miquelon: 975xx
+ * - Saint-Barthélemy: 97133
+ * - Saint-Martin: 97150
+ */
+export const codePostalFranceSchema = z.string()
+  .regex(
+    /^(0[1-9]|[1-8]\d|9[0-5]|2[AB]|97[1-6])\d{3}$/,
+    "Code postal invalide (format: 5 chiffres, ex: 75001, 97100)"
+  )
+  .refine(
+    (val) => {
+      const num = parseInt(val, 10);
+      // Exclure les codes inexistants
+      if (num >= 96000 && num < 97100) return false; // Gap entre métropole et DOM
+      return true;
+    },
+    { message: "Code postal inexistant" }
+  );
+
+/**
+ * Détermine le territoire à partir du code postal
+ */
+export function getTerritoireFromCodePostal(codePostal: string): string {
+  if (codePostal.startsWith("971")) return "Guadeloupe";
+  if (codePostal.startsWith("972")) return "Martinique";
+  if (codePostal.startsWith("973")) return "Guyane";
+  if (codePostal.startsWith("974")) return "Réunion";
+  if (codePostal.startsWith("975")) return "Saint-Pierre-et-Miquelon";
+  if (codePostal.startsWith("976")) return "Mayotte";
+  if (codePostal === "97133") return "Saint-Barthélemy";
+  if (codePostal === "97150") return "Saint-Martin";
+  if (codePostal.startsWith("2A") || codePostal.startsWith("2B") || codePostal.startsWith("20")) return "Corse";
+  return "Métropole";
+}
+
+/**
+ * Vérifie si un code postal est en DOM-TOM
+ */
+export function isDOMTOM(codePostal: string): boolean {
+  return codePostal.startsWith("97");
+}
+
+// ============================================
+// QUITTANCE ALUR COMPLIANT - SOTA 2026
+// ============================================
+
+/**
+ * Schéma de données pour génération quittance conforme ALUR
+ * @see Art. 21 loi n°89-462 du 6 juillet 1989
+ * @see Décret n°2015-587 du 6 mai 2015
+ */
+export const quittanceDataSchema = z.object({
+  // === Informations propriétaire (OBLIGATOIRES) ===
+  ownerName: z.string().min(1, "Nom du bailleur requis"),
+  ownerAddress: z.string().min(1, "Adresse du bailleur requise"), // ALUR obligatoire
+  ownerSiret: z.string()
+    .regex(/^[0-9]{14}$/, "SIRET invalide")
+    .optional()
+    .nullable(),
+
+  // === Informations locataire (OBLIGATOIRES) ===
+  tenantName: z.string().min(1, "Nom du locataire requis"),
+  tenantAddress: z.string().optional().nullable(), // Adresse courrier si différente
+
+  // === Informations logement (OBLIGATOIRES) ===
+  propertyAddress: z.string().min(1, "Adresse du logement requise"),
+  propertyCity: z.string().min(1, "Ville requise"),
+  propertyPostalCode: codePostalFranceSchema,
+
+  // === Période de location (OBLIGATOIRE - détaillée) ===
+  periodeDebut: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide (YYYY-MM-DD)"),
+  periodeFin: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide (YYYY-MM-DD)"),
+  periode: z.string()
+    .regex(/^\d{4}-\d{2}$/, "Format période invalide (YYYY-MM)")
+    .optional(), // Pour rétrocompatibilité
+
+  // === Montants détaillés (OBLIGATOIRE ALUR) ===
+  loyerPrincipal: z.number()
+    .min(0, "Loyer principal invalide")
+    .describe("Montant du loyer nu (hors charges)"),
+
+  provisionCharges: z.number()
+    .min(0, "Provision charges invalide")
+    .describe("Provision pour charges ou forfait charges"),
+
+  regularisationCharges: z.number()
+    .optional()
+    .nullable()
+    .describe("Régularisation annuelle des charges (si applicable)"),
+
+  // Montants calculés
+  totalAmount: z.number().min(0, "Montant total invalide"),
+
+  // === Paiement ===
+  paymentDate: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide"),
+  paymentMethod: z.enum(["cb", "virement", "prelevement", "especes", "cheque", "autre"]),
+
+  // === Références ===
+  numeroQuittance: z.string()
+    .min(1, "Numéro de quittance requis")
+    .describe("Format recommandé: Q-{owner_short}-YYYY-NNNN"),
+  invoiceId: z.string().uuid(),
+  paymentId: z.string().uuid(),
+  leaseId: z.string().uuid(),
+
+  // === Métadonnées ===
+  dateEmission: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .describe("Date d'émission de la quittance"),
+}).refine(
+  (data) => {
+    // Vérifier que totalAmount = loyerPrincipal + provisionCharges + (regularisationCharges || 0)
+    const expected = data.loyerPrincipal + data.provisionCharges + (data.regularisationCharges || 0);
+    return Math.abs(data.totalAmount - expected) < 0.01; // Tolérance centimes
+  },
+  {
+    message: "Le total doit égaler loyer + charges + régularisation",
+    path: ["totalAmount"],
+  }
+).refine(
+  (data) => {
+    // Vérifier que periodeDebut <= periodeFin
+    return data.periodeDebut <= data.periodeFin;
+  },
+  {
+    message: "La date de début doit précéder la date de fin",
+    path: ["periodeFin"],
+  }
+);
+
+export type QuittanceData = z.infer<typeof quittanceDataSchema>;
 

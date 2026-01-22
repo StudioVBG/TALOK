@@ -197,6 +197,7 @@ export const leasesQuerySchema = z.object({
 
 /**
  * Schéma pour les query params de filtrage de factures
+ * @updated SOTA 2026 - Support filtres période range et statuts multiples
  */
 export const invoicesQuerySchema = z.object({
   leaseId: uuidParamSchema.optional(),
@@ -205,8 +206,13 @@ export const invoicesQuerySchema = z.object({
   owner_id: uuidParamSchema.optional(),
   tenantId: uuidParamSchema.optional(),
   tenant_id: uuidParamSchema.optional(),
-  status: z.enum(["draft", "sent", "paid", "late"]).optional(),
+  status: z.enum(["draft", "sent", "paid", "late", "partial"]).optional(),
+  // Support single "statut" param (handled separately for multiple values via getAll)
+  statut: z.enum(["draft", "sent", "paid", "late", "partial"]).optional(),
   periode: z.string().regex(/^\d{4}-\d{2}$/, "Format période invalide (YYYY-MM)").optional(),
+  // Filtres de plage de période (SOTA 2026)
+  periode_from: z.string().regex(/^\d{4}-\d{2}$/, "Format période_from invalide (YYYY-MM)").optional(),
+  periode_to: z.string().regex(/^\d{4}-\d{2}$/, "Format période_to invalide (YYYY-MM)").optional(),
 }).merge(paginationQuerySchema);
 
 /**

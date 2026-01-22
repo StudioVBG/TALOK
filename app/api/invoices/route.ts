@@ -82,16 +82,37 @@ export async function GET(request: Request) {
       baseQuery = null;
     }
 
-    // ✅ FILTRES: Appliquer les filtres si fournis
+    // ✅ FILTRES: Appliquer les filtres si fournis (SOTA 2026 - Optimisation N+1)
     if (baseQuery) {
+      // Filtres par entité
       if (queryParams.lease_id || queryParams.leaseId) {
         baseQuery = baseQuery.eq("lease_id", queryParams.lease_id || queryParams.leaseId);
       }
-      if (queryParams.status) {
+      if (queryParams.owner_id) {
+        baseQuery = baseQuery.eq("owner_id", queryParams.owner_id);
+      }
+      if (queryParams.tenant_id) {
+        baseQuery = baseQuery.eq("tenant_id", queryParams.tenant_id);
+      }
+
+      // Filtres par statut (support multiple statuts)
+      const url = new URL(request.url);
+      const statutParams = url.searchParams.getAll("statut");
+      if (statutParams.length > 0) {
+        baseQuery = baseQuery.in("statut", statutParams);
+      } else if (queryParams.status) {
         baseQuery = baseQuery.eq("statut", queryParams.status);
       }
+
+      // Filtres par période
       if (queryParams.periode) {
         baseQuery = baseQuery.eq("periode", queryParams.periode);
+      }
+      if (queryParams.periode_from) {
+        baseQuery = baseQuery.gte("periode", queryParams.periode_from);
+      }
+      if (queryParams.periode_to) {
+        baseQuery = baseQuery.lte("periode", queryParams.periode_to);
       }
 
       // ✅ PAGINATION: Appliquer la pagination

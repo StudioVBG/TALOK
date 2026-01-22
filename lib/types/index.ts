@@ -158,7 +158,15 @@ export type LeaseStatus =
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "late";
 
-export type PaymentMethod = "cb" | "virement" | "prelevement";
+// ✅ SOTA 2026: Tous les moyens de paiement synchronisés avec la DB
+// Synchronisé avec: payments_moyen_check dans 20241129000002_cash_payments.sql
+export type PaymentMethod =
+  | "cb"           // Carte bancaire
+  | "virement"     // Virement bancaire
+  | "prelevement"  // Prélèvement SEPA
+  | "especes"      // Espèces (avec reçu signé obligatoire)
+  | "cheque"       // Chèque bancaire
+  | "autre";       // Autre moyen
 
 export type PaymentStatus = "pending" | "succeeded" | "failed";
 
