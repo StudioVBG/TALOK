@@ -460,6 +460,10 @@ export interface MeterRow {
   [key: string]: any
 }
 
+/**
+ * meter_readings table - General meter readings for billing
+ * @version 2026-01-22 - Fixed: photo_url (not photo_path)
+ */
 export interface MeterReadingRow {
   id: string
   meter_id: string
@@ -467,10 +471,38 @@ export interface MeterReadingRow {
   unit: string
   reading_date: string
   source: 'manual' | 'api' | 'ocr'
-  photo_path: string | null
-  validated: boolean
-  validated_by: string | null
+  photo_url: string | null  // Fixed: was photo_path, but actual column is photo_url
+  confidence: number | null
+  ocr_provider: string | null
+  created_by: string | null
   created_at: string
+  [key: string]: any
+}
+
+/**
+ * edl_meter_readings table - EDL-specific meter readings
+ * @version 2026-01-22 - Added for SOTA type safety
+ */
+export interface EDLMeterReadingRow {
+  id: string
+  edl_id: string
+  meter_id: string | null
+  reading_value: number | null
+  reading_unit: string
+  photo_path: string | null
+  photo_taken_at: string | null
+  ocr_value: number | null
+  ocr_confidence: number | null
+  ocr_provider: string | null
+  ocr_raw_text: string | null
+  is_validated: boolean
+  validated_by: string | null
+  validated_at: string | null
+  validation_comment: string | null
+  recorded_by: string | null
+  recorded_by_role: 'owner' | 'tenant'
+  created_at: string
+  updated_at: string
   [key: string]: any
 }
 
@@ -1082,6 +1114,13 @@ export type Database = {
         Update: Partial<MeterReadingRow>
         Relationships: any[]
       }
+      // EDL Meter Readings - SOTA 2026
+      edl_meter_readings: {
+        Row: EDLMeterReadingRow
+        Insert: Partial<EDLMeterReadingRow>
+        Update: Partial<EDLMeterReadingRow>
+        Relationships: any[]
+      }
       // Charges & Accounting
       charges: {
         Row: ChargeRow
@@ -1270,6 +1309,7 @@ export type DepositShare = DepositShareRow
 // Meters - P0.2 SOTA 2026
 export type Meter = MeterRow
 export type MeterReading = MeterReadingRow
+export type EDLMeterReading = EDLMeterReadingRow
 
 // Charges & Accounting - P0.2 SOTA 2026
 export type Charge = ChargeRow

@@ -5,12 +5,17 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+/**
+ * @version 2026-01-22 - Fix: column names to match meter_readings table schema
+ * meter_readings schema: meter_id, reading_value, unit, reading_date, photo_url, source, created_by
+ */
 const createReadingSchema = z.object({
   meter_id: z.string().uuid(),
-  value: z.number().min(0),
+  reading_value: z.number().min(0),
   reading_date: z.string(),
   photo_url: z.string().url().optional().nullable(),
-  notes: z.string().max(500).optional().nullable(),
+  source: z.enum(['api', 'manual', 'ocr']).optional().default('manual'),
+  unit: z.string().optional().default('kWh'),
 });
 
 export async function POST(request: NextRequest) {
@@ -84,16 +89,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create the reading
+    // Create the reading - using correct column names from meter_readings table schema
     const { data: reading, error } = await supabase
       .from("meter_readings")
       .insert({
         meter_id: validated.meter_id,
-        value: validated.value,
+        reading_value: validated.reading_value,
+        unit: validated.unit,
         reading_date: validated.reading_date,
         photo_url: validated.photo_url,
-        notes: validated.notes,
-        recorded_by: profile.id,
+        source: validated.source,
+        created_by: user.id, // Use auth.user.id, not profile.id
       })
       .select()
       .single();
