@@ -1,3 +1,6 @@
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
@@ -9,8 +12,9 @@ import { NextResponse } from "next/server";
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -41,7 +45,7 @@ export async function PATCH(
         property:properties!inner(owner_id),
         lease:leases(roommates(user_id))
       `)
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!ticket) {
@@ -91,7 +95,7 @@ export async function PATCH(
     const { data: updated, error } = await supabase
       .from("tickets")
       .update({ statut } as any)
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .select()
       .single();
 
@@ -119,7 +123,7 @@ export async function PATCH(
     await supabase.from("outbox").insert({
       event_type: eventType,
       payload: {
-        ticket_id: params.id,
+        ticket_id: id,
         old_status: ticketData.statut,
         new_status: statut,
         reason: reason || null,
@@ -131,7 +135,7 @@ export async function PATCH(
       user_id: user.id,
       action: "ticket_status_updated",
       entity_type: "ticket",
-      entity_id: params.id,
+      entity_id: id,
       before_state: { statut: ticketData.statut },
       after_state: { statut },
       metadata: { reason },

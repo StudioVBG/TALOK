@@ -6,11 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/leases/[id]/terminate - Terminer un bail (P1-2)
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -29,7 +32,7 @@ export async function POST(
         statut,
         property:properties!inner(owner_id)
       `)
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!lease) {
@@ -74,7 +77,7 @@ export async function POST(
         statut: "terminated",
         date_fin: termination_date || new Date().toISOString().split("T")[0],
       } as any)
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .select()
       .single();
 
@@ -84,7 +87,7 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "Lease.Terminated",
       payload: {
-        lease_id: params.id as any,
+        lease_id: id as any,
         termination_date: termination_date || new Date().toISOString().split("T")[0],
         reason,
         terminated_by: user.id,
@@ -96,7 +99,7 @@ export async function POST(
       user_id: user.id,
       action: "lease_terminated",
       entity_type: "lease",
-      entity_id: params.id,
+      entity_id: id,
       metadata: { termination_date, reason },
     } as any);
 

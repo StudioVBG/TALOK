@@ -7,11 +7,14 @@ import { NextResponse } from "next/server";
 
 /**
  * GET /api/leases/[id]/notice/letter - Générer la lettre de congé PDF
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -21,7 +24,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
 
     // Récupérer le bail et le congé
     const { data: lease, error: leaseError } = await serviceClient

@@ -9,11 +9,15 @@ import { photoUploadRequestSchema } from "@/lib/validations";
 const PHOTOS_BUCKET = "property-photos";
 const ROOMLESS_ALLOWED_TAGS = new Set(["vue_generale", "exterieur"]);
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { user, error } = await getAuthenticatedUser(request);
 
     if (error) {
@@ -79,7 +83,7 @@ export async function POST(
     const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select("id, owner_id, type")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (propertyError || !property) {
@@ -139,7 +143,7 @@ export async function POST(
         .from("rooms")
         .select("id")
         .eq("id", validated.room_id)
-        .eq("property_id", params.id)
+        .eq("property_id", id)
         .single();
 
       if (roomError || !room) {
@@ -153,7 +157,7 @@ export async function POST(
     const { data: lastPhoto } = await serviceClient
       .from("photos")
       .select("ordre")
-      .eq("property_id", params.id)
+      .eq("property_id", id)
       .order("ordre", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -161,7 +165,7 @@ export async function POST(
     const { data: hasMain } = await serviceClient
       .from("photos")
       .select("id")
-      .eq("property_id", params.id)
+      .eq("property_id", id)
       .eq("is_main", true)
       .limit(1);
 
@@ -173,7 +177,7 @@ export async function POST(
     const extension = extMap[validated.mime_type];
 
     const photoId = randomUUID();
-    const storagePath = `${params.id}/${photoId}.${extension}`;
+    const storagePath = `${id}/${photoId}.${extension}`;
 
     const { data: signedUpload, error: signedError } = await serviceClient.storage
       .from(PHOTOS_BUCKET)
@@ -194,7 +198,7 @@ export async function POST(
       .from("photos")
       .insert({
         id: photoId,
-        property_id: params.id,
+        property_id: id,
         room_id: validated.room_id ?? null,
         url: publicUrl,
         storage_path: storagePath,

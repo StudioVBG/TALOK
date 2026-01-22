@@ -3,14 +3,47 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+/**
+ * Zod schemas for meter anomaly reporting
+ * @version 2026-01-22 - Added Zod validation for data integrity
+ */
+const paramsSchema = z.object({
+  id: z.string().uuid("ID compteur invalide"),
+});
+
+const anomalySchema = z.object({
+  reading_value: z.number().nonnegative("La valeur doit être positive"),
+  expected_range: z.object({
+    min: z.number().optional(),
+    max: z.number().optional(),
+  }).optional(),
+  description: z.string().max(500, "Description trop longue (max 500 caractères)").optional(),
+});
 
 /**
  * POST /api/meters/[id]/anomaly - Signaler une anomalie de compteur (P1-3)
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern + Zod validation
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  // Next.js 15: params is now a Promise
+  const resolvedParams = await params;
+
+  // Validate params
+  const paramsResult = paramsSchema.safeParse(resolvedParams);
+  if (!paramsResult.success) {
+    return NextResponse.json(
+      { error: "ID compteur invalide", details: paramsResult.error.flatten() },
+      { status: 400 }
+    );
+  }
+  const meterId = paramsResult.data.id;
+
   try {
     const supabase = await createClient();
     const {
@@ -21,15 +54,23 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { reading_value, expected_range, description } = body;
+    // Parse and validate request body with Zod
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Corps JSON invalide" }, { status: 400 });
+    }
 
-    if (!reading_value) {
+    const bodyResult = anomalySchema.safeParse(body);
+    if (!bodyResult.success) {
       return NextResponse.json(
-        { error: "reading_value requis" },
+        { error: "Validation échouée", details: bodyResult.error.flatten() },
         { status: 400 }
       );
     }
+
+    const { reading_value, expected_range, description } = bodyResult.data;
 
     // Vérifier l'accès au compteur
     const { data: meter } = await supabase
@@ -43,7 +84,7 @@ export async function POST(
           )
         )
       `)
-      .eq("id", params.id as any)
+      .eq("id", meterId as any)
       .single();
 
     if (!meter) {
@@ -77,7 +118,7 @@ export async function POST(
     const { data: recentReadings } = await supabase
       .from("meter_readings")
       .select("reading_value, reading_date")
-      .eq("meter_id", params.id as any)
+      .eq("meter_id", meterId as any)
       .order("reading_date", { ascending: false })
       .limit(3);
 
@@ -96,7 +137,7 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "Energy.AnomalyDetected",
       payload: {
-        meter_id: params.id,
+        meter_id: meterId,
         reading_value,
         expected_range,
         description,
@@ -110,7 +151,7 @@ export async function POST(
       user_id: user.id,
       action: "anomaly_detected",
       entity_type: "meter",
-      entity_id: params.id,
+      entity_id: meterId,
       metadata: {
         reading_value,
         expected_range,

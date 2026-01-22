@@ -6,12 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * GET /api/invoices/[id]/receipt - Télécharger la quittance PDF liée à une facture
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -21,7 +23,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const invoiceId = params.id;
+    const invoiceId = id;
 
     // 1. Trouver le document de type "quittance" lié à cette facture
     let document: any = null;

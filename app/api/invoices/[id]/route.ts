@@ -9,12 +9,14 @@ import type { InvoiceUpdate, InvoiceRow, ProfileRow } from "@/lib/supabase/typed
 
 /**
  * GET /api/invoices/[id] - Récupérer une facture par ID
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -27,7 +29,7 @@ export async function GET(
     const { data: invoice, error } = await supabase
       .from("invoices")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error) throw error;
@@ -46,9 +48,10 @@ export async function GET(
  */
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -65,7 +68,7 @@ export async function PUT(
     const { data: invoice } = await supabase
       .from("invoices")
       .select("owner_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     const invoiceData = invoice as Pick<InvoiceRow, "owner_id"> | null;
@@ -92,7 +95,7 @@ export async function PUT(
       const { data: currentInvoice } = await supabase
         .from("invoices")
         .select("montant_loyer, montant_charges")
-        .eq("id", params.id)
+        .eq("id", id)
         .single();
 
       const currentInvoiceData = currentInvoice as InvoiceRow | null;
@@ -106,7 +109,7 @@ export async function PUT(
     const { data: updatedInvoice, error } = await supabase
       .from("invoices")
       .update(validated)
-      .eq("id", params.id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -122,9 +125,10 @@ export async function PUT(
  */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -138,7 +142,7 @@ export async function DELETE(
     const { data: invoice } = await supabase
       .from("invoices")
       .select("owner_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     const invoiceData = invoice as Pick<InvoiceRow, "owner_id"> | null;
@@ -160,7 +164,7 @@ export async function DELETE(
       );
     }
 
-    const { error } = await supabase.from("invoices").delete().eq("id", params.id);
+    const { error } = await supabase.from("invoices").delete().eq("id", id);
 
     if (error) throw error;
     return NextResponse.json({ success: true });

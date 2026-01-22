@@ -6,10 +6,12 @@ import { NextResponse } from "next/server";
 
 /**
  * GET /api/admin/plans/[id]/subscribers-count - Compter les abonnés actifs d'un plan
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;

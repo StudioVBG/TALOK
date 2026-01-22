@@ -4,11 +4,15 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
     if (error) {
@@ -47,7 +51,7 @@ export async function GET(
     const { data: property } = await serviceClient
       .from("properties")
       .select("id")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .maybeSingle();
 
     if (!property) {
@@ -58,7 +62,7 @@ export async function GET(
     const { data: photos, error: photosError } = await serviceClient
       .from("photos")
       .select("*")
-      .eq("property_id", params.id as any)
+      .eq("property_id", id as any)
       .order("ordre", { ascending: true });
 
     if (photosError) {

@@ -7,12 +7,14 @@ import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 /**
  * POST /api/tenant-applications/[id]/draft-lease - Générer un draft de bail pré-rempli
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const supabaseClient = getTypedSupabaseClient(supabase);
     const {
@@ -23,7 +25,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const applicationId = params.id;
+    const applicationId = id;
 
     // Vérifier que l'application appartient à l'utilisateur
     const { data: application, error: appError } = await supabaseClient

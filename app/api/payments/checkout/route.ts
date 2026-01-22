@@ -4,7 +4,20 @@ export const dynamic = 'force-dynamic';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { z } from "zod";
 
+/**
+ * Zod schema for checkout session creation
+ * @version 2026-01-22 - Added Zod validation for security
+ */
+const checkoutSchema = z.object({
+  invoiceId: z.string().uuid("invoiceId doit être un UUID valide"),
+});
+
+/**
+ * POST /api/payments/checkout - Créer une session Stripe Checkout
+ * @version 2026-01-22 - Added Zod validation
+ */
 export async function POST(request: Request) {
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -18,11 +31,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { invoiceId } = await request.json();
-
-    if (!invoiceId) {
-      return NextResponse.json({ error: "ID de facture manquant" }, { status: 400 });
+    // Parse and validate request body with Zod
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Corps JSON invalide" }, { status: 400 });
     }
+
+    const parseResult = checkoutSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: "Validation échouée", details: parseResult.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { invoiceId } = parseResult.data;
 
     // Récupérer les détails de la facture et du bien
     const { data: invoice, error: invoiceError } = await supabase

@@ -6,11 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/leases/[id]/visale/verify - Vérifier une attestation Visale
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -39,7 +42,7 @@ export async function POST(
         property:properties!inner(owner_id),
         roommates(user_id)
       `)
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!lease) {
@@ -89,7 +92,7 @@ export async function POST(
     const { data: roommate } = await supabase
       .from("roommates")
       .select("id")
-      .eq("lease_id", params.id as any)
+      .eq("lease_id", id as any)
       .eq("user_id", user.id as any)
       .limit(1)
       .maybeSingle();
@@ -126,7 +129,7 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "Guarantee.Validated",
       payload: {
-        lease_id: params.id as any,
+        lease_id: id as any,
         type: "visale",
         visale_data: visaleData,
       },

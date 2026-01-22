@@ -8,12 +8,14 @@ import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-li
 /**
  * POST /api/applications/[id]/analyze - Déclencher l'analyse OCR/IDP
  * Cette route déclenche un job asynchrone pour analyser les documents
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -44,7 +46,7 @@ export async function POST(
     }
 
     // Vérifier que l'application appartient à l'utilisateur
-    const applicationId = params.id;
+    const applicationId = id;
     const { data: application, error: appError } = await supabase
       .from("tenant_applications")
       .select("id, tenant_user, status")

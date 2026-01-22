@@ -6,12 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * DELETE /api/properties/[id]/invitations/[iid] - Révoquer un code d'invitation
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string; iid: string } }
+  { params }: { params: Promise<{ id: string; iid: string }> }
 ) {
   try {
+    const { id, iid } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -25,7 +27,7 @@ export async function DELETE(
     const { data: property } = await supabase
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!property) {
@@ -54,8 +56,8 @@ export async function DELETE(
     const { data: accessCode } = await supabase
       .from("unit_access_codes")
       .select("*")
-      .eq("id", params.iid as any)
-      .eq("property_id", params.id as any)
+      .eq("id", iid as any)
+      .eq("property_id", id as any)
       .single();
 
     if (!accessCode) {
@@ -75,7 +77,7 @@ export async function DELETE(
         retired_at: new Date().toISOString(),
         retired_reason: "Révoqué par le propriétaire",
       } as any)
-      .eq("id", params.iid as any)
+      .eq("id", iid as any)
       .select()
       .single();
 
@@ -85,8 +87,8 @@ export async function DELETE(
     await supabase.from("outbox").insert({
       event_type: "Property.InvitationRevoked",
       payload: {
-        access_code_id: params.iid,
-        property_id: params.id,
+        access_code_id: iid,
+        property_id: id,
         code: accessCodeData.code,
       },
     } as any);
@@ -96,8 +98,8 @@ export async function DELETE(
       user_id: user.id,
       action: "invitation_revoked",
       entity_type: "property",
-      entity_id: params.id,
-      metadata: { code_id: params.iid, code: accessCodeData.code },
+      entity_id: id,
+      metadata: { code_id: iid, code: accessCodeData.code },
     } as any);
 
     return NextResponse.json({ success: true, access_code: updated });

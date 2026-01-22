@@ -9,17 +9,19 @@ import crypto from "crypto";
 
 /**
  * GET /api/payments/[pid]/receipt - Télécharger la quittance PDF d'un paiement
- * 
+ *
  * PATTERN: Création unique → Lectures multiples
  * 1. Vérifier si quittance existe déjà dans documents
  * 2. Si oui → retourner URL signée (LECTURE)
  * 3. Si non → générer, stocker, puis retourner (CRÉATION UNIQUE)
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { pid: string } }
+  { params }: { params: Promise<{ pid: string }> }
 ) {
   try {
+    const { pid } = await params;
     const supabase = await createClient();
     const serviceClient = getServiceClient();
     const {
@@ -30,7 +32,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const paymentId = params.pid;
+    const paymentId = pid;
 
     // === ÉTAPE 1: Vérifier si la quittance existe déjà (LECTURE) ===
     const { data: existingDoc } = await serviceClient

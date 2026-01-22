@@ -6,12 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * GET /api/properties/[id]/meters/[meterId] - Détails d'un compteur
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string; meterId: string } }
+  { params }: { params: Promise<{ id: string; meterId: string }> }
 ) {
   try {
+    const { id: propertyId, meterId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -20,8 +22,6 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-
-    const { id: propertyId, meterId } = params;
 
     // Récupérer le compteur
     const { data: meter, error } = await supabase
@@ -58,12 +58,14 @@ export async function GET(
 
 /**
  * PATCH /api/properties/[id]/meters/[meterId] - Modifier un compteur
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string; meterId: string } }
+  { params }: { params: Promise<{ id: string; meterId: string }> }
 ) {
   try {
+    const { id: propertyId, meterId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -72,8 +74,6 @@ export async function PATCH(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-
-    const { id: propertyId, meterId } = params;
     const body = await request.json();
 
     // Vérifier que l'utilisateur est propriétaire
@@ -169,12 +169,14 @@ export async function PATCH(
 
 /**
  * DELETE /api/properties/[id]/meters/[meterId] - Supprimer un compteur
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string; meterId: string } }
+  { params }: { params: Promise<{ id: string; meterId: string }> }
 ) {
   try {
+    const { id: propertyId, meterId } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -183,8 +185,6 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-
-    const { id: propertyId, meterId } = params;
 
     // Vérifier que l'utilisateur est propriétaire
     const { data: property } = await supabase

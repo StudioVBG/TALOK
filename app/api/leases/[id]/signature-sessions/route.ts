@@ -6,11 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/leases/[id]/signature-sessions - Démarrer un parcours de signature eIDAS/TSP
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -39,7 +42,7 @@ export async function POST(
         statut,
         property:properties!inner(owner_id)
       `)
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!lease) {
@@ -75,7 +78,7 @@ export async function POST(
     const { data: draft } = await supabase
       .from("lease_drafts")
       .select("*")
-      .eq("lease_id", params.id as any)
+      .eq("lease_id", id as any)
       .order("version", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -96,14 +99,14 @@ export async function POST(
       const { data: existing } = await supabase
         .from("lease_signers")
         .select("id")
-        .eq("lease_id", params.id as any)
+        .eq("lease_id", id as any)
         .eq("profile_id", signer.profile_id)
         .maybeSingle();
 
       if (!existing) {
         // Créer le signataire
         await supabase.from("lease_signers").insert({
-          lease_id: params.id as any,
+          lease_id: id as any,
           profile_id: signer.profile_id,
           role: signer.role,
           signature_status: "pending",
@@ -124,7 +127,7 @@ export async function POST(
         event_type: "Signature.Requested",
         payload: {
           session_id: sessionId,
-          lease_id: params.id as any,
+          lease_id: id as any,
           draft_id: draftData.id,
           signer_profile_id: signer.profile_id,
           prefer_eidas,
@@ -136,13 +139,13 @@ export async function POST(
     await supabase
       .from("leases")
       .update({ statut: "pending_signature" } as any)
-      .eq("id", params.id as any);
+      .eq("id", id as any);
 
     // Émettre un événement
     await supabase.from("outbox").insert({
       event_type: "Lease.Sent",
       payload: {
-        lease_id: params.id as any,
+        lease_id: id as any,
         draft_id: draftData.id,
         signers_count: signers.length,
       },
@@ -153,7 +156,7 @@ export async function POST(
       user_id: user.id,
       action: "lease_sent_for_signature",
       entity_type: "lease",
-      entity_id: params.id,
+      entity_id: id,
       metadata: { signers_count: signers.length },
     } as any);
 

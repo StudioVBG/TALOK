@@ -5,11 +5,15 @@ import { NextResponse } from "next/server";
 import { roomSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
     if (error) {
@@ -48,7 +52,7 @@ export async function GET(
     const { data: property } = await serviceClient
       .from("properties")
       .select("id")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .maybeSingle();
 
     if (!property) {
@@ -58,7 +62,7 @@ export async function GET(
     const { data: rooms, error: roomsError } = await serviceClient
       .from("rooms")
       .select("*")
-      .eq("property_id", params.id as any)
+      .eq("property_id", id as any)
       .order("ordre", { ascending: true });
 
     if (roomsError) {
@@ -77,11 +81,15 @@ export async function GET(
   }
 }
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
     if (error) {
@@ -138,21 +146,21 @@ export async function POST(
     const { data: propertyWithAll, error: errorWithAll } = await serviceClient
       .from("properties")
       .select("owner_id, type, etat")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .maybeSingle();
 
     if (errorWithAll) {
       // Si l'erreur est due à une colonne manquante, réessayer sans etat et type
       if (errorWithAll.message?.includes("does not exist") || errorWithAll.message?.includes("column") || errorWithAll.code === "42703") {
-        console.log(`[POST /api/properties/${params.id}/rooms] Colonne manquante détectée, réessai avec colonnes minimales`);
+        console.log(`[POST /api/properties/${id}/rooms] Colonne manquante détectée, réessai avec colonnes minimales`);
         const { data: propertyMinimal, error: errorMinimal } = await serviceClient
           .from("properties")
           .select("owner_id")
-          .eq("id", params.id as any)
+          .eq("id", id as any)
           .maybeSingle();
         
         if (errorMinimal) {
-          console.error(`[POST /api/properties/${params.id}/rooms] Erreur même avec colonnes minimales:`, errorMinimal);
+          console.error(`[POST /api/properties/${id}/rooms] Erreur même avec colonnes minimales:`, errorMinimal);
           propertyError = errorMinimal;
         } else {
           property = propertyMinimal;
@@ -163,7 +171,7 @@ export async function POST(
           }
         }
       } else {
-        console.error(`[POST /api/properties/${params.id}/rooms] Erreur non liée à une colonne manquante:`, errorWithAll);
+        console.error(`[POST /api/properties/${id}/rooms] Erreur non liée à une colonne manquante:`, errorWithAll);
         propertyError = errorWithAll;
       }
     } else {
@@ -171,16 +179,16 @@ export async function POST(
     }
 
     if (propertyError) {
-      console.error(`[POST /api/properties/${params.id}/rooms] Erreur lors de la récupération de la propriété:`, propertyError);
+      console.error(`[POST /api/properties/${id}/rooms] Erreur lors de la récupération de la propriété:`, propertyError);
       throw propertyError;
     }
 
     if (!property) {
-      console.warn(`[POST /api/properties/${params.id}/rooms] Propriété non trouvée (ID: ${params.id})`);
+      console.warn(`[POST /api/properties/${id}/rooms] Propriété non trouvée (ID: ${id})`);
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    console.log(`[POST /api/properties/${params.id}/rooms] Propriété trouvée: owner_id=${property.owner_id}, etat=${property.etat || "N/A"}, type=${property.type || "N/A"}`);
+    console.log(`[POST /api/properties/${id}/rooms] Propriété trouvée: owner_id=${property.owner_id}, etat=${property.etat || "N/A"}, type=${property.type || "N/A"}`);
 
     const profileData = profile as any;
     const isAdmin = profileData.role === "admin";
@@ -208,7 +216,7 @@ export async function POST(
     const { data: lastRoom } = await serviceClient
       .from("rooms")
       .select("ordre")
-      .eq("property_id", params.id as any)
+      .eq("property_id", id as any)
       .order("ordre", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -219,7 +227,7 @@ export async function POST(
     const { data: room, error: insertError } = await serviceClient
       .from("rooms")
       .insert({
-        property_id: params.id,
+        property_id: id,
         type_piece: validated.type_piece,
         label_affiche: validated.label_affiche,
         surface_m2: validated.surface_m2,

@@ -11,10 +11,14 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -25,7 +29,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
 
     // Vérifier que l'utilisateur a accès à ce bail
     const { data: lease, error: leaseError } = await supabase

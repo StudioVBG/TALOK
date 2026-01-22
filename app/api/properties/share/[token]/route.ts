@@ -5,17 +5,21 @@ import { getBaseUrl } from "@/lib/helpers/url";
 import { getServiceRoleClient } from "@/lib/server/service-role-client";
 import { PROPERTY_SHARE_SELECT } from "@/lib/server/share-tokens";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function GET(
   _request: Request,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    const { token } = await params;
     const { client: serviceClient } = getServiceRoleClient();
 
     const { data: share, error: shareError } = await serviceClient
       .from("property_share_tokens")
       .select("property_id, expires_at, revoked_at")
-      .eq("token", params.token)
+      .eq("token", token)
       .single();
 
     if (shareError || !share) {
@@ -48,9 +52,9 @@ export async function GET(
       property: sanitizedProperty,
       share: {
         expiresAt: share.expires_at,
-        token: params.token,
-        shareUrl: `${baseUrl}/properties/share/${params.token}`,
-        pdfUrl: `${baseUrl}/api/properties/share/${params.token}/pdf`,
+        token: token,
+        shareUrl: `${baseUrl}/properties/share/${token}`,
+        pdfUrl: `${baseUrl}/api/properties/share/${token}/pdf`,
       },
     });
   } catch (error: unknown) {

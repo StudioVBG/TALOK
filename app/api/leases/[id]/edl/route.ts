@@ -8,11 +8,14 @@ import { NextResponse } from "next/server";
  * GET /api/leases/[id]/edl - Récupérer les EDL d'un bail
  * Query params:
  *   - type: "entree" | "sortie" (optionnel, filtre par type)
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -23,7 +26,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type"); // "entree" | "sortie"
 
@@ -168,11 +171,14 @@ export async function GET(
 
 /**
  * POST /api/leases/[id]/edl - Créer un nouvel EDL pour un bail
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -183,7 +189,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
     const body = await request.json();
     const { type, scheduled_date } = body;
 

@@ -15,11 +15,14 @@ const addSignerSchema = z.object({
 
 /**
  * GET /api/leases/[id]/signers - Récupérer les signataires d'un bail
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -30,7 +33,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
 
     const { data: signers, error } = await supabase
       .from("lease_signers")
@@ -72,11 +75,14 @@ export async function GET(
 
 /**
  * POST /api/leases/[id]/signers - Ajouter un signataire au bail
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -88,7 +94,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
     const body = await request.json();
     const validated = addSignerSchema.parse(body);
 

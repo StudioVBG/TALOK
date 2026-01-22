@@ -220,12 +220,14 @@ export async function POST(request: Request) {
 
 /**
  * DELETE /api/me/occupants/[id] - Supprimer un occupant
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -235,7 +237,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const occupantId = params.id;
+    const occupantId = id;
 
     // Récupérer l'occupant
     const { data: occupant } = await supabase

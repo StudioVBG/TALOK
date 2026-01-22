@@ -7,11 +7,14 @@ import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-li
 
 /**
  * POST /api/leases/[id]/pay - Effectuer un paiement
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -56,7 +59,7 @@ export async function POST(
     const { data: roommate } = await supabase
       .from("roommates")
       .select("id")
-      .eq("lease_id", params.id as any)
+      .eq("lease_id", id as any)
       .eq("user_id", user.id as any)
       .is("left_on", null)
       .single();
@@ -118,7 +121,7 @@ export async function POST(
     const { data: paymentIntent, error: intentError } = await supabase
       .from("payment_intents")
       .insert({
-        lease_id: params.id as any,
+        lease_id: id as any,
         payment_share_id: paymentShareId,
         amount,
         currency: "EUR",
@@ -151,7 +154,7 @@ export async function POST(
       event_type: "payment.intent.created",
         payload: {
           payment_intent_id: paymentIntentData.id,
-          lease_id: params.id as any,
+          lease_id: id as any,
           payment_share_id: paymentShareId,
         amount,
         method,

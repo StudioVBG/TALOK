@@ -8,11 +8,16 @@ import { ocrService } from "@/lib/services/ocr.service";
 
 /**
  * POST /api/meters/[id]/photo-ocr - Analyser une photo de compteur avec OCR
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  // Next.js 15: params is now a Promise
+  const { id: meterId } = await params;
+
   try {
     const supabase = await createClient();
     const {
@@ -64,7 +69,7 @@ export async function POST(
     const { value, confidence } = await ocrService.analyzeMeterPhoto(buffer);
 
     // Uploader la photo pour archive (même si c'est juste pour l'analyse)
-    const folderId = params.id === "new" ? (propertyId || "temp") : params.id;
+    const folderId = meterId === "new" ? (propertyId || "temp") : meterId;
     const fileName = `meters/${folderId}/ocr_${Date.now()}_${photoFile.name}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("documents")

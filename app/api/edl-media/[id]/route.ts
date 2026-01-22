@@ -6,12 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * GET /api/edl-media/[id] - Récupérer un média EDL
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -21,7 +23,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const mediaId = params.id;
+    const mediaId = id;
 
     const { data: media, error } = await supabase
       .from("edl_media")
@@ -75,9 +77,10 @@ export async function GET(
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -87,7 +90,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const mediaId = params.id;
+    const mediaId = id;
     const body = await request.json();
     const { section, item_id } = body;
 
@@ -173,9 +176,10 @@ export async function PATCH(
  */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -185,7 +189,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const mediaId = params.id;
+    const mediaId = id;
 
     // Récupérer le média avec ses relations pour vérifier les permissions
     const { data: media, error: fetchError } = await supabase

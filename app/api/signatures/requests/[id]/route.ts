@@ -1,3 +1,6 @@
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
@@ -10,9 +13,10 @@ import { createClient as createServerClient } from "@supabase/supabase-js";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -38,7 +42,7 @@ export async function GET(
         proof_document:documents!proof_document_id(id, title, storage_path),
         created_by_profile:profiles!created_by(prenom, nom, email)
       `)
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error || !signatureRequest) {
@@ -57,9 +61,10 @@ export async function GET(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -87,7 +92,7 @@ export async function DELETE(
     const { data: existing } = await adminSupabase
       .from("signature_requests")
       .select("id, status, owner_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (!existing) {
@@ -109,7 +114,7 @@ export async function DELETE(
     const { error } = await adminSupabase
       .from("signature_requests")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });

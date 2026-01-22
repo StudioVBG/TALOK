@@ -5,17 +5,21 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { getServiceRoleClient } from "@/lib/server/service-role-client";
 import { PROPERTY_SHARE_SELECT } from "@/lib/server/share-tokens";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function GET(
   _request: Request,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    const { token } = await params;
     const { client } = getServiceRoleClient();
 
     const { data: share, error: shareError } = await client
       .from("property_share_tokens")
       .select("property_id, expires_at, revoked_at, created_at")
-      .eq("token", params.token)
+      .eq("token", token)
       .single();
 
     if (shareError || !share) {
@@ -41,7 +45,7 @@ export async function GET(
     }
 
     const propertyData = property as any;
-    const pdfBytes = await buildPropertyPdf(params.token, share, propertyData);
+    const pdfBytes = await buildPropertyPdf(token, share, propertyData);
 
     return new Response(Buffer.from(pdfBytes), {
       headers: {

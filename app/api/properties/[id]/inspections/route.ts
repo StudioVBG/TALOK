@@ -6,12 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/properties/[id]/inspections - Planifier un EDL
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -42,7 +44,7 @@ export async function POST(
     const { data: property } = await supabase
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!property) {
@@ -89,7 +91,7 @@ export async function POST(
     const { data: edl, error } = await supabase
       .from("edl")
       .insert({
-        property_id: params.id,
+        property_id: id,
         lease_id: lease_id || null,
         type,
         scheduled_at: scheduled_at,
@@ -132,7 +134,7 @@ export async function POST(
       event_type: "Inspection.Scheduled",
       payload: {
         edl_id: edlData.id,
-        property_id: params.id as any,
+        property_id: id as any,
         lease_id,
         type,
         scheduled_at,

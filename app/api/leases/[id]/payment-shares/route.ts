@@ -7,11 +7,14 @@ import { paymentSharesService } from "@/features/tenant/services/payment-shares.
 
 /**
  * GET /api/leases/[id]/payment-shares - Récupérer les parts de paiement d'un bail
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -33,7 +36,7 @@ export async function GET(
     }
 
     const shares = await paymentSharesService.getPaymentSharesInternal(
-      params.id,
+      id,
       month,
       user.id
     );

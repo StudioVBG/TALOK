@@ -7,12 +7,15 @@ import { createClient } from "@supabase/supabase-js";
 
 /**
  * GET /api/admin/providers/[id] - Récupérer les détails d'un prestataire
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { error, user, supabase } = await requireAdmin(request);
 
     if (error) {
@@ -26,7 +29,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const providerId = params.id;
+    const providerId = id;
 
     // Récupérer le provider_profile
     const { data: providerProfile, error: providerError } = await supabase
@@ -105,12 +108,15 @@ export async function GET(
 
 /**
  * PATCH /api/admin/providers/[id] - Modifier les informations d'un prestataire
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { error, user, supabase } = await requireAdmin(request);
 
     if (error) {
@@ -124,7 +130,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const providerId = params.id;
+    const providerId = id;
     const body = await request.json();
 
     // Mettre à jour le profil

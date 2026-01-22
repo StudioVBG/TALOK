@@ -14,11 +14,15 @@ import { NextResponse } from "next/server";
 import { calculateSolvabilityScore } from "@/lib/scoring";
 import type { TenantScoreInput } from "@/lib/scoring/types";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -28,7 +32,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const applicationId = params.id;
+    const applicationId = id;
 
     // Récupérer le profil de l'utilisateur
     const { data: profile } = await supabase
@@ -219,9 +223,10 @@ export async function POST(
 // GET - Récupérer le dernier score calculé
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -234,7 +239,7 @@ export async function GET(
     const { data: application, error } = await supabase
       .from("tenant_applications")
       .select("extracted_json, confidence")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error || !application) {

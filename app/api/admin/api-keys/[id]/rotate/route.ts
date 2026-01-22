@@ -4,9 +4,11 @@ export const runtime = 'nodejs';
 /**
  * API Route: Rotation d'une clé API
  * POST /api/admin/api-keys/[id]/rotate
- * 
+ *
  * Génère une nouvelle clé et invalide l'ancienne.
  * Le cache est automatiquement vidé.
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -31,9 +33,10 @@ function encryptAPIKey(apiKey: string, masterKey: string): string {
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -57,7 +60,7 @@ export async function POST(
       );
     }
 
-    const keyId = params.id;
+    const keyId = id;
 
     // Récupérer la clé existante avec le provider
     const { data: existingKey, error: fetchError } = await supabase

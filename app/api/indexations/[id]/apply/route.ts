@@ -7,12 +7,14 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/indexations/[id]/apply - Appliquer une révision IRL
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const serviceClient = getServiceClient();
     const {
@@ -23,7 +25,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const indexationId = params.id;
+    const indexationId = id;
 
     // Récupérer l'indexation
     const { data: indexation, error: indexError } = await serviceClient

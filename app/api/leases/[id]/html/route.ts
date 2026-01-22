@@ -9,12 +9,15 @@ import type { TypeBail, BailComplet, DiagnosticsTechniques } from "@/lib/templat
 
 /**
  * GET /api/leases/[id]/html - Récupérer le HTML d'un bail (signé ou non)
- * ✅ FIX: Ajout des diagnostics et fallback pour locataire sans profil
+ * FIX: Ajout des diagnostics et fallback pour locataire sans profil
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -23,7 +26,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
     const serviceClient = getServiceClient();
 
     // 1. Récupérer les données complètes du bail avec invited_email/invited_name

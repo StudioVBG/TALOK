@@ -7,18 +7,21 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/leases/[id]/renew - Renouveler un bail
- * 
+ *
  * Crée un nouveau bail basé sur l'ancien avec :
  * - Nouvelles dates (prolongation d'1 an pour meublé, 3 ans pour nu)
  * - Possibilité d'ajuster le loyer (avec limite IRL)
  * - Conservation des mêmes locataires et propriétés
- * 
+ *
  * Le bail actuel passe en statut "renewed" et le nouveau en "draft"
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -30,7 +33,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
 
     // Récupérer les paramètres de renouvellement
     const body = await request.json();
@@ -239,13 +242,16 @@ export async function POST(
 
 /**
  * GET /api/leases/[id]/renew - Obtenir les informations de renouvellement
- * 
+ *
  * Retourne les données nécessaires pour préremplir le formulaire de renouvellement
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -257,7 +263,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
 
     // Récupérer le bail
     const { data: lease, error: leaseError } = await serviceClient

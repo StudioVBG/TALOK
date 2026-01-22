@@ -11,16 +11,18 @@ import type { ServiceSupabaseClient, MediaDocument, SupabaseError } from "@/lib/
 /**
  * GET /api/properties/[id] - Récupérer une propriété par ID
  * Configuration Vercel: maxDuration: 10s
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export const maxDuration = 10;
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
-    const propertyId = propertyIdParamSchema.parse(params.id);
+    const propertyId = propertyIdParamSchema.parse(id);
 
     // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);
@@ -129,14 +131,16 @@ export async function GET(
 
 /**
  * PATCH /api/properties/[id] - Mise à jour progressive (tous types de biens V3)
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
-    const propertyId = propertyIdParamSchema.parse(params.id);
+    const propertyId = propertyIdParamSchema.parse(id);
 
     // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);
@@ -169,18 +173,18 @@ export async function PATCH(
     const body = await request.json();
     
     // DEBUG: Log les données reçues pour diagnostiquer les problèmes de sauvegarde
-    console.log(`[PATCH /api/properties/${params.id}] Body reçu:`, JSON.stringify(body, null, 2));
+    console.log(`[PATCH /api/properties/${id}] Body reçu:`, JSON.stringify(body, null, 2));
     
     // Utiliser safeParse pour avoir des logs détaillés en cas d'erreur de validation
     const parseResult = propertyGeneralUpdateSchema.safeParse(body);
     if (!parseResult.success) {
-      console.error(`[PATCH /api/properties/${params.id}] ❌ Erreur validation Zod:`, JSON.stringify(parseResult.error.errors, null, 2));
+      console.error(`[PATCH /api/properties/${id}] ❌ Erreur validation Zod:`, JSON.stringify(parseResult.error.errors, null, 2));
       throw new ApiError(400, "Données invalides", parseResult.error.errors);
     }
     const validated = parseResult.data;
     
     // DEBUG: Log les données après validation
-    console.log(`[PATCH /api/properties/${params.id}] ✅ Validé:`, JSON.stringify(validated, null, 2));
+    console.log(`[PATCH /api/properties/${id}] ✅ Validé:`, JSON.stringify(validated, null, 2));
 
     // ✅ PERMISSIONS: Récupérer le profil avec serviceClient pour éviter les problèmes RLS
     const { data: profile, error: profileError } = await serviceClient
@@ -207,7 +211,7 @@ export async function PATCH(
     if (errorWithAll) {
       // Si l'erreur est due à une colonne manquante, réessayer sans etat et type
       if (errorWithAll.message?.includes("does not exist") || errorWithAll.message?.includes("column") || errorWithAll.code === "42703") {
-        console.log(`[PATCH /api/properties/${params.id}] Colonne manquante détectée, réessai avec colonnes minimales`);
+        console.log(`[PATCH /api/properties/${id}] Colonne manquante détectée, réessai avec colonnes minimales`);
         const { data: propertyMinimal, error: errorMinimal } = await serviceClient
           .from("properties")
           .select("owner_id")
@@ -215,7 +219,7 @@ export async function PATCH(
           .maybeSingle();
         
         if (errorMinimal) {
-          console.error(`[PATCH /api/properties/${params.id}] Erreur même avec colonnes minimales:`, errorMinimal);
+          console.error(`[PATCH /api/properties/${id}] Erreur même avec colonnes minimales:`, errorMinimal);
           propertyError = errorMinimal;
         } else {
           property = propertyMinimal;
@@ -226,7 +230,7 @@ export async function PATCH(
           }
         }
       } else {
-        console.error(`[PATCH /api/properties/${params.id}] Erreur non liée à une colonne manquante:`, errorWithAll);
+        console.error(`[PATCH /api/properties/${id}] Erreur non liée à une colonne manquante:`, errorWithAll);
         propertyError = errorWithAll;
       }
     } else {
@@ -269,12 +273,12 @@ export async function PATCH(
       );
 
       if (leaseError) {
-        console.error(`[PATCH /api/properties/${params.id}] Erreur lors de la vérification des baux:`, leaseError);
+        console.error(`[PATCH /api/properties/${id}] Erreur lors de la vérification des baux:`, leaseError);
         // On continue malgré l'erreur pour ne pas bloquer l'utilisateur
       } else if (hasActive && lease) {
         // Récupérer les informations du locataire pour l'erreur
         const { getActiveLeaseWithTenant } = await import("@/lib/helpers/lease-helper");
-        const { tenant } = await getActiveLeaseWithTenant(params.id, supabaseUrl, serviceRoleKey);
+        const { tenant } = await getActiveLeaseWithTenant(id, supabaseUrl, serviceRoleKey);
 
         return NextResponse.json(
           {
@@ -333,7 +337,7 @@ export async function PATCH(
     }
 
     // DEBUG: Log les updates qui vont être appliqués
-    console.log(`[PATCH /api/properties/${params.id}] Updates à appliquer:`, JSON.stringify(updates, null, 2));
+    console.log(`[PATCH /api/properties/${id}] Updates à appliquer:`, JSON.stringify(updates, null, 2));
 
     // ✅ MISE À JOUR: Utiliser serviceClient pour la mise à jour pour éviter les problèmes RLS
     const { data: updatedProperty, error: updateError } = await serviceClient
@@ -344,7 +348,7 @@ export async function PATCH(
       .single();
 
     if (updateError || !updatedProperty) {
-      console.error(`[PATCH /api/properties/${params.id}] Erreur update:`, {
+      console.error(`[PATCH /api/properties/${id}] Erreur update:`, {
         error: updateError,
         errorMessage: updateError?.message,
         errorCode: updateError?.code,
@@ -373,7 +377,7 @@ export async function PATCH(
     }
     
     // DEBUG: Log le résultat de la mise à jour
-    console.log(`[PATCH /api/properties/${params.id}] Propriété mise à jour:`, {
+    console.log(`[PATCH /api/properties/${id}] Propriété mise à jour:`, {
       surface: updatedProperty.surface,
       surface_habitable_m2: updatedProperty.surface_habitable_m2,
       nb_pieces: updatedProperty.nb_pieces,
@@ -470,14 +474,16 @@ async function fetchSinglePropertyMedia(serviceClient: any, propertyId: string) 
 
 /**
  * PUT /api/properties/[id] - Mettre à jour une propriété
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
-    const propertyId = propertyIdParamSchema.parse(params.id);
+    const propertyId = propertyIdParamSchema.parse(id);
 
     // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);
@@ -564,14 +570,16 @@ export async function PUT(
 
 /**
  * DELETE /api/properties/[id] - Supprimer une propriété
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
-    const propertyId = propertyIdParamSchema.parse(params.id);
+    const propertyId = propertyIdParamSchema.parse(id);
 
     // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);

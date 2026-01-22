@@ -1,3 +1,6 @@
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
@@ -6,13 +9,14 @@ import { NextResponse } from "next/server";
 
 /**
  * GET /api/tickets/[id]/history - Récupérer l'historique d'un ticket
- * 
+ *
  * Retourne les événements de l'audit_log liés au ticket
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -34,7 +38,7 @@ export async function GET(
         priorite,
         property:properties!inner(owner_id)
       `)
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (ticketError || !ticket) {
@@ -63,7 +67,7 @@ export async function GET(
         created_at,
         user:profiles!audit_log_user_id_fkey(prenom, nom)
       `)
-      .eq("entity_id", params.id)
+      .eq("entity_id", id)
       .eq("entity_type", "ticket")
       .order("created_at", { ascending: false })
       .limit(50);

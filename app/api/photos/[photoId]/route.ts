@@ -7,11 +7,15 @@ import { photoUpdateSchema } from "@/lib/validations";
 
 const PHOTOS_BUCKET = "property-photos";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function PATCH(
   request: Request,
-  { params }: { params: { photoId: string } }
+  { params }: { params: Promise<{ photoId: string }> }
 ) {
   try {
+    const { photoId } = await params;
     const { user, error } = await getAuthenticatedUser(request);
 
     if (error) {
@@ -64,7 +68,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
     }
 
-    const photo = await fetchPhotoRecord(serviceClient, params.photoId);
+    const photo = await fetchPhotoRecord(serviceClient, photoId);
 
     if (!photo) {
       return NextResponse.json({ error: "Photo introuvable" }, { status: 404 });
@@ -123,7 +127,7 @@ export async function PATCH(
     const { data: updatedPhoto, error: updateError } = await serviceClient
       .from("photos")
       .update(updates as any)
-      .eq("id", params.photoId)
+      .eq("id", photoId)
       .select()
       .single();
 
@@ -135,8 +139,8 @@ export async function PATCH(
     }
 
     if (validated.ordre !== undefined) {
-      await reorderPhotos(serviceClient, propertyId, params.photoId, validated.ordre);
-      const refreshed = await fetchPhotoRecord(serviceClient, params.photoId);
+      await reorderPhotos(serviceClient, propertyId, photoId, validated.ordre);
+      const refreshed = await fetchPhotoRecord(serviceClient, photoId);
       return NextResponse.json({ photo: refreshed });
     }
 
@@ -157,9 +161,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { photoId: string } }
+  { params }: { params: Promise<{ photoId: string }> }
 ) {
   try {
+    const { photoId } = await params;
     const { user, error } = await getAuthenticatedUser(request);
 
     if (error) {
@@ -197,7 +202,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
     }
 
-    const photo = await fetchPhotoRecord(serviceClient, params.photoId);
+    const photo = await fetchPhotoRecord(serviceClient, photoId);
 
     if (!photo) {
       return NextResponse.json({ error: "Photo introuvable" }, { status: 404 });
@@ -223,7 +228,7 @@ export async function DELETE(
     const { error: deleteError } = await serviceClient
       .from("photos")
       .delete()
-      .eq("id", params.photoId);
+      .eq("id", photoId);
 
     if (deleteError) {
       return NextResponse.json(

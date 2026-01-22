@@ -53,11 +53,14 @@ async function generateReceiptPDF(receipt: any): Promise<string | null> {
 
 /**
  * GET /api/leases/[id]/receipts - Récupérer les quittances d'un bail
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -75,7 +78,7 @@ export async function GET(
     const { data: roommate } = await supabase
       .from("roommates")
       .select("id")
-      .eq("lease_id", params.id as any)
+      .eq("lease_id", id as any)
       .eq("user_id", user.id as any)
       .is("left_on", null)
       .single();
@@ -92,7 +95,7 @@ export async function GET(
         const { data: signer } = await supabase
           .from("lease_signers")
           .select("id")
-          .eq("lease_id", params.id as any)
+          .eq("lease_id", id as any)
           .eq("profile_id", (profile as any).id as any)
           .single();
 
@@ -119,7 +122,7 @@ export async function GET(
         payments:payments(*)
       `
       )
-      .eq("lease_id", params.id as any)
+      .eq("lease_id", id as any)
       .eq("statut", "paid" as any)
       .order("periode", { ascending: false });
 

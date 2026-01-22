@@ -4,40 +4,42 @@ export const dynamic = 'force-dynamic';
 /**
  * API Route pour calculer les frais de paiement
  * GET /api/payments/calculate-fees?amount=1000
- * 
+ *
  * Retourne les frais Stripe + plateforme pour un montant donné
+ * @version 2026-01-22 - Added Zod validation for query params
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { calculatePaymentFees, calculateDepositAndBalance, DEFAULT_FEE_CONFIG } from '@/lib/types/intervention-flow';
+import { z } from 'zod';
+
+/**
+ * Zod schema for query parameters validation
+ */
+const querySchema = z.object({
+  amount: z.coerce.number().positive("Le montant doit être positif").max(1000000, "Montant trop élevé"),
+  include_deposit: z.enum(['true', 'false']).optional().transform(v => v === 'true'),
+});
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const amountStr = searchParams.get('amount');
-    const includeDepositStr = searchParams.get('include_deposit');
+    const searchParams = Object.fromEntries(request.nextUrl.searchParams);
 
-    if (!amountStr) {
+    // Validate query parameters with Zod
+    const parseResult = querySchema.safeParse(searchParams);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Le paramètre "amount" est requis' },
+        { error: 'Paramètres invalides', details: parseResult.error.flatten() },
         { status: 400 }
       );
     }
 
-    const amount = parseFloat(amountStr);
-
-    if (isNaN(amount) || amount <= 0) {
-      return NextResponse.json(
-        { error: 'Le montant doit être un nombre positif' },
-        { status: 400 }
-      );
-    }
+    const { amount, include_deposit: includeDeposit } = parseResult.data;
 
     // Calculer les frais simples
     const fees = calculatePaymentFees(amount);
 
     // Inclure le calcul acompte/solde si demandé
-    const includeDeposit = includeDepositStr === 'true';
     const depositBreakdown = includeDeposit 
       ? calculateDepositAndBalance(amount) 
       : null;

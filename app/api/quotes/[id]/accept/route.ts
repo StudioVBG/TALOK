@@ -6,15 +6,17 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/quotes/[id]/accept - Accepter un devis
- * 
+ *
  * Seul le propriétaire du ticket peut accepter un devis.
  * Accepter un devis refuse automatiquement les autres devis en attente.
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -38,7 +40,7 @@ export async function POST(
           property:properties!inner(owner_id)
         )
       `)
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (quoteError || !quote) {
@@ -72,7 +74,7 @@ export async function POST(
     const { error: updateError } = await supabase
       .from("quotes")
       .update({ status: "accepted" })
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (updateError) throw updateError;
 
@@ -82,7 +84,7 @@ export async function POST(
       .update({ status: "rejected" })
       .eq("ticket_id", quoteData.ticket_id)
       .eq("status", "pending")
-      .neq("id", params.id);
+      .neq("id", id);
 
     // Mettre à jour le work_order avec le coût
     await supabase
@@ -104,7 +106,7 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "Quote.Accepted",
       payload: {
-        quote_id: params.id,
+        quote_id: id,
         ticket_id: quoteData.ticket_id,
         provider_id: quoteData.provider_id,
         amount: quoteData.amount,

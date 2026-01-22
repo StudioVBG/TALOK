@@ -6,11 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/leases/[id]/rent-invoices - Émettre une facture de loyer mensuelle
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -41,7 +44,7 @@ export async function POST(
         charges_forfaitaires,
         property:properties!inner(owner_id)
       `)
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!lease) {
@@ -77,7 +80,7 @@ export async function POST(
     const { data: existing } = await supabase
       .from("invoices")
       .select("id")
-      .eq("lease_id", params.id as any)
+      .eq("lease_id", id as any)
       .eq("periode", month)
       .maybeSingle();
 
@@ -92,7 +95,7 @@ export async function POST(
     const { data: roommates } = await supabase
       .from("roommates")
       .select("profile_id, role")
-      .eq("lease_id", params.id as any)
+      .eq("lease_id", id as any)
       .eq("role", "principal" as any)
       .is("left_on", null)
       .limit(1);
@@ -116,7 +119,7 @@ export async function POST(
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
       .insert({
-        lease_id: params.id as any,
+        lease_id: id as any,
         owner_id: profileData.id,
         tenant_id: tenantProfileId,
         periode: month,
@@ -136,7 +139,7 @@ export async function POST(
     const { data: allRoommates } = await supabase
       .from("roommates")
       .select("id, weight, role")
-      .eq("lease_id", params.id as any)
+      .eq("lease_id", id as any)
       .in("role", ["principal", "tenant"] as any)
       .is("left_on", null);
 
@@ -148,7 +151,7 @@ export async function POST(
       for (const roommate of allRoommatesData) {
         const share = (parseFloat(roommate.weight || 1) / totalWeight) * montant_total;
         await supabase.from("payment_shares").insert({
-          lease_id: params.id as any,
+          lease_id: id as any,
           invoice_id: invoiceData.id,
           month: monthDate.toISOString().split("T")[0],
           roommate_id: roommate.id,
@@ -163,7 +166,7 @@ export async function POST(
       event_type: "Rent.InvoiceIssued",
       payload: {
         invoice_id: invoiceData.id,
-        lease_id: params.id as any,
+        lease_id: id as any,
         month,
         montant_total,
       },

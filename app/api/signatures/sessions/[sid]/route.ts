@@ -1,3 +1,6 @@
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
@@ -10,9 +13,10 @@ import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
  */
 export async function GET(
   request: Request,
-  { params }: { params: { sid: string } }
+  { params }: { params: Promise<{ sid: string }> }
 ) {
   try {
+    const { sid } = await params;
     const supabase = await createClient();
     const supabaseClient = getTypedSupabaseClient(supabase);
     const {
@@ -32,7 +36,7 @@ export async function GET(
         lease:leases(id, statut),
         signer:profiles!signatures_signer_profile_id_fkey(id, prenom, nom)
       `)
-      .eq("id", params.sid as any)
+      .eq("id", sid as any)
       .maybeSingle();
 
     if (!signatures) {
@@ -63,7 +67,7 @@ export async function GET(
     }
 
     return NextResponse.json({
-      session_id: params.sid,
+      session_id: sid,
       status: signatureData.signed_at ? "completed" : "pending",
       signature: signatureData,
     });

@@ -5,11 +5,15 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { invitationsService } from "@/features/onboarding/services/invitations.service";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -18,7 +22,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const invitationId = params.id;
+    const invitationId = id;
 
     // Vérifier que l'utilisateur est le créateur de l'invitation
     const { data: profile } = await supabase

@@ -7,12 +7,14 @@ import { extractClientIP } from "@/lib/utils/ip-address";
 
 /**
  * POST /api/house-rules/[version]/sign - Signer une version du règlement de colocation
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { version: string } }
+  { params }: { params: Promise<{ version: string }> }
 ) {
   try {
+    const { version } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -22,7 +24,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const versionId = params.version;
+    const versionId = version;
 
     // Récupérer la version du règlement
     const { data: ruleVersion, error: ruleError } = await supabase

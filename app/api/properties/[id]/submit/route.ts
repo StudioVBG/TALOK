@@ -5,11 +5,15 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
     if (error) {
@@ -40,7 +44,7 @@ export async function POST(
       },
     });
 
-    const propertyId = params.id;
+    const propertyId = id;
 
     const { data: profile, error: profileError } = await serviceClient
       .from("profiles")

@@ -5,12 +5,15 @@ import { requireAdmin } from "@/lib/helpers/auth-helper";
 
 /**
  * POST /api/admin/providers/[id]/reject - Rejeter un prestataire
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { error, user, supabase } = await requireAdmin(request);
 
     if (error) {
@@ -27,7 +30,7 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const { reason } = body;
 
-    const profileId = params.id as any;
+    const profileId = id as any;
 
     // Vérifier que le prestataire existe
     const { data: provider, error: providerError } = await supabase

@@ -7,12 +7,14 @@ import { NextResponse } from "next/server";
 /**
  * @deprecated Utiliser POST /api/exports avec type='invoice' pour un export asynchrone sécurisé.
  * GET /api/invoices/[iid]/export - Exporter une facture en CSV (BTN-U03)
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -35,7 +37,7 @@ export async function GET(
           property:properties!inner(owner_id)
         )
       `)
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!invoice) {
@@ -85,13 +87,13 @@ export async function GET(
       return new NextResponse(csv, {
         headers: {
           "Content-Type": "text/csv",
-          "Content-Disposition": `attachment; filename="facture-${params.id}.csv"`,
+          "Content-Disposition": `attachment; filename="facture-${id}.csv"`,
         },
       });
     } else if (format === "json") {
       return NextResponse.json(invoiceData, {
         headers: {
-          "Content-Disposition": `attachment; filename="facture-${params.id}.json"`,
+          "Content-Disposition": `attachment; filename="facture-${id}.json"`,
         },
       });
     }

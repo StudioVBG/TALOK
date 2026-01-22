@@ -7,12 +7,14 @@ import { ExportService } from "@/lib/services/export.service";
 
 /**
  * GET /api/exports/[id] - Statut du job
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -23,7 +25,7 @@ export async function GET(
     const { data: job, error } = await supabase
       .from("export_jobs")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", id)
       .eq("user_id", user.id)
       .single();
 

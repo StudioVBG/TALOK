@@ -17,12 +17,14 @@ const bulkFeaturesSchema = z.object({
 
 /**
  * POST /api/properties/[id]/features/bulk - Ajouter des équipements en masse
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { user, error: authError, supabase } = await getAuthenticatedUser(request);
 
     if (authError || !user || !supabase) {
@@ -57,7 +59,7 @@ export async function POST(
     const { data: property } = await serviceClient
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (!property) {
@@ -89,7 +91,7 @@ export async function POST(
         .eq("id", validated.unit_id)
         .single();
 
-      if (!unit || (unit as any).property_id !== params.id) {
+      if (!unit || (unit as any).property_id !== id) {
         return NextResponse.json(
           { error: "Unité non trouvée ou n'appartient pas à cette propriété" },
           { status: 404 }
@@ -99,7 +101,7 @@ export async function POST(
 
     // Insérer les équipements
     const featuresToInsert = validated.features.map((f) => ({
-      property_id: params.id,
+      property_id: id,
       unit_id: validated.unit_id || null,
       feature: f.feature,
       value: f.value !== undefined ? (typeof f.value === "boolean" ? f.value : f.value) : true,
@@ -109,7 +111,7 @@ export async function POST(
     const deleteQuery = serviceClient
       .from("features")
       .delete()
-      .eq("property_id", params.id);
+      .eq("property_id", id);
 
     if (validated.unit_id) {
       deleteQuery.eq("unit_id", validated.unit_id);
@@ -133,7 +135,7 @@ export async function POST(
     await serviceClient.from("outbox").insert({
       event_type: "PropertyWizard.FeaturesSaved",
       payload: {
-        property_id: params.id,
+        property_id: id,
         unit_id: validated.unit_id,
         features_count: validated.features.length,
         features: validated.features.map((f) => f.feature),

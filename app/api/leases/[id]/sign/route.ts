@@ -11,12 +11,15 @@ import { SIGNER_ROLES, isOwnerRole, isTenantRole, LEASE_STATUS } from "@/lib/con
 
 /**
  * POST /api/leases/[id]/sign - Signer un bail avec Audit Trail conforme
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const leaseId = params.id;
+  const { id } = await params;
+  const leaseId = id;
   
   try {
     const supabase = await createClient();

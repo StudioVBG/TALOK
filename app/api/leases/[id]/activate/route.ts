@@ -7,20 +7,23 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 
 /**
  * POST /api/leases/[id]/activate
- * 
+ *
  * Active un bail après vérification des conditions :
  * 1. Le bail doit être au statut "fully_signed"
  * 2. Un EDL d'entrée doit exister et être signé
  * 3. La date de début du bail doit être atteinte ou dépassée (optionnel mais recommandé)
- * 
+ *
  * FLUX LÉGAL FRANÇAIS :
  * - Bail signé → EDL d'entrée → Remise des clés → Bail actif
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const leaseId = params.id;
+  const { id } = await params;
+  const leaseId = id;
   
   try {
     // Auth client pour vérifier l'utilisateur
@@ -286,14 +289,17 @@ export async function POST(
 
 /**
  * GET /api/leases/[id]/activate
- * 
+ *
  * Vérifie si le bail peut être activé et retourne les conditions manquantes
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const leaseId = params.id;
+  const { id } = await params;
+  const leaseId = id;
   
   try {
     const supabase = await createClient();

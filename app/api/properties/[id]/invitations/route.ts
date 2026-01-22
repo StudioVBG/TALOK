@@ -8,12 +8,14 @@ import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
  * POST /api/properties/[id]/invitations - Générer un code d'invitation unique pour un logement
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -36,7 +38,7 @@ export async function POST(
     const { data: property } = await supabase
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!property) {
@@ -93,7 +95,7 @@ export async function POST(
       .from("unit_access_codes")
       .insert({
         unit_id: unit_id || null,
-        property_id: params.id,
+        property_id: id,
         code,
         status: "active",
         created_by: user.id,
@@ -110,7 +112,7 @@ export async function POST(
       event_type: "Property.InvitationCreated",
       payload: {
         access_code_id: accessCodeData.id,
-        property_id: params.id as any,
+        property_id: id as any,
         unit_id: unit_id || null,
         code,
       },
@@ -121,7 +123,7 @@ export async function POST(
       user_id: user.id,
       action: "invitation_created",
       entity_type: "property",
-      entity_id: params.id,
+      entity_id: id,
       metadata: { code, unit_id },
     } as any);
 
@@ -139,12 +141,14 @@ export async function POST(
 
 /**
  * GET /api/properties/[id]/invitations - Lister les codes d'invitation d'un logement
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -158,7 +162,7 @@ export async function GET(
     const { data: property } = await supabase
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!property) {
@@ -194,7 +198,7 @@ export async function GET(
     const { data: codes, error } = await supabase
       .from("unit_access_codes")
       .select("*")
-      .eq("property_id", params.id as any)
+      .eq("property_id", id as any)
       .order("created_at", { ascending: false });
 
     if (error) throw error;

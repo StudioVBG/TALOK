@@ -4,11 +4,15 @@ import { NextResponse } from "next/server";
 import { roomUpdateSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string; roomId: string } }
+  { params }: { params: Promise<{ id: string; roomId: string }> }
 ) {
   try {
+    const { id, roomId } = await params;
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
     if (error) {
@@ -41,7 +45,7 @@ export async function PATCH(
     const { data: property, error: propertyError } = await supabaseClient
       .from("properties")
       .select("owner_id, type, etat")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (propertyError || !property) {
@@ -68,8 +72,8 @@ export async function PATCH(
     const { data: room, error: roomError } = await supabaseClient
       .from("rooms")
       .select("id, property_id")
-      .eq("id", params.roomId as any)
-      .eq("property_id", params.id as any)
+      .eq("id", roomId as any)
+      .eq("property_id", id as any)
       .single();
 
     if (roomError || !room) {
@@ -96,8 +100,8 @@ export async function PATCH(
     const { data: updatedRoom, error: updateError } = await supabaseClient
       .from("rooms")
       .update(updates as any)
-      .eq("id", params.roomId as any)
-      .eq("property_id", params.id as any)
+      .eq("id", roomId as any)
+      .eq("property_id", id as any)
       .select()
       .single();
 
@@ -123,11 +127,15 @@ export async function PATCH(
   }
 }
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string; roomId: string } }
+  { params }: { params: Promise<{ id: string; roomId: string }> }
 ) {
   try {
+    const { id, roomId } = await params;
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
     if (error) {
@@ -157,7 +165,7 @@ export async function DELETE(
     const { data: property, error: propertyError } = await supabaseClient
       .from("properties")
       .select("owner_id, type, etat")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (propertyError || !property) {
@@ -184,8 +192,8 @@ export async function DELETE(
     const { data: room, error: roomError } = await supabaseClient
       .from("rooms")
       .select("id")
-      .eq("id", params.roomId as any)
-      .eq("property_id", params.id as any)
+      .eq("id", roomId as any)
+      .eq("property_id", id as any)
       .single();
 
     if (roomError || !room) {
@@ -195,7 +203,7 @@ export async function DELETE(
     const { data: photos } = await supabaseClient
       .from("photos")
       .select("id")
-      .eq("room_id", params.roomId as any)
+      .eq("room_id", roomId as any)
       .limit(1);
 
     if (photos && photos.length > 0) {
@@ -211,8 +219,8 @@ export async function DELETE(
     const { error: deleteError } = await supabaseClient
       .from("rooms")
       .delete()
-      .eq("id", params.roomId as any)
-      .eq("property_id", params.id as any);
+      .eq("id", roomId as any)
+      .eq("property_id", id as any);
 
     if (deleteError) {
       return NextResponse.json(

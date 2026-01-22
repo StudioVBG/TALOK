@@ -6,14 +6,16 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/quotes/[id]/reject - Refuser un devis
- * 
+ *
  * Seul le propriétaire du ticket peut refuser un devis.
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -36,7 +38,7 @@ export async function POST(
           property:properties!inner(owner_id)
         )
       `)
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (quoteError || !quote) {
@@ -70,7 +72,7 @@ export async function POST(
     const { error: updateError } = await supabase
       .from("quotes")
       .update({ status: "rejected" })
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (updateError) throw updateError;
 
@@ -78,7 +80,7 @@ export async function POST(
     await supabase.from("outbox").insert({
       event_type: "Quote.Rejected",
       payload: {
-        quote_id: params.id,
+        quote_id: id,
         ticket_id: quoteData.ticket_id,
         provider_id: quoteData.provider_id,
       },

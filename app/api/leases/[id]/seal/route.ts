@@ -9,22 +9,25 @@ import { mapLeaseToTemplate } from "@/lib/mappers/lease-to-template";
 
 /**
  * POST /api/leases/[id]/seal
- * 
+ *
  * Scelle un bail après signature complète :
  * 1. Vérifie que toutes les signatures sont présentes
  * 2. Génère le PDF final avec les signatures
  * 3. Stocke le PDF dans Supabase Storage
  * 4. Met à jour le bail avec le chemin du PDF et la date de scellement
  * 5. Crée l'entrée document associée
- * 
+ *
  * Un bail scellé ne peut plus être modifié (contenu contractuel).
  * Seul le statut peut évoluer (fully_signed → active → terminated).
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const leaseId = params.id;
+  const { id } = await params;
+  const leaseId = id;
   
   try {
     const supabase = await createClient();
@@ -274,12 +277,15 @@ export async function POST(
 /**
  * GET /api/leases/[id]/seal
  * Vérifie si un bail est scellé et retourne ses informations
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const leaseId = params.id;
+  const { id } = await params;
+  const leaseId = id;
   
   try {
     const supabase = await createClient();

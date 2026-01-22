@@ -10,11 +10,15 @@ interface ImportPhotoRequest {
   urls: string[];
 }
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
     if (error || !user || !supabase) {
@@ -42,7 +46,7 @@ export async function POST(
     const { data: property } = await serviceClient
       .from("properties")
       .select("id, owner_id")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (!property) {
@@ -75,7 +79,7 @@ export async function POST(
     const { count: currentPhotoCount } = await serviceClient
       .from("photos")
       .select("*", { count: "exact", head: true })
-      .eq("property_id", params.id);
+      .eq("property_id", id);
 
     let ordre = (currentPhotoCount || 0) + 1;
 
@@ -109,7 +113,7 @@ export async function POST(
         const extension = contentType.includes("png") ? "png" 
           : contentType.includes("webp") ? "webp" 
           : "jpg";
-        const fileName = `${params.id}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${extension}`;
+        const fileName = `${id}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${extension}`;
 
         // Upload vers Supabase Storage
         const { data: uploadData, error: uploadError } = await serviceClient
@@ -138,7 +142,7 @@ export async function POST(
         const { data: photoRecord, error: insertError } = await serviceClient
           .from("photos")
           .insert({
-            property_id: params.id,
+            property_id: id,
             url: publicUrl,
             storage_path: fileName,
             ordre: ordre,

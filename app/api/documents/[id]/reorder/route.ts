@@ -5,11 +5,15 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { ensureDocumentGallerySupport, getDocumentGallerySupportMessage } from "@/lib/server/document-gallery";
 
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { user, error } = await getAuthenticatedUser(request);
 
     if (error) {
@@ -76,7 +80,7 @@ export async function PATCH(
     const { data: document, error: documentError } = await serviceClient
       .from("documents")
       .select("id, property_id, lease_id, owner_id, tenant_id, collection, position, is_cover")
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (documentError || !document) {

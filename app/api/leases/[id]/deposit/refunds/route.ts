@@ -6,11 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/leases/[id]/deposit/refunds - Restituer le dépôt de garantie (totale ou partielle)
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -45,7 +48,7 @@ export async function POST(
         id,
         property:properties!inner(owner_id)
       `)
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (!lease) {
@@ -74,7 +77,7 @@ export async function POST(
     const { data: balance } = await supabase
       .from("deposit_balance")
       .select("balance")
-      .eq("lease_id", params.id as any)
+      .eq("lease_id", id as any)
       .maybeSingle();
 
     const balanceData = balance as any;
@@ -92,7 +95,7 @@ export async function POST(
       const { data: edl } = await supabase
         .from("edl")
         .select("id, signed_at")
-        .eq("lease_id", params.id as any)
+        .eq("lease_id", id as any)
         .eq("type", "sortie" as any)
         .is("signed_at", null)
         .maybeSingle();
@@ -111,7 +114,7 @@ export async function POST(
     const { data: movement, error } = await supabase
       .from("deposit_movements")
       .insert({
-        lease_id: params.id as any,
+        lease_id: id as any,
         type: movementType,
         amount,
         reason,
@@ -133,7 +136,7 @@ export async function POST(
       event_type: eventType,
       payload: {
         movement_id: movementData.id,
-        lease_id: params.id as any,
+        lease_id: id as any,
         amount,
         is_partial,
       },
@@ -145,7 +148,7 @@ export async function POST(
       action: "deposit_returned",
       entity_type: "deposit",
       entity_id: movementData.id,
-      metadata: { amount, is_partial, lease_id: params.id as any },
+      metadata: { amount, is_partial, lease_id: id as any },
     } as any);
 
     return NextResponse.json({ movement });

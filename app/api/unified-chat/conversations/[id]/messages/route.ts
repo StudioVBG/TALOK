@@ -25,12 +25,14 @@ const sendMessageSchema = z.object({
 /**
  * GET /api/unified-chat/conversations/[id]/messages
  * Récupère les messages d'une conversation
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -40,7 +42,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const conversationId = params.id;
+    const conversationId = id;
 
     // Récupérer le profil
     const { data: profile, error: profileError } = await supabase
@@ -171,9 +173,10 @@ export async function GET(
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -183,7 +186,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const conversationId = params.id;
+    const conversationId = id;
 
     // Récupérer le profil
     const { data: profile, error: profileError } = await supabase

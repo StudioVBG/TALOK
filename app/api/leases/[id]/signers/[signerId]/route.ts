@@ -7,11 +7,14 @@ import { NextResponse } from "next/server";
 
 /**
  * GET /api/leases/[id]/signers/[signerId] - Récupérer un signataire spécifique
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string; signerId: string } }
+  { params }: { params: Promise<{ id: string; signerId: string }> }
 ) {
+  const { id: leaseId, signerId } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -21,8 +24,6 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-
-    const { id: leaseId, signerId } = params;
 
     const { data: signer, error } = await supabase
       .from("lease_signers")
@@ -64,11 +65,14 @@ export async function GET(
 
 /**
  * DELETE /api/leases/[id]/signers/[signerId] - Supprimer un signataire
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string; signerId: string } }
+  { params }: { params: Promise<{ id: string; signerId: string }> }
 ) {
+  const { id: leaseId, signerId } = await params;
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -79,8 +83,6 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-
-    const { id: leaseId, signerId } = params;
 
     // Récupérer le profil de l'utilisateur actuel
     const { data: ownerProfile } = await supabase

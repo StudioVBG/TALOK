@@ -6,12 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/inspections/[iid]/photos - Uploader des photos pour un EDL
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { iid: string } }
+  { params }: { params: Promise<{ iid: string }> }
 ) {
   try {
+    const { iid } = await params;
     const supabase = await createClient();
     const {
       data: { user },
@@ -47,7 +49,7 @@ export async function POST(
           signers:lease_signers(profile_id)
         )
       `)
-      .eq("id", params.iid)
+      .eq("id", iid)
       .single();
 
     if (edlError || !edl) {
@@ -99,7 +101,7 @@ export async function POST(
     // Uploader les fichiers
     const uploadedFiles = [];
     for (const file of files) {
-      const fileName = `edl/${params.iid}/${Date.now()}_${file.name}`;
+      const fileName = `edl/${iid}/${Date.now()}_${file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("documents")
         .upload(fileName, file, {
@@ -112,7 +114,7 @@ export async function POST(
       // Créer l'entrée dans edl_media
       // Note: la colonne "section" peut ne pas exister si le script APPLY_MANUALLY.sql n'a pas été exécuté
       const mediaPayload: any = {
-        edl_id: params.iid,
+        edl_id: iid,
         item_id: itemId || null,
         storage_path: uploadData.path,
         media_type: "photo",

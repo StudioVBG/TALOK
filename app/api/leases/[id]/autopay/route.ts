@@ -7,11 +7,14 @@ import { paymentSharesService } from "@/features/tenant/services/payment-shares.
 
 /**
  * POST /api/leases/[id]/autopay - Activer/désactiver l'autopay
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -36,7 +39,7 @@ export async function POST(
     const { data: roommate } = await supabase
       .from("roommates")
       .select("id")
-      .eq("lease_id", params.id as any)
+      .eq("lease_id", id as any)
       .eq("user_id", user.id as any)
       .is("left_on", null)
       .single();

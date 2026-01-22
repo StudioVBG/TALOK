@@ -7,13 +7,16 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/leases/[id]/deposit/refund - Effectuer la restitution du dépôt de garantie
- * 
+ *
  * PATTERN: Création unique (enregistrement de la restitution + génération document)
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const serviceClient = getServiceClient();
@@ -25,7 +28,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
     const body = await request.json();
 
     const {

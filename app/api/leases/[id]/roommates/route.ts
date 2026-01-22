@@ -31,11 +31,14 @@ const updateRoommateSchema = z.object({
 /**
  * GET /api/leases/[id]/roommates
  * Récupérer tous les colocataires d'un bail
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -44,7 +47,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
 
     // Récupérer les roommates avec les profils
     const { data: roommates, error } = await supabase
@@ -91,11 +94,14 @@ export async function GET(
 /**
  * POST /api/leases/[id]/roommates
  * Ajouter un nouveau colocataire
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -104,7 +110,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
     const body = await request.json();
     const validated = addRoommateSchema.parse(body);
 
@@ -303,11 +309,14 @@ export async function POST(
 /**
  * PATCH /api/leases/[id]/roommates
  * Mettre à jour un colocataire (départ, changement de poids, etc.)
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -316,7 +325,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const leaseId = params.id;
+    const leaseId = id;
     const body = await request.json();
     const validated = updateRoommateSchema.parse(body);
 

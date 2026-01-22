@@ -6,11 +6,14 @@ import { NextResponse } from "next/server";
 
 /**
  * GET /api/leases/[id]/summary - Fiche synthèse d'un bail
+ *
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const {
@@ -35,7 +38,7 @@ export async function GET(
         )
       `
       )
-      .eq("id", params.id as any)
+      .eq("id", id as any)
       .single();
 
     if (leaseError || !lease) {
@@ -70,7 +73,7 @@ export async function GET(
           profile:profiles(prenom, nom, avatar_url)
         `
         )
-        .eq("lease_id", params.id as any)
+        .eq("lease_id", id as any)
         .is("left_on", null);
 
       roommates = roommatesData;
@@ -80,7 +83,7 @@ export async function GET(
     const { data: lastPayment } = await supabase
       .from("payment_shares")
       .select("*")
-        .eq("lease_id", params.id as any)
+        .eq("lease_id", id as any)
         .order("month", { ascending: false })
       .limit(1)
       .single();

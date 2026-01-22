@@ -1,3 +1,6 @@
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export const runtime = 'nodejs';
 
 import { getServiceClient } from "@/lib/supabase/service-client";
@@ -10,7 +13,7 @@ import { extractClientIP } from "@/lib/utils/ip-address";
  */
 export async function POST(
   request: Request,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { token } = await params;

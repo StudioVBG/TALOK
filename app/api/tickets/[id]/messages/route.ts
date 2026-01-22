@@ -1,3 +1,6 @@
+/**
+ * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
@@ -10,8 +13,9 @@ import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const supabaseClient = getTypedSupabaseClient(supabase);
@@ -23,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const ticketId = params.id;
+    const ticketId = id;
 
     // Vérifier l'accès au ticket
     const { data: ticket } = await supabaseClient
@@ -102,8 +106,9 @@ export async function GET(
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const supabase = await createClient();
     const supabaseClient = getTypedSupabaseClient(supabase);
@@ -115,7 +120,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const ticketId = params.id;
+    const ticketId = id;
     const body = await request.json();
     const { body: messageBody, attachments = [], is_internal = false } = body;
 
