@@ -105,6 +105,80 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* ============================================
+     ACCESSIBILITÉ - Focus Visible Amélioré
+     WCAG 2.1 AA - Focus clairement visible
+     ============================================ */
+
+  /* Focus visible global - anneau de focus cohérent */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Focus visible pour les liens */
+  a:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background rounded-sm;
+  }
+
+  /* Focus visible pour les boutons et éléments interactifs */
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:focus-visible:not([tabindex="-1"]) {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Focus visible pour les inputs et selects */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-0 border-ring;
+  }
+
+  /* Suppression du focus pour les clics souris (conserve focus clavier) */
+  :focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* ============================================
+     ACCESSIBILITÉ - Skip Links
+     ============================================ */
+  .skip-links a:focus {
+    @apply not-sr-only fixed top-4 left-4 z-[9999];
+    @apply px-4 py-2 rounded-md;
+    @apply bg-primary text-primary-foreground;
+    @apply shadow-lg font-medium;
+  }
+
+  /* ============================================
+     ACCESSIBILITÉ - Reduced Motion
+     ============================================ */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* ============================================
+     ACCESSIBILITÉ - Contrastes élevés
+     ============================================ */
+  @media (prefers-contrast: more) {
+    :root {
+      --border: 0 0% 20%;
+      --ring: 217 91% 40%;
+    }
+
+    .dark {
+      --border: 0 0% 80%;
+      --ring: 217 91% 70%;
+    }
+  }
 }
 
 /* ============================================
