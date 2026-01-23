@@ -271,7 +271,7 @@ export function WhyChooseUs({ className, variant = "full" }: WhyChooseUsProps) {
               size="lg"
               className="bg-white text-slate-900 hover:bg-slate-100"
             >
-              <Link href="/auth/register">
+              <Link href="/auth/signup">
                 Créer mon compte gratuit
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>

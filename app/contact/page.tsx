@@ -33,6 +33,7 @@ import {
   Building2,
   Headphones,
 } from "lucide-react";
+import { PublicFooter } from "@/components/layout/public-footer";
 
 const SUBJECTS = [
   { value: "general", label: "Question générale" },
@@ -314,6 +315,9 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <PublicFooter variant="dark" />
     </div>
   );
 }
