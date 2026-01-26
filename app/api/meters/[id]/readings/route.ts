@@ -17,10 +17,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: meterId } = await params;
-  console.log(`[GET /api/meters/${meterId}/readings] Entering`);
+  let meterId: string;
 
   try {
+    // 🔧 FIX: await params INSIDE try-catch to prevent unhandled errors returning HTML
+    const resolvedParams = await params;
+    meterId = resolvedParams.id;
+
+    console.log(`[GET /api/meters/${meterId}/readings] Entering`);
+
     // Validate meter ID format
     const parseResult = uuidSchema.safeParse(meterId);
     if (!parseResult.success) {
@@ -151,11 +156,14 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Next.js 15: params is now a Promise
-  const { id: meterId } = await params;
-  console.log(`[POST /api/meters/${meterId}/readings] Entering`);
+  let meterId: string;
 
   try {
+    // 🔧 FIX: await params INSIDE try-catch to prevent unhandled errors returning HTML
+    const resolvedParams = await params;
+    meterId = resolvedParams.id;
+
+    console.log(`[POST /api/meters/${meterId}/readings] Entering`);
     const supabase = await createClient();
     const {
       data: { user },
