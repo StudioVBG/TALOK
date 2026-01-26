@@ -30,10 +30,24 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: edlId } = await params;
-  console.log(`[GET /api/edl/${edlId}/meter-readings] Entering`);
+  // 🔧 FIX: Initialize with 'unknown' for error logging if params parsing fails
+  let edlId = 'unknown';
 
   try {
+    // 🔧 FIX: await params INSIDE try-catch to prevent unhandled errors returning HTML
+    const resolvedParams = await params;
+    edlId = resolvedParams.id;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!edlId || !uuidRegex.test(edlId)) {
+      return NextResponse.json(
+        { error: "ID d'EDL invalide", code: "INVALID_EDL_ID" },
+        { status: 400 }
+      );
+    }
+
+    console.log(`[GET /api/edl/${edlId}/meter-readings] Entering`);
     const supabase = await createClient();
     const {
       data: { user },
@@ -141,10 +155,24 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: edlId } = await params;
-  console.log(`[POST /api/edl/${edlId}/meter-readings] Entering`);
+  // 🔧 FIX: Initialize with 'unknown' for error logging if params parsing fails
+  let edlId = 'unknown';
 
   try {
+    // 🔧 FIX: await params INSIDE try-catch to prevent unhandled errors returning HTML
+    const resolvedParams = await params;
+    edlId = resolvedParams.id;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!edlId || !uuidRegex.test(edlId)) {
+      return NextResponse.json(
+        { error: "ID d'EDL invalide", code: "INVALID_EDL_ID" },
+        { status: 400 }
+      );
+    }
+
+    console.log(`[POST /api/edl/${edlId}/meter-readings] Entering`);
     const supabase = await createClient();
     const {
       data: { user },
