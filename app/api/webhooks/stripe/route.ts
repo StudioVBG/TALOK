@@ -622,6 +622,112 @@ export async function POST(request: NextRequest) {
       }
 
       // ===============================================
+      // STRIPE CONNECT - COMPTE MIS À JOUR
+      // ===============================================
+      case "account.updated": {
+        const account = event.data.object as Stripe.Account;
+
+        // Mettre à jour le compte Connect en base
+        const { data: connectAccount, error: findError } = await supabase
+          .from("stripe_connect_accounts")
+          .select("id, profile_id")
+          .eq("stripe_account_id", account.id)
+          .maybeSingle();
+
+        if (connectAccount) {
+          const { error: updateError } = await supabase
+            .from("stripe_connect_accounts")
+            .update({
+              charges_enabled: account.charges_enabled,
+              payouts_enabled: account.payouts_enabled,
+              details_submitted: account.details_submitted,
+              requirements_currently_due: account.requirements?.currently_due || [],
+              requirements_eventually_due: account.requirements?.eventually_due || [],
+              requirements_past_due: account.requirements?.past_due || [],
+              requirements_disabled_reason: account.requirements?.disabled_reason,
+              business_type: account.business_type,
+              bank_account_last4: (account.external_accounts?.data[0] as any)?.last4,
+              bank_account_bank_name: (account.external_accounts?.data[0] as any)?.bank_name,
+              updated_at: new Date().toISOString(),
+              onboarding_completed_at:
+                account.charges_enabled && account.payouts_enabled && account.details_submitted
+                  ? new Date().toISOString()
+                  : null,
+            })
+            .eq("id", connectAccount.id);
+
+          if (!updateError) {
+            console.log(`[Stripe Webhook] Connect account updated: ${account.id}`);
+
+            // Notifier le propriétaire si l'onboarding est terminé
+            if (account.charges_enabled && account.payouts_enabled && connectAccount.profile_id) {
+              await supabase.rpc("create_notification", {
+                p_recipient_id: connectAccount.profile_id,
+                p_type: "success",
+                p_title: "Compte de paiement activé !",
+                p_message: "Votre compte Stripe est maintenant actif. Vous recevrez les loyers directement.",
+                p_link: "/owner/settings/payments",
+              }).catch(() => {});
+            }
+          }
+        }
+        break;
+      }
+
+      // ===============================================
+      // STRIPE CONNECT - TRANSFERT CRÉÉ
+      // ===============================================
+      case "transfer.created": {
+        const transfer = event.data.object as Stripe.Transfer;
+
+        // Enregistrer le transfert en base
+        const { data: connectAccount } = await supabase
+          .from("stripe_connect_accounts")
+          .select("id")
+          .eq("stripe_account_id", transfer.destination as string)
+          .maybeSingle();
+
+        if (connectAccount) {
+          await supabase.from("stripe_transfers").insert({
+            connect_account_id: connectAccount.id,
+            stripe_transfer_id: transfer.id,
+            stripe_payment_intent_id: transfer.source_transaction as string,
+            amount: transfer.amount,
+            currency: transfer.currency,
+            net_amount: transfer.amount, // Sans commission pour l'instant
+            status: "paid",
+            description: transfer.description,
+            metadata: transfer.metadata,
+            completed_at: new Date().toISOString(),
+          }).catch((err) => {
+            console.error("[Stripe Webhook] Error creating transfer record:", err);
+          });
+
+          console.log(`[Stripe Webhook] Transfer created: ${transfer.id}`);
+        }
+        break;
+      }
+
+      // ===============================================
+      // STRIPE CONNECT - TRANSFERT ÉCHOUÉ
+      // ===============================================
+      case "transfer.failed": {
+        const transfer = event.data.object as Stripe.Transfer;
+
+        // Mettre à jour le statut du transfert
+        await supabase
+          .from("stripe_transfers")
+          .update({
+            status: "failed",
+            failure_reason: "Transfer failed",
+          })
+          .eq("stripe_transfer_id", transfer.id);
+
+        console.log(`[Stripe Webhook] Transfer failed: ${transfer.id}`);
+        break;
+      }
+
+      // ===============================================
       // AUTRES ÉVÉNEMENTS
       // ===============================================
       default:
