@@ -33,3 +33,21 @@ export type { EDLData, EDLRoom, EDLPhoto } from "./edl-conductor";
 // === Relevés de compteurs EDL (Décret 2016-382) ===
 export { EDLMeterReadings } from "./edl-meter-readings";
 
+// === Inventaire mobilier (Décret 2015-981) ===
+export { FurnitureInventory, MANDATORY_ITEMS_CONFIG } from "./furniture-inventory";
+export type {
+  FurnitureInventoryData,
+  MandatoryFurnitureItem,
+  AdditionalFurnitureItem,
+  FurnitureCondition,
+  MandatoryFurnitureChecklist,
+} from "./furniture-inventory";
+
+// === Grille de vétusté (Décret 30 mars 2016) ===
+export { WearGrid, WEAR_CATEGORIES, calculateWearPercentage, calculateTenantResponsibility, calculateAmountDue } from "./wear-grid";
+export type { WearItem, WearGridData, WearCategory, DamageType } from "./wear-grid";
+
+// === Diagnostics DOM-TOM (Arrêtés préfectoraux) ===
+export { DomtomDiagnostics } from "./domtom-diagnostics";
+export type { TermitesDiagnostic, RisquesNaturelsDomtom, DomtomDiagnosticsData } from "./domtom-diagnostics";
+
