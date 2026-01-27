@@ -14,6 +14,8 @@ export { BAIL_COLOCATION_TEMPLATE, BAIL_COLOCATION_VARIABLES } from './bail-colo
 export { BAIL_PARKING_TEMPLATE } from './bail-parking.template';
 export { BAIL_SAISONNIER_TEMPLATE, BAIL_SAISONNIER_VARIABLES } from './bail-saisonnier.template';
 export { BAIL_MOBILITE_TEMPLATE, BAIL_MOBILITE_VARIABLES, MOTIFS_MOBILITE } from './bail-mobilite.template';
+export { BAIL_COMMERCIAL_TEMPLATE, BAIL_COMMERCIAL_VARIABLES } from './bail-commercial.template';
+export { BAIL_DEROGATOIRE_TEMPLATE, BAIL_DEROGATOIRE_VARIABLES } from './bail-derogatoire.template';
 
 // Configuration des templates par type
 export const TEMPLATES_CONFIG = {
@@ -78,6 +80,36 @@ export const TEMPLATES_CONFIG = {
     preavis_locataire: 1,
     preavis_bailleur: 1,
     loi_applicable: 'Code civil (articles 1709 et suivants)',
+  },
+  commercial: {
+    id: 'bail-commercial-v1',
+    name: 'Bail commercial 3/6/9',
+    type_bail: 'commercial' as const,
+    duree_min: 108, // 9 ans minimum
+    duree_max: 0, // Pas de limite
+    depot_max_mois: 0, // Pas de limite légale (généralement 3-6 mois)
+    preavis_locataire: 6, // Résiliation triennale
+    preavis_bailleur: 6,
+    resiliation_triennale: true,
+    droit_renouvellement: true,
+    indemnite_eviction: true,
+    indexation: ['ILC', 'ILAT', 'ICC'],
+    loi_applicable: 'Code de commerce (Articles L145-1 à L145-60)',
+  },
+  commercial_derogatoire: {
+    id: 'bail-derogatoire-v1',
+    name: 'Bail commercial dérogatoire',
+    type_bail: 'commercial_derogatoire' as const,
+    duree_min: 0,
+    duree_max: 36, // 3 ans maximum (cumul)
+    depot_max_mois: 0, // Pas de limite légale
+    preavis_locataire: 0, // Selon contrat
+    preavis_bailleur: 0, // Pas de congé nécessaire
+    resiliation_triennale: false,
+    droit_renouvellement: false,
+    indemnite_eviction: false,
+    tacite_reconduction: false,
+    loi_applicable: 'Article L145-5 du Code de commerce',
   },
 };
 
