@@ -2,6 +2,7 @@
 
 /**
  * Inventaire mobilier pour bail meublé - Décret n°2015-981
+ * GAP-002: Inventaire du mobilier pour logement meublé
  *
  * Éléments obligatoires selon l'Article 25-4 de la loi du 6 juillet 1989 :
  * - Literie comprenant couette ou couverture
@@ -305,7 +306,7 @@ function MandatoryItemCard({
                           <AlertTriangle className="h-4 w-4 text-amber-500" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>État dégradé depuis l'entrée</p>
+                          <p>État dégradé depuis l&apos;entrée</p>
                           <p className="text-xs text-muted-foreground">
                             Entrée: {CONDITION_LABELS[entryItem!.condition].label} →
                             Sortie: {CONDITION_LABELS[item.condition].label}
@@ -455,7 +456,7 @@ function MandatoryItemCard({
                 {isExit && entryItem && (
                   <div className="p-3 bg-slate-50 rounded-lg">
                     <p className="text-xs font-medium text-muted-foreground mb-2">
-                      État à l'entrée
+                      État à l&apos;entrée
                     </p>
                     <div className="flex items-center gap-2">
                       <ConditionBadge condition={entryItem.condition} />
@@ -495,12 +496,10 @@ function AdditionalItemRow({
   item,
   onUpdate,
   onDelete,
-  onTakePhoto,
 }: {
   item: AdditionalFurnitureItem;
   onUpdate: (item: AdditionalFurnitureItem) => Promise<void>;
   onDelete: () => Promise<void>;
-  onTakePhoto?: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedItem, setEditedItem] = useState(item);
@@ -689,7 +688,7 @@ export function FurnitureInventory({
                   <p className="font-medium">Décret n°2015-981</p>
                   <p className="text-xs">
                     Liste des éléments de mobilier obligatoires pour un logement meublé,
-                    en application de l'article 25-4 de la loi du 6 juillet 1989.
+                    en application de l&apos;article 25-4 de la loi du 6 juillet 1989.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -784,11 +783,6 @@ export function FurnitureInventory({
                     item={item}
                     onUpdate={onUpdateAdditional}
                     onDelete={() => onDeleteAdditional(item.id)}
-                    onTakePhoto={
-                      onTakePhoto
-                        ? () => onTakePhoto(item.id, "additional")
-                        : undefined
-                    }
                   />
                 ))}
               </tbody>
@@ -890,7 +884,7 @@ export function FurnitureInventory({
           ) : (
             <Check className="h-4 w-4" />
           )}
-          Valider l'inventaire
+          Valider l&apos;inventaire
         </Button>
       </div>
     </div>
