@@ -103,12 +103,21 @@ export async function POST(request: NextRequest) {
       profile_id: profile.id,
     });
 
+    // Extraire les informations client pour conformité SEPA
+    const clientInfo = {
+      ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0].trim()
+        || request.headers.get("x-real-ip")
+        || "0.0.0.0",
+      userAgent: request.headers.get("user-agent") || "Talok/1.0",
+    };
+
     // Confirmer le SetupIntent avec l'IBAN
     const confirmedIntent = await sepaService.confirmSepaSetupIntent(
       setupIntent.id,
       validatedData.iban,
       validatedData.account_holder_name,
-      user.email!
+      user.email!,
+      clientInfo
     );
 
     // Créer le mandat en base de données
