@@ -20,7 +20,7 @@ Sentry.init({
   // Tags personnalisés
   initialScope: {
     tags: {
-      app: "gestion-locative",
+      app: "talok",
       side: "server",
     },
   },

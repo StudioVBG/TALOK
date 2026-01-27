@@ -1,16 +1,11 @@
 /**
  * Service de reporting d'erreurs
- * 
- * Ce module centralise la gestion des erreurs pour faciliter
- * l'intégration avec Sentry ou un autre service de monitoring.
- * 
- * Pour activer Sentry :
- * 1. npm install @sentry/nextjs
- * 2. Configurer SENTRY_DSN dans .env
- * 3. Décommenter les imports Sentry ci-dessous
+ *
+ * Ce module centralise la gestion des erreurs avec Sentry
+ * pour le monitoring en production.
  */
 
-// import * as Sentry from "@sentry/nextjs";
+import * as Sentry from "@sentry/nextjs";
 
 type ErrorSeverity = "fatal" | "error" | "warning" | "info" | "debug";
 
@@ -41,14 +36,6 @@ export function initErrorReporting() {
     return;
   }
 
-  // Sentry.init({
-  //   dsn: SENTRY_DSN,
-  //   tracesSampleRate: 0.1, // 10% des transactions
-  //   replaysSessionSampleRate: 0.1,
-  //   replaysOnErrorSampleRate: 1.0,
-  //   environment: process.env.NODE_ENV,
-  // });
-
   console.log("[ErrorReporter] Monitoring initialisé");
 }
 
@@ -68,23 +55,23 @@ export function captureError(report: ErrorReport) {
   }
 
   // Production : envoyer à Sentry
-  // if (error) {
-  //   Sentry.captureException(error, {
-  //     level: severity,
-  //     tags: context?.tags,
-  //     extra: {
-  //       ...context?.extra,
-  //       userId: context?.userId,
-  //       userRole: context?.userRole,
-  //     },
-  //   });
-  // } else {
-  //   Sentry.captureMessage(message, {
-  //     level: severity,
-  //     tags: context?.tags,
-  //     extra: context?.extra,
-  //   });
-  // }
+  if (error) {
+    Sentry.captureException(error, {
+      level: severity,
+      tags: context?.tags,
+      extra: {
+        ...context?.extra,
+        userId: context?.userId,
+        userRole: context?.userRole,
+      },
+    });
+  } else {
+    Sentry.captureMessage(message, {
+      level: severity,
+      tags: context?.tags,
+      extra: context?.extra,
+    });
+  }
 }
 
 /**
@@ -120,11 +107,10 @@ export function captureMessage(
 export function setUserContext(user: { id: string; email?: string; role?: string }) {
   if (!IS_PRODUCTION) return;
 
-  // Sentry.setUser({
-  //   id: user.id,
-  //   email: user.email,
-  //   role: user.role,
-  // });
+  Sentry.setUser({
+    id: user.id,
+    email: user.email,
+  });
 }
 
 /**
@@ -133,7 +119,7 @@ export function setUserContext(user: { id: string; email?: string; role?: string
 export function clearUserContext() {
   if (!IS_PRODUCTION) return;
 
-  // Sentry.setUser(null);
+  Sentry.setUser(null);
 }
 
 /**
@@ -149,12 +135,12 @@ export function addBreadcrumb(
     return;
   }
 
-  // Sentry.addBreadcrumb({
-  //   message,
-  //   category,
-  //   data,
-  //   level: "info",
-  // });
+  Sentry.addBreadcrumb({
+    message,
+    category,
+    data,
+    level: "info",
+  });
 }
 
 /**
