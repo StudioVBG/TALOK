@@ -982,3 +982,32 @@ export {
   ENTITIES_IS_MANDATORY,
 } from "./legal-entity";
 
+// ============================================
+// EXPORTS BAUX COMMERCIAUX - GAP-003 SOTA 2026
+// Code de commerce Articles L145-1 à L145-60
+// ============================================
+export type {
+  CommercialLeaseType,
+  CommercialIndex,
+  CommercialTVARegime,
+  DestinationClause,
+  IndexationClause,
+  PasDePorte,
+  DroitAuBail,
+  ClauseResolutoire,
+  CommercialGuarantees,
+  CommercialLeaseConfig,
+  DerogtoireLeaseConfig,
+  TriennialPeriod,
+  CommercialLeaseTemplateData,
+} from "./commercial-lease";
+
+export {
+  COMMERCIAL_LEASE_DEFAULTS,
+  DEFAULT_COMMERCIAL_369_CONFIG,
+  DEFAULT_DEROGATOIRE_CONFIG,
+  COMMERCIAL_INDEX_LABELS,
+  DESTINATION_CLAUSE_EXAMPLES,
+  MAX_DEROGATOIRE_MONTHS,
+} from "./commercial-lease";
+
