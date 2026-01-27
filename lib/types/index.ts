@@ -1011,3 +1011,38 @@ export {
   MAX_DEROGATOIRE_MONTHS,
 } from "./commercial-lease";
 
+// ============================================
+// EXPORTS BAUX PROFESSIONNELS - GAP-004 SOTA 2026
+// Article 57 A de la loi n°86-1290 du 23 décembre 1986
+// ============================================
+export type {
+  ProfessionLiberaleCategory,
+  ProfessionalFiscalRegime,
+  ProfessionalLegalForm,
+  ProfessionalActivityType,
+  ProfessionalTenantInfo,
+  ProfessionalPremisesConfig,
+  ProfessionalIndexation,
+  ProfessionalFinancialTerms,
+  ProfessionalLeaseConfig,
+  ProfessionalLeaseData,
+  CreateProfessionalLeaseDTO,
+  ProfessionalLeaseTemplateData,
+} from "./professional-lease";
+
+export {
+  PROFESSION_CATEGORY_LABELS,
+  PROFESSION_ACTIVITY_LABELS,
+  LEGAL_FORM_LABELS,
+  FISCAL_REGIME_LABELS,
+  ORDRES_PROFESSIONNELS,
+  DEFAULT_PROFESSIONAL_LEASE_CONFIG,
+  DEFAULT_PROFESSIONAL_FINANCIAL_TERMS,
+  PROFESSIONAL_LEASE_DURATION,
+  PROFESSIONS_WITH_ORDER,
+  HEALTH_PROFESSIONS,
+  isOrderedProfession,
+  isHealthProfession,
+  getOrdreForProfession,
+} from "./professional-lease";
+

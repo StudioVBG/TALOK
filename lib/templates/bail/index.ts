@@ -16,6 +16,7 @@ export { BAIL_SAISONNIER_TEMPLATE, BAIL_SAISONNIER_VARIABLES } from './bail-sais
 export { BAIL_MOBILITE_TEMPLATE, BAIL_MOBILITE_VARIABLES, MOTIFS_MOBILITE } from './bail-mobilite.template';
 export { BAIL_COMMERCIAL_TEMPLATE, BAIL_COMMERCIAL_VARIABLES } from './bail-commercial.template';
 export { BAIL_DEROGATOIRE_TEMPLATE, BAIL_DEROGATOIRE_VARIABLES } from './bail-derogatoire.template';
+export { BAIL_PROFESSIONNEL_TEMPLATE, BAIL_PROFESSIONNEL_VARIABLES } from './bail-professionnel.template';
 
 // Configuration des templates par type
 export const TEMPLATES_CONFIG = {
@@ -110,6 +111,24 @@ export const TEMPLATES_CONFIG = {
     indemnite_eviction: false,
     tacite_reconduction: false,
     loi_applicable: 'Article L145-5 du Code de commerce',
+  },
+  professionnel: {
+    id: 'bail-professionnel-v1',
+    name: 'Bail professionnel',
+    type_bail: 'professionnel' as const,
+    duree_min: 72, // 6 ans minimum
+    duree_max: 0, // Pas de limite
+    depot_max_mois: 0, // Pas de limite légale (généralement 2 mois)
+    preavis_locataire: 6,
+    preavis_bailleur: 6,
+    resiliation_anticipee: true, // À tout moment avec préavis
+    droit_renouvellement: false, // Pas de propriété commerciale
+    indemnite_eviction: false, // Pas d'indemnité d'éviction
+    indexation: ['ILAT', 'ILC'],
+    professions_liberales: true,
+    ordre_professionnel: true, // Pour professions réglementées
+    assurance_rcp_obligatoire: true,
+    loi_applicable: 'Article 57 A de la loi n°86-1290 du 23 décembre 1986',
   },
 };
 
