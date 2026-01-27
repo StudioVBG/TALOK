@@ -132,6 +132,11 @@ interface WizardState {
   photoImportStatus: 'idle' | 'importing' | 'done' | 'error';
   photoImportProgress: { imported: number; total: number };
 
+  // SOTA 2026: Undo/Redo History
+  history: WizardFormData[];
+  historyIndex: number;
+  maxHistoryLength: number;
+
   // Actions
   reset: () => void;
   initializeDraft: (type: PropertyTypeV3) => Promise<void>;
@@ -151,6 +156,13 @@ interface WizardState {
   setMode: (mode: WizardMode) => void;
   nextStep: () => void;
   prevStep: () => void;
+
+  // SOTA 2026: Undo/Redo Actions
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  clearHistory: () => void;
 }
 
 // Mapping des étapes (ordre logique)
@@ -206,7 +218,7 @@ function calculateRoomCounts(rooms: Room[]): { nb_pieces: number; nb_chambres: n
 }
 
 // SOTA 2026: État initial typé pour le reset
-const INITIAL_STATE: Omit<WizardState, 'reset' | 'initializeDraft' | 'loadProperty' | 'updateFormData' | 'addRoom' | 'updateRoom' | 'removeRoom' | 'setPhotos' | 'setPendingPhotoUrls' | 'importPendingPhotos' | 'setStep' | 'setMode' | 'nextStep' | 'prevStep'> = {
+const INITIAL_STATE: Omit<WizardState, 'reset' | 'initializeDraft' | 'loadProperty' | 'updateFormData' | 'addRoom' | 'updateRoom' | 'removeRoom' | 'setPhotos' | 'setPendingPhotoUrls' | 'importPendingPhotos' | 'setStep' | 'setMode' | 'nextStep' | 'prevStep' | 'undo' | 'redo' | 'canUndo' | 'canRedo' | 'clearHistory'> = {
   propertyId: null,
   buildingId: null,
   currentStep: 'type_bien',
@@ -229,6 +241,10 @@ const INITIAL_STATE: Omit<WizardState, 'reset' | 'initializeDraft' | 'loadProper
   pendingPhotoUrls: [],
   photoImportStatus: 'idle',
   photoImportProgress: { imported: 0, total: 0 },
+  // SOTA 2026: Undo/Redo
+  history: [],
+  historyIndex: -1,
+  maxHistoryLength: 50, // Max 50 états dans l'historique
 };
 
 // Compteur pour générer des IDs temporaires uniques (évite les doublons avec Date.now())
@@ -349,16 +365,27 @@ export const usePropertyWizardStore = create<WizardState>()(
   },
 
   // SOTA 2026: updateFormData avec DEBOUNCE par propertyId pour optimiser les appels API
+  // Avec support Undo/Redo
   updateFormData: (updates) => {
-    const { propertyId } = get();
+    const { propertyId, formData, history, historyIndex, maxHistoryLength } = get();
 
-    // 1. Optimistic Update immédiat
+    // 1. Sauvegarder l'état actuel dans l'historique (pour undo)
+    // On tronque l'historique après l'index courant (supprimer les états "redo")
+    const newHistory = [...history.slice(0, historyIndex + 1), { ...formData }];
+    // Limiter la taille de l'historique
+    const trimmedHistory = newHistory.length > maxHistoryLength
+      ? newHistory.slice(newHistory.length - maxHistoryLength)
+      : newHistory;
+
+    // 2. Optimistic Update immédiat avec mise à jour de l'historique
     set((state) => ({
       formData: { ...state.formData, ...updates },
+      history: trimmedHistory,
+      historyIndex: trimmedHistory.length - 1,
       syncStatus: propertyId ? 'saving' : 'idle'
     }));
 
-    // 2. Si pas de propertyId, pas de sync serveur
+    // 3. Si pas de propertyId, pas de sync serveur
     if (!propertyId) {
       return;
     }
@@ -586,6 +613,64 @@ export const usePropertyWizardStore = create<WizardState>()(
     if (currentIndex > 0) {
       set({ currentStep: applicableSteps[currentIndex - 1] });
     }
+  },
+
+  // SOTA 2026: Undo/Redo Actions
+  undo: () => {
+    const { history, historyIndex, formData } = get();
+
+    if (historyIndex < 0) {
+      console.log('[WizardStore] Undo: rien à annuler');
+      return;
+    }
+
+    // Sauvegarder l'état actuel avant d'annuler (pour redo)
+    const newHistory = historyIndex === history.length - 1
+      ? [...history, { ...formData }]
+      : history;
+
+    // Restaurer l'état précédent
+    const previousState = history[historyIndex];
+    console.log('[WizardStore] Undo: restauration de l\'état', historyIndex);
+
+    set({
+      formData: { ...previousState },
+      history: newHistory,
+      historyIndex: historyIndex - 1,
+    });
+  },
+
+  redo: () => {
+    const { history, historyIndex } = get();
+
+    if (historyIndex >= history.length - 1) {
+      console.log('[WizardStore] Redo: rien à refaire');
+      return;
+    }
+
+    // Restaurer l'état suivant
+    const nextState = history[historyIndex + 1];
+    console.log('[WizardStore] Redo: restauration de l\'état', historyIndex + 1);
+
+    set({
+      formData: { ...nextState },
+      historyIndex: historyIndex + 1,
+    });
+  },
+
+  canUndo: () => {
+    const { historyIndex } = get();
+    return historyIndex >= 0;
+  },
+
+  canRedo: () => {
+    const { history, historyIndex } = get();
+    return historyIndex < history.length - 1;
+  },
+
+  clearHistory: () => {
+    console.log('[WizardStore] Effacement de l\'historique');
+    set({ history: [], historyIndex: -1 });
   }
     }),
     {
