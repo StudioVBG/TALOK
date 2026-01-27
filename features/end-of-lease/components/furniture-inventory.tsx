@@ -121,7 +121,7 @@ export interface FurnitureInventoryData {
 interface FurnitureInventoryProps {
   data: FurnitureInventoryData;
   edlType: "entree" | "sortie";
-  entryInventory?: FurnitureInventoryData; // Pour comparaison en sortie
+  entryInventory?: FurnitureInventoryData;
   onUpdateMandatory: (item: MandatoryFurnitureItem) => Promise<void>;
   onAddAdditional: (item: Omit<AdditionalFurnitureItem, "id">) => Promise<AdditionalFurnitureItem>;
   onUpdateAdditional: (item: AdditionalFurnitureItem) => Promise<void>;
@@ -452,7 +452,6 @@ function MandatoryItemCard({
                   </div>
                 )}
 
-                {/* Comparaison avec l'entrée */}
                 {isExit && entryItem && (
                   <div className="p-3 bg-slate-50 rounded-lg">
                     <p className="text-xs font-medium text-muted-foreground mb-2">
