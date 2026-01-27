@@ -1046,3 +1046,48 @@ export {
   getOrdreForProfession,
 } from "./professional-lease";
 
+// ============================================
+// EXPORTS EDL COMMERCIAL - GAP-007 SOTA 2026
+// État des lieux pour locaux commerciaux/professionnels
+// ============================================
+export type {
+  CommercialInspectionCategory,
+  ProfessionalInspectionCategory,
+  EDLCommercialCategory,
+  CommercialPremiseType,
+  CommercialItemCondition,
+  ComplianceLevel,
+  CommercialInspectionItem,
+  FacadeVitrineInspection,
+  EnseigneInspection,
+  InstallationsTechniquesInspection,
+  SecuriteIncendieInspection,
+  AccessibilitePMRInspection,
+  CabinetMedicalInspection,
+  CompteursReseauxInspection,
+  EDLCommercial,
+  EquipementBailleur,
+  CleRemise,
+  DocumentAnnexe,
+  DifferenceConstatee,
+  CreateEDLCommercialDTO,
+  AddInspectionItemDTO,
+  ValidateEDLCommercialDTO,
+} from "./edl-commercial";
+
+export {
+  COMMERCIAL_INSPECTION_CATEGORY_LABELS,
+  PROFESSIONAL_INSPECTION_CATEGORY_LABELS,
+  COMMERCIAL_CONDITION_LABELS,
+  COMPLIANCE_LEVEL_LABELS,
+  COMMERCIAL_PREMISE_TYPE_LABELS,
+  CLE_TYPE_LABELS,
+  COMMERCIAL_CONDITION_COLORS,
+  COMPLIANCE_LEVEL_COLORS,
+  ERP_CATEGORIES,
+  ERP_TYPES,
+  COMMERCIAL_COMPLIANCE_CHECKLIST,
+  COMMERCIAL_INSPECTION_ITEMS_BY_CATEGORY,
+  MEDICAL_INSPECTION_ITEMS,
+} from "./edl-commercial";
+
