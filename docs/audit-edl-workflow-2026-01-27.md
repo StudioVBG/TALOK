@@ -34,7 +34,7 @@
 | Relevés Compteurs (OCR) | 80% | ✅ Fonctionnel avec fallback |
 | Génération Document | 85% | ✅ Fonctionnel (HTML côté client) |
 | Signature Électronique | 95% | ✅ Complet avec audit trail |
-| Validation & Notifications | 75% | ⚠️ Partiellement implémenté |
+| Validation & Notifications | 90% | ✅ Outbox consumer déployé |
 
 ### Points Forts
 - Architecture SOTA 2026 avec helper centralisé pour les permissions (8 niveaux d'accès)
@@ -44,8 +44,7 @@
 - Indépendance totale (pas de dépendance Yousign/DocuSign)
 
 ### Points d'Attention
-- Génération PDF côté serveur impossible (limitation Netlify/Puppeteer)
-- Notifications via outbox mais pas de consumer visible
+- Génération PDF côté serveur impossible (limitation Netlify/Puppeteer) → HTML généré côté client
 
 ---
 
@@ -150,10 +149,19 @@ async createEDL(data: CreateEDLData): Promise<EDL> {
 - ✅ La logique distingue bien les deux types
 - ✅ Le type affecte l'affichage (couleur, libellés) dans le template
 
+### ✅ Interface de création
+
+**Wizard de création:** `app/owner/inspections/new/CreateInspectionWizard.tsx`
+
+Accessible via `/owner/inspections/new` avec:
+- Sélection du bail concerné
+- Choix du type (entrée/sortie)
+- Programmation de la date
+- Invitation automatique du locataire
+
 ### ⚠️ Points d'attention
 
-1. **Pas de formulaire UI dédié visible** - La création semble se faire via l'interface de fin de bail ou programmatiquement
-2. **Validation Zod basique** sur les sections (`app/api/edl/[id]/sections/route.ts:8-22`)
+1. **Validation Zod basique** sur les sections (`app/api/edl/[id]/sections/route.ts:8-22`)
 
 ---
 
@@ -489,21 +497,35 @@ if (hasOwner && hasTenant) {
 - Métadonnées: `edl_signatures` table
 - Preuve: `proof_metadata` JSONB
 
-### ⚠️ Notifications
+### ✅ Notifications (Outbox Pattern)
 
-**Implémentation via outbox pattern:**
+**Consumer déployé:** `supabase/functions/process-outbox/index.ts` (1489 lignes)
+
 ```typescript
-await serviceClient.from("outbox").insert({
-  event_type: "Inspection.Signed",
-  payload: { edl_id: edlId, all_signed: true },
-});
+// Événements EDL gérés dans le consumer:
+case "EDL.InvitationSent":
+  await sendNotification(supabase, {
+    type: "edl_invitation",
+    user_id: payload.tenant_user_id,
+    title: "📋 État des lieux programmé",
+    message: `Un état des lieux ${payload.type === "entree" ? "d'entrée" : "de sortie"} a été programmé...`,
+  });
+  break;
+
+case "Lease.FullySigned":
+  // Propose de créer l'EDL après signature du bail
+  await sendNotification(supabase, {
+    title: "🎉 Bail entièrement signé !",
+    message: "Prochaine étape : l'état des lieux.",
+    metadata: { action: "create_edl" },
+  });
+  break;
 ```
 
-**Événements identifiés:**
-- `Inspection.Signed` - EDL complètement signé
-- `EDL.InvitationSent` - Invitation envoyée au locataire
-
-**Point d'attention:** Le consumer de l'outbox (worker qui envoie les emails) n'a pas été analysé dans ce périmètre.
+**Événements EDL traités:**
+- `EDL.InvitationSent` - Notification + email au locataire
+- `Lease.FullySigned` - Suggère de créer l'EDL d'entrée
+- Emails transactionnels avec templates HTML professionnels
 
 ---
 
@@ -593,35 +615,27 @@ L'OCR utilise Tesseract en fallback. Pour une meilleure précision, Google Visio
 
 ### Priorité Haute 🔴
 
-1. **Implémenter un consumer pour l'outbox**
-   - Les événements `Inspection.Signed` et `EDL.InvitationSent` sont émis
-   - Mais aucun worker/consumer visible pour envoyer les emails
-
-2. **Ajouter une interface de création d'EDL**
-   - Actuellement pas de formulaire UI dédié visible
-   - Recommandation: Page `/dashboard/edl/new` avec wizard
-
-3. **Génération PDF serveur**
+1. **Génération PDF serveur**
    - Migrer vers un service externe (ex: Gotenberg, PDFShift)
    - Ou utiliser Vercel Edge Functions avec @vercel/og
 
 ### Priorité Moyenne 🟡
 
-4. **Améliorer l'OCR des compteurs**
+2. **Améliorer l'OCR des compteurs**
    - Configurer Google Vision ou Mindee pour meilleure précision
    - Ajouter un mode "correction manuelle" plus visible dans l'UI
 
-5. **Tests E2E du workflow complet**
+3. **Tests E2E du workflow complet**
    - Un test `edl-audit-test.ts` est référencé mais non analysé
    - Recommandation: Couverture complète du parcours
 
 ### Priorité Basse 🟢
 
-6. **Optimisation des requêtes**
+4. **Optimisation des requêtes**
    - Certaines routes font plusieurs requêtes séquentielles
    - Possibilité de consolider avec des jointures
 
-7. **Mode hors-ligne pour mobile**
+5. **Mode hors-ligne pour mobile**
    - Le composant `SmartPhotoCapture` pourrait supporter le mode offline
    - Synchronisation différée des photos
 
@@ -636,9 +650,8 @@ Le workflow EDL de Talok est **fonctionnel et bien architecturé** avec une impl
 - **Audit**: Dossier de preuve complet avec hash cryptographique
 - **Robustesse**: Multiples fallbacks pour la résolution des données
 
-Les principaux axes d'amélioration concernent:
-- L'envoi effectif des notifications (consumer outbox)
-- La génération PDF côté serveur (actuellement HTML côté client)
+Le principal axe d'amélioration concerne:
+- La génération PDF côté serveur (actuellement HTML côté client via `window.print()` ou `html2pdf.js`)
 
 ---
 
@@ -656,6 +669,8 @@ Les principaux axes d'amélioration concernent:
 | `app/api/edl/pdf/route.ts` | 396 | Génération document |
 | `features/tenant/services/edl.service.ts` | 241 | Service client |
 | `app/tenant/inspections/[id]/page.tsx` | 396 | Page tenant |
+| `supabase/functions/process-outbox/index.ts` | 1489 | Consumer notifications |
+| `app/owner/inspections/new/CreateInspectionWizard.tsx` | - | Wizard création EDL |
 
 ---
 
