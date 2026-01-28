@@ -100,9 +100,9 @@ export default function BookVisitPage() {
           </AlertDescription>
         </Alert>
         <Button asChild className="mt-4">
-          <Link href="/search">
+          <Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour à la recherche
+            Retour à l'accueil
           </Link>
         </Button>
       </div>
@@ -205,7 +205,7 @@ export default function BookVisitPage() {
                 <Link href="/tenant/visits">Voir mes visites</Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/search">Continuer ma recherche</Link>
+                <Link href="/">Retour à l'accueil</Link>
               </Button>
             </div>
           </CardContent>

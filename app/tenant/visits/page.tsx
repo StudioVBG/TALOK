@@ -22,7 +22,7 @@ export default async function TenantVisitsPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/search">
+          <Link href="/">
             <Search className="mr-2 h-4 w-4" />
             Rechercher un logement
           </Link>
