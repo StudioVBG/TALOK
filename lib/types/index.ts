@@ -133,10 +133,10 @@ export interface ParkingDetails {
 export type LeaseType =
   | "nu"
   | "meuble"
+  | "etudiant"           // GAP-008: Bail étudiant 9 mois
   | "colocation"
   | "saisonnier"
   | "bail_mobilite"
-  | "etudiant"
   | "commercial_3_6_9"
   | "commercial_derogatoire"
   | "professionnel"
@@ -984,4 +984,262 @@ export {
   ENTITIES_IR_OPTION,
   ENTITIES_IS_MANDATORY,
 } from "./legal-entity";
+
+// ============================================
+// EXPORTS BAUX COMMERCIAUX - GAP-003 SOTA 2026
+// Code de commerce Articles L145-1 à L145-60
+// ============================================
+export type {
+  CommercialLeaseType,
+  CommercialIndex,
+  CommercialTVARegime,
+  DestinationClause,
+  IndexationClause,
+  PasDePorte,
+  DroitAuBail,
+  ClauseResolutoire,
+  CommercialGuarantees,
+  CommercialLeaseConfig,
+  DerogtoireLeaseConfig,
+  TriennialPeriod,
+  CommercialLeaseTemplateData,
+} from "./commercial-lease";
+
+export {
+  COMMERCIAL_LEASE_DEFAULTS,
+  DEFAULT_COMMERCIAL_369_CONFIG,
+  DEFAULT_DEROGATOIRE_CONFIG,
+  COMMERCIAL_INDEX_LABELS,
+  DESTINATION_CLAUSE_EXAMPLES,
+  MAX_DEROGATOIRE_MONTHS,
+} from "./commercial-lease";
+
+// ============================================
+// EXPORTS BAUX PROFESSIONNELS - GAP-004 SOTA 2026
+// Article 57 A de la loi n°86-1290 du 23 décembre 1986
+// ============================================
+export type {
+  ProfessionLiberaleCategory,
+  ProfessionalFiscalRegime,
+  ProfessionalLegalForm,
+  ProfessionalActivityType,
+  ProfessionalTenantInfo,
+  ProfessionalPremisesConfig,
+  ProfessionalIndexation,
+  ProfessionalFinancialTerms,
+  ProfessionalLeaseConfig,
+  ProfessionalLeaseData,
+  CreateProfessionalLeaseDTO,
+  ProfessionalLeaseTemplateData,
+} from "./professional-lease";
+
+export {
+  PROFESSION_CATEGORY_LABELS,
+  PROFESSION_ACTIVITY_LABELS,
+  LEGAL_FORM_LABELS,
+  FISCAL_REGIME_LABELS,
+  ORDRES_PROFESSIONNELS,
+  DEFAULT_PROFESSIONAL_LEASE_CONFIG,
+  DEFAULT_PROFESSIONAL_FINANCIAL_TERMS,
+  PROFESSIONAL_LEASE_DURATION,
+  PROFESSIONS_WITH_ORDER,
+  HEALTH_PROFESSIONS,
+  isOrderedProfession,
+  isHealthProfession,
+  getOrdreForProfession,
+} from "./professional-lease";
+
+// ============================================
+// EXPORTS EDL COMMERCIAL - GAP-007 SOTA 2026
+// État des lieux pour locaux commerciaux/professionnels
+// ============================================
+export type {
+  CommercialInspectionCategory,
+  ProfessionalInspectionCategory,
+  EDLCommercialCategory,
+  CommercialPremiseType,
+  CommercialItemCondition,
+  ComplianceLevel,
+  CommercialInspectionItem,
+  FacadeVitrineInspection,
+  EnseigneInspection,
+  InstallationsTechniquesInspection,
+  SecuriteIncendieInspection,
+  AccessibilitePMRInspection,
+  CabinetMedicalInspection,
+  CompteursReseauxInspection,
+  EDLCommercial,
+  EquipementBailleur,
+  CleRemise,
+  DocumentAnnexe,
+  DifferenceConstatee,
+  CreateEDLCommercialDTO,
+  AddInspectionItemDTO,
+  ValidateEDLCommercialDTO,
+} from "./edl-commercial";
+
+export {
+  COMMERCIAL_INSPECTION_CATEGORY_LABELS,
+  PROFESSIONAL_INSPECTION_CATEGORY_LABELS,
+  COMMERCIAL_CONDITION_LABELS,
+  COMPLIANCE_LEVEL_LABELS,
+  COMMERCIAL_PREMISE_TYPE_LABELS,
+  CLE_TYPE_LABELS,
+  COMMERCIAL_CONDITION_COLORS,
+  COMPLIANCE_LEVEL_COLORS,
+  ERP_CATEGORIES,
+  ERP_TYPES,
+  COMMERCIAL_COMPLIANCE_CHECKLIST,
+  COMMERCIAL_INSPECTION_ITEMS_BY_CATEGORY,
+  MEDICAL_INSPECTION_ITEMS,
+} from "./edl-commercial";
+
+// ============================================
+// EXPORTS LOCATION-GÉRANCE - GAP-005 SOTA 2026
+// Code de commerce Articles L144-1 à L144-13
+// ============================================
+export type {
+  FondsDeCommerceType,
+  LocationGeranceStatus,
+  RedevanceType,
+  FinContratType,
+  LoueurFonds,
+  GerantFonds,
+  FondsDeCommerce,
+  LicenceFonds,
+  EquipementFonds,
+  VehiculeFonds,
+  RedevanceConfig,
+  CautionnementGerance,
+  StockConfig,
+  LocationGeranceContract,
+  CreateLocationGeranceDTO,
+  UpdateLocationGeranceDTO,
+  LocationGeranceTemplateData,
+} from "./location-gerance";
+
+export {
+  FONDS_TYPE_LABELS,
+  REDEVANCE_TYPE_LABELS,
+  LOCATION_GERANCE_STATUS_LABELS,
+  FIN_CONTRAT_LABELS,
+  LICENCE_TYPE_LABELS,
+  DEFAULT_LOCATION_GERANCE_CONFIG,
+  INDICES_LOCATION_GERANCE,
+  OBLIGATIONS_LEGALES_GERANT,
+  OBLIGATIONS_LEGALES_LOUEUR,
+  DELAIS_LEGAUX_LOCATION_GERANCE,
+  DOCUMENTS_REQUIS_LOCATION_GERANCE,
+} from "./location-gerance";
+
+// ============================================
+// EXPORTS TAXE DE SÉJOUR - GAP-006 SOTA 2026
+// Article L2333-26 à L2333-47 du CGCT
+// ============================================
+export type {
+  HebergementTouristiqueType,
+  ModePerceptionTaxe,
+  DeclarationTaxeStatus,
+  MotifExoneration,
+  TaxeSejourCommuneConfig,
+  OccupantSejour,
+  SejourTouristique,
+  DeclarationTaxeSejour,
+  CreateSejourTouristiqueDTO,
+  UpdateSejourTouristiqueDTO,
+  CreateDeclarationDTO,
+  CalculTaxeSejourResult,
+  TaxeSejourStats,
+} from "./taxe-sejour";
+
+export {
+  TARIFS_PLAFONDS_2024,
+  HEBERGEMENT_TYPE_LABELS,
+  EXONERATION_LABELS,
+  HEBERGEMENT_TYPE_GROUPS,
+  HEBERGEMENT_TYPES_TALOK,
+  DEFAULT_TAXE_SEJOUR_CONFIG,
+  VILLES_ENREGISTREMENT_OBLIGATOIRE,
+  calculerTaxeSejour,
+  estMineurALaDate,
+  getTarifPlafond,
+  validerTauxCommunal,
+  requiresNumeroEnregistrement,
+} from "./taxe-sejour";
+
+// ============================================
+// EXPORTS BAIL ÉTUDIANT - GAP-008 SOTA 2026
+// Article 25-9 de la loi n°89-462 du 6 juillet 1989
+// ============================================
+export type {
+  TypeEtablissement,
+  NiveauEtudes,
+  JustificatifEtudiantType,
+  EtablissementEnseignement,
+  CursusEtudiant,
+  JustificatifEtudiant,
+  BailEtudiantConfig,
+  BailEtudiantData,
+  BailEtudiantTemplateData,
+  CreateBailEtudiantDTO,
+} from "./bail-etudiant";
+
+export {
+  TYPE_ETABLISSEMENT_LABELS,
+  NIVEAU_ETUDES_LABELS,
+  JUSTIFICATIF_ETUDIANT_LABELS,
+  DEFAULT_BAIL_ETUDIANT_CONFIG,
+  MOBILIER_OBLIGATOIRE_MEUBLE,
+  DOCUMENTS_REQUIS_BAIL_ETUDIANT,
+  DATES_RENTREE_UNIVERSITAIRE,
+  getAnneeUniversitaire,
+  getDatesSuggeresBailEtudiant,
+  isEligibleBailEtudiant,
+  getDepotGarantieMax,
+  verifierDepotGarantie,
+} from "./bail-etudiant";
+
+// ============================================
+// EXPORTS DIAGNOSTICS DOM-TOM - GAP-009/010/011 SOTA 2026
+// Spécificités Guadeloupe, Martinique, Guyane, Réunion, Mayotte
+// ============================================
+export type {
+  DepartementDOM,
+  CollectiviteOM,
+  DOMInfo,
+  EtatTermites,
+  TypeTermite,
+  ZoneDiagnosticTermites,
+  DiagnosticTermites,
+  DiagnosticTermitesZone,
+  RisqueNaturelDOM,
+  ZoneSismique,
+  NiveauRisqueCyclone,
+  ZoneVolcanique,
+  ERPDomTom,
+  ObligationsDOMConfig,
+} from "./diagnostics-dom-tom";
+
+export {
+  DOM_INFO,
+  RISQUE_NATUREL_DOM_LABELS,
+  ETAT_TERMITES_LABELS,
+  ETAT_TERMITES_COLORS,
+  TYPE_TERMITE_LABELS,
+  ZONE_SISMIQUE_LABELS,
+  VOLCANS_ACTIFS_DOM,
+  OBLIGATIONS_DOM,
+  isDepartementDOM,
+  getDOMInfo,
+  isTermitesObligatoire,
+  getRisquesObligatoires,
+  getDateValiditeTermites,
+  isTermitesValide,
+  getZoneSismique,
+  isZoneCyclonique,
+  isZoneVolcanique,
+  getVolcanActif,
+  getDiagnosticsObligatoiresDOM,
+  getERPSpecificites,
+} from "./diagnostics-dom-tom";
 

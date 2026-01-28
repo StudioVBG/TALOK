@@ -14,12 +14,13 @@ export { BAIL_COLOCATION_TEMPLATE, BAIL_COLOCATION_VARIABLES } from './bail-colo
 export { BAIL_PARKING_TEMPLATE } from './bail-parking.template';
 export { BAIL_SAISONNIER_TEMPLATE, BAIL_SAISONNIER_VARIABLES } from './bail-saisonnier.template';
 export { BAIL_MOBILITE_TEMPLATE, BAIL_MOBILITE_VARIABLES, MOTIFS_MOBILITE } from './bail-mobilite.template';
+export { BAIL_ETUDIANT_TEMPLATE, BAIL_ETUDIANT_VARIABLES } from './bail-etudiant.template';
 
 // Templates - Commercial et Professionnel
-export { BAIL_COMMERCIAL_3_6_9_TEMPLATE, BAIL_COMMERCIAL_3_6_9_VARIABLES } from './bail-commercial-3-6-9.template';
+export { BAIL_COMMERCIAL_TEMPLATE, BAIL_COMMERCIAL_VARIABLES } from './bail-commercial.template';
+export { BAIL_DEROGATOIRE_TEMPLATE, BAIL_DEROGATOIRE_VARIABLES } from './bail-derogatoire.template';
 export { BAIL_PROFESSIONNEL_TEMPLATE, BAIL_PROFESSIONNEL_VARIABLES } from './bail-professionnel.template';
-export { BAIL_COMMERCIAL_DEROGATOIRE_TEMPLATE, BAIL_COMMERCIAL_DEROGATOIRE_VARIABLES } from './bail-commercial-derogatoire.template';
-export { BAIL_MIXTE_TEMPLATE, BAIL_MIXTE_VARIABLES } from './bail-mixte.template';
+export { BAIL_LOCATION_GERANCE_TEMPLATE, BAIL_LOCATION_GERANCE_VARIABLES } from './bail-location-gerance.template';
 
 // Configuration des templates par type
 export const TEMPLATES_CONFIG = {
@@ -42,6 +43,23 @@ export const TEMPLATES_CONFIG = {
     preavis_locataire: 1,
     preavis_bailleur: 3,
     loi_applicable: 'Loi ALUR, Décret n°2015-981',
+  },
+  etudiant: {
+    id: 'bail-etudiant-v1',
+    name: 'Bail étudiant',
+    type_bail: 'etudiant' as const,
+    duree_mois: 9, // Durée fixe 9 mois
+    duree_min: 9,
+    duree_max: 9,
+    depot_max_mois: 2, // Comme meublé
+    preavis_locataire: 1,
+    preavis_bailleur: 0, // Pas de résiliation anticipée par le bailleur
+    tacite_reconduction: false, // Non renouvelable automatiquement
+    justificatif_etudiant: true,
+    visale_eligible: true,
+    apl_eligible: true,
+    mobilier_obligatoire: true, // Décret 2015-981
+    loi_applicable: 'Article 25-9 Loi n°89-462, Décret n°2015-981',
   },
   colocation: {
     id: 'bail-colocation-v1',
@@ -85,61 +103,71 @@ export const TEMPLATES_CONFIG = {
     preavis_bailleur: 1,
     loi_applicable: 'Code civil (articles 1709 et suivants)',
   },
-  etudiant: {
-    id: 'bail-etudiant-v1',
-    name: 'Bail étudiant',
-    type_bail: 'etudiant' as const,
-    duree_fixe: 9, // mois (non renouvelable tacitement)
-    depot_max_mois: 1,
-    preavis_locataire: 1,
-    preavis_bailleur: 3,
-    renouvelable: false,
-    loi_applicable: 'Loi n°89-462, Article 25-7',
-  },
-  commercial_3_6_9: {
-    id: 'bail-commercial-3-6-9-v1',
+  commercial: {
+    id: 'bail-commercial-v1',
     name: 'Bail commercial 3/6/9',
     type_bail: 'commercial_3_6_9' as const,
     duree_min: 108, // 9 ans minimum
-    depot_max_mois: 0, // Pas de limite légale (généralement 3 à 6 mois)
+    duree_max: 0, // Pas de limite
+    depot_max_mois: 0, // Pas de limite légale (généralement 3-6 mois)
     preavis_locataire: 6, // Résiliation triennale
     preavis_bailleur: 6,
+    resiliation_triennale: true,
     droit_renouvellement: true,
-    propriete_commerciale: true,
-    loi_applicable: 'Code de commerce, Articles L.145-1 et suivants',
+    indemnite_eviction: true,
+    indexation: ['ILC', 'ILAT', 'ICC'],
+    loi_applicable: 'Code de commerce (Articles L145-1 à L145-60)',
+  },
+  commercial_derogatoire: {
+    id: 'bail-derogatoire-v1',
+    name: 'Bail commercial dérogatoire',
+    type_bail: 'commercial_derogatoire' as const,
+    duree_min: 0,
+    duree_max: 36, // 3 ans maximum (cumul)
+    depot_max_mois: 0, // Pas de limite légale
+    preavis_locataire: 0, // Selon contrat
+    preavis_bailleur: 0, // Pas de congé nécessaire
+    resiliation_triennale: false,
+    droit_renouvellement: false,
+    indemnite_eviction: false,
+    tacite_reconduction: false,
+    loi_applicable: 'Article L145-5 du Code de commerce',
   },
   professionnel: {
     id: 'bail-professionnel-v1',
     name: 'Bail professionnel',
     type_bail: 'professionnel' as const,
     duree_min: 72, // 6 ans minimum
-    depot_max_mois: 0, // Pas de limite légale
+    duree_max: 0, // Pas de limite
+    depot_max_mois: 0, // Pas de limite légale (généralement 2 mois)
     preavis_locataire: 6,
     preavis_bailleur: 6,
-    droit_renouvellement: false,
-    loi_applicable: 'Loi n°86-1290, Article 57A',
-  },
-  commercial_derogatoire: {
-    id: 'bail-commercial-derogatoire-v1',
-    name: 'Bail commercial dérogatoire',
-    type_bail: 'commercial_derogatoire' as const,
-    duree_max: 36, // 3 ans maximum
-    depot_max_mois: 0, // Pas de limite légale
-    preavis_locataire: 0, // Selon contrat
-    preavis_bailleur: 0, // Selon contrat
-    droit_renouvellement: false,
-    propriete_commerciale: false,
-    loi_applicable: 'Code de commerce, Article L.145-5',
+    resiliation_anticipee: true, // À tout moment avec préavis
+    droit_renouvellement: false, // Pas de propriété commerciale
+    indemnite_eviction: false, // Pas d'indemnité d'éviction
+    indexation: ['ILAT', 'ILC'],
+    professions_liberales: true,
+    ordre_professionnel: true, // Pour professions réglementées
+    assurance_rcp_obligatoire: true,
+    loi_applicable: 'Article 57 A de la loi n°86-1290 du 23 décembre 1986',
   },
   location_gerance: {
     id: 'bail-location-gerance-v1',
-    name: 'Location-gérance',
+    name: 'Contrat de location-gérance',
     type_bail: 'location_gerance' as const,
-    duree_min: 0, // Durée libre
-    depot_max_mois: 0,
-    preavis_locataire: 3,
-    preavis_bailleur: 3,
-    loi_applicable: 'Code de commerce, Articles L.144-1 et suivants',
+    duree_min: 12, // Généralement 1 an minimum
+    duree_max: 0, // Pas de limite légale
+    depot_max_mois: 0, // Cautionnement libre (généralement 3-6 mois de redevance)
+    preavis_locataire: 6, // 6 mois selon contrat
+    preavis_bailleur: 6, // 6 mois selon contrat
+    resiliation_anticipee: false, // Selon clauses contractuelles
+    solidarite_fiscale: true, // Article L144-7: 6 mois après publication JAL
+    publication_jal_obligatoire: true, // Article L144-6
+    exploitation_personnelle_requise: true, // 2 ans minimum avant mise en gérance
+    redevance_types: ['fixe', 'pourcentage_ca', 'mixte', 'progressive'],
+    indexation: ['ILC', 'ILAT'],
+    licences_transmissibles: true, // Selon type de fonds
+    loi_applicable: 'Code de commerce Articles L144-1 à L144-13',
   },
   bail_mixte: {
     id: 'bail-mixte-v1',
@@ -166,4 +194,3 @@ export const TEMPLATES_CONFIG = {
 
 // Utilitaires
 export { LeaseTemplateService, LeaseTemplateService as TemplateService } from './template.service';
-
