@@ -1205,3 +1205,47 @@ export {
   verifierDepotGarantie,
 } from "./bail-etudiant";
 
+// ============================================
+// EXPORTS DIAGNOSTICS DOM-TOM - GAP-009/010/011 SOTA 2026
+// Spécificités Guadeloupe, Martinique, Guyane, Réunion, Mayotte
+// ============================================
+export type {
+  DepartementDOM,
+  CollectiviteOM,
+  DOMInfo,
+  EtatTermites,
+  TypeTermite,
+  ZoneDiagnosticTermites,
+  DiagnosticTermites,
+  DiagnosticTermitesZone,
+  RisqueNaturelDOM,
+  ZoneSismique,
+  NiveauRisqueCyclone,
+  ZoneVolcanique,
+  ERPDomTom,
+  ObligationsDOMConfig,
+} from "./diagnostics-dom-tom";
+
+export {
+  DOM_INFO,
+  RISQUE_NATUREL_DOM_LABELS,
+  ETAT_TERMITES_LABELS,
+  ETAT_TERMITES_COLORS,
+  TYPE_TERMITE_LABELS,
+  ZONE_SISMIQUE_LABELS,
+  VOLCANS_ACTIFS_DOM,
+  OBLIGATIONS_DOM,
+  isDepartementDOM,
+  getDOMInfo,
+  isTermitesObligatoire,
+  getRisquesObligatoires,
+  getDateValiditeTermites,
+  isTermitesValide,
+  getZoneSismique,
+  isZoneCyclonique,
+  isZoneVolcanique,
+  getVolcanActif,
+  getDiagnosticsObligatoiresDOM,
+  getERPSpecificites,
+} from "./diagnostics-dom-tom";
+
