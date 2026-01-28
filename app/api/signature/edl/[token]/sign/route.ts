@@ -30,6 +30,22 @@ export async function POST(
       return NextResponse.json({ error: "Lien invalide ou expiré" }, { status: 404 });
     }
 
+    // Vérifier si le token a expiré (7 jours après l'envoi)
+    const TOKEN_EXPIRATION_DAYS = 7;
+    if (signatureEntry.invitation_sent_at) {
+      const sentDate = new Date(signatureEntry.invitation_sent_at);
+      const expirationDate = new Date(sentDate.getTime() + TOKEN_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
+      if (new Date() > expirationDate) {
+        return NextResponse.json(
+          {
+            error: "Ce lien d'invitation a expiré. Veuillez demander un nouveau lien au propriétaire.",
+            expired_at: expirationDate.toISOString(),
+          },
+          { status: 410 } // 410 Gone - ressource expirée
+        );
+      }
+    }
+
     // Vérifier si déjà signé (on vérifie signature_image_path car c'est la preuve réelle)
     if (signatureEntry.signature_image_path) {
       return NextResponse.json({ error: "Ce document a déjà été signé" }, { status: 400 });
