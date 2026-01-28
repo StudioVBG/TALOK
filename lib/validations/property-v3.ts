@@ -351,7 +351,8 @@ const buildingUnitSchema = z.object({
   updated_at: z.string(),
 });
 
-export const immeubleSchemaV3 = basePropertySchemaV3.omit({ loyer_hc: true, charges_mensuelles: true, depot_garantie: true }).extend({
+// NOTE: immeubleSchemaV3Base is used in discriminatedUnion (requires ZodObject, not ZodEffects)
+export const immeubleSchemaV3Base = basePropertySchemaV3.omit({ loyer_hc: true, charges_mensuelles: true, depot_garantie: true }).extend({
   type_bien: z.literal("immeuble"),
   // Configuration de l'immeuble
   building_floors: z.number().int().min(1).max(50),
@@ -363,7 +364,10 @@ export const immeubleSchemaV3 = basePropertySchemaV3.omit({ loyer_hc: true, char
   has_digicode: z.boolean().default(false),
   has_local_velo: z.boolean().default(false),
   has_local_poubelles: z.boolean().default(false),
-}).superRefine((data, ctx) => {
+});
+
+// Version with advanced validations for general use
+export const immeubleSchemaV3 = immeubleSchemaV3Base.superRefine((data, ctx) => {
   // SOTA 2026: Validation cohérence lots/étages
   const maxFloorInUnits = Math.max(...data.building_units.map(u => u.floor), 0);
   if (maxFloorInUnits >= data.building_floors) {
@@ -403,7 +407,7 @@ export const propertySchemaV3Base = z.discriminatedUnion("type_bien", [
   habitationSchemaV3Base,
   parkingSchemaV3,
   localProSchemaV3,
-  immeubleSchemaV3,
+  immeubleSchemaV3Base,  // Use Base version (ZodObject) for discriminatedUnion compatibility
 ]);
 
 // Version avec validations avancées pour habitation (wrapper autour de la base)
@@ -455,6 +459,37 @@ export const propertySchemaV3 = propertySchemaV3Base.superRefine((data, ctx) => 
       });
     }
   }
+
+  // Appliquer les validations conditionnelles pour immeuble
+  if (data.type_bien === "immeuble") {
+    const immeuble = data as z.infer<typeof immeubleSchemaV3Base>;
+    // SOTA 2026: Validation cohérence lots/étages
+    const maxFloorInUnits = Math.max(...immeuble.building_units.map(u => u.floor), 0);
+    if (maxFloorInUnits >= immeuble.building_floors) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["building_floors"],
+        message: `Le nombre d'étages (${immeuble.building_floors}) doit être supérieur au plus haut étage des lots (${maxFloorInUnits})`,
+      });
+    }
+
+    // Validation unicité position par étage
+    const positionsByFloor = new Map<number, Set<string>>();
+    for (const unit of immeuble.building_units) {
+      if (!positionsByFloor.has(unit.floor)) {
+        positionsByFloor.set(unit.floor, new Set());
+      }
+      const positions = positionsByFloor.get(unit.floor)!;
+      if (positions.has(unit.position)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["building_units"],
+          message: `Position "${unit.position}" dupliquée à l'étage ${unit.floor}`,
+        });
+      }
+      positions.add(unit.position);
+    }
+  }
 });
 
 // ============================================
@@ -475,7 +510,7 @@ export const localProUpdateSchemaV3 = localProSchemaV3.partial().extend({
   type_bien: z.enum(["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"]).optional(),
 });
 
-export const immeubleUpdateSchemaV3 = immeubleSchemaV3.partial().extend({
+export const immeubleUpdateSchemaV3 = immeubleSchemaV3Base.partial().extend({
   type_bien: z.literal("immeuble").optional(),
 });
 
