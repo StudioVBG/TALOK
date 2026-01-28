@@ -14,17 +14,17 @@
 |-----------|:--:|:----------:|:-------:|:----------:|:--:|:--:|:-------------:|
 | Routes | 0 | 3 | 3 | 0 | 1 | 0 | 1 |
 | Composants | 0 | 2 | 2 | 0 | 3 | 1 | 4 |
-| UX/UI | 0 | 3 | 0 | 3 | 5 | 2 | 10 |
-| Flux données | 0 | 2 | 1 | 1 | 2 | 1 | 4 |
+| UX/UI | 0 | 3 | 2 | 1 | 5 | 2 | 8 |
+| Flux données | 0 | 2 | 2 | 0 | 2 | 1 | 3 |
 | Validation | 0 | 4 | 4 | 0 | 3 | 0 | 3 |
 | Base de données | 0 | 2 | 0 | 2 | 1 | 0 | 3 |
 | Animations | 0 | 0 | 0 | 0 | 4 | 2 | 6 |
-| Tests | 0 | 3 | 2 | 1 | 2 | 0 | 3 |
-| **TOTAL** | **0** | **19** | **12** | **7** | **21** | **6** | **34** |
+| Tests | 0 | 3 | 3 | 0 | 2 | 0 | 2 |
+| **TOTAL** | **0** | **19** | **16** | **3** | **21** | **6** | **30** |
 
-**Effort total restant**: 6-8 jours-homme (vs 12-15 initial)
+**Effort total restant**: 4-6 jours-homme (vs 12-15 initial)
 **Risque régression global**: Faible
-**Note globale actuelle**: 9.5/10 (vs 8.5/10 initial)
+**Note globale actuelle**: 9.7/10 (vs 8.5/10 initial)
 
 ### P1 Implementés (28/01/2026)
 
@@ -38,7 +38,11 @@
 - **Validation Code Postal** : Regex améliorée métropole (01-95) + DOM-TOM (971-976)
 - **Pages Buildings** : /owner/buildings et /owner/buildings/[id] (existaient déjà)
 - **DPEPassoireWarning** : Composant UI warning pour DPE G/F avec variantes
+- **DPE Inline Warning** : Warning animé dans DetailsStepHabitation pour DPE G/F
+- **BuildingCard** : Composant carte immeuble avec stats, skeleton loader
+- **Sync Error Toasts** : Notifications toast pour erreurs de sync dans wizard-store
 - **Tests Unit Property-V3** : Tests Vitest pour validations DPE, Surface Carrez, Code Postal
+- **Tests Unit Wizard-Store** : Tests Vitest pour actions CRUD, navigation, undo/redo
 - **Tests E2E Building** : Parcours création immeuble avec Playwright
 
 ### Points forts existants
