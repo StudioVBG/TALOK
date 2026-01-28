@@ -4,26 +4,38 @@
 **Analysé par**: Claude Opus 4.5
 **Version**: SOTA 2026
 **Branch**: claude/audit-saas-app-ayvL5
+**Dernière mise à jour**: 28/01/2026 (P1 implementés)
 
 ---
 
 ## RÉSUMÉ EXÉCUTIF
 
-| Catégorie | Manques P0 | Manques P1 | Manques P2 | Manques P3 | Total |
-|-----------|------------|------------|------------|------------|-------|
-| Routes | 0 | 3 | 1 | 0 | 4 |
-| Composants | 0 | 2 | 3 | 1 | 6 |
-| UX/UI | 0 | 3 | 5 | 2 | 10 |
-| Flux données | 0 | 2 | 2 | 1 | 5 |
-| Validation | 0 | 4 | 3 | 0 | 7 |
-| Base de données | 0 | 2 | 1 | 0 | 3 |
-| Animations | 0 | 0 | 4 | 2 | 6 |
-| Tests | 0 | 3 | 2 | 0 | 5 |
-| **TOTAL** | **0** | **19** | **21** | **6** | **46** |
+| Catégorie | P0 | P1 Initial | P1 Fait | P1 Restant | P2 | P3 | Total Restant |
+|-----------|:--:|:----------:|:-------:|:----------:|:--:|:--:|:-------------:|
+| Routes | 0 | 3 | 3 | 0 | 1 | 0 | 1 |
+| Composants | 0 | 2 | 1 | 1 | 3 | 1 | 5 |
+| UX/UI | 0 | 3 | 0 | 3 | 5 | 2 | 10 |
+| Flux données | 0 | 2 | 1 | 1 | 2 | 1 | 4 |
+| Validation | 0 | 4 | 3 | 1 | 3 | 0 | 4 |
+| Base de données | 0 | 2 | 0 | 2 | 1 | 0 | 3 |
+| Animations | 0 | 0 | 0 | 0 | 4 | 2 | 6 |
+| Tests | 0 | 3 | 0 | 3 | 2 | 0 | 5 |
+| **TOTAL** | **0** | **19** | **8** | **11** | **21** | **6** | **38** |
 
-**Effort total estimé**: 12-15 jours-homme
+**Effort total restant**: 8-10 jours-homme (vs 12-15 initial)
 **Risque régression global**: Faible
-**Note globale actuelle**: 8.5/10
+**Note globale actuelle**: 9.2/10 (vs 8.5/10 initial)
+
+### P1 Implementés (28/01/2026)
+
+- **Routes API Buildings** : GET/POST /api/buildings, GET/PATCH/DELETE /api/buildings/[id]
+- **Routes API Units** : GET/POST /api/buildings/[id]/units, PATCH/DELETE /api/buildings/[id]/units/[unitId]
+- **Route API Stats** : GET /api/buildings/[id]/stats
+- **BuildingsService** : Service complet CRUD buildings + units
+- **Validation DPE G** : Passoires thermiques bloquées (loi 2025)
+- **Validation Surface Carrez** : Cross-validation avec surface habitable
+- **Validation Surface Min** : 9m2 minimum (decret decence)
+- **Pages Buildings** : /owner/buildings et /owner/buildings/[id] (existaient déjà)
 
 ### Points forts existants
 
