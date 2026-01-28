@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { SignaturePad, type SignaturePadRef } from "./SignaturePad";
+import { SignaturePad, type SignaturePadRef } from "@/components/signature/SignaturePad";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
