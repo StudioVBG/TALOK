@@ -359,6 +359,93 @@ describe("Property V3 Validation - SOTA 2026", () => {
     });
   });
 
+  describe("Encadrement des Loyers - SOTA 2026", () => {
+    it("should require loyer_reference when zone_encadrement is set", () => {
+      const data = {
+        ...baseHabitation,
+        zone_encadrement: "paris",
+        loyer_reference: null,
+      };
+
+      const result = habitationSchemaV3.safeParse(data);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const loyerError = result.error.errors.find(e => e.path.includes("loyer_reference"));
+        expect(loyerError).toBeDefined();
+        expect(loyerError?.message).toContain("loyer de reference");
+      }
+    });
+
+    it("should not require loyer_reference when zone_encadrement is aucune", () => {
+      const data = {
+        ...baseHabitation,
+        zone_encadrement: "aucune",
+        loyer_reference: null,
+      };
+
+      const result = habitationSchemaV3.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+
+    it("should not require loyer_reference when zone_encadrement is null", () => {
+      const data = {
+        ...baseHabitation,
+        zone_encadrement: null,
+        loyer_reference: null,
+      };
+
+      const result = habitationSchemaV3.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+
+    it("should accept valid zone_encadrement with loyer_reference", () => {
+      const zones = ["paris", "paris_agglo", "lille", "lyon", "montpellier", "bordeaux"] as const;
+
+      for (const zone of zones) {
+        const data = {
+          ...baseHabitation,
+          zone_encadrement: zone,
+          loyer_reference: 25.5, // EUR/m2
+        };
+
+        const result = habitationSchemaV3.safeParse(data);
+        expect(result.success).toBe(true);
+      }
+    });
+
+    it("should require complement_loyer_justification when complement_loyer is set", () => {
+      const data = {
+        ...baseHabitation,
+        zone_encadrement: "paris",
+        loyer_reference: 25.5,
+        complement_loyer: 50,
+        complement_loyer_justification: null,
+      };
+
+      const result = habitationSchemaV3.safeParse(data);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const justificationError = result.error.errors.find(e => e.path.includes("complement_loyer_justification"));
+        expect(justificationError).toBeDefined();
+      }
+    });
+
+    it("should accept complement_loyer with valid justification", () => {
+      const data = {
+        ...baseHabitation,
+        zone_encadrement: "paris",
+        loyer_reference: 25.5,
+        complement_loyer: 50,
+        complement_loyer_justification: "Vue exceptionnelle sur la Tour Eiffel",
+      };
+
+      const result = habitationSchemaV3.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe("Property Schema V3 Discriminated Union", () => {
     it("should validate appartement through discriminated union", () => {
       const data = {
