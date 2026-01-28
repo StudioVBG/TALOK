@@ -80,4 +80,39 @@ CREATE INDEX IF NOT EXISTS idx_edl_status ON edl(status);
 COMMENT ON COLUMN edl.property_id IS 'FK directe vers le bien immobilier (denormalise depuis leases.property_id pour faciliter les requetes)';
 COMMENT ON COLUMN edl.scheduled_at IS 'Date et heure planifiees pour la realisation de l''EDL';
 
+-- 8. RLS Policy for property_id direct access
+-- Permet l'accès direct via property_id en plus de la relation lease_id
+DROP POLICY IF EXISTS "owner_access_via_property_id" ON edl;
+CREATE POLICY "owner_access_via_property_id" ON edl
+  FOR ALL
+  USING (
+    -- Via property_id direct (nouvelle colonne)
+    EXISTS (
+      SELECT 1 FROM properties p
+      JOIN profiles pr ON pr.id = p.owner_id
+      WHERE p.id = edl.property_id
+      AND pr.user_id = auth.uid()
+    )
+    OR
+    -- Via lease_id (relation existante - fallback)
+    EXISTS (
+      SELECT 1 FROM leases l
+      JOIN properties p ON p.id = l.property_id
+      JOIN profiles pr ON pr.id = p.owner_id
+      WHERE l.id = edl.lease_id
+      AND pr.user_id = auth.uid()
+    )
+    OR
+    -- Créateur de l'EDL
+    edl.created_by = auth.uid()
+    OR
+    -- Signataire invité
+    EXISTS (
+      SELECT 1 FROM edl_signatures es
+      JOIN profiles pr ON pr.id = es.signer_profile_id
+      WHERE es.edl_id = edl.id
+      AND pr.user_id = auth.uid()
+    )
+  );
+
 SELECT 'Migration fix_edl_schema_500 applied successfully' AS status;

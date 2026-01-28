@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
  * GET /api/edl - Liste tous les EDL accessibles par l'utilisateur
@@ -166,6 +167,10 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
+    // Rate limiting
+    const rateLimitResponse = applyRateLimit(request, "edl");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const supabase = await createClient();
     const {
       data: { user },

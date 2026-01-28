@@ -8,6 +8,7 @@ import {
   createServiceClient,
   getUserProfile,
 } from "@/lib/helpers/edl-auth";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
  * POST /api/edl/[id]/validate - Valider/finaliser un EDL
@@ -22,6 +23,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Rate limiting
+    const rateLimitResponse = applyRateLimit(request, "edl");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id: edlId } = await params;
     const supabase = await createClient();
     const {

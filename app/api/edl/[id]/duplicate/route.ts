@@ -8,6 +8,7 @@ import {
   createServiceClient,
   getUserProfile,
 } from "@/lib/helpers/edl-auth";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
  * POST /api/edl/[id]/duplicate - Dupliquer un EDL (entrée → sortie)
@@ -25,6 +26,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Rate limiting (strict pour opération lourde)
+    const rateLimitResponse = applyRateLimit(request, "edlDuplicate");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id: sourceEdlId } = await params;
     const supabase = await createClient();
     const {
