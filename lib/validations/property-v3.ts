@@ -142,7 +142,13 @@ const basePropertySchemaV3 = z.object({
   // type_bien défini dans chaque schéma spécifique (habitationSchemaV3, parkingSchemaV3, localProSchemaV3)
   adresse_complete: z.string().min(1, "L'adresse complète est requise"),
   complement_adresse: z.string().optional().nullable(),
-  code_postal: z.string().regex(/^[0-9]{5}$/, "Le code postal doit contenir 5 chiffres"),
+  // SOTA 2026: Validation code postal France métropole + DOM-TOM
+  // Métropole: 01xxx-95xxx (départements 01-95, inclut Corse 20xxx)
+  // DOM-TOM: 971xx-976xx (Guadeloupe, Martinique, Guyane, Réunion, Mayotte)
+  code_postal: z.string().regex(
+    /^((0[1-9]|[1-8]\d|9[0-5])\d{3}|97[1-6]\d{2})$/,
+    "Code postal invalide. Métropole : 01000-95999, DOM-TOM : 97100-97699"
+  ),
   ville: z.string().min(1, "La ville est requise"),
   departement: z.string().min(2, "Le département doit contenir au moins 2 caractères").max(3, "Le département doit contenir au maximum 3 caractères").optional(),
   latitude: z.number().min(-90).max(90).optional().nullable(),
@@ -160,9 +166,26 @@ const basePropertySchemaV3 = z.object({
 // Décision : Schéma complet pour appartement, maison, studio, colocation
 // NOTE : Créer une version base (sans superRefine) pour discriminatedUnion, puis une version avec validations
 
+// SOTA 2026: DPE classe enum
+const dpeClasseEnum = z.enum(["A", "B", "C", "D", "E", "F", "G", "NC"]).optional().nullable();
+
+// SOTA 2026: Zone encadrement loyers (loi ALUR / ELAN)
+const zoneEncadrementEnum = z.enum([
+  "paris",
+  "paris_agglo",
+  "lille",
+  "lyon",
+  "villeurbanne",
+  "montpellier",
+  "bordeaux",
+  "aucune"
+]).optional().nullable();
+
 export const habitationSchemaV3Base = basePropertySchemaV3.extend({
   type_bien: z.enum(["appartement", "maison", "studio", "colocation", "saisonnier"]),
   surface_habitable_m2: z.number().positive("La surface habitable doit être strictement positive"),
+  // SOTA 2026: Surface Carrez pour copropriete (doit etre <= surface_habitable_m2)
+  surface_carrez: z.number().positive().optional().nullable(),
   nb_pieces: z.number().int().min(1, "Le nombre de pièces doit être au moins 1"),
   nb_chambres: z.number().int().min(0, "Le nombre de chambres ne peut pas être négatif"),
   etage: z.number().int().optional().nullable(),
@@ -180,6 +203,17 @@ export const habitationSchemaV3Base = basePropertySchemaV3.extend({
   equipments: z.array(equipmentEnum),
   type_bail: typeBailHabitationEnum,
   preavis_mois: z.number().int().min(1).max(12).optional().nullable(),
+  // SOTA 2026: DPE obligatoire pour habitation
+  dpe_classe_energie: dpeClasseEnum,
+  dpe_classe_climat: dpeClasseEnum,
+  dpe_consommation: z.number().min(0).optional().nullable(),
+  dpe_emissions: z.number().min(0).optional().nullable(),
+  // SOTA 2026: Encadrement des loyers (loi ALUR / ELAN)
+  zone_encadrement: zoneEncadrementEnum,
+  loyer_reference: z.number().min(0).optional().nullable(),
+  loyer_reference_majore: z.number().min(0).optional().nullable(),
+  complement_loyer: z.number().min(0).optional().nullable(),
+  complement_loyer_justification: z.string().optional().nullable(),
 });
 
 // Version avec validations avancées pour usage général
@@ -198,6 +232,52 @@ export const habitationSchemaV3 = habitationSchemaV3Base.superRefine((data, ctx)
       code: z.ZodIssueCode.custom,
       path: ["clim_type"],
       message: "Le type de climatisation est requis si la climatisation est fixe",
+    });
+  }
+
+  // SOTA 2026: DPE G (passoire energetique) interdit a la location depuis 2025
+  // Sauf pour les colocations qui ont des regles differentes
+  if (data.dpe_classe_energie === "G" && data.type_bail !== "colocation") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["dpe_classe_energie"],
+      message: "Les logements classes G (passoires thermiques) sont interdits a la location depuis le 1er janvier 2025. Seules les colocations beneficient d'une derogation temporaire.",
+    });
+  }
+
+  // SOTA 2026: Surface Carrez ne peut pas depasser la surface habitable
+  if (data.surface_carrez && data.surface_habitable_m2 && data.surface_carrez > data.surface_habitable_m2) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["surface_carrez"],
+      message: "La surface Carrez ne peut pas depasser la surface habitable",
+    });
+  }
+
+  // SOTA 2026: Surface minimale pour habitation (9m2 loi Carrez / decret decence)
+  if (data.surface_habitable_m2 && data.surface_habitable_m2 < 9) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["surface_habitable_m2"],
+      message: "La surface habitable minimale est de 9m2 pour un logement decent",
+    });
+  }
+
+  // SOTA 2026: Encadrement des loyers - loyer_reference requis si zone_encadrement definie
+  if (data.zone_encadrement && data.zone_encadrement !== "aucune" && !data.loyer_reference) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["loyer_reference"],
+      message: "Le loyer de reference est obligatoire dans les zones avec encadrement des loyers",
+    });
+  }
+
+  // SOTA 2026: Complement de loyer - justification requise si complement defini
+  if (data.complement_loyer && data.complement_loyer > 0 && !data.complement_loyer_justification) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["complement_loyer_justification"],
+      message: "Une justification est requise pour le complement de loyer (caracteristiques exceptionnelles)",
     });
   }
 });
@@ -345,6 +425,33 @@ export const propertySchemaV3 = propertySchemaV3Base.superRefine((data, ctx) => 
         code: z.ZodIssueCode.custom,
         path: ["clim_type"],
         message: "Le type de climatisation est requis si la climatisation est fixe",
+      });
+    }
+
+    // SOTA 2026: DPE G (passoire energetique) interdit a la location depuis 2025
+    if (habitation.dpe_classe_energie === "G" && habitation.type_bail !== "colocation") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["dpe_classe_energie"],
+        message: "Les logements classes G (passoires thermiques) sont interdits a la location depuis le 1er janvier 2025. Seules les colocations beneficient d'une derogation temporaire.",
+      });
+    }
+
+    // SOTA 2026: Surface Carrez ne peut pas depasser la surface habitable
+    if (habitation.surface_carrez && habitation.surface_habitable_m2 && habitation.surface_carrez > habitation.surface_habitable_m2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["surface_carrez"],
+        message: "La surface Carrez ne peut pas depasser la surface habitable",
+      });
+    }
+
+    // SOTA 2026: Surface minimale pour habitation (9m2 loi Carrez / decret decence)
+    if (habitation.surface_habitable_m2 && habitation.surface_habitable_m2 < 9) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["surface_habitable_m2"],
+        message: "La surface habitable minimale est de 9m2 pour un logement decent",
       });
     }
   }

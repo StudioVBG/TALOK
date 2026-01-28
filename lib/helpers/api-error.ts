@@ -136,3 +136,51 @@ export function requireRole(userRole: string, allowedRoles: string[]): void {
   }
 }
 
+/**
+ * SOTA 2026: Erreur spécialisée pour les limites de quota d'abonnement
+ * Inclut un message clair et un lien vers la page d'upgrade
+ */
+export class QuotaExceededError extends ApiError {
+  constructor(
+    resourceType: string,
+    current: number,
+    max: number,
+    plan: string
+  ) {
+    const resourceLabels: Record<string, string> = {
+      properties: "biens",
+      leases: "baux",
+      users: "utilisateurs",
+      signatures: "signatures ce mois",
+      documents_gb: "Go de stockage",
+    };
+
+    const label = resourceLabels[resourceType] || resourceType;
+    const message = `Limite de ${max} ${label} atteinte pour votre forfait "${plan}". Passez à un forfait supérieur pour continuer.`;
+
+    super(403, message, {
+      code: "QUOTA_EXCEEDED",
+      resource_type: resourceType,
+      current,
+      max,
+      plan,
+      upgrade_url: "/settings/billing",
+      help_text: "Consultez nos offres pour débloquer plus de fonctionnalités.",
+    });
+  }
+}
+
+/**
+ * Helper pour lancer une erreur de quota dépassé
+ */
+export function requireQuotaAvailable(
+  resourceType: string,
+  current: number,
+  max: number,
+  plan: string
+): void {
+  if (current >= max) {
+    throw new QuotaExceededError(resourceType, current, max, plan);
+  }
+}
+
