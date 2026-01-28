@@ -169,6 +169,18 @@ const basePropertySchemaV3 = z.object({
 // SOTA 2026: DPE classe enum
 const dpeClasseEnum = z.enum(["A", "B", "C", "D", "E", "F", "G", "NC"]).optional().nullable();
 
+// SOTA 2026: Zone encadrement loyers (loi ALUR / ELAN)
+const zoneEncadrementEnum = z.enum([
+  "paris",
+  "paris_agglo",
+  "lille",
+  "lyon",
+  "villeurbanne",
+  "montpellier",
+  "bordeaux",
+  "aucune"
+]).optional().nullable();
+
 export const habitationSchemaV3Base = basePropertySchemaV3.extend({
   type_bien: z.enum(["appartement", "maison", "studio", "colocation", "saisonnier"]),
   surface_habitable_m2: z.number().positive("La surface habitable doit être strictement positive"),
@@ -196,6 +208,12 @@ export const habitationSchemaV3Base = basePropertySchemaV3.extend({
   dpe_classe_climat: dpeClasseEnum,
   dpe_consommation: z.number().min(0).optional().nullable(),
   dpe_emissions: z.number().min(0).optional().nullable(),
+  // SOTA 2026: Encadrement des loyers (loi ALUR / ELAN)
+  zone_encadrement: zoneEncadrementEnum,
+  loyer_reference: z.number().min(0).optional().nullable(),
+  loyer_reference_majore: z.number().min(0).optional().nullable(),
+  complement_loyer: z.number().min(0).optional().nullable(),
+  complement_loyer_justification: z.string().optional().nullable(),
 });
 
 // Version avec validations avancées pour usage général
@@ -242,6 +260,24 @@ export const habitationSchemaV3 = habitationSchemaV3Base.superRefine((data, ctx)
       code: z.ZodIssueCode.custom,
       path: ["surface_habitable_m2"],
       message: "La surface habitable minimale est de 9m2 pour un logement decent",
+    });
+  }
+
+  // SOTA 2026: Encadrement des loyers - loyer_reference requis si zone_encadrement definie
+  if (data.zone_encadrement && data.zone_encadrement !== "aucune" && !data.loyer_reference) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["loyer_reference"],
+      message: "Le loyer de reference est obligatoire dans les zones avec encadrement des loyers",
+    });
+  }
+
+  // SOTA 2026: Complement de loyer - justification requise si complement defini
+  if (data.complement_loyer && data.complement_loyer > 0 && !data.complement_loyer_justification) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["complement_loyer_justification"],
+      message: "Une justification est requise pour le complement de loyer (caracteristiques exceptionnelles)",
     });
   }
 });
