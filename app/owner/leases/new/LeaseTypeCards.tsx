@@ -167,6 +167,96 @@ export const LEASE_TYPE_CONFIGS = {
     durationMonths: 72,
     maxDepositMonths: 2,
   },
+  // Bail étudiant (meublé 9 mois non renouvelable)
+  etudiant: {
+    name: "Bail Étudiant",
+    description: "Bail meublé de 9 mois pour étudiants",
+    icon: FileText,
+    gradient: "from-lime-600 via-green-500 to-emerald-500",
+    bgGradient: "from-lime-50 to-green-100 dark:from-lime-900/50 dark:to-green-900/50",
+    accent: "#65a30d",
+    accentLight: "#a3e635",
+    features: [
+      { label: "Durée", value: "9 mois", icon: Clock },
+      { label: "Dépôt de garantie", value: "1 mois max", icon: Shield },
+      { label: "Renouvellement", value: "Non automatique", icon: Scale },
+    ],
+    legalRef: "Art. 25-7 Loi n°89-462",
+    durationMonths: 9,
+    maxDepositMonths: 1,
+  },
+  // Commercial dérogatoire (bail précaire)
+  commercial_derogatoire: {
+    name: "Commercial Dérogatoire",
+    description: "Bail commercial précaire (max 3 ans)",
+    icon: Store,
+    gradient: "from-orange-600 via-amber-500 to-yellow-500",
+    bgGradient: "from-orange-50 to-amber-100 dark:from-orange-900/50 dark:to-amber-900/50",
+    accent: "#ea580c",
+    accentLight: "#fb923c",
+    features: [
+      { label: "Durée maximum", value: "3 ans", icon: Clock },
+      { label: "Droit au bail", value: "Non cessible", icon: Key },
+      { label: "Renouvellement", value: "Sur accord", icon: CalendarClock },
+    ],
+    legalRef: "Art. L.145-5 Code commerce",
+    durationMonths: 36,
+    maxDepositMonths: 3,
+  },
+  // Location-gérance (fonds de commerce)
+  location_gerance: {
+    name: "Location-Gérance",
+    description: "Mise en gérance d'un fonds de commerce",
+    icon: Store,
+    gradient: "from-fuchsia-600 via-pink-500 to-rose-500",
+    bgGradient: "from-fuchsia-50 to-pink-100 dark:from-fuchsia-900/50 dark:to-pink-900/50",
+    accent: "#c026d3",
+    accentLight: "#e879f9",
+    features: [
+      { label: "Durée", value: "Libre (min 2 ans)", icon: Clock },
+      { label: "Redevance", value: "Fixe ou variable", icon: Scale },
+      { label: "Publication", value: "JAL obligatoire", icon: FileText },
+    ],
+    legalRef: "Art. L.144-1 Code commerce",
+    durationMonths: 24,
+    maxDepositMonths: 3,
+  },
+  // Bail mixte (habitation + professionnel)
+  bail_mixte: {
+    name: "Bail Mixte",
+    description: "Logement avec activité professionnelle",
+    icon: Layers,
+    gradient: "from-cyan-600 via-teal-500 to-emerald-500",
+    bgGradient: "from-cyan-50 to-teal-100 dark:from-cyan-900/50 dark:to-teal-900/50",
+    accent: "#0891b2",
+    accentLight: "#22d3ee",
+    features: [
+      { label: "Durée minimum", value: "3 ans (6 si bailleur pro)", icon: Clock },
+      { label: "Dépôt de garantie", value: "1 mois max", icon: Shield },
+      { label: "Usage", value: "Habitation + libéral", icon: Briefcase },
+    ],
+    legalRef: "Art. 2 Loi n°89-462",
+    durationMonths: 36,
+    maxDepositMonths: 1,
+  },
+  // Bail rural
+  bail_rural: {
+    name: "Bail Rural",
+    description: "Location de terres et bâtiments agricoles",
+    icon: Home,
+    gradient: "from-green-700 via-emerald-600 to-teal-600",
+    bgGradient: "from-green-50 to-emerald-100 dark:from-green-900/50 dark:to-emerald-900/50",
+    accent: "#15803d",
+    accentLight: "#4ade80",
+    features: [
+      { label: "Durée minimum", value: "9 ans", icon: Clock },
+      { label: "Préavis", value: "18 mois", icon: CalendarClock },
+      { label: "Droit de préemption", value: "SAFER", icon: Scale },
+    ],
+    legalRef: "Art. L.411-1 Code rural",
+    durationMonths: 108,
+    maxDepositMonths: 0,
+  },
 } as const;
 
 export type LeaseType = keyof typeof LEASE_TYPE_CONFIGS;
@@ -186,25 +276,28 @@ const cardHoverVariants = {
 // Filtrer les types de baux disponibles selon le type de bien
 function getAvailableLeaseTypes(propertyType?: string): LeaseType[] {
   if (!propertyType) return Object.keys(LEASE_TYPE_CONFIGS) as LeaseType[];
-  
+
   const mapping: Record<string, LeaseType[]> = {
     // Habitation
-    appartement: ["nu", "meuble", "bail_mobilite"],
-    maison: ["nu", "meuble"],
-    studio: ["meuble", "bail_mobilite"],
+    appartement: ["nu", "meuble", "bail_mobilite", "etudiant", "bail_mixte"],
+    maison: ["nu", "meuble", "bail_mixte"],
+    studio: ["meuble", "bail_mobilite", "etudiant"],
     colocation: ["colocation", "meuble"],
     saisonnier: ["saisonnier"],
     // Stationnement
     parking: ["contrat_parking"],
     box: ["contrat_parking"],
     // Professionnel
-    local_commercial: ["commercial_3_6_9"],
-    bureaux: ["professionnel", "commercial_3_6_9"],
-    entrepot: ["commercial_3_6_9", "professionnel"],
-    fonds_de_commerce: ["commercial_3_6_9"],
+    local_commercial: ["commercial_3_6_9", "commercial_derogatoire"],
+    bureaux: ["professionnel", "commercial_3_6_9", "commercial_derogatoire", "bail_mixte"],
+    entrepot: ["commercial_3_6_9", "professionnel", "commercial_derogatoire"],
+    fonds_de_commerce: ["commercial_3_6_9", "commercial_derogatoire", "location_gerance"],
+    // Agricole
+    terrain_agricole: ["bail_rural"],
+    exploitation_agricole: ["bail_rural"],
   };
-  
-  return mapping[propertyType] || ["nu", "meuble", "colocation", "saisonnier", "bail_mobilite"];
+
+  return mapping[propertyType] || ["nu", "meuble", "colocation", "saisonnier", "bail_mobilite", "etudiant"];
 }
 
 export function LeaseTypeCards({ selectedType, onSelect, propertyType }: LeaseTypeCardsProps) {

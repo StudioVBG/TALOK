@@ -34,12 +34,14 @@ const propertyTypeV3Enum = z.enum([
   "maison",
   "studio",
   "colocation",
+  "saisonnier",        // SOTA 2026: Location saisonnière
   "parking",
   "box",
   "local_commercial",
   "bureaux",
   "entrepot",
   "fonds_de_commerce",
+  "immeuble",          // SOTA 2026: Immeuble entier multi-lots
 ]);
 
 const parkingTypeEnum = z.enum([
@@ -159,7 +161,7 @@ const basePropertySchemaV3 = z.object({
 // NOTE : Créer une version base (sans superRefine) pour discriminatedUnion, puis une version avec validations
 
 export const habitationSchemaV3Base = basePropertySchemaV3.extend({
-  type_bien: z.enum(["appartement", "maison", "studio", "colocation"]),
+  type_bien: z.enum(["appartement", "maison", "studio", "colocation", "saisonnier"]),
   surface_habitable_m2: z.number().positive("La surface habitable doit être strictement positive"),
   nb_pieces: z.number().int().min(1, "Le nombre de pièces doit être au moins 1"),
   nb_chambres: z.number().int().min(0, "Le nombre de chambres ne peut pas être négatif"),
@@ -247,6 +249,70 @@ export const localProSchemaV3 = basePropertySchemaV3
   });
 
 // ============================================
+// SCHÉMA IMMEUBLE ENTIER (SOTA 2026)
+// ============================================
+// Source modèle V3 section 3.5 : règles pour immeubles multi-lots
+// Décision : Schéma spécifique pour les immeubles avec validation des lots
+
+const buildingUnitSchema = z.object({
+  id: z.string(),
+  building_id: z.string(),
+  floor: z.number().int().min(-5).max(50),
+  position: z.string().min(1).max(10),
+  type: z.enum(["appartement", "studio", "local_commercial", "parking", "cave", "bureau"]),
+  surface: z.number().positive("La surface doit être positive"),
+  nb_pieces: z.number().int().min(0),
+  loyer_hc: z.number().min(0),
+  charges: z.number().min(0),
+  depot_garantie: z.number().min(0),
+  status: z.enum(["vacant", "occupe", "travaux", "reserve"]),
+  template: z.string().optional().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const immeubleSchemaV3 = basePropertySchemaV3.omit({ loyer_hc: true, charges_mensuelles: true, depot_garantie: true }).extend({
+  type_bien: z.literal("immeuble"),
+  // Configuration de l'immeuble
+  building_floors: z.number().int().min(1).max(50),
+  building_units: z.array(buildingUnitSchema).min(1, "Un immeuble doit avoir au moins 1 lot"),
+  // Parties communes
+  has_ascenseur: z.boolean().default(false),
+  has_gardien: z.boolean().default(false),
+  has_interphone: z.boolean().default(false),
+  has_digicode: z.boolean().default(false),
+  has_local_velo: z.boolean().default(false),
+  has_local_poubelles: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  // SOTA 2026: Validation cohérence lots/étages
+  const maxFloorInUnits = Math.max(...data.building_units.map(u => u.floor), 0);
+  if (maxFloorInUnits >= data.building_floors) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["building_floors"],
+      message: `Le nombre d'étages (${data.building_floors}) doit être supérieur au plus haut étage des lots (${maxFloorInUnits})`,
+    });
+  }
+
+  // Validation unicité position par étage
+  const positionsByFloor = new Map<number, Set<string>>();
+  for (const unit of data.building_units) {
+    if (!positionsByFloor.has(unit.floor)) {
+      positionsByFloor.set(unit.floor, new Set());
+    }
+    const positions = positionsByFloor.get(unit.floor)!;
+    if (positions.has(unit.position)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["building_units"],
+        message: `Position "${unit.position}" dupliquée à l'étage ${unit.floor}`,
+      });
+    }
+    positions.add(unit.position);
+  }
+});
+
+// ============================================
 // SCHÉMA PRINCIPAL DISCRIMINATED UNION
 // ============================================
 // Source modèle V3 : validation différenciée selon type_bien
@@ -257,12 +323,13 @@ export const propertySchemaV3Base = z.discriminatedUnion("type_bien", [
   habitationSchemaV3Base,
   parkingSchemaV3,
   localProSchemaV3,
+  immeubleSchemaV3,
 ]);
 
 // Version avec validations avancées pour habitation (wrapper autour de la base)
 export const propertySchemaV3 = propertySchemaV3Base.superRefine((data, ctx) => {
   // Appliquer les validations conditionnelles pour habitation
-  if (data.type_bien === "appartement" || data.type_bien === "maison" || data.type_bien === "studio" || data.type_bien === "colocation") {
+  if (data.type_bien === "appartement" || data.type_bien === "maison" || data.type_bien === "studio" || data.type_bien === "colocation" || data.type_bien === "saisonnier") {
     const habitation = data as z.infer<typeof habitationSchemaV3Base>;
     // Validation chauffage_energie
     if (habitation.chauffage_type !== "aucun" && !habitation.chauffage_energie) {
@@ -290,7 +357,7 @@ export const propertySchemaV3 = propertySchemaV3Base.superRefine((data, ctx) => 
 // Décision : Schémas partiels pour chaque type
 
 export const habitationUpdateSchemaV3 = habitationSchemaV3Base.partial().extend({
-  type_bien: z.enum(["appartement", "maison", "studio", "colocation"]).optional(),
+  type_bien: z.enum(["appartement", "maison", "studio", "colocation", "saisonnier"]).optional(),
 });
 
 export const parkingUpdateSchemaV3 = parkingSchemaV3.partial().extend({
@@ -301,10 +368,15 @@ export const localProUpdateSchemaV3 = localProSchemaV3.partial().extend({
   type_bien: z.enum(["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"]).optional(),
 });
 
+export const immeubleUpdateSchemaV3 = immeubleSchemaV3.partial().extend({
+  type_bien: z.literal("immeuble").optional(),
+});
+
 export const propertyUpdateSchemaV3 = z.union([
   habitationUpdateSchemaV3,
   parkingUpdateSchemaV3,
   localProUpdateSchemaV3,
+  immeubleUpdateSchemaV3,
 ]);
 
 // ============================================
@@ -343,10 +415,13 @@ export type PropertyV3Input = z.infer<typeof propertySchemaV3>;
 export type HabitationV3Input = z.infer<typeof habitationSchemaV3>;
 export type ParkingV3Input = z.infer<typeof parkingSchemaV3>;
 export type LocalProV3Input = z.infer<typeof localProSchemaV3>;
+export type ImmeubleV3Input = z.infer<typeof immeubleSchemaV3>;
+export type BuildingUnitInput = z.infer<typeof buildingUnitSchema>;
 export type RoomV3Input = z.infer<typeof roomSchemaV3>;
 export type PhotoV3Input = z.infer<typeof photoSchemaV3>;
 export type PropertyV3UpdateInput = z.infer<typeof propertyUpdateSchemaV3>;
 export type HabitationV3UpdateInput = z.infer<typeof habitationUpdateSchemaV3>;
 export type ParkingV3UpdateInput = z.infer<typeof parkingUpdateSchemaV3>;
 export type LocalProV3UpdateInput = z.infer<typeof localProUpdateSchemaV3>;
+export type ImmeubleV3UpdateInput = z.infer<typeof immeubleUpdateSchemaV3>;
 

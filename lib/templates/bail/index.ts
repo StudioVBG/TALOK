@@ -7,18 +7,20 @@
 export * from './types';
 export * from './bail-parking.types';
 
-// Templates
+// Templates - Habitation
 export { BAIL_NU_TEMPLATE, BAIL_NU_VARIABLES } from './bail-nu.template';
 export { BAIL_MEUBLE_TEMPLATE, BAIL_MEUBLE_VARIABLES } from './bail-meuble.template';
 export { BAIL_COLOCATION_TEMPLATE, BAIL_COLOCATION_VARIABLES } from './bail-colocation.template';
 export { BAIL_PARKING_TEMPLATE } from './bail-parking.template';
 export { BAIL_SAISONNIER_TEMPLATE, BAIL_SAISONNIER_VARIABLES } from './bail-saisonnier.template';
 export { BAIL_MOBILITE_TEMPLATE, BAIL_MOBILITE_VARIABLES, MOTIFS_MOBILITE } from './bail-mobilite.template';
+export { BAIL_ETUDIANT_TEMPLATE, BAIL_ETUDIANT_VARIABLES } from './bail-etudiant.template';
+
+// Templates - Commercial et Professionnel
 export { BAIL_COMMERCIAL_TEMPLATE, BAIL_COMMERCIAL_VARIABLES } from './bail-commercial.template';
 export { BAIL_DEROGATOIRE_TEMPLATE, BAIL_DEROGATOIRE_VARIABLES } from './bail-derogatoire.template';
 export { BAIL_PROFESSIONNEL_TEMPLATE, BAIL_PROFESSIONNEL_VARIABLES } from './bail-professionnel.template';
 export { BAIL_LOCATION_GERANCE_TEMPLATE, BAIL_LOCATION_GERANCE_VARIABLES } from './bail-location-gerance.template';
-export { BAIL_ETUDIANT_TEMPLATE, BAIL_ETUDIANT_VARIABLES } from './bail-etudiant.template';
 
 // Configuration des templates par type
 export const TEMPLATES_CONFIG = {
@@ -94,7 +96,7 @@ export const TEMPLATES_CONFIG = {
   parking: {
     id: 'bail-parking-v1',
     name: 'Contrat de location de parking',
-    type_bail: 'parking' as const,
+    type_bail: 'contrat_parking' as const,
     duree_min: 0, // Durée libre (code civil)
     depot_max_mois: 0, // Pas de limite légale
     preavis_locataire: 1,
@@ -104,7 +106,7 @@ export const TEMPLATES_CONFIG = {
   commercial: {
     id: 'bail-commercial-v1',
     name: 'Bail commercial 3/6/9',
-    type_bail: 'commercial' as const,
+    type_bail: 'commercial_3_6_9' as const,
     duree_min: 108, // 9 ans minimum
     duree_max: 0, // Pas de limite
     depot_max_mois: 0, // Pas de limite légale (généralement 3-6 mois)
@@ -167,8 +169,28 @@ export const TEMPLATES_CONFIG = {
     licences_transmissibles: true, // Selon type de fonds
     loi_applicable: 'Code de commerce Articles L144-1 à L144-13',
   },
+  bail_mixte: {
+    id: 'bail-mixte-v1',
+    name: 'Bail mixte (habitation + professionnel)',
+    type_bail: 'bail_mixte' as const,
+    duree_min: 36, // 3 ans si bailleur personne physique, 6 ans sinon
+    depot_max_mois: 1, // Comme bail nu
+    preavis_locataire: 3,
+    preavis_bailleur: 6,
+    loi_applicable: 'Loi n°89-462, Article 2',
+  },
+  bail_rural: {
+    id: 'bail-rural-v1',
+    name: 'Bail rural',
+    type_bail: 'bail_rural' as const,
+    duree_min: 108, // 9 ans minimum
+    depot_max_mois: 0, // Non prévu par le statut du fermage
+    preavis_locataire: 18, // 18 mois avant fin de période
+    preavis_bailleur: 18,
+    droit_preemption: true,
+    loi_applicable: 'Code rural, Articles L.411-1 et suivants',
+  },
 };
 
 // Utilitaires
 export { LeaseTemplateService, LeaseTemplateService as TemplateService } from './template.service';
-

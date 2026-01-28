@@ -141,7 +141,9 @@ export type LeaseType =
   | "commercial_derogatoire"
   | "professionnel"
   | "contrat_parking"
-  | "location_gerance";
+  | "location_gerance"
+  | "bail_mixte"
+  | "bail_rural";
 
 // ✅ SOTA 2026: Tous les statuts de bail légaux
 export type LeaseStatus = 
