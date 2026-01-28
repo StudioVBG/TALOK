@@ -1091,3 +1091,49 @@ export {
   MEDICAL_INSPECTION_ITEMS,
 } from "./edl-commercial";
 
+// ============================================
+// EXPORTS LOCATION-GÉRANCE - GAP-005 SOTA 2026
+// Code de commerce Articles L144-1 à L144-13
+// ============================================
+export type {
+  FondsDeCommerceType,
+  LicenceType,
+  LoueurFondsType,
+  GerantType,
+  RedevanceType,
+  LoueurFonds,
+  GerantFonds,
+  LicenceExploitation,
+  EquipementFonds,
+  ElementCorporel,
+  ElementIncorporel,
+  FondsDeCommerce,
+  RedevanceConfig,
+  CautionnementGerance,
+  ObligationsGerant,
+  ClausesParticulieres,
+  SolidariteFiscale,
+  PublicationJAL,
+  LocationGeranceContract,
+  CreateLocationGeranceDTO,
+  LocationGeranceTemplateData,
+} from "./location-gerance";
+
+export {
+  FONDS_TYPE_LABELS,
+  LICENCE_TYPE_LABELS,
+  REDEVANCE_TYPE_LABELS,
+  LOUEUR_TYPE_LABELS,
+  GERANT_TYPE_LABELS,
+  FONDS_TYPE_COLORS,
+  FONDS_TYPE_ICONS,
+  OBLIGATIONS_LEGALES_GERANT,
+  OBLIGATIONS_LEGALES_LOUEUR,
+  DOCUMENTS_REQUIS_LOCATION_GERANCE,
+  CLAUSES_RECOMMANDEES,
+  DEFAULT_LOCATION_GERANCE_CONFIG,
+  LOCATION_GERANCE_DURATION,
+  requiresLicence,
+  getFondsTypeGroup,
+} from "./location-gerance";
+
