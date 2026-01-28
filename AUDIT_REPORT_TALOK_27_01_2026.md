@@ -13,18 +13,18 @@
 | Catégorie | P0 | P1 Initial | P1 Fait | P1 Restant | P2 | P3 | Total Restant |
 |-----------|:--:|:----------:|:-------:|:----------:|:--:|:--:|:-------------:|
 | Routes | 0 | 3 | 3 | 0 | 1 | 0 | 1 |
-| Composants | 0 | 2 | 1 | 1 | 3 | 1 | 5 |
+| Composants | 0 | 2 | 2 | 0 | 3 | 1 | 4 |
 | UX/UI | 0 | 3 | 0 | 3 | 5 | 2 | 10 |
 | Flux données | 0 | 2 | 1 | 1 | 2 | 1 | 4 |
-| Validation | 0 | 4 | 3 | 1 | 3 | 0 | 4 |
+| Validation | 0 | 4 | 4 | 0 | 3 | 0 | 3 |
 | Base de données | 0 | 2 | 0 | 2 | 1 | 0 | 3 |
 | Animations | 0 | 0 | 0 | 0 | 4 | 2 | 6 |
-| Tests | 0 | 3 | 0 | 3 | 2 | 0 | 5 |
-| **TOTAL** | **0** | **19** | **8** | **11** | **21** | **6** | **38** |
+| Tests | 0 | 3 | 2 | 1 | 2 | 0 | 3 |
+| **TOTAL** | **0** | **19** | **12** | **7** | **21** | **6** | **34** |
 
-**Effort total restant**: 8-10 jours-homme (vs 12-15 initial)
+**Effort total restant**: 6-8 jours-homme (vs 12-15 initial)
 **Risque régression global**: Faible
-**Note globale actuelle**: 9.2/10 (vs 8.5/10 initial)
+**Note globale actuelle**: 9.5/10 (vs 8.5/10 initial)
 
 ### P1 Implementés (28/01/2026)
 
@@ -35,7 +35,11 @@
 - **Validation DPE G** : Passoires thermiques bloquées (loi 2025)
 - **Validation Surface Carrez** : Cross-validation avec surface habitable
 - **Validation Surface Min** : 9m2 minimum (decret decence)
+- **Validation Code Postal** : Regex améliorée métropole (01-95) + DOM-TOM (971-976)
 - **Pages Buildings** : /owner/buildings et /owner/buildings/[id] (existaient déjà)
+- **DPEPassoireWarning** : Composant UI warning pour DPE G/F avec variantes
+- **Tests Unit Property-V3** : Tests Vitest pour validations DPE, Surface Carrez, Code Postal
+- **Tests E2E Building** : Parcours création immeuble avec Playwright
 
 ### Points forts existants
 
