@@ -3,6 +3,14 @@
 // Sécurisation serveur avec vérification des permissions
 // =====================================================
 
+import { generatePageMetadata } from "@/lib/seo/metadata";
+
+export const metadata = generatePageMetadata({
+  title: "Mon Espace Copropriétaire",
+  description: "Accédez à votre espace copropriétaire Talok.",
+  noIndex: true,
+});
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 

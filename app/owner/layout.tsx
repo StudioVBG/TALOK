@@ -1,3 +1,7 @@
+import { PAGE_METADATA } from "@/lib/seo/metadata";
+
+export const metadata = PAGE_METADATA.ownerDashboard;
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 

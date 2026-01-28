@@ -3,6 +3,10 @@
 // Sécurisation serveur avec vérification des permissions
 // =====================================================
 
+import { PAGE_METADATA } from "@/lib/seo/metadata";
+
+export const metadata = PAGE_METADATA.syndicDashboard;
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 

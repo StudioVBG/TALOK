@@ -1,3 +1,7 @@
+import { PAGE_METADATA } from "@/lib/seo/metadata";
+
+export const metadata = PAGE_METADATA.adminDashboard;
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
