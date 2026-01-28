@@ -142,7 +142,13 @@ const basePropertySchemaV3 = z.object({
   // type_bien défini dans chaque schéma spécifique (habitationSchemaV3, parkingSchemaV3, localProSchemaV3)
   adresse_complete: z.string().min(1, "L'adresse complète est requise"),
   complement_adresse: z.string().optional().nullable(),
-  code_postal: z.string().regex(/^[0-9]{5}$/, "Le code postal doit contenir 5 chiffres"),
+  // SOTA 2026: Validation code postal France métropole + DOM-TOM
+  // Métropole: 01xxx-95xxx (départements 01-95, inclut Corse 20xxx)
+  // DOM-TOM: 971xx-976xx (Guadeloupe, Martinique, Guyane, Réunion, Mayotte)
+  code_postal: z.string().regex(
+    /^((0[1-9]|[1-8]\d|9[0-5])\d{3}|97[1-6]\d{2})$/,
+    "Code postal invalide. Métropole : 01000-95999, DOM-TOM : 97100-97699"
+  ),
   ville: z.string().min(1, "La ville est requise"),
   departement: z.string().min(2, "Le département doit contenir au moins 2 caractères").max(3, "Le département doit contenir au maximum 3 caractères").optional(),
   latitude: z.number().min(-90).max(90).optional().nullable(),
