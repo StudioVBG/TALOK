@@ -130,14 +130,28 @@ export function Navbar() {
 
   const mainNavItems = getMainNavItems();
 
+  // Afficher un état de chargement minimal qui conserve la même structure
+  // pour éviter le layout shift et le scintillement
   if (loading) {
     return (
-      <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 animate-pulse rounded bg-muted" />
-              <div className="h-6 w-32 animate-pulse rounded bg-muted" />
+            {/* Logo - même structure que l'état chargé */}
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <span className="text-xl font-bold hidden sm:inline-block">
+                  Talok
+                </span>
+              </div>
+            </div>
+            {/* Skeleton pour les boutons de droite */}
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-20 animate-pulse rounded-md bg-muted hidden sm:block" />
+              <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />
             </div>
           </div>
         </div>
