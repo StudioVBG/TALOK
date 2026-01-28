@@ -1137,3 +1137,38 @@ export {
   getFondsTypeGroup,
 } from "./location-gerance";
 
+// ============================================
+// EXPORTS TAXE DE SÉJOUR - GAP-006 SOTA 2026
+// Article L2333-26 à L2333-47 du CGCT
+// ============================================
+export type {
+  HebergementTouristiqueType,
+  ModePerceptionTaxe,
+  DeclarationTaxeStatus,
+  MotifExoneration,
+  TaxeSejourCommuneConfig,
+  OccupantSejour,
+  SejourTouristique,
+  DeclarationTaxeSejour,
+  CreateSejourTouristiqueDTO,
+  UpdateSejourTouristiqueDTO,
+  CreateDeclarationDTO,
+  CalculTaxeSejourResult,
+  TaxeSejourStats,
+} from "./taxe-sejour";
+
+export {
+  TARIFS_PLAFONDS_2024,
+  HEBERGEMENT_TYPE_LABELS,
+  EXONERATION_LABELS,
+  HEBERGEMENT_TYPE_GROUPS,
+  HEBERGEMENT_TYPES_TALOK,
+  DEFAULT_TAXE_SEJOUR_CONFIG,
+  VILLES_ENREGISTREMENT_OBLIGATOIRE,
+  calculerTaxeSejour,
+  estMineurALaDate,
+  getTarifPlafond,
+  validerTauxCommunal,
+  requiresNumeroEnregistrement,
+} from "./taxe-sejour";
+
