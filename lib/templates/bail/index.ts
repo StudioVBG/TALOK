@@ -17,6 +17,7 @@ export { BAIL_MOBILITE_TEMPLATE, BAIL_MOBILITE_VARIABLES, MOTIFS_MOBILITE } from
 export { BAIL_COMMERCIAL_TEMPLATE, BAIL_COMMERCIAL_VARIABLES } from './bail-commercial.template';
 export { BAIL_DEROGATOIRE_TEMPLATE, BAIL_DEROGATOIRE_VARIABLES } from './bail-derogatoire.template';
 export { BAIL_PROFESSIONNEL_TEMPLATE, BAIL_PROFESSIONNEL_VARIABLES } from './bail-professionnel.template';
+export { BAIL_LOCATION_GERANCE_TEMPLATE, BAIL_LOCATION_GERANCE_VARIABLES } from './bail-location-gerance.template';
 
 // Configuration des templates par type
 export const TEMPLATES_CONFIG = {
@@ -129,6 +130,24 @@ export const TEMPLATES_CONFIG = {
     ordre_professionnel: true, // Pour professions réglementées
     assurance_rcp_obligatoire: true,
     loi_applicable: 'Article 57 A de la loi n°86-1290 du 23 décembre 1986',
+  },
+  location_gerance: {
+    id: 'bail-location-gerance-v1',
+    name: 'Contrat de location-gérance',
+    type_bail: 'location_gerance' as const,
+    duree_min: 12, // Généralement 1 an minimum
+    duree_max: 0, // Pas de limite légale
+    depot_max_mois: 0, // Cautionnement libre (généralement 3-6 mois de redevance)
+    preavis_locataire: 6, // 6 mois selon contrat
+    preavis_bailleur: 6, // 6 mois selon contrat
+    resiliation_anticipee: false, // Selon clauses contractuelles
+    solidarite_fiscale: true, // Article L144-7: 6 mois après publication JAL
+    publication_jal_obligatoire: true, // Article L144-6
+    exploitation_personnelle_requise: true, // 2 ans minimum avant mise en gérance
+    redevance_types: ['fixe', 'pourcentage_ca', 'mixte', 'progressive'],
+    indexation: ['ILC', 'ILAT'],
+    licences_transmissibles: true, // Selon type de fonds
+    loi_applicable: 'Code de commerce Articles L144-1 à L144-13',
   },
 };
 
