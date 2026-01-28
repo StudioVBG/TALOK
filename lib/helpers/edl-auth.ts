@@ -88,8 +88,8 @@ export async function verifyEDLAccess(
 
   try {
     // 1. Récupérer l'EDL avec les relations nécessaires
-    // Note: La table EDL n'a PAS de colonne property_id directe
-    // La relation passe par: edl.lease_id -> leases.id -> leases.property_id -> properties.id
+    // La table EDL possède property_id en FK directe (dénormalisé depuis leases.property_id)
+    // ET via la relation: edl.lease_id -> leases.id -> leases.property_id -> properties.id
     const { data: edl, error: edlError } = await client
       .from("edl")
       .select(`
@@ -135,15 +135,15 @@ export async function verifyEDLAccess(
       return { authorized: true, edl: edlData, accessType: "creator" };
     }
 
-    // 4. Propriétaire du bien (via lease -> property -> owner_id)
-    // Supabase retourne un objet pour les relations 1-to-1 (via FK)
+    // 4. Propriétaire du bien
+    // Fast path: si property_id est directement sur l'EDL, vérifier via ce FK
     const leaseData = Array.isArray(edlData.lease) ? edlData.lease[0] : edlData.lease;
     const propertyOwnerId = leaseData?.property?.owner_id;
 
     console.log(`[verifyEDLAccess] Checking owner access:`, {
       leaseId: edlData.lease_id,
       leaseFound: !!leaseData,
-      propertyId: leaseData?.property_id,
+      propertyId: edlData.property_id || leaseData?.property_id,
       propertyOwnerId,
       profileId
     });
@@ -153,19 +153,33 @@ export async function verifyEDLAccess(
       return { authorized: true, edl: edlData, accessType: "owner" };
     }
 
-    // 4b. Fallback: si la relation lease n'a pas été chargée, récupérer directement
-    if (!propertyOwnerId && edlData.lease_id) {
-      console.log(`[verifyEDLAccess] Fallback: fetching lease directly for lease_id: ${edlData.lease_id}`);
-      const { data: leaseWithProperty } = await client
-        .from("leases")
-        .select("property:properties(owner_id)")
-        .eq("id", edlData.lease_id)
-        .single();
+    // 4b. Fallback: si la relation lease n'a pas été chargée, utiliser property_id directe ou récupérer
+    if (!propertyOwnerId) {
+      const directPropertyId = edlData.property_id || leaseData?.property_id;
+      if (directPropertyId) {
+        const { data: property } = await client
+          .from("properties")
+          .select("owner_id")
+          .eq("id", directPropertyId)
+          .single();
 
-      const fallbackOwnerId = leaseWithProperty?.property?.owner_id;
-      if (fallbackOwnerId && fallbackOwnerId === profileId) {
-        console.log(`[verifyEDLAccess] ✅ Owner access granted (via fallback)`);
-        return { authorized: true, edl: edlData, accessType: "owner" };
+        if (property?.owner_id === profileId) {
+          console.log(`[verifyEDLAccess] ✅ Owner access granted (via direct property_id)`);
+          return { authorized: true, edl: edlData, accessType: "owner" };
+        }
+      } else if (edlData.lease_id) {
+        console.log(`[verifyEDLAccess] Fallback: fetching lease directly for lease_id: ${edlData.lease_id}`);
+        const { data: leaseWithProperty } = await client
+          .from("leases")
+          .select("property:properties(owner_id)")
+          .eq("id", edlData.lease_id)
+          .single();
+
+        const fallbackOwnerId = leaseWithProperty?.property?.owner_id;
+        if (fallbackOwnerId && fallbackOwnerId === profileId) {
+          console.log(`[verifyEDLAccess] ✅ Owner access granted (via lease fallback)`);
+          return { authorized: true, edl: edlData, accessType: "owner" };
+        }
       }
     }
 
@@ -244,7 +258,7 @@ export function canEditEDL(edl: any): { canEdit: boolean; reason?: string } {
     return { canEdit: false, reason: "L'EDL est déjà signé et ne peut plus être modifié" };
   }
 
-  // Statuts modifiables
+  // Statuts modifiables (inclut 'scheduled' ajouté par migration 20260128000001)
   if (["draft", "scheduled", "in_progress", "completed"].includes(status)) {
     return { canEdit: true };
   }
