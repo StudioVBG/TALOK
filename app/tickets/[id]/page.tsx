@@ -40,7 +40,14 @@ function TicketDetailPageContent() {
         description: error instanceof Error ? error.message : "Impossible de charger le ticket.",
         variant: "destructive",
       });
-      router.push("/tickets");
+      // Rediriger selon le rôle
+      if (profile?.role === "owner") {
+        router.push("/owner/tickets");
+      } else if (profile?.role === "tenant") {
+        router.push("/tenant/requests");
+      } else {
+        router.push("/dashboard");
+      }
     } finally {
       setLoading(false);
     }
@@ -124,9 +131,15 @@ function TicketDetailPageContent() {
             </span>
           </div>
         </div>
-        <Link href="/tickets">
-          <Button variant="ghost">Retour</Button>
-        </Link>
+        <Button variant="ghost" onClick={() => {
+          if (profile?.role === "owner") {
+            router.push("/owner/tickets");
+          } else if (profile?.role === "tenant") {
+            router.push("/tenant/requests");
+          } else {
+            router.push("/dashboard");
+          }
+        }}>Retour</Button>
       </div>
 
       <Card>
@@ -151,7 +164,7 @@ function TicketDetailPageContent() {
             <div>
               <p className="text-sm text-muted-foreground">Logement</p>
               <Link
-                href={`/properties/${ticket.property_id}`}
+                href={`/owner/properties/${ticket.property_id}`}
                 className="font-medium text-primary hover:underline"
               >
                 Voir le logement →

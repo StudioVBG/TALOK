@@ -36,6 +36,7 @@ import type { PropertyDetails } from "../../_data/fetchPropertyDetails";
 import { PropertyMetersSection } from "@/components/owner/properties/PropertyMetersSection";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { EntityNotes } from "@/components/ui/entity-notes";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Navigation, CheckCircle2 } from "lucide-react";
@@ -462,6 +463,16 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Breadcrumb */}
+      <Breadcrumb
+        items={[
+          { label: "Mes biens", href: "/owner/properties" },
+          { label: property.adresse_complete || "Détails du bien" }
+        ]}
+        homeHref="/owner/dashboard"
+        className="mb-4"
+      />
+
       {/* Bouton retour */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <Button asChild variant="ghost" className="pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-900 w-fit">

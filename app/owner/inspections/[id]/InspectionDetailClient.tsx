@@ -58,6 +58,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { EDLPreview } from "@/features/edl/components/edl-preview";
 import { mapRawEDLToTemplate } from "@/lib/mappers/edl-to-template";
 import { SignaturePad, type SignatureData } from "@/components/signature/SignaturePad";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 interface Room {
   name: string;
@@ -484,6 +485,17 @@ export function InspectionDetailClient({ data }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col">
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-4 pt-4">
+        <Breadcrumb
+          items={[
+            { label: "États des lieux", href: "/owner/inspections" },
+            { label: `EDL ${edl.type === "entree" ? "Entrée" : "Sortie"} - ${edl.lease?.property?.ville}` }
+          ]}
+          homeHref="/owner/dashboard"
+        />
+      </div>
+
       {/* Barre supérieure fixe (Header) */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
