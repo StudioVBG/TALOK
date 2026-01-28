@@ -159,6 +159,16 @@ export const rateLimitPresets = {
     windowMs: 60 * 1000, // 1 minute
     maxRequests: 30,
   },
+  // Limite pour les opérations EDL (création, validation, duplication)
+  edl: {
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 10,
+  },
+  // Limite stricte pour duplication EDL (opération lourde)
+  edlDuplicate: {
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    maxRequests: 5,
+  },
 };
 
 /**
