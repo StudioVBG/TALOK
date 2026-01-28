@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,12 +10,13 @@ import { usePropertyWizardStore } from "@/features/properties/stores/wizard-stor
 import {
   Euro, Ruler, Coins, ArrowUpDown, Sofa, HelpCircle,
   Flame, Droplet, Snowflake, Zap, Home, ThermometerSun,
-  Building2, FileText, Briefcase
+  Building2, FileText, Briefcase, AlertTriangle
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RentEstimation } from "../RentEstimation";
 import { Badge } from "@/components/ui/badge";
+import { DPEPassoireWarning } from "@/components/properties/DPEPassoireWarning";
 
 // Classes DPE avec couleurs officielles
 const DPE_CLASSES = [
@@ -235,8 +236,8 @@ export function DetailsStepHabitation() {
                       type="button"
                       onClick={() => updateFormData({ dpe_classe_climat: ges.value })}
                       className={`flex-1 h-10 rounded-md font-bold text-white transition-all ${ges.color} ${
-                        (formData as any).dpe_classe_climat === ges.value 
-                          ? "ring-2 ring-offset-2 ring-primary scale-110" 
+                        (formData as any).dpe_classe_climat === ges.value
+                          ? "ring-2 ring-offset-2 ring-primary scale-110"
                           : "opacity-60 hover:opacity-100"
                       }`}
                     >
@@ -246,6 +247,25 @@ export function DetailsStepHabitation() {
                 </div>
               </div>
             </div>
+
+            {/* SOTA 2026: Inline DPE G/F warning */}
+            <AnimatePresence>
+              {(formData.dpe_classe_energie === "G" || formData.dpe_classe_energie === "F") && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-3"
+                >
+                  <DPEPassoireWarning
+                    dpeClasse={formData.dpe_classe_energie}
+                    typeBail={(formData as any).type_bail}
+                    variant="inline"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Valeurs numériques DPE (optionnel mais recommandé) */}
             <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
