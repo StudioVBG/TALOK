@@ -252,11 +252,25 @@
   }
 }
 
-/* Smooth transitions pour tous les éléments interactifs */
-* {
+/*
+ * Transitions désactivées globalement pour éviter le scintillement lors de la navigation.
+ * Les transitions sont maintenant appliquées explicitement via les classes Tailwind
+ * (transition, transition-colors, etc.) uniquement sur les éléments interactifs.
+ */
+
+/* Classe utilitaire pour réactiver les transitions sur des éléments spécifiques */
+.with-transition {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
+}
+
+/* Désactiver les transitions pendant les changements de thème */
+html.disable-transitions,
+html.disable-transitions *,
+html.disable-transitions *::before,
+html.disable-transitions *::after {
+  transition: none !important;
 }
 
 /* Animations personnalisées */

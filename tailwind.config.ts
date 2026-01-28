@@ -40,11 +40,12 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-        'dancing-script': ['Dancing Script', 'cursive'],
-        'great-vibes': ['Great Vibes', 'cursive'],
-        'pacifico': ['Pacifico', 'cursive'],
-        'satisfy': ['Satisfy', 'cursive'],
+        // Utilisation des variables CSS next/font pour éviter le FOUC
+        sans: ['var(--font-inter)', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        'dancing-script': ['var(--font-dancing-script)', 'cursive'],
+        'great-vibes': ['var(--font-great-vibes)', 'cursive'],
+        'pacifico': ['var(--font-pacifico)', 'cursive'],
+        'satisfy': ['var(--font-satisfy)', 'cursive'],
       },
       colors: {
         border: "hsl(var(--border))",

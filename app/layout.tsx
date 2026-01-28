@@ -2,7 +2,51 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import type { Metadata, Viewport } from "next";
+import { Inter, Dancing_Script, Great_Vibes, Pacifico, Satisfy } from "next/font/google";
 import "./globals.css";
+
+/**
+ * Configuration des polices avec next/font pour éviter le FOUC
+ * Les polices sont préchargées et injectées de manière optimale
+ */
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  preload: true,
+});
+
+const dancingScript = Dancing_Script({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-dancing-script",
+  weight: ["400", "500", "600", "700"],
+  preload: false,
+});
+
+const greatVibes = Great_Vibes({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-great-vibes",
+  weight: "400",
+  preload: false,
+});
+
+const pacifico = Pacifico({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-pacifico",
+  weight: "400",
+  preload: false,
+});
+
+const satisfy = Satisfy({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-satisfy",
+  weight: "400",
+  preload: false,
+});
 
 /**
  * Normalise l'URL de base pour les métadonnées.
@@ -157,23 +201,39 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Script inline pour prévenir le flash de thème (FOUC)
+ * S'exécute avant le rendu du DOM pour appliquer immédiatement le bon thème
+ */
+const themeScript = `
+(function() {
+  try {
+    var theme = localStorage.getItem('theme');
+    var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var isDark = theme === 'dark' || (!theme && systemDark);
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    }
+  } catch (e) {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html
+      lang="fr"
+      suppressHydrationWarning
+      className={`${inter.variable} ${dancingScript.variable} ${greatVibes.variable} ${pacifico.variable} ${satisfy.variable}`}
+    >
       <head>
-        {/* Google Fonts - Chargement via <link> pour éviter les erreurs de build réseau */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Dancing+Script:wght@400..700&family=Great+Vibes&family=Pacifico&family=Satisfy&display=swap"
-          rel="stylesheet"
-        />
+        {/* Script anti-flash de thème - s'exécute avant le rendu */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="font-sans">
+      <body className={`${inter.className} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <CapacitorProvider>
             <QueryProvider>
