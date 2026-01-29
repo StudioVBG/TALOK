@@ -30,7 +30,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let edlId: string;
+  let edlId: string = "unknown";
 
   try {
     // 🔧 FIX: await params INSIDE try-catch to prevent unhandled errors returning HTML
@@ -154,7 +154,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  let edlId: string;
+  let edlId: string = "unknown";
 
   try {
     // 🔧 FIX: await params INSIDE try-catch to prevent unhandled errors returning HTML
@@ -233,11 +233,11 @@ export async function POST(
     const edlDataPost = accessResult.edl;
     const leaseData = Array.isArray(edlDataPost.lease) ? edlDataPost.lease[0] : edlDataPost.lease;
 
-    let meterId, photo, photoPath, manualValue, readingUnit, comment, meterNumber, location;
+    let meterId, photo, photoPath, manualValue, readingUnit, comment, meterNumber, location, meterTypeFromBody;
     let ocrResult = { value: null, confidence: 0, rawText: "", needsValidation: true, processingTimeMs: 0 };
-    
+
     const contentType = request.headers.get("content-type") || "";
-    
+
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       meterId = formData.get("meter_id") as string;
@@ -248,6 +248,7 @@ export async function POST(
       comment = formData.get("comment") as string;
       meterNumber = formData.get("meter_number") as string;
       location = formData.get("location") as string;
+      meterTypeFromBody = formData.get("meter_type") as string;
     } else {
       const body = await request.json().catch(() => ({}));
       meterId = body.meter_id;
@@ -257,6 +258,7 @@ export async function POST(
       comment = body.comment;
       meterNumber = body.meter_number;
       location = body.location;
+      meterTypeFromBody = body.meter_type;
     }
 
     const edlPropertyId = edlDataPost.property_id || leaseData?.property_id;
@@ -283,7 +285,8 @@ export async function POST(
     let actualMeterData = null;
 
     if (!meterId || String(meterId).startsWith("temp_")) {
-      const meterType = (request.headers.get("x-meter-type") || "electricity") as MeterType;
+      // 🔧 FIX: Priorité au type envoyé dans le body, puis header, puis défaut
+      const meterType = (meterTypeFromBody || request.headers.get("x-meter-type") || "electricity") as MeterType;
       console.log(`[POST /api/edl/${edlId}/meter-readings] Looking for/Creating meter type: ${meterType}`);
       
       let existingMeter = null;
@@ -361,16 +364,23 @@ export async function POST(
         }
       }
     } else {
+      // 🔧 FIX: Chercher d'abord par id seul, puis vérifier le property_id
+      // Le double filtre (id + property_id) échouait quand le meter avait property_id = NULL
       const { data: meter, error: meterError } = await serviceClient
         .from("meters")
         .select("*")
         .eq("id", meterId)
-        .eq("property_id", edlPropertyId)
         .single();
 
       if (meterError || !meter) {
-        console.warn(`[POST /api/edl/${edlId}/meter-readings] Meter not found: ${meterId}`);
+        console.warn(`[POST /api/edl/${edlId}/meter-readings] Meter not found: ${meterId}`, meterError);
         return NextResponse.json({ error: "Compteur non trouvé" }, { status: 404 });
+      }
+
+      // Si le compteur n'a pas de property_id, l'associer au property de l'EDL
+      if (!meter.property_id && edlPropertyId) {
+        await serviceClient.from("meters").update({ property_id: edlPropertyId }).eq("id", meterId);
+        (meter as any).property_id = edlPropertyId;
       }
       
       const meterData = meter as any;
