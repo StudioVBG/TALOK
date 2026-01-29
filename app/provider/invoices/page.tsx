@@ -626,6 +626,38 @@ export default function ProviderInvoicesPage() {
                   </p>
                 </div>
               ) : (
+                <>
+                <div className="md:hidden space-y-3">
+                  {filteredInvoices.map((invoice) => {
+                    const status = STATUS_CONFIG[invoice.status] || STATUS_CONFIG.draft;
+                    const StatusIcon = status.icon;
+                    return (
+                      <div key={invoice.id} className="rounded-lg border p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">{invoice.title}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{invoice.invoice_number}</p>
+                            {invoice.property_address && <p className="text-xs text-muted-foreground truncate">{invoice.property_address}</p>}
+                          </div>
+                          <Badge className={status.color}><StatusIcon className="h-3 w-3 mr-1" />{status.label}</Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">{invoice.owner_name || "-"}</span>
+                          <span className="text-muted-foreground">{formatDateShort(invoice.invoice_date)}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <span className="font-semibold">{formatCurrency(invoice.total_amount)}</span>
+                          <div className="flex items-center gap-1">
+                            {invoice.status === "draft" && <Button variant="ghost" size="sm" onClick={() => handleSendInvoice(invoice.id)}><Send className="h-4 w-4" /></Button>}
+                            <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+                            {invoice.pdf_url && <Button variant="ghost" size="sm" asChild><a href={invoice.pdf_url} download><Download className="h-4 w-4" /></a></Button>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -697,6 +729,8 @@ export default function ProviderInvoicesPage() {
                     })}
                   </TableBody>
                 </Table>
+                </div>
+                </>
               )}
             </CardContent>
           </Card>

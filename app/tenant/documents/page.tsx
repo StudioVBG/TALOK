@@ -44,6 +44,7 @@ import { DocumentDownloadButton } from "@/components/documents/DocumentDownloadB
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
+import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
 
 // Configuration SOTA pour les types de documents (étendue)
 const DOCUMENT_CONFIG: Record<string, { label: string; icon: any; color: string; bgColor: string }> = {
@@ -237,6 +238,7 @@ export default function TenantDocumentsPage() {
 
   return (
     <PageTransition>
+      <PullToRefreshContainer>
       <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
         
         {/* Header SOTA */}
@@ -246,15 +248,15 @@ export default function TenantDocumentsPage() {
               <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-200">
                 <FolderOpen className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Mon Coffre-fort</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Mon Coffre-fort</h1>
             </div>
-            <p className="text-slate-500 text-lg">
+            <p className="text-muted-foreground text-lg">
               Tous vos documents officiels et quittances sécurisés.
             </p>
           </div>
           <div className="flex items-center gap-3">
             {/* Toggle vue SOTA 2026 */}
-            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "grid" | "cascade")} className="bg-white/80 rounded-lg border shadow-sm">
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "grid" | "cascade")} className="bg-background/80 rounded-lg border shadow-sm">
               <TabsList className="grid grid-cols-2 h-11">
                 <TabsTrigger value="grid" className="flex items-center gap-1.5 text-xs px-3" aria-label="Vue grille">
                   <LayoutGrid className="h-3.5 w-3.5" />
@@ -271,22 +273,22 @@ export default function TenantDocumentsPage() {
         </div>
 
         {/* Barre de Recherche et Filtres */}
-        <GlassCard className="p-4 border-slate-200 bg-white/50 backdrop-blur-md sticky top-4 z-20 shadow-lg">
+        <GlassCard className="p-4 border-border bg-card/50 backdrop-blur-md sticky top-4 z-20 shadow-lg">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Rechercher un contrat, une quittance..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-white/80 border-slate-200 h-11 focus:ring-2 focus:ring-indigo-500"
+                className="pl-10 bg-background/80 border-border h-11 focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <div className="flex gap-2">
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full sm:w-56 h-11 bg-white/80 border-slate-200">
+                <SelectTrigger className="w-full sm:w-56 h-11 bg-background/80 border-border">
                   <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-slate-400" />
+                    <Filter className="h-4 w-4 text-muted-foreground" />
                     <SelectValue placeholder="Catégorie" />
                   </div>
                 </SelectTrigger>
@@ -305,11 +307,11 @@ export default function TenantDocumentsPage() {
         {/* Liste des Documents - SOTA 2026 avec deux modes */}
         {filteredDocuments.length === 0 ? (
           <div className="py-24 text-center">
-            <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FileText className="h-10 w-10 text-slate-200" />
+            <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
+              <FileText className="h-10 w-10 text-muted-foreground/30" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun document trouvé</h3>
-            <p className="text-slate-500">Essayez de modifier vos filtres ou effectuez une nouvelle recherche.</p>
+            <h3 className="text-xl font-bold text-foreground mb-2">Aucun document trouvé</h3>
+            <p className="text-muted-foreground">Essayez de modifier vos filtres ou effectuez une nouvelle recherche.</p>
           </div>
         ) : viewMode === "cascade" ? (
           /* 📁 Vue cascade groupée par catégorie */
@@ -350,7 +352,7 @@ export default function TenantDocumentsPage() {
                     transition={{ type: "spring", stiffness: 100, damping: 15 }}
                   >
                     <GlassCard className={cn(
-                      "group hover:shadow-2xl hover:border-indigo-200 transition-all duration-300 border-slate-200 bg-white h-full flex flex-col p-5",
+                      "group hover:shadow-2xl hover:border-indigo-200 transition-all duration-300 border-border bg-card h-full flex flex-col p-5",
                       isFinal && "border-emerald-200 bg-emerald-50/5"
                     )}>
                       <div className="flex items-start justify-between mb-4">
@@ -358,7 +360,7 @@ export default function TenantDocumentsPage() {
                           <Icon className={cn("h-6 w-6", config.color)} />
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <Badge variant="outline" className="bg-slate-50 text-[10px] uppercase tracking-wider font-bold">
+                          <Badge variant="outline" className="bg-muted text-[10px] uppercase tracking-wider font-bold">
                             {config.label}
                           </Badge>
                           {isFinal && (
@@ -370,23 +372,23 @@ export default function TenantDocumentsPage() {
                       </div>
 
                       <div className="flex-1 mb-6">
-                        <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                        <h3 className="text-lg font-bold text-foreground group-hover:text-indigo-600 transition-colors line-clamp-2">
                           {getDocumentTitle(doc, config)}
                         </h3>
-                        <div className="flex items-center gap-4 mt-3 text-sm text-slate-500">
+                        <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5" />
                             {new Date(doc.created_at).toLocaleDateString("fr-FR", { day: 'numeric', month: 'short', year: 'numeric' })}
                           </div>
                           {doc.metadata?.file_size && (
-                            <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded uppercase font-medium">
+                            <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded uppercase font-medium">
                               {(doc.metadata.file_size / 1024 / 1024).toFixed(2)} Mo
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex gap-2 pt-4 border-t border-slate-100">
+                      <div className="flex gap-2 pt-4 border-t border-border">
                         <Button 
                           variant="ghost" 
                           size="sm" 
@@ -446,6 +448,7 @@ export default function TenantDocumentsPage() {
         </motion.div>
 
       </div>
+      </PullToRefreshContainer>
     </PageTransition>
   );
 }

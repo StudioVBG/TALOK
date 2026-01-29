@@ -409,6 +409,29 @@ export default function BailleurChargesPage() {
                   </Button>
                 </CardHeader>
                 <CardContent>
+                  {/* Mobile card view */}
+                  <div className="md:hidden space-y-3">
+                    {charges.map((charge) => (
+                      <div key={charge.id} className="rounded-lg bg-slate-800/50 p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-white font-medium">{charge.label}</p>
+                            <p className="text-xs text-slate-400">{charge.period}</p>
+                          </div>
+                          <Badge className={charge.recuperable_ratio === 1 ? 'bg-emerald-500/20 text-emerald-400' : charge.recuperable_ratio > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}>
+                            {(charge.recuperable_ratio * 100).toFixed(0)}%
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-sm">
+                          <div><p className="text-slate-400">Copro</p><p className="text-white">{charge.copro_amount.toLocaleString('fr-FR')} €</p></div>
+                          <div><p className="text-slate-400">Prorata</p><p className="text-slate-300">{(charge.prorata_ratio * 100).toFixed(0)}%</p></div>
+                          <div><p className="text-slate-400">Récupérable</p><p className={`font-semibold ${charge.recuperable_amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{charge.recuperable_amount.toLocaleString('fr-FR')} €</p></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Desktop table view */}
+                  <div className="hidden md:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-white/10">
@@ -449,6 +472,7 @@ export default function BailleurChargesPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>

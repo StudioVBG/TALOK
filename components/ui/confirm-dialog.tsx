@@ -15,8 +15,17 @@ import {
 import { Button, ButtonProps } from "@/components/ui/button";
 import { Loader2, AlertTriangle, Trash2, LogOut, Send, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useHaptic } from "@/lib/hooks/use-haptic";
 
 type ConfirmVariant = "danger" | "warning" | "info" | "success";
+
+// Haptic feedback style per confirm variant
+const HAPTIC_STYLE_MAP: Record<ConfirmVariant, "error" | "warning" | "medium" | "success"> = {
+  danger: "error",
+  warning: "warning",
+  info: "medium",
+  success: "success",
+};
 
 interface ConfirmDialogProps {
   trigger: ReactNode;
@@ -84,8 +93,11 @@ export function ConfirmDialog({
   const [isLoading, setIsLoading] = useState(false);
   const config = variantConfig[variant];
   const Icon = config.icon;
+  const haptic = useHaptic();
 
   const handleConfirm = useCallback(async () => {
+    // Trigger haptic feedback on confirm action
+    haptic(HAPTIC_STYLE_MAP[variant]);
     setIsLoading(true);
     try {
       await onConfirm();
@@ -95,7 +107,7 @@ export function ConfirmDialog({
     } finally {
       setIsLoading(false);
     }
-  }, [onConfirm]);
+  }, [onConfirm, haptic, variant]);
 
   const handleCancel = useCallback(() => {
     onCancel?.();

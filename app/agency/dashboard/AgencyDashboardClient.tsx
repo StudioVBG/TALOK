@@ -259,7 +259,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
 
       {/* Secondary Stats */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
+        <Card className="border-0 bg-card/60 backdrop-blur-sm">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30">
               <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -270,7 +270,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
+        <Card className="border-0 bg-card/60 backdrop-blur-sm">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="p-3 rounded-xl bg-violet-100 dark:bg-violet-900/30">
               <Users className="w-5 h-5 text-violet-600 dark:text-violet-400" />
@@ -281,7 +281,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
+        <Card className="border-0 bg-card/60 backdrop-blur-sm">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="p-3 rounded-xl bg-cyan-100 dark:bg-cyan-900/30">
               <PiggyBank className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
@@ -298,7 +298,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Mandats récents */}
         <motion.div variants={itemVariants} className="lg:col-span-2">
-          <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm h-full">
+          <Card className="border-0 bg-card/60 backdrop-blur-sm h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div>
                 <CardTitle className="text-lg">Mandats récents</CardTitle>
@@ -315,7 +315,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
                 recentMandates.map((mandate: any) => (
                   <div
                     key={mandate.id}
-                    className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="flex items-center justify-between p-4 rounded-xl bg-muted hover:bg-muted/80 transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold">
@@ -350,7 +350,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
 
         {/* Tâches en attente */}
         <motion.div variants={itemVariants}>
-          <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm h-full">
+          <Card className="border-0 bg-card/60 backdrop-blur-sm h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-500" />
@@ -363,7 +363,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
                 pendingTasks.map((task: any) => (
                   <div
                     key={task.id}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50"
+                    className="flex items-start gap-3 p-3 rounded-lg bg-muted"
                   >
                     <div className={cn(
                       "mt-0.5 p-1.5 rounded-lg",
@@ -399,7 +399,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
 
       {/* Paiements récents */}
       <motion.div variants={itemVariants}>
-        <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
+        <Card className="border-0 bg-card/60 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
               <CardTitle className="text-lg">Derniers paiements reçus</CardTitle>
@@ -412,10 +412,33 @@ export function AgencyDashboardClient({ data }: { data: any }) {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="md:hidden space-y-3">
+              {recentPayments.length > 0 ? (
+                recentPayments.map((payment: any) => (
+                  <div key={payment.id} className="rounded-lg border p-4 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium text-sm">{payment.property}</p>
+                        <p className="text-sm text-muted-foreground">{payment.tenant}</p>
+                      </div>
+                      <span className="font-semibold text-sm">{payment.amount}€</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className={cn("text-xs", payment.status === "paid" && "border-emerald-500 text-emerald-600 bg-emerald-50", payment.status === "pending" && "border-amber-500 text-amber-600 bg-amber-50", payment.status === "sent" && "border-blue-500 text-blue-600 bg-blue-50", payment.status === "late" && "border-red-500 text-red-600 bg-red-50")}>
+                        {payment.status === "paid" ? "Payé" : payment.status === "late" ? "Retard" : "En attente"}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">{payment.date}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">Aucun paiement récent</div>
+              )}
+            </div>
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Bien</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Locataire</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Montant</th>
@@ -426,7 +449,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
                 <tbody>
                   {recentPayments.length > 0 ? (
                     recentPayments.map((payment: any) => (
-                      <tr key={payment.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                      <tr key={payment.id} className="border-b border-border last:border-0">
                         <td className="py-3 px-4">
                           <p className="font-medium text-sm">{payment.property}</p>
                         </td>

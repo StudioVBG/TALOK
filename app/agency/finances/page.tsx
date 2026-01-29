@@ -159,7 +159,30 @@ export default function AgencyFinancesPage() {
           <CardDescription>Mouvements financiers récents</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="md:hidden space-y-3">
+            {mockTransactions.map((transaction) => (
+              <div key={transaction.id} className="rounded-lg border p-4 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium">{transaction.description}</p>
+                    <p className="text-sm text-muted-foreground">{transaction.date}</p>
+                  </div>
+                  <span className={cn("font-bold", transaction.amount > 0 ? "text-emerald-600" : "text-slate-600")}>
+                    {transaction.amount > 0 ? "+" : ""}{transaction.amount.toLocaleString("fr-FR")}€
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className={cn("text-xs", transaction.type === "loyer" && "border-emerald-500 text-emerald-600", transaction.type === "commission" && "border-indigo-500 text-indigo-600", transaction.type === "virement" && "border-slate-500 text-slate-600")}>
+                    {transaction.type === "loyer" ? "Loyer" : transaction.type === "commission" ? "Commission" : "Virement"}
+                  </Badge>
+                  <Badge variant="outline" className={cn("text-xs", transaction.status === "completed" ? "border-emerald-500 text-emerald-600 bg-emerald-50" : "border-amber-500 text-amber-600 bg-amber-50")}>
+                    {transaction.status === "completed" ? "Effectué" : "En attente"}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">
