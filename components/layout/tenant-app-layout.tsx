@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -67,6 +67,16 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
   });
 
   const profile = serverProfile || clientProfile;
+
+  // Écouter les demandes d'ouverture/fermeture du sidebar depuis le tour guidé
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ open: boolean }>).detail;
+      setSidebarOpen(detail.open);
+    };
+    window.addEventListener("tour:sidebar", handler);
+    return () => window.removeEventListener("tour:sidebar", handler);
+  }, []);
 
   const navigationGroups = [
     {
@@ -239,6 +249,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
       {/* Sidebar */}
       <aside
+        data-tour-sidebar
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-64 bg-card border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"

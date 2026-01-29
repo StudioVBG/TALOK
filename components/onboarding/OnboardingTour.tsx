@@ -1,17 +1,19 @@
 "use client";
 
 /**
- * SOTA 2026 - Tour Guidé d'Onboarding Interactif
+ * SOTA 2026 - Tour Guidé d'Onboarding Interactif (Mobile-First)
  *
  * Fonctionnalités:
- * - 12 étapes guidées avec highlight des éléments (owner) / 7 étapes (tenant)
- * - Progression persistée en Supabase (avec fallback localStorage)
- * - Tooltips animés avec Framer Motion
+ * - 12 étapes owner / 7 étapes tenant
+ * - Supabase backend (avec fallback localStorage)
  * - Raccourcis clavier (← → Enter Escape)
- * - Actions contextuelles par étape
  * - Support dark mode
- * - Responsive mobile/tablet/desktop
- * - Auto-scroll vers l'élément ciblé
+ * - MOBILE-FIRST :
+ *   - Auto-ouverture sidebar via custom event
+ *   - Z-index boost sidebar pendant le spotlight
+ *   - Swipe gauche/droite pour naviguer
+ *   - ResizeObserver pour repositionnement
+ *   - Scroll intelligent (pas de body lock sur mobile)
  */
 
 import { useState, useEffect, useCallback, createContext, useContext, useRef } from "react";
@@ -40,7 +42,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Types
+// ============================================================================
+// TYPES
+// ============================================================================
 interface TourStep {
   id: string;
   title: string;
@@ -80,7 +84,49 @@ export function useOnboardingTour() {
 }
 
 // ============================================================================
-// OWNER TOUR - 12 étapes complètes
+// HELPERS MOBILE
+// ============================================================================
+
+/** Breakpoint lg de Tailwind (sidebar visible en permanent) */
+const LG_BREAKPOINT = 1024;
+
+function isMobileViewport(): boolean {
+  return typeof window !== "undefined" && window.innerWidth < LG_BREAKPOINT;
+}
+
+function isSmallScreen(): boolean {
+  return typeof window !== "undefined" && window.innerWidth < 640;
+}
+
+/** Vérifie si un target est un lien de la sidebar */
+function isSidebarTarget(target?: string): boolean {
+  if (!target) return false;
+  return target.includes("data-tour='nav-");
+}
+
+/**
+ * Demande l'ouverture/fermeture du drawer sidebar sur mobile
+ * via un CustomEvent écouté par les layouts owner/tenant.
+ */
+function requestSidebarState(open: boolean): void {
+  window.dispatchEvent(
+    new CustomEvent("tour:sidebar", { detail: { open } })
+  );
+}
+
+/**
+ * Remonte le z-index de la sidebar <aside> au-dessus de l'overlay
+ * pour que le spotlight puisse la mettre en valeur sur mobile.
+ */
+function boostSidebarZIndex(boost: boolean): void {
+  const sidebar = document.querySelector("aside[data-tour-sidebar]") as HTMLElement | null;
+  if (sidebar) {
+    sidebar.style.zIndex = boost ? "9999" : "";
+  }
+}
+
+// ============================================================================
+// OWNER TOUR - 12 étapes
 // ============================================================================
 const ownerTourSteps: TourStep[] = [
   {
@@ -273,10 +319,11 @@ const tenantTourSteps: TourStep[] = [
 ];
 
 // ============================================================================
-// SPOTLIGHT - Overlay avec découpe pour l'élément ciblé
+// SPOTLIGHT - Overlay avec découpe (mobile-aware)
 // ============================================================================
 function Spotlight({ target, isActive }: { target?: string; isActive: boolean }) {
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
 
   useEffect(() => {
     if (!target || !isActive) {
@@ -284,23 +331,67 @@ function Spotlight({ target, isActive }: { target?: string; isActive: boolean })
       return;
     }
 
+    const isSidebar = isSidebarTarget(target);
+    const mobile = isMobileViewport();
+
+    // Sur mobile, si on cible un item de la sidebar :
+    // 1. Ouvrir la sidebar
+    // 2. Booster son z-index au-dessus de l'overlay
+    if (mobile && isSidebar) {
+      requestSidebarState(true);
+      // Attendre que la sidebar s'ouvre (transition CSS ~200ms)
+      const openTimeout = setTimeout(() => {
+        boostSidebarZIndex(true);
+      }, 50);
+
+      const findAndObserve = setTimeout(() => {
+        const element = document.querySelector(target);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          const updateRect = () => setRect(element.getBoundingClientRect());
+          updateRect();
+
+          // ResizeObserver pour suivre les changements de taille/position
+          observerRef.current = new ResizeObserver(updateRect);
+          observerRef.current.observe(element);
+
+          window.addEventListener("resize", updateRect);
+          window.addEventListener("scroll", updateRect, true);
+
+          return () => {
+            window.removeEventListener("resize", updateRect);
+            window.removeEventListener("scroll", updateRect, true);
+          };
+        }
+      }, 300); // Laisser la sidebar s'ouvrir complètement
+
+      return () => {
+        clearTimeout(openTimeout);
+        clearTimeout(findAndObserve);
+        observerRef.current?.disconnect();
+        // Restaurer le z-index et fermer la sidebar
+        boostSidebarZIndex(false);
+        requestSidebarState(false);
+      };
+    }
+
+    // Desktop ou cible non-sidebar
     const element = document.querySelector(target);
     if (element) {
-      // Scroll l'élément en vue si nécessaire
       element.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-      const updateRect = () => {
-        setRect(element.getBoundingClientRect());
-      };
-
-      // Léger délai pour laisser le scroll se terminer
+      const updateRect = () => setRect(element.getBoundingClientRect());
       const timeout = setTimeout(updateRect, 100);
+
+      observerRef.current = new ResizeObserver(updateRect);
+      observerRef.current.observe(element);
 
       window.addEventListener("resize", updateRect);
       window.addEventListener("scroll", updateRect, true);
 
       return () => {
         clearTimeout(timeout);
+        observerRef.current?.disconnect();
         window.removeEventListener("resize", updateRect);
         window.removeEventListener("scroll", updateRect, true);
       };
@@ -341,7 +432,7 @@ function Spotlight({ target, isActive }: { target?: string; isActive: boolean })
 }
 
 // ============================================================================
-// TOOLTIP - Bulle d'information animée
+// TOOLTIP - Bulle d'information (responsive + swipe)
 // ============================================================================
 function TourTooltip({
   step,
@@ -361,15 +452,19 @@ function TourTooltip({
   onComplete: () => void;
 }) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
   const isFirst = currentStep === 0;
   const isLast = currentStep === totalSteps - 1;
   const isCentered = step.position === "center" || !step.target;
   const Icon = step.icon;
 
-  useEffect(() => {
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
-    const tooltipWidth = isMobile ? Math.min(window.innerWidth - 32, 400) : 400;
-    const tooltipHeight = 280;
+  // Calcul de la position (responsive)
+  const computePosition = useCallback(() => {
+    const mobile = isSmallScreen();
+    const tooltipWidth = mobile ? Math.min(window.innerWidth - 32, 400) : 400;
+    const tooltipHeight = 300;
     const padding = 16;
 
     if (isCentered) {
@@ -384,7 +479,7 @@ function TourTooltip({
 
     const element = document.querySelector(step.target);
     if (!element) {
-      // Fallback au centre si l'élément n'est pas trouvé
+      // Fallback au centre
       setPosition({
         top: window.innerHeight / 2 - tooltipHeight / 2,
         left: window.innerWidth / 2 - tooltipWidth / 2,
@@ -393,11 +488,11 @@ function TourTooltip({
     }
 
     const rect = element.getBoundingClientRect();
-
     let top = 0;
     let left = 0;
 
-    if (isMobile) {
+    if (mobile) {
+      // Mobile : toujours centré horizontalement, sous ou au-dessus de l'élément
       left = (window.innerWidth - tooltipWidth) / 2;
       if (rect.bottom + tooltipHeight + padding < window.innerHeight) {
         top = rect.bottom + padding;
@@ -428,24 +523,66 @@ function TourTooltip({
       }
     }
 
-    // S'assurer que le tooltip reste visible
+    // Clamp dans le viewport
     top = Math.max(padding, Math.min(top, window.innerHeight - tooltipHeight - padding));
     left = Math.max(padding, Math.min(left, window.innerWidth - tooltipWidth - padding));
 
     setPosition({ top, left });
-  }, [step, isCentered, currentStep]);
+  }, [step, isCentered]);
+
+  // Recalculer à chaque changement d'étape + observer le resize
+  useEffect(() => {
+    computePosition();
+    window.addEventListener("resize", computePosition);
+    window.addEventListener("orientationchange", computePosition);
+    return () => {
+      window.removeEventListener("resize", computePosition);
+      window.removeEventListener("orientationchange", computePosition);
+    };
+  }, [computePosition, currentStep]);
+
+  // Swipe gauche/droite sur mobile
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (!touchStartRef.current) return;
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - touchStartRef.current.x;
+      const dy = touch.clientY - touchStartRef.current.y;
+      touchStartRef.current = null;
+
+      // Seuil minimum de 50px, et le swipe doit être plus horizontal que vertical
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) {
+          // Swipe gauche → Suivant
+          onNext();
+        } else {
+          // Swipe droite → Précédent
+          onPrev();
+        }
+      }
+    },
+    [onNext, onPrev]
+  );
 
   return (
     <motion.div
+      ref={tooltipRef}
       key={step.id}
       initial={{ opacity: 0, scale: 0.9, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: -10 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       className={cn(
-        "fixed z-[9999] w-[calc(100%-2rem)] sm:w-[400px] max-w-[400px]",
+        "fixed z-[10000] w-[calc(100%-2rem)] sm:w-[400px] max-w-[400px]",
         "bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden",
-        "mx-4 sm:mx-0",
+        "mx-auto sm:mx-0",
         isCentered && "transform -translate-x-1/2 -translate-y-1/2"
       )}
       style={{
@@ -464,17 +601,17 @@ function TourTooltip({
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             {Icon && (
-              <div className="p-2 bg-white/20 rounded-lg">
+              <div className="p-2 bg-white/20 rounded-lg shrink-0">
                 <Icon className="h-5 w-5" />
               </div>
             )}
-            <h3 className="text-lg font-semibold">{step.title}</h3>
+            <h3 className="text-base sm:text-lg font-semibold truncate">{step.title}</h3>
           </div>
           <button
             onClick={onSkip}
-            className="p-1 hover:bg-white/20 rounded-full transition-colors"
+            className="p-1.5 hover:bg-white/20 rounded-full transition-colors shrink-0 ml-2"
             aria-label="Fermer le tour"
           >
             <X className="h-5 w-5" />
@@ -483,7 +620,7 @@ function TourTooltip({
       </div>
 
       {/* Content */}
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-4">
           {step.description}
         </p>
@@ -505,39 +642,51 @@ function TourTooltip({
         )}
 
         {/* Progress */}
-        <div className="mb-4">
+        <div className="mb-3">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
             <span>
-              Étape {currentStep + 1} sur {totalSteps}
+              Étape {currentStep + 1}/{totalSteps}
             </span>
             <span>{Math.round(((currentStep + 1) / totalSteps) * 100)}%</span>
           </div>
           <Progress value={((currentStep + 1) / totalSteps) * 100} className="h-1.5" />
         </div>
 
-        {/* Keyboard hint */}
-        <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center mb-3">
-          Raccourcis : ← → pour naviguer, Entrée pour avancer, Échap pour quitter
+        {/* Keyboard hint (masqué sur mobile tactile) */}
+        <p className="hidden sm:block text-[10px] text-slate-400 dark:text-slate-500 text-center mb-3">
+          ← → pour naviguer &middot; Entrée avancer &middot; Échap quitter
+        </p>
+
+        {/* Swipe hint (mobile uniquement) */}
+        <p className="sm:hidden text-[10px] text-slate-400 dark:text-slate-500 text-center mb-3">
+          Swipez ← → pour naviguer
         </p>
 
         {/* Navigation */}
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={onPrev} disabled={isFirst} className="gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onPrev}
+            disabled={isFirst}
+            className="gap-1 text-xs sm:text-sm"
+          >
             <ChevronLeft className="h-4 w-4" />
-            Précédent
+            <span className="hidden sm:inline">Précédent</span>
+            <span className="sm:hidden">Préc.</span>
           </Button>
 
           {isLast ? (
             <Button
               size="sm"
               onClick={onComplete}
-              className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+              className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-xs sm:text-sm"
             >
               <Check className="h-4 w-4" />
               Terminer
             </Button>
           ) : (
-            <Button size="sm" onClick={onNext} className="gap-1">
+            <Button size="sm" onClick={onNext} className="gap-1 text-xs sm:text-sm">
               Suivant
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -549,7 +698,7 @@ function TourTooltip({
 }
 
 // ============================================================================
-// PROVIDER - Context + Supabase backend + Keyboard shortcuts
+// PROVIDER - Context + Supabase backend + Keyboard + Mobile sidebar
 // ============================================================================
 interface OnboardingTourProviderProps {
   children: React.ReactNode;
@@ -566,18 +715,17 @@ export function OnboardingTourProvider({
 }: OnboardingTourProviderProps) {
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [hasCompletedTour, setHasCompletedTour] = useState(true); // Default true to avoid flash
+  const [hasCompletedTour, setHasCompletedTour] = useState(true);
   const isActiveRef = useRef(false);
 
   const steps = role === "owner" ? ownerTourSteps : tenantTourSteps;
   const totalSteps = steps.length;
 
-  // Load completion state from localStorage (fast) then optionally sync from Supabase
+  // Load completion state
   useEffect(() => {
     const completed = localStorage.getItem(storageKey);
     setHasCompletedTour(completed === "true");
 
-    // If profileId is provided, also check Supabase for tour_completed_at
     if (profileId && completed !== "true") {
       import("@/lib/supabase/client").then(({ createClient }) => {
         const supabase = createClient();
@@ -596,7 +744,7 @@ export function OnboardingTourProvider({
     }
   }, [storageKey, profileId]);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts (desktop)
   useEffect(() => {
     if (!isActiveRef.current) return;
 
@@ -605,23 +753,15 @@ export function OnboardingTourProvider({
         case "ArrowRight":
         case "Enter":
           e.preventDefault();
-          setCurrentStep((prev) => {
-            if (prev < totalSteps - 1) return prev + 1;
-            return prev;
-          });
+          setCurrentStep((prev) => (prev < totalSteps - 1 ? prev + 1 : prev));
           break;
         case "ArrowLeft":
           e.preventDefault();
-          setCurrentStep((prev) => {
-            if (prev > 0) return prev - 1;
-            return prev;
-          });
+          setCurrentStep((prev) => (prev > 0 ? prev - 1 : prev));
           break;
         case "Escape":
           e.preventDefault();
-          setIsActive(false);
-          isActiveRef.current = false;
-          document.body.style.overflow = "";
+          endTour(false);
           break;
       }
     };
@@ -634,7 +774,10 @@ export function OnboardingTourProvider({
     setCurrentStep(0);
     setIsActive(true);
     isActiveRef.current = true;
-    document.body.style.overflow = "hidden";
+    // Sur desktop uniquement, bloquer le scroll du body
+    if (!isMobileViewport()) {
+      document.body.style.overflow = "hidden";
+    }
   }, []);
 
   const endTour = useCallback(
@@ -643,12 +786,14 @@ export function OnboardingTourProvider({
       isActiveRef.current = false;
       document.body.style.overflow = "";
 
+      // Nettoyer l'état mobile (fermer sidebar, restaurer z-index)
+      boostSidebarZIndex(false);
+      requestSidebarState(false);
+
       if (completed) {
-        // Persist to localStorage immediately
         localStorage.setItem(storageKey, "true");
         setHasCompletedTour(true);
 
-        // Persist to Supabase asynchronously (non-blocking)
         if (profileId) {
           import("@/lib/supabase/client").then(({ createClient }) => {
             const supabase = createClient();
@@ -695,7 +840,6 @@ export function OnboardingTourProvider({
     setHasCompletedTour(false);
     setCurrentStep(0);
 
-    // Reset in Supabase too
     if (profileId) {
       import("@/lib/supabase/client").then(({ createClient }) => {
         const supabase = createClient();
@@ -766,7 +910,7 @@ export function StartTourButton({ className }: { className?: string }) {
 }
 
 // ============================================================================
-// AUTO TOUR PROMPT - Affiché automatiquement pour les nouveaux utilisateurs
+// AUTO TOUR PROMPT
 // ============================================================================
 export function AutoTourPrompt() {
   const { startTour, hasCompletedTour, isActive } = useOnboardingTour();
@@ -789,32 +933,32 @@ export function AutoTourPrompt() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="fixed bottom-24 right-6 z-50 max-w-sm"
+      className="fixed bottom-24 right-4 sm:right-6 z-50 max-w-[calc(100%-2rem)] sm:max-w-sm"
     >
-      <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl p-5 text-white shadow-2xl">
+      <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl p-4 sm:p-5 text-white shadow-2xl">
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-white/20 rounded-lg">
-            <Sparkles className="h-6 w-6" />
+          <div className="p-2 bg-white/20 rounded-lg shrink-0">
+            <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
-          <div className="flex-1">
-            <h4 className="font-semibold mb-1">Nouveau sur Talok ?</h4>
-            <p className="text-sm text-blue-100 mb-3">
-              Découvrez les fonctionnalités en 2 minutes avec notre tour guidé interactif.
+          <div className="flex-1 min-w-0">
+            <h4 className="font-semibold mb-1 text-sm sm:text-base">Nouveau sur Talok ?</h4>
+            <p className="text-xs sm:text-sm text-blue-100 mb-3">
+              Découvrez les fonctionnalités en 2 minutes avec notre tour guidé.
             </p>
             <div className="flex gap-2">
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={startTour}
-                className="bg-white text-blue-600 hover:bg-blue-50"
+                className="bg-white text-blue-600 hover:bg-blue-50 text-xs sm:text-sm"
               >
-                Démarrer le tour
+                Démarrer
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={handleDismiss}
-                className="text-white hover:bg-white/20"
+                className="text-white hover:bg-white/20 text-xs sm:text-sm"
               >
                 Plus tard
               </Button>
@@ -822,7 +966,7 @@ export function AutoTourPrompt() {
           </div>
           <button
             onClick={handleDismiss}
-            className="p-1 hover:bg-white/20 rounded-full transition-colors"
+            className="p-1 hover:bg-white/20 rounded-full transition-colors shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
