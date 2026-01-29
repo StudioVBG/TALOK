@@ -8,6 +8,8 @@ import { documentSchema } from "@/lib/validations";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
 
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
 function isImage(mimeType: string) {
   return mimeType.startsWith("image/");
 }
@@ -315,9 +317,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ documents: refreshedDocs });
   } catch (error: unknown) {
     console.error("Error in POST /api/documents/upload-batch:", error);
+    const statusCode = error && typeof error === 'object' && 'status' in error ? (error as any).status : 500;
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
-      { status: error.status || 500 }
+      { status: statusCode || 500 }
     );
   }
 }
