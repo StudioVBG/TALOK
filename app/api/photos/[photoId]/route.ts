@@ -250,6 +250,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
+    console.error("[DELETE /api/photos/[photoId]] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
