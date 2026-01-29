@@ -42,6 +42,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UnifiedFAB } from "@/components/layout/unified-fab";
 import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import { OnboardingTourProvider, AutoTourPrompt } from "@/components/onboarding";
 // Note: Home, FileText, CreditCard, Wrench déjà importés ci-dessus
 
 interface TenantAppLayoutProps {
@@ -163,6 +164,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
     pathname === href || pathname?.startsWith(href + "/");
 
   return (
+    <OnboardingTourProvider role="tenant" profileId={profile?.id}>
     <div className="min-h-screen bg-background">
       {/* Offline indicator - visible when device loses connectivity */}
       <OfflineIndicator />
@@ -373,6 +375,10 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
       {/* SOTA 2026 - FAB Unifié (Assistant + Actions) */}
       <UnifiedFAB />
+
+      {/* SOTA 2026 - Tour guidé d'onboarding */}
+      <AutoTourPrompt />
     </div>
+    </OnboardingTourProvider>
   );
 }

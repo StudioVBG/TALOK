@@ -35,7 +35,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { NotificationCenter } from "@/components/notifications";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
-import { OnboardingTourProvider, AutoTourPrompt, StartTourButton } from "@/components/onboarding";
+import { OnboardingTourProvider, AutoTourPrompt, StartTourButton, FirstLoginOrchestrator } from "@/components/onboarding";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 
 const navigation = [
@@ -46,10 +46,10 @@ const navigation = [
   { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
   { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
   { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
-  { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck },
+  { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck, tourId: "nav-documents" },
   { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
   { name: "Facturation", href: "/settings/billing", icon: CreditCard },
-  { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle },
+  { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle, tourId: "nav-support" },
 ];
 
 interface OwnerAppLayoutProps {
@@ -108,7 +108,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
       <SubscriptionProvider>
-      <OnboardingTourProvider role="owner">
+      <OnboardingTourProvider role="owner" profileId={profile?.id}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
         {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />
@@ -326,6 +326,15 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
 
         {/* SOTA 2026 - Tour guidé d'onboarding */}
         <AutoTourPrompt />
+
+        {/* SOTA 2026 - Orchestrateur première connexion (WelcomeModal → Tour) */}
+        {profile?.id && (
+          <FirstLoginOrchestrator
+            profileId={profile.id}
+            role="owner"
+            userName={profile.prenom || ""}
+          />
+        )}
       </div>
       </OnboardingTourProvider>
       </SubscriptionProvider>
