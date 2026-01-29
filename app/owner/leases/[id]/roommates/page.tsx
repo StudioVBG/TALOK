@@ -371,6 +371,39 @@ export default function RoommatesPage() {
               </Button>
             </div>
           ) : (
+            {/* Mobile card view */}
+            <div className="md:hidden space-y-3">
+              {roommates.map((roommate) => {
+                const share = (roommate.payment_weight / 100) * totalRent;
+                const hasAccount = !!roommate.user_id;
+                return (
+                  <div key={roommate.id} className="rounded-lg border p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-medium text-primary">{roommate.prenom?.[0]}{roommate.nom?.[0]}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium">{roommate.prenom} {roommate.nom}</p>
+                        <p className="text-sm text-muted-foreground truncate">{roommate.email}</p>
+                      </div>
+                      {hasAccount ? (
+                        <div className="flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-4 w-4" /><span className="text-xs">Inscrit</span></div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-amber-600"><AlertTriangle className="h-4 w-4" /><span className="text-xs">En attente</span></div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div><p className="text-muted-foreground">Part</p><Badge variant="outline">{roommate.payment_weight}%</Badge></div>
+                      <div><p className="text-muted-foreground">Montant</p><p className="font-medium">{share.toFixed(2)}€/mois</p></div>
+                      <div><p className="text-muted-foreground">Depuis</p><p className="text-muted-foreground">{roommate.joined_on ? format(new Date(roommate.joined_on), "dd MMM yyyy", { locale: fr }) : "—"}</p></div>
+                    </div>
+                    {roommate.is_main_tenant && <Badge variant="outline" className="text-xs">Locataire principal</Badge>}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -455,6 +488,7 @@ export default function RoommatesPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

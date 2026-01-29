@@ -350,6 +350,46 @@ export default function QuotesComparisonPage() {
               </p>
             </div>
           ) : (
+            {/* Mobile card view */}
+            <div className="md:hidden space-y-3">
+              {quotes.map((quote) => {
+                const status = statusConfig[quote.status];
+                const StatusIcon = status.icon;
+                const isLowest = lowestQuote?.id === quote.id;
+                const isExpired = quote.valid_until && isPast(new Date(quote.valid_until));
+                return (
+                  <div key={quote.id} className={`rounded-lg border p-4 space-y-3 ${isLowest && quote.status === "pending" ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200" : ""}`}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><User className="h-5 w-5 text-primary" /></div>
+                        <div>
+                          <p className="font-medium">{quote.provider?.prenom} {quote.provider?.nom}</p>
+                          {isLowest && quote.status === "pending" && <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200"><Star className="h-3 w-3 mr-1" />Meilleur prix</Badge>}
+                        </div>
+                      </div>
+                      <span className={`text-lg font-bold ${isLowest && quote.status === "pending" ? "text-emerald-600" : ""}`}>{quote.amount.toFixed(2)}€</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{quote.description}</p>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className={status.color}><StatusIcon className="h-3 w-3 mr-1" />{status.label}</Badge>
+                      {quote.valid_until && <div className={`flex items-center gap-1 text-sm ${isExpired ? "text-red-600" : "text-muted-foreground"}`}><Calendar className="h-3 w-3" />{format(new Date(quote.valid_until), "dd MMM yyyy", { locale: fr })}</div>}
+                    </div>
+                    {quote.status === "pending" && !isExpired && (
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="flex-1 text-red-600 border-red-200 hover:bg-red-50" onClick={() => setConfirmDialog({ open: true, quoteId: quote.id, action: "reject" })} disabled={!!actionLoading}>
+                          <ThumbsDown className="h-4 w-4 mr-1" />Refuser
+                        </Button>
+                        <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => setConfirmDialog({ open: true, quoteId: quote.id, action: "accept" })} disabled={!!actionLoading}>
+                          <ThumbsUp className="h-4 w-4 mr-1" />Accepter
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -451,6 +491,7 @@ export default function QuotesComparisonPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
