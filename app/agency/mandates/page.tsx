@@ -256,7 +256,45 @@ export default function MandatesPage() {
       {/* Mandates List */}
       <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="md:hidden space-y-3">
+            {filteredMandates.map((mandate) => {
+              const status = statusConfig[mandate.status as keyof typeof statusConfig];
+              const type = typeConfig[mandate.type as keyof typeof typeConfig];
+              return (
+                <div key={mandate.id} className="rounded-lg border p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold">{mandate.owner.name.charAt(0)}</div>
+                      <div>
+                        <p className="font-medium">{mandate.owner.name}</p>
+                        <p className="text-xs text-muted-foreground">{mandate.owner.email}</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={cn("text-xs", status.color)}>{status.label}</Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><p className="text-muted-foreground">Mandat</p><code className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">{mandate.numeroMandat}</code></div>
+                    <div><p className="text-muted-foreground">Type</p><p>{type?.label}</p></div>
+                    <div><p className="text-muted-foreground">Biens</p><p className="font-medium">{mandate.biensCount}</p></div>
+                    <div><p className="text-muted-foreground">Commission</p><p className="font-semibold text-indigo-600">{mandate.commission}%</p></div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="font-semibold">{mandate.loyersMensuel.toLocaleString("fr-FR")}€/mois</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />Voir le détail</DropdownMenuItem>
+                        <DropdownMenuItem><Edit className="w-4 h-4 mr-2" />Modifier</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600"><Trash2 className="w-4 h-4 mr-2" />Résilier</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">

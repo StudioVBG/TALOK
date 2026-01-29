@@ -282,7 +282,7 @@ export default function TenantEDLDetailClient({
                               {reading.reading_value} {reading.reading_unit || meter.unit}
                             </span>
                           ) : (
-                            <Badge variant="outline" className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">
+                            <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">
                               À relever
                             </Badge>
                           )}

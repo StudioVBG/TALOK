@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import Link from "next/link";
 import {
   Building2, Users, Calendar, Euro,
@@ -77,13 +78,16 @@ export default async function SyndicLayout({
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-cyan-950/30">
+        {/* Offline indicator - visible when device loses connectivity */}
+        <OfflineIndicator />
+
         {/* Sidebar Desktop - Breakpoint lg unifié comme Owner/Tenant/Admin */}
         <aside
           className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0"
           role="navigation"
           aria-label="Navigation principale syndic"
         >
-          <div className="flex flex-col flex-grow pt-5 overflow-y-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50">
+          <div className="flex flex-col flex-grow pt-5 overflow-y-auto bg-card/80 backdrop-blur-xl border-r border-border/50">
             {/* Logo / Titre */}
             <div className="flex items-center flex-shrink-0 px-4 mb-6">
               <div className="flex items-center gap-3">
@@ -110,11 +114,11 @@ export default async function SyndicLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200"
+                  className="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                   aria-label={item.name}
                 >
                   <item.icon
-                    className="mr-3 h-5 w-5 flex-shrink-0 text-slate-400 group-hover:text-cyan-600 transition-colors"
+                    className="mr-3 h-5 w-5 flex-shrink-0 text-muted-foreground group-hover:text-cyan-600 transition-colors"
                     aria-hidden="true"
                   />
                   {item.name}
@@ -123,7 +127,7 @@ export default async function SyndicLayout({
             </nav>
 
             {/* Footer avec profil */}
-            <div className="flex-shrink-0 p-4 border-t border-slate-200/50 dark:border-slate-700/50">
+            <div className="flex-shrink-0 p-4 border-t border-border/50">
               <div className="flex items-center gap-3">
                 <div
                   className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold"
@@ -133,7 +137,7 @@ export default async function SyndicLayout({
                   {(profile.nom?.[0] || '').toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {profile.prenom} {profile.nom}
                   </p>
                   <p className="text-xs text-muted-foreground truncate capitalize">
@@ -146,7 +150,7 @@ export default async function SyndicLayout({
         </aside>
 
         {/* Mobile Header - Thème light unifié */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 px-4 py-3">
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border/50 px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div
@@ -155,12 +159,12 @@ export default async function SyndicLayout({
               >
                 <Building2 className="w-4 h-4 text-white" />
               </div>
-              <span className="font-semibold text-slate-900 dark:text-white">Syndic</span>
+              <span className="font-semibold text-foreground">Syndic</span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                className="p-2 text-muted-foreground hover:text-foreground"
                 aria-label="Notifications"
               >
                 <Bell className="w-5 h-5" aria-hidden="true" />
@@ -182,7 +186,7 @@ export default async function SyndicLayout({
 
         {/* Mobile Bottom Navigation - Thème light + safe area + touch targets */}
         <nav
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/50"
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50"
           role="navigation"
           aria-label="Navigation mobile"
         >
@@ -192,11 +196,11 @@ export default async function SyndicLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-slate-500 hover:text-cyan-600 dark:text-slate-400 dark:hover:text-cyan-400 transition-colors"
+                  className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-muted-foreground hover:text-cyan-600 transition-colors"
                   aria-label={item.name}
                 >
                   <item.icon className="w-5 h-5" aria-hidden="true" />
-                  <span className="text-[9px] xs:text-[10px] font-medium truncate max-w-[56px]">{item.name.slice(0, 8)}</span>
+                  <span className="text-[10px] xs:text-[11px] font-medium truncate max-w-[64px]">{item.name.slice(0, 8)}</span>
                 </Link>
               ))}
             </div>

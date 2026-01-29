@@ -3,6 +3,7 @@ import { getTenantInvoices } from "@/features/billing/server/data-fetching";
 import { InvoiceListUnified } from "@/features/billing/components/invoice-list-unified";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShieldCheck } from "lucide-react";
+import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
 
 export default async function TenantPaymentsPage() {
   const invoices = await getTenantInvoices();
@@ -13,11 +14,12 @@ export default async function TenantPaymentsPage() {
     .reduce((acc: number, curr: any) => acc + curr.montant_total, 0);
 
   return (
+    <PullToRefreshContainer>
     <div className="container mx-auto px-4 py-8 max-w-5xl space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Mes Paiements</h1>
-        <p className="text-slate-500 mt-1">Retrouvez vos factures et quittances de loyer</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Mes Paiements</h1>
+        <p className="text-muted-foreground mt-1">Retrouvez vos factures et quittances de loyer</p>
       </div>
 
       {/* État des lieux financier */}
@@ -37,7 +39,7 @@ export default async function TenantPaymentsPage() {
       </div>
 
       {/* Liste Unifiée */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
         <h2 className="text-xl font-semibold mb-6">Historique</h2>
         
         <Suspense fallback={<div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}</div>}>
@@ -45,5 +47,6 @@ export default async function TenantPaymentsPage() {
         </Suspense>
       </div>
     </div>
+    </PullToRefreshContainer>
   );
 }

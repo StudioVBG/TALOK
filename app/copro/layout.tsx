@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import Link from "next/link";
 import {
   Building2, Euro, FileText, Calendar,
@@ -85,6 +86,9 @@ export default async function CoproLayout({
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        {/* Offline indicator - visible when device loses connectivity */}
+        <OfflineIndicator />
+
         <div className="flex">
           {/* Sidebar Desktop */}
           <aside
