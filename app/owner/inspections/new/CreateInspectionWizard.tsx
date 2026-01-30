@@ -524,6 +524,11 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       });
 
       const { edl } = await response.json();
+      // Defensive: sanitize edl.id to strip any trailing :digits or unexpected chars
+      const edlId = String(edl.id).replace(/[:;]\d*$/, '').trim();
+      if (edlId !== String(edl.id)) {
+        console.warn(`[CreateInspectionWizard] EDL ID sanitized: "${edl.id}" → "${edlId}"`);
+      }
       setUploadProgress(10);
 
       // 2. Gérer les relevés des compteurs
@@ -582,7 +587,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           const photoPath = readingData.reading?.photo_url || null;
 
           // 2b. Sauvegarder spécifiquement pour cet EDL (snapshot)
-          await safeFetch(`/api/edl/${edl.id}/meter-readings`, {
+          await safeFetch(`/api/edl/${edlId}/meter-readings`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -611,7 +616,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
         })),
       }));
 
-      const sectionsResponse = await safeFetch(`/api/edl/${edl.id}/sections`, {
+      const sectionsResponse = await safeFetch(`/api/edl/${edlId}/sections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sections }),
@@ -657,7 +662,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
             room.globalPhotos.forEach(photo => formData.append("files", photo));
             formData.append("section", room.name);
 
-            await safeFetch(`/api/inspections/${edl.id}/photos`, {
+            await safeFetch(`/api/inspections/${edlId}/photos`, {
               method: "POST",
               body: formData,
             });
@@ -674,7 +679,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
               item.photos.forEach(photo => formData.append("files", photo));
               formData.append("section", room.name);
 
-              await safeFetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
+              await safeFetch(`/api/inspections/${edlId}/photos?item_id=${insertedItem.id}`, {
                 method: "POST",
                 body: formData,
               });
@@ -695,7 +700,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
         description: "L'EDL a été créé avec succès avec tous les relevés et photos.",
       });
 
-      router.push(`/owner/inspections/${edl.id}`);
+      router.push(`/owner/inspections/${edlId}`);
     } catch (error: unknown) {
       toast({
         title: "Erreur",

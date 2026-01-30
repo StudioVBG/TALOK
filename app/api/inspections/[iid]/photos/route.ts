@@ -26,7 +26,12 @@ export async function POST(
   { params }: { params: Promise<{ iid: string }> }
 ) {
   try {
-    const { iid } = await params;
+    const { iid: rawIid } = await params;
+    // Defensive: sanitize ID - strip trailing :digits (e.g. "uuid:1" → "uuid")
+    const iid = rawIid.replace(/[:;]\d*$/, '').trim();
+    if (iid !== rawIid) {
+      console.warn(`[Photos API] Sanitized inspection ID: "${rawIid}" → "${iid}"`);
+    }
     const supabase = await createClient();
     const {
       data: { user },
