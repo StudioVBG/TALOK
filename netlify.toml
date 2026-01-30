@@ -42,22 +42,12 @@
 #     JAMAIS commencer par NEXT_PUBLIC_ pour éviter l'exposition au client.
 # ==============================================================================
 
-# Headers de sécurité
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-Content-Type-Options = "nosniff"
-    X-XSS-Protection = "1; mode=block"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
-
-# Headers spécifiques pour les assets statiques (cache long)
-[[headers]]
-  for = "/_next/static/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# Note: Les redirections sont gérées automatiquement par le plugin Next.js
-# Pas besoin de les définir manuellement
+# ==============================================================================
+# HEADERS & REDIRECTS
+# Tous les headers sont définis dans next.config.js > headers()
+# pour éviter les conflits avec @netlify/plugin-nextjs qui génère
+# automatiquement le fichier _headers à partir de la config Next.js.
+# Ne PAS dupliquer les headers ici, sinon le plugin peut produire
+# un fichier _headers invalide et le deploy échoue.
+# ==============================================================================
 

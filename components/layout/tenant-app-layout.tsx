@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -42,6 +42,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UnifiedFAB } from "@/components/layout/unified-fab";
 import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import { OnboardingTourProvider, AutoTourPrompt } from "@/components/onboarding";
 // Note: Home, FileText, CreditCard, Wrench déjà importés ci-dessus
 
 interface TenantAppLayoutProps {
@@ -66,6 +67,16 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
   });
 
   const profile = serverProfile || clientProfile;
+
+  // Écouter les demandes d'ouverture/fermeture du sidebar depuis le tour guidé
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ open: boolean }>).detail;
+      setSidebarOpen(detail.open);
+    };
+    window.addEventListener("tour:sidebar", handler);
+    return () => window.removeEventListener("tour:sidebar", handler);
+  }, []);
 
   const navigationGroups = [
     {
@@ -163,6 +174,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
     pathname === href || pathname?.startsWith(href + "/");
 
   return (
+    <OnboardingTourProvider role="tenant" profileId={profile?.id}>
     <div className="min-h-screen bg-background">
       {/* Offline indicator - visible when device loses connectivity */}
       <OfflineIndicator />
@@ -237,6 +249,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
       {/* Sidebar */}
       <aside
+        data-tour-sidebar
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-64 bg-card border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -373,6 +386,10 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
       {/* SOTA 2026 - FAB Unifié (Assistant + Actions) */}
       <UnifiedFAB />
+
+      {/* SOTA 2026 - Tour guidé d'onboarding */}
+      <AutoTourPrompt />
     </div>
+    </OnboardingTourProvider>
   );
 }

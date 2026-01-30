@@ -35,7 +35,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { NotificationCenter } from "@/components/notifications";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
-import { OnboardingTourProvider, AutoTourPrompt, StartTourButton } from "@/components/onboarding";
+import { OnboardingTourProvider, AutoTourPrompt, StartTourButton, FirstLoginOrchestrator } from "@/components/onboarding";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 
 const navigation = [
@@ -46,10 +46,10 @@ const navigation = [
   { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
   { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
   { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
-  { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck },
+  { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck, tourId: "nav-documents" },
   { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
   { name: "Facturation", href: "/settings/billing", icon: CreditCard },
-  { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle },
+  { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle, tourId: "nav-support" },
 ];
 
 interface OwnerAppLayoutProps {
@@ -88,6 +88,16 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
     }
   }, [clientProfile, loading, router, serverProfile]);
 
+  // Écouter les demandes d'ouverture/fermeture du sidebar depuis le tour guidé
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ open: boolean }>).detail;
+      setSidebarOpen(detail.open);
+    };
+    window.addEventListener("tour:sidebar", handler);
+    return () => window.removeEventListener("tour:sidebar", handler);
+  }, []);
+
   // Si pas de profil serveur et chargement côté client, afficher loading
   if (!serverProfile && loading) {
     return (
@@ -108,13 +118,13 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
       <SubscriptionProvider>
-      <OnboardingTourProvider role="owner">
+      <OnboardingTourProvider role="owner" profileId={profile?.id}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
         {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />
 
         {/* Desktop Sidebar - Visible sur lg+ (tablettes paysage et desktop) */}
-        <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 xl:w-72 lg:flex-col">
+        <aside data-tour-sidebar className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 xl:w-72 lg:flex-col">
           <div className="flex grow flex-col gap-y-4 lg:gap-y-5 overflow-y-auto bg-card border-r border-border px-4 lg:px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
@@ -156,7 +166,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-            <div className="fixed inset-y-0 left-0 z-50 w-64 bg-card">
+            <div data-tour-sidebar className="fixed inset-y-0 left-0 z-50 w-64 bg-card">
               <div className="flex h-16 items-center justify-between px-6 border-b">
                   <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
@@ -326,6 +336,15 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
 
         {/* SOTA 2026 - Tour guidé d'onboarding */}
         <AutoTourPrompt />
+
+        {/* SOTA 2026 - Orchestrateur première connexion (WelcomeModal → Tour) */}
+        {profile?.id && (
+          <FirstLoginOrchestrator
+            profileId={profile.id}
+            role="owner"
+            userName={profile.prenom || ""}
+          />
+        )}
       </div>
       </OnboardingTourProvider>
       </SubscriptionProvider>

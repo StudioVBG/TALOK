@@ -1,5 +1,7 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// Root layout: PAS de force-dynamic ici.
+// Les 8 layouts authentifiés (owner, tenant, admin, syndic, copro, agency,
+// guarantor, provider) définissent chacun leur propre force-dynamic + nodejs.
+// Les pages marketing/publiques restent statiques (SSG par défaut).
 
 import type { Metadata, Viewport } from "next";
 import { Inter, Dancing_Script, Great_Vibes, Pacifico, Satisfy } from "next/font/google";

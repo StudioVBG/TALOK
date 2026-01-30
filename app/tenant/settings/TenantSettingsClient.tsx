@@ -39,6 +39,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { buildAvatarUrl } from "@/lib/helpers/format";
+import { RestartTourCard } from "@/components/onboarding/RestartTourCard";
 
 interface Profile {
   id: string;
@@ -373,6 +374,9 @@ export function TenantSettingsClient({
               </div>
             </CardContent>
           </Card>
+
+          {/* Tour guidé */}
+          <RestartTourCard />
 
           {/* Bouton de sauvegarde */}
           <div className="flex justify-end gap-3 pt-4">

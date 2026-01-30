@@ -371,6 +371,7 @@ export default function RoommatesPage() {
               </Button>
             </div>
           ) : (
+            <>
             {/* Mobile card view */}
             <div className="md:hidden space-y-3">
               {roommates.map((roommate) => {
@@ -489,6 +490,7 @@ export default function RoommatesPage() {
               </TableBody>
             </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

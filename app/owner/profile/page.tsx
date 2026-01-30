@@ -4,6 +4,7 @@
 import { ProtectedRoute } from "@/components/protected-route";
 import { OwnerProfileForm } from "@/features/profiles/components/owner-profile-form";
 import { ProfileGeneralForm } from "@/features/profiles/components/profile-general-form";
+import { RestartTourCard } from "@/components/onboarding/RestartTourCard";
 
 export default function OwnerProfilePage() {
   return (
@@ -16,6 +17,7 @@ export default function OwnerProfilePage() {
 
         <ProfileGeneralForm />
         <OwnerProfileForm />
+        <RestartTourCard />
       </div>
     </ProtectedRoute>
   );

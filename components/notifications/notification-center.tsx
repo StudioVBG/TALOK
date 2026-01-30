@@ -125,6 +125,7 @@ export function NotificationCenter({ className }: NotificationCenterProps) {
           size="icon"
           className={cn('relative', className)}
           aria-label="Notifications"
+          data-tour="notifications-bell"
         >
           <Bell className="h-5 w-5" />
           <AnimatePresence>

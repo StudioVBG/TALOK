@@ -34,5 +34,11 @@ export type { StepIndicatorProps } from "./step-indicator";
 export { OnboardingTooltip, InlineHint, useOnboardingTooltips } from "./onboarding-tooltip";
 export type { OnboardingTooltipProps } from "./onboarding-tooltip";
 
+// Orchestrateur première connexion
+export { FirstLoginOrchestrator } from "./FirstLoginOrchestrator";
+
+// Restart Tour Card (pour les pages settings/profile)
+export { RestartTourCard } from "./RestartTourCard";
+
 // Actions skip/différer
 export { SkipOnboardingButton, ResumeOnboardingBanner } from "./skip-onboarding-button";
