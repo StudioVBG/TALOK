@@ -350,6 +350,7 @@ export default function QuotesComparisonPage() {
               </p>
             </div>
           ) : (
+            <>
             {/* Mobile card view */}
             <div className="md:hidden space-y-3">
               {quotes.map((quote) => {
@@ -492,6 +493,7 @@ export default function QuotesComparisonPage() {
               </TableBody>
             </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
