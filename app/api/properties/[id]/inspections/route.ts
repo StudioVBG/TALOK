@@ -160,6 +160,7 @@ export async function POST(
 
     return NextResponse.json({ edl: edlData });
   } catch (error: unknown) {
+    console.error("[POST /api/properties/[id]/inspections] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

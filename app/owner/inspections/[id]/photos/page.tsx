@@ -187,13 +187,15 @@ export default function EDLPhotosPage() {
     photos: Array<{ file: File; roomId: string }>
   ): Promise<EDLPhoto[]> => {
     const uploadedPhotos: EDLPhoto[] = [];
+    // Sanitize edlId: strip any trailing :digits or unexpected characters
+    const sanitizedId = edlId.replace(/[:;]\d*$/, '').trim();
 
     for (const { file, roomId } of photos) {
       const formData = new FormData();
       formData.append("files", file);
       formData.append("section", roomId);
 
-      const response = await fetch(`/api/inspections/${edlId}/photos`, {
+      const response = await fetch(`/api/inspections/${sanitizedId}/photos`, {
         method: "POST",
         body: formData,
         credentials: "include",
