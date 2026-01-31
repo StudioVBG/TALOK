@@ -57,14 +57,14 @@ export function SharedBottomNav({
   return (
     <>
       {/* Spacer pour éviter que le contenu soit caché derrière la nav */}
-      <div className="h-16 lg:hidden" aria-hidden="true" />
+      <div className="h-16 md:hidden" aria-hidden="true" />
       
       {/* Navigation fixe en bas */}
       <nav 
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50",
           "border-t bg-background/95 backdrop-blur-lg",
-          "lg:hidden", // Masquer sur desktop
+          "md:hidden", // Masquer dès tablet (rail sidebar visible)
           className
         )}
         role="navigation"
