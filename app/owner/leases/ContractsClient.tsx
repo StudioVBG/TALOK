@@ -203,7 +203,7 @@ export function ContractsClient() {
                     <FileText className="h-4 w-4" />
                 </div>
                 <div>
-                    <span className="font-medium text-slate-900 block">{getTypeLabel(lease.type_bail)}</span>
+                    <span className="font-medium text-foreground block">{getTypeLabel(lease.type_bail)}</span>
                     <span className="text-xs text-muted-foreground">ID: {lease.id.slice(0, 8)}</span>
                 </div>
             </div>
@@ -214,7 +214,7 @@ export function ContractsClient() {
         cell: (lease: any) => {
             const property = properties.find((p: any) => p.id === lease.property_id);
             return (
-                <span className="text-sm text-slate-600">
+                <span className="text-sm text-muted-foreground">
                     {property?.adresse_complete || "Bien non trouvé"}
                 </span>
             )
@@ -382,7 +382,7 @@ export function ContractsClient() {
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <span className="block">Vous êtes sur le point de supprimer le bail :</span>
-                <span className="block font-medium text-slate-900">{getLeaseAddress()}</span>
+                <span className="block font-medium text-foreground">{getLeaseAddress()}</span>
                 <span className="block text-red-600 font-medium mt-4">
                   ⚠️ Cette action est irréversible !
                 </span>
@@ -434,7 +434,7 @@ export function ContractsClient() {
                 onClick={handleSyncStatuses}
                 disabled={isSyncing}
                 size="sm"
-                className="border-slate-300 hover:bg-slate-100 h-9 md:h-10"
+                className="border-border hover:bg-muted h-9 md:h-10"
                 title="Corriger les statuts des baux signés"
               >
                 {isSyncing ? (
@@ -458,7 +458,7 @@ export function ContractsClient() {
                 }), "csv")}
                 disabled={filteredLeases.length === 0}
                 size="sm"
-                className="border-slate-300 hover:bg-slate-100 h-9 md:h-10"
+                className="border-border hover:bg-muted h-9 md:h-10"
               >
                 <Download className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Exporter</span>

@@ -5,18 +5,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
 
 // Server Component (Async)
 export default async function OwnerMoneyPage() {
   const invoices = await getOwnerInvoices();
 
   return (
+    <PullToRefreshContainer>
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
       {/* Header SOTA */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Finances</h1>
-          <p className="text-slate-500 mt-1">Gérez vos loyers et suivez vos encaissements</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Finances</h1>
+          <p className="text-muted-foreground mt-1">Gérez vos loyers et suivez vos encaissements</p>
         </div>
         
         <Button asChild className="shadow-lg shadow-blue-500/20">
@@ -29,9 +31,9 @@ export default async function OwnerMoneyPage() {
 
       {/* KPI Cards (À refactoriser plus tard dans features/billing/components/kpi-cards.tsx) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-6 rounded-2xl bg-white border border-slate-100 shadow-sm">
-          <p className="text-sm font-medium text-slate-500">Revenus ce mois</p>
-          <p className="text-3xl font-bold text-slate-900 mt-2">
+        <div className="p-6 rounded-2xl bg-card border border-border shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground">Revenus ce mois</p>
+          <p className="text-3xl font-bold text-foreground mt-2">
             {/* Calcul rapide pour la démo - devrait être fait côté serveur */}
             {invoices
               .filter(i => i.statut === 'paid')
@@ -43,7 +45,7 @@ export default async function OwnerMoneyPage() {
       </div>
 
       {/* Liste Unifiée */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">Historique des factures</h2>
         </div>
@@ -53,5 +55,6 @@ export default async function OwnerMoneyPage() {
         </Suspense>
       </div>
     </div>
+    </PullToRefreshContainer>
   );
 }

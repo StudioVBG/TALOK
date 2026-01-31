@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { ProviderBottomNav } from "@/components/layout/provider-bottom-nav";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
 
 const navigation = [
   { name: "Tableau de bord", href: "/provider/dashboard", icon: LayoutDashboard },
@@ -66,6 +67,9 @@ export default async function VendorLayout({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50/20 to-slate-50">
+      {/* Offline indicator - visible when device loses connectivity */}
+      <OfflineIndicator />
+
       {/* Desktop Sidebar - SOTA 2026: Largeur unifiée 64 (comme Owner/Tenant/Admin) */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white border-r border-slate-200 px-6 pb-4">

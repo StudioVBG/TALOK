@@ -137,10 +137,11 @@ export function SharedBottomNav({
                       </span>
                     )}
                   </div>
+                  {/* Label tronqué */}
                   <span
                     className={cn(
-                      "text-[9px] xs:text-[10px] sm:text-xs",
-                      "font-medium truncate max-w-[56px] xs:max-w-[64px]"
+                      "text-[10px] xs:text-[11px] sm:text-xs",
+                      "font-medium truncate max-w-[64px] xs:max-w-[72px]"
                     )}
                   >
                     {item.label}

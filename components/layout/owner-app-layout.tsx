@@ -36,6 +36,7 @@ import { NotificationCenter } from "@/components/notifications";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
 import { OnboardingTourProvider, AutoTourPrompt, StartTourButton } from "@/components/onboarding";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
 
 const navigation = [
   { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard, tourId: "nav-dashboard" },
@@ -109,16 +110,19 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
       <SubscriptionProvider>
       <OnboardingTourProvider role="owner">
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+        {/* Offline indicator - visible when device loses connectivity */}
+        <OfflineIndicator />
+
         {/* Desktop Sidebar - Visible sur lg+ (tablettes paysage et desktop) */}
         <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 xl:w-72 lg:flex-col">
-          <div className="flex grow flex-col gap-y-4 lg:gap-y-5 overflow-y-auto bg-white border-r border-slate-200 px-4 lg:px-6 pb-4">
+          <div className="flex grow flex-col gap-y-4 lg:gap-y-5 overflow-y-auto bg-card border-r border-border px-4 lg:px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
                 <Building2 className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-slate-900">Talok</h1>
-                <p className="text-xs text-slate-500">Compte Propriétaire</p>
+                <h1 className="text-lg font-bold text-foreground">Talok</h1>
+                <p className="text-xs text-muted-foreground">Compte Propriétaire</p>
               </div>
             </div>
             <nav className="flex flex-1 flex-col">
@@ -134,10 +138,10 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                           "group flex gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 transition-all duration-200",
                           isActive
                             ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                            : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                            : "text-foreground hover:bg-muted hover:text-foreground"
                         )}
                       >
-                        <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600")} />
+                        <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-white" : "text-muted-foreground group-hover:text-foreground")} />
                         {item.name}
                       </Link>
                     </li>
@@ -152,13 +156,13 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-            <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white">
+            <div className="fixed inset-y-0 left-0 z-50 w-64 bg-card">
               <div className="flex h-16 items-center justify-between px-6 border-b">
                   <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
                       <Building2 className="h-5 w-5 text-white" />
                     </div>
-                    <h1 className="text-lg font-bold text-slate-900">Talok</h1>
+                    <h1 className="text-lg font-bold text-foreground">Talok</h1>
                   </div>
                 <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} aria-label="Fermer le menu">
                   <X className="h-5 w-5" />
@@ -177,7 +181,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                             "group flex gap-x-3 rounded-lg p-3 text-sm font-semibold",
                             isActive
                               ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-                              : "text-slate-700 hover:bg-slate-100"
+                              : "text-foreground hover:bg-muted"
                           )}
                         >
                           <item.icon className="h-5 w-5 shrink-0" />
@@ -195,7 +199,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         {/* Main Content - Adapté au sidebar responsive */}
         <div className="lg:pl-64 xl:pl-72">
           {/* Top Header - Hauteur et padding adaptatifs */}
-          <header className="sticky top-0 z-40 flex h-14 xs:h-16 shrink-0 items-center gap-x-2 xs:gap-x-3 sm:gap-x-4 lg:gap-x-6 border-b border-slate-200 bg-white/95 backdrop-blur-sm px-3 xs:px-4 sm:px-6 lg:px-8 shadow-sm">
+          <header className="sticky top-0 z-40 flex h-14 xs:h-16 shrink-0 items-center gap-x-2 xs:gap-x-3 sm:gap-x-4 lg:gap-x-6 border-b border-border bg-background/95 backdrop-blur-sm px-3 xs:px-4 sm:px-6 lg:px-8 shadow-sm">
             <Button
               variant="ghost"
               size="icon"
@@ -209,7 +213,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
             <div className="flex flex-1 gap-x-2 xs:gap-x-4 self-stretch lg:gap-x-6">
               <div className="flex flex-1 items-center gap-2 xs:gap-4 min-w-0">
                 {/* Titre - Tronqué sur mobile */}
-                <h2 className="text-sm xs:text-base sm:text-lg font-semibold text-slate-900 truncate">
+                <h2 className="text-sm xs:text-base sm:text-lg font-semibold text-foreground truncate">
                   {navigation.find((item) => pathname === item.href || pathname?.startsWith(item.href + "/"))?.name || "Tableau de bord"}
                 </h2>
                 {/* SOTA 2025 - Bouton recherche rapide qui ouvre Command Palette */}
@@ -219,10 +223,10 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                     const event = new KeyboardEvent("keydown", { key: "k", metaKey: true });
                     document.dispatchEvent(event);
                   }}
-                  className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors"
                 >
-                  <span className="text-slate-400">Recherche rapide...</span>
-                  <kbd className="px-1.5 py-0.5 text-xs font-mono bg-white rounded border shadow-sm">⌘K</kbd>
+                  <span className="text-muted-foreground">Recherche rapide...</span>
+                  <kbd className="px-1.5 py-0.5 text-xs font-mono bg-background rounded border shadow-sm">⌘K</kbd>
                 </button>
               </div>
               <div className="flex items-center gap-x-2 xs:gap-x-3 lg:gap-x-4">
@@ -255,19 +259,19 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
                       <User className="h-4 w-4 text-white" />
                     </div>
-                    <span className="hidden sm:block text-sm font-medium text-slate-700">
+                    <span className="hidden sm:block text-sm font-medium text-foreground">
                       {profile?.prenom || "Propriétaire"}
                     </span>
-                    <ChevronDown className="h-4 w-4 text-slate-400" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </Button>
 
                   {userMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                      <div className="absolute right-0 z-50 mt-2 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
+                      <div className="absolute right-0 z-50 mt-2 w-48 rounded-md bg-card py-1 shadow-lg ring-1 ring-black ring-opacity-5">
                         <Link
                           href="/owner/profile"
-                          className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                          className="block px-4 py-2 text-sm text-foreground hover:bg-muted"
                           onClick={() => setUserMenuOpen(false)}
                         >
                           Mon profil
@@ -275,7 +279,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                         <button
                           onClick={handleSignOut}
                           disabled={isSigningOut}
-                          className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isSigningOut ? (
                             <>

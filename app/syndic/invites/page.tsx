@@ -399,61 +399,92 @@ export default function SyndicInvitesPage() {
                 </p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Copropriétaire</TableHead>
-                    <TableHead>Site</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Date d'envoi</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Mobile card view */}
+                <div className="md:hidden space-y-3">
                   {filteredInvites.map((invite) => {
                     const status = statusConfig[invite.status];
                     const StatusIcon = status.icon;
-
                     return (
-                      <TableRow key={invite.id}>
-                        <TableCell>
+                      <div key={invite.id} className="rounded-lg border p-4 space-y-3">
+                        <div className="flex items-start justify-between">
                           <div>
                             <p className="font-medium">{invite.owner_name || "—"}</p>
                             <p className="text-sm text-muted-foreground">{invite.email}</p>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                            {invite.site_name}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={cn(status.color, "flex items-center gap-1 w-fit")}>
-                            <StatusIcon className="h-3 w-3" />
-                            {status.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(invite.created_at), "dd/MM/yyyy", { locale: fr })}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {invite.status === "pending" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleResendInvite(invite.id)}
-                            >
-                              <RefreshCw className="h-4 w-4 mr-1" />
-                              Renvoyer
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
+                          <Badge className={cn(status.color, "flex items-center gap-1")}><StatusIcon className="h-3 w-3" />{status.label}</Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" />{invite.site_name}</div>
+                          <span className="text-muted-foreground">{format(new Date(invite.created_at), "dd/MM/yyyy", { locale: fr })}</span>
+                        </div>
+                        {invite.status === "pending" && (
+                          <Button variant="outline" size="sm" className="w-full" onClick={() => handleResendInvite(invite.id)}><RefreshCw className="h-4 w-4 mr-1" />Renvoyer</Button>
+                        )}
+                      </div>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </div>
+
+                {/* Desktop table view */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Copropriétaire</TableHead>
+                        <TableHead>Site</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Date d'envoi</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredInvites.map((invite) => {
+                        const status = statusConfig[invite.status];
+                        const StatusIcon = status.icon;
+
+                        return (
+                          <TableRow key={invite.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{invite.owner_name || "—"}</p>
+                                <p className="text-sm text-muted-foreground">{invite.email}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                {invite.site_name}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={cn(status.color, "flex items-center gap-1 w-fit")}>
+                                <StatusIcon className="h-3 w-3" />
+                                {status.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {format(new Date(invite.created_at), "dd/MM/yyyy", { locale: fr })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {invite.status === "pending" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleResendInvite(invite.id)}
+                                >
+                                  <RefreshCw className="h-4 w-4 mr-1" />
+                                  Renvoyer
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

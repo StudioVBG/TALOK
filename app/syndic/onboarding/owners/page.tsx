@@ -287,81 +287,116 @@ export default function OnboardingOwnersPage() {
                 <p className="text-sm">Cliquez sur "Ajouter" pour commencer.</p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-white/10">
-                    <TableHead className="text-slate-400">Nom</TableHead>
-                    <TableHead className="text-slate-400">Email</TableHead>
-                    <TableHead className="text-slate-400">Type</TableHead>
-                    <TableHead className="text-slate-400">Lots</TableHead>
-                    <TableHead className="text-slate-400">Invitation</TableHead>
-                    <TableHead className="text-slate-400 w-24">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Mobile card view */}
+                <div className="md:hidden space-y-3">
                   {owners.map((owner) => (
-                    <TableRow key={owner.id} className="border-white/10">
-                      <TableCell className="text-white font-medium">
-                        {owner.first_name} {owner.last_name}
-                      </TableCell>
-                      <TableCell className="text-slate-300">{owner.email}</TableCell>
-                      <TableCell>
-                        <Badge className={
-                          owner.type === 'occupant' 
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-blue-500/20 text-blue-400'
-                        }>
+                    <div key={owner.id} className="rounded-lg border border-white/10 bg-slate-800/30 p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-white font-medium">{owner.first_name} {owner.last_name}</p>
+                          <p className="text-sm text-slate-300">{owner.email}</p>
+                        </div>
+                        <Badge className={owner.type === 'occupant' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}>
                           {owner.type === 'occupant' ? 'Occupant' : 'Bailleur'}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {owner.unit_ids.map(unitId => {
-                            const unit = units.find(u => u.id === unitId);
-                            return unit ? (
-                              <Badge key={unitId} className="bg-slate-500/20 text-slate-300 text-xs">
-                                {unit.lot_number}
-                              </Badge>
-                            ) : null;
-                          })}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {owner.send_invite ? (
-                          <Badge className="bg-violet-500/20 text-violet-400">
-                            <Send className="w-3 h-3 mr-1" />
-                            À envoyer
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-slate-500/20 text-slate-400">
-                            Non
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {owner.unit_ids.map(unitId => {
+                          const unit = units.find(u => u.id === unitId);
+                          return unit ? <Badge key={unitId} className="bg-slate-500/20 text-slate-300 text-xs">{unit.lot_number}</Badge> : null;
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                        {owner.send_invite ? <Badge className="bg-violet-500/20 text-violet-400"><Send className="w-3 h-3 mr-1" />À envoyer</Badge> : <Badge className="bg-slate-500/20 text-slate-400">Non invité</Badge>}
                         <div className="flex items-center gap-1">
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            onClick={() => openEditDialog(owner)}
-                            className="h-8 w-8 text-slate-400 hover:text-white"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            onClick={() => deleteOwner(owner.id)}
-                            className="h-8 w-8 text-red-400 hover:bg-red-500/20"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => openEditDialog(owner)} className="h-8 w-8 text-slate-400 hover:text-white"><Edit2 className="w-4 h-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => deleteOwner(owner.id)} className="h-8 w-8 text-red-400 hover:bg-red-500/20"><Trash2 className="w-4 h-4" /></Button>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+
+                {/* Desktop table view */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/10">
+                        <TableHead className="text-slate-400">Nom</TableHead>
+                        <TableHead className="text-slate-400">Email</TableHead>
+                        <TableHead className="text-slate-400">Type</TableHead>
+                        <TableHead className="text-slate-400">Lots</TableHead>
+                        <TableHead className="text-slate-400">Invitation</TableHead>
+                        <TableHead className="text-slate-400 w-24">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {owners.map((owner) => (
+                        <TableRow key={owner.id} className="border-white/10">
+                          <TableCell className="text-white font-medium">
+                            {owner.first_name} {owner.last_name}
+                          </TableCell>
+                          <TableCell className="text-slate-300">{owner.email}</TableCell>
+                          <TableCell>
+                            <Badge className={
+                              owner.type === 'occupant'
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-blue-500/20 text-blue-400'
+                            }>
+                              {owner.type === 'occupant' ? 'Occupant' : 'Bailleur'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {owner.unit_ids.map(unitId => {
+                                const unit = units.find(u => u.id === unitId);
+                                return unit ? (
+                                  <Badge key={unitId} className="bg-slate-500/20 text-slate-300 text-xs">
+                                    {unit.lot_number}
+                                  </Badge>
+                                ) : null;
+                              })}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {owner.send_invite ? (
+                              <Badge className="bg-violet-500/20 text-violet-400">
+                                <Send className="w-3 h-3 mr-1" />
+                                À envoyer
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-slate-500/20 text-slate-400">
+                                Non
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => openEditDialog(owner)}
+                                className="h-8 w-8 text-slate-400 hover:text-white"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => deleteOwner(owner.id)}
+                                className="h-8 w-8 text-red-400 hover:bg-red-500/20"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

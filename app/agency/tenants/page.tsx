@@ -186,7 +186,41 @@ export default function AgencyTenantsPage() {
       {/* Tenants List */}
       <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="md:hidden space-y-3">
+            {filteredTenants.map((tenant) => (
+              <div key={tenant.id} className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-10 h-10">
+                      <AvatarFallback className="bg-gradient-to-br from-indigo-400 to-purple-500 text-white font-semibold">{tenant.name.split(" ").map((n) => n[0]).join("")}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{tenant.name}</p>
+                      <p className="text-xs text-muted-foreground">{tenant.email}</p>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />Voir le profil</DropdownMenuItem>
+                      <DropdownMenuItem><Send className="w-4 h-4 mr-2" />Envoyer un message</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><p className="text-muted-foreground">Bien</p><div className="flex items-center gap-1"><Home className="w-3 h-3 text-muted-foreground" /><span>{tenant.property}</span></div></div>
+                  <div><p className="text-muted-foreground">Propriétaire</p><p>{tenant.owner}</p></div>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <span className="font-semibold">{tenant.loyer}€/mois</span>
+                  <Badge variant="outline" className={cn("text-xs", tenant.paymentStatus === "paid" && "border-emerald-500 text-emerald-600 bg-emerald-50", tenant.paymentStatus === "pending" && "border-amber-500 text-amber-600 bg-amber-50", tenant.paymentStatus === "late" && "border-red-500 text-red-600 bg-red-50")}>
+                    {tenant.paymentStatus === "paid" && "À jour"}{tenant.paymentStatus === "pending" && "En attente"}{tenant.paymentStatus === "late" && "En retard"}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">

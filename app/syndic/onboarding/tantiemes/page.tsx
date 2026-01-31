@@ -331,8 +331,36 @@ export default function OnboardingTantiemesPage() {
                     </div>
                   </div>
 
-                  {/* Tableau */}
-                  <div className="max-h-96 overflow-y-auto">
+                  {/* Mobile card view */}
+                  <div className="md:hidden space-y-3">
+                    {tantiemes.map((t) => {
+                      const value = t[type.key] || 0;
+                      const total = getTotal(type.key);
+                      const percentage = total > 0 ? (value / total) * 100 : 0;
+                      return (
+                        <div key={t.unit_id} className="rounded-lg border border-white/10 bg-slate-800/30 p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-white font-mono font-medium">Lot {t.lot_number}</span>
+                            <Badge className="bg-slate-500/20 text-slate-300">{t.type === 'appartement' ? 'Appt' : t.type === 'parking' ? 'Parking' : t.type}</Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div><p className="text-slate-400">Bâtiment</p><p className="text-slate-300">{t.building_name}</p></div>
+                            <div><p className="text-slate-400">Surface</p><p className="text-slate-300">{t.surface_m2 ? `${t.surface_m2} m²` : '-'}</p></div>
+                          </div>
+                          <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                            <div className="flex items-center gap-2">
+                              <Input type="number" value={value} onChange={(e) => updateTantieme(t.unit_id, type.key, parseInt(e.target.value) || 0)} className="w-24 text-right bg-white/5 border-white/10 text-white" />
+                              <span className="text-xs text-slate-400">tantièmes</span>
+                            </div>
+                            <span className={`font-mono text-sm ${percentage > 0 ? 'text-violet-400' : 'text-slate-500'}`}>{percentage.toFixed(2)}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Desktop table view */}
+                  <div className="hidden md:block max-h-96 overflow-y-auto">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-white/10">

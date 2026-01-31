@@ -420,25 +420,25 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
             <Link href="/owner/tenants">
               <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
                 <Users className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-blue-600 mb-1.5 xs:mb-2" />
-                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-slate-700 line-clamp-1">Mes locataires</p>
+                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Mes locataires</p>
               </GlassCard>
             </Link>
             <Link href="/owner/analytics">
               <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
                 <BarChart3 className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-emerald-600 mb-1.5 xs:mb-2" />
-                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-slate-700 line-clamp-1">Analytics</p>
+                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Analytics</p>
               </GlassCard>
             </Link>
             <Link href={`${OWNER_ROUTES.contracts.path}/new`}>
               <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
                 <Plus className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-amber-600 mb-1.5 xs:mb-2" />
-                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-slate-700 line-clamp-1">Nouveau bail</p>
+                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Nouveau bail</p>
               </GlassCard>
             </Link>
             <Link href={`${OWNER_ROUTES.properties.path}/new`}>
               <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
                 <Plus className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-purple-600 mb-1.5 xs:mb-2" />
-                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-slate-700 line-clamp-1">Ajouter un bien</p>
+                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Ajouter un bien</p>
               </GlassCard>
             </Link>
           </div>
@@ -447,7 +447,7 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
         {/* Zone 2 - Vue finances détaillée avec Temps Réel */}
         <motion.section variants={itemVariants}>
           <div className="mb-3 sm:mb-4 flex flex-row items-center justify-between gap-2">
-             <h2 className="text-sm xs:text-base sm:text-lg lg:text-xl font-semibold text-slate-800 truncate">Performance Financière</h2>
+             <h2 className="text-sm xs:text-base sm:text-lg lg:text-xl font-semibold text-foreground truncate">Performance Financière</h2>
              <div className="flex items-center gap-1.5 xs:gap-2 shrink-0">
                <StartTourButton className="text-[10px] xs:text-xs hidden xs:flex" />
                <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700 h-7 xs:h-8 sm:h-9 px-2 xs:px-3 text-xs xs:text-sm">

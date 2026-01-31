@@ -36,7 +36,7 @@ export function EmptyState({
       animate={motionEnabled ? { opacity: 1, scale: 1 } : undefined}
       transition={motionEnabled ? { duration: 0.5 } : undefined}
       className={cn(
-        "flex flex-col items-center justify-center text-center p-8 md:p-12 rounded-lg border border-dashed bg-slate-50/50",
+        "flex flex-col items-center justify-center text-center p-8 md:p-12 rounded-lg border border-dashed bg-muted/30",
         className
       )}
     >
@@ -61,9 +61,9 @@ export function EmptyState({
             : undefined
         }
       >
-        <div className="absolute inset-0 bg-blue-100 rounded-full opacity-20 blur-xl" />
-        <div className="relative bg-white p-4 rounded-full shadow-sm ring-1 ring-slate-100">
-          <Icon className="h-10 w-10 text-slate-400" />
+        <div className="absolute inset-0 bg-primary/10 rounded-full opacity-20 blur-xl" />
+        <div className="relative bg-background p-4 rounded-full shadow-sm ring-1 ring-border">
+          <Icon className="h-10 w-10 text-muted-foreground" />
         </div>
       </motion.div>
 
@@ -71,7 +71,7 @@ export function EmptyState({
         initial={motionEnabled ? { opacity: 0, y: 10 } : undefined}
         animate={motionEnabled ? { opacity: 1, y: 0 } : undefined}
         transition={motionEnabled ? { delay: 0.2 } : undefined}
-        className="text-xl font-semibold text-slate-900 mb-2"
+        className="text-xl font-semibold text-foreground mb-2"
       >
         {title}
       </motion.h3>

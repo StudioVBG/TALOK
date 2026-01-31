@@ -490,73 +490,104 @@ export default function SyndicAssembliesPage() {
                   <p className="text-slate-400">Aucune assemblée générale</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-white/10">
-                      <TableHead className="text-slate-400">AG</TableHead>
-                      <TableHead className="text-slate-400">Copropriété</TableHead>
-                      <TableHead className="text-slate-400">Date</TableHead>
-                      <TableHead className="text-slate-400">Type</TableHead>
-                      <TableHead className="text-slate-400">Statut</TableHead>
-                      <TableHead className="text-slate-400 text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile card view */}
+                  <div className="md:hidden space-y-3">
                     {filteredAssemblies.map((assembly) => (
-                      <TableRow key={assembly.id} className="border-white/10">
-                        <TableCell>
-                          <div className="text-white font-medium">{assembly.title}</div>
-                          <div className="text-sm text-slate-400">
-                            {assembly.agenda.length} résolution(s)
+                      <div key={assembly.id} className="rounded-lg border border-white/10 bg-slate-800/30 p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-white font-medium">{assembly.title}</p>
+                            <p className="text-sm text-slate-400">{assembly.agenda.length} résolution(s)</p>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-slate-300">
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-slate-500" />
-                            {assembly.site_name}
+                          <Badge className={STATUS_CONFIG[assembly.status].color}>{STATUS_CONFIG[assembly.status].label}</Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="flex items-center gap-2 text-slate-300"><Building2 className="h-4 w-4 text-slate-500" />{assembly.site_name}</div>
+                          <div className="flex items-center gap-2 text-slate-300"><Clock className="h-4 w-4 text-slate-500" />{formatDateShort(assembly.date)} à {assembly.time}</div>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                          <Badge className={TYPE_CONFIG[assembly.type].color}>{TYPE_CONFIG[assembly.type].label}</Badge>
+                          <div className="flex items-center gap-1">
+                            {assembly.status === "draft" && <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white" onClick={() => handleConvoke(assembly.id)}><Send className="h-4 w-4" /></Button>}
+                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white"><Eye className="h-4 w-4" /></Button>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-slate-300">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-slate-500" />
-                            {formatDateShort(assembly.date)} à {assembly.time}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={TYPE_CONFIG[assembly.type].color}>
-                            {TYPE_CONFIG[assembly.type].label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={STATUS_CONFIG[assembly.status].color}>
-                            {STATUS_CONFIG[assembly.status].label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {assembly.status === "draft" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-slate-400 hover:text-white"
-                                onClick={() => handleConvoke(assembly.id)}
-                              >
-                                <Send className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-slate-400 hover:text-white"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+
+                  {/* Desktop table view */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-white/10">
+                          <TableHead className="text-slate-400">AG</TableHead>
+                          <TableHead className="text-slate-400">Copropriété</TableHead>
+                          <TableHead className="text-slate-400">Date</TableHead>
+                          <TableHead className="text-slate-400">Type</TableHead>
+                          <TableHead className="text-slate-400">Statut</TableHead>
+                          <TableHead className="text-slate-400 text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAssemblies.map((assembly) => (
+                          <TableRow key={assembly.id} className="border-white/10">
+                            <TableCell>
+                              <div className="text-white font-medium">{assembly.title}</div>
+                              <div className="text-sm text-slate-400">
+                                {assembly.agenda.length} résolution(s)
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-slate-300">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-slate-500" />
+                                {assembly.site_name}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-slate-300">
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-slate-500" />
+                                {formatDateShort(assembly.date)} à {assembly.time}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={TYPE_CONFIG[assembly.type].color}>
+                                {TYPE_CONFIG[assembly.type].label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={STATUS_CONFIG[assembly.status].color}>
+                                {STATUS_CONFIG[assembly.status].label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {assembly.status === "draft" && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-slate-400 hover:text-white"
+                                    onClick={() => handleConvoke(assembly.id)}
+                                  >
+                                    <Send className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-slate-400 hover:text-white"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

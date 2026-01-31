@@ -497,7 +497,7 @@ function MobileBottomNav({ role, navigation, isCurrent }: MobileBottomNavProps) 
                     "h-5 w-5 xs:h-6 xs:w-6",
                     isActive && "text-primary"
                   )} />
-                  <span className="text-[9px] xs:text-[10px] sm:text-xs font-medium truncate max-w-[56px] xs:max-w-[64px]">
+                  <span className="text-[10px] xs:text-[11px] sm:text-xs font-medium truncate max-w-[64px] xs:max-w-[72px]">
                     {item.name}
                   </span>
                 </Link>
