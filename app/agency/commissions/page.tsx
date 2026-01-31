@@ -225,7 +225,32 @@ export default function CommissionsPage() {
           <CardDescription>Commissions par propriétaire et par période</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="md:hidden space-y-3">
+            {filteredCommissions.map((commission) => (
+              <div key={commission.id} className="rounded-lg border p-4 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium">{months.find((m) => m.value === commission.periode)?.label || commission.periode}</p>
+                    <p className="text-sm text-muted-foreground">{commission.owner}</p>
+                  </div>
+                  <Badge variant="outline" className={cn("text-xs", commission.status === "paid" ? "border-emerald-500 text-emerald-600 bg-emerald-50" : "border-amber-500 text-amber-600 bg-amber-50")}>
+                    {commission.status === "paid" ? "Encaissé" : "En attente"}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><p className="text-muted-foreground">Loyers encaissés</p><p className="font-medium">{commission.loyerEncaisse.toLocaleString("fr-FR")}€</p></div>
+                  <div><p className="text-muted-foreground">Taux</p><p className="font-semibold text-indigo-600">{commission.tauxCommission}%</p></div>
+                  <div><p className="text-muted-foreground">Commission HT</p><p>{commission.montantHT.toFixed(2)}€</p></div>
+                  <div><p className="text-muted-foreground">Total TTC</p><p className="font-bold text-indigo-600">{commission.montantTTC.toFixed(2)}€</p></div>
+                </div>
+              </div>
+            ))}
+            <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-4 font-semibold flex justify-between">
+              <span>Total TTC</span>
+              <span className="text-indigo-600">{filteredCommissions.reduce((sum, c) => sum + c.montantTTC, 0).toFixed(2)}€</span>
+            </div>
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">

@@ -60,6 +60,7 @@ import { dpeService } from "@/features/diagnostics/services/dpe.service";
 import { useEffect } from "react";
 import { LeaseProgressTracker, type LeaseProgressStatus } from "@/components/owner/leases/LeaseProgressTracker";
 import { Celebration, useCelebration } from "@/components/ui/celebration";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 interface LeaseDetailsClientProps {
   details: LeaseDetails;
@@ -571,6 +572,17 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/50">
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-4 pt-4">
+        <Breadcrumb
+          items={[
+            { label: "Baux & locataires", href: "/owner/leases" },
+            { label: `Bail ${property.ville}` }
+          ]}
+          homeHref="/owner/dashboard"
+        />
+      </div>
+
       {/* Barre supérieure fixe (Header) */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">

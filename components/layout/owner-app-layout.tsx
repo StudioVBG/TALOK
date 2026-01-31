@@ -42,6 +42,7 @@ import { FavoritesList } from "@/components/ui/favorites-list";
 import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
 import { OnboardingTourProvider, AutoTourPrompt, StartTourButton } from "@/components/onboarding";
 import { SkipLinks } from "@/components/ui/skip-links";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
 
 const navigation = [
   { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard, tourId: "nav-dashboard" },
@@ -152,6 +153,8 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
       <SkipLinks />
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        {/* Offline indicator - visible when device loses connectivity */}
+        <OfflineIndicator />
 
         {/* ============================================
             DESKTOP SIDEBAR - Responsive: full ou rail

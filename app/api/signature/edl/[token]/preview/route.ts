@@ -33,6 +33,22 @@ export async function POST(
       return NextResponse.json({ error: "Lien invalide ou expiré" }, { status: 404 });
     }
 
+    // Vérifier si le token a expiré (7 jours après l'envoi)
+    const TOKEN_EXPIRATION_DAYS = 7;
+    if (signatureEntry.invitation_sent_at) {
+      const sentDate = new Date(signatureEntry.invitation_sent_at);
+      const expirationDate = new Date(sentDate.getTime() + TOKEN_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
+      if (new Date() > expirationDate) {
+        return NextResponse.json(
+          {
+            error: "Ce lien d'invitation a expiré. Veuillez demander un nouveau lien au propriétaire.",
+            expired_at: expirationDate.toISOString(),
+          },
+          { status: 410 }
+        );
+      }
+    }
+
     const edlId = signatureEntry.edl_id;
 
     // 2. Récupérer les données complètes (copié de /api/edl/preview)

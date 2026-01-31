@@ -26,6 +26,7 @@ import { SmartImageCard } from "@/components/ui/smart-image-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
 
 // Imports SOTA
 import { PageTransition } from "@/components/ui/page-transition";
@@ -61,6 +62,7 @@ export default function OwnerPropertiesPage() {
   const searchParams = useSearchParams();
   const moduleFilter = searchParams.get("module");
   const { data: properties = [], isLoading, error: propertiesError, refetch: refetchProperties } = useProperties();
+  const handlePullRefresh = async () => { await refetchProperties(); };
   
   const { data: leases = [], error: leasesError } = useLeases(undefined, {
     enabled: !isLoading && properties.length > 0,
@@ -267,7 +269,7 @@ export default function OwnerPropertiesPage() {
             />
           )}
           <div>
-            <div className="font-medium text-slate-900">{property.adresse_complete || "Adresse inconnue"}</div>
+            <div className="font-medium text-foreground">{property.adresse_complete || "Adresse inconnue"}</div>
             <div className="text-xs text-muted-foreground">{property.ville} {property.code_postal}</div>
           </div>
         </div>
@@ -381,6 +383,7 @@ export default function OwnerPropertiesPage() {
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
       <PageTransition>
+        <PullToRefreshContainer onRefresh={handlePullRefresh}>
         <motion.div
           initial="hidden"
           animate="visible"
@@ -435,7 +438,7 @@ export default function OwnerPropertiesPage() {
                   size="sm"
                   onClick={() => exportProperties(filteredProperties, "csv")}
                   disabled={filteredProperties.length === 0}
-                  className="border-slate-300 hover:bg-slate-100 h-9 md:h-10"
+                  className="border-border hover:bg-muted h-9 md:h-10"
                 >
                   <Download className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Exporter</span>
@@ -494,7 +497,7 @@ export default function OwnerPropertiesPage() {
                     placeholder="Rechercher par adresse, code postal, ville..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-white/80 backdrop-blur-sm border-slate-200 focus:bg-white transition-all duration-200"
+                    className="pl-10 bg-background/80 backdrop-blur-sm border-border focus:bg-background transition-all duration-200"
                   />
                 </div>
               </motion.div>
@@ -503,7 +506,7 @@ export default function OwnerPropertiesPage() {
                 transition={{ duration: 0.2 }}
               >
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="bg-white/80 backdrop-blur-sm">
+                  <SelectTrigger className="bg-background/80 backdrop-blur-sm">
                     <SelectValue placeholder="Type de bien" />
                   </SelectTrigger>
                   <SelectContent>
@@ -523,7 +526,7 @@ export default function OwnerPropertiesPage() {
                 transition={{ duration: 0.2 }}
               >
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="bg-white/80 backdrop-blur-sm">
+                  <SelectTrigger className="bg-background/80 backdrop-blur-sm">
                     <SelectValue placeholder="Statut" />
                   </SelectTrigger>
                   <SelectContent>
@@ -538,11 +541,11 @@ export default function OwnerPropertiesPage() {
                 </Select>
               </motion.div>
 
-              <motion.div className="flex items-center justify-end gap-1 bg-slate-100/50 p-1 rounded-lg border border-slate-200/50">
+              <motion.div className="flex items-center justify-end gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
                 <Button
                   variant={viewMode === "grid" ? "outline" : "ghost"}
                   size="sm"
-                  className={viewMode === "grid" ? "bg-white shadow-sm" : ""}
+                  className={viewMode === "grid" ? "bg-card shadow-sm" : ""}
                   onClick={() => setViewMode("grid")}
                 >
                   <LayoutGrid className="h-4 w-4" />
@@ -550,7 +553,7 @@ export default function OwnerPropertiesPage() {
                 <Button
                   variant={viewMode === "list" ? "outline" : "ghost"}
                   size="sm"
-                  className={viewMode === "list" ? "bg-white shadow-sm" : ""}
+                  className={viewMode === "list" ? "bg-card shadow-sm" : ""}
                   onClick={() => setViewMode("list")}
                 >
                   <LayoutList className="h-4 w-4" />
@@ -675,6 +678,7 @@ export default function OwnerPropertiesPage() {
             )}
           </div>
         </motion.div>
+        </PullToRefreshContainer>
       </PageTransition>
     </ProtectedRoute>
   );

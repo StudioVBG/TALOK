@@ -384,20 +384,30 @@ export function generatePageMetadata(
     noIndex?: boolean;
     canonical?: string;
     image?: string;
+    keywords?: string[];
   }
 ): Metadata {
   return {
     title: pageMetadata.title,
     description: pageMetadata.description,
+    ...(options?.keywords && options.keywords.length > 0 && { keywords: options.keywords }),
     openGraph: {
       title: pageMetadata.title,
       description: pageMetadata.description,
-      ...(options?.image && { images: [{ url: options.image }] }),
+      url: options?.canonical || SITE_URL,
+      siteName: SITE_NAME,
+      ...(options?.image && {
+        images: [{ url: options.image, width: 1200, height: 630, alt: pageMetadata.title }],
+      }),
+      locale: "fr_FR",
+      type: "website",
     },
     twitter: {
+      card: "summary_large_image",
       title: pageMetadata.title,
       description: pageMetadata.description,
       ...(options?.image && { images: [options.image] }),
+      site: "@talok_fr",
     },
     ...(options?.noIndex && {
       robots: { index: false, follow: false },

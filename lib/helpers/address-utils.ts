@@ -101,3 +101,271 @@ export function isCorse(codePostal: string | null | undefined): boolean {
   return codePostal.startsWith("20");
 }
 
+// ============================================
+// DIAGNOSTIC IMMOBILIER DOM-TOM (SOTA 2026)
+// ============================================
+// Source: Réglementation française sur les diagnostics immobiliers
+// Les DOM-TOM ont des spécificités réglementaires importantes
+
+/**
+ * Codes DROM par région
+ */
+export const DROM_CODES = {
+  GUADELOUPE: "971",
+  MARTINIQUE: "972",
+  GUYANE: "973",
+  REUNION: "974",
+  MAYOTTE: "976",
+} as const;
+
+/**
+ * Zones termites (communes concernées par le diagnostic termites obligatoire)
+ * Tous les DOM-TOM sont en zone termites
+ */
+export const ZONES_TERMITES_DROM = ["971", "972", "973", "974", "976"];
+
+/**
+ * Zones sismiques par DROM (pour diagnostic risques naturels)
+ */
+export const ZONES_SISMIQUES: Record<string, { niveau: number; label: string }> = {
+  "971": { niveau: 5, label: "Fort" },      // Guadeloupe
+  "972": { niveau: 5, label: "Fort" },      // Martinique
+  "973": { niveau: 2, label: "Faible" },    // Guyane
+  "974": { niveau: 2, label: "Faible" },    // Réunion
+  "976": { niveau: 4, label: "Moyen" },     // Mayotte
+};
+
+/**
+ * Type de diagnostic obligatoire
+ */
+export interface DiagnosticObligation {
+  code: string;
+  label: string;
+  obligatoire: boolean;
+  condition?: string;
+  priorite: "bloquant" | "recommande" | "informatif";
+}
+
+/**
+ * Obtenir les diagnostics obligatoires selon le code postal et le type de bien
+ *
+ * @param codePostal - Code postal du bien
+ * @param typeBien - Type de bien (habitation, parking, local_pro)
+ * @param anneeConstruction - Année de construction (optionnel)
+ * @returns Liste des diagnostics obligatoires avec leur statut
+ *
+ * @example
+ * getDiagnosticsObligatoires("97200", "habitation", 1990)
+ * // → [{ code: "DPE", obligatoire: true, ... }, { code: "TERMITES", obligatoire: true, ... }]
+ */
+export function getDiagnosticsObligatoires(
+  codePostal: string | null | undefined,
+  typeBien: "habitation" | "parking" | "local_pro" | "immeuble",
+  anneeConstruction?: number | null
+): DiagnosticObligation[] {
+  const diagnostics: DiagnosticObligation[] = [];
+  const isDrom = isDROM(codePostal);
+  const deptCode = getDepartementCodeFromCP(codePostal);
+
+  // ===== DPE (Diagnostic de Performance Énergétique) =====
+  // Obligatoire depuis 2023 pour toutes les locations d'habitation
+  if (typeBien === "habitation" || typeBien === "immeuble") {
+    diagnostics.push({
+      code: "DPE",
+      label: "Diagnostic de Performance Énergétique",
+      obligatoire: true,
+      condition: isDrom
+        ? "Obligatoire même en DOM-TOM depuis 2023"
+        : "Obligatoire pour toute location",
+      priorite: "bloquant",
+    });
+  }
+
+  // ===== GES (Gaz à Effet de Serre) =====
+  // Inclus dans le DPE
+  if (typeBien === "habitation" || typeBien === "immeuble") {
+    diagnostics.push({
+      code: "GES",
+      label: "Émissions de Gaz à Effet de Serre",
+      obligatoire: true,
+      condition: "Inclus dans le DPE",
+      priorite: "bloquant",
+    });
+  }
+
+  // ===== TERMITES =====
+  // Obligatoire dans les zones déclarées (tous les DOM-TOM)
+  if (isDrom || isZoneTermites(deptCode)) {
+    diagnostics.push({
+      code: "TERMITES",
+      label: "État relatif aux termites",
+      obligatoire: true,
+      condition: isDrom
+        ? "Obligatoire dans tous les DOM-TOM"
+        : "Zone classée à risque termites",
+      priorite: "bloquant",
+    });
+  }
+
+  // ===== ERP (État des Risques et Pollutions) =====
+  // Obligatoire pour toutes les locations
+  diagnostics.push({
+    code: "ERP",
+    label: "État des Risques et Pollutions",
+    obligatoire: true,
+    condition: isDrom
+      ? `Zone sismique niveau ${ZONES_SISMIQUES[deptCode || ""]?.niveau || "N/A"} (${ZONES_SISMIQUES[deptCode || ""]?.label || "N/A"})`
+      : "Obligatoire pour toute location",
+    priorite: "bloquant",
+  });
+
+  // ===== AMIANTE =====
+  // Obligatoire si construction avant 1997
+  if (anneeConstruction && anneeConstruction < 1997) {
+    diagnostics.push({
+      code: "AMIANTE",
+      label: "État d'amiante",
+      obligatoire: true,
+      condition: `Construction avant 1997 (année: ${anneeConstruction})`,
+      priorite: "bloquant",
+    });
+  } else {
+    diagnostics.push({
+      code: "AMIANTE",
+      label: "État d'amiante",
+      obligatoire: false,
+      condition: anneeConstruction
+        ? `Non requis (construction ${anneeConstruction} > 1997)`
+        : "Vérifier l'année de construction",
+      priorite: "recommande",
+    });
+  }
+
+  // ===== PLOMB (CREP) =====
+  // Obligatoire si construction avant 1949
+  if (anneeConstruction && anneeConstruction < 1949) {
+    diagnostics.push({
+      code: "CREP",
+      label: "Constat de Risque d'Exposition au Plomb",
+      obligatoire: true,
+      condition: `Construction avant 1949 (année: ${anneeConstruction})`,
+      priorite: "bloquant",
+    });
+  } else {
+    diagnostics.push({
+      code: "CREP",
+      label: "Constat de Risque d'Exposition au Plomb",
+      obligatoire: false,
+      condition: anneeConstruction
+        ? `Non requis (construction ${anneeConstruction} > 1949)`
+        : "Vérifier l'année de construction",
+      priorite: "recommande",
+    });
+  }
+
+  // ===== ÉLECTRICITÉ =====
+  // Obligatoire si installation > 15 ans
+  if (typeBien === "habitation" || typeBien === "immeuble") {
+    diagnostics.push({
+      code: "ELEC",
+      label: "Diagnostic électricité",
+      obligatoire: true,
+      condition: "Obligatoire si installation > 15 ans",
+      priorite: "recommande",
+    });
+  }
+
+  // ===== GAZ =====
+  // Obligatoire si installation > 15 ans
+  if (typeBien === "habitation" || typeBien === "immeuble") {
+    diagnostics.push({
+      code: "GAZ",
+      label: "Diagnostic gaz",
+      obligatoire: false,
+      condition: "Obligatoire si installation gaz > 15 ans",
+      priorite: "recommande",
+    });
+  }
+
+  // ===== SURFACE (Carrez / habitable) =====
+  if (typeBien === "habitation" || typeBien === "immeuble") {
+    diagnostics.push({
+      code: "SURFACE",
+      label: "Mesurage surface habitable",
+      obligatoire: true,
+      condition: "Obligatoire pour les lots en copropriété (> 8 m²)",
+      priorite: "recommande",
+    });
+  }
+
+  return diagnostics;
+}
+
+/**
+ * Vérifie si le département est en zone termites
+ */
+export function isZoneTermites(deptCode: string | null | undefined): boolean {
+  if (!deptCode) return false;
+  // Tous les DOM-TOM sont en zone termites
+  if (ZONES_TERMITES_DROM.includes(deptCode)) return true;
+  // En métropole, certains départements sont classés (liste non exhaustive)
+  const METROPOLE_TERMITES = [
+    "13", "17", "30", "31", "32", "33", "34", "40", "47", "64", "65", "66",
+    "82", "83", "84", "85"
+  ];
+  return METROPOLE_TERMITES.includes(deptCode);
+}
+
+/**
+ * Vérifie si le DPE est obligatoire pour la publication
+ *
+ * @param typeBien - Type de bien
+ * @returns true si le DPE est obligatoire pour publier l'annonce
+ */
+export function isDPEObligatoire(typeBien: string): boolean {
+  const TYPES_AVEC_DPE = [
+    "appartement", "maison", "studio", "colocation", "saisonnier", "immeuble"
+  ];
+  return TYPES_AVEC_DPE.includes(typeBien);
+}
+
+/**
+ * Message d'erreur DPE selon la région
+ *
+ * @param codePostal - Code postal du bien
+ * @returns Message d'erreur contextualisé
+ */
+export function getDPEErrorMessage(codePostal: string | null | undefined): string {
+  if (isDROM(codePostal)) {
+    const deptName = getDepartementNameFromCP(codePostal);
+    return `Le DPE est obligatoire pour les locations en ${deptName || "DOM-TOM"} depuis 2023. Veuillez renseigner la classe énergie.`;
+  }
+  return "Le DPE est obligatoire pour publier une annonce de location d'habitation. Veuillez renseigner la classe énergie.";
+}
+
+/**
+ * Obtenir un résumé des diagnostics obligatoires manquants
+ *
+ * @param formData - Données du formulaire
+ * @returns Liste des diagnostics manquants bloquants
+ */
+export function getDiagnosticsManquants(formData: {
+  code_postal?: string | null;
+  type?: string | null;
+  type_bien?: string | null;
+  dpe_classe_energie?: string | null;
+  annee_construction?: number | null;
+}): string[] {
+  const manquants: string[] = [];
+  const typeBien = formData.type || formData.type_bien || "";
+
+  // Vérifier si habitation nécessitant DPE
+  if (isDPEObligatoire(typeBien)) {
+    if (!formData.dpe_classe_energie || formData.dpe_classe_energie === "NC") {
+      manquants.push("DPE (Diagnostic de Performance Énergétique)");
+    }
+  }
+
+  return manquants;
+}
+

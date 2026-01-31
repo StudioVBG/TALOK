@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AdminDataProvider } from "./_data/AdminDataProvider";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 
 export default async function AdminLayout({
@@ -41,6 +42,8 @@ export default async function AdminLayout({
   return (
     <ErrorBoundary>
       <AdminDataProvider stats={null}>
+        {/* Offline indicator - visible when device loses connectivity */}
+        <OfflineIndicator />
         {/* Bannière d'impersonation (visible si session active) */}
         <ImpersonationBanner />
         <div className="flex min-h-screen mesh-gradient">

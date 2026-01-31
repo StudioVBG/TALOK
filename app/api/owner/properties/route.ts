@@ -115,6 +115,8 @@ export async function GET(request: Request) {
 /**
  * Récupère les médias (photos) pour les propriétés
  * Priorité : table photos (is_main) → table documents (fallback)
+ *
+ * @note Utilise le batching pour gérer les grands portefeuilles (100+ propriétés)
  */
 async function fetchPropertyMedia(
   propertyIds: string[]
@@ -125,85 +127,91 @@ async function fetchPropertyMedia(
     return result;
   }
 
-  // Limiter à 20 propriétés pour éviter les timeouts
-  const limitedPropertyIds = propertyIds.slice(0, 20);
+  // Traiter par batch de 50 pour éviter les limites Supabase (IN clause)
+  const BATCH_SIZE = 50;
+  const batches: string[][] = [];
+  for (let i = 0; i < propertyIds.length; i += BATCH_SIZE) {
+    batches.push(propertyIds.slice(i, i + BATCH_SIZE));
+  }
 
   try {
     // ✅ Utiliser le service_role pour bypasser RLS sur les médias
     const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
     const serviceClient = supabaseAdmin();
 
-    // ✅ PRIORITÉ 1: Chercher dans la table photos (système principal)
-    try {
-      const { data: photos, error: photosError } = await serviceClient
-        .from("photos")
-        .select("id, property_id, url, is_main, ordre")
-        .in("property_id", limitedPropertyIds)
-        .order("is_main", { ascending: false })
-        .order("ordre", { ascending: true })
-        .limit(100);
+    // Traiter chaque batch en parallèle
+    await Promise.all(
+      batches.map(async (batchPropertyIds) => {
+        // ✅ PRIORITÉ 1: Chercher dans la table photos (système principal)
+        try {
+          const { data: photos, error: photosError } = await serviceClient
+            .from("photos")
+            .select("id, property_id, url, is_main, ordre")
+            .in("property_id", batchPropertyIds)
+            .order("is_main", { ascending: false })
+            .order("ordre", { ascending: true })
+            .limit(500);
 
-      if (!photosError && photos && photos.length > 0) {
-        photos.forEach((photo: any) => {
-          if (!photo.property_id) return;
-          const current = result.get(photo.property_id) ?? {
-            cover_url: null,
-            cover_document_id: null,
-            documents_count: 0,
-          };
-          current.documents_count += 1;
-          // Utiliser la photo principale (is_main) ou la première photo
-          if (photo.is_main || (!current.cover_url && current.documents_count === 1)) {
-            current.cover_document_id = photo.id ?? null;
-            current.cover_url = photo.url ?? null;
+          if (!photosError && photos && photos.length > 0) {
+            photos.forEach((photo: any) => {
+              if (!photo.property_id) return;
+              const current = result.get(photo.property_id) ?? {
+                cover_url: null,
+                cover_document_id: null,
+                documents_count: 0,
+              };
+              current.documents_count += 1;
+              // Utiliser la photo principale (is_main) ou la première photo
+              if (photo.is_main || (!current.cover_url && current.documents_count === 1)) {
+                current.cover_document_id = photo.id ?? null;
+                current.cover_url = photo.url ?? null;
+              }
+              result.set(photo.property_id, current);
+            });
           }
-          result.set(photo.property_id, current);
-        });
-      }
-    } catch (photosError: any) {
-      console.warn("[fetchPropertyMedia] Error fetching from photos table:", photosError?.message);
-      // Continuer avec le fallback sur documents
-    }
-
-    // ✅ PRIORITÉ 2: Chercher aussi dans la table documents (système de fallback)
-    // Seulement si aucune photo n'a été trouvée pour certaines propriétés
-    const propertiesWithoutMedia = limitedPropertyIds.filter((id) => !result.has(id) || !result.get(id)?.cover_url);
-
-    if (propertiesWithoutMedia.length > 0) {
-      try {
-        const { data: documents, error: documentsError } = await serviceClient
-          .from("documents")
-          .select("id, property_id, preview_url, is_cover, created_at")
-          .in("property_id", propertiesWithoutMedia)
-          .eq("collection", "property_media")
-          .order("is_cover", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(100);
-
-        if (!documentsError && documents && documents.length > 0) {
-          documents.forEach((doc: any) => {
-            if (!doc.property_id) return;
-            const current = result.get(doc.property_id) ?? {
-              cover_url: null,
-              cover_document_id: null,
-              documents_count: 0,
-            };
-            current.documents_count += 1;
-            // Utiliser le document marqué comme cover ou le premier document
-            const isCover = doc.is_cover || (!current.cover_url && current.documents_count === 1);
-            if (isCover && !current.cover_url) {
-              // Ne remplacer que si aucune photo n'a déjà été trouvée
-              current.cover_document_id = doc.id ?? null;
-              current.cover_url = doc.preview_url ?? null;
-            }
-            result.set(doc.property_id, current);
-          });
+        } catch (photosError: any) {
+          console.warn("[fetchPropertyMedia] Error fetching from photos table:", photosError?.message);
         }
-      } catch (documentsError: any) {
-        console.warn("[fetchPropertyMedia] Error fetching from documents table:", documentsError?.message);
-        // Ne pas bloquer si les documents échouent
-      }
-    }
+
+        // ✅ PRIORITÉ 2: Chercher dans documents (fallback)
+        const propertiesWithoutMedia = batchPropertyIds.filter(
+          (id) => !result.has(id) || !result.get(id)?.cover_url
+        );
+
+        if (propertiesWithoutMedia.length > 0) {
+          try {
+            const { data: documents, error: documentsError } = await serviceClient
+              .from("documents")
+              .select("id, property_id, preview_url, is_cover, created_at")
+              .in("property_id", propertiesWithoutMedia)
+              .eq("collection", "property_media")
+              .order("is_cover", { ascending: false })
+              .order("created_at", { ascending: false })
+              .limit(500);
+
+            if (!documentsError && documents && documents.length > 0) {
+              documents.forEach((doc: any) => {
+                if (!doc.property_id) return;
+                const current = result.get(doc.property_id) ?? {
+                  cover_url: null,
+                  cover_document_id: null,
+                  documents_count: 0,
+                };
+                current.documents_count += 1;
+                const isCover = doc.is_cover || (!current.cover_url && current.documents_count === 1);
+                if (isCover && !current.cover_url) {
+                  current.cover_document_id = doc.id ?? null;
+                  current.cover_url = doc.preview_url ?? null;
+                }
+                result.set(doc.property_id, current);
+              });
+            }
+          } catch (documentsError: any) {
+            console.warn("[fetchPropertyMedia] Error fetching from documents table:", documentsError?.message);
+          }
+        }
+      })
+    );
 
     return result;
   } catch (error: unknown) {

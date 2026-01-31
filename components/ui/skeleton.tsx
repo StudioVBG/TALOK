@@ -27,10 +27,10 @@ function Skeleton({
       aria-busy="true"
       aria-live="polite"
       className={cn(
-        "relative overflow-hidden rounded-md bg-slate-100/80 dark:bg-slate-800/80",
+        "relative overflow-hidden rounded-md bg-muted",
         "before:absolute before:inset-0 before:-translate-x-full",
         "before:animate-[shimmer_2s_infinite]",
-        "before:bg-gradient-to-r before:from-transparent before:via-white/60 dark:before:via-white/10 before:to-transparent",
+        "before:bg-gradient-to-r before:from-transparent before:via-background/60 before:to-transparent",
         className
       )}
       {...props}

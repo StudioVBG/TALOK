@@ -338,3 +338,269 @@ export const OWNER_NOTICE_REASONS: DepartureReason[] = [
   "conge_reprise",
   "motif_legitime",
 ];
+
+// ============================================
+// INSPECTION TYPES (EDL Sortie)
+// ============================================
+
+export type InspectionCategory =
+  | "murs"
+  | "sols"
+  | "salle_de_bain"
+  | "cuisine"
+  | "fenetres_portes"
+  | "electricite_plomberie"
+  | "meubles";
+
+export type InspectionStatus = "pending" | "ok" | "problem";
+
+export const INSPECTION_CATEGORIES: InspectionCategory[] = [
+  "murs",
+  "sols",
+  "salle_de_bain",
+  "cuisine",
+  "fenetres_portes",
+  "electricite_plomberie",
+  "meubles",
+];
+
+export interface EDLInspectionItem {
+  category: InspectionCategory;
+  label: string;
+  icon: string;
+  description: string;
+  status: InspectionStatus;
+  photos: string[];
+  problemDescription?: string;
+}
+
+export interface LeaseEndProcess {
+  id: string;
+  lease_id: string;
+  status: "in_progress" | "completed" | "cancelled";
+  current_step: string;
+  checklist_completed: boolean;
+  edl_completed: boolean;
+  damages_assessed: boolean;
+  quotes_received: boolean;
+  deposit_settled: boolean;
+  dg_amount: number;
+  dg_retention_amount: number;
+  dg_refund_amount: number;
+  tenant_damage_cost: number;
+  vetusty_cost: number;
+  renovation_cost: number;
+  total_budget: number;
+  ready_to_rent_date?: string;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  lease?: {
+    id: string;
+    type_bail: string;
+    loyer: number;
+    depot_de_garantie: number;
+  };
+  property?: {
+    id: string;
+    adresse_complete: string;
+    ville: string;
+    surface?: number;
+    type: string;
+  };
+}
+
+export interface RenovationItem {
+  id: string;
+  category: InspectionCategory;
+  description: string;
+  estimated_cost: number;
+  actual_cost?: number;
+  status: "pending" | "quoted" | "approved" | "completed";
+  provider_id?: string;
+  quote_id?: string;
+}
+
+export interface LeaseEndTimelineItem {
+  id: string;
+  date: string;
+  title: string;
+  description: string;
+  type: "milestone" | "task" | "deadline";
+  completed: boolean;
+}
+
+// ============================================
+// GAP-002: INVENTAIRE MEUBLÉ (Décret 31/07/2015)
+// ============================================
+
+/**
+ * Liste légale des éléments d'équipement obligatoires
+ * pour un logement meublé (Décret n°2015-981 du 31/07/2015)
+ */
+export type FurnitureCategory =
+  | "literie"
+  | "occultation"
+  | "cuisine"
+  | "rangement"
+  | "luminaire"
+  | "vaisselle"
+  | "entretien";
+
+export type FurnitureCondition =
+  | "neuf"
+  | "tres_bon"
+  | "bon"
+  | "usage"
+  | "mauvais"
+  | "absent";
+
+export interface FurnitureItem {
+  id: string;
+  category: FurnitureCategory;
+  name: string;
+  description: string;
+  legal_requirement: string; // Référence légale
+  is_mandatory: boolean;
+  quantity: number;
+  condition: FurnitureCondition;
+  notes?: string;
+  photos?: string[];
+}
+
+export interface FurnitureInventory {
+  id: string;
+  edl_id: string;
+  lease_id: string;
+  type: "entree" | "sortie";
+  items: FurnitureItem[];
+  is_complete: boolean;
+  total_items: number;
+  items_present: number;
+  items_missing: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Équipements obligatoires selon le Décret n°2015-981 du 31/07/2015
+ * Article 2 - Liste des éléments d'équipement
+ */
+export const MANDATORY_FURNITURE_LIST: Omit<FurnitureItem, "id" | "condition" | "quantity" | "notes" | "photos">[] = [
+  // 1° Literie
+  {
+    category: "literie",
+    name: "Literie avec couette ou couverture",
+    description: "Lit avec matelas, couette ou couverture adaptée",
+    legal_requirement: "Décret 2015-981 Art.2 - 1°",
+    is_mandatory: true,
+  },
+  // 2° Dispositif d'occultation
+  {
+    category: "occultation",
+    name: "Volets ou rideaux occultants",
+    description: "Dispositif d'occultation des fenêtres dans les pièces destinées à être utilisées comme chambre à coucher",
+    legal_requirement: "Décret 2015-981 Art.2 - 2°",
+    is_mandatory: true,
+  },
+  // 3° Plaques de cuisson
+  {
+    category: "cuisine",
+    name: "Plaques de cuisson",
+    description: "Plaques de cuisson (gaz ou électrique)",
+    legal_requirement: "Décret 2015-981 Art.2 - 3°",
+    is_mandatory: true,
+  },
+  // 4° Four ou four à micro-ondes
+  {
+    category: "cuisine",
+    name: "Four ou micro-ondes",
+    description: "Four traditionnel ou four à micro-ondes",
+    legal_requirement: "Décret 2015-981 Art.2 - 4°",
+    is_mandatory: true,
+  },
+  // 5° Réfrigérateur et congélateur ou compartiment
+  {
+    category: "cuisine",
+    name: "Réfrigérateur avec compartiment congélation",
+    description: "Réfrigérateur et congélateur ou réfrigérateur avec compartiment de congélation (température ≤ -6°C)",
+    legal_requirement: "Décret 2015-981 Art.2 - 5°",
+    is_mandatory: true,
+  },
+  // 6° Vaisselle
+  {
+    category: "vaisselle",
+    name: "Vaisselle pour prendre les repas",
+    description: "Vaisselle nécessaire à la prise des repas (assiettes, verres, couverts)",
+    legal_requirement: "Décret 2015-981 Art.2 - 6°",
+    is_mandatory: true,
+  },
+  // 7° Ustensiles de cuisine
+  {
+    category: "vaisselle",
+    name: "Ustensiles de cuisine",
+    description: "Ustensiles de cuisine (casseroles, poêle, etc.)",
+    legal_requirement: "Décret 2015-981 Art.2 - 7°",
+    is_mandatory: true,
+  },
+  // 8° Table et sièges
+  {
+    category: "rangement",
+    name: "Table et sièges",
+    description: "Table et sièges en nombre suffisant",
+    legal_requirement: "Décret 2015-981 Art.2 - 8°",
+    is_mandatory: true,
+  },
+  // 9° Étagères de rangement
+  {
+    category: "rangement",
+    name: "Étagères de rangement",
+    description: "Étagères de rangement",
+    legal_requirement: "Décret 2015-981 Art.2 - 9°",
+    is_mandatory: true,
+  },
+  // 10° Luminaires
+  {
+    category: "luminaire",
+    name: "Luminaires",
+    description: "Luminaires suffisants dans chaque pièce",
+    legal_requirement: "Décret 2015-981 Art.2 - 10°",
+    is_mandatory: true,
+  },
+  // 11° Matériel d'entretien
+  {
+    category: "entretien",
+    name: "Matériel d'entretien ménager",
+    description: "Matériel d'entretien ménager adapté aux caractéristiques du logement (balai, serpillière, etc.)",
+    legal_requirement: "Décret 2015-981 Art.2 - 11°",
+    is_mandatory: true,
+  },
+];
+
+export const FURNITURE_CATEGORY_LABELS: Record<FurnitureCategory, string> = {
+  literie: "Literie",
+  occultation: "Occultation fenêtres",
+  cuisine: "Équipements cuisine",
+  rangement: "Mobilier / Rangement",
+  luminaire: "Éclairage",
+  vaisselle: "Vaisselle & Ustensiles",
+  entretien: "Entretien ménager",
+};
+
+export const FURNITURE_CONDITION_LABELS: Record<FurnitureCondition, string> = {
+  neuf: "Neuf",
+  tres_bon: "Très bon état",
+  bon: "Bon état",
+  usage: "Usagé",
+  mauvais: "Mauvais état",
+  absent: "Absent / Manquant",
+};
+
+export const FURNITURE_CONDITION_COLORS: Record<FurnitureCondition, string> = {
+  neuf: "#3b82f6", // blue-500
+  tres_bon: "#22c55e", // green-500
+  bon: "#84cc16", // lime-500
+  usage: "#eab308", // yellow-500
+  mauvais: "#f97316", // orange-500
+  absent: "#ef4444", // red-500
+};

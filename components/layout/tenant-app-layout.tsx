@@ -37,6 +37,7 @@ import { UnifiedFAB } from "@/components/layout/unified-fab";
 import { SharedBottomNav } from "@/components/layout/shared-bottom-nav";
 import { SkipLinks } from "@/components/ui/skip-links";
 import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
 
 /**
  * Navigation groups for the tenant sidebar
@@ -150,6 +151,8 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
       <SkipLinks />
 
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        {/* Offline indicator - visible when device loses connectivity */}
+        <OfflineIndicator />
 
         {/* ============================================
             DESKTOP/TABLET SIDEBAR

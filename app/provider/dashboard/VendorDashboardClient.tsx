@@ -144,7 +144,7 @@ export function VendorDashboardClient({ data }: Props) {
                 </p>
               </div>
               <Button asChild>
-                <Link href="/vendor/jobs">
+                <Link href="/provider/jobs">
                   Voir les missions
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -212,7 +212,7 @@ export function VendorDashboardClient({ data }: Props) {
           )}
           {data.jobs.length > 5 && (
             <Button asChild variant="outline" className="w-full mt-4">
-              <Link href="/vendor/jobs">Voir toutes les missions</Link>
+              <Link href="/provider/jobs">Voir toutes les missions</Link>
             </Button>
           )}
         </CardContent>
@@ -226,13 +226,13 @@ export function VendorDashboardClient({ data }: Props) {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <Button variant="outline" className="h-auto py-4 flex-col" asChild>
-              <Link href="/vendor/jobs">
+              <Link href="/provider/jobs">
                 <Wrench className="h-6 w-6 mb-2" />
                 <span>Mes missions</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto py-4 flex-col" asChild>
-              <Link href="/vendor/invoices">
+              <Link href="/provider/invoices">
                 <Euro className="h-6 w-6 mb-2" />
                 <span>Mes factures</span>
               </Link>

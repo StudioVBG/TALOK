@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import type { CreateLeaseData, UpdateLeaseData } from "../services/leases.servic
 import type { Lease, Property, LeaseType } from "@/lib/types";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { getMaxDepotLegal, getMaxDepotMois } from "@/lib/validations/lease-financial";
+import { useAutoSave, DraftBanner } from "@/lib/hooks/use-auto-save";
 
 interface LeaseFormProps {
   propertyId?: string;
@@ -76,6 +77,28 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
   // ✅ Calcul du nombre de mois pour l'affichage
   const depotMois = useMemo(() => getMaxDepotMois(formData.type_bail), [formData.type_bail]);
 
+  // ✅ AUTO-SAVE: Sauvegarde automatique du brouillon
+  const autoSaveKey = lease ? `lease-edit-${lease.id}` : `lease-new-${propertyId || "default"}`;
+  const { hasDraft, lastSavedAt, restore, clear } = useAutoSave(formData, {
+    storageKey: autoSaveKey,
+    debounceMs: 1500,
+    ttlMs: 7 * 24 * 60 * 60 * 1000, // 7 jours
+    onRestore: (data) => setFormData(data),
+  });
+
+  // ✅ Restaurer le brouillon
+  const handleRestore = useCallback(() => {
+    const draft = restore();
+    if (draft) {
+      setFormData(draft);
+    }
+  }, [restore]);
+
+  // ✅ Ignorer le brouillon
+  const handleDismiss = useCallback(() => {
+    clear();
+  }, [clear]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -94,6 +117,8 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
           description: "Le bail a été créé avec succès.",
         });
       }
+      // ✅ Supprimer le brouillon après succès
+      clear();
       onSuccess?.();
     } catch (error: unknown) {
       toast({
@@ -115,6 +140,14 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* ✅ Bannière de restauration du brouillon */}
+        <DraftBanner
+          hasDraft={hasDraft}
+          lastSavedAt={lastSavedAt}
+          onRestore={handleRestore}
+          onDismiss={handleDismiss}
+        />
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">

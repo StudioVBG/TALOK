@@ -1,9 +1,131 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
+import { createClient } from "@/lib/supabase/server";
+import { ApiError, handleApiError } from "@/lib/helpers/api-error";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 // Force cette route à s'exécuter uniquement côté serveur
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 15; // 15 secondes max
+
+// ============================================
+// PROTECTION SSRF - SEC-002
+// ============================================
+
+/**
+ * Hosts bloqués pour prévenir les attaques SSRF
+ */
+const BLOCKED_HOSTS = [
+  "localhost",
+  "127.0.0.1",
+  "0.0.0.0",
+  "::1",
+  "[::1]",
+  // Metadata endpoints cloud
+  "169.254.169.254", // AWS/GCP/Azure metadata
+  "metadata.google.internal",
+  "metadata.google",
+  "metadata",
+];
+
+/**
+ * Ranges IP privées bloquées
+ */
+const BLOCKED_IP_RANGES = [
+  /^10\./,                          // Private 10.x.x.x
+  /^172\.(1[6-9]|2[0-9]|3[01])\./,  // Private 172.16-31.x.x
+  /^192\.168\./,                    // Private 192.168.x.x
+  /^127\./,                         // Loopback
+  /^169\.254\./,                    // Link-local
+  /^0\./,                           // Reserved
+  /^fc00:/i,                        // IPv6 private
+  /^fe80:/i,                        // IPv6 link-local
+];
+
+/**
+ * Protocoles autorisés
+ */
+const ALLOWED_PROTOCOLS = ["http:", "https:"];
+
+/**
+ * Domaines autorisés (whitelist)
+ */
+const ALLOWED_DOMAINS = [
+  // Sites d'annonces immobilières
+  "leboncoin.fr",
+  "www.leboncoin.fr",
+  "seloger.com",
+  "www.seloger.com",
+  "bellesdemeures.com",
+  "www.bellesdemeures.com",
+  "pap.fr",
+  "www.pap.fr",
+  "logic-immo.com",
+  "www.logic-immo.com",
+  "bienici.com",
+  "www.bienici.com",
+  // Agences immobilières
+  "orpi.com",
+  "www.orpi.com",
+  "century21.fr",
+  "www.century21.fr",
+  "laforet.com",
+  "www.laforet.com",
+  "guy-hoquet.com",
+  "www.guy-hoquet.com",
+  "stephane-plaza.com",
+  "www.stephane-plaza.com",
+  // Agrégateurs
+  "figaro.fr",
+  "immobilier.lefigaro.fr",
+  "explorimmo.com",
+  "www.explorimmo.com",
+];
+
+/**
+ * Valide qu'une URL est autorisée (anti-SSRF)
+ */
+function isUrlAllowed(url: string): { allowed: boolean; reason?: string } {
+  try {
+    const urlObj = new URL(url);
+
+    // Vérifier le protocole
+    if (!ALLOWED_PROTOCOLS.includes(urlObj.protocol)) {
+      return { allowed: false, reason: `Protocole non autorisé: ${urlObj.protocol}` };
+    }
+
+    const hostname = urlObj.hostname.toLowerCase();
+
+    // Vérifier les hosts bloqués
+    if (BLOCKED_HOSTS.includes(hostname)) {
+      return { allowed: false, reason: "Host bloqué" };
+    }
+
+    // Vérifier les ranges IP privées
+    for (const range of BLOCKED_IP_RANGES) {
+      if (range.test(hostname)) {
+        return { allowed: false, reason: "IP privée bloquée" };
+      }
+    }
+
+    // Vérifier la whitelist des domaines
+    const isAllowedDomain = ALLOWED_DOMAINS.some(
+      (allowed) => hostname === allowed || hostname.endsWith(`.${allowed}`)
+    );
+
+    if (!isAllowedDomain) {
+      return {
+        allowed: false,
+        reason: `Domaine non autorisé: ${hostname}. Seuls les sites d'annonces immobilières sont autorisés.`
+      };
+    }
+
+    return { allowed: true };
+  } catch {
+    return { allowed: false, reason: "Format d'URL invalide" };
+  }
+}
 
 // ============================================
 // TYPES
@@ -929,32 +1051,87 @@ function mergeData(sources: Partial<ExtractedData>[]): ExtractedData {
 
 export async function POST(request: Request) {
   try {
+    // =========================================
+    // SEC-002: Protections de sécurité
+    // =========================================
+
+    // 1. Rate limiting (10 req/min)
+    const rateLimitResponse = await applyRateLimit(request, "scrape");
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
+    // 2. Authentification requise
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      throw new ApiError(401, "Authentification requise pour utiliser le scraper");
+    }
+
+    // 3. Vérifier le rôle (owner ou admin uniquement)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile || !["owner", "admin"].includes(profile.role)) {
+      throw new ApiError(403, "Accès non autorisé. Seuls les propriétaires et admins peuvent utiliser cette fonctionnalité.");
+    }
+
+    // 4. Parser la requête
     const { url } = await request.json();
 
     if (!url) {
       return NextResponse.json({ error: "URL manquante" }, { status: 400 });
     }
 
-    console.log(`\n[Scrape] 🔍 Analyse: ${url}`);
+    // 5. Validation anti-SSRF
+    const validation = isUrlAllowed(url);
+    if (!validation.allowed) {
+      console.warn(`[Scrape] URL rejetée: ${url} - Raison: ${validation.reason}`);
+      return NextResponse.json(
+        { error: "URL non autorisée", reason: validation.reason },
+        { status: 400 }
+      );
+    }
+
+    console.log(`\n[Scrape] 🔍 Analyse par ${user.email}: ${url}`);
     const startTime = Date.now();
-    
+
     // Détecter le site source
     const site = detectSourceSite(url);
     console.log(`[Scrape] 📍 Site détecté: ${site}`);
 
-    // 1. Récupérer la page
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache",
-      },
-    });
+    // 6. Fetch avec timeout (10 secondes)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+          "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+        },
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       throw new Error(`Impossible d'accéder à l'URL: ${response.status} ${response.statusText}`);
+    }
+
+    // 7. Vérifier la taille de la réponse (max 5MB)
+    const contentLength = response.headers.get("content-length");
+    if (contentLength && parseInt(contentLength) > 5 * 1024 * 1024) {
+      throw new Error("La page est trop volumineuse (max 5MB)");
     }
 
     const html = await response.text();

@@ -8,23 +8,22 @@ import crypto from "crypto";
 /**
  * Vérifie la signature HMAC du webhook Yousign
  * @see https://developers.yousign.com/docs/webhooks#signature-verification
+ *
+ * @security CRITICAL - Ne jamais bypasser la vérification de signature
  */
-function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
-  // En mode développement, on peut bypasser la vérification si pas de secret configuré
+function verifyWebhookSignature(rawBody: string, signature: string | null): { valid: boolean; error?: string } {
   const secret = process.env.YOUSIGN_WEBHOOK_SECRET;
 
+  // Le secret est toujours requis - pas de bypass en dev
   if (!secret) {
-    console.warn("[Webhook] YOUSIGN_WEBHOOK_SECRET non configuré - vérification désactivée en dev");
-    // En production, rejeter si pas de secret
-    if (process.env.NODE_ENV === "production") {
-      return false;
-    }
-    return true; // Permettre en dev sans secret
+    const errorMsg = "[SECURITY] YOUSIGN_WEBHOOK_SECRET non configuré - webhook rejeté";
+    console.error(errorMsg);
+    return { valid: false, error: "Webhook secret not configured" };
   }
 
   if (!signature) {
     console.error("[Webhook] Signature manquante dans les headers");
-    return false;
+    return { valid: false, error: "Missing signature" };
   }
 
   try {
@@ -39,13 +38,18 @@ function verifyWebhookSignature(rawBody: string, signature: string | null): bool
     const expectedBuffer = Buffer.from(expectedSignature, "hex");
 
     if (signatureBuffer.length !== expectedBuffer.length) {
-      return false;
+      console.warn("[Webhook] Signature length mismatch");
+      return { valid: false, error: "Invalid signature format" };
     }
 
-    return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+    const isValid = crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+    if (!isValid) {
+      console.warn("[Webhook] Signature verification failed - possible attack");
+    }
+    return { valid: isValid, error: isValid ? undefined : "Signature mismatch" };
   } catch (error) {
     console.error("[Webhook] Erreur lors de la vérification de signature:", error);
-    return false;
+    return { valid: false, error: "Signature verification error" };
   }
 }
 
@@ -58,10 +62,14 @@ export async function POST(request: Request) {
     const rawBody = await request.text();
     const signature = request.headers.get("x-signature") || request.headers.get("yousign-signature");
 
-    // Vérifier la signature du webhook
-    if (!verifyWebhookSignature(rawBody, signature)) {
-      console.error("[Webhook] Signature invalide - requête rejetée");
-      return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
+    // Vérifier la signature du webhook - AUCUN BYPASS AUTORISÉ
+    const signatureResult = verifyWebhookSignature(rawBody, signature);
+    if (!signatureResult.valid) {
+      console.error(`[Webhook] Signature invalide - requête rejetée: ${signatureResult.error}`);
+      return NextResponse.json(
+        { error: "Signature invalide", details: signatureResult.error },
+        { status: 401 }
+      );
     }
 
     const supabase = await createClient();

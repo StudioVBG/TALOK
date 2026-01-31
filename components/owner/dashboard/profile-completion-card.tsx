@@ -358,13 +358,13 @@ function TaskItem({ task, index }: { task: CompletionTask; index: number }) {
               {task.title}
             </h4>
             {!task.completed && task.reward && (
-              <span className="px-1 xs:px-1.5 sm:px-2 py-0.5 text-[8px] xs:text-[10px] sm:text-xs font-medium rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white shrink-0">
+              <span className="px-1 xs:px-1.5 sm:px-2 py-0.5 text-[10px] xs:text-[10px] sm:text-xs font-medium rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white shrink-0">
                 {task.reward}
               </span>
             )}
           </div>
           <p className={cn(
-            "text-[9px] xs:text-[10px] sm:text-xs mt-0.5 truncate",
+            "text-[10px] xs:text-[10px] sm:text-xs mt-0.5 truncate",
             task.completed ? "text-green-600" : "text-muted-foreground"
           )}>
             {task.completed ? "✓ Complété" : task.description}

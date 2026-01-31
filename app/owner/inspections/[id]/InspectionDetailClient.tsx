@@ -58,6 +58,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { EDLPreview } from "@/features/edl/components/edl-preview";
 import { mapRawEDLToTemplate } from "@/lib/mappers/edl-to-template";
 import { SignaturePad, type SignatureData } from "@/components/signature/SignaturePad";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 interface Room {
   name: string;
@@ -484,6 +485,17 @@ export function InspectionDetailClient({ data }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col">
+      {/* Breadcrumb */}
+      <div className="container mx-auto px-4 pt-4">
+        <Breadcrumb
+          items={[
+            { label: "États des lieux", href: "/owner/inspections" },
+            { label: `EDL ${edl.type === "entree" ? "Entrée" : "Sortie"} - ${edl.lease?.property?.ville}` }
+          ]}
+          homeHref="/owner/dashboard"
+        />
+      </div>
+
       {/* Barre supérieure fixe (Header) */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -731,10 +743,10 @@ export function InspectionDetailClient({ data }: Props) {
                   {unifiedMetersForDisplay.map((meter: any, index: number) => (
                     <div key={meter.id || `meter-${index}`} className="p-2 rounded-lg border border-slate-100 bg-slate-50/50">
                       <div className="flex justify-between items-start mb-1">
-                        <span className="text-[9px] font-bold uppercase text-slate-500">
+                        <span className="text-[10px] font-bold uppercase text-slate-500">
                           {meter.type === 'electricity' ? 'Électricité' : meter.type === 'gas' ? 'Gaz' : meter.type === 'water' ? 'Eau' : meter.type}
                         </span>
-                        <Badge variant={meter.hasReading ? "secondary" : "outline"} className={`text-[8px] h-4 px-1 ${meter.hasReading ? "bg-green-100 text-green-700 border-none" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                        <Badge variant={meter.hasReading ? "secondary" : "outline"} className={`text-[10px] h-4 px-1 ${meter.hasReading ? "bg-green-100 text-green-700 border-none" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
                           {meter.hasReading ? "Relevé effectué" : "À relever"}
                         </Badge>
                       </div>
@@ -742,7 +754,7 @@ export function InspectionDetailClient({ data }: Props) {
                       {meter.hasReading && meter.readingValue !== null && (
                         <p className="text-[10px] text-blue-600 font-semibold mt-1">{meter.readingValue.toLocaleString('fr-FR')} {meter.readingUnit}</p>
                       )}
-                      {meter.location && <p className="text-[9px] text-muted-foreground mt-1 italic">{meter.location}</p>}
+                      {meter.location && <p className="text-[10px] text-muted-foreground mt-1 italic">{meter.location}</p>}
                     </div>
                   ))}
                 </CardContent>

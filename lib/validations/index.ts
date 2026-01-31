@@ -1101,3 +1101,50 @@ export const quittanceDataSchema = z.object({
 
 export type QuittanceData = z.infer<typeof quittanceDataSchema>;
 
+// ============================================
+// BAUX COMMERCIAUX - GAP-003 SOTA 2026
+// Code de commerce Articles L145-1 à L145-60
+// ============================================
+
+export {
+  // Enums
+  CommercialLeaseTypeEnum,
+  CommercialIndexTypeEnum,
+  PasDePorteNatureEnum,
+  GarantieBancaireTypeEnum,
+  // Schemas
+  DestinationClauseSchema,
+  IndexationClauseSchema,
+  PasDePorteSchema,
+  GarantieBancaireSchema,
+  CautionSolidaireSchema,
+  RepartitionChargesSchema,
+  CommercialLeaseDetailsSchema,
+  DerogtoireLeaseDetailsSchema,
+  CreateCommercialLeaseSchema,
+  RentRevisionSchema,
+  TriennialPeriodSchema,
+  DerogtoireHistoryEntrySchema,
+  // Helpers
+  validateDerogtoireCumulativeDuration,
+  calculateTriennialPeriods,
+  calculateRentRevision,
+} from "./commercial-lease";
+
+export type {
+  CommercialLeaseType,
+  CommercialIndexType,
+  DestinationClause,
+  IndexationClause,
+  PasDePorte,
+  GarantieBancaire,
+  CautionSolidaire,
+  RepartitionCharges,
+  CommercialLeaseDetails,
+  DerogtoireLeaseDetails,
+  CreateCommercialLease,
+  RentRevision,
+  TriennialPeriod,
+  DerogtoireHistoryEntry,
+} from "./commercial-lease";
+

@@ -77,5 +77,10 @@ export {
 // Hook pour les notifications push du navigateur
 export { usePushNotifications } from "./use-push-notifications";
 
+// Hooks mobile UX
+export { usePullToRefresh } from "./use-pull-to-refresh";
+export { useOnlineStatus } from "./use-online-status";
+export { useHaptic } from "./use-haptic";
+
 // Re-export des hooks courants
 export { useToast, toast } from "@/components/ui/use-toast";

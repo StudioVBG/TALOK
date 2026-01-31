@@ -4,7 +4,8 @@ export const dynamic = 'force-dynamic';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
-import { ocrService } from "@/lib/services/ocr.service";
+// 🔧 FIX: Dynamic import to avoid module-level crash from native deps (sharp, tesseract.js)
+// import { ocrService } from "@/lib/services/ocr.service";
 
 /**
  * POST /api/meters/[id]/photo-ocr - Analyser une photo de compteur avec OCR
@@ -65,7 +66,8 @@ export async function POST(
     const arrayBuffer = await photoFile.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Effectuer l'OCR
+    // Effectuer l'OCR (dynamic import to avoid native module crash on serverless)
+    const { ocrService } = await import("@/lib/services/ocr.service");
     const { value, confidence } = await ocrService.analyzeMeterPhoto(buffer);
 
     // Uploader la photo pour archive (même si c'est juste pour l'analyse)

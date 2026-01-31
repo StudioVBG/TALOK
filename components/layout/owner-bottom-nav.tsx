@@ -85,7 +85,7 @@ export function OwnerBottomNav() {
                   )}
                 />
                 {/* Label adaptatif */}
-                <span className="text-[9px] xs:text-[10px] sm:text-xs font-medium truncate max-w-[52px] xs:max-w-[60px]">
+                <span className="text-[10px] xs:text-[11px] sm:text-xs font-medium truncate max-w-[64px] xs:max-w-[72px]">
                   {item.label}
                 </span>
               </Link>

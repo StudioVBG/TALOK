@@ -177,7 +177,36 @@ export default function AgencyDocumentsPage() {
       {/* Documents List */}
       <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="md:hidden space-y-3">
+            {filteredDocuments.map((doc) => {
+              const type = typeConfig[doc.type as keyof typeof typeConfig];
+              return (
+                <div key={doc.id} className="rounded-lg border p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800"><FileText className="w-5 h-5 text-slate-600 dark:text-slate-400" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{doc.name}</p>
+                      <Badge variant="outline" className={cn("text-xs mt-1", type.color)}>{type.label}</Badge>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem><Eye className="w-4 h-4 mr-2" />Aperçu</DropdownMenuItem>
+                        <DropdownMenuItem><Download className="w-4 h-4 mr-2" />Télécharger</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600"><Trash2 className="w-4 h-4 mr-2" />Supprimer</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>{doc.owner}</span>
+                    <span>{doc.size} • {doc.date}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">

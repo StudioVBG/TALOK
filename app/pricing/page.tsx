@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { PublicFooter } from "@/components/layout/public-footer";
 
 // ============================================
 // TYPES
@@ -371,7 +372,7 @@ export default function PricingPage() {
     if (slug === "enterprise_s" || slug === "enterprise_m") {
       if (!user) {
         sessionStorage.setItem("intendedPlan", JSON.stringify({ slug, billing }));
-        router.push("/auth/register?redirect=/pricing");
+        router.push("/auth/signup?redirect=/pricing");
         return;
       }
       // Continue to checkout below
@@ -382,7 +383,7 @@ export default function PricingPage() {
       if (user) {
         router.push("/owner/dashboard");
       } else {
-        router.push("/auth/register");
+        router.push("/auth/signup");
       }
       return;
     }
@@ -391,7 +392,7 @@ export default function PricingPage() {
       if (user) {
         router.push("/owner/dashboard");
       } else {
-        router.push("/auth/register");
+        router.push("/auth/signup");
       }
       return;
     }
@@ -400,7 +401,7 @@ export default function PricingPage() {
     if (!user) {
       // Save intended plan in session storage
       sessionStorage.setItem("intendedPlan", JSON.stringify({ slug, billing }));
-      router.push("/auth/register?redirect=/pricing");
+      router.push("/auth/signup?redirect=/pricing");
       return;
     }
 
@@ -750,6 +751,9 @@ export default function PricingPage() {
           </motion.div>
         </div>
       </section>
+
+      {/* Footer */}
+      <PublicFooter variant="dark" />
     </div>
   );
 }

@@ -36,12 +36,12 @@ export async function POST(
     const body = await request.json();
     const validatedData = retentionSchema.parse(body);
 
-    // Récupérer le processus
+    // Récupérer le processus avec le type de bail
     const { data: process, error: processError } = await supabase
       .from("lease_end_processes")
       .select(`
         *,
-        lease:leases(date_debut, depot_de_garantie),
+        lease:leases(date_debut, depot_de_garantie, type_bail),
         inspection_items:edl_inspection_items(*)
       `)
       .eq("id", id)
@@ -49,6 +49,31 @@ export async function POST(
 
     if (processError || !process) {
       return NextResponse.json({ error: "Processus non trouvé" }, { status: 404 });
+    }
+
+    // ✅ GAP-003 FIX: Skip retenue DG pour bail mobilité (Art. 25-13 Loi ELAN)
+    const typeBail = (process.lease as any)?.type_bail;
+    if (typeBail === "bail_mobilite") {
+      // Bail mobilité = pas de dépôt de garantie = pas de retenue possible
+      await supabase
+        .from("lease_end_processes")
+        .update({
+          status: "dg_calculated",
+          progress_percentage: 55,
+          dg_retention_amount: 0,
+          dg_refund_amount: 0,
+        })
+        .eq("id", id);
+
+      return NextResponse.json({
+        result: {
+          dg_amount: 0,
+          retention_details: [],
+          total_retention: 0,
+          total_refund: 0,
+          message: "Bail mobilité: pas de dépôt de garantie (Art. 25-13 Loi ELAN)",
+        },
+      });
     }
 
     // Récupérer la grille de vétusté

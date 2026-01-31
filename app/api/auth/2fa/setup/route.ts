@@ -1,12 +1,15 @@
 /**
  * API Route: Configure 2FA TOTP pour un utilisateur
  * POST /api/auth/2fa/setup
+ *
+ * @security CRITICAL - Les secrets TOTP sont chiffrés avant stockage
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { setupTOTP, generateRecoveryCodes } from "@/lib/auth/totp";
+import { encrypt } from "@/lib/security/encryption.service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,10 +47,13 @@ export async function POST(request: NextRequest) {
     // Générer les codes de récupération
     const recoveryCodes = generateRecoveryCodes(10);
 
+    // Chiffrer le secret TOTP avant stockage
+    const encryptedSecret = encrypt(totpSetup.secret);
+
     // Stocker temporairement (non activé encore)
     await serviceClient.from("user_2fa").upsert({
       user_id: user.id,
-      totp_secret: totpSetup.secret,
+      totp_secret: encryptedSecret,
       recovery_codes: recoveryCodes,
       enabled: false,
       pending_activation: true,

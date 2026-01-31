@@ -624,7 +624,9 @@ export async function POST(request: Request) {
     const limitCheck = await withSubscriptionLimit(profile.id, "properties");
     if (!limitCheck.allowed) {
       console.log(`[POST /api/properties] Limite atteinte: ${limitCheck.current}/${limitCheck.max} (plan: ${limitCheck.plan})`);
-      throw new ApiError(403, limitCheck.message || "Limite de propriétés atteinte pour votre forfait.");
+      // SOTA 2026: Utiliser QuotaExceededError pour un message clair avec lien upgrade
+      const { QuotaExceededError } = await import("@/lib/helpers/api-error");
+      throw new QuotaExceededError("properties", limitCheck.current, limitCheck.max, limitCheck.plan);
     }
 
     // ✅ CRÉATION: Créer un draft ou une propriété complète

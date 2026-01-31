@@ -17,6 +17,7 @@ import {
   Shield
 } from "lucide-react";
 import { NotificationCenter } from "@/components/notifications/notification-center";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
 
 const navigation = [
   { name: "Tableau de bord", href: "/provider/dashboard", icon: LayoutDashboard },
@@ -65,6 +66,9 @@ export default async function VendorLayout({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50/20 to-slate-50">
+      {/* Offline indicator - visible when device loses connectivity */}
+      <OfflineIndicator />
+
       {/* Desktop Sidebar - SOTA 2026: Largeur unifiée 64 (comme Owner/Tenant/Admin) */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white border-r border-slate-200 px-6 pb-4">
@@ -166,7 +170,7 @@ export default async function VendorLayout({
                 className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-slate-600 hover:text-orange-600 active:bg-orange-50/50 transition-colors"
               >
                 <item.icon className="h-5 w-5" />
-                <span className="text-[9px] xs:text-[10px] font-medium truncate max-w-[56px]">
+                <span className="text-[10px] xs:text-[11px] font-medium truncate max-w-[64px]">
                   {item.name.replace("Mes ", "")}
                 </span>
               </Link>

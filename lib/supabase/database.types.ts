@@ -971,6 +971,81 @@ export interface PropertyOwnershipRow {
 }
 
 // ============================================
+// BUILDING & BUILDING UNIT TYPES - SOTA 2026
+// ============================================
+
+/**
+ * Building types for "Immeuble Entier" feature
+ * @version 2026-01-27 - SOTA Property Wizard V3
+ */
+export type BuildingUnitType =
+  | 'appartement'
+  | 'studio'
+  | 'local_commercial'
+  | 'parking'
+  | 'cave'
+  | 'bureau'
+
+export type BuildingUnitStatus =
+  | 'vacant'
+  | 'occupe'
+  | 'travaux'
+  | 'reserve'
+
+export type BuildingUnitTemplate =
+  | 'T1'
+  | 'T2'
+  | 'T3'
+  | 'T4'
+  | 'T5'
+  | 'studio'
+  | 'parking'
+  | 'cave'
+  | 'bureau'
+
+export interface BuildingRow {
+  id: string
+  property_id: string
+  nom: string | null
+  floors: number
+  construction_year: number | null
+  has_ascenseur: boolean
+  has_gardien: boolean
+  has_interphone: boolean
+  has_digicode: boolean
+  has_local_velo: boolean
+  has_local_poubelles: boolean
+  has_local_ordures: boolean
+  has_parking_commun: boolean
+  address_complement: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+export interface BuildingUnitRow {
+  id: string
+  building_id: string
+  property_id: string | null
+  floor: number
+  position: string
+  type: BuildingUnitType
+  template: BuildingUnitTemplate | null
+  surface: number
+  nb_pieces: number
+  loyer_hc: number
+  charges: number
+  depot_garantie: number
+  status: BuildingUnitStatus
+  current_lease_id: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  [key: string]: any
+}
+
+// ============================================
 // DATABASE TYPE - Flexible Structure
 // ============================================
 
@@ -1228,6 +1303,19 @@ export type Database = {
         Update: Partial<PropertyOwnershipRow>
         Relationships: any[]
       }
+      // Building Tables - SOTA 2026 (Immeuble Entier)
+      buildings: {
+        Row: BuildingRow
+        Insert: Partial<BuildingRow>
+        Update: Partial<BuildingRow>
+        Relationships: any[]
+      }
+      building_units: {
+        Row: BuildingUnitRow
+        Insert: Partial<BuildingUnitRow>
+        Update: Partial<BuildingUnitRow>
+        Relationships: any[]
+      }
       // P2: Schema Translations Table
       _schema_translations: {
         Row: SchemaTranslationRow
@@ -1337,6 +1425,10 @@ export type CalendarConnection = CalendarConnectionRow
 export type LegalEntity = LegalEntityRow
 export type EntityAssociate = EntityAssociateRow
 export type PropertyOwnership = PropertyOwnershipRow
+
+// Building & Building Units - SOTA 2026 (Immeuble Entier)
+export type Building = BuildingRow
+export type BuildingUnit = BuildingUnitRow
 
 // ============================================
 // P2: NAMING NORMALIZATION TYPES (SOTA 2026)

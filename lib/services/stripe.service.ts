@@ -130,6 +130,7 @@ function flattenObject(obj: Record<string, any>, prefix = ""): Record<string, st
 
 /**
  * Crée un PaymentIntent pour un paiement
+ * Active 3D Secure (SCA) pour conformité PSD2/DSP2
  */
 export async function createPaymentIntent(
   options: PaymentIntent
@@ -143,6 +144,12 @@ export async function createPaymentIntent(
       metadata: options.metadata,
       receipt_email: options.receiptEmail,
       automatic_payment_methods: { enabled: true },
+      // Activation 3D Secure (SCA) - Conformité PSD2/DSP2
+      payment_method_options: {
+        card: {
+          request_three_d_secure: "any", // Demande 3DS pour toutes les cartes éligibles
+        },
+      },
     });
 
     return {

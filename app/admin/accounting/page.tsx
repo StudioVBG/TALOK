@@ -648,6 +648,38 @@ export default function AdminAccountingPage() {
                     <p className="text-muted-foreground">Toutes les factures sont à jour</p>
                   </div>
                 ) : (
+                  <>
+                  <div className="md:hidden space-y-3">
+                    {lateInvoices.filter(inv => !searchQuery || inv.tenant_name.toLowerCase().includes(searchQuery.toLowerCase())).map((invoice) => {
+                      const riskScore = Math.min(0.95, 0.3 + invoice.days_late * 0.02);
+                      const riskLevel = riskScore > 0.7 ? "high" : riskScore > 0.4 ? "medium" : "low";
+                      return (
+                        <div key={invoice.id} className="rounded-lg border p-4 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-medium">{invoice.tenant_name}</p>
+                              <p className="text-xs text-muted-foreground">{invoice.reference}</p>
+                            </div>
+                            <span className="font-medium text-red-600">{formatCurrency(invoice.amount)}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">{invoice.property_address}</p>
+                          <div className="flex items-center justify-between">
+                            <Badge variant={invoice.days_late > 30 ? "destructive" : "secondary"}>{invoice.days_late} jour{invoice.days_late > 1 ? "s" : ""}</Badge>
+                            <div className="flex items-center gap-2">
+                              <Brain className="h-4 w-4 text-purple-500" />
+                              <Progress value={riskScore * 100} className={cn("w-16 h-2", riskLevel === "high" && "[&>div]:bg-red-500", riskLevel === "medium" && "[&>div]:bg-amber-500", riskLevel === "low" && "[&>div]:bg-green-500")} />
+                              <span className={cn("text-xs font-medium", riskLevel === "high" && "text-red-500", riskLevel === "medium" && "text-amber-500", riskLevel === "low" && "text-green-500")}>{Math.round(riskScore * 100)}%</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 pt-2 border-t">
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => { setSelectedAlert({ id: invoice.id, type: invoice.days_late > 30 ? "late" : "upcoming", tenant_id: invoice.id, tenant_name: invoice.tenant_name, property_address: invoice.property_address, amount: invoice.amount, due_date: invoice.due_date, days_late: invoice.days_late, ai_risk_score: riskScore, ai_recommendation: invoice.days_late > 30 ? "Envoyer une mise en demeure formelle." : "Contacter le locataire par téléphone." }); setDetailSheetOpen(true); }}><Eye className="h-4 w-4 mr-1" />Détail</Button>
+                            <Button size="sm" className="flex-1">Relancer</Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="hidden md:block">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -759,6 +791,8 @@ export default function AdminAccountingPage() {
                         })}
                     </TableBody>
                   </Table>
+                  </div>
+                  </>
                 )}
               </CardContent>
             </Card>

@@ -241,8 +241,8 @@ export async function POST(
       .select("id, status")
       .eq("lease_id", leaseId)
       .eq("type", type)
-      .in("status", ["draft", "in_progress"])
-      .single();
+      .in("status", ["draft", "scheduled", "in_progress"])
+      .maybeSingle();
 
     if (existingEdl) {
       return NextResponse.json(
@@ -254,16 +254,18 @@ export async function POST(
       );
     }
 
-    // Créer l'EDL
+    // Créer l'EDL (inclure property_id pour accès direct)
+    const propertyId = leaseData.property?.id || null;
     const { data: newEdl, error: createError } = await supabase
       .from("edl")
       .insert({
         lease_id: leaseId,
+        property_id: propertyId,
         type,
         status: "draft",
         scheduled_date: scheduled_date || null,
         created_by: user.id,
-      })
+      } as any)
       .select()
       .single();
 

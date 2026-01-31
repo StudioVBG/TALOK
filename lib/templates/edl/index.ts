@@ -6,8 +6,11 @@
 // Types
 export * from "./types";
 
-// Templates
+// Templates - Résidentiel
 export { EDL_TEMPLATE, EDL_TEMPLATE_VIERGE } from "./edl.template";
+
+// Templates - Commercial/Professionnel (GAP-007)
+export { EDL_COMMERCIAL_TEMPLATE, EDL_COMMERCIAL_VARIABLES } from "./edl-commercial.template";
 
 // Services
 export {

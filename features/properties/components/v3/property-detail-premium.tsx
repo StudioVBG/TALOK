@@ -124,7 +124,7 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
         description: error instanceof Error ? error.message : "Impossible de charger le logement.",
         variant: "destructive",
       });
-      router.push("/properties");
+      router.push("/owner/properties");
     } finally {
       setLoading(false);
     }
@@ -207,7 +207,7 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
             variant="secondary"
             size="sm"
             className="backdrop-blur-md bg-background/80 border-border/50"
-            onClick={() => router.push(`/properties/${property.id}/edit`)}
+            onClick={() => router.push(`/owner/properties/${property.id}/edit`)}
           >
             <Edit className="h-4 w-4 mr-2" />
             Modifier
@@ -216,7 +216,7 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
             variant="ghost"
             size="sm"
             className="backdrop-blur-md bg-background/80 border-border/50"
-            onClick={() => router.push("/properties")}
+            onClick={() => router.push("/owner/properties")}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour

@@ -313,6 +313,33 @@ export default function AdminCompliancePage() {
                     </p>
                   </div>
                 ) : (
+                  <>
+                  <div className="md:hidden space-y-3">
+                    {pendingDocs.map((doc) => (
+                      <div key={doc.id} className="rounded-lg border p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center"><User className="h-4 w-4 text-primary" /></div>
+                            <div>
+                              <p className="font-medium">{doc.provider.name}</p>
+                              {doc.provider.telephone && <p className="text-xs text-muted-foreground">{doc.provider.telephone}</p>}
+                            </div>
+                          </div>
+                          <Badge variant="outline">{DOCUMENT_TYPE_LABELS[doc.document_type]}</Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground truncate max-w-[150px]">{doc.original_filename || "Document"}</span>
+                          <span className="text-muted-foreground">{formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: fr })}</span>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                          <Button variant="ghost" size="sm" onClick={() => handleViewDocument(doc)}><Eye className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="sm" className="text-green-600" onClick={() => setActionDialog({ open: true, action: "approve", documentId: doc.id })}><CheckCircle2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setActionDialog({ open: true, action: "reject", documentId: doc.id })}><XCircle className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden md:block">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -418,6 +445,8 @@ export default function AdminCompliancePage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -441,6 +470,23 @@ export default function AdminCompliancePage() {
                     </p>
                   </div>
                 ) : (
+                  <>
+                  <div className="md:hidden space-y-3">
+                    {expiringDocs.map((doc) => (
+                      <div key={doc.document_id} className="rounded-lg border p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <p className="font-medium">{doc.provider_name}</p>
+                          <Badge className={cn(doc.days_until_expiry <= 7 ? "bg-red-100 text-red-700" : doc.days_until_expiry <= 14 ? "bg-amber-100 text-amber-700" : "bg-yellow-100 text-yellow-700")}>{doc.days_until_expiry} jour(s)</Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <Badge variant="outline">{DOCUMENT_TYPE_LABELS[doc.document_type]}</Badge>
+                          <span className="text-muted-foreground">{new Date(doc.expiration_date).toLocaleDateString("fr-FR")}</span>
+                        </div>
+                        <Button variant="outline" size="sm" className="w-full">Notifier</Button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden md:block">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -487,6 +533,8 @@ export default function AdminCompliancePage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
+                  </>
                 )}
               </CardContent>
             </Card>
