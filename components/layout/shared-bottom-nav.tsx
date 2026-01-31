@@ -39,6 +39,8 @@ interface SharedBottomNavProps {
   moreLabel?: string;
   /** Paths où la nav doit être masquée (wizards, formulaires full-screen) */
   hiddenOnPaths?: string[];
+  /** Breakpoint at which to hide the bottom nav (default: "lg"). Use "md" when a tablet rail nav is present. */
+  hideAbove?: "md" | "lg";
   className?: string;
 }
 
@@ -47,6 +49,7 @@ export function SharedBottomNav({
   moreItems,
   moreLabel = "Plus",
   hiddenOnPaths = [],
+  hideAbove = "lg",
   className
 }: SharedBottomNavProps) {
   const pathname = usePathname();
@@ -77,17 +80,19 @@ export function SharedBottomNav({
     item => pathname === item.href || pathname?.startsWith(item.href + "/")
   );
 
+  const hideClass = hideAbove === "md" ? "md:hidden" : "lg:hidden";
+
   return (
     <>
       {/* Spacer pour éviter que le contenu soit caché derrière la nav */}
-      <div className="h-16 lg:hidden" aria-hidden="true" />
+      <div className={cn("h-16", hideClass)} aria-hidden="true" />
 
       {/* Navigation fixe en bas */}
       <nav
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50",
           "border-t bg-background/95 backdrop-blur-lg",
-          "lg:hidden",
+          hideClass,
           className
         )}
         role="navigation"

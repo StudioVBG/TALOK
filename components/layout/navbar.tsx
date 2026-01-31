@@ -77,7 +77,7 @@ export function Navbar() {
   // Masquer la navbar pour les dashboards (elles ont leur propre layout avec sidebar)
   // Nouvelle structure SOTA 2025: /owner, /tenant, /provider, /admin
   // Ancien format: /owner, /tenant pour la compatibilité
-  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/owner", "/tenant", "/provider", "/app/vendor", "/admin"];
+  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor"];
   if (hiddenPaths.some(path => pathname?.startsWith(path))) {
     return null;
   }
