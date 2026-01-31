@@ -173,6 +173,42 @@ const nextConfig = {
     // Les imports sont optimisés via optimizePackageImports ci-dessus
   },
 
+  // Redirections pour dédupliquer les routes et gérer les routes legacy
+  async redirects() {
+    return [
+      // === Doublons internes ===
+      // /owner → /owner/dashboard
+      { source: "/owner", destination: "/owner/dashboard", permanent: true },
+      // /tenant → /tenant/dashboard
+      { source: "/tenant", destination: "/tenant/dashboard", permanent: true },
+      // /dashboard → /owner/dashboard (legacy)
+      { source: "/dashboard", destination: "/owner/dashboard", permanent: true },
+
+      // === Routes anglais → français unifiées ===
+      // /owner/contracts → /owner/leases
+      { source: "/owner/contracts", destination: "/owner/leases", permanent: true },
+      { source: "/owner/contracts/:path*", destination: "/owner/leases/:path*", permanent: true },
+      // /owner/finances → /owner/money
+      { source: "/owner/finances", destination: "/owner/money", permanent: true },
+      { source: "/owner/finances/:path*", destination: "/owner/money/:path*", permanent: true },
+      // /owner/settings → /owner/profile
+      { source: "/owner/settings", destination: "/owner/profile", permanent: true },
+
+      // === Routes tenant legacy ===
+      // /tenant/tickets → /tenant/requests
+      { source: "/tenant/tickets", destination: "/tenant/requests", permanent: true },
+      { source: "/tenant/tickets/:path*", destination: "/tenant/requests/:path*", permanent: true },
+      // /tenant/home → /tenant/lease
+      { source: "/tenant/home", destination: "/tenant/lease", permanent: true },
+
+      // === Routes billing unifiées ===
+      // /owner/billing → /settings/billing
+      { source: "/owner/billing", destination: "/settings/billing", permanent: true },
+      // /billing → /settings/billing
+      { source: "/billing", destination: "/settings/billing", permanent: true },
+    ];
+  },
+
   // Headers de sécurité (CSP)
   async headers() {
     return [
