@@ -399,6 +399,7 @@ export default function OwnerTaxesPage() {
                 <p className="text-muted-foreground">Aucun bien enregistré</p>
               </div>
             ) : (
+              <>
               {/* Mobile card view */}
               <div className="md:hidden space-y-3">
                 {properties.map((property) => {
@@ -487,6 +488,7 @@ export default function OwnerTaxesPage() {
                 </TableBody>
               </Table>
               </div>
+              </>
             )}
           </CardContent>
         </Card>
