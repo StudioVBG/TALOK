@@ -17,6 +17,7 @@ import {
   Shield
 } from "lucide-react";
 import { NotificationCenter } from "@/components/notifications/notification-center";
+import { ProviderBottomNav } from "@/components/layout/provider-bottom-nav";
 
 const navigation = [
   { name: "Tableau de bord", href: "/provider/dashboard", icon: LayoutDashboard },
@@ -117,7 +118,7 @@ export default async function VendorLayout({
       </aside>
 
       {/* Mobile header */}
-      <div className="sticky top-0 z-40 flex items-center gap-x-6 bg-white px-4 py-4 shadow-sm sm:px-6 lg:hidden">
+      <div className="sticky top-0 z-40 flex items-center gap-x-4 bg-white px-3 xs:px-4 sm:px-6 py-3 shadow-sm lg:hidden">
         <div className="flex-1 text-sm font-semibold leading-6 text-slate-900">
           Espace Prestataire
         </div>
@@ -150,32 +151,13 @@ export default async function VendorLayout({
           </div>
         </div>
 
-        <div className="py-6 px-4 sm:px-6 lg:px-8">
+        <div className="py-4 xs:py-5 sm:py-6 px-3 xs:px-4 sm:px-6 lg:px-8">
           {children}
         </div>
       </main>
 
-      {/* SOTA 2026 - Mobile bottom navigation avec safe area */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 z-50">
-        <div className="pb-safe">
-          <div className="grid grid-cols-5 h-14">
-            {navigation.slice(0, 5).map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-slate-600 hover:text-orange-600 active:bg-orange-50/50 transition-colors"
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="text-[9px] xs:text-[10px] font-medium truncate max-w-[56px]">
-                  {item.name.replace("Mes ", "")}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </nav>
-      {/* Spacer */}
-      <div className="h-14 lg:hidden" />
+      {/* SOTA 2026 - Mobile bottom navigation unifiée avec menu "Plus" */}
+      <ProviderBottomNav />
     </div>
   );
 }

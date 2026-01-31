@@ -173,6 +173,25 @@ const nextConfig = {
     // Les imports sont optimisés via optimizePackageImports ci-dessus
   },
 
+  // Redirections pour consolider les routes doublons
+  async redirects() {
+    return [
+      // Consolidation anglais → français pour les pages marketing
+      { source: '/features', destination: '/fonctionnalites', permanent: true },
+      { source: '/features/:path*', destination: '/fonctionnalites/:path*', permanent: true },
+
+      // Routes legacy / doublons dashboard
+      { source: '/dashboard/biens', destination: '/owner/properties', permanent: true },
+      { source: '/dashboard/biens/:path*', destination: '/owner/properties/:path*', permanent: true },
+      { source: '/dashboard/locataires', destination: '/owner/tenants', permanent: true },
+      { source: '/dashboard/locataires/:path*', destination: '/owner/tenants/:path*', permanent: true },
+      { source: '/dashboard/settings', destination: '/owner/profile', permanent: true },
+
+      // Routes settings éparses → profil du rôle
+      { source: '/settings/billing', destination: '/owner/money', permanent: false },
+    ];
+  },
+
   // Headers de sécurité (CSP)
   async headers() {
     return [
