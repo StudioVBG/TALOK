@@ -168,7 +168,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
       <OfflineIndicator />
 
       {/* Mobile Header */}
-      <div className="lg:hidden flex items-center justify-between p-4 bg-card border-b shadow-sm sticky top-0 z-50">
+      <div className="lg:hidden flex items-center justify-between px-3 xs:px-4 sm:px-6 py-3 bg-card border-b shadow-sm sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -360,13 +360,21 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         {children}
       </main>
 
-      {/* SOTA 2026 - Bottom Navigation Mobile */}
-      <SharedBottomNav 
+      {/* SOTA 2026 - Bottom Navigation Mobile avec menu "Plus" */}
+      <SharedBottomNav
         items={[
           { href: "/tenant/dashboard", label: "Accueil", icon: LayoutDashboard },
           { href: "/tenant/lease", label: "Logement", icon: Home },
           { href: "/tenant/payments", label: "Paiements", icon: CreditCard },
           { href: "/tenant/requests", label: "Demandes", icon: Wrench },
+        ]}
+        moreItems={[
+          { href: "/tenant/documents", label: "Documents", icon: FileText },
+          { href: "/tenant/inspections", label: "Suivi EDL", icon: ClipboardCheck },
+          { href: "/tenant/messages", label: "Messages", icon: MessageSquare },
+          { href: "/tenant/rewards", label: "Récompenses", icon: Gift },
+          { href: "/tenant/marketplace", label: "Marketplace", icon: ShoppingBag },
+          { href: "/tenant/help", label: "Aide", icon: HelpCircle },
         ]}
         hiddenOnPaths={['/tenant/onboarding']}
       />

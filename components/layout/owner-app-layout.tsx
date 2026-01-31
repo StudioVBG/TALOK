@@ -25,7 +25,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
-import { OwnerBottomNav } from "./owner-bottom-nav";
+import { SharedBottomNav } from "./shared-bottom-nav";
 import { cn } from "@/lib/utils";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
@@ -307,14 +307,24 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
           </main>
         </div>
 
-        {/* Mobile Bottom Navigation - Masquée dans les wizards */}
-        {!pathname?.includes('/properties/new') && !pathname?.includes('/leases/new') && !pathname?.includes('/onboarding') && (
-          <>
-            <OwnerBottomNav />
-            {/* Spacer pour éviter que le contenu soit caché derrière la bottom nav */}
-            <div className="h-14 xs:h-16 lg:hidden" />
-          </>
-        )}
+        {/* Mobile Bottom Navigation - SharedBottomNav avec menu "Plus" */}
+        <SharedBottomNav
+          items={[
+            { href: OWNER_ROUTES.dashboard.path, label: "Dashboard", icon: LayoutDashboard },
+            { href: OWNER_ROUTES.properties.path, label: "Biens", icon: Building2 },
+            { href: OWNER_ROUTES.money.path, label: "Loyers", icon: Euro },
+            { href: OWNER_ROUTES.contracts.path, label: "Baux", icon: FileText },
+          ]}
+          moreItems={[
+            { href: "/owner/inspections", label: "États des lieux", icon: ClipboardCheck },
+            { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench },
+            { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck },
+            { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
+            { href: "/owner/legal-protocols", label: "Juridique", icon: Shield },
+            { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
+          ]}
+          hiddenOnPaths={['/properties/new', '/leases/new', '/onboarding']}
+        />
 
         {/* SOTA 2026 - FAB Unifié (Assistant + Upgrade) - Masqué dans les wizards */}
         {!pathname?.includes('/properties/new') && !pathname?.includes('/leases/new') && (
