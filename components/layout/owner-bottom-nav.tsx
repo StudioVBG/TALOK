@@ -33,7 +33,7 @@ export function OwnerBottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-lg lg:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-lg md:hidden">
       {/* Safe area pour iPhone (Dynamic Island, Home Indicator) et Android (gesture nav) */}
       <div className="safe-area-bottom">
         <div className="grid grid-cols-4 h-14 xs:h-16">

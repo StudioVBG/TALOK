@@ -30,6 +30,7 @@ export function ProviderBottomNav() {
         { href: "/provider/settings", label: "Paramètres", icon: Settings },
         { href: "/provider/help", label: "Aide", icon: HelpCircle },
       ]}
+      hideAbove="md"
       hiddenOnPaths={['/provider/onboarding']}
     />
   );

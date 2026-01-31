@@ -189,6 +189,22 @@ const nextConfig = {
 
       // Routes settings éparses → profil du rôle
       { source: '/settings/billing', destination: '/owner/money', permanent: false },
+
+      // Routes anglaises legacy → routes françaises (SEO + UX)
+      { source: '/properties', destination: '/owner/properties', permanent: true },
+      { source: '/properties/:path*', destination: '/owner/properties/:path*', permanent: true },
+      { source: '/tenants', destination: '/owner/leases', permanent: true },
+      { source: '/tenants/:path*', destination: '/owner/leases/:path*', permanent: true },
+      { source: '/settings', destination: '/owner/profile', permanent: true },
+      { source: '/settings/:path*', destination: '/owner/profile', permanent: true },
+
+      // Routes dashboard/:section → rôle-spécifique
+      { source: '/dashboard/documents', destination: '/owner/documents', permanent: true },
+      { source: '/dashboard/finances', destination: '/owner/money', permanent: true },
+      { source: '/dashboard/tickets', destination: '/owner/tickets', permanent: true },
+
+      // Route /profile legacy → rôle-spécifique (non-permanent car dépend du rôle)
+      { source: '/profile', destination: '/owner/profile', permanent: false },
     ];
   },
 

@@ -5,11 +5,11 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  Receipt, 
-  Calendar, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  Receipt,
+  Calendar,
   Star,
   Settings,
   HelpCircle,
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { ProviderBottomNav } from "@/components/layout/provider-bottom-nav";
+import { ProviderRailNav } from "@/components/layout/provider-rail-nav";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 
 const navigation = [
@@ -70,7 +71,10 @@ export default async function VendorLayout({
       {/* Offline indicator - visible when device loses connectivity */}
       <OfflineIndicator />
 
-      {/* Desktop Sidebar - SOTA 2026: Largeur unifiée 64 (comme Owner/Tenant/Admin) */}
+      {/* TABLET Rail Nav (md-lg) - Icônes + tooltip hover (client component) */}
+      <ProviderRailNav navigation={navigation} secondaryNav={secondaryNav} />
+
+      {/* Desktop Sidebar (lg+) - Texte + icônes */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white border-r border-slate-200 px-6 pb-4">
           {/* Logo */}
@@ -121,8 +125,8 @@ export default async function VendorLayout({
         </div>
       </aside>
 
-      {/* Mobile header */}
-      <div className="sticky top-0 z-40 flex items-center gap-x-4 bg-white px-3 xs:px-4 sm:px-6 py-3 shadow-sm lg:hidden">
+      {/* Mobile header (< md) - No hamburger, rely on bottom nav */}
+      <div className="sticky top-0 z-40 flex items-center gap-x-4 bg-white px-3 xs:px-4 sm:px-6 py-3 shadow-sm md:hidden">
         <div className="flex-1 text-sm font-semibold leading-6 text-slate-900">
           Espace Prestataire
         </div>
@@ -134,9 +138,22 @@ export default async function VendorLayout({
         </div>
       </div>
 
-      {/* Main content - SOTA 2026: Padding unifié */}
-      <main className="lg:pl-64">
-        {/* Desktop header */}
+      {/* Main content - Padding adapté: md: pl-16 (rail), lg: pl-64 */}
+      <main className="md:pl-16 lg:pl-64">
+        {/* Tablet header (md-lg) - Shows in rail nav mode */}
+        <div className="sticky top-0 z-40 hidden md:flex lg:hidden h-14 shrink-0 items-center gap-x-4 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 sm:px-6">
+          <div className="flex-1 text-sm font-semibold leading-6 text-slate-900">
+            Espace Prestataire
+          </div>
+          <div className="flex items-center gap-3">
+            <NotificationCenter />
+            <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold text-sm">
+              {initials}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop header (lg+) */}
         <div className="sticky top-0 z-40 hidden lg:flex h-16 shrink-0 items-center gap-x-4 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-6">
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6 justify-end items-center">
             <NotificationCenter />
@@ -160,9 +177,8 @@ export default async function VendorLayout({
         </div>
       </main>
 
-      {/* SOTA 2026 - Mobile bottom navigation unifiée avec menu "Plus" */}
+      {/* Mobile bottom navigation (< md) - Hidden on tablet+ where rail nav takes over */}
       <ProviderBottomNav />
     </div>
   );
 }
-
