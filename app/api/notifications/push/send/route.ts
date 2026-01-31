@@ -126,13 +126,13 @@ export async function POST(request: NextRequest) {
           return { success: true, subscriptionId: sub.id };
         } catch (error: unknown) {
           // Si l'abonnement est invalide, le désactiver
-          if (error.statusCode === 410 || error.statusCode === 404) {
+          if ((error as any).statusCode === 410 || (error as any).statusCode === 404) {
             await serviceClient
               .from("push_subscriptions")
               .update({ is_active: false })
               .eq("id", sub.id);
           }
-          return { success: false, subscriptionId: sub.id, error: error instanceof Error ? error.message : "Une erreur est survenue" };
+          return { success: false, subscriptionId: sub.id, error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" };
         }
       })
     );
@@ -149,15 +149,15 @@ export async function POST(request: NextRequest) {
       total: subscriptions.length,
     });
   } catch (error: unknown) {
-    if (error.name === "ZodError") {
+    if ((error as any).name === "ZodError") {
       return NextResponse.json(
-        { error: "Données invalides", details: error.errors },
+        { error: "Données invalides", details: (error as any).errors },
         { status: 400 }
       );
     }
     console.error("Erreur envoi push:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
     );
   }

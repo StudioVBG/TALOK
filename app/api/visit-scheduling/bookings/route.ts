@@ -147,7 +147,7 @@ export async function GET(request: Request) {
   } catch (error: unknown) {
     console.error("GET /api/visit-scheduling/bookings error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -201,13 +201,13 @@ export async function POST(request: Request) {
 
     if (error) {
       // Gérer les erreurs métier
-      if (error.message.includes("plus disponible")) {
+      if ((error as Error).message.includes("plus disponible")) {
         return NextResponse.json(
           { error: "Ce créneau n'est plus disponible" },
           { status: 409 }
         );
       }
-      if (error.message.includes("déjà une réservation")) {
+      if ((error as Error).message.includes("déjà une réservation")) {
         return NextResponse.json(
           { error: "Vous avez déjà une réservation en cours pour ce bien" },
           { status: 409 }
@@ -251,14 +251,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ booking }, { status: 201 });
   } catch (error: unknown) {
     console.error("POST /api/visit-scheduling/bookings error:", error);
-    if (error.name === "ZodError") {
+    if ((error as any).name === "ZodError") {
       return NextResponse.json(
-        { error: "Données invalides", details: error.errors },
+        { error: "Données invalides", details: (error as any).errors },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
     );
   }

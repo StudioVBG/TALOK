@@ -206,7 +206,7 @@ export async function processRentReminders(
       errors,
     };
   } catch (error: unknown) {
-    errors.push(`Erreur globale: ${error.message}`);
+    errors.push(`Erreur globale: ${(error as Error).message}`);
     return { processed: 0, reminders, errors };
   }
 }

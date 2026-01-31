@@ -42,15 +42,15 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("Erreur sauvegarde consentements:", error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    if (error.name === "ZodError") {
-      return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
+    if ((error as any).name === "ZodError") {
+      return NextResponse.json({ error: "Données invalides", details: (error as any).errors }, { status: 400 });
     }
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Erreur serveur" }, { status: 500 });
   }
 }
 

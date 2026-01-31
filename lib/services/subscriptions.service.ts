@@ -262,7 +262,7 @@ class SubscriptionsService {
 
       return { url: data.url };
     } catch (error: unknown) {
-      return { error: error.message };
+      return { error: (error as Error).message };
     }
   }
 
@@ -284,7 +284,7 @@ class SubscriptionsService {
 
       return { url: data.url };
     } catch (error: unknown) {
-      return { error: error.message };
+      return { error: (error as Error).message };
     }
   }
 
@@ -309,7 +309,7 @@ class SubscriptionsService {
 
       return { success: true };
     } catch (error: unknown) {
-      return { success: false, error: error.message };
+      return { success: false, error: (error as Error).message };
     }
   }
 

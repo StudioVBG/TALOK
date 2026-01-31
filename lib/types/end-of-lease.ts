@@ -604,3 +604,213 @@ export const FURNITURE_CONDITION_COLORS: Record<FurnitureCondition, string> = {
   mauvais: "#f97316", // orange-500
   absent: "#ef4444", // red-500
 };
+
+// ============================================
+// MISSING TYPES — Discovered via TS2305 errors
+// ============================================
+
+export type DamageType = "none" | "normal_wear" | "tenant_damage" | "pre_existing";
+
+export const DAMAGE_TYPE_LABELS: Record<DamageType, string> = {
+  none: "Aucun dommage",
+  normal_wear: "Usure normale",
+  tenant_damage: "Dégradation locataire",
+  pre_existing: "Pré-existant",
+};
+
+export type RenovationWorkType =
+  | "peinture"
+  | "sol"
+  | "plomberie"
+  | "electricite"
+  | "menuiserie"
+  | "serrurerie"
+  | "nettoyage"
+  | "autre";
+
+export type TimelineActionType =
+  | "send_notice"
+  | "schedule_edl"
+  | "complete_edl"
+  | "calculate_dg"
+  | "return_dg"
+  | "archive";
+
+export type PropertyRentalStatus = "vacant" | "occupied" | "available" | "reserved";
+
+export const RENTAL_STATUS_LABELS: Record<PropertyRentalStatus, string> = {
+  vacant: "Vacant",
+  occupied: "Occupé",
+  available: "Disponible",
+  reserved: "Réservé",
+};
+
+export type LeaseEndProcessStatus =
+  | "initiated"
+  | "notice_sent"
+  | "edl_scheduled"
+  | "edl_completed"
+  | "dg_calculated"
+  | "dg_returned"
+  | "completed"
+  | "cancelled";
+
+export const PROCESS_STEPS: Array<{ key: LeaseEndProcessStatus; label: string }> = [
+  { key: "initiated", label: "Processus initié" },
+  { key: "notice_sent", label: "Préavis envoyé" },
+  { key: "edl_scheduled", label: "EDL planifié" },
+  { key: "edl_completed", label: "EDL réalisé" },
+  { key: "dg_calculated", label: "DG calculé" },
+  { key: "dg_returned", label: "DG restitué" },
+  { key: "completed", label: "Terminé" },
+];
+
+export const LEASE_END_TRIGGER_DAYS = 90;
+
+export interface LeaseSummary {
+  id: string;
+  property_id: string;
+  tenant_id: string | null;
+  type_bail: string;
+  date_debut: string;
+  date_fin: string | null;
+  loyer: number;
+  depot_de_garantie: number;
+}
+
+export interface PropertySummary {
+  id: string;
+  adresse_complete: string;
+  type: string;
+  rental_status: string | null;
+}
+
+export interface LeaseEndProcess {
+  id: string;
+  lease_id: string;
+  status: LeaseEndProcessStatus;
+  initiated_by: string | null;
+  end_date: string | null;
+  notice_date: string | null;
+  edl_date: string | null;
+  dg_amount: number | null;
+  dg_returned_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RenovationItem {
+  id: string;
+  lease_end_process_id: string;
+  work_type: RenovationWorkType;
+  description: string | null;
+  room: string | null;
+  estimated_cost: number;
+  tenant_share: number;
+  owner_share: number;
+  status: string;
+}
+
+export interface RenovationQuote {
+  id: string;
+  renovation_item_id: string;
+  provider_name: string;
+  amount: number;
+  status: string;
+}
+
+export interface EDLInspectionItem {
+  id: string;
+  category: string;
+  item_name: string | null;
+  condition_entree: string | null;
+  condition_sortie: string | null;
+  damage_type: DamageType | null;
+  estimated_cost: number;
+  tenant_responsibility: number;
+}
+
+export interface EDLComparisonResult {
+  items: EDLInspectionItem[];
+  total_damage_cost: number;
+  total_tenant_responsibility: number;
+}
+
+export interface DGRetentionResult {
+  deposit_amount: number;
+  total_deductions: number;
+  amount_to_return: number;
+  deductions: DeductionItem[];
+}
+
+export interface RenovationEstimateResult {
+  items: RenovationItem[];
+  total_estimated: number;
+  total_tenant_share: number;
+  total_owner_share: number;
+}
+
+export interface TimelineResult {
+  actions: Array<{
+    type: TimelineActionType;
+    date: string;
+    label: string;
+    completed: boolean;
+  }>;
+}
+
+// DTOs
+export interface CreateLeaseEndProcessDTO {
+  lease_id: string;
+  end_date: string;
+  reason?: DepartureReason;
+  initiator?: DepartureInitiator;
+}
+
+export interface StartEDLSortieDTO {
+  lease_end_process_id: string;
+  scheduled_date?: string;
+}
+
+export interface SubmitInspectionItemDTO {
+  lease_end_process_id: string;
+  category: string;
+  item_name?: string;
+  condition_sortie: string;
+  damage_type?: DamageType;
+  damage_description?: string;
+  estimated_cost?: number;
+}
+
+export interface CompareEDLDTO {
+  lease_end_process_id: string;
+}
+
+export interface EstimateRenovationDTO {
+  lease_end_process_id: string;
+  items: Array<{
+    work_type: RenovationWorkType;
+    description?: string;
+    room?: string;
+    estimated_cost: number;
+  }>;
+}
+
+export interface CalculateDGRetentionDTO {
+  lease_end_process_id: string;
+  deductions?: DeductionItem[];
+}
+
+export interface GenerateTimelineDTO {
+  lease_end_process_id: string;
+}
+
+export interface RequestQuotesDTO {
+  renovation_item_id: string;
+  provider_ids: string[];
+}
+
+export interface UpdatePropertyStatusDTO {
+  property_id: string;
+  rental_status: PropertyRentalStatus;
+}

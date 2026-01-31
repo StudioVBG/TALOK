@@ -699,7 +699,7 @@ export async function POST(request: NextRequest) {
             description: transfer.description,
             metadata: transfer.metadata,
             completed_at: new Date().toISOString(),
-          }).catch((err) => {
+          }).catch((err: any) => {
             console.error("[Stripe Webhook] Error creating transfer record:", err);
           });
 

@@ -103,7 +103,7 @@ export function useDocuments(filters?: {
           .select("lease_id")
           .eq("profile_id", profile.id); // 🔒 Filtre obligatoire
         
-        const leaseIds = signerData?.map(s => s.lease_id).filter(Boolean) || [];
+        const leaseIds = signerData?.map((s: any) => s.lease_id).filter(Boolean) || [];
         
         // 3. Documents liés aux baux du locataire
         let leaseDocs: DocumentRow[] = [];
@@ -122,7 +122,7 @@ export function useDocuments(filters?: {
         // Fusionner et dédupliquer
         const allDocs = [...(directDocs || []), ...leaseDocs];
         const uniqueDocs = allDocs.reduce((acc, doc) => {
-          if (!acc.find(d => d.id === doc.id)) {
+          if (!acc.find((d: any) => d.id === doc.id)) {
             acc.push(doc);
           }
           return acc;
@@ -133,21 +133,21 @@ export function useDocuments(filters?: {
         
         // 📁 Exclure les documents archivés par défaut
         if (!filters?.includeArchived) {
-          filtered = filtered.filter(d => !(d as any).is_archived);
+          filtered = filtered.filter((d: any) => !(d as any).is_archived);
         }
         
         if (filters?.propertyId) {
-          filtered = filtered.filter(d => d.property_id === filters.propertyId);
+          filtered = filtered.filter((d: any) => d.property_id === filters.propertyId);
         }
         if (filters?.leaseId) {
-          filtered = filtered.filter(d => d.lease_id === filters.leaseId);
+          filtered = filtered.filter((d: any) => d.lease_id === filters.leaseId);
         }
         if (filters?.type) {
-          filtered = filtered.filter(d => d.type === filters.type);
+          filtered = filtered.filter((d: any) => d.type === filters.type);
         }
         
         // Trier par date
-        filtered.sort((a, b) => {
+        filtered.sort((a: any, b: any) => {
           const dateA = new Date(a.created_at || 0).getTime();
           const dateB = new Date(b.created_at || 0).getTime();
           return dateB - dateA;
@@ -166,7 +166,7 @@ export function useDocuments(filters?: {
           .select("id")
           .eq("owner_id", profile.id);
         
-        const propertyIds = ownerProperties?.map(p => p.id) || [];
+        const propertyIds = ownerProperties?.map((p: any) => p.id) || [];
         
         // 2. Requête avec filtre combiné : owner_id OU property_id
         // Cela permet de voir les documents uploadés par les locataires
@@ -214,21 +214,21 @@ export function useDocuments(filters?: {
         
         // 📁 Exclure les documents archivés par défaut
         if (!filters?.includeArchived) {
-          filtered = filtered.filter(d => !(d as any).is_archived);
+          filtered = filtered.filter((d: any) => !(d as any).is_archived);
         }
         
         if (filters?.propertyId) {
-          filtered = filtered.filter(d => d.property_id === filters.propertyId);
+          filtered = filtered.filter((d: any) => d.property_id === filters.propertyId);
         }
         if (filters?.leaseId) {
-          filtered = filtered.filter(d => d.lease_id === filters.leaseId);
+          filtered = filtered.filter((d: any) => d.lease_id === filters.leaseId);
         }
         if (filters?.type) {
-          filtered = filtered.filter(d => d.type === filters.type);
+          filtered = filtered.filter((d: any) => d.type === filters.type);
         }
         
         // Trier par date
-        filtered.sort((a, b) => {
+        filtered.sort((a: any, b: any) => {
           const dateA = new Date(a.created_at || 0).getTime();
           const dateB = new Date(b.created_at || 0).getTime();
           return dateB - dateA;
@@ -251,7 +251,7 @@ export function useDocuments(filters?: {
           return [];
         }
         
-        const ticketIds = workOrders.map(wo => wo.ticket_id);
+        const ticketIds = workOrders.map((wo: any) => wo.ticket_id);
         
         // Récupérer les property_ids des tickets
         const { data: tickets } = await supabaseClient
@@ -263,7 +263,7 @@ export function useDocuments(filters?: {
           return [];
         }
         
-        const propertyIds = [...new Set(tickets.map(t => t.property_id).filter(Boolean))];
+        const propertyIds = [...new Set(tickets.map((t: any) => t.property_id).filter(Boolean))];
         
         // Documents liés aux propriétés des interventions (devis, rapports, etc.)
         let query = supabaseClient

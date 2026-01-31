@@ -118,7 +118,7 @@ export default function EditInspectionPage() {
         const metersData = await metersRes.json();
 
         // Fusionner les relevés existants avec les compteurs manquants
-        const existingReadings = (metersData.readings || []).map(r => ({
+        const existingReadings = (metersData.readings || []).map((r: any) => ({
           id: r.id,
           meter_id: r.meter_id,
           type: r.meter?.type,
@@ -129,7 +129,7 @@ export default function EditInspectionPage() {
           photo_path: r.photo_path
         }));
 
-        const missingReadings = (metersData.missing_meters || []).map(m => ({
+        const missingReadings = (metersData.missing_meters || []).map((m: any) => ({
           meter_id: m.id,
           type: m.type,
           meter_number: m.meter_number || m.serial_number || "",
@@ -142,7 +142,7 @@ export default function EditInspectionPage() {
 
         // 3. Grouper les items par pièce
         const sectionsMap = new Map<string, any[]>();
-        (data.items || []).forEach(item => {
+        (data.items || []).forEach((item: any) => {
           const roomItems = sectionsMap.get(item.room_name) || [];
           roomItems.push({
             id: item.id,

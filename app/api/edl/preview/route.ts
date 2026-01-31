@@ -379,7 +379,7 @@ function mapDatabaseToEDLComplet(
       }) || [];
   
   // Fallback: si on n'a vraiment aucun nom de locataire, chercher dans les signatures
-  if ((locataires.length === 0 || locataires.every(l => l.nom_complet === "Locataire")) && signatures.length > 0) {
+  if ((locataires.length === 0 || locataires.every((l: any) => l.nom_complet === "Locataire")) && signatures.length > 0) {
     const signatureTenants = signatures
       .filter((s: any) => s.signer_role === "tenant" || s.signer_role === "locataire")
       .map((s: any) => ({

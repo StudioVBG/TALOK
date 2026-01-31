@@ -105,7 +105,7 @@ export class ApiClient {
       }
       
       // Gérer les erreurs de timeout/abort
-      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+      if ((error as any).name === 'AbortError' || (error as Error).message?.includes('aborted')) {
         const timeoutError = new Error("Le chargement prend trop de temps. Veuillez réessayer.");
         (timeoutError as any).statusCode = 504;
         throw timeoutError;

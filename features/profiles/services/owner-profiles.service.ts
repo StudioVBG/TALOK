@@ -24,7 +24,7 @@ export class OwnerProfilesService {
       return data;
     } catch (error: unknown) {
       // Ignorer les erreurs 404 (profil non trouvé)
-      if (error.status === 404) {
+      if ((error as any).status === 404) {
         return null;
       }
       console.warn("[OwnerProfilesService] Error fetching owner profile:", error);
@@ -41,7 +41,7 @@ export class OwnerProfilesService {
       return data;
     } catch (error: unknown) {
       // Ignorer les erreurs 404 (profil non trouvé)
-      if (error.status === 404) {
+      if ((error as any).status === 404) {
         return null;
       }
       console.warn("[OwnerProfilesService] Error fetching my owner profile:", error);

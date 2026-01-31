@@ -152,7 +152,7 @@ export class ExportService {
         .from("export_jobs")
         .update({
           status: 'failed',
-          error_message: error.message,
+          error_message: (error as Error).message,
           updated_at: new Date().toISOString()
         })
         .eq("id", job.id);

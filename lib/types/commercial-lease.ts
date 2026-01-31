@@ -587,3 +587,14 @@ export const ILAT_VALUES: Record<string, number> = {
   "T3 2024": 125.65,
   // ... à compléter
 };
+
+// Missing exports discovered via TS2305
+export type DerogtoireLeaseConfig = Partial<CommercialLeaseConfig>;
+export type TriennialPeriod = {
+  start: string;
+  end: string;
+  period_number: number;
+  can_terminate: boolean;
+};
+export const MAX_DEROGATOIRE_MONTHS = 36;
+export const DEFAULT_DEROGATOIRE_CONFIG = DEFAULT_COMMERCIAL_DEROGATOIRE_CONFIG;

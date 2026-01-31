@@ -155,7 +155,7 @@ export function useOnboarding(
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        error: error.message,
+        error: (error as Error).message,
       }));
     }
   };

@@ -160,7 +160,7 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
   cleanData.tenant = profile;
   
   if (cleanData.leases) {
-    cleanData.leases = cleanData.leases.map(l => ({
+    cleanData.leases = cleanData.leases.map((l: any) => ({
       ...l,
       property: l.property ? {
         ...l.property,

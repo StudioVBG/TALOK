@@ -54,10 +54,10 @@ export async function registerPasskey(
     const response = await startRegistration({ optionsJSON: options });
     return response;
   } catch (error: unknown) {
-    if (error.name === "InvalidStateError") {
+    if ((error as any).name === "InvalidStateError") {
       throw new Error("Cette passkey est déjà enregistrée sur cet appareil.");
     }
-    if (error.name === "NotAllowedError") {
+    if ((error as any).name === "NotAllowedError") {
       throw new Error("L'enregistrement de la passkey a été annulé.");
     }
     throw error;
@@ -78,7 +78,7 @@ export async function authenticateWithPasskey(
     });
     return response;
   } catch (error: unknown) {
-    if (error.name === "NotAllowedError") {
+    if ((error as any).name === "NotAllowedError") {
       throw new Error("L'authentification avec passkey a été annulée.");
     }
     throw error;

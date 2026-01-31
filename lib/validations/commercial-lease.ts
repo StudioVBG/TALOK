@@ -139,7 +139,7 @@ export const CommercialLeaseDetailsSchema = z.object({
     .max(500)
     .optional()
     .refine(
-      (val, ctx) => {
+      (val: any, ctx: any) => {
         // @ts-ignore
         if (ctx.parent?.renonciation_triennale && !val) {
           return false;

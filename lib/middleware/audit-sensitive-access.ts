@@ -122,7 +122,7 @@ export async function auditSensitiveAccess(
       },
       success: true, // Sera mis à jour en cas d'erreur
     });
-  } catch (error) {
+  } catch (error: unknown) {
     // Log silencieux pour ne pas bloquer la requête
     console.error("[Audit Middleware] Error:", error);
   }
@@ -153,7 +153,7 @@ export function withAudit<T>(
       return response;
     } catch (error: unknown) {
       success = false;
-      errorMessage = error.message;
+      errorMessage = (error as Error).message;
       throw error;
     } finally {
       // Log asynchrone après la réponse

@@ -229,7 +229,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       new_status: actionConfig.to,
       event_data: { action, ...validationResult.data },
       description: `Action "${action}" effectuée`,
-    }).catch(err => {
+    }).catch((err: any) => {
       console.error('Error adding timeline event:', err);
     });
 
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           title: notif.title,
           message: notif.message,
           data: { work_order_id: workOrderId, action },
-        }).catch(err => {
+        }).catch((err: any) => {
           console.error('Error creating notification:', err);
         });
       }

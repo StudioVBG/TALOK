@@ -1237,9 +1237,9 @@ export async function POST(request: Request) {
     });
 
   } catch (error: unknown) {
-    console.error("[Scrape] ❌ Erreur:", error.message);
+    console.error("[Scrape] ❌ Erreur:", (error as Error).message);
     return NextResponse.json(
-      { error: "Erreur lors de l'analyse de l'annonce", details: error.message },
+      { error: "Erreur lors de l'analyse de l'annonce", details: (error as Error).message },
       { status: 500 }
     );
   }
