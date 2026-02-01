@@ -10,7 +10,7 @@ import {
   Dog, Baby, Coffee, UtensilsCrossed,
   ShieldCheck, Dumbbell, Car,
   TreePine, Palmtree, Home, Snowflake,
-  WashingMachine, Microwave, IronIcon
+  WashingMachine, Microwave, Flame
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

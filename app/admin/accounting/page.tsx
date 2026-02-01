@@ -202,7 +202,7 @@ export default function AdminAccountingPage() {
         .limit(20);
 
       if (invoicesData) {
-        const invoices = invoicesData.map((inv: Record<string, unknown>) => {
+        const invoices = (invoicesData as any[]).map((inv: Record<string, unknown>) => {
           const dueDate = new Date(inv.due_date as string);
           const today = new Date();
           const daysLate = Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));

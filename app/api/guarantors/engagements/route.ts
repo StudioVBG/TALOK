@@ -54,11 +54,11 @@ export async function GET() {
       const { data: ownerLeases } = await supabase
         .from("leases")
         .select("id")
-        .in("property_id", 
+        .in("property_id",
           supabase
             .from("properties")
             .select("id")
-            .eq("owner_id", profile.id)
+            .eq("owner_id", profile.id) as any
         );
       
       if (ownerLeases && ownerLeases.length > 0) {

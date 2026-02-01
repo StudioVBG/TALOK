@@ -47,7 +47,7 @@ export function DetailsStepPro() {
     const numValue = value === "" ? null : parseFloat(value);
     if (numValue === null || !isNaN(numValue)) {
       if (field === "surface") {
-        updateFormData({ surface: numValue, local_surface_totale: numValue });
+        updateFormData({ surface: numValue ?? undefined, local_surface_totale: numValue ?? undefined } as any);
       } else {
         updateFormData({ [field]: numValue });
       }
@@ -90,7 +90,7 @@ export function DetailsStepPro() {
                     <button
                       key={type.value}
                       type="button"
-                      onClick={() => updateFormData({ local_type: type.value })}
+                      onClick={() => updateFormData({ local_type: type.value } as any)}
                       className={`p-3 rounded-xl border-2 text-left transition-all ${
                         (formData as any).local_type === type.value
                           ? "border-primary bg-primary/10 shadow-md"

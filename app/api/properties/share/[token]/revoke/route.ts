@@ -100,7 +100,7 @@ export async function POST(
   } catch (error: unknown) {
     console.error("POST /api/properties/share/[token]/revoke error", error);
     return NextResponse.json(
-      { error: error?.message ?? "Erreur serveur lors de la révocation." },
+      { error: (error as any)?.message ?? "Erreur serveur lors de la révocation." },
       { status: 500 }
     );
   }

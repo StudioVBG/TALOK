@@ -20,14 +20,14 @@ function getStripe(): Stripe {
     // Retourner un client "dummy" pour le build
     // En production, les appels échoueront avec une erreur claire
     _stripe = new Stripe("sk_test_placeholder", {
-      apiVersion: "2024-11-20.acacia",
+      apiVersion: "2024-11-20.acacia" as any,
       typescript: true,
     });
     return _stripe;
   }
 
   _stripe = new Stripe(secretKey, {
-    apiVersion: "2024-11-20.acacia",
+    apiVersion: "2024-11-20.acacia" as any,
     typescript: true,
   });
   

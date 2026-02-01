@@ -67,7 +67,7 @@ export function DocumentDownloadButton({
           html2canvas: { scale: 2, useCORS: true },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
           pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        };
+        } as any;
 
         const element = document.createElement("div");
         element.innerHTML = pdfHtml;
@@ -102,7 +102,7 @@ export function DocumentDownloadButton({
           html2canvas: { scale: 2, useCORS: true },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
           pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        };
+        } as any;
 
         const element = document.createElement("div");
         element.innerHTML = pdfHtml;

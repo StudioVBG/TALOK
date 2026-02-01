@@ -76,7 +76,7 @@ export async function getUserSubscription(userId: string): Promise<SubscriptionW
     ...data,
     plan_slug: data.plan?.slug || 'gratuit',
     user_id: userId,
-  } as SubscriptionWithPlan;
+  } as unknown as SubscriptionWithPlan;
 }
 
 /**
@@ -110,7 +110,7 @@ export async function getSubscriptionByProfileId(profileId: string): Promise<Sub
   return {
     ...data,
     plan_slug: data.plan?.slug || 'gratuit',
-  } as SubscriptionWithPlan;
+  } as unknown as SubscriptionWithPlan;
 }
 
 /**
@@ -433,30 +433,30 @@ export async function validatePromoCode(
 
   // Vérifications basiques
   const now = new Date();
-  if (promo.valid_until && new Date(promo.valid_until) < now) {
+  if (promo.valid_until && new Date(promo.valid_until as string) < now) {
     return { valid: false, code: null, error: 'Code promo expiré' };
   }
 
-  if (promo.max_uses && promo.uses_count >= promo.max_uses) {
+  if (promo.max_uses && (promo.uses_count as number) >= (promo.max_uses as number)) {
     return { valid: false, code: null, error: 'Code promo épuisé' };
   }
 
   // Calculer la réduction
   const plan = PLANS[planSlug];
-  const basePrice = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+  const basePrice = (billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly) ?? 0;
 
   let discountAmount = 0;
   if (promo.discount_type === 'percent') {
-    discountAmount = Math.round(basePrice * (promo.discount_value / 100));
+    discountAmount = Math.round(basePrice * ((promo.discount_value as number) / 100));
   } else {
-    discountAmount = promo.discount_value;
+    discountAmount = promo.discount_value as number;
   }
 
   const finalPrice = Math.max(0, basePrice - discountAmount);
 
   return {
     valid: true,
-    code: promo as PromoCode,
+    code: promo as unknown as PromoCode,
     discount_amount: discountAmount,
     final_price: finalPrice,
   };
@@ -507,7 +507,7 @@ export async function getSubscriptionEvents(
       .limit(limit);
 
     if (error) return [];
-    return data as SubscriptionEvent[];
+    return data as unknown as SubscriptionEvent[];
   } catch {
     return [];
   }
@@ -538,7 +538,7 @@ export async function getUserInvoices(
       .limit(limit);
 
     if (error) return [];
-    return data as SubscriptionInvoice[];
+    return data as unknown as SubscriptionInvoice[];
   } catch {
     return [];
   }

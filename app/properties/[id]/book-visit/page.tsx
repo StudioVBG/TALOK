@@ -173,7 +173,7 @@ export default function BookVisitPage() {
       {step === "confirm" && selectedSlot && (
         <BookingForm
           slot={selectedSlot}
-          property={property}
+          property={property as any}
           onSuccess={handleBookingSuccess}
           onCancel={handleBack}
         />

@@ -155,7 +155,7 @@ export async function fetchOwnerTenants(ownerId: string): Promise<OwnerTenant[]>
 
     for (const payment of leasePayments) {
       if (payment.statut === "succeeded") {
-        const paymentDate = new Date(payment.date_paiement);
+        const paymentDate = new Date(payment.date_paiement as string);
         const dueDate = new Date((payment as any).invoices?.date_echeance);
         if (paymentDate <= dueDate) {
           onTimeCount++;
@@ -170,7 +170,7 @@ export async function fetchOwnerTenants(ownerId: string): Promise<OwnerTenant[]>
     // Trouver le dernier paiement
     const lastPayment = leasePayments
       .filter((p) => p.statut === "succeeded")
-      .sort((a, b) => new Date(b.date_paiement).getTime() - new Date(a.date_paiement).getTime())[0];
+      .sort((a, b) => new Date(b.date_paiement as string).getTime() - new Date(a.date_paiement as string).getTime())[0];
 
     // Calculer la prochaine date de paiement
     const now = new Date();
@@ -202,7 +202,7 @@ export async function fetchOwnerTenants(ownerId: string): Promise<OwnerTenant[]>
       payments_on_time_percentage: onTimePercentage,
       balance_due: balanceDue,
       status,
-      last_payment_date: lastPayment?.date_paiement,
+      last_payment_date: lastPayment?.date_paiement ?? undefined,
       next_payment_date: nextMonth.toISOString(),
     });
   }

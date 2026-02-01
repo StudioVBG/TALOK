@@ -64,7 +64,7 @@ class WhisperService {
     let file: File;
 
     if (audioFile instanceof Buffer) {
-      file = new File([audioFile], "audio.webm", { type: "audio/webm" });
+      file = new File([audioFile as any], "audio.webm", { type: "audio/webm" });
     } else if (audioFile instanceof Blob && !(audioFile instanceof File)) {
       file = new File([audioFile], "audio.webm", { type: audioFile.type });
     } else {

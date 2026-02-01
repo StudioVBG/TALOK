@@ -30,7 +30,7 @@ export async function getChargeRules(siteId?: string): Promise<LocativeChargeRul
   
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []) as LocativeChargeRule[];
+  return (data || []) as unknown as LocativeChargeRule[];
 }
 
 export async function updateChargeRule(
@@ -47,7 +47,7 @@ export async function updateChargeRule(
     .single();
   
   if (error) throw error;
-  return rule as LocativeChargeRule;
+  return rule as unknown as LocativeChargeRule;
 }
 
 // =====================================================
@@ -75,7 +75,7 @@ export async function getTenantCharges(
   
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []) as TenantChargeBase[];
+  return (data || []) as unknown as TenantChargeBase[];
 }
 
 export async function getTenantChargesSummary(
@@ -90,7 +90,7 @@ export async function getTenantChargesSummary(
     .order('fiscal_year', { ascending: false });
   
   if (error) throw error;
-  return (data || []) as TenantChargesSummary[];
+  return (data || []) as unknown as TenantChargesSummary[];
 }
 
 // =====================================================
@@ -110,7 +110,7 @@ export async function transformCoproCharges(
     });
   
   if (error) throw error;
-  return data as number;
+  return data as unknown as number;
 }
 
 // =====================================================
@@ -138,7 +138,7 @@ export async function getRegularisations(
   
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []) as RegularisationDetailed[];
+  return (data || []) as unknown as RegularisationDetailed[];
 }
 
 export async function getRegularisationById(
@@ -157,7 +157,7 @@ export async function getRegularisationById(
     throw error;
   }
 
-  return data as RegularisationDetailed;
+  return data as unknown as RegularisationDetailed;
 }
 
 export async function calculateRegularisation(
@@ -173,7 +173,7 @@ export async function calculateRegularisation(
     });
   
   if (error) throw error;
-  return data as string;
+  return data as unknown as string;
 }
 
 export async function validateRegularisation(
@@ -197,7 +197,7 @@ export async function validateRegularisation(
     .single();
   
   if (error) throw error;
-  return data as TenantChargeRegularisation;
+  return data as unknown as TenantChargeRegularisation;
 }
 
 export async function sendRegularisation(
@@ -223,7 +223,7 @@ export async function sendRegularisation(
     // await sendRegularisationEmail(data);
   }
 
-  return data as TenantChargeRegularisation;
+  return data as unknown as TenantChargeRegularisation;
 }
 
 export async function markRegularisationPaid(
@@ -247,7 +247,7 @@ export async function markRegularisationPaid(
     .single();
   
   if (error) throw error;
-  return data as TenantChargeRegularisation;
+  return data as unknown as TenantChargeRegularisation;
 }
 
 export async function disputeRegularisation(
@@ -267,7 +267,7 @@ export async function disputeRegularisation(
     .single();
   
   if (error) throw error;
-  return data as TenantChargeRegularisation;
+  return data as unknown as TenantChargeRegularisation;
 }
 
 // =====================================================

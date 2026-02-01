@@ -170,7 +170,7 @@ export async function GET(
 
     // === ÉTAPE 5: Construire les données pour la quittance ===
     const receiptData: ReceiptData = {
-      ownerName: ownerDisplayName,
+      ownerName: ownerDisplayName || "",
       ownerAddress: ownerAddress,
       ownerSiret: ownerDetails?.siret || undefined,
       tenantName: tenantProfile 

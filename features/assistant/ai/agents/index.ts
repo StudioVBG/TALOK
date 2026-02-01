@@ -3,11 +3,20 @@
  * SOTA 2026 - Architecture Supervisor
  */
 
-export { createSupervisorAgent, routeToAgent } from "./supervisor.agent";
-export { createPropertyAgent } from "./property.agent";
-export { createFinanceAgent } from "./finance.agent";
-export { createTicketAgent } from "./ticket.agent";
-export { createLegalAgent } from "./legal.agent";
+import { createSupervisorAgent, routeToAgent } from "./supervisor.agent";
+import { createPropertyAgent } from "./property.agent";
+import { createFinanceAgent } from "./finance.agent";
+import { createTicketAgent } from "./ticket.agent";
+import { createLegalAgent } from "./legal.agent";
+
+export {
+  createSupervisorAgent,
+  routeToAgent,
+  createPropertyAgent,
+  createFinanceAgent,
+  createTicketAgent,
+  createLegalAgent,
+};
 
 // Export par défaut pour faciliter l'import
 export default {
@@ -18,4 +27,3 @@ export default {
   createTicketAgent,
   createLegalAgent,
 };
-

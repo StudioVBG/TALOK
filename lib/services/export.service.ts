@@ -128,7 +128,7 @@ export class ExportService {
           record_count: options.data.length,
           updated_at: new Date().toISOString()
         })
-        .eq("id", job.id);
+        .eq("id", job.id!);
 
       if (updateError) throw updateError;
 
@@ -145,7 +145,7 @@ export class ExportService {
         }
       });
 
-      return job.id;
+      return job.id!;
     } catch (error: unknown) {
       // En cas d'échec, on marque le job en erreur
       await supabase
@@ -155,8 +155,8 @@ export class ExportService {
           error_message: (error as Error).message,
           updated_at: new Date().toISOString()
         })
-        .eq("id", job.id);
-        
+        .eq("id", job.id!);
+
       throw error;
     }
   }
@@ -180,7 +180,7 @@ export class ExportService {
 
     const { data, error: urlError } = await supabase.storage
       .from("documents")
-      .createSignedUrl(job.storage_path, 900); // 15 minutes TTL
+      .createSignedUrl(job.storage_path as string, 900); // 15 minutes TTL
 
     if (urlError) throw urlError;
     return data.signedUrl;

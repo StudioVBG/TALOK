@@ -100,7 +100,7 @@ export async function createQuote(
 
     const { data, error } = await supabase
       .from("quotes")
-      .insert(quote)
+      .insert(quote as any)
       .select()
       .single();
 
@@ -135,7 +135,7 @@ export async function createQuote(
       },
     };
   } catch (error) {
-    logger.error("Quote creation failed", { error });
+    logger.error("Quote creation failed", { error: error as Error });
     return { success: false, error: "Une erreur est survenue" };
   }
 }
@@ -167,7 +167,7 @@ export async function sendQuote(
 
     return { success: true };
   } catch (error) {
-    logger.error("Failed to send quote", { error });
+    logger.error("Failed to send quote", { error: error as Error });
     return { success: false, error: "Une erreur est survenue" };
   }
 }
@@ -202,7 +202,7 @@ export async function respondToQuote(
 
     return { success: true };
   } catch (error) {
-    logger.error("Failed to respond to quote", { error });
+    logger.error("Failed to respond to quote", { error: error as Error });
     return { success: false, error: "Une erreur est survenue" };
   }
 }

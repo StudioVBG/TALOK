@@ -157,7 +157,7 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
   }
 
   // Construire les actions urgentes avec le nouveau format
-  const urgentActions: UrgentAction[] = [
+  const urgentActions = [
     // Impayés (critique)
     ...(dashboard.invoices?.late > 0 ? [{
       id: "invoices_late",
@@ -226,7 +226,7 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
         linkLabel: "Voir le bien",
         metadata: { type: "dpe" },
       })),
-  ];
+  ] as UrgentAction[];
 
   const transformedData = {
     zone1_tasks: urgentActions.map(action => ({
@@ -482,14 +482,14 @@ export function DashboardClient({ dashboardData, profileCompletion }: DashboardC
               
               <GlassCard hoverEffect={true} className={transformedData.zone3_portfolio.compliance.length > 0 ? "border-red-100 bg-red-50/30" : ""}>
                 <div className="p-0.5 xs:p-1">
-                  <OwnerRiskSection risks={transformedData.zone3_portfolio.compliance} />
+                  <OwnerRiskSection risks={transformedData.zone3_portfolio.compliance as any} />
                 </div>
               </GlassCard>
             </div>
           </div>
           
           <div className="md:col-span-2 lg:col-span-1">
-            <OwnerRecentActivity activities={dashboard.recentActivity || []} />
+            <OwnerRecentActivity activities={(dashboard.recentActivity || []) as any} />
           </div>
         </div>
 

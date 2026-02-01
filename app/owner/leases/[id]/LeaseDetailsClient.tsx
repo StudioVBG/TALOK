@@ -899,17 +899,17 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     </div>
                   </div>
                   {/* Afficher l'aperçu en attendant */}
-                  <LeasePreview 
-                    typeBail={lease.type_bail} 
-                    bailData={bailData} 
+                  <LeasePreview
+                    typeBail={lease.type_bail as any}
+                    bailData={bailData}
                     leaseId={leaseId}
                   />
                 </div>
               ) : (
                 // Bail non scellé : Aperçu dynamique modifiable
-                <LeasePreview 
-                  typeBail={lease.type_bail} 
-                  bailData={bailData} 
+                <LeasePreview
+                  typeBail={lease.type_bail as any}
+                  bailData={bailData}
                   leaseId={leaseId}
                 />
               )}

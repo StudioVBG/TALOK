@@ -101,7 +101,7 @@ export async function POST(
       documents: [],
     };
     
-    const bailData = mapLeaseToTemplate(leaseDetails, {
+    const bailData = mapLeaseToTemplate(leaseDetails as any, {
       id: ownerProfile?.profile_id || propertyOwnerId,
       prenom: (ownerProfile as any)?.profile?.prenom || "",
       nom: (ownerProfile as any)?.profile?.nom || "",

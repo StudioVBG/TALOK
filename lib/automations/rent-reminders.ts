@@ -11,8 +11,8 @@
  * - J+30: Pré-contentieux
  */
 
-import { createServiceRoleClient } from "@/lib/server/service-role-client";
-import { emailService } from "@/lib/services/email-service";
+import { getServiceRoleClient } from "@/lib/server/service-role-client";
+import emailService from "@/lib/services/email-service";
 
 export interface ReminderConfig {
   // Délais en jours après l'échéance
@@ -73,7 +73,7 @@ export async function processRentReminders(
   };
   errors: string[];
 }> {
-  const supabase = createServiceRoleClient();
+  const { client: supabase } = getServiceRoleClient();
   const errors: string[] = [];
   const reminders = {
     friendly: 0,
@@ -240,7 +240,7 @@ async function sendReminder(
 
   // Envoyer l'email
   if (config.enableEmail && invoice.tenant.email) {
-    await emailService.sendRentReminder({
+    await (emailService as any).sendRentReminder({
       to: invoice.tenant.email,
       tenantName: `${invoice.tenant.prenom} ${invoice.tenant.nom}`,
       ownerName: `${invoice.owner.prenom} ${invoice.owner.nom}`,

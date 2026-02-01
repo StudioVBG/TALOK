@@ -62,7 +62,7 @@ describe("ChatService", () => {
       ];
 
       mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } });
-      mockSupabase.from.mockImplementation((table: string) => {
+      mockSupabase.from.mockImplementation(((table: string) => {
         if (table === "profiles") {
           return {
             select: vi.fn().mockReturnThis(),
@@ -78,8 +78,8 @@ describe("ChatService", () => {
             order: vi.fn().mockResolvedValue({ data: mockConversations }),
           };
         }
-        return mockSupabase.from(table);
-      });
+        return (mockSupabase.from as any)(table);
+      }) as any);
 
       const { chatService } = await import("@/lib/services/chat.service");
       const conversations = await chatService.getConversations();
@@ -123,7 +123,7 @@ describe("ChatService", () => {
       mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } });
       
       let insertedData: any = null;
-      mockSupabase.from.mockImplementation((table: string) => {
+      mockSupabase.from.mockImplementation(((table: string) => {
         if (table === "profiles") {
           return {
             select: vi.fn().mockReturnThis(),
@@ -149,8 +149,8 @@ describe("ChatService", () => {
             }),
           };
         }
-        return mockSupabase.from(table);
-      });
+        return (mockSupabase.from as any)(table);
+      }) as any);
 
       const { chatService } = await import("@/lib/services/chat.service");
       const message = await chatService.sendMessage({
@@ -169,7 +169,7 @@ describe("ChatService", () => {
       const mockProfile = { id: "profile-123" };
 
       mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } });
-      mockSupabase.from.mockImplementation((table: string) => {
+      mockSupabase.from.mockImplementation(((table: string) => {
         if (table === "profiles") {
           return {
             select: vi.fn().mockReturnThis(),
@@ -177,8 +177,8 @@ describe("ChatService", () => {
             single: vi.fn().mockResolvedValue({ data: mockProfile }),
           };
         }
-        return mockSupabase.from(table);
-      });
+        return (mockSupabase.from as any)(table);
+      }) as any);
       mockSupabase.rpc.mockResolvedValue({ data: null, error: null });
 
       const { chatService } = await import("@/lib/services/chat.service");

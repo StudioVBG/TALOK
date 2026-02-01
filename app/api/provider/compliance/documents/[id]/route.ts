@@ -60,7 +60,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (document.storage_path) {
       const { data: urlData } = await supabase.storage
         .from('documents')
-        .createSignedUrl(document.storage_path, 3600); // 1 heure
+        .createSignedUrl(document.storage_path as string, 3600); // 1 heure
 
       signedUrl = urlData?.signedUrl;
     }
@@ -124,7 +124,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Supprimer le fichier du storage
     if (document.storage_path) {
-      await supabase.storage.from('documents').remove([document.storage_path]);
+      await supabase.storage.from('documents').remove([document.storage_path as string]);
     }
 
     // Supprimer le document de la base

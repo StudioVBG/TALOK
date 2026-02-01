@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
           last_used_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq("id", existing.id);
+        .eq("id", existing.id as string);
 
       return NextResponse.json({ success: true, updated: true });
     }

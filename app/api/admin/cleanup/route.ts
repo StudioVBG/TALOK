@@ -57,7 +57,7 @@ export async function GET() {
     const { data: orphanDocs } = await serviceClient.rpc("count_orphan_documents_lease");
     report.push({
       type: "documents_lease_orphan",
-      count: orphanDocs || 0,
+      count: (orphanDocs as number) || 0,
       description: "Documents avec lease_id vers un bail supprimé",
       canAutoClean: true,
     });
@@ -66,7 +66,7 @@ export async function GET() {
     const { data: orphanDocsProperty } = await serviceClient.rpc("count_orphan_documents_property");
     report.push({
       type: "documents_property_orphan",
-      count: orphanDocsProperty || 0,
+      count: (orphanDocsProperty as number) || 0,
       description: "Documents avec property_id vers une propriété supprimée",
       canAutoClean: true,
     });
@@ -75,7 +75,7 @@ export async function GET() {
     const { data: orphanInvoices } = await serviceClient.rpc("count_orphan_invoices");
     report.push({
       type: "invoices_orphan",
-      count: orphanInvoices || 0,
+      count: (orphanInvoices as number) || 0,
       description: "Factures avec bail supprimé",
       canAutoClean: true,
     });
@@ -84,7 +84,7 @@ export async function GET() {
     const { data: orphanSigners } = await serviceClient.rpc("count_orphan_signers");
     report.push({
       type: "signers_orphan",
-      count: orphanSigners || 0,
+      count: (orphanSigners as number) || 0,
       description: "Signataires avec bail supprimé",
       canAutoClean: true,
     });
@@ -120,7 +120,7 @@ export async function GET() {
     const { data: leasesWithoutSigners } = await serviceClient.rpc("count_leases_without_signers");
     report.push({
       type: "leases_no_signers",
-      count: leasesWithoutSigners || 0,
+      count: (leasesWithoutSigners as number) || 0,
       description: "Baux actifs sans aucun signataire",
       canAutoClean: false, // Nécessite révision manuelle
     });
@@ -129,7 +129,7 @@ export async function GET() {
     const { data: inconsistentDeposits } = await serviceClient.rpc("count_inconsistent_deposits");
     report.push({
       type: "deposits_inconsistent",
-      count: inconsistentDeposits || 0,
+      count: (inconsistentDeposits as number) || 0,
       description: "Baux avec dépôt supérieur au maximum légal",
       canAutoClean: true,
     });
@@ -200,11 +200,11 @@ export async function POST(request: Request) {
         .select("id");
       
       const validLeaseIds = new Set((validLeases || []).map(l => l.id));
-      const docsToDelete = (orphanDocs || []).filter(d => !validLeaseIds.has(d.lease_id));
+      const docsToDelete = (orphanDocs || []).filter(d => d.lease_id && !validLeaseIds.has(d.lease_id));
 
       if (docsToDelete.length > 0) {
         // Supprimer les fichiers du storage
-        const storagePaths = docsToDelete.map(d => d.storage_path).filter(Boolean);
+        const storagePaths = docsToDelete.map(d => d.storage_path).filter((p): p is string => Boolean(p));
         if (storagePaths.length > 0) {
           await serviceClient.storage.from("documents").remove(storagePaths);
         }
@@ -255,14 +255,14 @@ export async function POST(request: Request) {
       // Baux nus
       const { data: fixed1 } = await serviceClient
         .from("leases")
-        .update({ depot_de_garantie: serviceClient.rpc("", {}) })
+        .update({ depot_de_garantie: serviceClient.rpc("", {}) as any })
         .eq("type_bail", "nu")
-        .gt("depot_de_garantie", serviceClient.rpc("", {}))
+        .gt("depot_de_garantie", serviceClient.rpc("", {}) as any)
         .select("id");
 
       // Utiliser la fonction SQL directement
       const { data: fixedDeposits } = await serviceClient.rpc("fix_inconsistent_deposits");
-      results.push({ type: "deposits_fixed", deleted: fixedDeposits || 0 });
+      results.push({ type: "deposits_fixed", deleted: (fixedDeposits as number) || 0 });
     }
 
     // Calculer le total

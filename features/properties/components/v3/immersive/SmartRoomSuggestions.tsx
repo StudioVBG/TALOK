@@ -160,7 +160,7 @@ export function SmartRoomSuggestions({ onApply }: SmartRoomSuggestionsProps) {
     
     suggestions.forEach((suggestion) => {
       addRoom({
-        type_piece: suggestion.type_piece,
+        type_piece: suggestion.type_piece as any,
         label_affiche: suggestion.label,
       });
     });
@@ -170,7 +170,7 @@ export function SmartRoomSuggestions({ onApply }: SmartRoomSuggestionsProps) {
 
   if (!shouldShow) return null;
 
-  const typeLabel = {
+  const typeLabel = ({
     appartement: "appartement",
     studio: "studio",
     maison: "maison",
@@ -178,7 +178,7 @@ export function SmartRoomSuggestions({ onApply }: SmartRoomSuggestionsProps) {
     saisonnier: "location saisonnière",
     local_commercial: "local commercial",
     bureaux: "bureaux",
-  }[propertyType || ""] || "ce type de bien";
+  } as Record<string, string>)[propertyType || ""] || "ce type de bien";
 
   return (
     <motion.div

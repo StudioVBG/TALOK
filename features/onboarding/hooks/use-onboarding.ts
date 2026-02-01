@@ -38,7 +38,7 @@ export interface OnboardingActions {
 }
 
 // Configuration des étapes par rôle
-const STEPS_CONFIG: Record<UserRole, { id: string; label: string }[]> = {
+const STEPS_CONFIG: Record<string, { id: string; label: string }[]> = {
   owner: [
     { id: "owner_profile", label: "Profil" },
     { id: "owner_finance", label: "Finances" },

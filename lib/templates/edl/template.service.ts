@@ -57,7 +57,8 @@ function generateRoomHTML(
   }>,
   roomPhotos?: string[]
 ): string {
-  const conditionCounts = {
+  const conditionCounts: Record<ItemCondition, number> = {
+    neuf: 0,
     bon: 0,
     moyen: 0,
     mauvais: 0,

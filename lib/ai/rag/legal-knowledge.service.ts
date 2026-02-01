@@ -51,7 +51,7 @@ export class LegalKnowledgeService {
       return [];
     }
 
-    return (data || []).map((doc: any) => ({
+    return ((data as any[]) || []).map((doc: any) => ({
       id: doc.id,
       content: doc.content,
       metadata: doc.metadata || {},
@@ -92,7 +92,7 @@ export class LegalKnowledgeService {
       return this.searchLegalDocs(query, options);
     }
 
-    return (data || []).map((doc: any) => ({
+    return ((data as any[]) || []).map((doc: any) => ({
       id: doc.id,
       content: doc.content,
       metadata: {},
@@ -130,7 +130,7 @@ export class LegalKnowledgeService {
       return [];
     }
 
-    return (data || []).map((doc: any) => ({
+    return ((data as any[]) || []).map((doc: any) => ({
       id: doc.id,
       title: doc.title,
       content: doc.content,
@@ -159,7 +159,7 @@ export class LegalKnowledgeService {
         article_reference: input.articleReference,
         metadata: input.metadata || {},
         embedding: embedding,
-      })
+      } as any)
       .select("id")
       .single();
 
@@ -168,7 +168,7 @@ export class LegalKnowledgeService {
       return null;
     }
 
-    return data?.id;
+    return (data as any)?.id ?? null;
   }
 
   /**
@@ -228,7 +228,7 @@ export class LegalKnowledgeService {
         priority: input.priority || 0,
         metadata: input.metadata || {},
         embedding: embedding,
-      })
+      } as any)
       .select("id")
       .single();
 
@@ -237,7 +237,7 @@ export class LegalKnowledgeService {
       return null;
     }
 
-    return data?.id;
+    return (data as any)?.id ?? null;
   }
 
   /**

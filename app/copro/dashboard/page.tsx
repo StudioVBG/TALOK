@@ -120,7 +120,7 @@ export default function CoproDashboardPage() {
         >
           <div>
             <h1 className="text-2xl font-bold text-white">
-              Bonjour {profile?.first_name || 'Copropriétaire'} 👋
+              Bonjour {(profile as any)?.first_name || 'Copropriétaire'} 👋
             </h1>
             <p className="text-slate-400">
               Bienvenue sur votre espace copropriétaire

@@ -79,22 +79,22 @@ export async function checkVigilanceCompliance(
     
     // Vérifier l'expiration
     if (doc.expiration_date) {
-      const expDate = new Date(doc.expiration_date);
+      const expDate = new Date(doc.expiration_date as string);
       if (expDate < now) {
         expiredDocuments.push({
           type: docType,
-          expiredAt: doc.expiration_date,
+          expiredAt: doc.expiration_date as string,
         });
         continue;
       }
       validDocuments.push({
         type: docType,
-        validUntil: doc.expiration_date,
+        validUntil: doc.expiration_date as string,
       });
     } else {
       // Calculer l'expiration basée sur la date d'émission
       if (doc.issue_date && docType in VIGILANCE_DOCUMENT_MAX_AGE) {
-        const issueDate = new Date(doc.issue_date);
+        const issueDate = new Date(doc.issue_date as string);
         const maxAge = VIGILANCE_DOCUMENT_MAX_AGE[docType as keyof typeof VIGILANCE_DOCUMENT_MAX_AGE];
         const calculatedExpiry = new Date(issueDate);
         calculatedExpiry.setMonth(calculatedExpiry.getMonth() + maxAge);
@@ -291,11 +291,11 @@ export async function checkVigilanceServer(
     }
     
     if (doc.expiration_date) {
-      const expDate = new Date(doc.expiration_date);
+      const expDate = new Date(doc.expiration_date as string);
       if (expDate < now) {
-        expiredDocuments.push({ type: docType, expiredAt: doc.expiration_date });
+        expiredDocuments.push({ type: docType, expiredAt: doc.expiration_date as string });
       } else {
-        validDocuments.push({ type: docType, validUntil: doc.expiration_date });
+        validDocuments.push({ type: docType, validUntil: doc.expiration_date as string });
       }
     } else {
       validDocuments.push({ type: docType, validUntil: 'N/A' });

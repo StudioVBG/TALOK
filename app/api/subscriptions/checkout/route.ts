@@ -161,7 +161,7 @@ export async function POST(request: Request) {
       allow_promotion_codes: true,
       billing_address_collection: "auto",
       locale: "fr",
-    });
+    } as any);
 
     // Mettre à jour le customer_id si nouveau
     if (!existingSub?.stripe_customer_id) {

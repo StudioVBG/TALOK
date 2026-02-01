@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
           .rpc('allocate_expense', { p_expense_id: expense.id });
         
         if (!error && data) {
-          totalAllocated += data;
+          totalAllocated += Number(data);
         }
       }
       

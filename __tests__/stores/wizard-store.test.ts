@@ -215,7 +215,7 @@ describe("Wizard Store - SOTA 2026", () => {
           type_piece: "chambre",
           surface_m2: 15,
           label: "Chambre 1",
-        });
+        } as any);
       });
 
       expect(result.current.rooms).toHaveLength(1);

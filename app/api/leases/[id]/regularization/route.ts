@@ -128,7 +128,7 @@ export async function POST(
         return NextResponse.json({ error: calcError.message }, { status: 500 });
       }
 
-      calculationData = calcResult;
+      calculationData = calcResult as any;
     }
 
     // Créer la régularisation

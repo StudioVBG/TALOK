@@ -111,7 +111,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         profile_id: invoice.owner.id,
         type: 'invoice_received',
         title: 'Nouvelle facture reçue',
-        message: `Vous avez reçu une facture de ${invoice.total_amount}€ pour "${invoice.title}"`,
+        message: `Vous avez reçu une facture de ${invoice.total_amount}€ pour "${(invoice as any).title}"`,
         data: {
           invoice_id: invoiceId,
           invoice_number: invoice.invoice_number,

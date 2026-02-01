@@ -174,9 +174,9 @@ export function DashboardClient() {
 
   // ✅ SOTA 2026: Vérifier si la propriété a été supprimée (soft-delete)
   const isPropertyDeleted = useMemo(() => {
-    return currentLease?.property_deleted || 
-           currentProperty?.etat === "deleted" || 
-           currentProperty?.deleted_at != null;
+    return (currentLease as any)?.property_deleted ||
+           (currentProperty as any)?.etat === "deleted" ||
+           (currentProperty as any)?.deleted_at != null;
   }, [currentLease, currentProperty]);
 
   // 1. Logique de tri du flux d'activité unifié (inclut les événements temps réel)
@@ -198,7 +198,7 @@ export function DashboardClient() {
       // Factures
       ...(dashboard.invoices || []).map(inv => ({
         id: `inv-${inv.id}`,
-        date: new Date(inv.created_at || new Date()),
+        date: new Date((inv as any).created_at || new Date()),
         type: 'invoice',
         title: `Loyer ${inv.periode}`,
         amount: inv.montant_total,
@@ -229,10 +229,10 @@ export function DashboardClient() {
 
   // ✅ FIX: Vérifier si le locataire a déjà signé ce bail
   const hasSignedLease = useMemo(() => {
-    if (!dashboard?.lease?.signers) return false;
-    
+    if (!(dashboard?.lease as any)?.signers) return false;
+
     // Chercher le signataire locataire
-    const tenantSigner = dashboard.lease.signers.find((s: any) => 
+    const tenantSigner = ((dashboard!.lease as any).signers as any[]).find((s: any) =>
       s.role === 'locataire_principal' || s.role === 'tenant' || s.role === 'locataire'
     );
     

@@ -199,10 +199,10 @@ export async function calculateQuorum(assemblyId: string): Promise<QuorumResult>
   
   if (error) throw error;
   
-  if (data && data.length > 0) {
-    return data[0] as QuorumResult;
+  if (data && (data as any[]).length > 0) {
+    return (data as any[])[0] as QuorumResult;
   }
-  
+
   throw new Error('Impossible de calculer le quorum');
 }
 
@@ -312,10 +312,10 @@ export async function endVoting(motionId: string): Promise<MotionResult> {
   
   if (error) throw error;
   
-  if (data && data.length > 0) {
-    return data[0] as MotionResult;
+  if (data && (data as any[]).length > 0) {
+    return (data as any[])[0] as MotionResult;
   }
-  
+
   throw new Error('Impossible de calculer le résultat');
 }
 
@@ -454,10 +454,10 @@ export async function createProxy(input: CreateProxyInput): Promise<Proxy> {
   
   const { data, error } = await supabase
     .from('proxies')
-    .insert(input)
+    .insert(input as any)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data as unknown as Proxy;
 }
@@ -606,7 +606,7 @@ export async function deleteDocument(id: string): Promise<void> {
     .single();
   
   if (doc?.file_path) {
-    await supabase.storage.from('assembly-documents').remove([doc.file_path]);
+    await supabase.storage.from('assembly-documents').remove([doc.file_path as string]);
   }
   
   const { error } = await supabase

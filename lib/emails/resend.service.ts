@@ -134,7 +134,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
         subject: options.subject,
         html: options.html,
         text: options.text,
-        reply_to: options.replyTo || REPLY_TO,
+        replyTo: options.replyTo || REPLY_TO,
         cc: options.cc,
         bcc: options.bcc,
         attachments: options.attachments,

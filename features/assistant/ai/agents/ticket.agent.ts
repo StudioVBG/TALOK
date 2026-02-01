@@ -68,10 +68,10 @@ export function createTicketAgent(role: UserRole = "owner") {
   ];
   
   const agent = createReactAgent({
-    model,
+    llm: model,
     systemMessage: TICKET_AGENT_PROMPT,
     tools: ticketTools,
-  });
+  } as any);
   
   return agent;
 }

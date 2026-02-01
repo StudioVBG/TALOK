@@ -65,7 +65,9 @@ const METER_ICONS: Record<string, any> = {
 };
 
 export default function TenantLeasePage() {
-  const { dashboard, refetch } = useTenantData();
+  const tenantData = useTenantData();
+  const { dashboard } = tenantData;
+  const refetch = (tenantData as any).refetch;
   const [activeTab, setActiveTab] = useState("contract");
   const [docs, setDocs] = useState<{
     diagnostics: any[];
@@ -635,9 +637,9 @@ function CheckItem({ label, status }: { label: string, status: 'success' | 'pend
         </span>
       </div>
       {status === 'success' ? (
-        <Badge variant="ghost" className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0">Conforme</Badge>
+        <Badge variant={"ghost" as any} className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0">Conforme</Badge>
       ) : (
-        <Badge variant="ghost" className="text-[10px] font-black uppercase text-slate-400 bg-slate-50 px-2 py-0">En attente</Badge>
+        <Badge variant={"ghost" as any} className="text-[10px] font-black uppercase text-slate-400 bg-slate-50 px-2 py-0">En attente</Badge>
       )}
     </div>
   );

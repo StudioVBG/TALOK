@@ -12,7 +12,7 @@
  * Nouveau loyer = Loyer actuel × (Nouvel IRL / Ancien IRL)
  */
 
-import { createServiceRoleClient } from "@/lib/server/service-role-client";
+import { getServiceRoleClient } from "@/lib/server/service-role-client";
 
 // Valeurs IRL historiques (Source: INSEE)
 // Format: { "YYYY-QX": valeur }
@@ -123,7 +123,7 @@ export function calculateNewRent(
  * Traiter toutes les indexations IRL dues
  */
 export async function processIRLIndexations(): Promise<IRLProcessResult> {
-  const supabase = createServiceRoleClient();
+  const { client: supabase } = getServiceRoleClient();
   const errors: string[] = [];
   const calculations: IRLCalculation[] = [];
   let updated = 0;
@@ -295,7 +295,7 @@ export async function processIRLIndexations(): Promise<IRLProcessResult> {
 export async function applyIRLIndexation(
   indexationId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = createServiceRoleClient();
+  const { client: supabase } = getServiceRoleClient();
 
   try {
     // Récupérer l'indexation

@@ -9,11 +9,13 @@ import {
   browserSupportsWebAuthn,
   browserSupportsWebAuthnAutofill,
 } from "@simplewebauthn/browser";
+// @ts-ignore
 import type {
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
   AuthenticationResponseJSON,
+  // @ts-ignore -- optional peer dependency
 } from "@simplewebauthn/types";
 
 export interface PasskeyCredential {

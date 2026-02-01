@@ -237,7 +237,7 @@ export async function getActivities(
       return { activities: [], total: 0 };
     }
 
-    const activities: ActivityLog[] = (data || []).map((row) => ({
+    const activities: ActivityLog[] = (data || []).map((row: any) => ({
       id: row.id,
       type: row.type,
       category: row.category,

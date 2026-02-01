@@ -37,7 +37,7 @@ export async function getServicesBySite(siteId: string): Promise<CoproService[]>
     .order('display_order');
   
   if (error) throw error;
-  return (data as CoproService[]) || [];
+  return (data as unknown as CoproService[]) || [];
 }
 
 export async function createService(input: CreateServiceInput): Promise<CoproService> {
@@ -45,12 +45,12 @@ export async function createService(input: CreateServiceInput): Promise<CoproSer
   
   const { data, error } = await supabase
     .from('copro_services')
-    .insert(input)
+    .insert(input as any)
     .select()
     .single();
   
   if (error) throw error;
-  return data as CoproService;
+  return data as unknown as CoproService;
 }
 
 export async function updateService(
@@ -67,7 +67,7 @@ export async function updateService(
     .single();
   
   if (error) throw error;
-  return service as CoproService;
+  return service as unknown as CoproService;
 }
 
 export async function deleteService(id: string): Promise<void> {
@@ -96,7 +96,7 @@ export async function getContractsBySite(siteId: string): Promise<ServiceContrac
     .order('start_date', { ascending: false });
   
   if (error) throw error;
-  return (data as ServiceContract[]) || [];
+  return (data as unknown as ServiceContract[]) || [];
 }
 
 export async function createContract(input: CreateContractInput): Promise<ServiceContract> {
@@ -104,12 +104,12 @@ export async function createContract(input: CreateContractInput): Promise<Servic
   
   const { data, error } = await supabase
     .from('service_contracts')
-    .insert(input)
+    .insert(input as any)
     .select()
     .single();
   
   if (error) throw error;
-  return data as ServiceContract;
+  return data as unknown as ServiceContract;
 }
 
 export async function updateContract(
@@ -126,7 +126,7 @@ export async function updateContract(
     .single();
   
   if (error) throw error;
-  return contract as ServiceContract;
+  return contract as unknown as ServiceContract;
 }
 
 export async function terminateContract(id: string): Promise<void> {
@@ -163,7 +163,7 @@ export async function getExpensesBySite(
   const { data, error } = await query;
   
   if (error) throw error;
-  return (data as ServiceExpense[]) || [];
+  return (data as unknown as ServiceExpense[]) || [];
 }
 
 export async function createExpense(input: CreateExpenseInput): Promise<ServiceExpense> {
@@ -183,7 +183,7 @@ export async function createExpense(input: CreateExpenseInput): Promise<ServiceE
     .single();
   
   if (error) throw error;
-  return data as ServiceExpense;
+  return data as unknown as ServiceExpense;
 }
 
 export async function updateExpense(
@@ -200,7 +200,7 @@ export async function updateExpense(
     .single();
   
   if (error) throw error;
-  return expense as ServiceExpense;
+  return expense as unknown as ServiceExpense;
 }
 
 export async function validateExpense(id: string): Promise<ServiceExpense> {
@@ -220,7 +220,7 @@ export async function validateExpense(id: string): Promise<ServiceExpense> {
     .single();
   
   if (error) throw error;
-  return data as ServiceExpense;
+  return data as unknown as ServiceExpense;
 }
 
 export async function cancelExpense(id: string): Promise<void> {
@@ -251,7 +251,7 @@ export async function previewAllocation(
     .single();
   
   if (expenseError) throw expenseError;
-  const typedExpense = expense as ServiceExpense;
+  const typedExpense = expense as unknown as ServiceExpense;
 
   // Calculer la répartition
   const { data, error } = await supabase
@@ -259,7 +259,7 @@ export async function previewAllocation(
   
   if (error) throw error;
   
-  const items: AllocationPreviewItem[] = (data as AllocationPreviewItem[]) || [];
+  const items: AllocationPreviewItem[] = (data as unknown as AllocationPreviewItem[]) || [];
   const totalAllocated = items.reduce((sum, item) => sum + item.amount, 0);
 
   return {
@@ -279,7 +279,7 @@ export async function allocateExpense(expenseId: string): Promise<number> {
     .rpc('allocate_expense', { p_expense_id: expenseId });
   
   if (error) throw error;
-  return data as number;
+  return data as unknown as number;
 }
 
 export async function allocatePeriod(
@@ -300,7 +300,7 @@ export async function allocatePeriod(
     .lte('period_end', periodEnd);
   
   if (fetchError) throw fetchError;
-  const typedExpenses = (expenses as Array<{ id: string }>) || [];
+  const typedExpenses = (expenses as unknown as Array<{ id: string }>) || [];
 
   let totalAllocated = 0;
 
@@ -335,7 +335,7 @@ export async function getChargesByUnit(
   const { data, error } = await query;
   
   if (error) throw error;
-  return (data as ChargeCopro[]) || [];
+  return (data as unknown as ChargeCopro[]) || [];
 }
 
 export async function getUnitBalances(siteId: string): Promise<UnitBalance[]> {
@@ -348,7 +348,7 @@ export async function getUnitBalances(siteId: string): Promise<UnitBalance[]> {
     .order('lot_number');
   
   if (error) throw error;
-  return (data as UnitBalance[]) || [];
+  return (data as unknown as UnitBalance[]) || [];
 }
 
 export async function getChargesSummary(
@@ -369,7 +369,7 @@ export async function getChargesSummary(
   const { data, error } = await query;
   
   if (error) throw error;
-  return (data as ChargesSummary[]) || [];
+  return (data as unknown as ChargesSummary[]) || [];
 }
 
 // =====================================================
@@ -395,7 +395,7 @@ export async function getCallsBySite(
   const { data, error } = await query;
   
   if (error) throw error;
-  return (data as CallForFunds[]) || [];
+  return (data as unknown as CallForFunds[]) || [];
 }
 
 export async function getCallById(id: string): Promise<CallForFunds | null> {
@@ -412,7 +412,7 @@ export async function getCallById(id: string): Promise<CallForFunds | null> {
     throw error;
   }
   
-  return data as CallForFunds;
+  return data as unknown as CallForFunds;
 }
 
 export async function getCallItems(callId: string): Promise<CallForFundsItem[]> {
@@ -425,7 +425,7 @@ export async function getCallItems(callId: string): Promise<CallForFundsItem[]> 
     .order('lot_number');
   
   if (error) throw error;
-  return (data as CallForFundsItem[]) || [];
+  return (data as unknown as CallForFundsItem[]) || [];
 }
 
 export async function generateCallForFunds(
@@ -444,7 +444,7 @@ export async function generateCallForFunds(
     });
   
   if (error) throw error;
-  return data as string;
+  return data as unknown as string;
 }
 
 export async function validateCall(id: string): Promise<CallForFunds> {
@@ -458,7 +458,7 @@ export async function validateCall(id: string): Promise<CallForFunds> {
     .single();
   
   if (error) throw error;
-  return data as CallForFunds;
+  return data as unknown as CallForFunds;
 }
 
 export async function sendCall(id: string): Promise<CallForFunds> {
@@ -490,7 +490,7 @@ export async function sendCall(id: string): Promise<CallForFunds> {
   
   // TODO: Envoyer les emails
 
-  return data as CallForFunds;
+  return data as unknown as CallForFunds;
 }
 
 export async function cancelCall(id: string): Promise<void> {
@@ -532,7 +532,7 @@ export async function getPaymentsByUnit(
   const { data, error } = await query;
   
   if (error) throw error;
-  return (data as CoproPayment[]) || [];
+  return (data as unknown as CoproPayment[]) || [];
 }
 
 export async function createPayment(input: CreatePaymentInput): Promise<CoproPayment> {
@@ -540,7 +540,7 @@ export async function createPayment(input: CreatePaymentInput): Promise<CoproPay
   
   const { data, error } = await supabase
     .from('copro_payments')
-    .insert(input)
+    .insert(input as any)
     .select()
     .single();
   
@@ -553,7 +553,7 @@ export async function createPayment(input: CreatePaymentInput): Promise<CoproPay
     });
   }
   
-  return data as CoproPayment;
+  return data as unknown as CoproPayment;
 }
 
 export async function validatePayment(id: string): Promise<CoproPayment> {
@@ -573,7 +573,7 @@ export async function validatePayment(id: string): Promise<CoproPayment> {
     .single();
   
   if (error) throw error;
-  return data as CoproPayment;
+  return data as unknown as CoproPayment;
 }
 
 export async function rejectPayment(id: string): Promise<void> {

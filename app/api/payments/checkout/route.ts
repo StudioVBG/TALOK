@@ -21,7 +21,7 @@ const checkoutSchema = z.object({
 export async function POST(request: Request) {
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: "2024-10-28.acacia",
+      apiVersion: "2024-10-28.acacia" as any,
     });
 
     const supabase = await createClient();
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         )
       `)
       .eq("id", invoiceId)
-      .eq("tenant_id", (await supabase.from("profiles").select("id").eq("user_id", user.id).single()).data?.id)
+      .eq("tenant_id", (await supabase.from("profiles").select("id").eq("user_id", user.id).single()).data?.id as string)
       .single();
 
     if (invoiceError || !invoice) {
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
             currency: "eur",
             product_data: {
               name: `Loyer ${invoice.periode}`,
-              description: `Paiement pour le bien situé au ${invoice.lease.property.adresse_complete}, ${invoice.lease.property.ville}`,
+              description: `Paiement pour le bien situé au ${invoice.lease.property?.adresse_complete}, ${invoice.lease.property?.ville}`,
             },
             unit_amount: Math.round(invoice.montant_total * 100), // Stripe utilise les centimes
           },

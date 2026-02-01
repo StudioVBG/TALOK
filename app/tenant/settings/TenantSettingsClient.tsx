@@ -273,7 +273,7 @@ export function TenantSettingsClient({
                     disabled
                     className="bg-slate-100 dark:bg-slate-800"
                   />
-                  <Shield className="h-5 w-5 text-green-600" title="Email vérifié" />
+                  <Shield {...{className: "h-5 w-5 text-green-600", title: "Email vérifié"} as any} />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   L'email est lié à votre compte et ne peut pas être modifié ici

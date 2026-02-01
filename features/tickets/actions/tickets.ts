@@ -55,7 +55,7 @@ export async function createTicketAction(formData: z.infer<typeof createTicketSc
       .select("property_id")
       .eq("id", lease_id)
       .single();
-    if (lease) finalPropertyId = lease.property_id;
+    if (lease) finalPropertyId = lease.property_id ?? undefined;
   }
 
   const { data: ticket, error } = await supabase
@@ -109,6 +109,8 @@ export async function sendMessageAction(ticketId: string, content: string) {
     .select("id")
     .eq("user_id", user.id)
     .single();
+
+  if (!profile) return { error: "Profil introuvable" };
 
   const { error } = await supabase
     .from("ticket_messages")

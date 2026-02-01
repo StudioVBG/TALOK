@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     // Récupérer les exigences KYC selon le type de prestataire
-    const providerType = providerProfile?.provider_type || 'independant';
+    const providerType = (providerProfile as any)?.provider_type || 'independant';
     const { data: requirements } = await supabase
       .from('provider_kyc_requirements')
       .select('*')

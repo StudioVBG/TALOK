@@ -277,7 +277,7 @@ export function InspectionDetailClient({ data }: Props) {
     adaptedMedia,
     adaptedMeterReadings,
     adaptedSignatures,
-    edl.keys || []
+    (edl as any).keys || []
   );
 
   // Handlers
@@ -312,7 +312,7 @@ export function InspectionDetailClient({ data }: Props) {
       element.innerHTML = pdfHtml;
       document.body.appendChild(element);
 
-      await html2pdf().set(opt).from(element).save();
+      await html2pdf().set(opt as any).from(element).save();
       document.body.removeChild(element);
       
       toast({

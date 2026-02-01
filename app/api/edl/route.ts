@@ -96,7 +96,7 @@ export async function GET(request: Request) {
         "closed",
       ].includes(status)
     ) {
-      query = query.eq("status", status);
+      query = query.eq("status", status as any);
     }
     if (leaseId) {
       query = query.eq("lease_id", leaseId);
@@ -242,7 +242,7 @@ export async function POST(request: Request) {
       .select("id, status")
       .eq("lease_id", lease_id)
       .eq("type", type)
-      .in("status", ["draft", "scheduled", "in_progress"])
+      .in("status", ["draft", "scheduled", "in_progress"] as any)
       .maybeSingle();
 
     if (existingEdl) {
@@ -302,7 +302,7 @@ export async function POST(request: Request) {
         invitation_token: crypto.randomUUID(),
       }));
 
-      await supabase.from("edl_signatures").insert(edlSignatures);
+      await supabase.from("edl_signatures").insert(edlSignatures as any);
     }
 
     // Journaliser

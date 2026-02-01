@@ -79,7 +79,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Marquer comme vu si c'est le propriétaire qui consulte
-    if (isOwner && !quote.viewed_at && quote.status === 'sent') {
+    if (isOwner && !(quote as any).viewed_at && quote.status === 'sent') {
       await supabase
         .from('provider_quotes')
         .update({ viewed_at: new Date().toISOString(), status: 'viewed' })

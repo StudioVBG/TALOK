@@ -130,7 +130,7 @@ export class AccountingIntegrationService {
 
       // 2. Encaissement locataire - Débit Banque Mandant
       const entry1 = await this.recordEntry({
-        journal_code: JOURNAUX.BANQUE_MANDANT,
+        journal_code: JOURNAUX.BANQUE_MANDANT.code,
         entry_date: params.paymentDate,
         compte_num: "512100",
         compte_lib: "Banque compte mandant",
@@ -146,7 +146,7 @@ export class AccountingIntegrationService {
       // 3. Encaissement locataire - Crédit Compte Locataire
       const compteLocataire = generateCompteLocataire(params.tenantId);
       const entry2 = await this.recordEntry({
-        journal_code: JOURNAUX.BANQUE_MANDANT,
+        journal_code: JOURNAUX.BANQUE_MANDANT.code,
         entry_date: params.paymentDate,
         compte_num: compteLocataire,
         compte_lib: `Compte locataire ${params.tenantId.substring(0, 8)}`,
@@ -162,7 +162,7 @@ export class AccountingIntegrationService {
       // 4. Facturation honoraires - Débit Compte Propriétaire
       const compteProprietaire = generateCompteProprietaire(params.ownerId);
       const entry3 = await this.recordEntry({
-        journal_code: JOURNAUX.VENTES,
+        journal_code: JOURNAUX.VENTES.code,
         entry_date: params.paymentDate,
         compte_num: compteProprietaire,
         compte_lib: `Compte propriétaire ${params.ownerId.substring(0, 8)}`,
@@ -177,7 +177,7 @@ export class AccountingIntegrationService {
 
       // 5. Facturation honoraires - Crédit Produits
       const entry4 = await this.recordEntry({
-        journal_code: JOURNAUX.VENTES,
+        journal_code: JOURNAUX.VENTES.code,
         entry_date: params.paymentDate,
         compte_num: "706100",
         compte_lib: "Honoraires de gestion locative",
@@ -192,7 +192,7 @@ export class AccountingIntegrationService {
 
       // 6. Facturation honoraires - Crédit TVA
       const entry5 = await this.recordEntry({
-        journal_code: JOURNAUX.VENTES,
+        journal_code: JOURNAUX.VENTES.code,
         entry_date: params.paymentDate,
         compte_num: "445710",
         compte_lib: "TVA collectée 20%",
@@ -207,7 +207,7 @@ export class AccountingIntegrationService {
 
       // 7. Mise à disposition - Débit Compte Locataire (transfert au proprio)
       const entry6 = await this.recordEntry({
-        journal_code: JOURNAUX.OD,
+        journal_code: JOURNAUX.OD.code,
         entry_date: params.paymentDate,
         compte_num: compteLocataire,
         compte_lib: `Compte locataire ${params.tenantId.substring(0, 8)}`,
@@ -222,7 +222,7 @@ export class AccountingIntegrationService {
 
       // 8. Mise à disposition - Crédit Compte Propriétaire
       const entry7 = await this.recordEntry({
-        journal_code: JOURNAUX.OD,
+        journal_code: JOURNAUX.OD.code,
         entry_date: params.paymentDate,
         compte_num: compteProprietaire,
         compte_lib: `Compte propriétaire ${params.ownerId.substring(0, 8)}`,
@@ -315,7 +315,7 @@ export class AccountingIntegrationService {
     try {
       // Débit Compte Propriétaire
       const entry1 = await this.recordEntry({
-        journal_code: JOURNAUX.BANQUE_MANDANT,
+        journal_code: JOURNAUX.BANQUE_MANDANT.code,
         entry_date: params.payoutDate,
         compte_num: compteProprietaire,
         compte_lib: `Compte propriétaire ${params.ownerId.substring(0, 8)}`,
@@ -330,7 +330,7 @@ export class AccountingIntegrationService {
 
       // Crédit Banque Mandant
       const entry2 = await this.recordEntry({
-        journal_code: JOURNAUX.BANQUE_MANDANT,
+        journal_code: JOURNAUX.BANQUE_MANDANT.code,
         entry_date: params.payoutDate,
         compte_num: "512100",
         compte_lib: "Banque compte mandant",
@@ -372,7 +372,7 @@ export class AccountingIntegrationService {
         // Encaissement dépôt de garantie
         // Débit Banque Mandant
         const entry1 = await this.recordEntry({
-          journal_code: JOURNAUX.BANQUE_MANDANT,
+          journal_code: JOURNAUX.BANQUE_MANDANT.code,
           entry_date: params.date,
           compte_num: "512100",
           compte_lib: "Banque compte mandant",
@@ -387,7 +387,7 @@ export class AccountingIntegrationService {
 
         // Crédit Compte Dépôts
         const entry2 = await this.recordEntry({
-          journal_code: JOURNAUX.BANQUE_MANDANT,
+          journal_code: JOURNAUX.BANQUE_MANDANT.code,
           entry_date: params.date,
           compte_num: "165000",
           compte_lib: "Dépôts de garantie reçus",
@@ -414,7 +414,7 @@ export class AccountingIntegrationService {
         // Restitution dépôt de garantie
         // Débit Compte Dépôts
         const entry1 = await this.recordEntry({
-          journal_code: JOURNAUX.BANQUE_MANDANT,
+          journal_code: JOURNAUX.BANQUE_MANDANT.code,
           entry_date: params.date,
           compte_num: "165000",
           compte_lib: "Dépôts de garantie reçus",
@@ -429,7 +429,7 @@ export class AccountingIntegrationService {
 
         // Crédit Banque Mandant
         const entry2 = await this.recordEntry({
-          journal_code: JOURNAUX.BANQUE_MANDANT,
+          journal_code: JOURNAUX.BANQUE_MANDANT.code,
           entry_date: params.date,
           compte_num: "512100",
           compte_lib: "Banque compte mandant",
@@ -516,7 +516,7 @@ export class AccountingIntegrationService {
 
     // Créer l'écriture d'extourne (inverse les débits/crédits)
     const reversal = await this.recordEntry({
-      journal_code: JOURNAUX.OD, // Opérations Diverses pour les extournes
+      journal_code: JOURNAUX.OD.code, // Opérations Diverses pour les extournes
       entry_date: reversalDate,
       compte_num: original.compte_num,
       compte_lib: original.compte_lib,
@@ -589,7 +589,7 @@ export class AccountingIntegrationService {
     try {
       // 1. Débit compte propriétaire (charge pour le propriétaire)
       const entry1 = await this.recordEntry({
-        journal_code: JOURNAUX.ACHATS,
+        journal_code: JOURNAUX.ACHATS.code,
         entry_date: params.paymentDate,
         compte_num: compteProprietaire,
         compte_lib: `Compte propriétaire ${params.ownerId.substring(0, 8)}`,
@@ -604,7 +604,7 @@ export class AccountingIntegrationService {
 
       // 2. Crédit fournisseur (dette envers le prestataire)
       const entry2 = await this.recordEntry({
-        journal_code: JOURNAUX.ACHATS,
+        journal_code: JOURNAUX.ACHATS.code,
         entry_date: params.paymentDate,
         compte_num: "401000",
         compte_lib: `Fournisseur ${params.providerId.substring(0, 8)}`,
@@ -619,7 +619,7 @@ export class AccountingIntegrationService {
 
       // 3. Paiement fournisseur - Débit fournisseur
       const entry3 = await this.recordEntry({
-        journal_code: JOURNAUX.BANQUE_MANDANT,
+        journal_code: JOURNAUX.BANQUE_MANDANT.code,
         entry_date: params.paymentDate,
         compte_num: "401000",
         compte_lib: `Fournisseur ${params.providerId.substring(0, 8)}`,
@@ -634,7 +634,7 @@ export class AccountingIntegrationService {
 
       // 4. Paiement fournisseur - Crédit Banque
       const entry4 = await this.recordEntry({
-        journal_code: JOURNAUX.BANQUE_MANDANT,
+        journal_code: JOURNAUX.BANQUE_MANDANT.code,
         entry_date: params.paymentDate,
         compte_num: "512100",
         compte_lib: "Banque compte mandant",

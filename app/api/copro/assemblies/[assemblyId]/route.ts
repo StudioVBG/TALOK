@@ -118,8 +118,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Calculer le quorum actuel
     const { data: quorumData } = await supabase
       .rpc('calculate_assembly_quorum', { p_assembly_id: assemblyId });
-    if (quorumData && quorumData.length > 0) {
-      result.quorum = quorumData[0];
+    if (quorumData && (quorumData as any[]).length > 0) {
+      result.quorum = (quorumData as any[])[0];
     }
     
     return NextResponse.json(result);

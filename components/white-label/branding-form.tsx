@@ -294,7 +294,7 @@ export function BrandingForm({
                   onChange={(color) => updateField("primary_color", color)}
                   label="Couleur principale"
                   description="Couleur des boutons, liens et éléments principaux"
-                  defaultValue={DEFAULT_BRANDING.primary_color}
+                  defaultValue={DEFAULT_BRANDING.primary_color ?? undefined}
                 />
               </FeatureGate>
 
@@ -309,7 +309,7 @@ export function BrandingForm({
                   onChange={(color) => updateField("secondary_color", color)}
                   label="Couleur secondaire"
                   description="Utilisée pour les éléments secondaires et accents"
-                  defaultValue={DEFAULT_BRANDING.secondary_color}
+                  defaultValue={DEFAULT_BRANDING.secondary_color ?? undefined}
                 />
               </FeatureGate>
 
@@ -324,7 +324,7 @@ export function BrandingForm({
                   onChange={(color) => updateField("accent_color", color)}
                   label="Couleur d'accent"
                   description="Pour les notifications de succès et validations"
-                  defaultValue={DEFAULT_BRANDING.accent_color}
+                  defaultValue={DEFAULT_BRANDING.accent_color ?? undefined}
                 />
               </FeatureGate>
 
@@ -336,10 +336,10 @@ export function BrandingForm({
                   <div className="flex items-center gap-3 mb-4">
                     <div
                       className="w-10 h-10 rounded-lg"
-                      style={{ backgroundColor: formData.primary_color }}
+                      style={{ backgroundColor: formData.primary_color ?? undefined }}
                     />
                     <div>
-                      <p className="font-semibold" style={{ color: formData.primary_color }}>
+                      <p className="font-semibold" style={{ color: formData.primary_color ?? undefined }}>
                         {formData.company_name || "Votre entreprise"}
                       </p>
                       <p className="text-sm text-slate-500">
@@ -350,7 +350,7 @@ export function BrandingForm({
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      style={{ backgroundColor: formData.primary_color }}
+                      style={{ backgroundColor: formData.primary_color ?? undefined }}
                     >
                       Bouton principal
                     </Button>
@@ -358,13 +358,13 @@ export function BrandingForm({
                       size="sm"
                       variant="outline"
                       style={{
-                        borderColor: formData.secondary_color,
-                        color: formData.secondary_color,
+                        borderColor: formData.secondary_color ?? undefined,
+                        color: formData.secondary_color ?? undefined,
                       }}
                     >
                       Secondaire
                     </Button>
-                    <Badge style={{ backgroundColor: formData.accent_color }}>
+                    <Badge style={{ backgroundColor: formData.accent_color ?? undefined }}>
                       Succès
                     </Badge>
                   </div>
@@ -458,7 +458,7 @@ export function BrandingForm({
                   onChange={(color) => updateField("email_primary_color", color)}
                   label="Couleur principale des emails"
                   description="Couleur des boutons et liens dans les emails"
-                  defaultValue={DEFAULT_BRANDING.email_primary_color}
+                  defaultValue={DEFAULT_BRANDING.email_primary_color ?? undefined}
                 />
               </FeatureGate>
 
@@ -532,8 +532,8 @@ export function BrandingForm({
                   />
 
                   <ColorPicker
-                    value={formData.login_background_color || "#f8fafc"}
-                    onChange={(color) => updateField("login_background_color", color)}
+                    value={(formData as any).login_background_color || "#f8fafc"}
+                    onChange={(color) => updateField("login_background_color" as any, color)}
                     label="Couleur de fond alternative"
                     description="Utilisée si aucune image n'est définie"
                     defaultValue="#f8fafc"

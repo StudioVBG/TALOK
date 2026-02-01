@@ -8,6 +8,8 @@ import { documentSchema } from "@/lib/validations";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
 
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
 function isImage(mimeType: string) {
   return mimeType.startsWith("image/");
 }

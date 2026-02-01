@@ -59,7 +59,7 @@ export async function GET() {
     // Rafraîchir les infos depuis Stripe
     try {
       const stripeAccount = await connectService.getConnectAccount(
-        connectAccount.stripe_account_id
+        connectAccount.stripe_account_id as string
       );
 
       // Mettre à jour les infos en DB si changement
@@ -82,7 +82,7 @@ export async function GET() {
               ? connectAccount.onboarding_completed_at || new Date().toISOString()
               : null,
         })
-        .eq("id", connectAccount.id);
+        .eq("id", connectAccount.id as string);
 
       return NextResponse.json({
         has_account: true,
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
 
     if (existingAccount) {
       // Compte existe, générer un nouveau lien d'onboarding
-      stripeAccountId = existingAccount.stripe_account_id;
+      stripeAccountId = existingAccount.stripe_account_id as string;
     } else {
       // Créer un nouveau compte Stripe Connect
       const body = await request.json().catch(() => ({}));

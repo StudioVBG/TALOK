@@ -237,6 +237,7 @@ export type LeaseRow = {
   owner_id?: string | null
   next_indexation_date?: string | null
   sealed_at?: string | null
+  depot_garantie?: number | null
   created_at: string
   updated_at: string
 
@@ -262,6 +263,7 @@ export type InvoiceRow = {
   reference?: string | null
   paid_at?: string | null
   amount?: number | null
+  due_date?: string | null
   created_at: string
   updated_at: string
 
@@ -273,6 +275,7 @@ export type TicketRow = {
   lease_id: string | null
   created_by_profile_id: string
   assigned_provider_id?: string | null
+  owner_id?: string | null
   titre: string
   description: string
   priorite: string
@@ -732,6 +735,10 @@ export type ProviderProfileRow = {
   insurance_expiry?: string | null
   decennial_number?: string | null
   decennial_expiry?: string | null
+  tarif_min?: number | null
+  tarif_max?: number | null
+  disponibilite?: string | null
+  disponibilite_urgence?: boolean | null
   created_at: string
   updated_at: string
 
@@ -1250,6 +1257,7 @@ export type ConversationParticipantRow = {
   last_read_at: string | null
   joined_at: string
   left_at?: string | null
+  muted_until?: string | null
   created_at: string
   updated_at: string
 }
@@ -1363,6 +1371,7 @@ export type ConversationRow = {
   owner_unread_count?: number
   tenant_unread_count?: number
   owner_profile_id?: string | null
+  tenant_profile_id?: string | null
   last_message_at?: string | null
   created_at: string
   updated_at: string
@@ -1664,7 +1673,10 @@ export type Database = {
         Row: RoommateRow
         Insert: Partial<RoommateRow>
         Update: Partial<RoommateRow>
-        Relationships: []
+        Relationships: [
+          { foreignKeyName: "roommates_lease_id_fkey"; columns: ["lease_id"]; isOneToOne: false; referencedRelation: "leases"; referencedColumns: ["id"] },
+          { foreignKeyName: "roommates_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
+        ]
       }
       payment_shares: {
         Row: PaymentShareRow
@@ -1804,7 +1816,8 @@ export type Database = {
         Insert: Partial<EntityAssociateRow>
         Update: Partial<EntityAssociateRow>
         Relationships: [
-          { foreignKeyName: "entity_associates_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
+          { foreignKeyName: "entity_associates_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "entity_associates_legal_entity_id_fkey"; columns: ["legal_entity_id"]; isOneToOne: false; referencedRelation: "legal_entities"; referencedColumns: ["id"] }
         ]
       }
       property_ownership: {
@@ -1813,7 +1826,8 @@ export type Database = {
         Update: Partial<PropertyOwnershipRow>
         Relationships: [
           { foreignKeyName: "property_ownership_property_id_fkey"; columns: ["property_id"]; isOneToOne: false; referencedRelation: "properties"; referencedColumns: ["id"] },
-          { foreignKeyName: "property_ownership_legal_entity_id_fkey"; columns: ["legal_entity_id"]; isOneToOne: false; referencedRelation: "legal_entities"; referencedColumns: ["id"] }
+          { foreignKeyName: "property_ownership_legal_entity_id_fkey"; columns: ["legal_entity_id"]; isOneToOne: false; referencedRelation: "legal_entities"; referencedColumns: ["id"] },
+          { foreignKeyName: "property_ownership_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
         ]
       }
       // Building Tables - SOTA 2026 (Immeuble Entier)

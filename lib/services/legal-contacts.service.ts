@@ -5,6 +5,7 @@
  */
 
 import type { LocalizedContact, DepartmentContacts } from "@/lib/types/legal-protocols";
+export type { DepartmentContacts } from "@/lib/types/legal-protocols";
 
 // Base de données des préfectures (tous les départements français + DROM)
 const PREFECTURES: Record<string, Omit<LocalizedContact, "role">> = {
@@ -733,20 +734,20 @@ export function getContactsForDepartment(departmentCode: string): DepartmentCont
     
     prefecture: {
       role: "Préfecture",
+      ...prefectureData,
       name: prefectureData.name || `Préfecture de ${deptName}`,
-      ...prefectureData
     },
     
     adil: adilData ? {
       role: "ADIL (Conseil juridique gratuit)",
+      ...adilData,
       name: adilData.name || `ADIL de ${deptName}`,
-      ...adilData
     } : null,
     
     tribunal_judiciaire: {
       role: "Tribunal Judiciaire",
+      ...tribunalData,
       name: tribunalData.name || `Tribunal Judiciaire de ${deptName}`,
-      ...tribunalData
     },
     
     commissariat_principal: {

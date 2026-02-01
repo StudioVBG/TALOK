@@ -88,10 +88,11 @@ export async function getSignatureUsageBySubscription(subscriptionId: string): P
     };
   }
 
+  const rpcData = data as any;
   return {
     subscription_id: subscriptionId,
-    ...data,
-    can_sign: data.signatures_limit === -1 || data.signatures_used < data.signatures_limit,
+    ...rpcData,
+    can_sign: rpcData.signatures_limit === -1 || rpcData.signatures_used < rpcData.signatures_limit,
   } as SignatureUsage;
 }
 
@@ -252,7 +253,7 @@ export async function getSignatureHistory(
   }
 
   // Agréger par mois
-  const usageByMonth = (data || []).reduce((acc, item) => {
+  const usageByMonth = (data || []).reduce((acc, item: any) => {
     acc[item.period_month] = (acc[item.period_month] || 0) + item.quantity;
     return acc;
   }, {} as Record<string, number>);

@@ -101,7 +101,7 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
             </div>
 
             <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 pl-4 border-l-0 sm:border-l border-slate-100">
-              <StatusBadge status={ticket.statut} />
+              <StatusBadge status={ticket.statut} type="info" />
               
               <Button variant="ghost" size="sm" asChild className="gap-1 hover:bg-blue-50 hover:text-blue-600">
                 <Link href={`${basePath}/${ticket.id}`}>

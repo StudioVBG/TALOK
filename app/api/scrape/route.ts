@@ -717,7 +717,7 @@ function extractJsonLd($: cheerio.CheerioAPI): Partial<ExtractedData> | null {
   });
   
   if (result) {
-    result.extraction_quality = {
+    (result as Partial<ExtractedData>).extraction_quality = {
       source: 'json-ld',
       score: 50,
       details: ['✅ JSON-LD Schema.org trouvé'],
@@ -1056,7 +1056,7 @@ export async function POST(request: Request) {
     // =========================================
 
     // 1. Rate limiting (10 req/min)
-    const rateLimitResponse = await applyRateLimit(request, "scrape");
+    const rateLimitResponse = await applyRateLimit(request, "scrape" as any);
     if (rateLimitResponse) {
       return rateLimitResponse;
     }

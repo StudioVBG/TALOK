@@ -77,7 +77,7 @@ export async function GET(request: Request) {
     if (format === "pdf") {
       const pdfBytes = await generateBalancePDF(balance);
 
-      return new NextResponse(pdfBytes, {
+      return new NextResponse(pdfBytes as any, {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",

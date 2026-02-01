@@ -81,7 +81,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Marquer comme vue si c'est le propriétaire qui consulte
-    if (isOwner && !invoice.viewed_at) {
+    if (isOwner && !(invoice as any).viewed_at) {
       await supabase
         .from('provider_invoices')
         .update({ viewed_at: new Date().toISOString(), status: invoice.status === 'sent' ? 'viewed' : invoice.status })

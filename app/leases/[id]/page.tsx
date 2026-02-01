@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/hooks/use-auth";
 const LEASE_TYPE_LABELS: Record<LeaseType, string> = {
   nu: "Bail nu",
   meuble: "Bail meublé",
+  etudiant: "Bail étudiant",
   colocation: "Colocation",
   saisonnier: "Saisonnier",
   bail_mobilite: "Bail mobilité",
@@ -30,6 +31,8 @@ const LEASE_TYPE_LABELS: Record<LeaseType, string> = {
   professionnel: "Professionnel",
   contrat_parking: "Contrat parking",
   location_gerance: "Location gérance",
+  bail_mixte: "Bail mixte",
+  bail_rural: "Bail rural",
 };
 
 // Labels pour les statuts de bail

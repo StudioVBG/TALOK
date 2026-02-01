@@ -78,6 +78,7 @@ export async function sendPushNotification(
 
   try {
     // Utiliser la bibliothèque web-push
+    // @ts-ignore -- no type declarations for web-push
     const webPush = await import("web-push");
 
     webPush.setVapidDetails(

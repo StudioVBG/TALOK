@@ -152,7 +152,7 @@ export async function POST(request: Request, { params }: PageProps) {
         .from("lease_signers")
         .select("id, profile_id, role")
         .eq("lease_id", lease.id)
-        .in("role", ["locataire_principal", "locataire", "tenant", "colocataire", "principal"])
+        .in("role", ["locataire_principal", "locataire", "tenant", "colocataire", "principal"] as any)
         .is("signature_status", null)  // Non encore signé
         .limit(1)
         .maybeSingle();

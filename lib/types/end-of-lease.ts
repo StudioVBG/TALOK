@@ -688,12 +688,12 @@ export interface PropertySummary {
 export interface LeaseEndProcess {
   id: string;
   lease_id: string;
-  status: LeaseEndProcessStatus;
+  status: "in_progress" | "completed" | "cancelled";
   initiated_by: string | null;
   end_date: string | null;
   notice_date: string | null;
   edl_date: string | null;
-  dg_amount: number | null;
+  dg_amount: number;
   dg_returned_at: string | null;
   created_at: string;
   updated_at: string;
@@ -703,12 +703,12 @@ export interface RenovationItem {
   id: string;
   lease_end_process_id: string;
   work_type: RenovationWorkType;
-  description: string | null;
+  description: string;
   room: string | null;
   estimated_cost: number;
   tenant_share: number;
   owner_share: number;
-  status: string;
+  status: "pending" | "quoted" | "approved" | "completed";
 }
 
 export interface RenovationQuote {
@@ -721,7 +721,7 @@ export interface RenovationQuote {
 
 export interface EDLInspectionItem {
   id: string;
-  category: string;
+  category: InspectionCategory;
   item_name: string | null;
   condition_entree: string | null;
   condition_sortie: string | null;

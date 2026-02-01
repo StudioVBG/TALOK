@@ -149,7 +149,7 @@ export default function TenantIdentityPage() {
           id: lease.id,
           type_bail: lease.type_bail,
           property: lease.property,
-          documents: documents || [],
+          documents: (documents || []) as CNIDocument[],
         });
       }
 
@@ -235,7 +235,7 @@ export default function TenantIdentityPage() {
             const rectoDoc = lease.documents.find(d => d.type === "cni_recto" && !d.is_archived);
             const versoDoc = lease.documents.find(d => d.type === "cni_verso" && !d.is_archived);
             const expiryDate = rectoDoc?.expiry_date || rectoDoc?.metadata?.date_expiration;
-            const daysLeft = getDaysUntilExpiry(expiryDate);
+            const daysLeft = getDaysUntilExpiry(expiryDate ?? null);
             const expiryAlert = getExpiryAlert(daysLeft);
             const status = rectoDoc?.verification_status || "pending";
             const statusConfig = STATUS_CONFIG[status];

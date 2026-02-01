@@ -117,7 +117,7 @@ export async function GET(request: Request, context: Context) {
       `
       )
       .eq("profile_id", id)
-      .in("role", ["locataire_principal", "locataire", "colocataire"]);
+      .in("role", ["locataire_principal", "locataire", "colocataire"] as any);
 
     // Vérifier les droits d'accès
     if (profile.role !== "admin") {
@@ -218,7 +218,7 @@ export async function GET(request: Request, context: Context) {
     return NextResponse.json({
       success: true,
       data: {
-        ...tenant,
+        ...(tenant as any),
         leases: formattedLeases,
         invoices: invoices || [],
         payments: payments || [],

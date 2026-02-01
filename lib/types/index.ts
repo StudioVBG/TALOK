@@ -896,7 +896,7 @@ export type {
   AcknowledgmentMethod,
   SettlementStatus,
   DeductionType,
-  PaymentMethod,
+  PaymentMethod as EndOfLeasePaymentMethod,
   DepartureNotice,
   DGSettlement,
   DeductionItem,
@@ -973,7 +973,7 @@ export type {
 
 export {
   ENTITY_TYPE_LABELS,
-  FISCAL_REGIME_LABELS,
+  FISCAL_REGIME_LABELS as LEGAL_ENTITY_FISCAL_REGIME_LABELS,
   DETENTION_TYPE_LABELS,
   ACQUISITION_MODE_LABELS,
   APPORT_TYPE_LABELS,
@@ -1002,15 +1002,15 @@ export type {
   CommercialLeaseConfig,
   DerogtoireLeaseConfig,
   TriennialPeriod,
-  CommercialLeaseTemplateData,
+  CommercialLeaseData,
 } from "./commercial-lease";
 
 export {
-  COMMERCIAL_LEASE_DEFAULTS,
+  COMMERCIAL_LEASE_DURATIONS,
   DEFAULT_COMMERCIAL_369_CONFIG,
   DEFAULT_DEROGATOIRE_CONFIG,
   COMMERCIAL_INDEX_LABELS,
-  DESTINATION_CLAUSE_EXAMPLES,
+  DESTINATION_CLAUSE_LABELS,
   MAX_DEROGATOIRE_MONTHS,
 } from "./commercial-lease";
 
@@ -1037,7 +1037,7 @@ export {
   PROFESSION_CATEGORY_LABELS,
   PROFESSION_ACTIVITY_LABELS,
   LEGAL_FORM_LABELS,
-  FISCAL_REGIME_LABELS,
+  FISCAL_REGIME_LABELS as PROFESSIONAL_FISCAL_REGIME_LABELS,
   ORDRES_PROFESSIONNELS,
   DEFAULT_PROFESSIONAL_LEASE_CONFIG,
   DEFAULT_PROFESSIONAL_FINANCIAL_TERMS,

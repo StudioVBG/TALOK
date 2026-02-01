@@ -40,7 +40,7 @@ export async function GET(request: Request) {
         const { count } = await supabase
           .from("subscription_addon_subscriptions")
           .select("id", { count: "exact", head: true })
-          .eq("addon_id", addon.id)
+          .eq("addon_id", addon.id as string)
           .eq("status", "active");
         
         return {

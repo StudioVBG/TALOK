@@ -804,8 +804,8 @@ export async function sendLeaseInviteEmail(params: {
     // Nouveaux champs pour le template
     role_text: roleText,
     action_text: actionText,
-    is_guarantor: isGuarantor,
-    is_reminder: params.isReminder || false,
+    is_guarantor: String(isGuarantor),
+    is_reminder: String(params.isReminder || false),
   });
 }
 

@@ -83,7 +83,7 @@ async function getTenantProfileAdmin(tenantId: string) {
         created_at: d.uploaded_at || d.created_at,
         type: d.document_type || d.type,
       }));
-      allDocuments = [...allDocuments, ...normalizedDocs];
+      allDocuments = [...allDocuments, ...(normalizedDocs as typeof allDocuments)];
     }
   } catch (e) {
     // Table tenant_documents n'existe peut-être pas
@@ -129,7 +129,7 @@ export default async function AdminTenantDetailPage({ params }: PageProps) {
     );
   }
 
-  return <TenantProfileClient tenant={tenant} isAdmin={true} />;
+  return <TenantProfileClient tenant={tenant as any} isAdmin={true} />;
 }
 
 export const metadata = {

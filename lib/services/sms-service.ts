@@ -74,7 +74,7 @@ async function getTwilioCredentials(): Promise<{
     const { data: credential } = await supabase
       .from("api_credentials")
       .select("secret_ref, scope")
-      .eq("provider_id", provider.id)
+      .eq("provider_id", provider.id as string)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -82,11 +82,11 @@ async function getTwilioCredentials(): Promise<{
     if (!credential?.secret_ref) return null;
 
     // Déchiffrer et parser
-    const authToken = decryptKey(credential.secret_ref);
+    const authToken = decryptKey(credential.secret_ref as string);
     let config: any = {};
     try {
       if (credential.scope) {
-        config = JSON.parse(credential.scope);
+        config = JSON.parse(credential.scope as string);
       }
     } catch {
       // Pas du JSON

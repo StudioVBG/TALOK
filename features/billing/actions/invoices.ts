@@ -77,7 +77,7 @@ export async function createInvoiceAction(formData: z.infer<typeof createInvoice
       montant_total: montant_loyer + montant_charges,
       statut: "draft",
       notes
-    })
+    } as any)
     .select()
     .single();
 

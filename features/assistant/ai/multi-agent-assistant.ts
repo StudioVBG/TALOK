@@ -52,7 +52,7 @@ export async function invokeMultiAgentAssistant(
   const result = await graph.invoke(
     {
       messages: [new HumanMessage(message)],
-      context,
+      context: context as any,
     },
     config
   );
@@ -67,8 +67,8 @@ export async function invokeMultiAgentAssistant(
   // Collecter les tools utilisés
   const toolsUsed: string[] = [];
   for (const msg of result.messages) {
-    if (msg.tool_calls && msg.tool_calls.length > 0) {
-      for (const tc of msg.tool_calls) {
+    if ((msg as any).tool_calls && (msg as any).tool_calls.length > 0) {
+      for (const tc of (msg as any).tool_calls) {
         if (!toolsUsed.includes(tc.name)) {
           toolsUsed.push(tc.name);
         }
@@ -110,7 +110,7 @@ export async function* streamMultiAgentAssistant(
   const stream = await graph.stream(
     {
       messages: [new HumanMessage(message)],
-      context,
+      context: context as any,
     },
     {
       ...config,
@@ -125,8 +125,8 @@ export async function* streamMultiAgentAssistant(
     if (update.supervisor) {
       const newAgent = update.supervisor.activeAgent;
       if (newAgent && newAgent !== lastAgent) {
-        yield { type: "agent_switch", agentName: newAgent };
-        lastAgent = newAgent;
+        yield { type: "agent_switch", agentName: newAgent as string };
+        lastAgent = newAgent as string;
       }
     }
     
@@ -135,8 +135,8 @@ export async function* streamMultiAgentAssistant(
       if (nodeName.includes("agent") && nodeUpdate.messages) {
         const messages = nodeUpdate.messages;
         for (const msg of messages) {
-          if (msg.tool_calls && msg.tool_calls.length > 0) {
-            for (const tc of msg.tool_calls) {
+          if ((msg as any).tool_calls && (msg as any).tool_calls.length > 0) {
+            for (const tc of (msg as any).tool_calls) {
               yield { type: "tool_start", toolName: tc.name };
             }
           } else if (msg.content) {

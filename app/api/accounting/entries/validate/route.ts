@@ -69,11 +69,12 @@ export async function POST(request: Request) {
 
     // Vérifier l'équilibre par journal
     const byJournal = entries.reduce((acc, e) => {
-      if (!acc[e.journal_code]) {
-        acc[e.journal_code] = { debit: 0, credit: 0 };
+      const journalCode = e.journal_code as string;
+      if (!acc[journalCode]) {
+        acc[journalCode] = { debit: 0, credit: 0 };
       }
-      acc[e.journal_code].debit += e.debit || 0;
-      acc[e.journal_code].credit += e.credit || 0;
+      acc[journalCode].debit += (e.debit as number) || 0;
+      acc[journalCode].credit += (e.credit as number) || 0;
       return acc;
     }, {} as Record<string, { debit: number; credit: number }>);
 

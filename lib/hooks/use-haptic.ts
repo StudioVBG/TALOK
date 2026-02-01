@@ -28,6 +28,7 @@ export function useHaptic() {
     try {
       // Try Capacitor Haptics plugin first (native mobile)
       const { Haptics, ImpactStyle, NotificationType } = await import(
+        // @ts-ignore -- @capacitor/haptics is an optional native dependency
         "@capacitor/haptics"
       );
 

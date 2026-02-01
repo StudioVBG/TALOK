@@ -121,7 +121,7 @@ export function ProviderReviews({ providerId, isOwnProfile = false }: ProviderRe
         .single();
 
       if (statsData) {
-        setStats(statsData);
+        setStats(statsData as any);
       }
     } catch (error) {
       console.error("Erreur:", error);

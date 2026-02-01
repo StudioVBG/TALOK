@@ -241,7 +241,7 @@ export async function POST(
       .select("id, status")
       .eq("lease_id", leaseId)
       .eq("type", type)
-      .in("status", ["draft", "scheduled", "in_progress"])
+      .in("status", ["draft", "scheduled", "in_progress"] as any)
       .maybeSingle();
 
     if (existingEdl) {

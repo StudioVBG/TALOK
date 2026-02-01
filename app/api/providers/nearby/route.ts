@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
           source: "google" as const,
         };
       })
-      .filter((p: NearbyProvider) => p.distance_km <= radius / 1000); // Filtrer par distance
+      .filter((p: NearbyProvider) => (p.distance_km ?? 0) <= radius / 1000); // Filtrer par distance
 
     // Mettre en cache
     cache.set(cacheKey, { data: providers, timestamp: Date.now() });

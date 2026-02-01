@@ -49,11 +49,11 @@ export function FirstLoginOrchestrator({
     // Check Supabase for welcome_seen_at
     import("@/lib/supabase/client").then(({ createClient }) => {
       const supabase = createClient();
-      supabase
+      Promise.resolve(supabase
         .from("profiles")
         .select("welcome_seen_at, login_count, tour_completed_at")
         .eq("id", profileId)
-        .single()
+        .single())
         .then(({ data }) => {
           if (data?.tour_completed_at) {
             // Tour already completed, nothing to show

@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Importer web-push
+    // @ts-ignore — web-push has no declaration file
     const webPush = await import("web-push");
     webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
@@ -129,8 +130,8 @@ export async function POST(request: NextRequest) {
           if ((error as any).statusCode === 410 || (error as any).statusCode === 404) {
             await serviceClient
               .from("push_subscriptions")
-              .update({ is_active: false })
-              .eq("id", sub.id);
+              .update({ is_active: false } as any)
+              .eq("id", sub.id as string);
           }
           return { success: false, subscriptionId: sub.id, error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" };
         }

@@ -118,8 +118,8 @@ async function handleCheckoutCompleted(
       stripe_customer_id: session.customer as string,
       status: subscription.status,
       billing_cycle: subscription.items.data[0].price.recurring?.interval === "year" ? "yearly" : "monthly",
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
       trial_start: subscription.trial_start
         ? new Date(subscription.trial_start * 1000).toISOString()
         : null,
@@ -167,8 +167,8 @@ async function handleSubscriptionUpdated(
     .from("subscriptions")
     .update({
       status: subscription.status,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
       cancel_at_period_end: subscription.cancel_at_period_end,
       canceled_at: subscription.canceled_at
         ? new Date(subscription.canceled_at * 1000).toISOString()
@@ -220,13 +220,13 @@ async function handleInvoicePaid(
   supabase: ReturnType<typeof createServiceRoleClient>,
   invoice: Stripe.Invoice
 ) {
-  if (!invoice.subscription) return;
+  if (!(invoice as any).subscription) return;
 
   // Récupérer l'abonnement local
   const { data: sub } = await supabase
     .from("subscriptions")
     .select("id")
-    .eq("stripe_subscription_id", invoice.subscription as string)
+    .eq("stripe_subscription_id", (invoice as any).subscription as string)
     .single();
 
   if (!sub) return;
@@ -236,7 +236,7 @@ async function handleInvoicePaid(
     {
       subscription_id: sub.id,
       stripe_invoice_id: invoice.id,
-      stripe_charge_id: invoice.charge as string,
+      stripe_charge_id: (invoice as any).charge as string,
       amount_due: invoice.amount_due,
       amount_paid: invoice.amount_paid,
       amount_remaining: invoice.amount_remaining,
@@ -263,19 +263,19 @@ async function handleInvoiceFailed(
   supabase: ReturnType<typeof createServiceRoleClient>,
   invoice: Stripe.Invoice
 ) {
-  if (!invoice.subscription) return;
+  if (!(invoice as any).subscription) return;
 
   // Mettre à jour le statut
   await supabase
     .from("subscriptions")
     .update({ status: "past_due" })
-    .eq("stripe_subscription_id", invoice.subscription as string);
+    .eq("stripe_subscription_id", (invoice as any).subscription as string);
 
   // Notification
   const { data: sub } = await supabase
     .from("subscriptions")
     .select("owner_id")
-    .eq("stripe_subscription_id", invoice.subscription as string)
+    .eq("stripe_subscription_id", (invoice as any).subscription as string)
     .single();
 
   if (sub) {

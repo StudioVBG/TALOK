@@ -157,7 +157,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       p_invoice_id: invoiceId,
     });
 
-    if (data.payment_type !== 'refund' && data.amount > (currentBalance || invoice.total_amount)) {
+    if (data.payment_type !== 'refund' && data.amount > ((currentBalance as number) || invoice.total_amount || 0)) {
       return NextResponse.json(
         { error: `Le montant dépasse le solde dû (${currentBalance}€)` },
         { status: 400 }

@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (newConfig?.totp_secret) {
-      totpSecret = newConfig.totp_secret;
+      totpSecret = newConfig.totp_secret as string;
       hasNewTable = true;
     } else {
       // Fallback sur l'ancien système

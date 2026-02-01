@@ -89,7 +89,7 @@ export async function POST(request: Request) {
         affected_lease_types: affectedTypes,
         effective_date: now.toISOString().split("T")[0],
         created_by: profileData.id,
-      })
+      } as any)
       .select("id")
       .single();
 

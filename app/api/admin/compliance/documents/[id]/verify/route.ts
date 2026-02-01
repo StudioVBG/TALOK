@@ -110,7 +110,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { data: providerProfile } = await supabase
       .from('profiles')
       .select('user_id')
-      .eq('id', document.provider_profile_id)
+      .eq('id', document.provider_profile_id as string)
       .single();
 
     if (providerProfile) {

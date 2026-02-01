@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
     const { data: charge, error } = await supabase
       .from("charges")
-      .insert(validated)
+      .insert(validated as any)
       .select()
       .single();
 

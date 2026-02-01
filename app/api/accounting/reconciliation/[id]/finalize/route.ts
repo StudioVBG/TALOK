@@ -62,7 +62,7 @@ export async function POST(request: Request, context: Context) {
     const { force, notes } = validation.data;
 
     // Vérifier l'équilibre
-    const ecart = Math.abs(reconciliation.solde_banque - reconciliation.solde_comptable);
+    const ecart = Math.abs((reconciliation.solde_banque as number) - (reconciliation.solde_comptable as number));
 
     if (ecart > 0.01 && !force) {
       throw new ApiError(400,
@@ -72,7 +72,7 @@ export async function POST(request: Request, context: Context) {
     }
 
     // Compter les écritures non pointées de la période
-    const [year, month] = reconciliation.periode.split("-");
+    const [year, month] = (reconciliation.periode as string).split("-");
     const startDate = `${year}-${month}-01`;
     const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split("T")[0];
     const journalCode = reconciliation.compte_type === "agence" ? "BQ" : "BM";

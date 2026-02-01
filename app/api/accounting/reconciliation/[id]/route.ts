@@ -49,7 +49,7 @@ export async function GET(request: Request, context: Context) {
     }
 
     // Récupérer les écritures non pointées pour la période
-    const [year, month] = reconciliation.periode.split("-");
+    const [year, month] = (reconciliation.periode as string).split("-");
     const startDate = `${year}-${month}-01`;
     const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split("T")[0];
 

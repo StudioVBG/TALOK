@@ -27,10 +27,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     
     if (error) throw error;
     
-    if (data && data.length > 0) {
-      return NextResponse.json(data[0]);
+    if (data && (data as any[]).length > 0) {
+      return NextResponse.json((data as any[])[0]);
     }
-    
+
     return NextResponse.json({
       is_valid: false,
       error_message: 'Invitation non trouvée',
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .eq('token', token)
       .single();
     
-    if (invite && invite.email.toLowerCase() !== user.email?.toLowerCase()) {
+    if (invite && (invite.email as string).toLowerCase() !== user.email?.toLowerCase()) {
       return NextResponse.json({
         success: false,
         error_message: 'Cette invitation est destinée à une autre adresse email',
@@ -76,8 +76,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     
     if (error) throw error;
     
-    if (data && data.length > 0) {
-      const result = data[0];
+    if (data && (data as any[]).length > 0) {
+      const result = (data as any[])[0];
       
       // Déterminer la redirection
       let redirect_url = '/copro/dashboard';
@@ -157,7 +157,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .update({
         status: 'sent',
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        reminder_count: (invite.reminder_count || 0) + 1,
+        reminder_count: ((invite.reminder_count as number) || 0) + 1,
         last_reminder_at: new Date().toISOString(),
         sent_at: new Date().toISOString(),
       })
