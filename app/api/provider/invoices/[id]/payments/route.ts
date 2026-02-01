@@ -84,7 +84,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ payments });
   } catch (error: unknown) {
     console.error('Error in GET /api/provider/invoices/[id]/payments:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }, { status: 201 });
   } catch (error: unknown) {
     console.error('Error in POST /api/provider/invoices/[id]/payments:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

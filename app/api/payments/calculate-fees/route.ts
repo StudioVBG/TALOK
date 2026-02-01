@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     console.error('Error calculating fees:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

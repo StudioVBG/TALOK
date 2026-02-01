@@ -667,7 +667,7 @@ export async function POST(request: NextRequest) {
                 p_title: "Compte de paiement activé !",
                 p_message: "Votre compte Stripe est maintenant actif. Vous recevrez les loyers directement.",
                 p_link: "/owner/settings/payments",
-              }).catch(() => {});
+              });
             }
           }
         }
@@ -699,8 +699,6 @@ export async function POST(request: NextRequest) {
             description: transfer.description,
             metadata: transfer.metadata,
             completed_at: new Date().toISOString(),
-          }).catch((err: any) => {
-            console.error("[Stripe Webhook] Error creating transfer record:", err);
           });
 
           console.log(`[Stripe Webhook] Transfer created: ${transfer.id}`);
@@ -742,8 +740,6 @@ export async function POST(request: NextRequest) {
       payload: event.data.object,
       processed_at: new Date().toISOString(),
       status: "success",
-    }).catch(() => {
-      // Ignorer si la table n'existe pas
     });
 
     return NextResponse.json({ received: true });
@@ -758,7 +754,7 @@ export async function POST(request: NextRequest) {
       error: error instanceof Error ? error.message : "Une erreur est survenue",
       processed_at: new Date().toISOString(),
       status: "error",
-    }).catch(() => {});
+    });
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Une erreur est survenue" },

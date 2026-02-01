@@ -67,6 +67,7 @@ export type PropertyRow = {
   annee_construction?: number | null
   chauffage_type?: string | null
   chauffage_mode?: string | null
+  chauffage_energie?: string | null
   eau_chaude_type?: string | null
   parking_inclus?: boolean
   cave?: boolean
@@ -86,14 +87,49 @@ export type PropertyRow = {
   zone_encadrement?: boolean
   dpe_classe_energie?: string | null
   dpe_classe_climat?: string | null
+  dpe_consommation?: number | null
+  dpe_emissions?: number | null
+  dpe_estimation_conso_min?: number | null
+  dpe_estimation_conso_max?: number | null
   permis_louer_requis?: boolean
   permis_louer_numero?: string | null
+  permis_louer_date?: string | null
   // P0.3: Colonnes commerciales
   usage_principal?: string | null
   sous_usage?: string | null
   erp_type?: string | null
   plan_url?: string | null
   places_parking?: number | null
+  // Caractéristiques détaillées
+  has_balcon?: boolean
+  has_terrasse?: boolean
+  has_jardin?: boolean
+  has_cave?: boolean
+  clim_presence?: boolean
+  clim_type?: string | null
+  visite_virtuelle_url?: string | null
+  photo_url?: string | null
+  equipments?: Json | null
+  nb_etages_immeuble?: number | null
+  surface_habitable_m2?: number | null
+  regime?: string | null
+  investment_price?: number | null
+  // Parking détaillé
+  parking_type?: string | null
+  parking_numero?: string | null
+  parking_niveau?: string | null
+  parking_gabarit?: string | null
+  parking_portail_securise?: boolean
+  parking_video_surveillance?: boolean
+  parking_gardien?: boolean
+  // Local professionnel
+  local_type?: string | null
+  local_surface_totale?: number | null
+  local_has_vitrine?: boolean
+  local_access_pmr?: boolean
+  local_clim?: boolean
+  local_fibre?: boolean
+  local_alarme?: boolean
   // Soft delete
   deleted_at?: string | null
   // Missing columns discovered by type-level query parser
@@ -143,6 +179,8 @@ export type ProfileRow = {
   tour_completed_at?: string | null
   full_name?: string | null
   login_count?: number
+  onboarding_completed_at?: string | null
+  onboarding_skipped_at?: string | null
   created_at: string
   updated_at: string
 
@@ -198,6 +236,7 @@ export type LeaseRow = {
   derniere_revision?: string | null
   owner_id?: string | null
   next_indexation_date?: string | null
+  sealed_at?: string | null
   created_at: string
   updated_at: string
 
@@ -243,6 +282,7 @@ export type TicketRow = {
   actual_cost?: number | null
   scheduled_date?: string | null
   completed_date?: string | null
+  ai_summary?: string | null
   created_at: string
   updated_at: string
 
@@ -251,11 +291,22 @@ export type TicketRow = {
 export type NotificationRow = {
   id: string
   user_id: string
+  profile_id?: string | null
   type: string
   title: string
   body: string
+  message?: string | null
   is_read: boolean
+  read?: boolean
+  read_at?: string | null
   data?: Json | null
+  metadata?: Json | null
+  priority?: string | null
+  channels?: string[] | null
+  action_url?: string | null
+  action_label?: string | null
+  image_url?: string | null
+  expires_at?: string | null
   created_at: string
 
 }
@@ -280,6 +331,7 @@ export type SubscriptionRow = {
   plan_slug?: string | null
   canceled_at?: string | null
   plan_id?: string | null
+  grandfathered_until?: string | null
   created_at: string
   updated_at?: string
 
@@ -306,6 +358,7 @@ export type DocumentRow = {
   preview_url?: string | null
   metadata?: Json | null
   tenant_id?: string | null
+  renewal_requested_at?: string | null
   created_at: string
   updated_at?: string
 
@@ -322,6 +375,7 @@ export type PaymentRow = {
   reference?: string | null
   // Missing columns discovered by type-level query parser
   moyen?: string | null
+  provider_ref?: string | null
   created_at: string
 
 }
@@ -419,6 +473,11 @@ export type LeaseSignerRow = {
   invited_at: string | null
   signature_image: string | null
   signature_image_path?: string | null
+  ip_inet?: string | null
+  user_agent?: string | null
+  proof_id?: string | null
+  document_hash?: string | null
+  proof_metadata?: Json | null
   created_at: string
   updated_at: string
 
@@ -432,6 +491,7 @@ export type UnitRow = {
   id: string
   property_id: string
   nom: string
+  code_unique?: string | null
   capacite_max: number
   surface: number | null
   created_at: string
@@ -467,6 +527,7 @@ export type PaymentShareRow = {
   paid_amount: number
   status: 'pending' | 'partial' | 'paid' | 'late'
   paid_at: string | null
+  autopay?: boolean
   created_at: string
 
 }
@@ -611,15 +672,27 @@ export type WorkOrderRow = {
 
 export type QuoteRow = {
   id: string
-  ticket_id: string
+  ticket_id: string | null
   provider_id: string
-  description: string
+  property_id?: string | null
+  owner_id?: string | null
+  description: string | null
+  reference?: string | null
   amount: number
-  validity_days: number
-  status: 'pending' | 'accepted' | 'rejected' | 'expired'
-  submitted_at: string
+  validity_days?: number
+  status: 'draft' | 'pending' | 'sent' | 'accepted' | 'rejected' | 'expired'
+  items?: string | null
+  subtotal?: number | null
+  tax_rate?: number | null
+  tax_amount?: number | null
+  total?: number | null
+  valid_until?: string | null
+  notes?: string | null
+  submitted_at?: string | null
+  sent_at?: string | null
   responded_at: string | null
   created_at: string
+  updated_at?: string
 
 }
 
@@ -638,6 +711,9 @@ export type ProviderProfileRow = {
   // Missing columns discovered by type-level query parser
   type_services?: string[]
   certifications?: string[]
+  zones_intervention?: string | null
+  adresse_siege?: string | null
+  status?: string | null
   created_at: string
   updated_at: string
 
@@ -1076,6 +1152,8 @@ export type BuildingRow = {
   // Missing columns discovered by type-level query parser
   owner_id?: string
   name?: string | null
+  is_active?: boolean
+  syndic?: Json | null
   created_at: string
   updated_at: string
 
@@ -1153,6 +1231,7 @@ export type ConversationParticipantRow = {
   unread_count: number
   last_read_at: string | null
   joined_at: string
+  left_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -1186,6 +1265,7 @@ export type EdlInspectionItemRow = {
   damage_type: string | null
   damage_description: string | null
   photo_urls: string[] | null
+  photos?: string[] | null
   estimated_cost: number
   vetusty_rate: number
   tenant_responsibility: number
@@ -1258,10 +1338,14 @@ export type ConversationRow = {
   property_id: string | null
   lease_id: string | null
   owner_id: string
+  tenant_id?: string | null
   type: string | null
   subject: string | null
   status: string
   owner_unread_count?: number
+  tenant_unread_count?: number
+  owner_profile_id?: string | null
+  last_message_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -1272,6 +1356,10 @@ export type LeaseEndProcessRow = {
   status: string
   initiated_by: string | null
   end_date: string | null
+  edl_sortie_id?: string | null
+  renovation_cost?: number | null
+  deposit_retained?: number | null
+  deposit_refund?: number | null
   created_at: string
   updated_at: string
 }
@@ -1280,8 +1368,15 @@ export type MessageRow = {
   id: string
   conversation_id: string
   sender_id: string
+  sender_profile_id?: string | null
+  sender_role?: string | null
   content: string
+  content_type?: string | null
   type: string
+  attachment_url?: string | null
+  attachment_name?: string | null
+  attachment_type?: string | null
+  attachment_size?: number | null
   created_at: string
   updated_at: string
 }
@@ -1305,6 +1400,10 @@ export type OwnerProfileRow = {
   business_type: string | null
   type?: string | null
   adresse_facturation?: string | null
+  adresse_siege?: string | null
+  raison_sociale?: string | null
+  forme_juridique?: string | null
+  complement_adresse?: string | null
   created_at: string
   updated_at: string
 }
@@ -1313,12 +1412,17 @@ export type ProviderInvoiceRow = {
   id: string
   provider_id: string
   provider_profile_id?: string | null
+  owner_profile_id?: string | null
   property_id: string | null
   work_order_id: string | null
   amount: number
   total_amount?: number
   status: string
   invoice_number: string | null
+  sent_at?: string | null
+  sent_to_email?: string | null
+  reminder_count?: number
+  last_reminder_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -1327,10 +1431,30 @@ export type ProviderQuoteRow = {
   id: string
   ticket_id: string | null
   provider_id: string
+  provider_profile_id?: string | null
   property_id: string | null
+  owner_id?: string | null
+  owner_profile_id?: string | null
   description: string | null
+  title?: string | null
+  reference?: string | null
   amount: number
+  total_amount?: number | null
+  validity_days?: number
   status: string
+  items?: string | null
+  subtotal?: number | null
+  tax_rate?: number | null
+  tax_amount?: number | null
+  total?: number | null
+  valid_until?: string | null
+  notes?: string | null
+  submitted_at?: string | null
+  sent_at?: string | null
+  sent_to_email?: string | null
+  responded_at?: string | null
+  reminder_count?: number
+  last_reminder_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -1368,6 +1492,9 @@ export type UnifiedMessageRow = {
 }
 
 // ============================================
+// Generic Row type for tables not yet fully typed
+type GenericRowType = Record<string, unknown> & { id?: string; created_at?: string; updated_at?: string }
+
 // DATABASE TYPE - Flexible Structure
 // ============================================
 
@@ -1479,7 +1606,9 @@ export type Database = {
         Row: EDLMediaRow
         Insert: Partial<EDLMediaRow>
         Update: Partial<EDLMediaRow>
-        Relationships: []
+        Relationships: [
+          { foreignKeyName: "edl_media_edl_id_fkey"; columns: ["edl_id"]; isOneToOne: false; referencedRelation: "edl"; referencedColumns: ["id"] }
+        ]
       }
       edl_signatures: {
         Row: EDLSignatureRow
@@ -1578,7 +1707,10 @@ export type Database = {
         Row: QuoteRow
         Insert: Partial<QuoteRow>
         Update: Partial<QuoteRow>
-        Relationships: []
+        Relationships: [
+          { foreignKeyName: "quotes_provider_id_fkey"; columns: ["provider_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "quotes_property_id_fkey"; columns: ["property_id"]; isOneToOne: false; referencedRelation: "properties"; referencedColumns: ["id"] }
+        ]
       }
       provider_profiles: {
         Row: ProviderProfileRow
@@ -1766,7 +1898,9 @@ export type Database = {
         Update: Partial<ConversationRow>
         Relationships: [
           { foreignKeyName: "conversations_property_id_fkey"; columns: ["property_id"]; isOneToOne: false; referencedRelation: "properties"; referencedColumns: ["id"] },
-          { foreignKeyName: "conversations_owner_id_fkey"; columns: ["owner_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
+          { foreignKeyName: "conversations_owner_id_fkey"; columns: ["owner_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "conversations_owner_profile_id_fkey"; columns: ["owner_profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "conversations_tenant_profile_id_fkey"; columns: ["tenant_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
         ]
       }
       lease_end_processes: {
@@ -1783,7 +1917,8 @@ export type Database = {
         Update: Partial<MessageRow>
         Relationships: [
           { foreignKeyName: "messages_conversation_id_fkey"; columns: ["conversation_id"]; isOneToOne: false; referencedRelation: "conversations"; referencedColumns: ["id"] },
-          { foreignKeyName: "messages_sender_id_fkey"; columns: ["sender_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
+          { foreignKeyName: "messages_sender_id_fkey"; columns: ["sender_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "messages_sender_profile_id_fkey"; columns: ["sender_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
         ]
       }
       organizations: {
@@ -1808,6 +1943,7 @@ export type Database = {
         Update: Partial<ProviderInvoiceRow>
         Relationships: [
           { foreignKeyName: "provider_invoices_provider_id_fkey"; columns: ["provider_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "provider_invoices_owner_profile_id_fkey"; columns: ["owner_profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "provider_invoices_property_id_fkey"; columns: ["property_id"]; isOneToOne: false; referencedRelation: "properties"; referencedColumns: ["id"] }
         ]
       }
@@ -1817,6 +1953,7 @@ export type Database = {
         Update: Partial<ProviderQuoteRow>
         Relationships: [
           { foreignKeyName: "provider_quotes_provider_id_fkey"; columns: ["provider_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "provider_quotes_owner_profile_id_fkey"; columns: ["owner_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "provider_quotes_property_id_fkey"; columns: ["property_id"]; isOneToOne: false; referencedRelation: "properties"; referencedColumns: ["id"] }
         ]
       }
@@ -1842,9 +1979,175 @@ export type Database = {
         Update: Partial<UnifiedMessageRow>
         Relationships: [
           { foreignKeyName: "unified_messages_conversation_id_fkey"; columns: ["conversation_id"]; isOneToOne: false; referencedRelation: "unified_conversations"; referencedColumns: ["id"] },
-          { foreignKeyName: "unified_messages_sender_id_fkey"; columns: ["sender_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
+          { foreignKeyName: "unified_messages_sender_id_fkey"; columns: ["sender_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "unified_messages_sender_profile_id_fkey"; columns: ["sender_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
         ]
       }
+      // Auto-discovered tables — generic Row types (not yet fully typed)
+      admin_subscription_actions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      assemblies: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      assembly_attendance: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      assembly_documents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      audit_log: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      branding_assets: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      call_for_funds_items: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      calls_for_funds: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      charges_copro: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      copro_invites: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      copro_payments: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      copro_units: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      custom_domains: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      floors: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      locative_charge_rules: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      motions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      notification_preferences: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      notification_templates: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      organization_members: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      ownerships: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      promo_codes: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      provider_compliance_documents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      provider_compliance_status: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      provider_invoice_items: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      provider_invoice_payments: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      provider_kyc_requirements: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      provider_payout_accounts: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      provider_portfolio_items: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      provider_quote_items: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      provider_reviews: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      proxies: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      service_contracts: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      service_expenses: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      sites: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      subscription_events: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      subscription_invoices: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      subscription_usage: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      tenant_charge_regularisations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      user_feature_discoveries: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      user_roles: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      vigilance_audit_log: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      votes: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      work_order_payments: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      work_order_reports: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      work_order_timeline: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      // Accounting tables
+      accounting_entries: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      bank_reconciliations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      team_members: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      signature_requests: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      // Additional auto-discovered tables (Sprint 3)
+      account_flags: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      accounting_accounts: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      activity_logs: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      admin_logs: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      admin_notes: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      admin_user_notes: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      agency_commissions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      agency_profiles: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      ai_conversations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      analytics_aggregates: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      analytics_dashboards: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      analytics_widgets: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      api_credentials: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      api_providers: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      api_usage_logs: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      application_files: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      assistant_messages: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      assistant_threads: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      avatars: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      bank_connections: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      bank_transactions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      blog_posts: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      building_stats: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      cash_receipts: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      charge_provisions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      charge_reconciliations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      charge_regularizations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      chat_messages: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      chat_threads: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      chore_schedule: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      claims: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      cni_expiry_notifications: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      consumption_estimates: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      deposit_balance: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      deposit_operations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      deposit_refunds: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      deposits: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      dg_settlements: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      document_links: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      dpe_deliverables: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      dpe_requests: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      export_jobs: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      extracted_fields: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      features: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      guarantor_documents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      guarantor_engagements: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      guarantor_profiles: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      guarantors: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      house_rule_versions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      idempotency_keys: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      impersonation_sessions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      insurance_policies: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      invitations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      invoice_reminders: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      lease_drafts: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      lease_end_timeline: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      lease_indexations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      lease_notices: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      lease_pending_updates: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      lease_templates: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      mandant_accounts: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      mandates: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      moderation_actions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      moderation_queue: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      moderation_rules: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      notification_settings: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      onboarding_analytics: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      onboarding_drafts: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      onboarding_progress: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      onboarding_reminders: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      otp_codes: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      outbox: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      passkey_challenges: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      passkey_credentials: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      payment_intents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      payment_schedules: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      plan_pricing_history: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      promo_code_uses: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      property_photos: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      property_share_tokens: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      provider_stats: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      providers: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      push_subscriptions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      repair_cost_grid: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      rooms: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      rule_acceptances: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      sepa_mandates: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      signature_request_signers: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      signature_tokens: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      signature_validations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      sms_messages: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      stripe_connect_accounts: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      stripe_transfers: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      subscription_addon_subscriptions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      subscription_addons: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      tax_verification_logs: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      tenant_applications: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      tenant_documents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      tenant_identity_documents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      tenant_profiles: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      tenant_rewards: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      ticket_messages: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      two_factor_sessions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      two_factor_settings: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      unit_access_codes: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      user_2fa: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      user_consents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      user_notifications: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      vetusty_grid: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      vetusty_items: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      vetusty_reports: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      webhook_logs: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      webhook_queue: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
     }
     Views: Record<string, { Row: Record<string, unknown>; Relationships: Array<{ foreignKeyName: string; columns: string[]; isOneToOne: boolean; referencedRelation: string; referencedColumns: string[] }> }>
     Functions: Record<string, { Args: Record<string, unknown>; Returns: unknown }>

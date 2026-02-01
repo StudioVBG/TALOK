@@ -229,8 +229,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       new_status: actionConfig.to,
       event_data: { action, ...validationResult.data },
       description: `Action "${action}" effectuée`,
-    }).catch((err: any) => {
-      console.error('Error adding timeline event:', err);
     });
 
     // Créer une notification pour l'autre partie
@@ -258,8 +256,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           title: notif.title,
           message: notif.message,
           data: { work_order_id: workOrderId, action },
-        }).catch((err: any) => {
-          console.error('Error creating notification:', err);
         });
       }
     }
@@ -274,7 +270,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   } catch (error: unknown) {
     console.error('Error in POST /api/work-orders/[id]/flow:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -397,7 +393,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   } catch (error: unknown) {
     console.error('Error in GET /api/work-orders/[id]/flow:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
