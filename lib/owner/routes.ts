@@ -79,6 +79,21 @@ export const ownerDocumentRoutes = {
 };
 
 /**
+ * Routes pour la GED
+ */
+export const ownerGedRoutes = {
+  list: () => OWNER_ROUTES.ged.path,
+  withFilter: (filters: { property_id?: string; lease_id?: string; type?: string }) => {
+    const params = new URLSearchParams();
+    if (filters.property_id) params.append("property_id", filters.property_id);
+    if (filters.lease_id) params.append("lease_id", filters.lease_id);
+    if (filters.type) params.append("type", filters.type);
+    const queryString = params.toString();
+    return `${OWNER_ROUTES.ged.path}${queryString ? `?${queryString}` : ""}`;
+  },
+};
+
+/**
  * Routes pour le support
  */
 export const ownerSupportRoutes = {
@@ -95,6 +110,7 @@ export const ownerRoutes = {
   contracts: ownerContractRoutes,
   money: ownerMoneyRoutes,
   documents: ownerDocumentRoutes,
+  ged: ownerGedRoutes,
   support: ownerSupportRoutes,
   profile: OWNER_ROUTES.profile.path,
 };
