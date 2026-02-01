@@ -22,7 +22,7 @@ export const OWNER_ROUTES = {
   },
   contracts: {
     path: "/owner/leases",
-    name: "Baux & locataires",
+    name: "Mes baux",
     component: "OwnerContractsPage",
     auth: ["owner"],
     icon: "FileText",
@@ -43,7 +43,7 @@ export const OWNER_ROUTES = {
   },
   money: {
     path: "/owner/money",
-    name: "Loyers & revenus",
+    name: "Finances",
     component: "OwnerMoneyPage",
     auth: ["owner"],
     icon: "Euro",
@@ -110,6 +110,13 @@ export const OWNER_ROUTES = {
     component: "EndOfLeasePage",
     auth: ["owner"],
     icon: "CalendarClock",
+  },
+  entities: {
+    path: "/owner/entities",
+    name: "Entités",
+    component: "EntitiesPage",
+    auth: ["owner"],
+    icon: "Landmark",
   },
   support: {
     path: "/owner/support",

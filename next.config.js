@@ -205,6 +205,14 @@ const nextConfig = {
 
       // Route /profile legacy → rôle-spécifique (non-permanent car dépend du rôle)
       { source: '/profile', destination: '/owner/profile', permanent: false },
+
+      // Architecture v2: Consolidation des routes dans le lease hub
+      // Documents classiques → GED (gestionnaire unique)
+      { source: '/owner/documents', destination: '/owner/ged', permanent: false },
+      { source: '/owner/documents/:path*', destination: '/owner/ged', permanent: false },
+      // Protocoles juridiques → intégré dans les documents du bail
+      { source: '/owner/legal-protocols', destination: '/owner/leases', permanent: false },
+      { source: '/owner/legal-protocols/:path*', destination: '/owner/leases', permanent: false },
     ];
   },
 

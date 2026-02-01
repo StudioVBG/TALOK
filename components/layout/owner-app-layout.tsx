@@ -11,18 +11,15 @@ import {
   Building2,
   FileText,
   Euro,
-  FileCheck,
-  FolderArchive,
+  FolderOpen,
   HelpCircle,
   User,
   LogOut,
   ChevronDown,
   ChevronLeft,
-  CalendarClock,
   Wrench,
-  Shield,
   CreditCard,
-  ClipboardCheck,
+  Landmark,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { SharedBottomNav } from "./shared-bottom-nav";
@@ -55,14 +52,11 @@ import {
 const navigation = [
   { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard, tourId: "nav-dashboard" },
   { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2, tourId: "nav-properties" },
-  { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
-  { name: "États des lieux", href: "/owner/inspections", icon: ClipboardCheck, tourId: "nav-inspections" },
-  { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
-  { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
+  { name: "Mes baux", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
+  { name: "Finances", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
+  { name: "Documents", href: OWNER_ROUTES.ged.path, icon: FolderOpen, tourId: "nav-documents" },
   { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
-  { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck },
-  { name: "GED", href: OWNER_ROUTES.ged.path, icon: FolderArchive, badge: "Nouveau" },
-  { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
+  { name: "Entités", href: "/owner/entities", icon: Landmark },
   { name: "Facturation", href: "/settings/billing", icon: CreditCard },
   { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle },
 ];
@@ -376,15 +370,13 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
           items={[
             { href: OWNER_ROUTES.dashboard.path, label: "Dashboard", icon: LayoutDashboard },
             { href: OWNER_ROUTES.properties.path, label: "Biens", icon: Building2 },
-            { href: OWNER_ROUTES.money.path, label: "Loyers", icon: Euro },
+            { href: OWNER_ROUTES.money.path, label: "Finances", icon: Euro },
             { href: OWNER_ROUTES.contracts.path, label: "Baux", icon: FileText },
           ]}
           moreItems={[
-            { href: "/owner/inspections", label: "États des lieux", icon: ClipboardCheck },
+            { href: OWNER_ROUTES.ged.path, label: "Documents", icon: FolderOpen },
             { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench },
-            { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck },
-            { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
-            { href: "/owner/legal-protocols", label: "Juridique", icon: Shield },
+            { href: "/owner/entities", label: "Entités", icon: Landmark },
             { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
           ]}
           hideAbove="md"

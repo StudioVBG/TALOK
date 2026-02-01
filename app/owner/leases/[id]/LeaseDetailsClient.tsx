@@ -60,7 +60,7 @@ import { dpeService } from "@/features/diagnostics/services/dpe.service";
 import { useEffect } from "react";
 import { LeaseProgressTracker, type LeaseProgressStatus } from "@/components/owner/leases/LeaseProgressTracker";
 import { Celebration, useCelebration } from "@/components/ui/celebration";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+// Breadcrumb now handled by LeaseHubNav in layout
 
 interface LeaseDetailsClientProps {
   details: LeaseDetails;
@@ -571,101 +571,58 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/50">
-      {/* Breadcrumb */}
-      <div className="container mx-auto px-4 pt-4">
-        <Breadcrumb
-          items={[
-            { label: "Baux & locataires", href: "/owner/leases" },
-            { label: `Bail ${property.ville}` }
-          ]}
-          homeHref="/owner/dashboard"
-        />
+    <div>
+      {/* Quick actions bar */}
+      <div className="flex items-center justify-end gap-2 mb-4">
+        {needsOwnerSignature && (
+          <Button
+            size="sm"
+            onClick={() => setShowSignatureModal(true)}
+            disabled={isSigning}
+            className="bg-blue-600 hover:bg-blue-700 shadow-sm"
+          >
+            {isSigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+            Signer le bail
+          </Button>
+        )}
+
+        {canActivate && (
+          <Button
+            size="sm"
+            onClick={() => handleActivate(false)}
+            disabled={isActivating}
+            className="bg-green-600 hover:bg-green-700 shadow-sm"
+          >
+            {isActivating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+            Activer le bail
+          </Button>
+        )}
+
+        {!isSealed ? (
+          <Button variant="outline" size="sm" asChild className="bg-white hover:bg-slate-50 border-slate-200">
+            <Link href={`/owner/leases/${leaseId}/edit`}>
+              <Edit className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Modifier</span>
+            </Link>
+          </Button>
+        ) : signedPdfPath ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+            asChild
+          >
+            <a
+              href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_Complet_${property.ville || 'Logement'}.pdf`}
+              download
+            >
+              <Download className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Télécharger PDF</span>
+            </a>
+          </Button>
+        ) : null}
       </div>
 
-      {/* Barre supérieure fixe (Header) */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground hover:text-foreground">
-              <Link href="/owner/leases">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour
-              </Link>
-            </Button>
-            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-bold text-slate-900 hidden sm:block">
-                Bail {property.ville}
-              </h1>
-              <Badge className={statusConfig.color} variant="outline">
-                {statusConfig.label}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {needsOwnerSignature && (
-              <Button
-                size="sm"
-                onClick={() => setShowSignatureModal(true)}
-                disabled={isSigning}
-                className="bg-blue-600 hover:bg-blue-700 shadow-sm"
-              >
-                {isSigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                Signer le bail
-              </Button>
-            )}
-            
-            {/* Bouton d'activation - apparaît quand le bail est fully_signed */}
-            {canActivate && (
-              <Button
-                size="sm"
-                onClick={() => handleActivate(false)}
-                disabled={isActivating}
-                className="bg-green-600 hover:bg-green-700 shadow-sm"
-              >
-                {isActivating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                Activer le bail
-              </Button>
-            )}
-            
-            {/* Bouton Modifier ou Imprimer/PDF selon l'état */}
-            {!isSealed ? (
-              <Button variant="outline" size="sm" asChild className="bg-white hover:bg-slate-50 border-slate-200">
-                <Link href={`/owner/leases/${leaseId}/edit`}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Modifier</span>
-                </Link>
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                  asChild
-                >
-                  <a 
-                    href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_Complet_${property.ville || 'Logement'}.pdf`}
-                    download
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Imprimer / PDF</span>
-                    <span className="sm:hidden text-[10px]">PDF</span>
-                  </a>
-              </Button>
-                <div className="hidden md:flex items-center gap-1 text-[10px] text-slate-400 font-medium uppercase tracking-wider px-2 py-1 bg-slate-50 rounded border border-slate-100">
-                  <Lock className="h-3 w-3" />
-                  Scellé
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
         {/* 🚀 SOTA 2026: Tracker de progression */}
         <div className="mb-6">
           <LeaseProgressTracker 
@@ -1346,7 +1303,6 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
           </div>
         </div>
-      </div>
 
       {/* Wizard de renouvellement */}
       <LeaseRenewalWizard
