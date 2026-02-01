@@ -25,7 +25,7 @@ export async function getInvitesBySite(siteId: string): Promise<CoproInvite[]> {
     .order('created_at', { ascending: false });
   
   if (error) throw error;
-  return data || [];
+  return (data || []) as CoproInvite[];
 }
 
 export async function getInviteByToken(token: string): Promise<CoproInvite | null> {
@@ -41,8 +41,8 @@ export async function getInviteByToken(token: string): Promise<CoproInvite | nul
     if (error.code === 'PGRST116') return null;
     throw error;
   }
-  
-  return data;
+
+  return data as CoproInvite;
 }
 
 export async function createInvite(input: CreateInviteInput): Promise<CoproInvite> {
@@ -63,7 +63,7 @@ export async function createInvite(input: CreateInviteInput): Promise<CoproInvit
     .single();
   
   if (error) throw error;
-  return data;
+  return data as CoproInvite;
 }
 
 export async function createInvitesBatch(
@@ -95,12 +95,12 @@ export async function createInvitesBatch(
         continue;
       }
       
-      created.push(data);
+      created.push(data as CoproInvite);
       
       // Envoyer l'email si demandé
       if (input.send_emails) {
         try {
-          await sendInviteEmail(data);
+          await sendInviteEmail(data as CoproInvite);
         } catch (emailError) {
           errors.push(`${invite.email}: Erreur envoi email`);
         }
@@ -147,9 +147,9 @@ export async function resendInvite(id: string): Promise<CoproInvite> {
   if (error) throw error;
   
   // Renvoyer l'email
-  await sendInviteEmail(data);
-  
-  return data;
+  await sendInviteEmail(data as CoproInvite);
+
+  return data as CoproInvite;
 }
 
 // =====================================================
@@ -268,7 +268,7 @@ export async function getInviteStats(siteId: string): Promise<InviteStats> {
   
   if (error) throw error;
   
-  const invites = data || [];
+  const invites = (data || []) as any[];
   
   return {
     total: invites.length,

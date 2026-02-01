@@ -172,20 +172,21 @@ export async function logActivity(params: CreateActivityParams): Promise<Activit
       return null;
     }
 
+    const row = data as Record<string, any>;
     return {
-      id: data.id,
-      type: data.type,
-      category: data.category,
-      title: data.title,
-      description: data.description,
-      profileId: data.profile_id,
-      entityType: data.entity_type,
-      entityId: data.entity_id,
-      metadata: data.metadata,
-      ipAddress: data.ip_address,
-      userAgent: data.user_agent,
-      createdAt: data.created_at,
-    };
+      id: row.id,
+      type: row.type,
+      category: row.category,
+      title: row.title,
+      description: row.description,
+      profileId: row.profile_id,
+      entityType: row.entity_type,
+      entityId: row.entity_id,
+      metadata: row.metadata,
+      ipAddress: row.ip_address,
+      userAgent: row.user_agent,
+      createdAt: row.created_at,
+    } as ActivityLog;
   } catch (error) {
     console.error("[ActivityLog] Erreur:", error);
     return null;

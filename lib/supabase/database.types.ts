@@ -654,7 +654,7 @@ export type WorkOrderRow = {
   ticket_id: string
   provider_id: string
   quote_id: string | null
-  statut: 'assigned' | 'scheduled' | 'in_progress' | 'done' | 'cancelled'
+  statut: string
   scheduled_date: string | null
   completed_date: string | null
   actual_cost: number | null
@@ -665,6 +665,12 @@ export type WorkOrderRow = {
   date_intervention_reelle?: string | null
   date_intervention?: string | null
   cout_estime?: number | null
+  scheduled_start_at?: string | null
+  actual_start_at?: string | null
+  actual_end_at?: string | null
+  provider_notes?: string | null
+  owner_notes?: string | null
+  property_id?: string | null
   created_at: string
   updated_at: string
 
@@ -714,6 +720,18 @@ export type ProviderProfileRow = {
   zones_intervention?: string | null
   adresse_siege?: string | null
   status?: string | null
+  kyc_status?: string | null
+  bio?: string | null
+  website?: string | null
+  phone?: string | null
+  email?: string | null
+  address?: string | null
+  city?: string | null
+  postal_code?: string | null
+  insurance_number?: string | null
+  insurance_expiry?: string | null
+  decennial_number?: string | null
+  decennial_expiry?: string | null
   created_at: string
   updated_at: string
 

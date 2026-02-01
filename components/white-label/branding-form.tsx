@@ -99,7 +99,7 @@ export function BrandingForm({
   }, [branding]);
 
   const handleLogoUpload = useCallback(
-    async (type: string) => async (file: File) => {
+    (type: string) => async (file: File) => {
       const url = await onUploadAsset(type, file);
       const fieldMap: Record<string, keyof OrganizationBranding> = {
         logo: "logo_url",
