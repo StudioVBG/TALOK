@@ -105,14 +105,14 @@ export class AssistantService {
     }
     
     return (data || []).map(t => ({
-      id: t.id,
-      userId: t.user_id,
-      profileId: t.profile_id,
-      title: t.title || "Nouvelle conversation",
-      createdAt: t.created_at,
-      updatedAt: t.updated_at,
-      lastMessage: t.last_message,
-      messageCount: t.message_count || 0,
+      id: t.id as string,
+      userId: t.user_id as string,
+      profileId: t.profile_id as string,
+      title: (t.title || "Nouvelle conversation") as string,
+      createdAt: t.created_at as string,
+      updatedAt: t.updated_at as string,
+      lastMessage: t.last_message as string | undefined,
+      messageCount: (t.message_count || 0) as number,
     }));
   }
   
@@ -142,12 +142,12 @@ export class AssistantService {
     }
     
     return {
-      id: data.id,
-      userId: data.user_id,
-      profileId: data.profile_id,
-      title: data.title,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
+      id: data.id as string,
+      userId: data.user_id as string,
+      profileId: data.profile_id as string,
+      title: data.title as string,
+      createdAt: data.created_at as string,
+      updatedAt: data.updated_at as string,
       messageCount: 0,
     };
   }
@@ -181,12 +181,12 @@ export class AssistantService {
     }
     
     return (data || []).map(m => ({
-      id: m.id,
-      threadId: m.thread_id,
-      role: m.role,
-      content: m.content,
-      toolsUsed: m.tools_used,
-      createdAt: m.created_at,
+      id: m.id as string,
+      threadId: m.thread_id as string,
+      role: m.role as "user" | "assistant",
+      content: m.content as string,
+      toolsUsed: m.tools_used as string[] | undefined,
+      createdAt: m.created_at as string,
     }));
   }
   
@@ -260,7 +260,7 @@ export class AssistantService {
       .eq("id", threadId)
       .single();
     
-    if (thread && thread.title === "Nouvelle conversation" && thread.message_count <= 2) {
+    if (thread && thread.title === "Nouvelle conversation" && (thread.message_count as number) <= 2) {
       // Utiliser le premier message comme titre (tronqué)
       const newTitle = message.length > 50 ? message.substring(0, 47) + "..." : message;
       await supabase

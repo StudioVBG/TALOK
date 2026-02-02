@@ -94,8 +94,8 @@ export async function POST(request: Request, context: Context) {
     // Vérifier l'équilibre des écritures à pointer
     const totals = entries.reduce(
       (acc, e) => ({
-        debit: acc.debit + (e.debit || 0),
-        credit: acc.credit + (e.credit || 0),
+        debit: acc.debit + ((e.debit as number) || 0),
+        credit: acc.credit + ((e.credit as number) || 0),
       }),
       { debit: 0, credit: 0 }
     );

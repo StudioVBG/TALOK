@@ -384,7 +384,7 @@ function mapDatabaseToEDLComplet(
       quantite: k.quantite || k.quantity || 0,
       notes: k.notes,
     })),
-    signatures: mappedSignatures,
+    signatures: mappedSignatures as any,
     is_complete: edl.status === "completed" || edl.status === "signed",
     is_signed: edl.status === "signed" || mappedSignatures.filter((s: any) => s.signed_at).length >= 2,
     status: edl.status,

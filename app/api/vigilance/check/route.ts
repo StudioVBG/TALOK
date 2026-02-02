@@ -133,9 +133,9 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      yearly_total_ht: yearlyTotal || 0,
+      yearly_total_ht: (yearlyTotal as number) || 0,
       threshold_ht: 5000,
-      is_above_threshold: (yearlyTotal || 0) >= 5000,
+      is_above_threshold: ((yearlyTotal as number) || 0) >= 5000,
     });
     
   } catch (error) {

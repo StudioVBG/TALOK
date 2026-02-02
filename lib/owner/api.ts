@@ -788,8 +788,8 @@ export async function fetchOwnerDocuments(
       
       // Déterminer le statut du document
       let statut: DocumentStatus = "active";
-      if (doc.valid_until) {
-        const validUntil = new Date(doc.valid_until);
+      if ((doc as any).valid_until) {
+        const validUntil = new Date((doc as any).valid_until);
         const daysUntilExpiry = Math.floor((validUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         
         if (daysUntilExpiry < 0) {
@@ -812,10 +812,10 @@ export async function fetchOwnerDocuments(
           id: lease.id,
           reference: undefined, // TODO: Ajouter référence si disponible
         } : undefined,
-        title: doc.title || undefined,
+        title: (doc as any).title || undefined,
         storage_path: doc.storage_path || "",
         statut: statut,
-        valid_until: doc.valid_until || undefined,
+        valid_until: (doc as any).valid_until || undefined,
         created_at: doc.created_at || new Date().toISOString(),
       } as OwnerDocument;
     })

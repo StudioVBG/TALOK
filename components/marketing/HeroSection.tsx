@@ -17,7 +17,7 @@
  */
 
 import React, { useEffect, useRef } from "react";
-import { motion, useScroll, useTransform, useInView } from "framer-motion";
+import { motion, useScroll, useTransform, useInView, type Variants } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +36,7 @@ interface HeroSectionProps {
 }
 
 // Animation variants
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -47,7 +47,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: {
     opacity: 1,
@@ -59,7 +59,7 @@ const itemVariants = {
   },
 };
 
-const floatVariants = {
+const floatVariants: Variants = {
   initial: { y: 0 },
   animate: {
     y: [-10, 10, -10],

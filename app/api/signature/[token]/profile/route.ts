@@ -331,7 +331,7 @@ export async function POST(request: Request, { params }: PageProps) {
           }
         }
       } catch (error: unknown) {
-        console.error("[Signature] Erreur création profil:", error?.message || error);
+        console.error("[Signature] Erreur création profil:", (error as any)?.message || error);
         return NextResponse.json(
           { error: "Erreur lors de la création du profil" },
           { status: 500 }

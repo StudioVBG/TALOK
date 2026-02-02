@@ -243,8 +243,8 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const invoice = payload.new;
-            const oldInvoice = payload.old;
-            
+            const oldInvoice = payload.old as Record<string, any>;
+
             if (oldInvoice.statut !== invoice.statut) {
               if (invoice.statut === "paid") {
                 setData(prev => ({
@@ -294,8 +294,8 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const signer = payload.new;
-            const oldSigner = payload.old;
-            
+            const oldSigner = payload.old as Record<string, any>;
+
             if (oldSigner.signature_status === "pending" && signer.signature_status === "signed") {
               setData(prev => ({
                 ...prev,
@@ -354,8 +354,8 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const ticket = payload.new;
-            const oldTicket = payload.old;
-            
+            const oldTicket = payload.old as Record<string, any>;
+
             if (["resolved", "closed"].includes(ticket.statut) && !["resolved", "closed"].includes(oldTicket.statut)) {
               setData(prev => ({
                 ...prev,
@@ -389,8 +389,8 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const lease = payload.new;
-            const oldLease = payload.old;
-            
+            const oldLease = payload.old as Record<string, any>;
+
             if (oldLease.statut !== lease.statut) {
               if (lease.statut === "active" && oldLease.statut !== "active") {
                 setData(prev => ({

@@ -154,7 +154,7 @@ class WebhookRetryService {
     }
 
     console.log(`[WebhookRetry] Webhook enqueued: ${data.id} (${eventType})`);
-    return data.id;
+    return data.id as string;
   }
 
   /**
@@ -258,7 +258,7 @@ class WebhookRetryService {
 
     // Traiter en parallèle (avec limite de concurrence)
     const results = await Promise.allSettled(
-      webhooks.map((webhook) => this.processWebhook(webhook as WebhookPayload))
+      webhooks.map((webhook) => this.processWebhook(webhook as unknown as WebhookPayload))
     );
 
     const successCount = results.filter(
@@ -285,7 +285,7 @@ class WebhookRetryService {
       return [];
     }
 
-    return (data || []) as WebhookPayload[];
+    return (data || []) as unknown as WebhookPayload[];
   }
 
   /**
@@ -376,7 +376,7 @@ class WebhookRetryService {
           deadLetter: 0,
         };
 
-        data?.forEach((row: { status: string }) => {
+        data?.forEach((row: { status: unknown }) => {
           switch (row.status) {
             case "pending":
               stats.pending++;

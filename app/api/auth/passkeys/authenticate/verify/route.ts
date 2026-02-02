@@ -60,19 +60,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Décoder la clé publique
-    const publicKey = Buffer.from(storedCredential.public_key, "base64");
+    const publicKey = Buffer.from(storedCredential.public_key as string, "base64");
 
     // Vérifier la réponse d'authentification
     const verification = await verifyAuthenticationResponse({
       response: credential,
-      expectedChallenge: challengeData.challenge,
+      expectedChallenge: challengeData.challenge as string,
       expectedOrigin: ORIGIN,
       expectedRPID: RP_ID,
       credential: {
-        id: storedCredential.credential_id,
+        id: storedCredential.credential_id as string,
         publicKey: new Uint8Array(publicKey),
-        counter: storedCredential.counter,
-        transports: storedCredential.transports,
+        counter: storedCredential.counter as number,
+        transports: storedCredential.transports as any,
       },
       requireUserVerification: true,
     });
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         counter: verification.authenticationInfo.newCounter,
         last_used_at: new Date().toISOString(),
       })
-      .eq("id", storedCredential.id);
+      .eq("id", storedCredential.id as string);
 
     // Supprimer le challenge utilisé
     await serviceClient
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // Récupérer l'utilisateur pour créer une session
     const { data: authUser } = await serviceClient.auth.admin.getUserById(
-      storedCredential.user_id
+      storedCredential.user_id as string
     );
 
     if (!authUser?.user) {
@@ -128,8 +128,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       // Renvoyer les tokens pour établir la session côté client
-      access_token: magicLinkData.properties?.access_token,
-      refresh_token: magicLinkData.properties?.refresh_token,
+      access_token: (magicLinkData.properties as any)?.access_token,
+      refresh_token: (magicLinkData.properties as any)?.refresh_token,
       user: {
         id: authUser.user.id,
         email: authUser.user.email,

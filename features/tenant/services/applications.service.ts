@@ -73,7 +73,7 @@ export class ApplicationsService {
       if (error.code === "PGRST116") return null;
       throw error;
     }
-    return data;
+    return data as unknown as TenantApplication;
   }
 
   /**
@@ -125,7 +125,7 @@ export class ApplicationsService {
       .single();
 
     if (error) throw error;
-    return application;
+    return application as unknown as TenantApplication;
   }
 
   /**
@@ -149,7 +149,7 @@ export class ApplicationsService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as unknown as TenantApplication;
   }
 
   /**
@@ -165,7 +165,7 @@ export class ApplicationsService {
       .order("uploaded_at", { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data as unknown as ApplicationFile[]) || [];
   }
 
   /**
@@ -200,7 +200,7 @@ export class ApplicationsService {
       .order("extracted_at", { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data as unknown as ExtractedField[]) || [];
   }
 
   /**

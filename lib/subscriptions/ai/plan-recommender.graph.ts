@@ -71,7 +71,7 @@ async function analyzeUsage(state: PlanRecommenderStateType): Promise<Partial<Pl
   }
   
   // Signatures usage
-  if (limits.max_signatures_monthly !== -1 && limits.max_signatures_monthly > 0) {
+  if (limits.signatures_monthly_quota !== -1 && limits.signatures_monthly_quota > 0) {
     const sigUsage = state.signaturesUsagePercent;
     factors.push({ weight: 0.2, value: sigUsage });
   }
@@ -179,13 +179,18 @@ async function determineRecommendation(state: PlanRecommenderStateType): Promise
   
   // Cas 4: Croissance anticipée forte
   else if (growthPotential === "high" && currentPlan !== "enterprise") {
-    const nextPlan: Record<PlanSlug, PlanSlug> = {
+    const nextPlan: Partial<Record<PlanSlug, PlanSlug>> = {
+      gratuit: "starter",
       starter: "confort",
       confort: "pro",
       pro: "enterprise",
       enterprise: "enterprise",
+      enterprise_s: "enterprise_m",
+      enterprise_m: "enterprise_l",
+      enterprise_l: "enterprise_xl",
+      enterprise_xl: "enterprise_xl",
     };
-    recommendedPlan = nextPlan[currentPlan];
+    recommendedPlan = nextPlan[currentPlan] ?? currentPlan;
     reasoning = "Votre croissance anticipée suggère de passer au plan supérieur pour éviter d'être limité.";
     confidence = 65;
   }

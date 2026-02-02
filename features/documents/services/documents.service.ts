@@ -67,7 +67,7 @@ export class DocumentsService {
       .single();
 
     if (error) throw error;
-    return data as Document;
+    return data as unknown as Document;
   }
 
   async getDocumentsByProperty(propertyId: string, collection?: string) {

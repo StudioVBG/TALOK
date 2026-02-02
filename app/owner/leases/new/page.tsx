@@ -28,7 +28,7 @@ export default function NewContractPage() {
 
   return (
     <LeaseWizard
-      properties={properties}
+      properties={properties as any}
       initialPropertyId={propertyId || undefined}
     />
   );

@@ -146,7 +146,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       supabase,
       "invitation.created",
       "invitations",
-      invitation.id,
+      invitation.id ?? null,
       auth.user.id,
       null,
       invitation

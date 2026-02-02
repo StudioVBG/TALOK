@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     }
 
     // Récupérer les add-ons souscrits
-    let addonSubscriptions = [];
+    let addonSubscriptions: any[] = [];
     if (subscription) {
       const { data: addons } = await supabase
         .from("subscription_addon_subscriptions")

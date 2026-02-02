@@ -90,7 +90,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         level: "SES", // Default to Simple Electronic Signature
         otp_verified: false,
         doc_hash: crypto.randomUUID(), // TODO: actual document hash
-      });
+      } as any);
     }
 
     // Update lease status

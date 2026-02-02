@@ -76,7 +76,7 @@ export async function POST(
         .select("*")
         .eq("lease_id", lease_id)
         .eq("type", type)
-        .in("status", ["draft", "scheduled"])
+        .in("status", ["draft", "scheduled"] as any)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -132,7 +132,7 @@ export async function POST(
           invitation_token: crypto.randomUUID(),
         }));
 
-        await supabase.from("edl_signatures").insert(edlSignatures);
+        await supabase.from("edl_signatures").insert(edlSignatures as any);
         console.log(`[api/inspections] ${edlSignatures.length} signataires injectés depuis le bail`);
       }
     }

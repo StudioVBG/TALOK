@@ -80,7 +80,7 @@ class TesseractOCRService {
         // Format PNG pour qualité optimale
         .png()
         .toBuffer();
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('[Tesseract] Prétraitement échoué, utilisation image originale:', error);
       return imageBuffer;
     }
@@ -133,7 +133,7 @@ class TesseractOCRService {
       };
 
     } catch (error: unknown) {
-      console.error('[Tesseract] Erreur OCR:', error.message);
+      console.error('[Tesseract] Erreur OCR:', (error as Error).message);
       return {
         documentType: "other",
         rawText: "",

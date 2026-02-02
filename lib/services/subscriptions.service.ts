@@ -111,7 +111,7 @@ class SubscriptionsService {
       return [];
     }
 
-    return data || [];
+    return (data as unknown as Plan[]) || [];
   }
 
   /**
@@ -126,7 +126,7 @@ class SubscriptionsService {
       .single();
 
     if (error) return null;
-    return data;
+    return data as unknown as Plan;
   }
 
   /**
@@ -151,7 +151,7 @@ class SubscriptionsService {
       return null;
     }
 
-    return data;
+    return data as unknown as Subscription;
   }
 
   /**
@@ -168,7 +168,7 @@ class SubscriptionsService {
       return null;
     }
 
-    return data?.[0] || null;
+    return (data as any)?.[0] || null;
   }
 
   /**
@@ -203,7 +203,7 @@ class SubscriptionsService {
       : limits?.tenants_max || 1;
 
     return {
-      allowed: data,
+      allowed: data as boolean,
       current,
       max,
       message: data
@@ -230,7 +230,7 @@ class SubscriptionsService {
       return false;
     }
 
-    return data || false;
+    return (data as boolean) || false;
   }
 
   /**
@@ -262,7 +262,7 @@ class SubscriptionsService {
 
       return { url: data.url };
     } catch (error: unknown) {
-      return { error: error.message };
+      return { error: (error as Error).message };
     }
   }
 
@@ -284,7 +284,7 @@ class SubscriptionsService {
 
       return { url: data.url };
     } catch (error: unknown) {
-      return { error: error.message };
+      return { error: (error as Error).message };
     }
   }
 
@@ -309,7 +309,7 @@ class SubscriptionsService {
 
       return { success: true };
     } catch (error: unknown) {
-      return { success: false, error: error.message };
+      return { success: false, error: (error as Error).message };
     }
   }
 
@@ -350,7 +350,7 @@ class SubscriptionsService {
       .eq("period_month", periodMonth);
 
     const usage: Record<string, number> = {};
-    for (const record of data || []) {
+    for (const record of (data || []) as { usage_type: string; quantity: number }[]) {
       usage[record.usage_type] = (usage[record.usage_type] || 0) + record.quantity;
     }
 

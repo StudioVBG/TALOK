@@ -231,7 +231,7 @@ export function SubscriptionProvider({
   const getLimitForResource = useCallback(
     (resource: "properties" | "leases" | "users" | "signatures"): number => {
       const limitKey = resource === "signatures" ? "max_signatures_monthly" : `max_${resource}`;
-      return (planConfig.limits as Record<string, number>)[limitKey] ?? 0;
+      return (planConfig.limits as unknown as Record<string, number>)[limitKey] ?? 0;
     },
     [planConfig]
   );
@@ -308,7 +308,7 @@ export function SubscriptionProvider({
   );
 
   const isSuspended = useMemo(
-    () => subscription?.status === "suspended",
+    () => subscription?.status === ("suspended" as any),
     [subscription]
   );
 

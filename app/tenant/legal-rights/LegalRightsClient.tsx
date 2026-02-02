@@ -155,7 +155,7 @@ export function LegalRightsClient({ propertyAddress }: LegalRightsClientProps) {
                 Numéros d&apos;urgence
               </p>
               <div className="flex flex-wrap gap-2">
-                {localContacts.emergency_contacts.map((contact, idx) => (
+                {localContacts.emergency_contacts.map((contact: any, idx: number) => (
                   <Button
                     key={idx}
                     variant="outline"

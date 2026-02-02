@@ -37,7 +37,7 @@ type SyncStatus = 'idle' | 'saving' | 'saved' | 'error';
  * SOTA 2026: Interface typée pour les données du formulaire
  * Remplace le `Record<string, any>` non sécurisé
  */
-export interface WizardFormData extends Partial<Property> {
+export interface WizardFormData {
   // Type de bien
   type?: PropertyTypeV3;
   type_bien?: PropertyTypeV3;

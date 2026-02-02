@@ -25,7 +25,7 @@ export class BlogService {
       .order("published_at", { ascending: false });
 
     if (error) throw error;
-    return data as BlogPost[];
+    return data as unknown as BlogPost[];
   }
 
   async getAllPosts() {
@@ -35,7 +35,7 @@ export class BlogService {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return data as BlogPost[];
+    return data as unknown as BlogPost[];
   }
 
   async getPostBySlug(slug: string) {
@@ -46,7 +46,7 @@ export class BlogService {
       .single();
 
     if (error) throw error;
-    return data as BlogPost;
+    return data as unknown as BlogPost;
   }
 
   async getPostById(id: string) {
@@ -57,7 +57,7 @@ export class BlogService {
       .single();
 
     if (error) throw error;
-    return data as BlogPost;
+    return data as unknown as BlogPost;
   }
 
   async createPost(data: CreateBlogPostData) {
@@ -94,7 +94,7 @@ export class BlogService {
       .single();
 
     if (error) throw error;
-    return post as BlogPost;
+    return post as unknown as BlogPost;
   }
 
   async updatePost(id: string, data: UpdateBlogPostData) {
@@ -136,7 +136,7 @@ export class BlogService {
       .order("published_at", { ascending: false });
 
     if (error) throw error;
-    return data as BlogPost[];
+    return data as unknown as BlogPost[];
   }
 }
 

@@ -45,10 +45,11 @@ export class FirstLoginService {
         };
       }
 
+      const result = data as any;
       return {
-        success: data.success,
-        isFirstLogin: data.is_first_login,
-        loginCount: data.login_count,
+        success: result.success,
+        isFirstLogin: result.is_first_login,
+        loginCount: result.login_count,
       };
     } catch (err) {
       console.error('Erreur record login:', err);
@@ -86,10 +87,10 @@ export class FirstLoginService {
     return {
       isFirstLogin: data.login_count === 1,
       loginCount: data.login_count || 0,
-      welcomeSeenAt: data.welcome_seen_at,
-      tourCompletedAt: data.tour_completed_at,
-      onboardingCompletedAt: data.onboarding_completed_at,
-      onboardingSkippedAt: data.onboarding_skipped_at,
+      welcomeSeenAt: data.welcome_seen_at ?? null,
+      tourCompletedAt: data.tour_completed_at ?? null,
+      onboardingCompletedAt: data.onboarding_completed_at ?? null,
+      onboardingSkippedAt: data.onboarding_skipped_at ?? null,
     };
   }
 
@@ -190,7 +191,7 @@ export class FirstLoginService {
     // Mettre à jour le profil spécifique au rôle
     const roleTable = `${role}_profiles`;
     const { error: roleError } = await this.supabase
-      .from(roleTable)
+      .from(roleTable as any)
       .update({
         onboarding_completed: true,
         onboarding_completed_at: now,
@@ -319,7 +320,7 @@ export class FirstLoginService {
       .eq('user_id', user.id);
 
     if (error) return [];
-    return data.map(d => d.feature_key);
+    return data.map(d => d.feature_key) as string[];
   }
 }
 

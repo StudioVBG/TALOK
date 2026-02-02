@@ -132,7 +132,7 @@ export function LeaseEndAlert({
               <div className="flex items-center text-muted-foreground text-sm mb-3">
                 <Home className="w-4 h-4 mr-1.5 flex-shrink-0" />
                 <span className="truncate">
-                  {property.adresse_complete}, {property.ville}
+                  {property.adresse_complete}, {(property as any).ville}
                 </span>
               </div>
 

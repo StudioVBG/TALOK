@@ -36,6 +36,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UnifiedFAB } from "@/components/layout/unified-fab";
 import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import { OnboardingTourProvider, AutoTourPrompt } from "@/components/onboarding";
 import {
   Tooltip,
   TooltipContent,
@@ -104,6 +105,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
   const isDetailPage = pathname?.split("/").filter(Boolean).length > 2;
 
   return (
+    <OnboardingTourProvider role="tenant" profileId={profile?.id}>
     <TooltipProvider delayDuration={0}>
     <div className="min-h-screen bg-background">
       {/* Offline indicator */}
@@ -177,7 +179,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
       {/* ============================================
           DESKTOP Full Sidebar (lg+) - Texte + icônes groupés
           ============================================ */}
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col bg-card border-r">
+      <aside data-tour-sidebar className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col bg-card border-r">
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b shrink-0">
           <Link href="/tenant/dashboard" className="flex items-center gap-2">
@@ -409,7 +411,11 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
       {/* SOTA 2026 - FAB Unifié (Assistant + Actions) */}
       <UnifiedFAB />
+
+      {/* SOTA 2026 - Tour guidé d'onboarding */}
+      <AutoTourPrompt />
     </div>
     </TooltipProvider>
+    </OnboardingTourProvider>
   );
 }

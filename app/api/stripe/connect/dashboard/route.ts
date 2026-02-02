@@ -58,7 +58,7 @@ export async function POST() {
     }
 
     // Créer le lien de dashboard
-    const loginLink = await connectService.createLoginLink(connectAccount.stripe_account_id);
+    const loginLink = await connectService.createLoginLink(connectAccount.stripe_account_id as string);
 
     return NextResponse.json({
       success: true,

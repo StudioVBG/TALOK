@@ -162,7 +162,7 @@ function mapLeaseToTemplateData(
       indice_reference: "IRL",
       // ✅ FIX: Terme à échoir si paiement en début de mois
       paiement_avance: paiementAvance,
-    },
+    } as any,
 
     diagnostics: {
       dpe: {

@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     // 1. Alerter les essais gratuits qui se terminent dans 3 jours
     const trialEndingSoon = addDays(today, 3);
 
-    const { data: trialingSubs, error: trialError } = await supabase
+    const { data: trialingSubs, error: trialError }: any = await supabase
       .from("subscriptions")
       .select(`
         id,
@@ -97,7 +97,7 @@ export async function GET(request: Request) {
     // 2. Alerter les abonnements qui vont se renouveler dans 7 jours
     const renewingSoon = addDays(today, 7);
 
-    const { data: renewingSubs, error: renewError } = await supabase
+    const { data: renewingSubs, error: renewError }: any = await supabase
       .from("subscriptions")
       .select(`
         id,
@@ -165,7 +165,7 @@ export async function GET(request: Request) {
     // 3. Alerter les abonnements annulés qui expirent bientôt
     const canceledExpiringSoon = addDays(today, 7);
 
-    const { data: canceledSubs, error: cancelError } = await supabase
+    const { data: canceledSubs, error: cancelError }: any = await supabase
       .from("subscriptions")
       .select(`
         id,

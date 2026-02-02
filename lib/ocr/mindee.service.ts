@@ -129,9 +129,9 @@ class MindeeService {
     const formData = new FormData();
     
     if (file instanceof Buffer) {
-      formData.append("document", new Blob([file]), fileName);
+      formData.append("document", new Blob([file as any]), fileName);
     } else {
-      formData.append("document", file, fileName);
+      formData.append("document", file as Blob, fileName);
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {

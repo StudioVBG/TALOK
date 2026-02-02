@@ -71,7 +71,7 @@ export async function GET(request: Request) {
         throw error;
       }
 
-      results = data || [];
+      results = (data as any[]) || [];
     } catch (rpcError) {
       // Fallback sur recherche LIKE si la fonction RPC n'existe pas
       console.log("Fallback sur recherche LIKE:", rpcError);

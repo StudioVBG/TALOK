@@ -71,7 +71,7 @@ export async function withSubscriptionLimit(
       };
     }
 
-    const plan = subscription.plan || {};
+    const plan = (subscription.plan || {}) as any;
     let current = 0;
     let max = 0;
 
@@ -179,7 +179,7 @@ export async function withFeatureAccess(
       };
     }
 
-    const plan = subscription.plan || {};
+    const plan = (subscription.plan || {}) as any;
     const features = plan.features || {};
 
     // Vérifier si la feature est activée dans le plan
@@ -224,7 +224,7 @@ function getLimitLabel(limitType: LimitType): string {
  * Helper: Obtient le libellé d'une feature
  */
 function getFeatureLabel(feature: FeatureKey): string {
-  const labels: Partial<Record<FeatureKey, string>> = {
+  const labels: Record<string, string> = {
     scoring_tenant: "Scoring locataire IA",
     work_orders: "Ordres de travaux",
     providers_management: "Gestion des prestataires",
@@ -249,7 +249,7 @@ function getFeatureLabel(feature: FeatureKey): string {
  * Helper: Obtient le plan requis pour une feature
  */
 function getRequiredPlanForFeature(feature: FeatureKey): string {
-  const requirements: Partial<Record<FeatureKey, string>> = {
+  const requirements: Record<string, string> = {
     // Confort+
     scoring_tenant: "Confort",
     work_orders: "Confort",

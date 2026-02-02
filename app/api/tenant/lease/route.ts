@@ -22,9 +22,9 @@ export async function GET() {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 
-  return NextResponse.json({ 
-    lease: data?.lease || null,
-    property: data?.property || null
+  return NextResponse.json({
+    lease: (data as any)?.lease || null,
+    property: (data as any)?.property || null
   });
 }
 

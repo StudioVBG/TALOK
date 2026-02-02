@@ -33,7 +33,7 @@ export function BrandedLogin({
   const logoUrl = branding.logo_url;
   const primaryColor = branding.primary_color || DEFAULT_BRANDING.primary_color;
   const backgroundUrl = branding.login_background_url;
-  const backgroundColor = branding.login_background_color || "#f8fafc";
+  const backgroundColor = (branding as any).login_background_color || "#f8fafc";
   const removePoweredBy = branding.remove_powered_by || false;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,7 +90,7 @@ export function BrandedLogin({
             ) : (
               <h1
                 className="text-2xl font-bold mb-2"
-                style={{ color: primaryColor }}
+                style={{ color: primaryColor ?? undefined }}
               >
                 🏠 {companyName}
               </h1>
@@ -138,7 +138,7 @@ export function BrandedLogin({
                 <a
                   href="#"
                   className="text-sm hover:underline"
-                  style={{ color: primaryColor }}
+                  style={{ color: primaryColor ?? undefined }}
                   onClick={(e) => isPreview && e.preventDefault()}
                 >
                   Mot de passe oublié ?
@@ -173,7 +173,7 @@ export function BrandedLogin({
               type="submit"
               className="w-full h-11"
               disabled={isLoading}
-              style={{ backgroundColor: primaryColor }}
+              style={{ backgroundColor: primaryColor ?? undefined }}
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -226,7 +226,7 @@ export function BrandedLogin({
             <a
               href="#"
               className="font-medium hover:underline"
-              style={{ color: primaryColor }}
+              style={{ color: primaryColor ?? undefined }}
               onClick={(e) => isPreview && e.preventDefault()}
             >
               Créer un compte

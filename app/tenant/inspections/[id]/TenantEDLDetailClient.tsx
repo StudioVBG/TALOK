@@ -84,7 +84,7 @@ export default function TenantEDLDetailClient({
     profile: s.profile,
   }));
 
-  console.log("[TenantEDLDetail] Adapted signatures:", JSON.stringify(adaptedSignatures.map(s => ({
+  console.log("[TenantEDLDetail] Adapted signatures:", JSON.stringify(adaptedSignatures.map((s: any) => ({
     role: s.signer_type,
     hasUrl: !!s.signature_image_url,
     url: s.signature_image_url ? s.signature_image_url.substring(0, 50) + '...' : null,

@@ -57,9 +57,10 @@ Sentry.init({
     // Masquer les données de body sensibles
     if (event.request?.data) {
       const sensitiveFields = ["password", "token", "secret", "apiKey", "api_key"];
+      const data = event.request.data as Record<string, any>;
       sensitiveFields.forEach((field) => {
-        if (typeof event.request?.data === "object" && event.request.data[field]) {
-          event.request.data[field] = "[REDACTED]";
+        if (typeof data === "object" && data[field]) {
+          data[field] = "[REDACTED]";
         }
       });
     }

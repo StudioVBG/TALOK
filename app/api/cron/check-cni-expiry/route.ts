@@ -27,8 +27,9 @@ export async function GET(request: Request) {
     const serviceClient = getServiceClient();
     
     // Appeler la fonction SQL qui trouve les CNI expirant
-    const { data: expiringCNIs, error: queryError } = await serviceClient
+    const { data: expiringCNIsRaw, error: queryError } = await serviceClient
       .rpc("check_expiring_cni");
+    const expiringCNIs = expiringCNIsRaw as any[] | null;
 
     if (queryError) {
       console.error("[CRON CNI] Erreur requête:", queryError);

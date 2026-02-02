@@ -79,7 +79,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Marquer comme vu si c'est le propriétaire qui consulte
-    if (isOwner && !quote.viewed_at && quote.status === 'sent') {
+    if (isOwner && !(quote as any).viewed_at && quote.status === 'sent') {
       await supabase
         .from('provider_quotes')
         .update({ viewed_at: new Date().toISOString(), status: 'viewed' })
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
   } catch (error: unknown) {
     console.error('Error in GET /api/provider/quotes/[id]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 
@@ -166,7 +166,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Error in DELETE /api/provider/quotes/[id]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

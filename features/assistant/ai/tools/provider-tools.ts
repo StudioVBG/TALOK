@@ -256,7 +256,7 @@ export const updateWorkOrderStatusTool = tool(
       await supabase
         .from("tickets")
         .update({ statut: "resolved", updated_at: new Date().toISOString() })
-        .eq("id", ticket.id);
+        .eq("id", ticket.id as string);
       
       // Notifier le propriétaire
       await supabase.from("notifications").insert({
@@ -270,7 +270,7 @@ export const updateWorkOrderStatusTool = tool(
           work_order_id: input.workOrderId,
           final_cost: input.finalCost,
         },
-      });
+      } as any);
     }
     
     const statusMessages: Record<string, string> = {

@@ -83,9 +83,7 @@ export const LeaseCard = memo(function LeaseCard({
               </Badge>
             </div>
           </div>
-          <StatusBadge status={statusConfig.status} size="sm">
-            {statusConfig.label}
-          </StatusBadge>
+          <StatusBadge status={statusConfig.label} type={statusConfig.status} />
         </div>
 
         {/* Property info */}
@@ -187,9 +185,7 @@ export const LeaseCardCompact = memo(function LeaseCardCompact({
         </div>
 
         <div className="text-right shrink-0">
-          <StatusBadge status={statusConfig.status} size="sm">
-            {statusConfig.label}
-          </StatusBadge>
+          <StatusBadge status={statusConfig.label} type={statusConfig.status} />
           <div className="font-semibold text-sm mt-1">
             {formatCurrency(lease.loyer + (lease.charges_forfaitaires || 0))}
           </div>

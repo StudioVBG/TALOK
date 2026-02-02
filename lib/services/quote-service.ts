@@ -100,7 +100,7 @@ export async function createQuote(
 
     const { data, error } = await supabase
       .from("quotes")
-      .insert(quote)
+      .insert(quote as any)
       .select()
       .single();
 
@@ -116,26 +116,26 @@ export async function createQuote(
       quote: {
         id: data.id,
         providerId: data.provider_id,
-        ticketId: data.ticket_id,
-        propertyId: data.property_id,
-        ownerId: data.owner_id,
-        reference: data.reference,
-        status: data.status,
-        items: JSON.parse(data.items),
-        subtotal: data.subtotal,
-        taxRate: data.tax_rate,
-        taxAmount: data.tax_amount,
-        total: data.total,
-        validUntil: data.valid_until,
-        notes: data.notes,
+        ticketId: data.ticket_id ?? '',
+        propertyId: data.property_id ?? '',
+        ownerId: data.owner_id ?? '',
+        reference: data.reference ?? '',
+        status: data.status as Quote["status"],
+        items: JSON.parse(data.items || '[]'),
+        subtotal: data.subtotal ?? 0,
+        taxRate: data.tax_rate ?? 0,
+        taxAmount: data.tax_amount ?? 0,
+        total: data.total ?? 0,
+        validUntil: data.valid_until ?? '',
+        notes: data.notes ?? undefined,
         createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        sentAt: data.sent_at,
-        respondedAt: data.responded_at,
+        updatedAt: data.updated_at ?? '',
+        sentAt: data.sent_at ?? undefined,
+        respondedAt: data.responded_at ?? undefined,
       },
     };
   } catch (error) {
-    logger.error("Quote creation failed", { error });
+    logger.error("Quote creation failed", { error: error as Error });
     return { success: false, error: "Une erreur est survenue" };
   }
 }
@@ -167,7 +167,7 @@ export async function sendQuote(
 
     return { success: true };
   } catch (error) {
-    logger.error("Failed to send quote", { error });
+    logger.error("Failed to send quote", { error: error as Error });
     return { success: false, error: "Une erreur est survenue" };
   }
 }
@@ -202,7 +202,7 @@ export async function respondToQuote(
 
     return { success: true };
   } catch (error) {
-    logger.error("Failed to respond to quote", { error });
+    logger.error("Failed to respond to quote", { error: error as Error });
     return { success: false, error: "Une erreur est survenue" };
   }
 }
@@ -234,25 +234,25 @@ export async function getProviderQuotes(
     return data.map((q) => ({
       id: q.id,
       providerId: q.provider_id,
-      ticketId: q.ticket_id,
-      propertyId: q.property_id,
-      ownerId: q.owner_id,
-      reference: q.reference,
-      status: q.status,
-      items: JSON.parse(q.items),
-      subtotal: q.subtotal,
-      taxRate: q.tax_rate,
-      taxAmount: q.tax_amount,
-      total: q.total,
-      validUntil: q.valid_until,
-      notes: q.notes,
+      ticketId: q.ticket_id ?? '',
+      propertyId: q.property_id ?? '',
+      ownerId: q.owner_id ?? '',
+      reference: q.reference ?? '',
+      status: q.status as Quote["status"],
+      items: JSON.parse(q.items || '[]'),
+      subtotal: q.subtotal ?? 0,
+      taxRate: q.tax_rate ?? 0,
+      taxAmount: q.tax_amount ?? 0,
+      total: q.total ?? 0,
+      validUntil: q.valid_until ?? '',
+      notes: q.notes ?? undefined,
       createdAt: q.created_at,
-      updatedAt: q.updated_at,
-      sentAt: q.sent_at,
-      respondedAt: q.responded_at,
+      updatedAt: q.updated_at ?? '',
+      sentAt: q.sent_at ?? undefined,
+      respondedAt: q.responded_at ?? undefined,
     }));
   } catch (error) {
-    logger.error("Failed to get provider quotes", { error });
+    logger.error("Failed to get provider quotes", { error: error as Error });
     return [];
   }
 }
@@ -285,25 +285,25 @@ export async function getOwnerQuotes(
     return data.map((q) => ({
       id: q.id,
       providerId: q.provider_id,
-      ticketId: q.ticket_id,
-      propertyId: q.property_id,
-      ownerId: q.owner_id,
-      reference: q.reference,
-      status: q.status,
-      items: JSON.parse(q.items),
-      subtotal: q.subtotal,
-      taxRate: q.tax_rate,
-      taxAmount: q.tax_amount,
-      total: q.total,
-      validUntil: q.valid_until,
-      notes: q.notes,
+      ticketId: q.ticket_id ?? '',
+      propertyId: q.property_id ?? '',
+      ownerId: q.owner_id ?? '',
+      reference: q.reference ?? '',
+      status: q.status as Quote["status"],
+      items: JSON.parse(q.items || '[]'),
+      subtotal: q.subtotal ?? 0,
+      taxRate: q.tax_rate ?? 0,
+      taxAmount: q.tax_amount ?? 0,
+      total: q.total ?? 0,
+      validUntil: q.valid_until ?? '',
+      notes: q.notes ?? undefined,
       createdAt: q.created_at,
-      updatedAt: q.updated_at,
-      sentAt: q.sent_at,
-      respondedAt: q.responded_at,
+      updatedAt: q.updated_at ?? '',
+      sentAt: q.sent_at ?? undefined,
+      respondedAt: q.responded_at ?? undefined,
     }));
   } catch (error) {
-    logger.error("Failed to get owner quotes", { error });
+    logger.error("Failed to get owner quotes", { error: error as Error });
     return [];
   }
 }

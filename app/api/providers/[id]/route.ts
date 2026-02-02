@@ -71,7 +71,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Calculer les stats des avis
     const allReviews = reviews || [];
     const avgRating = allReviews.length > 0
-      ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
+      ? allReviews.reduce((sum, r) => sum + (r.rating as number), 0) / allReviews.length
       : 0;
     
     // Récupérer le portfolio
@@ -105,12 +105,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       ? Math.round((onTimeCount / completedInterventions) * 100) 
       : 100;
     
-    const satisfiedCount = allReviews.filter(r => r.rating >= 4).length;
+    const satisfiedCount = allReviews.filter(r => (r.rating as number) >= 4).length;
     const satisfactionRate = allReviews.length > 0 
       ? Math.round((satisfiedCount / allReviews.length) * 100) 
       : 100;
     
-    const recommendCount = allReviews.filter(r => r.rating >= 4.5).length;
+    const recommendCount = allReviews.filter(r => (r.rating as number) >= 4.5).length;
     const recommendationRate = allReviews.length > 0 
       ? Math.round((recommendCount / allReviews.length) * 100) 
       : 100;
@@ -143,11 +143,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     
     // Parser les certifications
     let certifications: string[] = [];
-    if (providerProfile.certifications) {
-      if (typeof providerProfile.certifications === 'string') {
-        certifications = providerProfile.certifications.split(',').map((c: string) => c.trim());
-      } else if (Array.isArray(providerProfile.certifications)) {
-        certifications = providerProfile.certifications;
+    const rawCertifications = (providerProfile as any).certifications;
+    if (rawCertifications) {
+      if (typeof rawCertifications === 'string') {
+        certifications = rawCertifications.split(',').map((c: string) => c.trim());
+      } else if (Array.isArray(rawCertifications)) {
+        certifications = rawCertifications;
       }
     }
     
@@ -156,18 +157,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       id: providerProfile.profile_id,
       name: `${profile.prenom || ''} ${profile.nom || ''}`.trim() || 'Prestataire',
       avatar_url: profile.avatar_url,
-      bio: providerProfile.description || null,
+      bio: (providerProfile as any).description || null,
       services: providerProfile.type_services || [],
       rating: Math.round(avgRating * 10) / 10,
       review_count: allReviews.length,
       intervention_count: completedInterventions,
       location: providerProfile.zones_intervention || 'France',
-      address: providerProfile.adresse,
+      address: (providerProfile as any).adresse,
       phone: profile.telephone,
       hourly_rate_min: providerProfile.tarif_min,
       hourly_rate_max: providerProfile.tarif_max,
       is_urgent_available: providerProfile.disponibilite_urgence || false,
-      response_time_hours: providerProfile.temps_reponse_heures,
+      response_time_hours: (providerProfile as any).temps_reponse_heures,
       kyc_status: providerProfile.kyc_status,
       has_certifications: certifications.length > 0,
       certifications,

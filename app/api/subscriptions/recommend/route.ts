@@ -84,7 +84,7 @@ export async function GET() {
 
     // Préparer les données pour le recommender
     const limits = PLANS[currentPlan].limits;
-    const signaturesUsed = usage?.signatures_used_this_month || 0;
+    const signaturesUsed = (usage?.signatures_used_this_month as number) || 0;
 
     const recommendation = await getRecommendedPlan({
       userId: user.id,
@@ -98,7 +98,7 @@ export async function GET() {
       needsAdvancedFeatures: (propertiesCount || 0) > 3,
       isProfessional: ownerProfile?.type === "societe",
       propertiesUsagePercent: getUsagePercentage(propertiesCount || 0, limits.max_properties),
-      signaturesUsagePercent: getUsagePercentage(signaturesUsed, limits.max_signatures_monthly),
+      signaturesUsagePercent: getUsagePercentage(signaturesUsed, (limits as any).max_signatures_monthly),
     });
 
     return NextResponse.json({

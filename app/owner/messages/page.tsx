@@ -110,7 +110,7 @@ export default function OwnerMessagesPage() {
               <h1 className="text-2xl font-bold mb-4">Messages</h1>
               <ConversationsList
                 currentProfileId={currentProfileId}
-                selectedId={selectedConversation?.id}
+                selectedId={(selectedConversation as any)?.id}
                 onSelect={handleSelectConversation}
               />
             </div>

@@ -268,7 +268,7 @@ export const requestReceiptTool = tool(
         periode: invoice.periode,
         tenant_name: `${profile.prenom} ${profile.nom}`,
       },
-    });
+    } as any);
     
     if (notifError) {
       console.error("[Tenant Tool] Error creating notification:", notifError);
@@ -357,7 +357,7 @@ export const reportProblemTool = tool(
         lease_id: lease.id,
         created_by_profile_id: profile.id,
         statut: "open",
-      })
+      } as any)
       .select("id")
       .single();
     
@@ -379,7 +379,7 @@ export const reportProblemTool = tool(
         ticket_id: ticket.id,
         property_address: property?.adresse_complete,
       },
-    });
+    } as any);
     
     const ticketRef = ticket.id.substring(0, 8).toUpperCase();
     

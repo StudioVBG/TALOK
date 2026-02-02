@@ -177,7 +177,7 @@ export function withCache<T>(
     if (cached !== null) return cached;
 
     const result = await fn();
-    cache.set(key, result, persistent ? { memoryTtl: ttlMs, persistTtl: ttlMs } : ttlMs);
+    cache.set(key, result, (persistent ? { memoryTtl: ttlMs, persistTtl: ttlMs } : ttlMs) as any);
     return result;
   };
 }

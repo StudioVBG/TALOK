@@ -172,7 +172,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   }, [leaseConfig, loyer]);
 
   // Données pour l'aperçu
-  const previewData: Partial<BailComplet> = useMemo(() => {
+  const previewData = useMemo(() => {
     if (!selectedProperty || !selectedType) return {};
 
     // S'assurer que surface > 0, sinon undefined pour afficher les pointillés
@@ -192,7 +192,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         code_postal: "",
         ville: "",
         telephone: profile?.telephone || undefined,
-        email: profile?.email || undefined,
+        email: (profile as any)?.email || undefined,
         type: ownerProfile?.type || "particulier",
       },
 
@@ -312,6 +312,11 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     contrat_parking: ["parking", "box"],
     commercial_3_6_9: ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"],
     professionnel: ["bureaux", "local_commercial"],
+    etudiant: ["appartement", "maison", "studio"],
+    bail_mixte: ["appartement", "maison", "studio"],
+    commercial_derogatoire: ["local_commercial", "bureaux", "entrepot"],
+    location_gerance: ["local_commercial", "fonds_de_commerce"],
+    bail_rural: ["terrain_agricole", "ferme"],
   };
 
   // ✅ Filtrer les propriétés selon le type de bail sélectionné
@@ -641,7 +646,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                     </div>
                   ) : (
                     <PropertySelector
-                      properties={filteredProperties}
+                      properties={filteredProperties as any}
                       selectedPropertyId={selectedPropertyId}
                       onSelect={handlePropertySelect}
                     />
@@ -827,7 +832,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                   </div>
                   <div className="flex-1 overflow-auto bg-slate-50 p-4">
                     <div className="scale-90 origin-top-left w-[110%] h-[110%]">
-                      <LeasePreview typeBail={selectedType!} bailData={previewData} />
+                      <LeasePreview typeBail={selectedType! as any} bailData={previewData as any} />
                     </div>
                   </div>
                 </div>

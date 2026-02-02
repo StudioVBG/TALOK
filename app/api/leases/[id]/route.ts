@@ -166,10 +166,10 @@ export async function GET(request: Request, { params }: RouteParams) {
         indice_reference: lease.indice_reference || "IRL",
         // ... (reste des champs)
         charges_type: lease.charges_type || "forfait",
-        mode_paiement: lease.mode_paiement || "virement",
-        jour_paiement: lease.jour_paiement || 5,
-        revision_autorisee: lease.revision_autorisee ?? true,
-        clauses_particulieres: lease.clauses_particulieres || "",
+        mode_paiement: (lease as any).mode_paiement || "virement",
+        jour_paiement: (lease as any).jour_paiement || 5,
+        revision_autorisee: (lease as any).revision_autorisee ?? true,
+        clauses_particulieres: (lease as any).clauses_particulieres || "",
         property: property,
         signers: signers || [],
         // ✅ SOTA 2026: Indicateur de propriété supprimée

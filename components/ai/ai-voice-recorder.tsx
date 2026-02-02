@@ -110,12 +110,12 @@ export function AIVoiceRecorder({
     } catch (error: unknown) {
       console.error("[VoiceRecorder] Error starting:", error);
       setErrorMessage(
-        error.name === "NotAllowedError"
+        (error as any).name === "NotAllowedError"
           ? "Accès au microphone refusé"
           : "Erreur d'accès au microphone"
       );
       setState("error");
-      onError?.(error.message);
+      onError?.((error as Error).message);
     }
   }, [disabled, maxDuration, onError]);
 
@@ -168,9 +168,9 @@ export function AIVoiceRecorder({
       }
     } catch (error: unknown) {
       console.error("[VoiceRecorder] Transcription error:", error);
-      setErrorMessage(error.message);
+      setErrorMessage((error as Error).message);
       setState("error");
-      onError?.(error.message);
+      onError?.((error as Error).message);
 
       // Reset après erreur
       setTimeout(() => {

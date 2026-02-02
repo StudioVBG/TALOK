@@ -175,7 +175,7 @@ export async function verifyEDLAccess(
           .eq("id", edlData.lease_id)
           .single();
 
-        const fallbackOwnerId = leaseWithProperty?.property?.owner_id;
+        const fallbackOwnerId = (leaseWithProperty?.property as any)?.owner_id;
         if (fallbackOwnerId && fallbackOwnerId === profileId) {
           console.log(`[verifyEDLAccess] ✅ Owner access granted (via lease fallback)`);
           return { authorized: true, edl: edlData, accessType: "owner" };

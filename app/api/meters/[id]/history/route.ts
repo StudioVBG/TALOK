@@ -72,12 +72,12 @@ export async function GET(
           .from("lease_signers")
           .select("id")
           .eq("profile_id", profileData?.id)
-          .in("lease_id", 
+          .in("lease_id",
             supabase
               .from("leases")
               .select("id")
               .eq("property_id", meterData.property_id)
-              .eq("statut", "active")
+              .eq("statut", "active") as any
           )
           .maybeSingle();
 

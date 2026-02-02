@@ -161,7 +161,7 @@ export async function POST(request: Request) {
       allow_promotion_codes: true,
       billing_address_collection: "auto",
       locale: "fr",
-    });
+    } as any);
 
     // Mettre à jour le customer_id si nouveau
     if (!existingSub?.stripe_customer_id) {
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
     console.error("Erreur création checkout:", error);
     
     // Gérer les erreurs Stripe spécifiques
-    if (error.type === "StripeAuthenticationError" || error.message?.includes("Invalid API Key")) {
+    if ((error as any).type === "StripeAuthenticationError" || (error as Error).message?.includes("Invalid API Key")) {
       return NextResponse.json(
         { 
           error: "Configuration Stripe invalide. Veuillez contacter l'administrateur.",
@@ -193,7 +193,7 @@ export async function POST(request: Request) {
     }
     
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
     );
   }

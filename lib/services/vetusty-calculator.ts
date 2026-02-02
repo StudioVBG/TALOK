@@ -471,7 +471,7 @@ export function formatPercentage(rate: number): string {
 // EXPORTS
 // ============================================
 
-export {
+export type {
   VetustyGridItem,
   VetustyCalculationInput,
   VetustyCalculationResult,

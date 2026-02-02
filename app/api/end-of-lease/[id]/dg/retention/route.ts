@@ -109,8 +109,8 @@ export async function POST(
         if (validatedData.apply_vetusty && vetustyItem) {
           // Calculer la dépréciation
           vetustyRate = Math.min(
-            damage.age_years * vetustyItem.yearly_depreciation,
-            1 - vetustyItem.min_residual_value
+            damage.age_years * (vetustyItem as any).yearly_depreciation,
+            1 - (vetustyItem as any).min_residual_value
           );
           
           // La part locataire diminue avec la vétusté
@@ -163,8 +163,8 @@ export async function POST(
 
           if (validatedData.apply_vetusty && vetustyItem) {
             vetustyRate = Math.min(
-              defaultAgeYears * vetustyItem.yearly_depreciation,
-              1 - vetustyItem.min_residual_value
+              defaultAgeYears * (vetustyItem as any).yearly_depreciation,
+              1 - (vetustyItem as any).min_residual_value
             );
             tenantShare = item.estimated_cost * (1 - vetustyRate);
             ownerShare = item.estimated_cost * vetustyRate;
@@ -185,7 +185,7 @@ export async function POST(
     }
 
     // Plafonner la retenue au montant du dépôt de garantie
-    const dgAmount = process.dg_amount || (process.lease as any).depot_de_garantie || 0;
+    const dgAmount = (process as any).dg_amount || (process.lease as any).depot_de_garantie || 0;
     const finalRetention = Math.min(totalRetention, dgAmount);
     const refundAmount = dgAmount - finalRetention;
 

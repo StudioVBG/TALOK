@@ -45,7 +45,7 @@ export async function getAssembliesBySite(
   const { data, error } = await query;
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as AssemblySummary[]) || [];
 }
 
 export async function getUpcomingAssemblies(
@@ -67,7 +67,7 @@ export async function getUpcomingAssemblies(
   const { data, error } = await query;
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as AssemblySummary[]) || [];
 }
 
 export async function getAssemblyById(id: string): Promise<Assembly | null> {
@@ -83,8 +83,8 @@ export async function getAssemblyById(id: string): Promise<Assembly | null> {
     if (error.code === 'PGRST116') return null;
     throw error;
   }
-  
-  return data;
+
+  return data as unknown as Assembly | null;
 }
 
 export async function createAssembly(input: CreateAssemblyInput): Promise<Assembly> {
@@ -123,7 +123,7 @@ export async function createAssembly(input: CreateAssemblyInput): Promise<Assemb
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Assembly;
 }
 
 export async function updateAssembly(input: UpdateAssemblyInput): Promise<Assembly> {
@@ -139,7 +139,7 @@ export async function updateAssembly(input: UpdateAssemblyInput): Promise<Assemb
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Assembly;
 }
 
 export async function startAssembly(id: string): Promise<Assembly> {
@@ -156,7 +156,7 @@ export async function startAssembly(id: string): Promise<Assembly> {
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Assembly;
 }
 
 export async function closeAssembly(id: string): Promise<Assembly> {
@@ -173,7 +173,7 @@ export async function closeAssembly(id: string): Promise<Assembly> {
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Assembly;
 }
 
 export async function cancelAssembly(id: string): Promise<void> {
@@ -199,10 +199,10 @@ export async function calculateQuorum(assemblyId: string): Promise<QuorumResult>
   
   if (error) throw error;
   
-  if (data && data.length > 0) {
-    return data[0] as QuorumResult;
+  if (data && (data as any[]).length > 0) {
+    return (data as any[])[0] as QuorumResult;
   }
-  
+
   throw new Error('Impossible de calculer le quorum');
 }
 
@@ -222,7 +222,7 @@ export async function getMotionsByAssembly(
     .order('motion_number');
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as MotionWithResults[]) || [];
 }
 
 export async function getMotionById(id: string): Promise<Motion | null> {
@@ -238,8 +238,8 @@ export async function getMotionById(id: string): Promise<Motion | null> {
     if (error.code === 'PGRST116') return null;
     throw error;
   }
-  
-  return data;
+
+  return data as unknown as Motion | null;
 }
 
 export async function createMotion(input: CreateMotionInput): Promise<Motion> {
@@ -255,7 +255,7 @@ export async function createMotion(input: CreateMotionInput): Promise<Motion> {
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Motion;
 }
 
 export async function createMotionsBatch(
@@ -269,7 +269,7 @@ export async function createMotionsBatch(
     .select();
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as Motion[]) || [];
 }
 
 export async function updateMotion(
@@ -286,7 +286,7 @@ export async function updateMotion(
     .single();
   
   if (error) throw error;
-  return motion;
+  return motion as unknown as Motion;
 }
 
 export async function startVoting(motionId: string): Promise<Motion> {
@@ -300,7 +300,7 @@ export async function startVoting(motionId: string): Promise<Motion> {
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Motion;
 }
 
 export async function endVoting(motionId: string): Promise<MotionResult> {
@@ -312,10 +312,10 @@ export async function endVoting(motionId: string): Promise<MotionResult> {
   
   if (error) throw error;
   
-  if (data && data.length > 0) {
-    return data[0] as MotionResult;
+  if (data && (data as any[]).length > 0) {
+    return (data as any[])[0] as MotionResult;
   }
-  
+
   throw new Error('Impossible de calculer le résultat');
 }
 
@@ -357,7 +357,7 @@ export async function getAttendanceByAssembly(
     .order('owner_name');
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as AssemblyAttendance[]) || [];
 }
 
 export async function createAttendance(
@@ -375,7 +375,7 @@ export async function createAttendance(
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as AssemblyAttendance;
 }
 
 export async function updateAttendance(
@@ -392,7 +392,7 @@ export async function updateAttendance(
     .single();
   
   if (error) throw error;
-  return attendance;
+  return attendance as unknown as AssemblyAttendance;
 }
 
 export async function signAttendance(
@@ -412,7 +412,7 @@ export async function signAttendance(
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as AssemblyAttendance;
 }
 
 export async function markLeftEarly(id: string): Promise<AssemblyAttendance> {
@@ -429,7 +429,7 @@ export async function markLeftEarly(id: string): Promise<AssemblyAttendance> {
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as AssemblyAttendance;
 }
 
 // =====================================================
@@ -446,7 +446,7 @@ export async function getProxiesByAssembly(assemblyId: string): Promise<Proxy[]>
     .order('grantor_name');
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as Proxy[]) || [];
 }
 
 export async function createProxy(input: CreateProxyInput): Promise<Proxy> {
@@ -454,12 +454,12 @@ export async function createProxy(input: CreateProxyInput): Promise<Proxy> {
   
   const { data, error } = await supabase
     .from('proxies')
-    .insert(input)
+    .insert(input as any)
     .select()
     .single();
-  
+
   if (error) throw error;
-  return data;
+  return data as unknown as Proxy;
 }
 
 export async function validateProxy(id: string): Promise<Proxy> {
@@ -473,7 +473,7 @@ export async function validateProxy(id: string): Promise<Proxy> {
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Proxy;
 }
 
 export async function cancelProxy(id: string): Promise<void> {
@@ -501,7 +501,7 @@ export async function getVotesByMotion(motionId: string): Promise<Vote[]> {
     .order('voted_at');
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as Vote[]) || [];
 }
 
 export async function castVote(input: CastVoteInput): Promise<Vote> {
@@ -519,7 +519,7 @@ export async function castVote(input: CastVoteInput): Promise<Vote> {
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Vote;
 }
 
 export async function castVotesBatch(votes: CastVoteInput[]): Promise<Vote[]> {
@@ -533,7 +533,7 @@ export async function castVotesBatch(votes: CastVoteInput[]): Promise<Vote[]> {
     .select();
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as Vote[]) || [];
 }
 
 // =====================================================
@@ -552,7 +552,7 @@ export async function getDocumentsByAssembly(
     .order('display_order');
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as AssemblyDocument[]) || [];
 }
 
 export async function uploadDocument(
@@ -592,7 +592,7 @@ export async function uploadDocument(
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as AssemblyDocument;
 }
 
 export async function deleteDocument(id: string): Promise<void> {
@@ -606,7 +606,7 @@ export async function deleteDocument(id: string): Promise<void> {
     .single();
   
   if (doc?.file_path) {
-    await supabase.storage.from('assembly-documents').remove([doc.file_path]);
+    await supabase.storage.from('assembly-documents').remove([doc.file_path as string]);
   }
   
   const { error } = await supabase

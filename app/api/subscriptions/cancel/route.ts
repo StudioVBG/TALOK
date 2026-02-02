@@ -127,8 +127,6 @@ export async function POST(request: Request) {
         admin_id: user.id, // Auto-généré
         note: `Feedback résiliation: ${feedback}`,
         is_important: true,
-      }).catch(() => {
-        // Ignorer si la table n'existe pas encore
       });
     }
 

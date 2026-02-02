@@ -26,7 +26,7 @@ function getStripe(): Stripe {
     throw new Error("STRIPE_SECRET_KEY is not configured");
   }
   return new Stripe(secretKey, {
-    apiVersion: "2024-10-28.acacia",
+    apiVersion: "2024-10-28.acacia" as any,
   });
 }
 
@@ -572,8 +572,8 @@ export async function POST(request: NextRequest) {
           .from("subscriptions")
           .update({
             status: subscription.status as any,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+            current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
             cancel_at_period_end: subscription.cancel_at_period_end,
           })
           .eq("stripe_subscription_id", subscription.id);
@@ -654,7 +654,7 @@ export async function POST(request: NextRequest) {
                   ? new Date().toISOString()
                   : null,
             })
-            .eq("id", connectAccount.id);
+            .eq("id", connectAccount.id as string);
 
           if (!updateError) {
             console.log(`[Stripe Webhook] Connect account updated: ${account.id}`);
@@ -667,7 +667,7 @@ export async function POST(request: NextRequest) {
                 p_title: "Compte de paiement activé !",
                 p_message: "Votre compte Stripe est maintenant actif. Vous recevrez les loyers directement.",
                 p_link: "/owner/settings/payments",
-              }).catch(() => {});
+              });
             }
           }
         }
@@ -699,8 +699,6 @@ export async function POST(request: NextRequest) {
             description: transfer.description,
             metadata: transfer.metadata,
             completed_at: new Date().toISOString(),
-          }).catch((err) => {
-            console.error("[Stripe Webhook] Error creating transfer record:", err);
           });
 
           console.log(`[Stripe Webhook] Transfer created: ${transfer.id}`);
@@ -711,8 +709,8 @@ export async function POST(request: NextRequest) {
       // ===============================================
       // STRIPE CONNECT - TRANSFERT ÉCHOUÉ
       // ===============================================
-      case "transfer.failed": {
-        const transfer = event.data.object as Stripe.Transfer;
+      case "transfer.failed" as any: {
+        const transfer = (event as any).data.object as Stripe.Transfer;
 
         // Mettre à jour le statut du transfert
         await supabase
@@ -742,8 +740,6 @@ export async function POST(request: NextRequest) {
       payload: event.data.object,
       processed_at: new Date().toISOString(),
       status: "success",
-    }).catch(() => {
-      // Ignorer si la table n'existe pas
     });
 
     return NextResponse.json({ received: true });
@@ -758,7 +754,7 @@ export async function POST(request: NextRequest) {
       error: error instanceof Error ? error.message : "Une erreur est survenue",
       processed_at: new Date().toISOString(),
       status: "error",
-    }).catch(() => {});
+    });
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Une erreur est survenue" },

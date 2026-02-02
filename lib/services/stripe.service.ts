@@ -162,7 +162,7 @@ export async function createPaymentIntent(
     console.error("[Stripe] Erreur création PaymentIntent:", error);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -188,7 +188,7 @@ export async function confirmPayment(
     console.error("[Stripe] Erreur confirmation:", error);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -208,7 +208,7 @@ export async function getPaymentStatus(paymentIntentId: string): Promise<Payment
   } catch (error: unknown) {
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -240,7 +240,7 @@ export async function createCustomer(customer: CustomerData): Promise<CustomerRe
     console.error("[Stripe] Erreur création client:", error);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -266,7 +266,7 @@ export async function findCustomerByEmail(email: string): Promise<CustomerResult
   } catch (error: unknown) {
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -300,7 +300,7 @@ export async function createRefund(
     console.error("[Stripe] Erreur remboursement:", error);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -355,7 +355,7 @@ export async function verifyWebhookSignature(
   } catch (error: unknown) {
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }

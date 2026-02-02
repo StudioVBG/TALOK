@@ -78,6 +78,7 @@ export async function sendPushNotification(
 
   try {
     // Utiliser la bibliothèque web-push
+    // @ts-ignore -- no type declarations for web-push
     const webPush = await import("web-push");
 
     webPush.setVapidDetails(
@@ -97,7 +98,7 @@ export async function sendPushNotification(
     return { success: true };
   } catch (error: unknown) {
     console.error("Erreur envoi push:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as Error).message };
   }
 }
 
@@ -185,7 +186,7 @@ export async function sendSMS(
     return { success: true, sid: data.sid };
   } catch (error: unknown) {
     console.error("Erreur envoi SMS:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as Error).message };
   }
 }
 

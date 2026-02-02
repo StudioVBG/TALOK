@@ -139,7 +139,7 @@ export async function PATCH(
       await supabase
         .from("properties")
         .update({ rental_status: "ready_to_rent" })
-        .eq("id", process.property_id);
+        .eq("id", (process as any).property_id);
     }
 
     return NextResponse.json({ process });

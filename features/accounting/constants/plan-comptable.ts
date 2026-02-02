@@ -14,6 +14,14 @@ export const JOURNAUX = {
   BM: { code: 'BM', libelle: 'Banque Mandant', description: 'Compte mandant' },
   OD: { code: 'OD', libelle: 'Opérations Diverses', description: 'Régularisations' },
   AN: { code: 'AN', libelle: 'À Nouveau', description: 'Report à nouveau' },
+
+  // Long-form aliases for readability
+  VENTES: { code: 'VE', libelle: 'Ventes', description: 'Facturation honoraires' },
+  ACHATS: { code: 'AC', libelle: 'Achats', description: 'Factures fournisseurs' },
+  BANQUE_AGENCE: { code: 'BQ', libelle: 'Banque Agence', description: 'Compte courant agence' },
+  BANQUE_MANDANT: { code: 'BM', libelle: 'Banque Mandant', description: 'Compte mandant' },
+  OPERATIONS_DIVERSES: { code: 'OD', libelle: 'Opérations Diverses', description: 'Régularisations' },
+  A_NOUVEAU: { code: 'AN', libelle: 'À Nouveau', description: 'Report à nouveau' },
 } as const;
 
 export type JournalCode = keyof typeof JOURNAUX;

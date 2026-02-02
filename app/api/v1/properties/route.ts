@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
         unique_code: uniqueCode,
         etat: "draft",
         ...data,
-      })
+      } as any)
       .select()
       .single();
 

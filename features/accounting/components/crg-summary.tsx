@@ -67,7 +67,7 @@ export function CRGSummary({
 
   return (
     <div className="space-y-4">
-      {crgs.map((crg, index) => (
+      {crgs.map((crg: any, index: number) => (
         <Card key={crg.numero || index}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>

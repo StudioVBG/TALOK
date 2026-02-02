@@ -177,7 +177,7 @@ export function use2FASession() {
 
         if (session) {
           setIsVerified(true);
-          setExpiresAt(new Date(session.expires_at));
+          setExpiresAt(new Date(session.expires_at as string));
         }
       } catch (error) {
         console.error("[2FA Session] Erreur:", error);

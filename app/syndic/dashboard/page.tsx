@@ -94,7 +94,7 @@ export default function SyndicDashboardPage() {
         >
           <div>
             <h1 className="text-2xl font-bold text-white">
-              Bonjour {profile?.first_name || 'Syndic'} 👋
+              Bonjour {(profile as any)?.first_name || (profile as any)?.prenom || 'Syndic'} 👋
             </h1>
             <p className="text-slate-400">
               Bienvenue sur votre espace de gestion
@@ -144,7 +144,7 @@ export default function SyndicDashboardPage() {
             label="Impayés"
             value={stats?.unpaid_count || 0}
             color="red"
-            alert={stats && stats.unpaid_count > 0}
+            alert={stats ? stats.unpaid_count > 0 : undefined}
           />
         </motion.div>
 

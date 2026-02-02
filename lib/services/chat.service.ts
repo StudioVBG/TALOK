@@ -169,7 +169,7 @@ class ChatService {
       owner_name: `${data.owner?.prenom || ""} ${data.owner?.nom || ""}`.trim(),
       tenant_name: `${data.tenant?.prenom || ""} ${data.tenant?.nom || ""}`.trim(),
       property_address: data.property ? `${data.property.adresse_complete}, ${data.property.ville}` : "",
-    };
+    } as Conversation;
   }
 
   /**
@@ -186,7 +186,7 @@ class ChatService {
       .single();
 
     if (existing) {
-      return existing;
+      return existing as Conversation;
     }
 
     // Créer une nouvelle conversation
@@ -209,7 +209,7 @@ class ChatService {
       const { data: profile } = await this.supabase
         .from("profiles")
         .select("id")
-        .eq("user_id", (await this.supabase.auth.getUser()).data.user?.id)
+        .eq("user_id", (await this.supabase.auth.getUser()).data.user?.id ?? "")
         .single();
 
       const senderRole = profile?.id === data.owner_profile_id ? "owner" : "tenant";
@@ -220,7 +220,7 @@ class ChatService {
       });
     }
 
-    return newConv;
+    return newConv as Conversation;
   }
 
   /**
@@ -312,7 +312,7 @@ class ChatService {
       ...message,
       sender_name: `${message.sender?.prenom || ""} ${message.sender?.nom || ""}`.trim(),
       sender_avatar: message.sender?.avatar_url,
-    };
+    } as Message;
   }
 
   /**
@@ -539,7 +539,7 @@ class ChatService {
 
     return conversations.reduce((total, conv) => {
       const isOwner = conv.owner_profile_id === profile.id;
-      return total + (isOwner ? conv.owner_unread_count : conv.tenant_unread_count);
+      return total + (isOwner ? (conv.owner_unread_count ?? 0) : (conv.tenant_unread_count ?? 0));
     }, 0);
   }
 }

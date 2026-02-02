@@ -236,7 +236,7 @@ export async function POST(
     const leaseData = Array.isArray(edlDataPost.lease) ? edlDataPost.lease[0] : edlDataPost.lease;
 
     let meterId, photo, photoPath, manualValue, readingUnit, comment, meterNumber, location, meterTypeFromBody;
-    let ocrResult = { value: null, confidence: 0, rawText: "", needsValidation: true, processingTimeMs: 0 };
+    let ocrResult: { value: number | null; confidence: number; rawText: string; needsValidation: boolean; processingTimeMs: number } = { value: null, confidence: 0, rawText: "", needsValidation: true, processingTimeMs: 0 };
 
     const contentType = request.headers.get("content-type") || "";
 

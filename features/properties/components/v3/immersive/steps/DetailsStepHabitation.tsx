@@ -51,7 +51,7 @@ export function DetailsStepHabitation() {
     const numValue = value === "" ? null : parseFloat(value);
     if (numValue === null || !isNaN(numValue)) {
       if (field === "surface") {
-        updateFormData({ surface: numValue, surface_habitable_m2: numValue });
+        updateFormData({ surface: numValue ?? undefined, surface_habitable_m2: numValue ?? undefined });
       } else {
         updateFormData({ [field]: numValue });
       }
@@ -137,7 +137,7 @@ export function DetailsStepHabitation() {
             </div>
             <Select
               value={(formData as any).usage_principal || ""}
-              onValueChange={(v) => updateFormData({ usage_principal: v })}
+              onValueChange={(v) => updateFormData({ usage_principal: v as any })}
             >
               <SelectTrigger className="h-10"><SelectValue placeholder="Sélectionnez l'usage..." /></SelectTrigger>
               <SelectContent>
@@ -310,7 +310,7 @@ export function DetailsStepHabitation() {
               <div className="space-y-2">
                 <Select
                   value={(formData as any).chauffage_type || ""}
-                  onValueChange={(v) => updateFormData({ chauffage_type: v })}
+                  onValueChange={(v) => updateFormData({ chauffage_type: v as any })}
                 >
                   <SelectTrigger className="h-10"><SelectValue placeholder="Type..." /></SelectTrigger>
                   <SelectContent>
@@ -329,7 +329,7 @@ export function DetailsStepHabitation() {
                     </div>
                     <Select
                       value={(formData as any).chauffage_energie || ""}
-                      onValueChange={(v) => updateFormData({ chauffage_energie: v })}
+                      onValueChange={(v) => updateFormData({ chauffage_energie: v as any })}
                     >
                       <SelectTrigger className={`h-10 ${!(formData as any).chauffage_energie ? 'border-orange-400 bg-orange-50/50 dark:bg-orange-950/20' : ''}`}>
                         <SelectValue placeholder="Sélectionnez l'énergie..." />
@@ -359,7 +359,7 @@ export function DetailsStepHabitation() {
               </div>
               <Select 
                 value={(formData as any).eau_chaude_type || ""} 
-                onValueChange={(v) => updateFormData({ eau_chaude_type: v })}
+                onValueChange={(v) => updateFormData({ eau_chaude_type: v as any })}
               >
                 <SelectTrigger className="h-10"><SelectValue placeholder="Type..." /></SelectTrigger>
                 <SelectContent>
@@ -385,7 +385,7 @@ export function DetailsStepHabitation() {
               <div className="flex items-center gap-2">
                 <Select 
                   value={(formData as any).clim_presence || "aucune"} 
-                  onValueChange={(v) => updateFormData({ clim_presence: v })}
+                  onValueChange={(v) => updateFormData({ clim_presence: v as any })}
                 >
                   <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -397,7 +397,7 @@ export function DetailsStepHabitation() {
                 {(formData as any).clim_presence === "fixe" && (
                   <Select 
                     value={(formData as any).clim_type || ""} 
-                    onValueChange={(v) => updateFormData({ clim_type: v })}
+                    onValueChange={(v) => updateFormData({ clim_type: v as any })}
                   >
                     <SelectTrigger className="w-28 h-9"><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>

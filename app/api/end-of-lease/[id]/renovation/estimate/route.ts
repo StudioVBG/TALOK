@@ -81,9 +81,10 @@ export async function POST(
       for (const item of validatedData.items) {
         const gridItem = costGridMap.get(item.work_type);
         if (gridItem) {
-          const costMin = gridItem.cost_min * item.surface_or_quantity * zoneCoef;
-          const costMax = gridItem.cost_max * item.surface_or_quantity * zoneCoef;
-          const costAvg = gridItem.cost_avg * item.surface_or_quantity * zoneCoef;
+          const typedItem = gridItem as Record<string, any>;
+          const costMin = typedItem.cost_min * item.surface_or_quantity * zoneCoef;
+          const costMax = typedItem.cost_max * item.surface_or_quantity * zoneCoef;
+          const costAvg = typedItem.cost_avg * item.surface_or_quantity * zoneCoef;
 
           estimatedItems.push({
             work_type: item.work_type,
@@ -121,17 +122,18 @@ export async function POST(
         const gridItem = costGridMap.get(workType);
 
         if (gridItem) {
+          const typedItem = gridItem as Record<string, any>;
           // Estimer la surface/quantité concernée (environ 20% de la surface totale par défaut)
-          const quantity = gridItem.unit === "m2" ? Math.ceil(surface * 0.2) : 1;
-          const costAvg = gridItem.cost_avg * quantity * zoneCoef;
+          const quantity = typedItem.unit === "m2" ? Math.ceil(surface * 0.2) : 1;
+          const costAvg = typedItem.cost_avg * quantity * zoneCoef;
 
           estimatedItems.push({
             work_type: workType,
-            description: `${gridItem.description} (${item.category})`,
-            unit: gridItem.unit,
+            description: `${typedItem.description} (${item.category})`,
+            unit: typedItem.unit,
             quantity,
-            cost_min: Math.round(gridItem.cost_min * quantity * zoneCoef * 100) / 100,
-            cost_max: Math.round(gridItem.cost_max * quantity * zoneCoef * 100) / 100,
+            cost_min: Math.round(typedItem.cost_min * quantity * zoneCoef * 100) / 100,
+            cost_max: Math.round(typedItem.cost_max * quantity * zoneCoef * 100) / 100,
             cost_avg: Math.round(costAvg * 100) / 100,
           });
 
@@ -148,11 +150,11 @@ export async function POST(
     }
 
     // Utiliser les valeurs du processus si disponibles
-    if (process.tenant_damage_cost > 0) {
-      totalTenantResponsibility = process.tenant_damage_cost;
+    if ((process as any).tenant_damage_cost > 0) {
+      totalTenantResponsibility = (process as any).tenant_damage_cost;
     }
-    if (process.vetusty_cost > 0) {
-      totalOwnerResponsibility = process.vetusty_cost;
+    if ((process as any).vetusty_cost > 0) {
+      totalOwnerResponsibility = (process as any).vetusty_cost;
     }
 
     const estimate = {

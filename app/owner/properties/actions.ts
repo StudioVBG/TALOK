@@ -249,7 +249,7 @@ export async function updateProperty(
   // 5. Mettre à jour
   const { error: updateError } = await supabase
     .from("properties")
-    .update(updateData)
+    .update(updateData as any)
     .eq("id", id);
 
   if (updateError) {

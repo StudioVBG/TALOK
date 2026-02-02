@@ -155,7 +155,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       .update({
         ...validation.data,
         updated_at: new Date().toISOString(),
-      })
+      } as any)
       .eq("id", unitId)
       .select()
       .single();

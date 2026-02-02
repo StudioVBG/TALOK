@@ -55,7 +55,7 @@ export class LeaseSignaturesService {
       if (error.code === "PGRST116") return null;
       throw error;
     }
-    return data;
+    return data as unknown as LeaseDraft;
   }
 
   /**
@@ -69,7 +69,7 @@ export class LeaseSignaturesService {
       .order("signed_at", { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as Signature[];
   }
 
   /**

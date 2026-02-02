@@ -386,7 +386,7 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
 
     } catch (error: unknown) {
       // Gestion des erreurs avec message explicite
-      const errorMsg = error?.message || String(error) || "Erreur inconnue";
+      const errorMsg = (error as any)?.message || String(error) || "Erreur inconnue";
       console.error("[OCR Client] Erreur:", errorMsg);
       setOcrStatus(`Échec: ${errorMsg.substring(0, 50)}`);
       

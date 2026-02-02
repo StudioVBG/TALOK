@@ -220,7 +220,7 @@ export function AvailabilityEditor({
 
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      updatePattern(id, { is_active }),
+      updatePattern(id, { is_active } as any),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["availability-patterns", propertyId],

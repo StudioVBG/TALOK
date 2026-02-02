@@ -50,7 +50,7 @@ export class ColocationService {
       if (error.code === "PGRST116") return null;
       throw error;
     }
-    return data;
+    return data as unknown as HouseRuleVersion;
   }
 
   /**
@@ -106,7 +106,7 @@ export class ColocationService {
     const { data: roommate } = await this.supabase
       .from("roommates")
       .select("id")
-      .eq("lease_id", rule.lease_id)
+      .eq("lease_id", rule.lease_id as string)
       .eq("user_id", user.id)
       .is("left_on", null)
       .single();
@@ -124,7 +124,7 @@ export class ColocationService {
       .single();
 
     if (error) throw error;
-    return acceptance;
+    return acceptance as unknown as RuleAcceptance;
   }
 
   /**
@@ -138,7 +138,7 @@ export class ColocationService {
       .order("chore_name", { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as ChoreSchedule[];
   }
 
   /**

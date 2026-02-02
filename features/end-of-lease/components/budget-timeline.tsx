@@ -27,10 +27,29 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import type { LeaseEndTimelineItem, TimelineActionType } from "@/lib/types/end-of-lease";
+// Local types matching the component's richer timeline data model
+type BudgetActionType =
+  | "dg_retention"
+  | "request_quotes"
+  | "select_quote"
+  | "start_renovation"
+  | "take_photos"
+  | "mark_ready"
+  | "create_listing"
+  | "custom";
+
+interface BudgetTimelineItem {
+  id: string;
+  title: string;
+  description: string;
+  status: "completed" | "in_progress" | "pending";
+  day_offset: number;
+  action_type: BudgetActionType;
+  scheduled_date?: string;
+}
 
 interface BudgetTimelineProps {
-  timeline: LeaseEndTimelineItem[];
+  timeline: BudgetTimelineItem[];
   budgetSummary: {
     tenantResponsibility: number;
     ownerResponsibility: number;
@@ -45,7 +64,7 @@ interface BudgetTimelineProps {
   className?: string;
 }
 
-const ACTION_ICONS: Record<TimelineActionType, React.ReactNode> = {
+const ACTION_ICONS: Record<BudgetActionType, React.ReactNode> = {
   dg_retention: <Euro className="w-5 h-5" />,
   request_quotes: <FileText className="w-5 h-5" />,
   select_quote: <CheckCircle2 className="w-5 h-5" />,
@@ -56,7 +75,7 @@ const ACTION_ICONS: Record<TimelineActionType, React.ReactNode> = {
   custom: <Circle className="w-5 h-5" />,
 };
 
-const ACTION_COLORS: Record<TimelineActionType, string> = {
+const ACTION_COLORS: Record<BudgetActionType, string> = {
   dg_retention: "from-red-500 to-orange-500",
   request_quotes: "from-blue-500 to-cyan-500",
   select_quote: "from-green-500 to-emerald-500",

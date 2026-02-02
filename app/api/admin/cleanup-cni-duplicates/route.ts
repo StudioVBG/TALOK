@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       .order("created_at", { ascending: false });
 
     if (isOwner && !isAdmin) {
-      query = query.eq("owner_id", ownerProfileId);
+      query = query.eq("owner_id", ownerProfileId!);
     }
 
     const { data: allCniDocs, error: fetchError } = await query;
@@ -217,7 +217,7 @@ export async function GET(request: Request) {
       .in("type", ["cni_recto", "cni_verso"]);
 
     if (isOwner && !isAdmin) {
-      statsQuery = statsQuery.eq("owner_id", ownerProfileId);
+      statsQuery = statsQuery.eq("owner_id", ownerProfileId!);
     }
 
     const { data: stats } = await statsQuery;
@@ -246,7 +246,7 @@ export async function GET(request: Request) {
       .eq("is_archived", false);
 
     if (isOwner && !isAdmin) {
-      activeQuery = activeQuery.eq("owner_id", ownerProfileId);
+      activeQuery = activeQuery.eq("owner_id", ownerProfileId!);
     }
 
     const { data: allActive } = await activeQuery;

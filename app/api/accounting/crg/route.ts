@@ -103,7 +103,7 @@ export async function GET(request: Request) {
       const crg = filteredCRGs[0]; // Prendre le premier CRG
       const pdfBytes = await generateCRGPDF(crg);
 
-      return new NextResponse(pdfBytes, {
+      return new NextResponse(pdfBytes as any, {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",

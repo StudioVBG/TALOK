@@ -25,7 +25,7 @@ interface SkipOnboardingButtonProps {
 }
 
 // Configuration des restrictions par rôle quand l'onboarding est sauté
-const SKIP_RESTRICTIONS: Record<UserRole, string[]> = {
+const SKIP_RESTRICTIONS: Record<string, string[]> = {
   owner: [
     "Vous ne pourrez pas recevoir de paiements tant que votre IBAN n'est pas configuré",
     "Vos baux générés n'auront pas vos informations complètes",

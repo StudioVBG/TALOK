@@ -249,7 +249,7 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
                 disabled={loading}
               />
               <p className="text-xs text-muted-foreground">
-                {formData.type_bail === "mobilite" 
+                {formData.type_bail === ("mobilite" as any)
                   ? "⚠️ Interdit pour bail mobilité (Loi ELAN)"
                   : `✅ Calculé automatiquement : ${depotMois} × loyer`
                 }

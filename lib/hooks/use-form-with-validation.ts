@@ -137,7 +137,7 @@ export function useServerValidation<T extends FieldValues>(schema: ZodSchema<T>)
       try {
         // Créer un objet partiel pour la validation
         const partialData = { [field]: value } as Partial<T>;
-        schema.pick({ [field]: true } as any).parse(partialData);
+        (schema as any).pick({ [field]: true }).parse(partialData);
         return null;
       } catch (error) {
         if (error instanceof ZodError) {

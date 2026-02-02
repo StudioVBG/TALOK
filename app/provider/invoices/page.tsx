@@ -74,6 +74,7 @@ interface Invoice {
   created_at: string;
   owner_name?: string;
   property_address?: string;
+  pdf_url?: string;
 }
 
 interface WorkOrder {

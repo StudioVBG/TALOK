@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     // Récupérer les exigences KYC selon le type de prestataire
-    const providerType = providerProfile?.provider_type || 'independant';
+    const providerType = (providerProfile as any)?.provider_type || 'independant';
     const { data: requirements } = await supabase
       .from('provider_kyc_requirements')
       .select('*')
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error: unknown) {
     console.error('Error in GET /api/provider/compliance/status:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

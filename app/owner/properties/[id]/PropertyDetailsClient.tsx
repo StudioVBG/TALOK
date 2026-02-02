@@ -365,20 +365,20 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       console.error("Erreur sauvegarde globale:", error);
       
       // Extraire le message d'erreur détaillé
-      let errorMessage = error instanceof Error ? error.message : "Erreur lors de la sauvegarde";
+      let errorMessage = error instanceof Error ? (error as Error).message : "Erreur lors de la sauvegarde";
       let errorDetails = "";
       
-      if (error.response?.error) {
-        errorMessage = error.response.error;
-        if (error.response.details) {
+      if ((error as any).response?.error) {
+        errorMessage = (error as any).response.error;
+        if ((error as any).response.details) {
           // Si c'est une erreur de validation Zod
-          if (Array.isArray(error.response.details)) {
-            errorDetails = error.response.details
+          if (Array.isArray((error as any).response.details)) {
+            errorDetails = (error as any).response.details
               .map((d: any) => `${d.path || d.field || "champ"}: ${d.message || d}`)
               .join(", ");
-          } else if (typeof error.response.details === "object") {
+          } else if (typeof (error as any).response.details === "object") {
             // Si c'est une erreur Supabase
-            errorDetails = error.response.details.message || error.response.details.hint || "";
+            errorDetails = (error as any).response.details.message || (error as any).response.details.hint || "";
           }
         }
       }

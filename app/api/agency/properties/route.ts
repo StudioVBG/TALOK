@@ -81,13 +81,13 @@ export async function GET(request: NextRequest) {
           id, prenom, nom
         )
       `, { count: "exact" })
-      .in("owner_id", filteredOwnerIds);
+      .in("owner_id", filteredOwnerIds as string[]);
 
     // Filtrer par mandat spécifique si demandé
     if (mandateId) {
       const mandate = mandates.find(m => m.owner_profile_id === ownerId);
-      if (mandate && !mandate.inclut_tous_biens && mandate.properties_ids?.length > 0) {
-        query = query.in("id", mandate.properties_ids);
+      if (mandate && !mandate.inclut_tous_biens && (mandate.properties_ids as any)?.length > 0) {
+        query = query.in("id", mandate.properties_ids as string[]);
       }
     }
 
@@ -122,8 +122,8 @@ export async function GET(request: NextRequest) {
         for (const lease of leases) {
           // Un bien peut avoir plusieurs baux actifs (rare mais possible)
           // On prend le premier trouvé
-          if (!leaseMap.has(lease.property_id)) {
-            leaseMap.set(lease.property_id, {
+          if (!leaseMap.has(lease.property_id!)) {
+            leaseMap.set(lease.property_id!, {
               id: lease.id,
               loyer: lease.loyer,
               charges_forfaitaires: lease.charges_forfaitaires,

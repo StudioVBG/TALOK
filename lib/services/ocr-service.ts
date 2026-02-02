@@ -100,7 +100,7 @@ async function extractWithMindee(
       provider: "mindee",
     };
   } catch (error) {
-    logger.error("Mindee OCR failed", { error });
+    logger.error("Mindee OCR failed", { error: error as Error });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -167,7 +167,7 @@ async function extractWithGoogleVision(
       provider: "google",
     };
   } catch (error) {
-    logger.error("Google Vision OCR failed", { error });
+    logger.error("Google Vision OCR failed", { error: error as Error });
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -238,7 +238,7 @@ function simulateOCR(): OCRResult {
  */
 export async function extractCNIData(imageBase64: string): Promise<OCRResult> {
   // Essayer Mindee d'abord (meilleur pour les CNI françaises)
-  const mindeeCredentials = await getCredentials("Mindee");
+  const mindeeCredentials = await getCredentials("Mindee" as any);
   if (mindeeCredentials?.apiKey) {
     const result = await extractWithMindee(imageBase64, mindeeCredentials.apiKey);
     if (result.success) return result;
@@ -260,7 +260,7 @@ export async function extractCNIData(imageBase64: string): Promise<OCRResult> {
  * Vérifie si le service OCR est configuré
  */
 export async function isOCRConfigured(): Promise<boolean> {
-  const mindee = await getCredentials("Mindee");
+  const mindee = await getCredentials("Mindee" as any);
   const google = await getCredentials("Google Maps");
   return !!(mindee?.apiKey || google?.apiKey);
 }

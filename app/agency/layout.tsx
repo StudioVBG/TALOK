@@ -76,7 +76,7 @@ export default async function AgencyLayout({
           {/* Sidebar Client Component pour interactivité */}
           <AgencySidebar
             profile={profile}
-            agencyName={agencyProfile?.nom_agence || "Mon Agence"}
+            agencyName={(agencyProfile?.nom_agence as string) || "Mon Agence"}
           />
 
           {/* Main content - SOTA 2026: lg breakpoint unifié */}

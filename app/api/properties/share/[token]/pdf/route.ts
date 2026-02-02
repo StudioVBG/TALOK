@@ -56,7 +56,7 @@ export async function GET(
   } catch (error: unknown) {
     console.error("GET /api/properties/share/[token]/pdf error", error);
     return NextResponse.json(
-      { error: error?.message ?? "Impossible de générer le PDF." },
+      { error: (error as any)?.message ?? "Impossible de générer le PDF." },
       { status: 500 }
     );
   }

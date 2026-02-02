@@ -97,11 +97,11 @@ export async function GET() {
 
     const commissionsEncaissees = commissions
       ?.filter(c => c.statut === "paid")
-      .reduce((sum, c) => sum + (c.montant_commission || 0), 0) || 0;
+      .reduce((sum, c) => sum + ((c.montant_commission as number) || 0), 0) || 0;
 
     const commissionsEnAttente = commissions
       ?.filter(c => c.statut === "pending")
-      .reduce((sum, c) => sum + (c.montant_commission || 0), 0) || 0;
+      .reduce((sum, c) => sum + ((c.montant_commission as number) || 0), 0) || 0;
 
     return NextResponse.json({
       profile: {

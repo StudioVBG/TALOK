@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: unknown) {
     console.error('Error in POST /api/notifications/read-all:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

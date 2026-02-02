@@ -103,7 +103,7 @@ export async function GET(request: Request, { params }: RouteParams) {
           .eq("provider_id", profile.id)
           .eq("tickets.property_id", document.property_id)
           .limit(1);
-        hasAccess = workOrder && workOrder.length > 0;
+        hasAccess = !!(workOrder && workOrder.length > 0);
       }
     }
 
@@ -115,7 +115,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Générer l'URL signée (valide 1 heure)
     const { data: signedUrlData, error: signedUrlError } = await serviceClient.storage
       .from("documents")
-      .createSignedUrl(document.storage_path, 3600); // 1 heure
+      .createSignedUrl(document.storage_path!, 3600); // 1 heure
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
       console.error("[Signed URL] Erreur génération:", signedUrlError);

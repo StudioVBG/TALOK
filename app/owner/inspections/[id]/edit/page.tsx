@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -118,7 +117,7 @@ export default function EditInspectionPage() {
         const metersData = await metersRes.json();
 
         // Fusionner les relevés existants avec les compteurs manquants
-        const existingReadings = (metersData.readings || []).map(r => ({
+        const existingReadings = (metersData.readings || []).map((r: any) => ({
           id: r.id,
           meter_id: r.meter_id,
           type: r.meter?.type,
@@ -129,7 +128,7 @@ export default function EditInspectionPage() {
           photo_path: r.photo_path
         }));
 
-        const missingReadings = (metersData.missing_meters || []).map(m => ({
+        const missingReadings = (metersData.missing_meters || []).map((m: any) => ({
           meter_id: m.id,
           type: m.type,
           meter_number: m.meter_number || m.serial_number || "",
@@ -142,7 +141,7 @@ export default function EditInspectionPage() {
 
         // 3. Grouper les items par pièce
         const sectionsMap = new Map<string, any[]>();
-        (data.items || []).forEach(item => {
+        (data.items || []).forEach((item: any) => {
           const roomItems = sectionsMap.get(item.room_name) || [];
           roomItems.push({
             id: item.id,
@@ -246,35 +245,35 @@ export default function EditInspectionPage() {
 
   const addKey = () => {
     setInspection({
-      ...inspection,
-      keys: [...inspection.keys, { type: "Clé Porte d'entrée", quantite: 1, notes: "" }]
-    });
+      ...inspection!,
+      keys: [...inspection!.keys, { type: "Clé Porte d'entrée", quantite: 1, notes: "" }]
+    } as Inspection);
   };
 
   const removeKey = (index: number) => {
-    const newKeys = [...inspection.keys];
+    const newKeys = [...inspection!.keys];
     newKeys.splice(index, 1);
-    setInspection({ ...inspection, keys: newKeys });
+    setInspection({ ...inspection!, keys: newKeys } as Inspection);
   };
 
   const updateKey = (index: number, field: keyof KeyItem, value: any) => {
-    const newKeys = [...inspection.keys];
+    const newKeys = [...inspection!.keys];
     newKeys[index] = { ...newKeys[index], [field]: value };
-    setInspection({ ...inspection, keys: newKeys });
+    setInspection({ ...inspection!, keys: newKeys } as Inspection);
   };
 
   const updateMeter = (index: number, field: keyof MeterReading, value: string) => {
-    const newMeters = [...inspection.meter_readings];
+    const newMeters = [...inspection!.meter_readings];
     newMeters[index] = { ...newMeters[index], [field]: value };
-    setInspection({ ...inspection, meter_readings: newMeters });
+    setInspection({ ...inspection!, meter_readings: newMeters } as Inspection);
   };
 
   const addMeterReading = (type: string) => {
     const meterType = METER_TYPES_LIST.find(m => m.type === type);
     setInspection({
-      ...inspection,
+      ...inspection!,
       meter_readings: [
-        ...inspection.meter_readings,
+        ...inspection!.meter_readings,
         {
           meter_id: `temp_${Date.now()}`,
           type: type,
@@ -284,11 +283,11 @@ export default function EditInspectionPage() {
           unit: meterType?.unit || "unit"
         }
       ]
-    });
+    } as Inspection);
   };
 
   const handlePhotoUpload = async (index: number, file: File) => {
-    const meter = inspection.meter_readings[index];
+    const meter = inspection!.meter_readings[index];
     const formData = new FormData();
     formData.append("photo", file);
     formData.append("meter_id", meter.meter_id);
@@ -307,7 +306,7 @@ export default function EditInspectionPage() {
 
       if (response.ok) {
         const data = await response.json();
-        const newMeters = [...inspection.meter_readings];
+        const newMeters = [...inspection!.meter_readings];
         newMeters[index] = {
           ...newMeters[index],
           id: data.reading.id,
@@ -316,7 +315,7 @@ export default function EditInspectionPage() {
           reading_value: data.reading.reading_value != null ? String(data.reading.reading_value) : "",
           photo_path: data.reading.photo_path
         };
-        setInspection({ ...inspection, meter_readings: newMeters });
+        setInspection({ ...inspection!, meter_readings: newMeters } as Inspection);
         toast({ title: "Succès", description: "Photo enregistrée et index extrait." });
       } else {
         const err = await response.json();
@@ -536,7 +535,7 @@ export default function EditInspectionPage() {
                                 key={opt.value}
                                 onClick={() => {
                                   const newSections = [...inspection.sections];
-                                  newSections[sectionIdx].items[itemIdx].condition = opt.value;
+                                  newSections[sectionIdx].items[itemIdx].condition = opt.value as Section["items"][number]["condition"];
                                   setInspection({...inspection, sections: newSections});
                                 }}
                                 className={cn(

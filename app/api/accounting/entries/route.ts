@@ -100,10 +100,10 @@ export async function GET(request: Request) {
     }
 
     // Calculer les totaux
-    const totals = (entries || []).reduce(
+    const totals = (entries || []).reduce<{ debit: number; credit: number }>(
       (acc, e) => ({
-        debit: acc.debit + (e.debit || 0),
-        credit: acc.credit + (e.credit || 0),
+        debit: acc.debit + ((e.debit as number) || 0),
+        credit: acc.credit + ((e.credit as number) || 0),
       }),
       { debit: 0, credit: 0 }
     );

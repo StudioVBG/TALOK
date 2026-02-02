@@ -204,7 +204,7 @@ export const getPendingValidationsTool = tool(
     const list = pendingProviders.map(provider => {
       const prof = profileMap.get(provider.profile_id);
       const services = (provider.type_services as string[])?.join(", ") || "Non spécifié";
-      const zones = (provider.zones_intervention as string[])?.slice(0, 3).join(", ") || "Non spécifié";
+      const zones = (provider.zones_intervention as unknown as string[])?.slice(0, 3).join(", ") || "Non spécifié";
       const waitingDays = Math.floor((Date.now() - new Date(provider.created_at).getTime()) / (1000 * 60 * 60 * 24));
       
       let urgency = "";
@@ -459,8 +459,8 @@ export const getAlertsTool = tool(
     
     const alertList = alerts
       .sort((a, b) => {
-        const order = { high: 0, medium: 1, low: 2 };
-        return (order[a.severity] || 2) - (order[b.severity] || 2);
+        const order: Record<string, number> = { high: 0, medium: 1, low: 2 };
+        return (order[a.severity] ?? 2) - (order[b.severity] ?? 2);
       })
       .map(a => `${severityEmojis[a.severity]} **${a.message}**`)
       .join("\n");

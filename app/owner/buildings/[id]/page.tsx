@@ -110,8 +110,12 @@ export default async function BuildingDetailPage({ params }: PageProps) {
 
   return (
     <BuildingDetailClient
-      building={building}
-      buildingMeta={buildingMeta}
+      building={{
+        ...building,
+        cover_url: building.cover_url ?? null,
+        annee_construction: building.annee_construction ?? null,
+      }}
+      buildingMeta={buildingMeta ?? null}
       units={units || []}
     />
   );
