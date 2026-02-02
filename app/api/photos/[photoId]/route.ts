@@ -146,12 +146,13 @@ export async function PATCH(
 
     return NextResponse.json({ photo: updatedPhoto });
   } catch (error: unknown) {
-    if ((error as any).name === "ZodError") {
+    if (error && typeof error === 'object' && 'name' in error && (error as any).name === "ZodError") {
       return NextResponse.json(
         { error: "Données invalides", details: (error as any).errors },
         { status: 400 }
       );
     }
+    console.error("[PATCH /api/photos/[photoId]] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
@@ -249,6 +250,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
+    console.error("[DELETE /api/photos/[photoId]] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
@@ -329,7 +331,7 @@ async function reorderPhotos(
     }
   }
 
-  await Promise.all(
+  await Promise.allSettled(
     ordered.map((photo, index) =>
       serviceClient
         .from("photos")

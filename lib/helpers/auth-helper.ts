@@ -123,7 +123,7 @@ export async function requireAdmin(request: Request) {
     }
   } catch (error: unknown) {
     console.error("requireAdmin: Unexpected error:", error);
-    console.error("requireAdmin: Error stack:", (error as Error).stack);
+    console.error("requireAdmin: Error stack:", error instanceof Error ? error.stack : "N/A");
     return {
       error: { message: error instanceof Error ? (error as Error).message : "Erreur inattendue lors de la vérification", status: 500 },
       user: null,

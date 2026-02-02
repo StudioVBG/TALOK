@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { prepareImageForUpload } from "@/lib/helpers/image-compression";
 import Image from "next/image";
 
 export interface RoomOption {
@@ -168,7 +169,7 @@ export function SmartPhotoCapture({
   const goNext = () => setCurrentIndex((i) => Math.min(photos.length - 1, i + 1));
   const goPrev = () => setCurrentIndex((i) => Math.max(0, i - 1));
 
-  // Confirmation finale
+  // Confirmation finale - compresser les images avant l'upload
   const handleConfirm = async () => {
     const assignedPhotos = photos
       .filter((p) => p.roomId)
@@ -178,7 +179,24 @@ export function SmartPhotoCapture({
 
     setIsUploading(true);
     try {
-      await onPhotosConfirm(assignedPhotos);
+      // Compress images client-side before upload (max 1920px, quality 0.8, max 2MB)
+      const compressedPhotos = await Promise.all(
+        assignedPhotos.map(async (photo) => {
+          try {
+            const { file: compressedFile } = await prepareImageForUpload(photo.file, {
+              maxWidth: 1920,
+              maxHeight: 1080,
+              quality: 0.8,
+              maxSizeBytes: 2 * 1024 * 1024, // 2MB max
+            });
+            return { file: compressedFile, roomId: photo.roomId };
+          } catch {
+            // Fallback to original file if compression fails
+            return photo;
+          }
+        })
+      );
+      await onPhotosConfirm(compressedPhotos);
       photos.forEach((p) => URL.revokeObjectURL(p.preview));
       onClose();
     } catch (error) {

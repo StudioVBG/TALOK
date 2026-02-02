@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -12,12 +12,12 @@ import {
   FileText,
   Euro,
   FileCheck,
+  FolderArchive,
   HelpCircle,
-  Menu,
-  X,
   User,
   LogOut,
   ChevronDown,
+  ChevronLeft,
   CalendarClock,
   Wrench,
   Shield,
@@ -25,7 +25,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
-import { OwnerBottomNav } from "./owner-bottom-nav";
+import { SharedBottomNav } from "./shared-bottom-nav";
 import { cn } from "@/lib/utils";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
@@ -37,6 +37,20 @@ import { FavoritesList } from "@/components/ui/favorites-list";
 import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
 import { OnboardingTourProvider, AutoTourPrompt, StartTourButton, FirstLoginOrchestrator } from "@/components/onboarding";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navigation = [
   { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard, tourId: "nav-dashboard" },
@@ -47,6 +61,7 @@ const navigation = [
   { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
   { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
   { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck, tourId: "nav-documents" },
+  { name: "GED", href: OWNER_ROUTES.ged.path, icon: FolderArchive, badge: "Nouveau" },
   { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
   { name: "Facturation", href: "/settings/billing", icon: CreditCard },
   { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle, tourId: "nav-support" },
@@ -66,9 +81,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
   const pathname = usePathname();
   const router = useRouter();
   const { profile: clientProfile, loading } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  
+
   // Hook SOTA 2026 pour la déconnexion avec loading state et redirection forcée
   const { signOut: handleSignOut, isLoading: isSigningOut } = useSignOut({
     redirectTo: "/auth/signin",
@@ -88,15 +101,6 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
     }
   }, [clientProfile, loading, router, serverProfile]);
 
-  // Écouter les demandes d'ouverture/fermeture du sidebar depuis le tour guidé
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ open: boolean }>).detail;
-      setSidebarOpen(detail.open);
-    };
-    window.addEventListener("tour:sidebar", handler);
-    return () => window.removeEventListener("tour:sidebar", handler);
-  }, []);
 
   // Si pas de profil serveur et chargement côté client, afficher loading
   if (!serverProfile && loading) {
@@ -115,15 +119,85 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
     return null;
   }
 
+  // Trouver le titre de la page active
+  const activeNavItem = navigation.find(
+    (item) => pathname === item.href || pathname?.startsWith(item.href + "/")
+  );
+  const pageTitle = activeNavItem?.name || "Tableau de bord";
+
+  // Déterminer si on peut afficher un bouton retour (page de détail)
+  const isDetailPage = pathname?.split("/").filter(Boolean).length > 2;
+
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
       <SubscriptionProvider>
       <OnboardingTourProvider role="owner" profileId={profile?.id}>
+      <TooltipProvider delayDuration={0}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
         {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />
 
-        {/* Desktop Sidebar - Visible sur lg+ (tablettes paysage et desktop) */}
+        {/* ============================================
+            TABLET Rail Nav (md-lg) - Icônes + tooltip hover
+            ============================================ */}
+        <aside className="hidden md:flex lg:hidden fixed inset-y-0 left-0 z-50 w-16 flex-col bg-card border-r border-border">
+          {/* Logo compact */}
+          <div className="flex h-14 shrink-0 items-center justify-center border-b border-border">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-white" />
+            </div>
+          </div>
+
+          {/* Navigation icônes avec tooltips */}
+          <nav className="flex flex-1 flex-col items-center gap-1 py-3 overflow-y-auto">
+            {navigation.map((item) => {
+              const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+              return (
+                <Tooltip key={item.name}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={item.href}
+                      data-tour={(item as any).tourId}
+                      className={cn(
+                        "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 touch-target",
+                        isActive
+                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      <item.icon className="h-5 w-5" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="font-medium">
+                    {item.name}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </nav>
+
+          {/* User avatar en bas du rail */}
+          <div className="flex flex-col items-center gap-2 py-3 border-t border-border">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/owner/profile"
+                  className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white"
+                >
+                  <User className="h-4 w-4" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {profile?.prenom || "Mon profil"}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </aside>
+
+        {/* ============================================
+            DESKTOP Full Sidebar (lg+) - Texte + icônes
+            ============================================ */}
         <aside data-tour-sidebar className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 xl:w-72 lg:flex-col">
           <div className="flex grow flex-col gap-y-4 lg:gap-y-5 overflow-y-auto bg-card border-r border-border px-4 lg:px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center gap-2">
@@ -162,69 +236,35 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
           </div>
         </aside>
 
-        {/* Mobile Sidebar */}
-        {sidebarOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-            <div data-tour-sidebar className="fixed inset-y-0 left-0 z-50 w-64 bg-card">
-              <div className="flex h-16 items-center justify-between px-6 border-b">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-white" />
-                    </div>
-                    <h1 className="text-lg font-bold text-foreground">Talok</h1>
-                  </div>
-                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} aria-label="Fermer le menu">
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              <nav className="px-4 py-4">
-                <ul className="space-y-1">
-                  {navigation.map((item) => {
-                    const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-                    return (
-                      <li key={item.name}>
-                        <Link
-                          href={item.href}
-                          onClick={() => setSidebarOpen(false)}
-                          className={cn(
-                            "group flex gap-x-3 rounded-lg p-3 text-sm font-semibold",
-                            isActive
-                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-                              : "text-foreground hover:bg-muted"
-                          )}
-                        >
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          {item.name}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </nav>
-            </div>
-          </div>
-        )}
-
-        {/* Main Content - Adapté au sidebar responsive */}
-        <div className="lg:pl-64 xl:pl-72">
-          {/* Top Header - Hauteur et padding adaptatifs */}
+        {/* ============================================
+            Main Content Area - Padding adapté au sidebar responsive
+            md: pl-16 (rail), lg: pl-64, xl: pl-72
+            ============================================ */}
+        <div className="md:pl-16 lg:pl-64 xl:pl-72">
+          {/* ============================================
+              Top Header - Contextuel selon le device
+              Mobile: Page title + back + actions
+              Tablet/Desktop: Search + notifications + user
+              ============================================ */}
           <header className="sticky top-0 z-40 flex h-14 xs:h-16 shrink-0 items-center gap-x-2 xs:gap-x-3 sm:gap-x-4 lg:gap-x-6 border-b border-border bg-background/95 backdrop-blur-sm px-3 xs:px-4 sm:px-6 lg:px-8 shadow-sm">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Ouvrir le menu"
-            >
-              <Menu className="h-6 w-6" />
-            </Button>
+            {/* Mobile: Back button for detail pages */}
+            {isDetailPage && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden shrink-0"
+                onClick={() => router.back()}
+                aria-label="Retour"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
 
             <div className="flex flex-1 gap-x-2 xs:gap-x-4 self-stretch lg:gap-x-6">
               <div className="flex flex-1 items-center gap-2 xs:gap-4 min-w-0">
-                {/* Titre - Tronqué sur mobile */}
+                {/* Titre de page - Visible partout */}
                 <h2 className="text-sm xs:text-base sm:text-lg font-semibold text-foreground truncate">
-                  {navigation.find((item) => pathname === item.href || pathname?.startsWith(item.href + "/"))?.name || "Tableau de bord"}
+                  {pageTitle}
                 </h2>
                 {/* SOTA 2025 - Bouton recherche rapide qui ouvre Command Palette */}
                 <button
@@ -241,7 +281,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               </div>
               <div className="flex items-center gap-x-2 xs:gap-x-3 lg:gap-x-4">
                 {/* SOTA 2026 - Éléments masqués sur mobile pour désencombrer */}
-                <div className="hidden md:flex items-center gap-x-3">
+                <div className="hidden lg:flex items-center gap-x-3">
                   <KeyboardShortcutsHelp />
                   <FavoritesList />
                 </div>
@@ -259,54 +299,66 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                   </Link>
                 </Button>
 
-                {/* User Menu */}
-                <div className="relative">
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-2"
-                    onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  >
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-                      <User className="h-4 w-4 text-white" />
-                    </div>
-                    <span className="hidden sm:block text-sm font-medium text-foreground">
-                      {profile?.prenom || "Propriétaire"}
-                    </span>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-
-                  {userMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                      <div className="absolute right-0 z-50 mt-2 w-48 rounded-md bg-card py-1 shadow-lg ring-1 ring-black ring-opacity-5">
-                        <Link
-                          href="/owner/profile"
-                          className="block px-4 py-2 text-sm text-foreground hover:bg-muted"
-                          onClick={() => setUserMenuOpen(false)}
-                        >
-                          Mon profil
-                        </Link>
-                        <button
-                          onClick={handleSignOut}
-                          disabled={isSigningOut}
-                          className="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isSigningOut ? (
-                            <>
-                              <span className="inline-block h-4 w-4 mr-2 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                              Déconnexion...
-                            </>
-                          ) : (
-                            <>
-                              <LogOut className="h-4 w-4 inline mr-2" />
-                              Déconnexion
-                            </>
-                          )}
-                        </button>
+                {/* User Menu - DropdownMenu propre (remplace le menu custom) */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2 p-1.5"
+                    >
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shrink-0">
+                        <User className="h-4 w-4 text-white" />
                       </div>
-                    </>
-                  )}
-                </div>
+                      <span className="hidden sm:block text-sm font-medium text-foreground truncate max-w-[120px]">
+                        {profile?.prenom || "Propriétaire"}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {[profile?.prenom, profile?.nom].filter(Boolean).join(" ") || "Propriétaire"}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          Propriétaire
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/owner/profile" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        Mon profil
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={OWNER_ROUTES.support.path} className="cursor-pointer">
+                        <HelpCircle className="mr-2 h-4 w-4" />
+                        Aide & services
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleSignOut}
+                      disabled={isSigningOut}
+                      className="text-red-600 cursor-pointer disabled:opacity-50"
+                    >
+                      {isSigningOut ? (
+                        <>
+                          <span className="mr-2 h-4 w-4 inline-block animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                          Déconnexion...
+                        </>
+                      ) : (
+                        <>
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Déconnexion
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </header>
@@ -317,14 +369,28 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
           </main>
         </div>
 
-        {/* Mobile Bottom Navigation - Masquée dans les wizards */}
-        {!pathname?.includes('/properties/new') && !pathname?.includes('/leases/new') && !pathname?.includes('/onboarding') && (
-          <>
-            <OwnerBottomNav />
-            {/* Spacer pour éviter que le contenu soit caché derrière la bottom nav */}
-            <div className="h-14 xs:h-16 lg:hidden" />
-          </>
-        )}
+        {/* ============================================
+            Mobile Bottom Navigation (< md)
+            Masquée sur tablette+ grâce à hideAbove="md"
+            ============================================ */}
+        <SharedBottomNav
+          items={[
+            { href: OWNER_ROUTES.dashboard.path, label: "Dashboard", icon: LayoutDashboard },
+            { href: OWNER_ROUTES.properties.path, label: "Biens", icon: Building2 },
+            { href: OWNER_ROUTES.money.path, label: "Loyers", icon: Euro },
+            { href: OWNER_ROUTES.contracts.path, label: "Baux", icon: FileText },
+          ]}
+          moreItems={[
+            { href: "/owner/inspections", label: "États des lieux", icon: ClipboardCheck },
+            { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench },
+            { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck },
+            { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
+            { href: "/owner/legal-protocols", label: "Juridique", icon: Shield },
+            { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
+          ]}
+          hideAbove="md"
+          hiddenOnPaths={['/properties/new', '/leases/new', '/onboarding']}
+        />
 
         {/* SOTA 2026 - FAB Unifié (Assistant + Upgrade) - Masqué dans les wizards */}
         {!pathname?.includes('/properties/new') && !pathname?.includes('/leases/new') && (
@@ -346,9 +412,9 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
           />
         )}
       </div>
+      </TooltipProvider>
       </OnboardingTourProvider>
       </SubscriptionProvider>
     </ProtectedRoute>
   );
 }
-

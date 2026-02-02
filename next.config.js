@@ -178,6 +178,41 @@ const nextConfig = {
     // Les imports sont optimisés via optimizePackageImports ci-dessus
   },
 
+  // Redirections pour consolider les routes doublons
+  async redirects() {
+    return [
+      // Consolidation anglais → français pour les pages marketing
+      { source: '/features', destination: '/fonctionnalites', permanent: true },
+      { source: '/features/:path*', destination: '/fonctionnalites/:path*', permanent: true },
+
+      // Routes legacy / doublons dashboard
+      { source: '/dashboard/biens', destination: '/owner/properties', permanent: true },
+      { source: '/dashboard/biens/:path*', destination: '/owner/properties/:path*', permanent: true },
+      { source: '/dashboard/locataires', destination: '/owner/tenants', permanent: true },
+      { source: '/dashboard/locataires/:path*', destination: '/owner/tenants/:path*', permanent: true },
+      { source: '/dashboard/settings', destination: '/owner/profile', permanent: true },
+
+      // Routes settings éparses → profil du rôle
+      { source: '/settings/billing', destination: '/owner/money', permanent: false },
+
+      // Routes anglaises legacy → routes françaises (SEO + UX)
+      { source: '/properties', destination: '/owner/properties', permanent: true },
+      { source: '/properties/:path*', destination: '/owner/properties/:path*', permanent: true },
+      { source: '/tenants', destination: '/owner/leases', permanent: true },
+      { source: '/tenants/:path*', destination: '/owner/leases/:path*', permanent: true },
+      { source: '/settings', destination: '/owner/profile', permanent: true },
+      { source: '/settings/:path*', destination: '/owner/profile', permanent: true },
+
+      // Routes dashboard/:section → rôle-spécifique
+      { source: '/dashboard/documents', destination: '/owner/documents', permanent: true },
+      { source: '/dashboard/finances', destination: '/owner/money', permanent: true },
+      { source: '/dashboard/tickets', destination: '/owner/tickets', permanent: true },
+
+      // Route /profile legacy → rôle-spécifique (non-permanent car dépend du rôle)
+      { source: '/profile', destination: '/owner/profile', permanent: false },
+    ];
+  },
+
   // Headers de sécurité — source unique de vérité (pas de duplication dans netlify.toml)
   async headers() {
     return [

@@ -223,12 +223,13 @@ export async function POST(
       photo: insertedPhoto,
     });
   } catch (error: unknown) {
-    if ((error as any).name === "ZodError") {
+    if (error && typeof error === 'object' && 'name' in error && (error as any).name === "ZodError") {
+      const zodErr = error as any;
       return NextResponse.json(
-        { 
-          error: "Données invalides", 
-          details: (error as any).errors,
-          message: (error as any).errors?.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+        {
+          error: "Données invalides",
+          details: zodErr.errors,
+          message: zodErr.errors?.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
         },
         { status: 400 }
       );
