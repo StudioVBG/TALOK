@@ -208,9 +208,9 @@ export async function POST(
     }
 
     // ===============================
-    // 5. ENVOYER L'EMAIL VIA OUTBOX
+    // 5. ENVOYER L'EMAIL VIA OUTBOX (service client, non-blocking)
     // ===============================
-    await supabase.from("outbox").insert({
+    await supabaseAdmin.from("outbox").insert({
       event_type: "EDL.InvitationSent",
       payload: {
         edl_id: edlId,
@@ -221,12 +221,12 @@ export async function POST(
         token: invitationToken,
         type: (edl as any).type
       },
-    } as any);
+    } as any).catch((e: any) => console.error(`[EDL Invite ${edlId}] Outbox error:`, e));
 
     // ===============================
-    // 6. JOURNALISER
+    // 6. JOURNALISER (service client, non-blocking)
     // ===============================
-    await supabase.from("audit_log").insert({
+    await supabaseAdmin.from("audit_log").insert({
       user_id: user.id,
       action: "edl_invitation_sent",
       entity_type: "edl",
@@ -235,7 +235,7 @@ export async function POST(
         recipient: targetEmail,
         has_profile: !!targetProfileId
       },
-    } as any);
+    } as any).catch((e: any) => console.error(`[EDL Invite ${edlId}] Audit log error:`, e));
 
     return NextResponse.json({ 
       success: true, 

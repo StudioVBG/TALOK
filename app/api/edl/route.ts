@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
@@ -198,8 +199,11 @@ export async function POST(request: Request) {
       );
     }
 
+    // Service client for DB operations (bypasses RLS)
+    const serviceClient = getServiceClient();
+
     // Vérifier les permissions (propriétaire ou admin)
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -209,13 +213,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: lease, error: leaseError } = await supabase
+    const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select(
         `
         id,
         property_id,
-        property:properties!inner(id, owner_id)
+        property:properties(id, owner_id)
       `
       )
       .eq("id", lease_id)
@@ -226,8 +230,9 @@ export async function POST(request: Request) {
     }
 
     const leaseData = lease as any;
-    const isOwner = leaseData.property?.owner_id === profile.id;
-    const isAdmin = profile.role === "admin";
+    const propertyData = Array.isArray(leaseData.property) ? leaseData.property[0] : leaseData.property;
+    const isOwner = propertyData?.owner_id === (profile as any).id;
+    const isAdmin = (profile as any).role === "admin";
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json(
@@ -237,7 +242,7 @@ export async function POST(request: Request) {
     }
 
     // Vérifier qu'il n'existe pas déjà un EDL du même type non terminé
-    const { data: existingEdl } = await supabase
+    const { data: existingEdl } = await serviceClient
       .from("edl")
       .select("id, status")
       .eq("lease_id", lease_id)
@@ -255,12 +260,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Créer l'EDL
+    // Créer l'EDL via service client (bypasses RLS)
     const scheduledDate = scheduled_at
       ? new Date(scheduled_at).toISOString().split("T")[0]
       : null;
 
-    const { data: newEdl, error: createError } = await supabase
+    const { data: newEdl, error: createError } = await serviceClient
       .from("edl")
       .insert({
         lease_id,
@@ -284,35 +289,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // Injecter automatiquement les signataires du bail
-    const { data: leaseSigners } = await supabase
+    // Injecter automatiquement les signataires du bail (non-blocking)
+    const { data: leaseSigners } = await serviceClient
       .from("lease_signers")
       .select("profile_id, role")
       .eq("lease_id", lease_id);
 
     if (leaseSigners && leaseSigners.length > 0) {
-      const edlSignatures = leaseSigners.map((ls: any) => ({
-        edl_id: (newEdl as any).id,
-        signer_user: null,
-        signer_profile_id: ls.profile_id,
-        signer_role:
-          ls.role === "proprietaire" || ls.role === "owner"
-            ? "owner"
-            : "tenant",
-        invitation_token: crypto.randomUUID(),
-      }));
+      try {
+        const edlSignatures = leaseSigners.map((ls: any) => ({
+          edl_id: (newEdl as any).id,
+          signer_user: null,
+          signer_profile_id: ls.profile_id,
+          signer_role:
+            ls.role === "proprietaire" || ls.role === "owner"
+              ? "owner"
+              : "tenant",
+          invitation_token: crypto.randomUUID(),
+        }));
 
-      await supabase.from("edl_signatures").insert(edlSignatures as any);
+        await serviceClient.from("edl_signatures").insert(edlSignatures as any);
+      } catch (sigError) {
+        console.error("[POST /api/edl] Erreur injection signataires:", sigError);
+      }
     }
 
-    // Journaliser
-    await supabase.from("audit_log").insert({
+    // Journaliser (non-blocking)
+    await serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "edl_created",
       entity_type: "edl",
       entity_id: (newEdl as any).id,
       metadata: { type, lease_id },
-    } as any);
+    } as any).catch((e: any) => console.error("[POST /api/edl] Audit log error:", e));
 
     return NextResponse.json({ edl: newEdl }, { status: 201 });
   } catch (error: unknown) {
