@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { createServiceClient, getUserProfile } from "@/lib/helpers/edl-auth";
 
 /** Max file size: 5 MB (safe margin under Netlify's 6MB body limit) */
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -19,14 +20,19 @@ const ALLOWED_MIME_TYPES = new Set([
 
 /**
  * POST /api/inspections/[iid]/photos - Uploader des photos pour un EDL
- * @version 2026-01-29 - Fix: validation, Promise.allSettled, structured logging
+ * @version 2026-02-03 - Fix: use service client for storage + edl_media to bypass RLS
  */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ iid: string }> }
 ) {
+  let iid = "unknown";
+
   try {
-    const { iid } = await params;
+    const resolvedParams = await params;
+    iid = resolvedParams.iid;
+
+    // Auth: user-level client for authentication only
     const supabase = await createClient();
     const {
       data: { user },
@@ -35,6 +41,9 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
+
+    // Service client for DB and storage operations (bypasses RLS)
+    const serviceClient = createServiceClient();
 
     const { searchParams } = new URL(request.url);
     const itemId = searchParams.get("item_id");
@@ -70,8 +79,8 @@ export async function POST(
       );
     }
 
-    // Vérifier l'accès à l'EDL
-    const { data: edl, error: edlError } = await supabase
+    // Vérifier l'accès à l'EDL via service client (bypass RLS)
+    const { data: edl, error: edlError } = await serviceClient
       .from("edl")
       .select(`
         id,
@@ -87,43 +96,38 @@ export async function POST(
       .single();
 
     if (edlError || !edl) {
-      console.error("[Photos] EDL error:", edlError);
+      console.error(`[Photos] EDL ${iid} error:`, edlError);
       return NextResponse.json(
         { error: "EDL non trouvé" },
         { status: 404 }
       );
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
+    const profile = await getUserProfile(serviceClient, user.id);
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const profileData = profile as any;
     const edlData = edl as any;
 
-    // Check if user is owner of the property
+    // Check if user is owner of the property or a signer
     let isOwner = false;
     const propId = edlData.property_id || edlData.lease?.property_id;
 
     if (propId) {
-      const { data: property } = await supabase
+      const { data: property } = await serviceClient
         .from("properties")
         .select("owner_id")
         .eq("id", propId)
         .single();
-      if (property?.owner_id === profileData.id) isOwner = true;
-    } else if (edlData.lease?.property?.owner_id === profileData.id) {
+      if (property?.owner_id === profile.id) isOwner = true;
+    } else if (edlData.lease?.property?.owner_id === profile.id) {
       isOwner = true;
     }
 
+    const isAdmin = profile.role === "admin";
     const signerIds = edlData?.lease?.signers?.map((s: any) => s.profile_id) || [];
-    const hasAccess = isOwner || signerIds.includes(profileData?.id);
+    const hasAccess = isAdmin || isOwner || signerIds.includes(profile.id);
 
     if (!hasAccess) {
       return NextResponse.json(
@@ -133,11 +137,12 @@ export async function POST(
     }
 
     // Upload files using Promise.allSettled for resilience
+    // Use service client for storage to bypass bucket RLS policies
     const uploadPromises = files.map(async (file) => {
       const startTime = Date.now();
       const fileName = `edl/${iid}/${Date.now()}_${crypto.randomUUID()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await serviceClient.storage
         .from("documents")
         .upload(fileName, file, {
           contentType: file.type,
@@ -157,7 +162,7 @@ export async function POST(
         throw uploadError;
       }
 
-      // Créer l'entrée dans edl_media
+      // Créer l'entrée dans edl_media via service client (bypass RLS)
       const mediaPayload: any = {
         edl_id: iid,
         item_id: itemId || null,
@@ -171,7 +176,7 @@ export async function POST(
         mediaPayload.section = section;
       }
 
-      const { data: media, error: mediaError } = await supabase
+      const { data: media, error: mediaError } = await serviceClient
         .from("edl_media")
         .insert(mediaPayload)
         .select()
@@ -185,7 +190,7 @@ export async function POST(
           error: mediaError.message,
         }));
         // Cleanup: remove the orphaned storage file
-        await supabase.storage.from("documents").remove([uploadData.path]).catch(() => {});
+        await serviceClient.storage.from("documents").remove([uploadData.path]).catch(() => {});
         throw mediaError;
       }
 
@@ -232,7 +237,7 @@ export async function POST(
       }),
     });
   } catch (error: unknown) {
-    console.error("[POST /api/inspections/[iid]/photos] Unhandled error:", error);
+    console.error(`[POST /api/inspections/${iid}/photos] Unhandled error:`, error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

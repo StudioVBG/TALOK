@@ -488,22 +488,41 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       setUploadStep("Création de l'état des lieux...");
       setUploadDetails("");
 
-      // Helper pour les requêtes avec meilleure gestion d'erreur
-      const safeFetch = async (url: string, options?: RequestInit) => {
-        try {
-          const res = await fetch(url, options);
-          if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-            throw new Error(errorData.error || `Erreur ${res.status}`);
+      // Helper pour les requêtes avec retry automatique et meilleure gestion d'erreur
+      const safeFetch = async (url: string, options?: RequestInit, maxRetries = 2) => {
+        let lastError: Error | null = null;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            const res = await fetch(url, options);
+            if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              const err = new Error(errorData.error || `Erreur ${res.status}`);
+              // Ne pas retry les erreurs 4xx (client) sauf 408/429
+              if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+                throw err;
+              }
+              lastError = err;
+              if (attempt < maxRetries) {
+                await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                continue;
+              }
+              throw err;
+            }
+            return res;
+          } catch (err: any) {
+            lastError = err;
+            // Retry sur erreurs réseau
+            if ((err.message === "Load failed" || err.message === "Failed to fetch") && attempt < maxRetries) {
+              await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+              continue;
+            }
+            if (err.message === "Load failed" || err.message === "Failed to fetch") {
+              throw new Error("Erreur réseau - vérifiez votre connexion internet");
+            }
+            throw err;
           }
-          return res;
-        } catch (err: any) {
-          // Améliorer les messages d'erreur réseau
-          if (err.message === "Load failed" || err.message === "Failed to fetch") {
-            throw new Error("Erreur réseau - vérifiez votre connexion internet");
-          }
-          throw err;
         }
+        throw lastError || new Error("Erreur inattendue");
       };
 
       // 1. Créer l'EDL
