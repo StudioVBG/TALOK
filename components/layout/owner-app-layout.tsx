@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/protected-route";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   LayoutDashboard,
   Building2,
@@ -23,6 +24,7 @@ import {
   Shield,
   CreditCard,
   ClipboardCheck,
+  Search,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { SharedBottomNav } from "./shared-bottom-nav";
@@ -36,13 +38,8 @@ import { NotificationCenter } from "@/components/notifications";
 import { FavoritesList } from "@/components/ui/favorites-list";
 import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
 import { OnboardingTourProvider, AutoTourPrompt, StartTourButton, FirstLoginOrchestrator } from "@/components/onboarding";
+import { SkipLinks } from "@/components/ui/skip-links";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,14 +98,14 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
     }
   }, [clientProfile, loading, router, serverProfile]);
 
-
   // Si pas de profil serveur et chargement côté client, afficher loading
   if (!serverProfile && loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center" role="status" aria-busy="true">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto"></div>
           <p className="text-muted-foreground">Chargement...</p>
+          <span className="sr-only">Chargement de l'espace propriétaire</span>
         </div>
       </div>
     );
@@ -128,6 +125,9 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
   // Déterminer si on peut afficher un bouton retour (page de détail)
   const isDetailPage = pathname?.split("/").filter(Boolean).length > 2;
 
+  // Déterminer si on est dans un wizard (masquer bottom nav et FAB)
+  const isInWizard = pathname?.includes('/properties/new') || pathname?.includes('/leases/new') || pathname?.includes('/onboarding');
+
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
       <SubscriptionProvider>
@@ -137,10 +137,17 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />
 
+        {/* Skip Links pour accessibilité clavier */}
+        <SkipLinks />
+
         {/* ============================================
             TABLET Rail Nav (md-lg) - Icônes + tooltip hover
             ============================================ */}
-        <aside className="hidden md:flex lg:hidden fixed inset-y-0 left-0 z-50 w-16 flex-col bg-card border-r border-border">
+        <aside
+          id="main-navigation"
+          aria-label="Navigation principale"
+          className="hidden md:flex lg:hidden fixed inset-y-0 left-0 z-50 w-16 flex-col bg-card border-r border-border"
+        >
           {/* Logo compact */}
           <div className="flex h-14 shrink-0 items-center justify-center border-b border-border">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
@@ -198,7 +205,11 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         {/* ============================================
             DESKTOP Full Sidebar (lg+) - Texte + icônes
             ============================================ */}
-        <aside data-tour-sidebar className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 xl:w-72 lg:flex-col">
+        <aside
+          data-tour-sidebar
+          aria-label="Navigation principale"
+          className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 xl:w-72 lg:flex-col"
+        >
           <div className="flex grow flex-col gap-y-4 lg:gap-y-5 overflow-y-auto bg-card border-r border-border px-4 lg:px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
@@ -209,6 +220,8 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                 <p className="text-xs text-muted-foreground">Compte Propriétaire</p>
               </div>
             </div>
+
+            {/* Navigation */}
             <nav className="flex flex-1 flex-col">
               <ul role="list" className="flex flex-1 flex-col gap-y-1">
                 {navigation.map((item) => {
@@ -266,7 +279,8 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                 <h2 className="text-sm xs:text-base sm:text-lg font-semibold text-foreground truncate">
                   {pageTitle}
                 </h2>
-                {/* SOTA 2025 - Bouton recherche rapide qui ouvre Command Palette */}
+
+                {/* Bouton recherche - Masqué sur mobile */}
                 <button
                   data-tour="search-button"
                   onClick={() => {
@@ -285,17 +299,20 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                   <KeyboardShortcutsHelp />
                   <FavoritesList />
                 </div>
+
                 {/* Notifications - Toujours visible */}
                 <NotificationCenter />
+
                 {/* Dark mode - Masqué sur mobile */}
-                <div className="hidden sm:block">
+                <div className="hidden md:block">
                   <DarkModeToggle />
                 </div>
-                {/* Aide - Version compacte sur mobile */}
-                <Button variant="outline" size="sm" asChild className="hidden xs:flex">
+
+                {/* Aide - Desktop uniquement */}
+                <Button variant="outline" size="sm" asChild className="hidden lg:flex">
                   <Link href={OWNER_ROUTES.support.path}>
-                    <HelpCircle className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Aide</span>
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    Aide
                   </Link>
                 </Button>
 
@@ -363,8 +380,15 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
             </div>
           </header>
 
-          {/* Page Content - Padding adaptatif mobile → tablet → desktop */}
-          <main className="py-4 xs:py-5 sm:py-6 px-3 xs:px-4 sm:px-6 lg:px-8">
+          {/* ============================================
+              PAGE CONTENT
+              Padding adaptatif: mobile -> tablet -> desktop
+              ============================================ */}
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="py-4 md:py-5 lg:py-6 px-3 md:px-6 lg:px-8 outline-none"
+          >
             {children}
           </main>
         </div>
@@ -372,38 +396,39 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         {/* ============================================
             Mobile Bottom Navigation (< md)
             Masquée sur tablette+ grâce à hideAbove="md"
+            Masquée dans les wizards
             ============================================ */}
-        <SharedBottomNav
-          items={[
-            { href: OWNER_ROUTES.dashboard.path, label: "Dashboard", icon: LayoutDashboard },
-            { href: OWNER_ROUTES.properties.path, label: "Biens", icon: Building2 },
-            { href: OWNER_ROUTES.money.path, label: "Loyers", icon: Euro },
-            { href: OWNER_ROUTES.contracts.path, label: "Baux", icon: FileText },
-          ]}
-          moreItems={[
-            { href: "/owner/inspections", label: "États des lieux", icon: ClipboardCheck },
-            { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench },
-            { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck },
-            { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
-            { href: "/owner/legal-protocols", label: "Juridique", icon: Shield },
-            { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
-          ]}
-          hideAbove="md"
-          hiddenOnPaths={['/properties/new', '/leases/new', '/onboarding']}
-        />
-
-        {/* SOTA 2026 - FAB Unifié (Assistant + Upgrade) - Masqué dans les wizards */}
-        {!pathname?.includes('/properties/new') && !pathname?.includes('/leases/new') && (
-          <UnifiedFAB />
+        {!isInWizard && (
+          <SharedBottomNav
+            items={[
+              { href: OWNER_ROUTES.dashboard.path, label: "Dashboard", icon: LayoutDashboard },
+              { href: OWNER_ROUTES.properties.path, label: "Biens", icon: Building2 },
+              { href: OWNER_ROUTES.money.path, label: "Loyers", icon: Euro },
+              { href: OWNER_ROUTES.contracts.path, label: "Baux", icon: FileText },
+            ]}
+            moreItems={[
+              { href: "/owner/inspections", label: "États des lieux", icon: ClipboardCheck },
+              { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench },
+              { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck },
+              { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
+              { href: "/owner/legal-protocols", label: "Juridique", icon: Shield },
+              { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
+            ]}
+            hideAbove="md"
+            hiddenOnPaths={['/properties/new', '/leases/new', '/onboarding']}
+          />
         )}
 
-        {/* SOTA 2025 - Command Palette (⌘K) */}
+        {/* FAB Unifié - Masqué dans les wizards */}
+        {!isInWizard && <UnifiedFAB />}
+
+        {/* Command Palette (⌘K) */}
         <CommandPalette role="owner" />
 
-        {/* SOTA 2026 - Tour guidé d'onboarding */}
+        {/* Tour guidé d'onboarding */}
         <AutoTourPrompt />
 
-        {/* SOTA 2026 - Orchestrateur première connexion (WelcomeModal → Tour) */}
+        {/* SOTA 2026 - Orchestrateur première connexion (WelcomeModal -> Tour) */}
         {profile?.id && (
           <FirstLoginOrchestrator
             profileId={profile.id}

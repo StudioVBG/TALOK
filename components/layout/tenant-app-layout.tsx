@@ -20,9 +20,21 @@ import {
   User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
+import { Badge } from "@/components/ui/badge";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { UnifiedFAB } from "@/components/layout/unified-fab";
+import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import { OnboardingTourProvider, AutoTourPrompt } from "@/components/onboarding";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,18 +43,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { NotificationBell } from "@/components/notifications/NotificationBell";
-import { UnifiedFAB } from "@/components/layout/unified-fab";
-import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
-import { OfflineIndicator } from "@/components/ui/offline-indicator";
-import { OnboardingTourProvider, AutoTourPrompt } from "@/components/onboarding";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { SkipLinks } from "@/components/ui/skip-links";
+import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
@@ -111,10 +113,17 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
       {/* Offline indicator */}
       <OfflineIndicator />
 
+      {/* Skip Links pour accessibilité clavier */}
+      <SkipLinks />
+
       {/* ============================================
           TABLET Rail Nav (md-lg) - Icônes + tooltip hover
           ============================================ */}
-      <aside className="hidden md:flex lg:hidden fixed inset-y-0 left-0 z-50 w-16 flex-col bg-card border-r border-border">
+      <aside
+        id="main-navigation"
+        aria-label="Navigation principale"
+        className="hidden md:flex lg:hidden fixed inset-y-0 left-0 z-50 w-16 flex-col bg-card border-r border-border"
+      >
         {/* Logo compact */}
         <div className="flex h-14 shrink-0 items-center justify-center border-b border-border">
           <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -190,25 +199,6 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
               Locataire
             </Badge>
           </Link>
-        </div>
-
-        {/* User Profile Card */}
-        <div className="p-4 border-b shrink-0">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-            <Avatar className="h-11 w-11 ring-2 ring-white dark:ring-slate-700 shadow-sm">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
-                {profile?.prenom?.[0]}
-                {profile?.nom?.[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="overflow-hidden flex-1">
-              <p className="text-sm font-semibold truncate">
-                {profile?.prenom} {profile?.nom}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">Locataire</p>
-            </div>
-          </div>
         </div>
 
         {/* Main Navigation - Grouped */}
@@ -321,6 +311,12 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
           <div className="flex items-center gap-2">
             <NotificationBell />
+
+            {/* Dark mode toggle - Masqué sur mobile */}
+            <div className="hidden md:block">
+              <DarkModeToggle />
+            </div>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-9 w-9 p-0 rounded-full">
@@ -381,7 +377,11 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         </header>
 
         {/* Main Content */}
-        <main className="min-h-[calc(100vh-4rem)]">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-h-[calc(100vh-4rem)] outline-none"
+        >
           {children}
         </main>
       </div>

@@ -178,24 +178,58 @@ const nextConfig = {
     // Les imports sont optimisés via optimizePackageImports ci-dessus
   },
 
-  // Redirections pour consolider les routes doublons
+  // Redirections pour dédupliquer les routes, consolider les doublons et gérer les routes legacy
   async redirects() {
     return [
-      // Consolidation anglais → français pour les pages marketing
+      // === Doublons internes ===
+      // /owner → /owner/dashboard
+      { source: "/owner", destination: "/owner/dashboard", permanent: true },
+      // /tenant → /tenant/dashboard
+      { source: "/tenant", destination: "/tenant/dashboard", permanent: true },
+      // /dashboard → /owner/dashboard (legacy)
+      { source: "/dashboard", destination: "/owner/dashboard", permanent: true },
+
+      // === Consolidation anglais → français pour les pages marketing ===
       { source: '/features', destination: '/fonctionnalites', permanent: true },
       { source: '/features/:path*', destination: '/fonctionnalites/:path*', permanent: true },
 
-      // Routes legacy / doublons dashboard
+      // === Routes anglais → français unifiées (owner) ===
+      // /owner/contracts → /owner/leases
+      { source: "/owner/contracts", destination: "/owner/leases", permanent: true },
+      { source: "/owner/contracts/:path*", destination: "/owner/leases/:path*", permanent: true },
+      // /owner/finances → /owner/money
+      { source: "/owner/finances", destination: "/owner/money", permanent: true },
+      { source: "/owner/finances/:path*", destination: "/owner/money/:path*", permanent: true },
+      // /owner/settings → /owner/profile
+      { source: "/owner/settings", destination: "/owner/profile", permanent: true },
+
+      // === Routes tenant legacy ===
+      // /tenant/tickets → /tenant/requests
+      { source: "/tenant/tickets", destination: "/tenant/requests", permanent: true },
+      { source: "/tenant/tickets/:path*", destination: "/tenant/requests/:path*", permanent: true },
+      // /tenant/home → /tenant/lease
+      { source: "/tenant/home", destination: "/tenant/lease", permanent: true },
+
+      // === Routes billing unifiées ===
+      // /owner/billing → /settings/billing
+      { source: "/owner/billing", destination: "/settings/billing", permanent: true },
+      // /billing → /settings/billing
+      { source: "/billing", destination: "/settings/billing", permanent: true },
+
+      // === Routes legacy / doublons dashboard ===
       { source: '/dashboard/biens', destination: '/owner/properties', permanent: true },
       { source: '/dashboard/biens/:path*', destination: '/owner/properties/:path*', permanent: true },
       { source: '/dashboard/locataires', destination: '/owner/tenants', permanent: true },
       { source: '/dashboard/locataires/:path*', destination: '/owner/tenants/:path*', permanent: true },
       { source: '/dashboard/settings', destination: '/owner/profile', permanent: true },
+      { source: '/dashboard/documents', destination: '/owner/documents', permanent: true },
+      { source: '/dashboard/finances', destination: '/owner/money', permanent: true },
+      { source: '/dashboard/tickets', destination: '/owner/tickets', permanent: true },
 
-      // Routes settings éparses → profil du rôle
+      // === Routes settings éparses → profil du rôle ===
       { source: '/settings/billing', destination: '/owner/money', permanent: false },
 
-      // Routes anglaises legacy → routes françaises (SEO + UX)
+      // === Routes anglaises legacy → routes françaises (SEO + UX) ===
       { source: '/properties', destination: '/owner/properties', permanent: true },
       { source: '/properties/:path*', destination: '/owner/properties/:path*', permanent: true },
       { source: '/tenants', destination: '/owner/leases', permanent: true },
@@ -203,12 +237,7 @@ const nextConfig = {
       { source: '/settings', destination: '/owner/profile', permanent: true },
       { source: '/settings/:path*', destination: '/owner/profile', permanent: true },
 
-      // Routes dashboard/:section → rôle-spécifique
-      { source: '/dashboard/documents', destination: '/owner/documents', permanent: true },
-      { source: '/dashboard/finances', destination: '/owner/money', permanent: true },
-      { source: '/dashboard/tickets', destination: '/owner/tickets', permanent: true },
-
-      // Route /profile legacy → rôle-spécifique (non-permanent car dépend du rôle)
+      // === Route /profile legacy → rôle-spécifique (non-permanent car dépend du rôle) ===
       { source: '/profile', destination: '/owner/profile', permanent: false },
     ];
   },

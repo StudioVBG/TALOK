@@ -1,301 +1,235 @@
-/**
- * Hook pour la sauvegarde automatique des formulaires
- *
- * Sauvegarde l'état du formulaire dans localStorage pour éviter
- * la perte de données en cas de:
- * - Fermeture accidentelle de l'onglet
- * - Perte de connexion
- * - Crash du navigateur
- * - Navigation accidentelle
- *
- * @module lib/hooks/use-auto-save
- */
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 
-interface AutoSaveOptions<T> {
-  /** Clé unique pour identifier le brouillon dans localStorage */
-  storageKey: string;
-  /** Délai en ms avant la sauvegarde automatique (défaut: 1000ms) */
-  debounceMs?: number;
-  /** Callback appelé à chaque sauvegarde */
-  onSave?: (data: T) => void;
-  /** Callback appelé lors de la restauration d'un brouillon */
-  onRestore?: (data: T) => void;
-  /** Durée de vie du brouillon en ms (défaut: 24h) */
-  ttlMs?: number;
-  /** Activer/désactiver les notifications toast */
-  showToasts?: boolean;
-}
-
-interface SavedDraft<T> {
+interface UseAutoSaveOptions<T> {
+  /**
+   * Données à sauvegarder
+   */
   data: T;
-  savedAt: number;
-  version: number;
+  /**
+   * Clé unique pour le stockage local
+   */
+  storageKey: string;
+  /**
+   * Délai avant sauvegarde automatique (ms)
+   * @default 2000
+   */
+  debounceMs?: number;
+  /**
+   * Callback appelé lors de la sauvegarde
+   */
+  onSave?: (data: T) => Promise<void> | void;
+  /**
+   * Activer/désactiver l'auto-save
+   * @default true
+   */
+  enabled?: boolean;
+  /**
+   * Afficher un toast lors de la sauvegarde
+   * @default false
+   */
+  showToast?: boolean;
 }
 
-const STORAGE_PREFIX = "talok_draft_";
-const DEFAULT_DEBOUNCE_MS = 1000;
-const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000; // 24 heures
-const CURRENT_VERSION = 1;
+interface AutoSaveState {
+  lastSaved: Date | null;
+  isSaving: boolean;
+  hasRestoredData: boolean;
+}
 
 /**
- * Hook pour la sauvegarde automatique des formulaires
+ * Hook pour sauvegarder automatiquement les données d'un formulaire
+ *
+ * Features:
+ * - Sauvegarde debounced dans localStorage
+ * - Restauration des données au chargement
+ * - Callback optionnel pour sauvegarde serveur
+ * - Toast de confirmation optionnel
+ *
+ * Usage:
+ * ```tsx
+ * const { restoredData, clearSavedData, lastSaved } = useAutoSave({
+ *   data: formValues,
+ *   storageKey: `property-wizard-${propertyId}`,
+ *   debounceMs: 3000,
+ *   onSave: async (data) => {
+ *     await saveDraft(data);
+ *   }
+ * });
+ * ```
  */
-export function useAutoSave<T extends Record<string, any>>(
-  data: T,
-  options: AutoSaveOptions<T>
-) {
-  const {
-    storageKey,
-    debounceMs = DEFAULT_DEBOUNCE_MS,
-    onSave,
-    onRestore,
-    ttlMs = DEFAULT_TTL_MS,
-    showToasts = true,
-  } = options;
-
+export function useAutoSave<T>({
+  data,
+  storageKey,
+  debounceMs = 2000,
+  onSave,
+  enabled = true,
+  showToast = false,
+}: UseAutoSaveOptions<T>) {
   const { toast } = useToast();
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [hasDraft, setHasDraft] = useState(false);
-  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  const [isRestoring, setIsRestoring] = useState(false);
-  const fullStorageKey = `${STORAGE_PREFIX}${storageKey}`;
+  const [state, setState] = useState<AutoSaveState>({
+    lastSaved: null,
+    isSaving: false,
+    hasRestoredData: false,
+  });
 
-  /**
-   * Vérifie si un brouillon existe et est valide
-   */
-  const checkForDraft = useCallback((): SavedDraft<T> | null => {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialDataRef = useRef<T | null>(null);
+  const isFirstRender = useRef(true);
+
+  // Restaurer les données sauvegardées au montage
+  const restoredData = useCallback((): T | null => {
     if (typeof window === "undefined") return null;
 
     try {
-      const stored = localStorage.getItem(fullStorageKey);
-      if (!stored) return null;
-
-      const draft: SavedDraft<T> = JSON.parse(stored);
-
-      // Vérifier la version
-      if (draft.version !== CURRENT_VERSION) {
-        localStorage.removeItem(fullStorageKey);
-        return null;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.data as T;
       }
-
-      // Vérifier l'expiration
-      if (Date.now() - draft.savedAt > ttlMs) {
-        localStorage.removeItem(fullStorageKey);
-        return null;
-      }
-
-      return draft;
-    } catch {
-      return null;
+    } catch (error) {
+      console.error("Erreur lors de la restauration des données:", error);
     }
-  }, [fullStorageKey, ttlMs]);
+    return null;
+  }, [storageKey]);
 
-  /**
-   * Sauvegarde les données
-   */
-  const save = useCallback(
-    (dataToSave: T) => {
-      if (typeof window === "undefined") return;
+  // Sauvegarder les données
+  const saveData = useCallback(
+    async (dataToSave: T) => {
+      if (!enabled) return;
+
+      setState((prev) => ({ ...prev, isSaving: true }));
 
       try {
-        const draft: SavedDraft<T> = {
+        // Sauvegarder dans localStorage
+        const savePayload = {
           data: dataToSave,
-          savedAt: Date.now(),
-          version: CURRENT_VERSION,
+          timestamp: new Date().toISOString(),
         };
+        localStorage.setItem(storageKey, JSON.stringify(savePayload));
 
-        localStorage.setItem(fullStorageKey, JSON.stringify(draft));
-        setHasDraft(true);
-        setLastSavedAt(new Date());
-        onSave?.(dataToSave);
+        // Appeler le callback de sauvegarde si fourni
+        if (onSave) {
+          await onSave(dataToSave);
+        }
+
+        const now = new Date();
+        setState((prev) => ({
+          ...prev,
+          lastSaved: now,
+          isSaving: false,
+        }));
+
+        if (showToast) {
+          toast({
+            title: "Brouillon sauvegardé",
+            description: `Dernière sauvegarde : ${now.toLocaleTimeString("fr-FR")}`,
+            duration: 2000,
+          });
+        }
       } catch (error) {
-        console.error("[AutoSave] Erreur de sauvegarde:", error);
+        console.error("Erreur lors de la sauvegarde:", error);
+        setState((prev) => ({ ...prev, isSaving: false }));
       }
     },
-    [fullStorageKey, onSave]
+    [enabled, storageKey, onSave, showToast, toast]
   );
 
-  /**
-   * Sauvegarde avec debounce
-   */
-  const debouncedSave = useCallback(
-    (dataToSave: T) => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-
-      timeoutRef.current = setTimeout(() => {
-        save(dataToSave);
-      }, debounceMs);
-    },
-    [save, debounceMs]
-  );
-
-  /**
-   * Restaure un brouillon sauvegardé
-   */
-  const restore = useCallback((): T | null => {
-    const draft = checkForDraft();
-    if (!draft) return null;
-
-    setIsRestoring(true);
-
-    if (showToasts) {
-      toast({
-        title: "Brouillon restauré",
-        description: `Données sauvegardées le ${new Date(draft.savedAt).toLocaleString("fr-FR")}`,
-      });
+  // Debounced save effect
+  useEffect(() => {
+    if (!enabled || isFirstRender.current) {
+      isFirstRender.current = false;
+      initialDataRef.current = data;
+      return;
     }
 
-    onRestore?.(draft.data);
-    setIsRestoring(false);
-    return draft.data;
-  }, [checkForDraft, onRestore, showToasts, toast]);
+    // Ne pas sauvegarder si les données n'ont pas changé
+    if (JSON.stringify(data) === JSON.stringify(initialDataRef.current)) {
+      return;
+    }
 
-  /**
-   * Supprime le brouillon
-   */
-  const clear = useCallback(() => {
-    if (typeof window === "undefined") return;
-
+    // Clear previous timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
-    localStorage.removeItem(fullStorageKey);
-    setHasDraft(false);
-    setLastSavedAt(null);
-  }, [fullStorageKey]);
-
-  /**
-   * Ignore le brouillon (le supprime sans restaurer)
-   */
-  const dismiss = useCallback(() => {
-    clear();
-    if (showToasts) {
-      toast({
-        title: "Brouillon supprimé",
-        description: "Le brouillon a été ignoré",
-      });
-    }
-  }, [clear, showToasts, toast]);
-
-  // Vérifier s'il existe un brouillon au montage
-  useEffect(() => {
-    const draft = checkForDraft();
-    setHasDraft(!!draft);
-    if (draft) {
-      setLastSavedAt(new Date(draft.savedAt));
-    }
-  }, [checkForDraft]);
-
-  // Sauvegarder automatiquement quand les données changent
-  useEffect(() => {
-    // Ne pas sauvegarder si on est en train de restaurer
-    if (isRestoring) return;
-
-    // Ne pas sauvegarder si les données sont vides
-    const hasData = Object.values(data).some(
-      (v) => v !== null && v !== undefined && v !== "" && v !== 0
-    );
-    if (!hasData) return;
-
-    debouncedSave(data);
+    // Set new timeout
+    timeoutRef.current = setTimeout(() => {
+      saveData(data);
+    }, debounceMs);
 
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [data, debouncedSave, isRestoring]);
+  }, [data, enabled, debounceMs, saveData]);
 
-  // Sauvegarder avant de quitter la page
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Sauvegarder immédiatement
-      save(data);
+  // Effacer les données sauvegardées
+  const clearSavedData = useCallback(() => {
+    if (typeof window === "undefined") return;
 
-      // Afficher un message de confirmation si des données non sauvegardées
-      const hasData = Object.values(data).some(
-        (v) => v !== null && v !== undefined && v !== "" && v !== 0
-      );
-      if (hasData) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
-    };
+    try {
+      localStorage.removeItem(storageKey);
+      setState((prev) => ({ ...prev, lastSaved: null }));
+    } catch (error) {
+      console.error("Erreur lors de la suppression des données:", error);
+    }
+  }, [storageKey]);
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [data, save]);
+  // Forcer une sauvegarde immédiate
+  const saveNow = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    return saveData(data);
+  }, [data, saveData]);
+
+  // Vérifier si des données sauvegardées existent
+  const hasSavedData = useCallback(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(storageKey) !== null;
+  }, [storageKey]);
 
   return {
-    /** Indique si un brouillon existe */
-    hasDraft,
-    /** Date de la dernière sauvegarde */
-    lastSavedAt,
-    /** Restaure le brouillon */
-    restore,
-    /** Supprime le brouillon */
-    clear,
-    /** Ignore le brouillon */
-    dismiss,
-    /** Force une sauvegarde immédiate */
-    saveNow: () => save(data),
-    /** Récupère le brouillon sans le restaurer */
-    getDraft: checkForDraft,
+    restoredData,
+    clearSavedData,
+    saveNow,
+    hasSavedData,
+    lastSaved: state.lastSaved,
+    isSaving: state.isSaving,
   };
 }
 
 /**
- * Composant de bannière pour restaurer un brouillon
+ * Composant d'indicateur de sauvegarde automatique
  */
-export function DraftBanner({
-  hasDraft,
-  lastSavedAt,
-  onRestore,
-  onDismiss,
+export function AutoSaveIndicator({
+  lastSaved,
+  isSaving,
 }: {
-  hasDraft: boolean;
-  lastSavedAt: Date | null;
-  onRestore: () => void;
-  onDismiss: () => void;
+  lastSaved: Date | null;
+  isSaving: boolean;
 }) {
-  if (!hasDraft) return null;
+  if (isSaving) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
+        Sauvegarde en cours...
+      </div>
+    );
+  }
 
-  return (
-    <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <span className="text-yellow-600 dark:text-yellow-400">
-          Un brouillon a été trouvé
-          {lastSavedAt && (
-            <span className="text-sm ml-1">
-              (sauvegardé le {lastSavedAt.toLocaleString("fr-FR")})
-            </span>
-          )}
-        </span>
+  if (lastSaved) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span className="h-2 w-2 rounded-full bg-green-500" />
+        Sauvegardé à {lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
       </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          Ignorer
-        </button>
-        <button
-          type="button"
-          onClick={onRestore}
-          className="px-3 py-1 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700"
-        >
-          Restaurer
-        </button>
-      </div>
-    </div>
-  );
+    );
+  }
+
+  return null;
 }
-
-export default useAutoSave;
