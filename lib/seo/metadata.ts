@@ -8,7 +8,8 @@ import type { Metadata } from "next";
  * de métadonnées pour chaque rôle/section de l'application.
  */
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
+const RAW_SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
+const SITE_URL = /^https?:\/\//i.test(RAW_SITE_URL) ? RAW_SITE_URL : `https://${RAW_SITE_URL}`;
 const SITE_NAME = "Talok";
 const DEFAULT_DESCRIPTION =
   "Logiciel de gestion locative tout-en-un pour propriétaires. Baux automatiques ALUR, signatures électroniques, scoring IA locataires.";
