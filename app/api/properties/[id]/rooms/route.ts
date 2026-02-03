@@ -202,10 +202,11 @@ export async function POST(
     }
 
     // Vérifier l'état seulement si la colonne existe
+    // Note: on autorise l'ajout de pièces pour les propriétés publiées (ex: lors de la création d'EDL)
     const propertyEtat = (property as any).etat;
-    if (!isAdmin && propertyEtat && !["draft", "rejected"].includes(propertyEtat as string)) {
+    if (!isAdmin && propertyEtat && !["draft", "rejected", "published", "pending"].includes(propertyEtat as string)) {
       return NextResponse.json(
-        { error: "Impossible de modifier un logement soumis ou publié" },
+        { error: "Impossible de modifier un logement dans cet état" },
         { status: 400 }
       );
     }

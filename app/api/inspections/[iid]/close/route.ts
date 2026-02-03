@@ -2,18 +2,23 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
  * POST /api/inspections/[iid]/close - Clôturer un EDL
- * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ * @version 2026-02-03 - Fix: use service client, handle EDLs without property_id
  */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ iid: string }> }
 ) {
+  let iid = "unknown";
+
   try {
-    const { iid } = await params;
+    const resolvedParams = await params;
+    iid = resolvedParams.iid;
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -23,34 +28,57 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est propriétaire
-    const { data: edl } = await supabase
+    const serviceClient = getServiceClient();
+
+    // Récupérer l'EDL sans !inner join (property_id peut être null pour les anciens EDL)
+    const { data: edl, error: edlError } = await serviceClient
       .from("edl")
       .select(`
         id,
         status,
-        property:properties!inner(owner_id)
+        property_id,
+        lease_id,
+        lease:leases(
+          property_id,
+          property:properties(owner_id)
+        )
       `)
-      // @ts-ignore - Supabase typing issue
-      .eq("id", iid as any)
+      .eq("id", iid)
       .single();
 
-    if (!edl) {
+    if (edlError || !edl) {
+      console.error(`[Close] EDL ${iid} error:`, edlError);
       return NextResponse.json(
         { error: "EDL non trouvé" },
         { status: 404 }
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id")
-      .eq("user_id", user.id as any)
+      .select("id, role")
+      .eq("user_id", user.id)
       .single();
 
     const profileData = profile as any;
     const edlData = edl as any;
-    if (edlData.property.owner_id !== profileData?.id) {
+    const isAdmin = profileData?.role === "admin";
+
+    // Résoudre le property owner_id via property_id direct ou via lease
+    let ownerProfileId: string | null = null;
+    const propId = edlData.property_id || edlData.lease?.property_id;
+    if (propId) {
+      const { data: property } = await serviceClient
+        .from("properties")
+        .select("owner_id")
+        .eq("id", propId)
+        .single();
+      ownerProfileId = property?.owner_id || null;
+    } else if (edlData.lease?.property?.owner_id) {
+      ownerProfileId = edlData.lease.property.owner_id;
+    }
+
+    if (!isAdmin && ownerProfileId !== profileData?.id) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -65,11 +93,10 @@ export async function POST(
     }
 
     // Vérifier que toutes les signatures sont présentes
-    const { data: signatures } = await supabase
+    const { data: signatures } = await serviceClient
       .from("edl_signatures")
       .select("id")
-      // @ts-ignore - Supabase typing issue
-      .eq("edl_id", iid as any);
+      .eq("edl_id", iid);
 
     if (!signatures || signatures.length === 0) {
       return NextResponse.json(
@@ -79,37 +106,38 @@ export async function POST(
     }
 
     // Clôturer l'EDL
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await serviceClient
       .from("edl")
       .update({
         status: "closed",
         closed_at: new Date().toISOString(),
       } as any)
-      .eq("id", iid as any)
+      .eq("id", iid)
       .select()
       .single();
 
     if (error) throw error;
 
-    // Émettre un événement
-    await supabase.from("outbox").insert({
+    // Émettre un événement (non-blocking)
+    await serviceClient.from("outbox").insert({
       event_type: "Inspection.Closed",
       payload: {
         edl_id: iid,
         closed_at: (updated as any)?.closed_at,
       },
-    } as any);
+    } as any).catch((e: any) => console.error(`[Close ${iid}] Outbox error:`, e));
 
-    // Journaliser
-    await supabase.from("audit_log").insert({
+    // Journaliser (non-blocking)
+    await serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "edl_closed",
       entity_type: "edl",
       entity_id: iid,
-    } as any);
+    } as any).catch((e: any) => console.error(`[Close ${iid}] Audit log error:`, e));
 
     return NextResponse.json({ edl: updated });
   } catch (error: unknown) {
+    console.error(`[POST /api/inspections/${iid}/close] Error:`, error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

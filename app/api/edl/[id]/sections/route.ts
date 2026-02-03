@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -34,8 +35,11 @@ export async function POST(
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
+    // Service client for DB operations (bypasses RLS)
+    const serviceClient = getServiceClient();
+
     // Verify EDL exists and user has access
-    const { data: edl, error: edlError } = await supabase
+    const { data: edl, error: edlError } = await serviceClient
       .from("edl")
       .select("id, lease_id, created_by")
       .eq("id", edlId)
@@ -46,7 +50,7 @@ export async function POST(
     }
 
     // Check if user is the creator or the owner of the property
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -57,16 +61,21 @@ export async function POST(
     }
 
     // If not the creator, check if owner of the property
-    if (edl.created_by !== user.id) {
-      const { data: lease } = await supabase
+    if (edl.created_by !== user.id && (profile as any).role !== "admin") {
+      const { data: lease } = await serviceClient
         .from("leases")
         .select(`
-          properties!inner(owner_id)
+          property:properties(owner_id)
         `)
         .eq("id", edl.lease_id)
         .single();
 
-      if (!lease || (lease.properties as any)?.owner_id !== profile.id) {
+      const leaseData = lease as any;
+      const ownerMatch = Array.isArray(leaseData?.property)
+        ? leaseData.property[0]?.owner_id
+        : leaseData?.property?.owner_id;
+
+      if (!ownerMatch || ownerMatch !== (profile as any).id) {
         return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
       }
     }
@@ -89,8 +98,8 @@ export async function POST(
       }
     }
 
-    // Insert items
-    const { data: insertedItems, error: insertError } = await supabase
+    // Insert items via service client (bypasses RLS)
+    const { data: insertedItems, error: insertError } = await serviceClient
       .from("edl_items")
       .insert(allItems)
       .select();
@@ -104,9 +113,9 @@ export async function POST(
     }
 
     // Update EDL status to in_progress if it was draft
-    await supabase
+    await serviceClient
       .from("edl")
-      .update({ status: "in_progress" })
+      .update({ status: "in_progress" } as any)
       .eq("id", edlId)
       .eq("status", "draft");
 
@@ -144,8 +153,10 @@ export async function GET(
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
+    const serviceClient = getServiceClient();
+
     // Fetch EDL items grouped by room
-    const { data: items, error } = await supabase
+    const { data: items, error } = await serviceClient
       .from("edl_items")
       .select("*")
       .eq("edl_id", edlId)

@@ -176,11 +176,13 @@ export async function POST(
       );
     }
 
-    // Vérifier que l'utilisateur est propriétaire
-    const { data: property } = await supabase
+    // Vérifier que l'utilisateur est propriétaire (via service client pour éviter récursion RLS)
+    const serviceClient = getServiceClient();
+
+    const { data: property } = await serviceClient
       .from("properties")
       .select("id, owner_id")
-      .eq("id", id as any)
+      .eq("id", id)
       .single();
 
     if (!property) {
@@ -190,15 +192,15 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
     const propertyData = property as any;
     const profileData = profile as any;
-    
+
     if (propertyData.owner_id !== profileData?.id && profileData?.role !== "admin") {
       return NextResponse.json(
         { error: "Seul le propriétaire peut ajouter des compteurs" },
@@ -220,7 +222,7 @@ export async function POST(
     // Trouver un bail actif pour ce logement (optionnel)
     let activeLease = lease_id;
     if (!activeLease) {
-      const { data: existingLease } = await supabase
+      const { data: existingLease } = await serviceClient
         .from("leases")
         .select("id")
         .eq("property_id", id)
@@ -228,12 +230,10 @@ export async function POST(
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      
+
       activeLease = existingLease?.id || null;
     }
 
-    // 🔧 FIX: Use service client for INSERT to bypass RLS policies
-    const serviceClient = getServiceClient();
     const { data: meter, error } = await serviceClient
       .from("meters")
       .insert({
@@ -255,8 +255,8 @@ export async function POST(
 
     const meterData = meter as any;
 
-    // Journaliser (use service client to bypass RLS)
-    await serviceClient.from("audit_log").insert({
+    // Journaliser (non-blocking, use service client to bypass RLS)
+    serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "meter_added",
       entity_type: "meter",
@@ -268,7 +268,7 @@ export async function POST(
         property_id: id,
         lease_id: activeLease,
       },
-    } as any);
+    } as any).then(() => {}).catch((e: any) => console.error("[meters] Audit log error:", e));
 
     return NextResponse.json({ meter: meterData });
   } catch (error: unknown) {
