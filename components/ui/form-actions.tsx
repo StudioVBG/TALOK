@@ -8,17 +8,6 @@ import { cn } from "@/lib/utils";
  *
  * Mobile: sticky at bottom with safe area
  * Desktop: inline at the end of the form
- *
- * Usage:
- * ```tsx
- * <form>
- *   {/* form fields */}
- *   <FormActions>
- *     <Button variant="outline" type="button">Annuler</Button>
- *     <Button type="submit">Enregistrer</Button>
- *   </FormActions>
- * </form>
- * ```
  */
 interface FormActionsProps {
   children: React.ReactNode;

@@ -322,11 +322,9 @@ export const PropertyCardTableRow = memo(function PropertyCardTableRow({
       {/* Status */}
       <div className="w-20 shrink-0 flex justify-end" role="cell">
         <StatusBadge
-          status={status === "rented" ? "success" : "neutral"}
-          size="sm"
-        >
-          {status === "rented" ? "Loué" : "Vacant"}
-        </StatusBadge>
+          status={status === "rented" ? "Loué" : "Vacant"}
+          type={status === "rented" ? "success" : "neutral"}
+        />
       </div>
     </div>
   );

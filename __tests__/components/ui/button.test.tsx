@@ -51,7 +51,7 @@ describe("Button", () => {
   });
 
   it("shows loading state", () => {
-    render(<Button isLoading>Loading</Button>);
+    render(<Button loading>Loading</Button>);
 
     const button = screen.getByRole("button");
     expect(button).toBeDisabled();
@@ -60,7 +60,7 @@ describe("Button", () => {
   });
 
   it("shows custom loading text", () => {
-    render(<Button isLoading loadingText="Envoi en cours...">Submit</Button>);
+    render(<Button loading loadingText="Envoi en cours...">Submit</Button>);
     expect(screen.getByText("Envoi en cours...")).toBeInTheDocument();
   });
 
@@ -77,7 +77,7 @@ describe("Button", () => {
   it("hides icons when loading", () => {
     render(
       <Button
-        isLoading
+        loading
         leftIcon={<Plus data-testid="left-icon" />}
         rightIcon={<Plus data-testid="right-icon" />}
       >
@@ -119,7 +119,7 @@ describe("IconButton", () => {
       <IconButton
         aria-label="Add"
         icon={<Plus />}
-        isLoading
+        loading
       />
     );
 
