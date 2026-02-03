@@ -272,7 +272,35 @@ export default function OnboardingUnitsPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Mobile card view */}
+            <div className="md:hidden space-y-3">
+              {filteredUnits.map((unit) => (
+                <div key={unit.id} className="rounded-lg border border-white/10 bg-slate-800/30 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white font-mono font-medium">Lot {unit.lot_number}</span>
+                    <Badge className={unit.type === 'appartement' || unit.type === 'studio' ? 'bg-cyan-500/20 text-cyan-400' : unit.type === 'parking' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-500/20 text-slate-400'}>
+                      {UNIT_TYPES.find(t => t.value === unit.type)?.label || unit.type}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div><p className="text-slate-400">Étage</p><p className="text-slate-300">{unit.floor === 0 ? 'RDC' : `${unit.floor}e`}</p></div>
+                    <div><p className="text-slate-400">Surface</p><p className="text-slate-300">{unit.surface_m2 ? `${unit.surface_m2} m²` : '-'}</p></div>
+                    <div><p className="text-slate-400">Pièces</p><p className="text-slate-300">{unit.rooms ? `${unit.rooms}p` : '-'}</p></div>
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <Badge className={unit.occupation_mode === 'owner_occupied' ? 'bg-emerald-500/20 text-emerald-400' : unit.occupation_mode === 'rented' ? 'bg-blue-500/20 text-blue-400' : unit.occupation_mode === 'vacant' ? 'bg-red-500/20 text-red-400' : 'bg-slate-500/20 text-slate-400'}>
+                      {unit.occupation_mode === 'owner_occupied' ? 'Occupant' : unit.occupation_mode === 'rented' ? 'Loué' : unit.occupation_mode === 'vacant' ? 'Vacant' : 'Inconnu'}
+                    </Badge>
+                    <Button size="icon" variant="ghost" onClick={() => setEditingUnit(unit.id)} className="h-8 w-8 text-slate-400 hover:text-white">
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-white/10">

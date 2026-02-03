@@ -171,7 +171,7 @@ async function generatePdfBrowser(
     };
 
     const pdfBlob = await html2pdf()
-      .set(pdfOptions)
+      .set(pdfOptions as any)
       .from(container)
       .outputPdf('blob');
 
@@ -307,9 +307,9 @@ export function downloadPdf(result: PdfGenerationResult): void {
     return;
   }
 
-  const blob = result.data instanceof Blob 
-    ? result.data 
-    : new Blob([result.data], { type: 'application/pdf' });
+  const blob = result.data instanceof Blob
+    ? result.data
+    : new Blob([result.data as BlobPart], { type: 'application/pdf' });
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -330,9 +330,9 @@ export function openPdfInNewTab(result: PdfGenerationResult): void {
     return;
   }
 
-  const blob = result.data instanceof Blob 
-    ? result.data 
-    : new Blob([result.data], { type: 'application/pdf' });
+  const blob = result.data instanceof Blob
+    ? result.data
+    : new Blob([result.data as BlobPart], { type: 'application/pdf' });
 
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank');

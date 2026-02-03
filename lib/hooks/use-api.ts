@@ -94,7 +94,7 @@ export function useApiQuery<T>({
  */
 interface UseApiMutationOptions<TData, TVariables> extends Omit<UseMutationOptions<TData, Error, TVariables>, "mutationFn"> {
   mutator: (variables: TVariables) => Promise<TData>;
-  invalidateKeys?: readonly unknown[][];
+  invalidateKeys?: ReadonlyArray<readonly unknown[]>;
   successMessage?: string;
   errorMessage?: string;
   onSuccessCallback?: (data: TData, variables: TVariables) => void;

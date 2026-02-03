@@ -24,7 +24,7 @@ export class PaymentsService {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return data as Payment[];
+    return data as unknown as Payment[];
   }
 
   async getPaymentById(id: string) {
@@ -35,7 +35,7 @@ export class PaymentsService {
       .single();
 
     if (error) throw error;
-    return data as Payment;
+    return data as unknown as Payment;
   }
 
   async getPaymentsByInvoice(invoiceId: string) {
@@ -46,7 +46,7 @@ export class PaymentsService {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return data as Payment[];
+    return data as unknown as Payment[];
   }
 
   async createPayment(data: CreatePaymentData) {
@@ -63,7 +63,7 @@ export class PaymentsService {
       .single();
 
     if (error) throw error;
-    return payment as Payment;
+    return payment as unknown as Payment;
   }
 
   async updatePayment(id: string, data: UpdatePaymentData) {

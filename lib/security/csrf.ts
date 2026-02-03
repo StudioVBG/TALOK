@@ -1,12 +1,42 @@
 /**
  * Protection CSRF (Cross-Site Request Forgery)
  * Génère et valide des tokens pour les actions sensibles
+ *
+ * @module lib/security/csrf
+ * @security CRITICAL - Ne jamais utiliser de secret par défaut
  */
 
 import { cookies } from "next/headers";
-import { randomBytes, createHmac } from "crypto";
+import { randomBytes, createHmac, timingSafeEqual } from "crypto";
 
-const CSRF_SECRET = process.env.CSRF_SECRET || process.env.NEXTAUTH_SECRET || "fallback-secret-change-me";
+/**
+ * Récupère le secret CSRF
+ * @throws Error si le secret n'est pas configuré ou trop court
+ */
+function getCsrfSecret(): string {
+  const secret = process.env.CSRF_SECRET;
+
+  if (!secret) {
+    const errorMsg =
+      "[CRITICAL] CSRF_SECRET is required. " +
+      "Set this environment variable with a secure 32+ character secret.";
+
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(errorMsg);
+    }
+
+    console.error(errorMsg);
+    throw new Error("CSRF protection not available: missing CSRF_SECRET");
+  }
+
+  if (secret.length < 32) {
+    throw new Error(
+      `[CRITICAL] CSRF_SECRET must be at least 32 characters (got ${secret.length})`
+    );
+  }
+
+  return secret;
+}
 const CSRF_COOKIE_NAME = "csrf_token";
 const CSRF_HEADER_NAME = "x-csrf-token";
 const TOKEN_LENGTH = 32;
@@ -19,17 +49,22 @@ interface CsrfToken {
 
 /**
  * Génère un token CSRF sécurisé
+ * @returns Token au format value:expiry:signature
+ * @throws Error si le secret n'est pas configuré
  */
 export function generateCsrfToken(): string {
+  const secret = getCsrfSecret();
   const token = randomBytes(TOKEN_LENGTH).toString("hex");
   const expiry = Date.now() + TOKEN_EXPIRY_MS;
   const data = `${token}:${expiry}`;
-  const signature = createHmac("sha256", CSRF_SECRET).update(data).digest("hex");
+  const signature = createHmac("sha256", secret).update(data).digest("hex");
   return `${data}:${signature}`;
 }
 
 /**
- * Valide un token CSRF
+ * Valide un token CSRF avec timing-safe comparison
+ * @param token - Le token à valider
+ * @returns true si le token est valide
  */
 export function validateCsrfToken(token: string | null): boolean {
   if (!token) return false;
@@ -45,19 +80,23 @@ export function validateCsrfToken(token: string | null): boolean {
     return false;
   }
 
-  // Vérifier la signature
-  const data = `${value}:${expiryStr}`;
-  const expectedSignature = createHmac("sha256", CSRF_SECRET).update(data).digest("hex");
+  // Vérifier la signature avec timing-safe comparison
+  try {
+    const secret = getCsrfSecret();
+    const data = `${value}:${expiryStr}`;
+    const expectedSignature = createHmac("sha256", secret).update(data).digest("hex");
 
-  // Comparaison constante pour éviter les timing attacks
-  if (signature.length !== expectedSignature.length) return false;
-  
-  let result = 0;
-  for (let i = 0; i < signature.length; i++) {
-    result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
+    const signatureBuffer = Buffer.from(signature, "hex");
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+
+    if (signatureBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+
+    return timingSafeEqual(signatureBuffer, expectedBuffer);
+  } catch {
+    return false;
   }
-  
-  return result === 0;
 }
 
 /**

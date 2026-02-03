@@ -69,7 +69,7 @@ export class InvitationsService {
       .single();
 
     if (error) throw error;
-    return invitation;
+    return invitation as unknown as Invitation;
   }
 
   /**
@@ -85,7 +85,7 @@ export class InvitationsService {
     if (error || !data) return null;
 
     // Vérifier l'expiration
-    if (new Date(data.expires_at) < new Date()) {
+    if (new Date(data.expires_at as string) < new Date()) {
       return null; // Expiré
     }
 
@@ -94,7 +94,7 @@ export class InvitationsService {
       return null; // Déjà utilisé
     }
 
-    return data;
+    return data as unknown as Invitation;
   }
 
   /**

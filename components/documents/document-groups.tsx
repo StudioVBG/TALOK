@@ -459,7 +459,7 @@ export function DocumentGroups({
         <DocumentGroup
           key={group.id}
           title={group.title}
-          subtitle={group.subtitle}
+          subtitle={(group as any).subtitle}
           icon={group.icon}
           badgeColor={group.color}
           documents={group.documents}

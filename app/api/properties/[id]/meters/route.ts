@@ -232,8 +232,9 @@ export async function POST(
       activeLease = existingLease?.id || null;
     }
 
-    // Créer le compteur avec les colonnes existantes dans le schéma
-    const { data: meter, error } = await supabase
+    // 🔧 FIX: Use service client for INSERT to bypass RLS policies
+    const serviceClient = getServiceClient();
+    const { data: meter, error } = await serviceClient
       .from("meters")
       .insert({
         lease_id: activeLease,
@@ -254,14 +255,14 @@ export async function POST(
 
     const meterData = meter as any;
 
-    // Journaliser
-    await supabase.from("audit_log").insert({
+    // Journaliser (use service client to bypass RLS)
+    await serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "meter_added",
       entity_type: "meter",
       entity_id: meterData.id,
-      metadata: { 
-        type: normalizedType, 
+      metadata: {
+        type: normalizedType,
         meter_number: meterNumberValue,
         provider,
         property_id: id,

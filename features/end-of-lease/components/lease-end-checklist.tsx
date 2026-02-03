@@ -127,9 +127,9 @@ export function LeaseEndChecklist({
         <div className="mt-4 space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Progression</span>
-            <span className="font-medium">{process.progress_percentage}%</span>
+            <span className="font-medium">{(process as any).progress_percentage}%</span>
           </div>
-          <Progress value={process.progress_percentage} className="h-2" />
+          <Progress value={(process as any).progress_percentage} className="h-2" />
         </div>
       </CardHeader>
 
@@ -243,7 +243,7 @@ export function LeaseEndChecklist({
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="w-4 h-4" />
-              Fin de bail : {new Date(process.lease_end_date).toLocaleDateString("fr-FR")}
+              Fin de bail : {new Date((process as any).lease_end_date).toLocaleDateString("fr-FR")}
             </div>
           </div>
 

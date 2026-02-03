@@ -153,9 +153,7 @@ export async function POST(request: NextRequest) {
       started_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
       status: "active",
-    } as any).catch(() => {
-      // Table optionnelle, ne pas bloquer si elle n'existe pas
-    });
+    } as any);
 
     return NextResponse.json({
       success: true,
@@ -268,8 +266,7 @@ export async function DELETE() {
           } as any)
           .eq("admin_id", user.id)
           .eq("target_user_id", session.target_user_id)
-          .eq("status", "active")
-          .catch(() => {});
+          .eq("status", "active");
       }
     }
 

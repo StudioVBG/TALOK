@@ -112,7 +112,7 @@ export async function GET(
       .eq("conversation_id", conversationId);
 
     const roleMap = new Map(
-      (participants || []).map((p: { profile_id: string; participant_role: string }) => [
+      (participants || []).map((p: { profile_id: string; participant_role: string | null }) => [
         p.profile_id,
         p.participant_role,
       ])

@@ -183,21 +183,21 @@ export async function createNotification(
   // Convertir au format Notification
   return {
     id: data.id,
-    type: data.type,
-    priority: data.priority,
+    type: data.type as NotificationType,
+    priority: (data.priority ?? 'normal') as NotificationPriority,
     title: data.title,
-    message: data.message,
-    recipientId: data.profile_id,
-    channels: data.channels,
-    read: data.read,
-    actionUrl: data.action_url,
-    actionLabel: data.action_label,
-    imageUrl: data.image_url,
-    metadata: data.metadata,
+    message: data.message ?? '',
+    recipientId: data.profile_id ?? '',
+    channels: (data.channels ?? []) as NotificationChannel[],
+    read: data.read ?? false,
+    actionUrl: data.action_url ?? undefined,
+    actionLabel: data.action_label ?? undefined,
+    imageUrl: data.image_url ?? undefined,
+    metadata: data.metadata as Record<string, any> | undefined,
     createdAt: data.created_at,
-    readAt: data.read_at,
-    expiresAt: data.expires_at,
-  };
+    readAt: data.read_at ?? undefined,
+    expiresAt: data.expires_at ?? undefined,
+  } as Notification;
 }
 
 /**

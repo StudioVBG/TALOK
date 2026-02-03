@@ -276,15 +276,15 @@ export default function AccountCreationPage() {
         router.push(`/signup/verify-email?email=${encodeURIComponent(validated.email)}${role ? `&role=${role}` : ""}`);
       }
     } catch (error: unknown) {
-      const message = error.message?.toLowerCase() || "";
+      const message = (error as Error).message?.toLowerCase() || "";
 
-      if (message.includes("already registered") || message.includes("already exists") || error.code === "PGRST301") {
+      if (message.includes("already registered") || message.includes("already exists") || (error as any).code === "PGRST301") {
         toast({
           title: "Email déjà utilisé",
           description: "Connexion ou réinitialisation nécessaire.",
           variant: "destructive",
         });
-      } else if (message.includes("rate limit") || error.status === 429) {
+      } else if (message.includes("rate limit") || (error as any).status === 429) {
         toast({
           title: "Trop de tentatives",
           description: "Veuillez patienter avant de réessayer.",
@@ -293,7 +293,7 @@ export default function AccountCreationPage() {
       } else {
         toast({
           title: "Erreur",
-          description: error instanceof Error ? error.message : "Impossible de créer le compte.",
+          description: error instanceof Error ? (error as Error).message : "Impossible de créer le compte.",
           variant: "destructive",
         });
       }

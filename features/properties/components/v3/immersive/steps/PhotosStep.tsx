@@ -187,7 +187,7 @@ export function PhotosStep() {
             newMap.set(tempPhoto.id, {
               ...existing,
               uploadStatus: 'error',
-              errorMessage: error?.message || 'Erreur upload'
+              errorMessage: (error as any)?.message || 'Erreur upload'
             });
           }
           return newMap;

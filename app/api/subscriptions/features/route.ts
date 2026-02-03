@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     // Si aucune feature spécifiée, retourner toutes les features
     const allFeatures: Record<string, boolean> = {};
     for (const [key, value] of Object.entries(planFeatures)) {
-      allFeatures[key] = isActive && value;
+      allFeatures[key] = isActive && Boolean(value);
     }
 
     return NextResponse.json({

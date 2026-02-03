@@ -89,7 +89,7 @@ export function useEndOfLeaseProcess(processId: string | null) {
   const updateStatus = useCallback(
     async (status: LeaseEndProcess["status"]) => {
       if (!processId) return;
-      const updated = await endOfLeaseService.updateProcessStatus(processId, status);
+      const updated = await endOfLeaseService.updateProcessStatus(processId, status as any);
       setProcess(updated);
       return updated;
     },

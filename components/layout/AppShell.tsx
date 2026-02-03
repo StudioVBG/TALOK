@@ -327,7 +327,7 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
       {/* Main Content */}
       <div className="lg:pl-64">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-40 flex h-14 xs:h-16 shrink-0 items-center gap-x-2 xs:gap-x-3 sm:gap-x-4 lg:gap-x-6 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 px-3 xs:px-4 sm:px-6 lg:px-8">
           <Button
             variant="ghost"
             size="icon"
@@ -338,9 +338,9 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
             <Menu className="h-6 w-6" aria-hidden="true" />
           </Button>
 
-          {/* Page Title */}
-          <div className="flex flex-1 items-center">
-            <h2 className="text-lg font-semibold hidden sm:block">
+          {/* Page Title - visible sur toutes les tailles */}
+          <div className="flex flex-1 items-center min-w-0">
+            <h2 className="text-sm xs:text-base sm:text-lg font-semibold truncate">
               {getCurrentPageTitle()}
             </h2>
           </div>
@@ -438,8 +438,8 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="py-6 px-4 sm:px-6 lg:px-8">
+        {/* Page Content - padding responsive cohérent */}
+        <main className="py-4 xs:py-5 sm:py-6 px-3 xs:px-4 sm:px-6 lg:px-8">
           {children}
         </main>
       </div>
@@ -497,7 +497,7 @@ function MobileBottomNav({ role, navigation, isCurrent }: MobileBottomNavProps) 
                     "h-5 w-5 xs:h-6 xs:w-6",
                     isActive && "text-primary"
                   )} />
-                  <span className="text-[9px] xs:text-[10px] sm:text-xs font-medium truncate max-w-[56px] xs:max-w-[64px]">
+                  <span className="text-[10px] xs:text-[11px] sm:text-xs font-medium truncate max-w-[64px] xs:max-w-[72px]">
                     {item.name}
                   </span>
                 </Link>

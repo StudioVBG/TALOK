@@ -83,7 +83,7 @@ export async function GET(request: Request) {
 
     for (const lease of leases) {
       try {
-        const endDate = new Date(lease.date_fin);
+        const endDate = new Date(lease.date_fin as string);
         const daysUntilExpiry = differenceInDays(endDate, today);
         results.expiring_soon++;
 
@@ -97,7 +97,7 @@ export async function GET(request: Request) {
           continue; // Pas dans une période d'alerte
         }
 
-        const owner = lease.owner?.[0]?.owner;
+        const owner = (lease.owner as any)?.[0]?.owner;
         if (!owner) {
           results.errors.push(`Bail ${lease.id}: Propriétaire non trouvé`);
           continue;
@@ -131,12 +131,12 @@ export async function GET(request: Request) {
           title: daysUntilExpiry <= 15 
             ? "⚠️ Bail expire très bientôt"
             : "📅 Bail à renouveler",
-          message: `Le bail de ${lease.property.adresse_complete} ${
+          message: `Le bail de ${lease.property!.adresse_complete} ${
             mainTenant ? `(${mainTenant.prenom} ${mainTenant.nom})` : ""
           } expire le ${formattedEndDate} (dans ${daysUntilExpiry} jours).`,
           data: {
             lease_id: lease.id,
-            property_id: lease.property.id,
+            property_id: lease.property!.id,
             end_date: lease.date_fin,
             days_until_expiry: daysUntilExpiry,
             alert_period: alertPeriod,
@@ -152,7 +152,7 @@ export async function GET(request: Request) {
             user_id: mainTenant.user_id,
             type: "lease_expiry_tenant_alert",
             title: "Votre bail arrive à échéance",
-            message: `Votre bail pour ${lease.property.adresse_complete} expire le ${formattedEndDate}. Contactez votre propriétaire pour discuter du renouvellement.`,
+            message: `Votre bail pour ${lease.property!.adresse_complete} expire le ${formattedEndDate}. Contactez votre propriétaire pour discuter du renouvellement.`,
             data: {
               lease_id: lease.id,
               end_date: lease.date_fin,

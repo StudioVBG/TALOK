@@ -30,7 +30,7 @@ export async function getChargeRules(siteId?: string): Promise<LocativeChargeRul
   
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  return (data || []) as unknown as LocativeChargeRule[];
 }
 
 export async function updateChargeRule(
@@ -47,7 +47,7 @@ export async function updateChargeRule(
     .single();
   
   if (error) throw error;
-  return rule;
+  return rule as unknown as LocativeChargeRule;
 }
 
 // =====================================================
@@ -75,7 +75,7 @@ export async function getTenantCharges(
   
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  return (data || []) as unknown as TenantChargeBase[];
 }
 
 export async function getTenantChargesSummary(
@@ -90,7 +90,7 @@ export async function getTenantChargesSummary(
     .order('fiscal_year', { ascending: false });
   
   if (error) throw error;
-  return data || [];
+  return (data || []) as unknown as TenantChargesSummary[];
 }
 
 // =====================================================
@@ -110,7 +110,7 @@ export async function transformCoproCharges(
     });
   
   if (error) throw error;
-  return data as number;
+  return data as unknown as number;
 }
 
 // =====================================================
@@ -138,7 +138,7 @@ export async function getRegularisations(
   
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  return (data || []) as unknown as RegularisationDetailed[];
 }
 
 export async function getRegularisationById(
@@ -156,8 +156,8 @@ export async function getRegularisationById(
     if (error.code === 'PGRST116') return null;
     throw error;
   }
-  
-  return data;
+
+  return data as unknown as RegularisationDetailed;
 }
 
 export async function calculateRegularisation(
@@ -173,7 +173,7 @@ export async function calculateRegularisation(
     });
   
   if (error) throw error;
-  return data as string;
+  return data as unknown as string;
 }
 
 export async function validateRegularisation(
@@ -197,7 +197,7 @@ export async function validateRegularisation(
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as TenantChargeRegularisation;
 }
 
 export async function sendRegularisation(
@@ -222,8 +222,8 @@ export async function sendRegularisation(
   if (options.sendEmail) {
     // await sendRegularisationEmail(data);
   }
-  
-  return data;
+
+  return data as unknown as TenantChargeRegularisation;
 }
 
 export async function markRegularisationPaid(
@@ -247,7 +247,7 @@ export async function markRegularisationPaid(
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as TenantChargeRegularisation;
 }
 
 export async function disputeRegularisation(
@@ -267,7 +267,7 @@ export async function disputeRegularisation(
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as TenantChargeRegularisation;
 }
 
 // =====================================================
@@ -294,7 +294,7 @@ export async function getLeasesForCoproUnit(
     .single();
   
   if (unitError) throw unitError;
-  if (!unit?.linked_property_id) return [];
+  if (!(unit as any)?.linked_property_id) return [];
   
   // Récupérer les baux
   const { data: leases, error: leasesError } = await supabase
@@ -307,7 +307,7 @@ export async function getLeasesForCoproUnit(
       property_id,
       tenant:profiles!leases_tenant_id_fkey(first_name, last_name)
     `)
-    .eq('property_id', unit.linked_property_id)
+    .eq('property_id', (unit as any).linked_property_id)
     .in('status', ['active', 'terminated'])
     .order('start_date', { ascending: false });
   
@@ -355,7 +355,7 @@ export async function getRegularisationStats(
   const { data, error } = await query;
   if (error) throw error;
   
-  const regularisations = data || [];
+  const regularisations = (data || []) as any[];
   
   return {
     total_regularisations: regularisations.length,

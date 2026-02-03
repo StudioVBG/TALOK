@@ -127,7 +127,7 @@ export async function POST(
         ),
         deduction_items:settlement_deduction_items(*)
       `)
-      .eq("id", settlementId)
+      .eq("id", settlementId as string)
       .single();
 
     if (fetchError) {

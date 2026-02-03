@@ -415,12 +415,12 @@ export function SmartPaywall({
               <div className="py-6">
                 <div className="flex items-baseline justify-center gap-1">
                   <span className="text-5xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                    {(PLANS.solo.price_monthly / 100).toFixed(0)}€
+                    {((PLANS as any).solo.price_monthly / 100).toFixed(0)}€
                   </span>
                   <span className="text-slate-500">/mois</span>
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
-                  ou {(PLANS.solo.price_yearly / 100).toFixed(0)}€/an (-17%)
+                  ou {((PLANS as any).solo.price_yearly / 100).toFixed(0)}€/an (-17%)
                 </p>
               </div>
 
@@ -463,7 +463,7 @@ export function UpgradeTrigger({ className, variant = "prominent" }: UpgradeTrig
     return null;
   }
 
-  const propertiesUsed = usage?.properties_count || 0;
+  const propertiesUsed = (usage as any)?.properties_count || 0;
   const propertiesLimit = PLANS[currentPlan].limits.max_properties;
   const usagePercentage = propertiesLimit > 0 ? (propertiesUsed / propertiesLimit) * 100 : 0;
 

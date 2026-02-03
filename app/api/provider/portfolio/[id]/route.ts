@@ -75,7 +75,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Incrémenter le compteur de vues
     await supabase
       .from('provider_portfolio_items')
-      .update({ view_count: (item.view_count || 0) + 1 })
+      .update({ view_count: ((item.view_count as number) || 0) + 1 })
       .eq('id', id);
     
     return NextResponse.json({
@@ -145,7 +145,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       const { count: featuredCount } = await supabase
         .from('provider_portfolio_items')
         .select('*', { count: 'exact', head: true })
-        .eq('provider_profile_id', existingItem.provider_profile_id)
+        .eq('provider_profile_id', existingItem.provider_profile_id as string)
         .eq('is_featured', true);
       
       if ((featuredCount || 0) >= 3) {

@@ -54,7 +54,7 @@ export class ChatService {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data as unknown as ChatThread[]) || [];
   }
 
   /**
@@ -71,7 +71,7 @@ export class ChatService {
       if (error.code === "PGRST116") return null;
       throw error;
     }
-    return data;
+    return data as unknown as ChatThread;
   }
 
   /**
@@ -93,7 +93,7 @@ export class ChatService {
       .single();
 
     if (error) throw error;
-    return thread;
+    return thread as unknown as ChatThread;
   }
 
   /**
@@ -152,7 +152,7 @@ export class ChatService {
     if (fetchError) throw fetchError;
 
     // Ajouter l'utilisateur à la liste des lecteurs
-    const readBy = message.read_by || [];
+    const readBy = (message.read_by as any[]) || [];
     const alreadyRead = readBy.some((r: any) => r.user_id === user.id);
 
     if (!alreadyRead) {

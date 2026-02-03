@@ -64,7 +64,7 @@ class WhisperService {
     let file: File;
 
     if (audioFile instanceof Buffer) {
-      file = new File([audioFile], "audio.webm", { type: "audio/webm" });
+      file = new File([audioFile as any], "audio.webm", { type: "audio/webm" });
     } else if (audioFile instanceof Blob && !(audioFile instanceof File)) {
       file = new File([audioFile], "audio.webm", { type: audioFile.type });
     } else {
@@ -96,8 +96,8 @@ class WhisperService {
         confidence: undefined, // Whisper ne retourne pas de score de confiance
       };
     } catch (error: unknown) {
-      console.error("[Whisper] Transcription error:", error.message);
-      throw new Error(`Erreur de transcription: ${error.message}`);
+      console.error("[Whisper] Transcription error:", (error as Error).message);
+      throw new Error(`Erreur de transcription: ${(error as Error).message}`);
     }
   }
 

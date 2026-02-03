@@ -32,10 +32,15 @@ import { cn } from "@/lib/utils";
 type BillingCycle = "monthly" | "yearly";
 
 const PLAN_ICONS: Record<PlanSlug, React.ReactNode> = {
+  gratuit: <Gift className="w-5 h-5" />,
   starter: <Home className="w-5 h-5" />,
   confort: <Star className="w-5 h-5" />,
   pro: <Zap className="w-5 h-5" />,
   enterprise: <Crown className="w-5 h-5" />,
+  enterprise_s: <Crown className="w-5 h-5" />,
+  enterprise_m: <Crown className="w-5 h-5" />,
+  enterprise_l: <Crown className="w-5 h-5" />,
+  enterprise_xl: <Crown className="w-5 h-5" />,
 };
 
 // Plans disponibles pour l'inscription (sans Enterprise qui est sur devis)

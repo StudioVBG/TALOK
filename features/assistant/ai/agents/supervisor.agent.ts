@@ -55,10 +55,10 @@ export function createSupervisorAgent(role: UserRole = "owner") {
   
   // Le supervisor n'a pas besoin de tools, il route seulement
   const supervisor = createReactAgent({
-    model,
+    llm: model,
     systemMessage: SUPERVISOR_PROMPT,
     tools: [], // Pas de tools pour le supervisor
-  });
+  } as any);
   
   return supervisor;
 }

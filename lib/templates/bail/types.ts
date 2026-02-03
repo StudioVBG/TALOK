@@ -240,12 +240,58 @@ export interface DiagnosticsTechniques {
     date_realisation: string;
     zone_exposition: 'A' | 'B' | 'C' | 'D';
   };
-  
+
   // Amiante (si construction avant 1997)
   amiante?: {
     date_realisation: string;
     presence_amiante: boolean;
     localisation?: string[];
+  };
+
+  // ============================================
+  // DIAGNOSTICS DOM-TOM SPÉCIFIQUES
+  // ============================================
+
+  // Diagnostic termites (DOM-TOM + zones métropole infestées)
+  // Obligatoire dans les départements listés par arrêté préfectoral
+  // Particulièrement critique en DOM-TOM (Martinique, Guadeloupe, Guyane, Réunion, Mayotte)
+  termites?: {
+    date_realisation: string;
+    date_validite: string; // 6 mois de validité
+    presence_termites: boolean;
+    zones_infestees?: string[];
+    traitement_realise?: boolean;
+    date_traitement?: string;
+    departement: string; // Code département (971, 972, 973, 974, 976)
+  };
+
+  // Risques naturels spécifiques DOM-TOM
+  risques_naturels_domtom?: {
+    date_realisation: string;
+    // Cyclones (Antilles, Réunion, Mayotte)
+    zone_cyclonique?: 'forte' | 'moyenne' | 'faible';
+    construction_paracyclonique?: boolean;
+    // Séismes (Antilles particulièrement exposées - zone 5)
+    zone_sismique_domtom?: '3' | '4' | '5'; // Niveaux plus élevés qu'en métropole
+    norme_parasismique?: boolean;
+    // Volcanisme (Réunion, Martinique, Guadeloupe)
+    zone_volcanique?: boolean;
+    proximite_volcan_actif?: boolean;
+    // Tsunami (zones côtières DOM-TOM)
+    zone_tsunami?: boolean;
+    // Mouvements de terrain (Guyane, Réunion)
+    zone_mouvement_terrain?: boolean;
+    type_mouvement?: 'glissement' | 'eboulement' | 'affaissement';
+    // Inondations tropicales
+    zone_inondation?: boolean;
+    niveau_risque_inondation?: 'fort' | 'moyen' | 'faible';
+  };
+
+  // Qualité de l'air intérieur (Guyane - radon naturel élevé)
+  qualite_air_guyane?: {
+    date_realisation: string;
+    taux_radon?: number; // Bq/m³
+    mesures_correctives?: boolean;
   };
 }
 

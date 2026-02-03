@@ -24,7 +24,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { type, scheduled_at, lease_id, notes, keys } = body;
+    const { type, scheduled_at, lease_id, notes, general_notes, keys } = body;
 
     if (!type || !["entree", "sortie"].includes(type)) {
       return NextResponse.json(
@@ -76,7 +76,7 @@ export async function POST(
         .select("*")
         .eq("lease_id", lease_id)
         .eq("type", type)
-        .in("status", ["draft", "scheduled"])
+        .in("status", ["draft", "scheduled"] as any)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -88,6 +88,7 @@ export async function POST(
     }
 
     // Créer l'EDL
+    const scheduledDate = scheduled_at ? new Date(scheduled_at).toISOString().split("T")[0] : null;
     const { data: edl, error } = await supabase
       .from("edl")
       .insert({
@@ -95,15 +96,22 @@ export async function POST(
         lease_id: lease_id || null,
         type,
         scheduled_at: scheduled_at,
+        scheduled_date: scheduledDate,
         status: "scheduled",
-        general_notes: notes,
+        general_notes: general_notes || notes || null,
         keys: keys || [],
         created_by: user.id,
       } as any)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[POST /api/properties/[id]/inspections] DB Error:", error);
+      return NextResponse.json(
+        { error: error.message || "Erreur lors de la création de l'EDL" },
+        { status: 500 }
+      );
+    }
 
     const edlData = edl as any;
 
@@ -124,7 +132,7 @@ export async function POST(
           invitation_token: crypto.randomUUID(),
         }));
 
-        await supabase.from("edl_signatures").insert(edlSignatures);
+        await supabase.from("edl_signatures").insert(edlSignatures as any);
         console.log(`[api/inspections] ${edlSignatures.length} signataires injectés depuis le bail`);
       }
     }

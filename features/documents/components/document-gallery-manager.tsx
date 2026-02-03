@@ -181,12 +181,12 @@ export function DocumentGalleryManager({
       await documentsService.reorderDocument(document.id, newPosition);
       fetchDocuments();
     } catch (error: unknown) {
-      if (handleAdvancedFeatureError(error?.message)) {
+      if (handleAdvancedFeatureError((error as any)?.message)) {
         return;
       }
       toast({
         title: "Réorganisation impossible",
-        description: error?.message || "Une erreur est survenue lors du tri.",
+        description: (error as any)?.message || "Une erreur est survenue lors du tri.",
         variant: "destructive",
       });
     }
@@ -210,12 +210,12 @@ export function DocumentGalleryManager({
         description: "Ce document est désormais mis en avant.",
       });
     } catch (error: unknown) {
-      if (handleAdvancedFeatureError(error?.message)) {
+      if (handleAdvancedFeatureError((error as any)?.message)) {
         return;
       }
       toast({
         title: "Impossible de définir la couverture",
-        description: error?.message || "Une erreur est survenue.",
+        description: (error as any)?.message || "Une erreur est survenue.",
         variant: "destructive",
       });
     }

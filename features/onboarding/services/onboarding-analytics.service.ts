@@ -87,7 +87,7 @@ export class OnboardingAnalyticsService {
         return null;
       }
 
-      return data.id;
+      return data.id ?? null;
     } catch (err) {
       console.error("Erreur start onboarding analytics:", err);
       return null;
@@ -114,7 +114,7 @@ export class OnboardingAnalyticsService {
       .maybeSingle();
 
     if (existing) {
-      return existing.id;
+      return existing.id ?? null;
     }
 
     // Créer une nouvelle session
@@ -310,7 +310,7 @@ export class OnboardingAnalyticsService {
       if (!current) return false;
 
       const now = new Date();
-      const startedAt = new Date(current.started_at);
+      const startedAt = new Date(current.started_at as string);
       const totalDuration = Math.round((now.getTime() - startedAt.getTime()) / 1000);
 
       const { error } = await this.supabase

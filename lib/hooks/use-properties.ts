@@ -52,25 +52,26 @@ export function useProperties() {
         console.warn("[useProperties] Unexpected response format:", response);
         return [];
       } catch (error: unknown) {
-        console.error("[useProperties] Error fetching properties:", error);
+        const err = error as Record<string, any>;
+        console.error("[useProperties] Error fetching properties:", err);
         console.error("[useProperties] Error details:", {
-          message: error?.message,
-          statusCode: error?.statusCode,
-          data: error?.data,
+          message: err?.message,
+          statusCode: err?.statusCode,
+          data: err?.data,
         });
-        
+
         // Si c'est une erreur de timeout ou réseau
-        if (error?.statusCode === 504 || error?.message?.includes("timeout") || error?.message?.includes("Timeout")) {
+        if (err?.statusCode === 504 || err?.message?.includes("timeout") || err?.message?.includes("Timeout")) {
           throw new Error("Le chargement prend trop de temps. Veuillez réessayer.");
         }
-        
+
         // Si c'est une erreur d'authentification
-        if (error?.statusCode === 401 || error?.statusCode === 403) {
+        if (err?.statusCode === 401 || err?.statusCode === 403) {
           throw new Error("Vous n'êtes pas autorisé à accéder à ces données.");
         }
-        
+
         // Pour les autres erreurs, propager l'erreur originale avec le message détaillé
-        const errorMessage = error?.data?.error || error?.message || "Erreur lors de la récupération des propriétés";
+        const errorMessage = err?.data?.error || err?.message || "Erreur lors de la récupération des propriétés";
         throw new Error(errorMessage);
       }
     },

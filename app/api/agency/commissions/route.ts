@@ -107,13 +107,13 @@ export async function GET(request: NextRequest) {
       .in("mandate_id", mandateIds);
 
     const stats = {
-      total: allCommissions?.reduce((sum, c) => sum + (c.montant_commission || 0), 0) || 0,
+      total: allCommissions?.reduce((sum, c) => sum + ((c.montant_commission as number) || 0), 0) || 0,
       pending: allCommissions
         ?.filter(c => c.statut === "pending")
-        .reduce((sum, c) => sum + (c.montant_commission || 0), 0) || 0,
+        .reduce((sum, c) => sum + ((c.montant_commission as number) || 0), 0) || 0,
       paid: allCommissions
         ?.filter(c => c.statut === "paid")
-        .reduce((sum, c) => sum + (c.montant_commission || 0), 0) || 0,
+        .reduce((sum, c) => sum + ((c.montant_commission as number) || 0), 0) || 0,
     };
 
     return NextResponse.json({

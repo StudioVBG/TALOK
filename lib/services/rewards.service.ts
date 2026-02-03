@@ -35,7 +35,7 @@ class RewardsService {
 
     return {
       total_points: (profile.tenant_profiles as any)?.total_points || 0,
-      history: history || []
+      history: (history || []) as unknown as RewardTransaction[]
     };
   }
 

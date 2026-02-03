@@ -172,7 +172,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   }, [leaseConfig, loyer]);
 
   // Données pour l'aperçu
-  const previewData: Partial<BailComplet> = useMemo(() => {
+  const previewData = useMemo(() => {
     if (!selectedProperty || !selectedType) return {};
 
     // S'assurer que surface > 0, sinon undefined pour afficher les pointillés
@@ -192,7 +192,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         code_postal: "",
         ville: "",
         telephone: profile?.telephone || undefined,
-        email: profile?.email || undefined,
+        email: (profile as any)?.email || undefined,
         type: ownerProfile?.type || "particulier",
       },
 
@@ -312,6 +312,11 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     contrat_parking: ["parking", "box"],
     commercial_3_6_9: ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"],
     professionnel: ["bureaux", "local_commercial"],
+    etudiant: ["appartement", "maison", "studio"],
+    bail_mixte: ["appartement", "maison", "studio"],
+    commercial_derogatoire: ["local_commercial", "bureaux", "entrepot"],
+    location_gerance: ["local_commercial", "fonds_de_commerce"],
+    bail_rural: ["terrain_agricole", "ferme"],
   };
 
   // ✅ Filtrer les propriétés selon le type de bail sélectionné
@@ -383,17 +388,24 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   // ✅ SOTA 2026: Gestion du changement de type de bail avec auto-advance
   const handleTypeSelect = useCallback((type: LeaseType) => {
     setSelectedType(type);
-    if (loyer > 0) {
+
+    // ✅ GAP-001 FIX: Forcer dépôt à 0 pour bail mobilité (Art. 25-13 Loi ELAN)
+    if (type === "bail_mobilite") {
+      setDepot(0);
+    } else if (loyer > 0) {
       setDepot(loyer * LEASE_TYPE_CONFIGS[type].maxDepositMonths);
     }
-    
+
     // ✅ SOTA 2026: Toast de confirmation + Auto-advance
+    const toastDescription = type === "bail_mobilite"
+      ? "Dépôt de garantie interdit (Loi ELAN)"
+      : "Type de bail sélectionné";
     toast({
       title: `✓ ${LEASE_TYPE_CONFIGS[type].name}`,
-      description: "Type de bail sélectionné",
+      description: toastDescription,
       duration: 1500,
     });
-    
+
     // Auto-advance après 600ms pour laisser l'animation de sélection
     setTimeout(() => {
       setCurrentStep(2);
@@ -634,7 +646,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                     </div>
                   ) : (
                     <PropertySelector
-                      properties={filteredProperties}
+                      properties={filteredProperties as any}
                       selectedPropertyId={selectedPropertyId}
                       onSelect={handlePropertySelect}
                     />
@@ -675,14 +687,29 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         </div>
                         <div className="space-y-2">
                           <Label>Dépôt de garantie (€)</Label>
-                          <Input 
-                            type="number" 
-                            value={depot} 
-                            onChange={(e) => handleDepotChange(parseFloat(e.target.value) || 0)}
-                            max={maxDepot || undefined}
-                          />
-                          {maxDepot && (
-                            <p className="text-xs text-muted-foreground">Max légal : {maxDepot.toLocaleString("fr-FR")} €</p>
+                          {/* ✅ GAP-001 FIX: Masquer champ dépôt pour bail mobilité (Art. 25-13 Loi ELAN) */}
+                          {selectedType === "bail_mobilite" ? (
+                            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                              <p className="text-sm text-amber-800 font-medium">
+                                Dépôt de garantie interdit
+                              </p>
+                              <p className="text-xs text-amber-600 mt-1">
+                                Article 25-13 de la Loi ELAN : le bail mobilité ne peut pas comporter
+                                de dépôt de garantie. Vous pouvez demander une caution (garant) à la place.
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <Input
+                                type="number"
+                                value={depot}
+                                onChange={(e) => handleDepotChange(parseFloat(e.target.value) || 0)}
+                                max={maxDepot || undefined}
+                              />
+                              {maxDepot && (
+                                <p className="text-xs text-muted-foreground">Max légal : {maxDepot.toLocaleString("fr-FR")} €</p>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -717,7 +744,12 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                           Total mensuel : {(loyer + charges).toLocaleString("fr-FR")} €
                         </p>
                         <p className="text-xs text-blue-700 mt-1">
-                          1er versement : {(loyer + charges + depot).toLocaleString("fr-FR")} € (loyer + charges + dépôt)
+                          {/* ✅ GAP-001 FIX: Adapter affichage 1er versement pour bail mobilité */}
+                          {selectedType === "bail_mobilite" ? (
+                            <>1er versement : {(loyer + charges).toLocaleString("fr-FR")} € (loyer + charges)</>
+                          ) : (
+                            <>1er versement : {(loyer + charges + depot).toLocaleString("fr-FR")} € (loyer + charges + dépôt)</>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -800,7 +832,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                   </div>
                   <div className="flex-1 overflow-auto bg-slate-50 p-4">
                     <div className="scale-90 origin-top-left w-[110%] h-[110%]">
-                      <LeasePreview typeBail={selectedType!} bailData={previewData} />
+                      <LeasePreview typeBail={selectedType! as any} bailData={previewData as any} />
                     </div>
                   </div>
                 </div>

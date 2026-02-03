@@ -8,12 +8,14 @@ import { TicketListUnified } from "@/features/tickets/components/ticket-list-uni
 import { getTickets } from "@/features/tickets/server/data-fetching";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
+import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
 
 export default async function TenantRequestsPage() {
   const tickets = await getTickets("tenant");
 
   return (
     <PageTransition>
+      <PullToRefreshContainer>
       <div className="container mx-auto px-4 py-8 max-w-5xl space-y-8">
         
         {/* Header SOTA */}
@@ -23,9 +25,9 @@ export default async function TenantRequestsPage() {
               <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-200">
                 <Wrench className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Mes demandes</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Mes demandes</h1>
             </div>
-            <p className="text-slate-500 text-lg">
+            <p className="text-muted-foreground text-lg">
               Signalez un problème ou suivez vos interventions en temps réel.
             </p>
           </div>
@@ -38,13 +40,13 @@ export default async function TenantRequestsPage() {
         </div>
 
         {/* Note informative SOTA */}
-        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-start gap-4">
-          <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
+        <div className="p-6 bg-muted rounded-3xl border border-border flex items-start gap-4">
+          <div className="p-2 bg-card rounded-xl shadow-sm border border-border">
             <MessageSquare className="h-5 w-5 text-indigo-600" />
           </div>
           <div className="space-y-1">
-            <p className="font-bold text-slate-900">Une assistance intelligente</p>
-            <p className="text-sm text-slate-500 leading-relaxed">
+            <p className="font-bold text-foreground">Une assistance intelligente</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Utilisez notre assistant <strong>Tom</strong> lors de la création d'un ticket pour un diagnostic automatique et une prise en charge prioritaire par votre gestionnaire.
             </p>
           </div>
@@ -62,6 +64,7 @@ export default async function TenantRequestsPage() {
         </Suspense>
 
       </div>
+      </PullToRefreshContainer>
     </PageTransition>
   );
 }

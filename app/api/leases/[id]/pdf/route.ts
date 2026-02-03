@@ -202,15 +202,15 @@ export async function GET(request: Request, { params }: RouteParams) {
       lieu_signature: property?.ville || "",
       
       bailleur: {
-        nom: isOwnerSociete ? ownerProfile.raison_sociale : (profile.nom || ""),
+        nom: isOwnerSociete ? (ownerProfile.raison_sociale || "") : (profile.nom || ""),
         prenom: isOwnerSociete ? "" : (profile.prenom || ""),
-        date_naissance: isOwnerSociete ? undefined : profile.date_naissance,
+        date_naissance: isOwnerSociete ? undefined : (profile.date_naissance ?? undefined),
         adresse: ownerAddress || `${property?.adresse_complete}, ${property?.code_postal} ${property?.ville}`,
         code_postal: "",
         ville: "",
         telephone: profile.telephone || "",
-        type: ownerProfile?.type || "particulier",
-        siret: ownerProfile?.siret,
+        type: (ownerProfile?.type || "particulier") as "particulier" | "societe",
+        siret: ownerProfile?.siret ?? undefined,
         raison_sociale: ownerProfile?.raison_sociale || "",
         est_mandataire: false,
       },
@@ -252,8 +252,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       },
 
       conditions: {
+        type_bail: typeBail,
+        usage: "habitation_principale" as const,
         date_debut: lease.date_debut,
-        date_fin: lease.date_fin,
+        date_fin: lease.date_fin ?? undefined,
         duree_mois: typeBail === "nu" ? 36 : typeBail === "meuble" ? 12 : 12,
         tacite_reconduction: true,
         loyer_hc: parseFloat(String(finalLoyer)) || 0,
@@ -267,14 +269,17 @@ export async function GET(request: Request, { params }: RouteParams) {
         jour_paiement: 5,
         paiement_avance: true,
         revision_autorisee: true,
+        indice_reference: "IRL",
       },
 
       diagnostics: {
         dpe: {
           date_realisation: new Date().toISOString(),
+          date_validite: "",
           classe_energie: property?.energie || "D",
           classe_ges: property?.ges || "D",
           consommation_energie: 150,
+          emissions_ges: 0,
           estimation_cout_min: 800,
           estimation_cout_max: 1200,
         },
@@ -354,7 +359,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Fallback: retourner le PDF directement
     const fileName = `Bail_${typeBail}_${property?.ville || "location"}_${new Date().toISOString().split('T')[0]}.pdf`;
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${fileName}"`,

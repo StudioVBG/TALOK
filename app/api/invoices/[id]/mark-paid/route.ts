@@ -187,7 +187,7 @@ export async function POST(
           invoiceId,
           leaseId: leaseDetails.id,
           ownerId: propertyData.owner_id,
-          tenantId: leaseDetails.tenant_id,
+          tenantId: leaseDetails.tenant_id || "",
           periode: invoiceData.periode,
           montantLoyer: invoiceData.montant_loyer || 0,
           montantCharges: invoiceData.montant_charges || 0,

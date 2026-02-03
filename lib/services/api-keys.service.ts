@@ -109,8 +109,8 @@ class ApiKeysService {
     env: Environment
   ): Promise<ApiKeyResult | null> {
     // Import dynamique pour éviter les problèmes côté client
-    const { createServiceRoleClient } = await import("@/lib/server/service-role-client");
-    const supabase = createServiceRoleClient();
+    const { getServiceRoleClient } = await import("@/lib/server/service-role-client");
+    const { client: supabase } = getServiceRoleClient();
 
     // Requête pour obtenir la clé active
     const { data, error } = await supabase
@@ -221,10 +221,10 @@ class ApiKeysService {
    */
   private async incrementUsage(credentialId: string): Promise<void> {
     try {
-      const { createServiceRoleClient } = await import("@/lib/server/service-role-client");
-      const supabase = createServiceRoleClient();
-      
-      await supabase.rpc("increment_api_usage", { 
+      const { getServiceRoleClient } = await import("@/lib/server/service-role-client");
+      const { client: supabase } = getServiceRoleClient();
+
+      await supabase.rpc("increment_api_usage", {
         p_credential_id: credentialId 
       });
     } catch (error) {
@@ -244,9 +244,9 @@ class ApiKeysService {
     costEstimate?: number
   ): Promise<void> {
     try {
-      const { createServiceRoleClient } = await import("@/lib/server/service-role-client");
-      const supabase = createServiceRoleClient();
-      
+      const { getServiceRoleClient } = await import("@/lib/server/service-role-client");
+      const { client: supabase } = getServiceRoleClient();
+
       await supabase.from("api_usage_logs").insert({
         credential_id: credentialId,
         endpoint,

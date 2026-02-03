@@ -82,7 +82,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     // Déchiffrer la clé (stockée dans secret_ref)
     let apiKey: string;
     try {
-      apiKey = decryptKey(credential.secret_ref);
+      apiKey = decryptKey(credential.secret_ref as string);
     } catch {
       return NextResponse.json(
         { error: "Impossible de déchiffrer la clé API" },
@@ -94,7 +94,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     let config: any = {};
     try {
       if (credential.scope) {
-        config = JSON.parse(credential.scope);
+        config = JSON.parse(credential.scope as string);
       }
     } catch {
       // scope n'est pas du JSON, ignorer
@@ -103,7 +103,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     // Tester selon le type de provider
     let testResult: { success: boolean; message: string; details?: any };
 
-    switch (provider.name.toLowerCase()) {
+    switch ((provider.name as string).toLowerCase()) {
       case "resend":
         testResult = await testResend(apiKey, user.email, config);
         break;

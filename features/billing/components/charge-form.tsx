@@ -53,9 +53,9 @@ export function ChargeForm({ charge, propertyId, onSuccess, onCancel }: ChargeFo
       if (onSuccess) {
         onSuccess();
       } else if (propertyId) {
-        router.push(`/properties/${propertyId}`);
+        router.push(`/owner/properties/${propertyId}`);
       } else {
-        router.push("/charges");
+        router.push("/owner/money");
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";

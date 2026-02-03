@@ -5,10 +5,11 @@
  * Orchestre les 6 écrans du processus
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, X, Info, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { LeaseEndChecklist } from "./lease-end-checklist";
 import { EDLSortieInspection } from "./edl-sortie-inspection";
 import { DamageAssessmentResults } from "./damage-assessment-results";
@@ -44,6 +45,11 @@ export function LeaseEndWizard({
   const [timeline, setTimeline] = useState<LeaseEndTimelineItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // ✅ GAP-003 FIX: Vérifier si bail mobilité (pas de DG)
+  const isBailMobilite = useMemo(() => {
+    return process.lease?.type_bail === "bail_mobilite";
+  }, [process.lease?.type_bail]);
+
   // Charger les données au démarrage
   useEffect(() => {
     loadProcessData();
@@ -66,7 +72,7 @@ export function LeaseEndWizard({
         description: getCategoryDescription(item.category),
         status: item.status,
         photos: item.photos || [],
-        problemDescription: item.problem_description,
+        problemDescription: (item as any).problem_description,
         estimatedCost: item.estimated_cost ?? 0,
         damageType: item.damage_type ?? "tenant_damage",
       }));
@@ -124,7 +130,7 @@ export function LeaseEndWizard({
         status: data.status,
         problem_description: data.problemDescription,
         photos: data.photos,
-      });
+      } as any);
 
       // Mettre à jour l'état local
       setInspectionItems((prev) =>
@@ -144,7 +150,7 @@ export function LeaseEndWizard({
       await endOfLeaseService.compareEDL({
         lease_end_process_id: process.id,
         edl_entree_id: "", // L'API trouvera automatiquement
-      });
+      } as any);
 
       // Recharger les données
       await loadProcessData();
@@ -167,14 +173,14 @@ export function LeaseEndWizard({
       // Estimer les coûts
       await endOfLeaseService.estimateRenovationCosts({
         lease_end_process_id: process.id,
-      });
+      } as any);
 
       // Générer la timeline
       await endOfLeaseService.generateTimeline({
         lease_end_process_id: process.id,
         start_date: new Date().toISOString(),
         renovation_items_count: renovationItems.length,
-      });
+      } as any);
 
       // Recharger et passer à l'étape suivante
       const updatedProcess = await endOfLeaseService.getProcessById(process.id);
@@ -296,14 +302,61 @@ export function LeaseEndWizard({
             )}
 
             {currentStep === "budget" && (
-              <BudgetTimeline
-                timeline={timeline}
-                budgetSummary={budgetSummary}
-                estimatedReadyDate={process.ready_to_rent_date || new Date().toISOString()}
-                onActionClick={handleTimelineAction}
-                onComplete={handleBudgetComplete}
-                onBack={() => setCurrentStep("damages")}
-              />
+              isBailMobilite ? (
+                /* ✅ GAP-003 FIX: Affichage spécifique bail mobilité - pas de DG */
+                <Card className="max-w-2xl mx-auto">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Info className="h-5 w-5 text-blue-500" />
+                      Bail mobilité - Pas de dépôt de garantie
+                    </CardTitle>
+                    <CardDescription>
+                      Article 25-13 de la Loi ELAN (2018)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        Le bail mobilité ne comporte pas de dépôt de garantie.
+                        Il n'y a donc pas de retenue à calculer ni de somme à restituer.
+                      </p>
+                    </div>
+
+                    {process.tenant_damage_cost > 0 && (
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-sm font-medium text-amber-800">
+                          Dommages locataire constatés : {process.tenant_damage_cost.toLocaleString("fr-FR")} €
+                        </p>
+                        <p className="text-xs text-amber-600 mt-1">
+                          En l'absence de dépôt de garantie, les réparations dues par le locataire
+                          devront faire l'objet d'une demande de paiement distincte ou être couvertes
+                          par la caution (garant) si applicable.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between pt-4">
+                      <Button variant="outline" onClick={() => setCurrentStep("damages")}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Retour
+                      </Button>
+                      <Button onClick={handleBudgetComplete}>
+                        Continuer
+                        <ChevronRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <BudgetTimeline
+                  timeline={timeline as any}
+                  budgetSummary={budgetSummary}
+                  estimatedReadyDate={process.ready_to_rent_date || new Date().toISOString()}
+                  onActionClick={handleTimelineAction}
+                  onComplete={handleBudgetComplete}
+                  onBack={() => setCurrentStep("damages")}
+                />
+              )
             )}
 
             {currentStep === "quotes" && (

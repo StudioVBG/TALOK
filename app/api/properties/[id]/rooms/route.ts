@@ -18,8 +18,8 @@ export async function GET(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
-        { status: error.status || 401 }
+        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { status: (error as any).status || 401 }
       );
     }
 
@@ -75,7 +75,7 @@ export async function GET(
     return NextResponse.json({ rooms: rooms ?? [] });
   } catch (error: unknown) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -94,8 +94,8 @@ export async function POST(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
-        { status: error.status || 401 }
+        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { status: (error as any).status || 401 }
       );
     }
 
@@ -251,14 +251,14 @@ export async function POST(
 
     return NextResponse.json({ room }, { status: 201 });
   } catch (error: unknown) {
-    if (error.name === "ZodError") {
+    if ((error as any).name === "ZodError") {
       return NextResponse.json(
-        { error: "Données invalides", details: error.errors },
+        { error: "Données invalides", details: (error as any).errors },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
     );
   }

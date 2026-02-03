@@ -149,7 +149,7 @@ export async function GET(
 
     return NextResponse.json({ documents: sortedDocuments });
   } catch (error: unknown) {
-    console.error(`[GET /api/properties/${id}/documents] Erreur:`, error);
+    console.error("[GET /api/properties/documents] Erreur:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

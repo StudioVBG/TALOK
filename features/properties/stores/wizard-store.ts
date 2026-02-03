@@ -1,9 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { propertiesService } from '../services/properties.service';
+import { toast } from '@/components/ui/use-toast';
 import type { Property, Room, Photo } from '@/lib/types';
 import type { PropertyTypeV3 } from '@/lib/types/property-v3';
 import type { BuildingUnit } from '@/lib/types/building-v3';
+
+// SOTA 2026: Toast notification helper for sync errors
+function showSyncErrorToast(message: string) {
+  toast({
+    variant: "destructive",
+    title: "Erreur de synchronisation",
+    description: message,
+  });
+}
 
 // ============================================
 // SOTA 2026: TYPES SÉCURISÉS
@@ -27,7 +37,7 @@ type SyncStatus = 'idle' | 'saving' | 'saved' | 'error';
  * SOTA 2026: Interface typée pour les données du formulaire
  * Remplace le `Record<string, any>` non sécurisé
  */
-export interface WizardFormData extends Partial<Property> {
+export interface WizardFormData {
   // Type de bien
   type?: PropertyTypeV3;
   type_bien?: PropertyTypeV3;
@@ -132,6 +142,11 @@ interface WizardState {
   photoImportStatus: 'idle' | 'importing' | 'done' | 'error';
   photoImportProgress: { imported: number; total: number };
 
+  // SOTA 2026: Undo/Redo History
+  history: WizardFormData[];
+  historyIndex: number;
+  maxHistoryLength: number;
+
   // Actions
   reset: () => void;
   initializeDraft: (type: PropertyTypeV3) => Promise<void>;
@@ -151,6 +166,13 @@ interface WizardState {
   setMode: (mode: WizardMode) => void;
   nextStep: () => void;
   prevStep: () => void;
+
+  // SOTA 2026: Undo/Redo Actions
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  clearHistory: () => void;
 }
 
 // Mapping des étapes (ordre logique)
@@ -206,7 +228,7 @@ function calculateRoomCounts(rooms: Room[]): { nb_pieces: number; nb_chambres: n
 }
 
 // SOTA 2026: État initial typé pour le reset
-const INITIAL_STATE: Omit<WizardState, 'reset' | 'initializeDraft' | 'loadProperty' | 'updateFormData' | 'addRoom' | 'updateRoom' | 'removeRoom' | 'setPhotos' | 'setPendingPhotoUrls' | 'importPendingPhotos' | 'setStep' | 'setMode' | 'nextStep' | 'prevStep'> = {
+const INITIAL_STATE: Omit<WizardState, 'reset' | 'initializeDraft' | 'loadProperty' | 'updateFormData' | 'addRoom' | 'updateRoom' | 'removeRoom' | 'setPhotos' | 'setPendingPhotoUrls' | 'importPendingPhotos' | 'setStep' | 'setMode' | 'nextStep' | 'prevStep' | 'undo' | 'redo' | 'canUndo' | 'canRedo' | 'clearHistory'> = {
   propertyId: null,
   buildingId: null,
   currentStep: 'type_bien',
@@ -229,6 +251,10 @@ const INITIAL_STATE: Omit<WizardState, 'reset' | 'initializeDraft' | 'loadProper
   pendingPhotoUrls: [],
   photoImportStatus: 'idle',
   photoImportProgress: { imported: 0, total: 0 },
+  // SOTA 2026: Undo/Redo
+  history: [],
+  historyIndex: -1,
+  maxHistoryLength: 50, // Max 50 états dans l'historique
 };
 
 // Compteur pour générer des IDs temporaires uniques (évite les doublons avec Date.now())
@@ -319,11 +345,13 @@ export const usePropertyWizardStore = create<WizardState>()(
       console.log(`[WizardStore] Draft créé avec succès: ${newPropertyId}`);
     } catch (error: unknown) {
       console.error('[WizardStore] Erreur création draft:', error);
+      const errorMessage = error instanceof Error ? error.message : "Erreur lors de la création du brouillon";
       set({
         syncStatus: 'error',
-        lastError: error instanceof Error ? error.message : "Erreur lors de la création du brouillon",
+        lastError: errorMessage,
         isInitializing: false
       });
+      showSyncErrorToast(errorMessage);
     }
   },
 
@@ -344,21 +372,34 @@ export const usePropertyWizardStore = create<WizardState>()(
       });
     } catch (error: unknown) {
       console.error('[WizardStore] Erreur chargement:', error);
-      set({ syncStatus: 'error', lastError: "Impossible de charger le bien" });
+      const errorMessage = "Impossible de charger le bien";
+      set({ syncStatus: 'error', lastError: errorMessage });
+      showSyncErrorToast(errorMessage);
     }
   },
 
   // SOTA 2026: updateFormData avec DEBOUNCE par propertyId pour optimiser les appels API
+  // Avec support Undo/Redo
   updateFormData: (updates) => {
-    const { propertyId } = get();
+    const { propertyId, formData, history, historyIndex, maxHistoryLength } = get();
 
-    // 1. Optimistic Update immédiat
+    // 1. Sauvegarder l'état actuel dans l'historique (pour undo)
+    // On tronque l'historique après l'index courant (supprimer les états "redo")
+    const newHistory = [...history.slice(0, historyIndex + 1), { ...formData }];
+    // Limiter la taille de l'historique
+    const trimmedHistory = newHistory.length > maxHistoryLength
+      ? newHistory.slice(newHistory.length - maxHistoryLength)
+      : newHistory;
+
+    // 2. Optimistic Update immédiat avec mise à jour de l'historique
     set((state) => ({
       formData: { ...state.formData, ...updates },
+      history: trimmedHistory,
+      historyIndex: trimmedHistory.length - 1,
       syncStatus: propertyId ? 'saving' : 'idle'
     }));
 
-    // 2. Si pas de propertyId, pas de sync serveur
+    // 3. Si pas de propertyId, pas de sync serveur
     if (!propertyId) {
       return;
     }
@@ -393,7 +434,9 @@ export const usePropertyWizardStore = create<WizardState>()(
       } catch (err: any) {
         console.error('[WizardStore] Erreur sauvegarde:', err);
         if (get().propertyId === capturedPropertyId) {
-          set({ syncStatus: 'error', lastError: "Erreur sauvegarde" });
+          const errorMessage = "Erreur sauvegarde";
+          set({ syncStatus: 'error', lastError: errorMessage });
+          showSyncErrorToast(errorMessage);
         }
       }
     }, UPDATE_DEBOUNCE_MS);
@@ -437,6 +480,7 @@ export const usePropertyWizardStore = create<WizardState>()(
         }).catch(() => {});
       }).catch(() => {
         // Rollback en cas d'erreur
+        const errorMessage = "Impossible de créer la pièce";
         set((state) => {
           const rolledBackRooms = state.rooms.filter(r => r.id !== tempId);
           const counts = calculateRoomCounts(rolledBackRooms);
@@ -444,9 +488,10 @@ export const usePropertyWizardStore = create<WizardState>()(
             rooms: rolledBackRooms,
             formData: { ...state.formData, nb_pieces: counts.nb_pieces, nb_chambres: counts.nb_chambres },
             syncStatus: 'error',
-            lastError: "Impossible de créer la pièce"
+            lastError: errorMessage
           };
         });
+        showSyncErrorToast(errorMessage);
       });
     }
   },
@@ -466,7 +511,11 @@ export const usePropertyWizardStore = create<WizardState>()(
     if (propertyId && !isTemporary) {
       propertiesService.updateRoom(propertyId, id, updates as any)
         .then(() => set({ syncStatus: 'saved' }))
-        .catch(() => set({ syncStatus: 'error' }));
+        .catch(() => {
+          const errorMessage = "Erreur mise à jour pièce";
+          set({ syncStatus: 'error', lastError: errorMessage });
+          showSyncErrorToast(errorMessage);
+        });
     }
   },
 
@@ -503,7 +552,9 @@ export const usePropertyWizardStore = create<WizardState>()(
           }).catch(() => {});
         })
         .catch(() => {
-          set({ rooms: oldRooms, formData: oldFormData, syncStatus: 'error', lastError: "Erreur suppression" });
+          const errorMessage = "Erreur suppression pièce";
+          set({ rooms: oldRooms, formData: oldFormData, syncStatus: 'error', lastError: errorMessage });
+          showSyncErrorToast(errorMessage);
         });
     }
   },
@@ -556,10 +607,12 @@ export const usePropertyWizardStore = create<WizardState>()(
       
     } catch (error: unknown) {
       console.error('[WizardStore] Erreur import photos:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur import photos';
       set({
         photoImportStatus: 'error',
-        lastError: error instanceof Error ? error.message : 'Erreur import photos'
+        lastError: errorMessage
       });
+      showSyncErrorToast(errorMessage);
     }
   },
 
@@ -586,6 +639,64 @@ export const usePropertyWizardStore = create<WizardState>()(
     if (currentIndex > 0) {
       set({ currentStep: applicableSteps[currentIndex - 1] });
     }
+  },
+
+  // SOTA 2026: Undo/Redo Actions
+  undo: () => {
+    const { history, historyIndex, formData } = get();
+
+    if (historyIndex < 0) {
+      console.log('[WizardStore] Undo: rien à annuler');
+      return;
+    }
+
+    // Sauvegarder l'état actuel avant d'annuler (pour redo)
+    const newHistory = historyIndex === history.length - 1
+      ? [...history, { ...formData }]
+      : history;
+
+    // Restaurer l'état précédent
+    const previousState = history[historyIndex];
+    console.log('[WizardStore] Undo: restauration de l\'état', historyIndex);
+
+    set({
+      formData: { ...previousState },
+      history: newHistory,
+      historyIndex: historyIndex - 1,
+    });
+  },
+
+  redo: () => {
+    const { history, historyIndex } = get();
+
+    if (historyIndex >= history.length - 1) {
+      console.log('[WizardStore] Redo: rien à refaire');
+      return;
+    }
+
+    // Restaurer l'état suivant
+    const nextState = history[historyIndex + 1];
+    console.log('[WizardStore] Redo: restauration de l\'état', historyIndex + 1);
+
+    set({
+      formData: { ...nextState },
+      historyIndex: historyIndex + 1,
+    });
+  },
+
+  canUndo: () => {
+    const { historyIndex } = get();
+    return historyIndex >= 0;
+  },
+
+  canRedo: () => {
+    const { history, historyIndex } = get();
+    return historyIndex < history.length - 1;
+  },
+
+  clearHistory: () => {
+    console.log('[WizardStore] Effacement de l\'historique');
+    set({ history: [], historyIndex: -1 });
   }
     }),
     {

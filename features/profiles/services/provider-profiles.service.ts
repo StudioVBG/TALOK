@@ -34,13 +34,13 @@ export class ProviderProfilesService {
       // Mettre à jour
       const { data: profile, error } = await this.supabase
         .from("provider_profiles")
-        .update(validatedData)
+        .update(validatedData as any)
         .eq("profile_id", profileId)
         .select()
         .single();
 
       if (error) throw error;
-      return profile as ProviderProfile;
+      return profile as unknown as ProviderProfile;
     } else {
       // Créer
       const { data: profile, error } = await this.supabase
@@ -48,12 +48,12 @@ export class ProviderProfilesService {
         .insert({
           profile_id: profileId,
           ...validatedData,
-        })
+        } as any)
         .select()
         .single();
 
       if (error) throw error;
-      return profile as ProviderProfile;
+      return profile as unknown as ProviderProfile;
     }
   }
 }

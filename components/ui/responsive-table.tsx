@@ -81,7 +81,7 @@ export function ResponsiveTable<T>({
             </CardHeader>
             <CardContent className="p-4 grid gap-2">
               {columns.slice(1).map((col, index) => (
-                <div key={index} className="flex justify-between items-center py-1 border-b last:border-0 border-slate-100">
+                <div key={index} className="flex justify-between items-center py-1 border-b last:border-0 border-border">
                   <span className="text-sm text-muted-foreground font-medium">{col.header}</span>
                   <div className="text-sm text-right">
                     {col.cell

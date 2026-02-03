@@ -18,6 +18,7 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        success: "bg-emerald-600 text-white hover:bg-emerald-700",
       },
       size: {
         default: "h-11 px-4 py-2",
@@ -44,7 +45,7 @@ export interface ButtonProps
   /**
    * Affiche un état de chargement
    */
-  isLoading?: boolean;
+  loading?: boolean;
   /**
    * Texte affiché pendant le chargement
    */
@@ -71,7 +72,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       variant,
       size,
       asChild = false,
-      isLoading = false,
+      loading = false,
       loadingText,
       loadingPosition = "left",
       leftIcon,
@@ -83,7 +84,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const Comp = asChild ? Slot : "button";
-    const isDisabled = disabled || isLoading;
+    const isDisabled = disabled || loading;
 
     // Loader component
     const LoaderIcon = (
@@ -103,10 +104,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         <Comp
           className={cn(buttonVariants({ variant, size, className }))}
           ref={ref}
+          disabled={disabled || loading}
           {...props}
-        >
-          {children}
-        </Comp>
+        />
       );
     }
 
@@ -116,30 +116,30 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={isDisabled}
         aria-disabled={isDisabled}
-        aria-busy={isLoading}
+        aria-busy={loading}
         {...props}
       >
         {/* Loading indicator or left icon */}
-        {isLoading && loadingPosition === "left" && LoaderIcon}
-        {!isLoading && leftIcon && (
+        {loading && loadingPosition === "left" && LoaderIcon}
+        {!loading && leftIcon && (
           <span className={cn(children && "mr-2")} aria-hidden="true">
             {leftIcon}
           </span>
         )}
 
         {/* Button text */}
-        {isLoading && loadingText ? loadingText : children}
+        {loading && loadingText ? loadingText : children}
 
         {/* Right icon or loading indicator */}
-        {!isLoading && rightIcon && (
+        {!loading && rightIcon && (
           <span className={cn(children && "ml-2")} aria-hidden="true">
             {rightIcon}
           </span>
         )}
-        {isLoading && loadingPosition === "right" && LoaderIcon}
+        {loading && loadingPosition === "right" && LoaderIcon}
 
         {/* Screen reader text for loading state */}
-        {isLoading && (
+        {loading && (
           <span className="sr-only">
             {loadingText || "Chargement en cours..."}
           </span>

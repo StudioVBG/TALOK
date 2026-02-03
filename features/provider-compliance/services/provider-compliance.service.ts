@@ -45,7 +45,7 @@ export class ProviderComplianceService {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data as ProviderComplianceDocument[];
+    return data as unknown as ProviderComplianceDocument[];
   }
 
   /**
@@ -82,7 +82,7 @@ export class ProviderComplianceService {
       .single();
 
     if (error) throw new Error(error.message);
-    return data as ProviderComplianceDocument;
+    return data as unknown as ProviderComplianceDocument;
   }
 
   /**
@@ -164,7 +164,7 @@ export class ProviderComplianceService {
       .order('is_default', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data as ProviderPayoutAccount[];
+    return data as unknown as ProviderPayoutAccount[];
   }
 
   /**
@@ -195,7 +195,7 @@ export class ProviderComplianceService {
       .single();
 
     if (error) throw new Error(error.message);
-    return data as ProviderPayoutAccount;
+    return data as unknown as ProviderPayoutAccount;
   }
 
   /**
@@ -239,7 +239,7 @@ export class ProviderComplianceService {
       .single();
 
     if (error) throw new Error(error.message);
-    return data as ProviderProfileExtended;
+    return data as unknown as ProviderProfileExtended;
   }
 
   /**
@@ -271,7 +271,7 @@ export class ProviderComplianceService {
       .order('is_required', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data as KYCRequirement[];
+    return data as unknown as KYCRequirement[];
   }
 
   /**
@@ -356,7 +356,7 @@ export class ProviderComplianceService {
       .single();
 
     if (error) throw new Error(error.message);
-    return data as ProviderComplianceDocument;
+    return data as unknown as ProviderComplianceDocument;
   }
 
   /**
@@ -409,7 +409,7 @@ export class ProviderComplianceService {
     });
 
     if (error) throw new Error(error.message);
-    return data || [];
+    return (data || []) as any;
   }
 
   /**

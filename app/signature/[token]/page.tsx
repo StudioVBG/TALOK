@@ -167,10 +167,10 @@ export default async function SignaturePage({ params }: PageProps) {
   return (
     <SignatureFlow
       token={token}
-      lease={result.lease}
+      lease={result.lease as any}
       tenantEmail={result.tenantEmail || ""}
-      ownerName={result.ownerName}
-      propertyAddress={result.propertyAddress}
+      ownerName={result.ownerName ?? ""}
+      propertyAddress={result.propertyAddress ?? ""}
     />
   );
 }

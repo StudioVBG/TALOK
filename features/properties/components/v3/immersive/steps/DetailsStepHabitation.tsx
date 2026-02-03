@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,12 +10,13 @@ import { usePropertyWizardStore } from "@/features/properties/stores/wizard-stor
 import {
   Euro, Ruler, Coins, ArrowUpDown, Sofa, HelpCircle,
   Flame, Droplet, Snowflake, Zap, Home, ThermometerSun,
-  Building2, FileText, Briefcase
+  Building2, FileText, Briefcase, AlertTriangle
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RentEstimation } from "../RentEstimation";
 import { Badge } from "@/components/ui/badge";
+import { DPEPassoireWarning } from "@/components/properties/DPEPassoireWarning";
 
 // Classes DPE avec couleurs officielles
 const DPE_CLASSES = [
@@ -50,7 +51,7 @@ export function DetailsStepHabitation() {
     const numValue = value === "" ? null : parseFloat(value);
     if (numValue === null || !isNaN(numValue)) {
       if (field === "surface") {
-        updateFormData({ surface: numValue, surface_habitable_m2: numValue });
+        updateFormData({ surface: numValue ?? undefined, surface_habitable_m2: numValue ?? undefined });
       } else {
         updateFormData({ [field]: numValue });
       }
@@ -136,7 +137,7 @@ export function DetailsStepHabitation() {
             </div>
             <Select
               value={(formData as any).usage_principal || ""}
-              onValueChange={(v) => updateFormData({ usage_principal: v })}
+              onValueChange={(v) => updateFormData({ usage_principal: v as any })}
             >
               <SelectTrigger className="h-10"><SelectValue placeholder="Sélectionnez l'usage..." /></SelectTrigger>
               <SelectContent>
@@ -235,8 +236,8 @@ export function DetailsStepHabitation() {
                       type="button"
                       onClick={() => updateFormData({ dpe_classe_climat: ges.value })}
                       className={`flex-1 h-10 rounded-md font-bold text-white transition-all ${ges.color} ${
-                        (formData as any).dpe_classe_climat === ges.value 
-                          ? "ring-2 ring-offset-2 ring-primary scale-110" 
+                        (formData as any).dpe_classe_climat === ges.value
+                          ? "ring-2 ring-offset-2 ring-primary scale-110"
                           : "opacity-60 hover:opacity-100"
                       }`}
                     >
@@ -246,6 +247,25 @@ export function DetailsStepHabitation() {
                 </div>
               </div>
             </div>
+
+            {/* SOTA 2026: Inline DPE G/F warning */}
+            <AnimatePresence>
+              {(formData.dpe_classe_energie === "G" || formData.dpe_classe_energie === "F") && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-3"
+                >
+                  <DPEPassoireWarning
+                    dpeClasse={formData.dpe_classe_energie}
+                    typeBail={(formData as any).type_bail}
+                    variant="inline"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Valeurs numériques DPE (optionnel mais recommandé) */}
             <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
@@ -290,7 +310,7 @@ export function DetailsStepHabitation() {
               <div className="space-y-2">
                 <Select
                   value={(formData as any).chauffage_type || ""}
-                  onValueChange={(v) => updateFormData({ chauffage_type: v })}
+                  onValueChange={(v) => updateFormData({ chauffage_type: v as any })}
                 >
                   <SelectTrigger className="h-10"><SelectValue placeholder="Type..." /></SelectTrigger>
                   <SelectContent>
@@ -309,7 +329,7 @@ export function DetailsStepHabitation() {
                     </div>
                     <Select
                       value={(formData as any).chauffage_energie || ""}
-                      onValueChange={(v) => updateFormData({ chauffage_energie: v })}
+                      onValueChange={(v) => updateFormData({ chauffage_energie: v as any })}
                     >
                       <SelectTrigger className={`h-10 ${!(formData as any).chauffage_energie ? 'border-orange-400 bg-orange-50/50 dark:bg-orange-950/20' : ''}`}>
                         <SelectValue placeholder="Sélectionnez l'énergie..." />
@@ -339,7 +359,7 @@ export function DetailsStepHabitation() {
               </div>
               <Select 
                 value={(formData as any).eau_chaude_type || ""} 
-                onValueChange={(v) => updateFormData({ eau_chaude_type: v })}
+                onValueChange={(v) => updateFormData({ eau_chaude_type: v as any })}
               >
                 <SelectTrigger className="h-10"><SelectValue placeholder="Type..." /></SelectTrigger>
                 <SelectContent>
@@ -365,7 +385,7 @@ export function DetailsStepHabitation() {
               <div className="flex items-center gap-2">
                 <Select 
                   value={(formData as any).clim_presence || "aucune"} 
-                  onValueChange={(v) => updateFormData({ clim_presence: v })}
+                  onValueChange={(v) => updateFormData({ clim_presence: v as any })}
                 >
                   <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -377,7 +397,7 @@ export function DetailsStepHabitation() {
                 {(formData as any).clim_presence === "fixe" && (
                   <Select 
                     value={(formData as any).clim_type || ""} 
-                    onValueChange={(v) => updateFormData({ clim_type: v })}
+                    onValueChange={(v) => updateFormData({ clim_type: v as any })}
                   >
                     <SelectTrigger className="w-28 h-9"><SelectValue placeholder="Type" /></SelectTrigger>
                     <SelectContent>

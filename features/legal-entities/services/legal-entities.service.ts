@@ -115,7 +115,7 @@ export async function getLegalEntitiesWithStats(
 
   // Fusionner les stats
   return entities.map((entity) => {
-    const stats = data?.find((s: Record<string, unknown>) => s.entity_id === entity.id);
+    const stats = (data as any[])?.find((s: Record<string, unknown>) => s.entity_id === entity.id);
     return {
       ...entity,
       properties_count: stats?.properties_count ?? 0,
@@ -305,7 +305,7 @@ export async function getEntityAssociates(
     throw new Error(`Erreur: ${error.message}`);
   }
 
-  return data as EntityAssociateWithProfile[];
+  return data as unknown as EntityAssociateWithProfile[];
 }
 
 /**
@@ -573,7 +573,7 @@ export async function transferPropertyOwnership(
         is_current: false,
         date_cession: transferData.date_cession,
         prix_cession: transferData.prix_cession,
-        mode_cession: transferData.mode_cession,
+        mode_cession: transferData.mode_cession as any,
         updated_at: new Date().toISOString(),
       })
       .eq("property_id", propertyId)

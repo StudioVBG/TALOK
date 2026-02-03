@@ -185,7 +185,7 @@ function KPICard({
               "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full",
               trend === "up" ? "bg-emerald-100 text-emerald-700" :
               trend === "down" ? "bg-red-100 text-red-700" :
-              "bg-slate-100 text-slate-600"
+              "bg-muted text-muted-foreground"
             )}>
               {trend === "up" && <ArrowUpRight className="h-3 w-3" />}
               {trend === "down" && <ArrowDownRight className="h-3 w-3" />}
@@ -194,10 +194,10 @@ function KPICard({
           )}
         </div>
         <div className="mt-4">
-          <p className="text-2xl font-bold text-slate-900">{value}</p>
-          <p className="text-sm font-medium text-slate-600 mt-1">{title}</p>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          <p className="text-sm font-medium text-muted-foreground mt-1">{title}</p>
           {subtitle && (
-            <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+            <p className="text-xs text-muted-foreground/70 mt-0.5">{subtitle}</p>
           )}
         </div>
       </GlassCard>
@@ -237,14 +237,14 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
               <BarChart3 className="h-8 w-8 text-blue-600" />
               Analytics
             </h1>
-            <p className="text-slate-500 mt-1">
+            <p className="text-muted-foreground mt-1">
               Performance de votre patrimoine immobilier
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="w-[140px] bg-white">
-                <Calendar className="h-4 w-4 mr-2 text-slate-400" />
+              <SelectTrigger className="w-[140px] bg-background">
+                <Calendar className="h-4 w-4 mr-2 text-muted-foreground/70" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -425,10 +425,10 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
                       </ResponsiveContainer>
                     </div>
                     <div className="mt-4 text-center">
-                      <p className="text-3xl font-bold text-slate-900">
+                      <p className="text-3xl font-bold text-foreground">
                         {data.totalLeases}/{data.totalProperties}
                       </p>
-                      <p className="text-sm text-slate-500">biens loués</p>
+                      <p className="text-sm text-muted-foreground">biens loués</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -481,6 +481,36 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/* Mobile card view */}
+                  <div className="md:hidden space-y-3">
+                    {data.propertiesStats.map((prop) => (
+                      <Link key={prop.id} href={`/owner/properties/${prop.id}`} className="block rounded-lg border p-4 space-y-3 active:scale-[0.98] transition-transform">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">{prop.address}</p>
+                            <p className="text-xs text-muted-foreground">{prop.city} &bull; {prop.type}</p>
+                          </div>
+                          <Badge variant="outline" className={cn(prop.status === "loue" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200")}>
+                            {prop.status === "loue" ? "Loué" : "Vacant"}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><p className="text-muted-foreground">Loyer/mois</p><p className="font-medium">{formatCurrency(prop.monthlyRent)}</p></div>
+                          <div><p className="text-muted-foreground">Revenu/an</p><p className="font-medium">{formatCurrency(prop.annualRevenue)}</p></div>
+                          <div><p className="text-muted-foreground">Rendement</p><p className={cn("font-medium", prop.grossYield >= 6 ? "text-emerald-600" : prop.grossYield >= 4 ? "text-amber-600" : "text-red-600")}>{prop.grossYield.toFixed(1)}%</p></div>
+                          <div>
+                            <p className="text-muted-foreground">Occupation</p>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden"><div className={cn("h-full rounded-full", prop.occupancyRate >= 80 ? "bg-emerald-500" : prop.occupancyRate >= 50 ? "bg-amber-500" : "bg-red-500")} style={{ width: `${prop.occupancyRate}%` }} /></div>
+                              <span className="text-xs font-medium">{prop.occupancyRate}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                  {/* Desktop table view */}
+                  <div className="hidden md:block">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -494,12 +524,12 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
                     </TableHeader>
                     <TableBody>
                       {data.propertiesStats.map((prop) => (
-                        <TableRow key={prop.id} className="hover:bg-slate-50">
+                        <TableRow key={prop.id} className="hover:bg-muted/50">
                           <TableCell>
                             <Link href={`/owner/properties/${prop.id}`} className="hover:underline">
                               <div>
                                 <p className="font-medium">{prop.address}</p>
-                                <p className="text-xs text-slate-500">{prop.city} • {prop.type}</p>
+                                <p className="text-xs text-muted-foreground">{prop.city} &bull; {prop.type}</p>
                               </div>
                             </Link>
                           </TableCell>
@@ -532,7 +562,7 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                                 <div
                                   className={cn(
                                     "h-full rounded-full",
@@ -549,6 +579,7 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -594,8 +625,8 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
                 </CardHeader>
                 <CardContent className="flex items-center justify-center py-12">
                   <div className="text-center">
-                    <Users className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-                    <p className="text-slate-500">
+                    <Users className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">
                       Consultez la page{" "}
                       <Link href="/owner/tenants" className="text-blue-600 hover:underline font-medium">
                         Mes locataires

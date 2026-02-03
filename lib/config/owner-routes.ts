@@ -90,6 +90,13 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "FileCheck",
   },
+  ged: {
+    path: "/owner/ged",
+    name: "GED",
+    component: "GedPage",
+    auth: ["owner"],
+    icon: "FolderArchive",
+  },
   inspections: {
     path: "/owner/inspections",
     name: "États des lieux",

@@ -4,12 +4,14 @@ export const dynamic = 'force-dynamic';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
-import { ocrService } from "@/lib/services/ocr.service";
 
 /**
  * POST /api/meters/[id]/photo-ocr - Analyser une photo de compteur avec OCR
- *
- * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ * 
+ * NOTA: L'OCR est optionnel. Si Tesseract échoue, on retourne quand même
+ * la photo uploadée pour que l'utilisateur puisse saisir manuellement.
+ * 
+ * @version 2026-02-01 - Fix: Gestion gracieuse des erreurs OCR + Next.js 15 params
  */
 export async function POST(
   request: Request,
@@ -32,23 +34,27 @@ export async function POST(
     const propertyId = searchParams.get("property_id");
 
     // Rate limiting pour les OCR
-    const limiter = getRateLimiterByUser(rateLimitPresets.upload);
-    const limitResult = limiter(user.id);
-    if (!limitResult.allowed) {
-      return NextResponse.json(
-        {
-          error: "Trop de requêtes. Veuillez réessayer plus tard.",
-          resetAt: limitResult.resetAt,
-        },
-        {
-          status: 429,
-          headers: {
-            "X-RateLimit-Limit": rateLimitPresets.upload.maxRequests.toString(),
-            "X-RateLimit-Remaining": limitResult.remaining.toString(),
-            "X-RateLimit-Reset": limitResult.resetAt.toString(),
+    try {
+      const limiter = getRateLimiterByUser(rateLimitPresets.upload);
+      const limitResult = limiter(user.id);
+      if (!limitResult.allowed) {
+        return NextResponse.json(
+          {
+            error: "Trop de requêtes. Veuillez réessayer plus tard.",
+            resetAt: limitResult.resetAt,
           },
-        }
-      );
+          {
+            status: 429,
+            headers: {
+              "X-RateLimit-Limit": rateLimitPresets.upload.maxRequests.toString(),
+              "X-RateLimit-Remaining": limitResult.remaining.toString(),
+              "X-RateLimit-Reset": limitResult.resetAt.toString(),
+            },
+          }
+        );
+      }
+    } catch (rateLimitError) {
+      console.warn("Rate limiter error (ignored):", rateLimitError);
     }
 
     const formData = await request.formData();
@@ -56,47 +62,81 @@ export async function POST(
 
     if (!photoFile) {
       return NextResponse.json(
-        { error: "photo requis" },
+        { error: "Photo requise" },
         { status: 400 }
       );
     }
 
-    // Convertir File en Buffer pour OCR
-    const arrayBuffer = await photoFile.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    // Variables pour les résultats
+    let ocrValue: number | null = null;
+    let ocrConfidence: number = 0;
+    let photoUrl: string | null = null;
 
-    // Effectuer l'OCR
-    const { value, confidence } = await ocrService.analyzeMeterPhoto(buffer);
+    // 1. Tenter l'OCR (optionnel - ne bloque pas si ça échoue)
+    try {
+      const { ocrService } = await import("@/lib/services/ocr.service");
+      
+      const arrayBuffer = await photoFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+      const result = await ocrService.analyzeMeterPhoto(buffer);
+      ocrValue = result.value;
+      ocrConfidence = result.confidence;
+      
+      console.log(`[OCR] Valeur détectée: ${ocrValue} (confiance: ${ocrConfidence}%)`);
+    } catch (ocrError: unknown) {
+      console.warn("[OCR] Échec de l'analyse OCR:", ocrError instanceof Error ? ocrError.message : ocrError);
+    }
 
-    // Uploader la photo pour archive (même si c'est juste pour l'analyse)
-    const folderId = meterId === "new" ? (propertyId || "temp") : meterId;
-    const fileName = `meters/${folderId}/ocr_${Date.now()}_${photoFile.name}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("documents")
-      .upload(fileName, photoFile, {
-        contentType: photoFile.type,
-        upsert: false,
-      });
+    // 2. Uploader la photo (même si l'OCR a échoué)
+    try {
+      const folderId = meterId === "new" ? (propertyId || "temp") : meterId;
+      const safeFileName = photoFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `meters/${folderId}/ocr_${Date.now()}_${safeFileName}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(fileName, photoFile, {
+          contentType: photoFile.type,
+          upsert: false,
+        });
 
-    if (uploadError) throw uploadError;
+      if (!uploadError && uploadData) {
+        photoUrl = uploadData.path;
+      } else {
+        console.error("[OCR] Erreur upload photo:", uploadError);
+      }
+    } catch (uploadError: unknown) {
+      console.error("[OCR] Exception upload:", uploadError instanceof Error ? uploadError.message : uploadError);
+    }
 
-    // Si on a un ID de compteur réel, on pourrait déjà créer un relevé "ocr"
-    // Mais pour le wizard, on renvoie juste la valeur pour pré-remplissage
+    // 3. Retourner le résultat (même si OCR/upload ont échoué)
+    return NextResponse.json({ 
+      reading: {
+        reading_value: ocrValue,
+        confidence: ocrConfidence,
+        photo_url: photoUrl,
+        unit: "kwh",
+        ocr_success: ocrValue !== null,
+      },
+      message: ocrValue !== null 
+        ? `Valeur détectée: ${ocrValue} (confiance: ${Math.round(ocrConfidence)}%)`
+        : "Impossible de détecter la valeur automatiquement. Veuillez saisir manuellement."
+    });
+    
+  } catch (error: unknown) {
+    console.error("[OCR API] Erreur générale:", error);
     
     return NextResponse.json({ 
       reading: {
-        reading_value: value,
-        confidence: confidence,
-        photo_url: uploadData.path,
-        unit: "kwh" // Par défaut, l'UI ajustera
-      }
-    });
-  } catch (error: unknown) {
-    console.error("OCR API Error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur lors de l'analyse OCR" },
-      { status: 500 }
-    );
+        reading_value: null,
+        confidence: 0,
+        photo_url: null,
+        unit: "kwh",
+        ocr_success: false,
+      },
+      message: "Erreur lors de l'analyse. Veuillez saisir la valeur manuellement.",
+      error: error instanceof Error ? error.message : "Erreur serveur"
+    }, { status: 200 });
   }
 }
-

@@ -104,13 +104,13 @@ export default function VerifyEmailOnboardingPage() {
       console.error("[VerifyEmail] Erreur finale:", error);
       
       // Messages d'erreur plus explicites
-      let errorMessage = error instanceof Error ? error.message : "Impossible d'envoyer l'email.";
+      let errorMessage = error instanceof Error ? (error as Error).message : "Impossible d'envoyer l'email.";
       
-      if (error.message?.includes("rate limit") || error.message?.includes("too many")) {
+      if ((error as Error).message?.includes("rate limit") || (error as Error).message?.includes("too many")) {
         errorMessage = "Trop de tentatives. Attendez quelques minutes avant de réessayer.";
-      } else if (error.message?.includes("already confirmed")) {
+      } else if ((error as Error).message?.includes("already confirmed")) {
         errorMessage = "Cet email est déjà confirmé. Essayez de vous connecter.";
-      } else if (error.message?.includes("not found") || error.message?.includes("User not found")) {
+      } else if ((error as Error).message?.includes("not found") || (error as Error).message?.includes("User not found")) {
         errorMessage = "Aucun compte trouvé avec cet email. Vérifiez l'adresse ou inscrivez-vous.";
       }
       
@@ -160,7 +160,7 @@ export default function VerifyEmailOnboardingPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible de vérifier le statut.",
+        description: error instanceof Error ? (error as Error).message : "Impossible de vérifier le statut.",
         variant: "destructive",
       });
     } finally {

@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
           leases!inner(property_id, statut)
         `)
         .eq("profile_id", profile.id)
-        .eq("leases.property_id", meter.property_id)
+        .eq("leases.property_id", meter.property_id!)
         .eq("leases.statut", "active")
         .limit(1);
 
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       const { data: property } = await supabase
         .from("properties")
         .select("id")
-        .eq("id", meter.property_id)
+        .eq("id", meter.property_id!)
         .eq("owner_id", profile.id)
         .single();
 

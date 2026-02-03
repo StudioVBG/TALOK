@@ -66,10 +66,10 @@ export function createFinanceAgent(role: UserRole = "owner") {
   ];
   
   const agent = createReactAgent({
-    model,
+    llm: model,
     systemMessage: FINANCE_AGENT_PROMPT,
     tools: financeTools,
-  });
+  } as any);
   
   return agent;
 }

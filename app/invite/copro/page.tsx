@@ -23,7 +23,7 @@ import type { InviteValidationResult } from "@/lib/types/copro";
 export default function CoproInvitePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const token = searchParams.get('token');
 
   const [inviteData, setInviteData] = useState<InviteValidationResult | null>(null);

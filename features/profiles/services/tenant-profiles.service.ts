@@ -42,7 +42,7 @@ export class TenantProfilesService {
         .single();
 
       if (error) throw error;
-      return profile as TenantProfile;
+      return profile as unknown as TenantProfile;
     } else {
       // Créer
       const { data: profile, error } = await this.supabase
@@ -55,7 +55,7 @@ export class TenantProfilesService {
         .single();
 
       if (error) throw error;
-      return profile as TenantProfile;
+      return profile as unknown as TenantProfile;
     }
   }
 }

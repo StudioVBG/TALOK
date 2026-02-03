@@ -26,9 +26,9 @@ export async function POST(request: NextRequest) {
       const { data: userData } = await serviceClient
         .from("profiles")
         .select("user_id")
-        .eq("user_id", serviceClient.auth.admin
+        .eq("user_id", (serviceClient.auth.admin
           ? undefined
-          : undefined)
+          : undefined) as any)
         .single();
 
       // Rechercher l'utilisateur par email via auth.users
@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
           .select("credential_id, transports")
           .eq("user_id", user.id);
 
-        allowCredentials = (credentials || []).map((cred) => ({
-          id: cred.credential_id,
+        allowCredentials = (credentials || []).map((cred: any) => ({
+          id: cred.credential_id as string,
           type: "public-key" as const,
           transports: cred.transports,
-        }));
+        })) as { id: string; type: "public-key" }[];
       }
     }
 

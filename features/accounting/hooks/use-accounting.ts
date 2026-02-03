@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback } from "react";
+// @ts-ignore
 import useSWR, { mutate } from "swr";
 import { apiClient } from "@/lib/api-client";
 

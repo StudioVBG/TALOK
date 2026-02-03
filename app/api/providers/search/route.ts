@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
       // Calculer les stats d'avis
       const reviews = reviewStats?.filter(r => r.provider_profile_id === provider.profile_id) || [];
       const avgRating = reviews.length > 0 
-        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+        ? reviews.reduce((sum, r) => sum + (r.rating as number), 0) / reviews.length
         : 0;
       
       // Calculer les stats d'interventions

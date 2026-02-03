@@ -93,8 +93,8 @@ export async function GET(request: Request) {
 
     for (const op of operations || []) {
       const leaseData = op.lease as any;
-      if (!depositsByLease.has(op.lease_id)) {
-        depositsByLease.set(op.lease_id, {
+      if (!depositsByLease.has(op.lease_id as string)) {
+        depositsByLease.set(op.lease_id as string, {
           lease_id: op.lease_id,
           tenant_id: op.tenant_id,
           property_address: leaseData?.property?.adresse_ligne1 || "",
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
         });
       }
 
-      const deposit = depositsByLease.get(op.lease_id);
+      const deposit = depositsByLease.get(op.lease_id as string);
       deposit.operations.push({
         id: op.id,
         type: op.operation_type,
@@ -116,9 +116,9 @@ export async function GET(request: Request) {
 
       // Calculer le solde
       if (op.operation_type === "encaissement") {
-        deposit.current_balance += op.amount;
+        deposit.current_balance += (op.amount as number);
       } else {
-        deposit.current_balance -= op.amount;
+        deposit.current_balance -= (op.amount as number);
       }
 
       // Déterminer le statut
@@ -244,7 +244,7 @@ export async function POST(request: Request) {
         .eq("operation_type", "encaissement");
 
       const totalEncaisse = (existingOps || []).reduce(
-        (sum, op) => sum + op.amount,
+        (sum: number, op: any) => sum + op.amount,
         0
       );
 
@@ -266,9 +266,9 @@ export async function POST(request: Request) {
       let balance = 0;
       for (const op of allOps || []) {
         if (op.operation_type === "encaissement") {
-          balance += op.amount;
+          balance += (op.amount as number);
         } else {
-          balance -= op.amount;
+          balance -= (op.amount as number);
         }
       }
 
@@ -285,7 +285,7 @@ export async function POST(request: Request) {
     // Enregistrer l'opération avec écritures comptables
     const accountingService = new AccountingIntegrationService(supabase);
     await accountingService.recordDepositOperation({
-      tenantId: lease.tenant_id,
+      tenantId: lease.tenant_id as string,
       leaseId: lease_id,
       operationType: operation_type,
       amount,

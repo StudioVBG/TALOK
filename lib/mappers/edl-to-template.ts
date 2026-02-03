@@ -197,7 +197,7 @@ export function mapRawEDLToTemplate(
     // Trouver les photos globales de la pièce (item_id est nul)
     // 🔧 FIX: Vérifier room_name OU section pour la compatibilité
     const roomPhotos = media
-      .filter((m) => !m.item_id && (m.room_name === nom || (m as any).section === nom) && (m.type === "photo" || (m as any).media_type === "photo"))
+      .filter((m) => !m.item_id && ((m as any).room_name === nom || (m as any).section === nom) && (m.type === "photo" || (m as any).media_type === "photo"))
       .map((m) => (m as any).signed_url || getPublicUrl(m.file_path || (m as any).storage_path));
 
     return {
@@ -226,9 +226,9 @@ export function mapRawEDLToTemplate(
         const tp = s.profile?.tenant_profile;
         
         // Logique Société
-        const email = s.profile?.email || s.invited_email;
+        const email = s.profile?.email || (s as any).invited_email;
         const telephone = s.profile?.telephone;
-        let nomComplet = (prenom || nom) ? `${prenom} ${nom}`.trim() : s.invited_name || "Locataire à définir";
+        let nomComplet = (prenom || nom) ? `${prenom} ${nom}`.trim() : (s as any).invited_name || "Locataire à définir";
         
         if (tp && tp.locataire_type === "entreprise" && tp.raison_sociale) {
           nomComplet = `${tp.raison_sociale} (Représentée par ${tp.representant_legal || nomComplet})`;
@@ -264,6 +264,8 @@ export function mapRawEDLToTemplate(
           nom,
           prenom,
           nom_complet: nomComplet,
+          date_naissance: undefined,
+          lieu_naissance: undefined,
           email: s.profile?.email || undefined,
           telephone: s.profile?.telephone || undefined,
         };
@@ -397,7 +399,7 @@ export function mapRawEDLToTemplate(
     
     // Debug: logger si pas d'image trouvée pour une signature existante
     if (!signatureImage && sig.signed_at) {
-      console.warn(`[edl-to-template] ⚠️ Signature ${sig.signer_role} signée mais pas d'image:`, {
+      console.warn(`[edl-to-template] ⚠️ Signature ${(sig as any).signer_role} signée mais pas d'image:`, {
         hasUrl: !!sig.signature_image_url,
         hasImage: !!sig.signature_image,
         hasPath: !!sig.signature_image_path,
@@ -405,11 +407,11 @@ export function mapRawEDLToTemplate(
     }
 
     return {
-      signer_type: (sig.signer_role === "owner" || sig.signer_role === "proprietaire" ? "owner" : "tenant") as any,
+      signer_type: ((sig as any).signer_role === "owner" || (sig as any).signer_role === "proprietaire" ? "owner" : "tenant") as any,
       signer_profile_id: sig.signer_profile_id,
       signer_name: sig.profile 
         ? `${sig.profile.prenom || ""} ${sig.profile.nom || ""}`.trim()
-        : sig.signer_role === "owner" || sig.signer_role === "proprietaire" ? "Bailleur" : "Locataire",
+        : (sig as any).signer_role === "owner" || (sig as any).signer_role === "proprietaire" ? "Bailleur" : "Locataire",
       signature_image: signatureImage,
       signed_at: sig.signed_at || undefined,
       ip_address: sig.ip_inet || sig.ip_address || undefined,

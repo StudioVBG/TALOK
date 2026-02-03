@@ -133,7 +133,7 @@ export function PropertyDetailV2({ propertyId }: PropertyDetailV2Props) {
         description: error instanceof Error ? error.message : "Impossible de charger le logement.",
         variant: "destructive",
       });
-      router.push("/properties");
+      router.push("/owner/properties");
     } finally {
       setLoading(false);
     }
@@ -188,8 +188,8 @@ export function PropertyDetailV2({ propertyId }: PropertyDetailV2Props) {
         TypeIcon={TypeIcon}
         statusConfig={statusConfig}
         StatusIcon={StatusIcon}
-        onEdit={() => router.push(`/properties/${property.id}/edit`)}
-        onBack={() => router.push("/properties")}
+        onEdit={() => router.push(`/owner/properties/${property.id}/edit`)}
+        onBack={() => router.push("/owner/properties")}
       />
 
       {/* Bloc résumé avec informations clés */}

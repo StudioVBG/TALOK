@@ -1,21 +1,9 @@
 import { cn } from "@/lib/utils";
 
 interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
-  /**
-   * Texte pour les lecteurs d'écran
-   * @default "Chargement..."
-   */
   srText?: string;
 }
 
-/**
- * Skeleton - Composant de placeholder pendant le chargement
- *
- * Accessibilité:
- * - aria-busy="true" pour indiquer le chargement
- * - aria-live="polite" pour annoncer les changements
- * - Texte sr-only pour les lecteurs d'écran
- */
 function Skeleton({
   className,
   srText = "Chargement...",
@@ -27,10 +15,7 @@ function Skeleton({
       aria-busy="true"
       aria-live="polite"
       className={cn(
-        "relative overflow-hidden rounded-md bg-slate-100/80 dark:bg-slate-800/80",
-        "before:absolute before:inset-0 before:-translate-x-full",
-        "before:animate-[shimmer_2s_infinite]",
-        "before:bg-gradient-to-r before:from-transparent before:via-white/60 dark:before:via-white/10 before:to-transparent",
+        "relative overflow-hidden rounded-md bg-muted before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-background/60 before:to-transparent",
         className
       )}
       {...props}
@@ -40,9 +25,6 @@ function Skeleton({
   );
 }
 
-/**
- * SkeletonText - Skeleton pour du texte avec plusieurs lignes
- */
 function SkeletonText({
   lines = 3,
   className,
@@ -66,9 +48,6 @@ function SkeletonText({
   );
 }
 
-/**
- * SkeletonCard - Skeleton pour une carte
- */
 function SkeletonCard({ className }: { className?: string }) {
   return (
     <div
@@ -84,9 +63,6 @@ function SkeletonCard({ className }: { className?: string }) {
   );
 }
 
-/**
- * SkeletonAvatar - Skeleton pour un avatar
- */
 function SkeletonAvatar({
   size = "md",
   className,

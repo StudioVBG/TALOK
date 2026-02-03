@@ -89,6 +89,7 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   let traceId: string | null = null;
+  let langfuseService: any = null;
 
   try {
     const supabase = await createClient();
@@ -115,7 +116,6 @@ export async function POST(request: NextRequest) {
     const lastMessage = messages[messages.length - 1]?.content || "";
 
     // Démarrer le trace Langfuse (si disponible)
-    let langfuseService: any = null;
     try {
       const langfuseModule = await import("@/lib/ai/monitoring/langfuse.service");
       langfuseService = langfuseModule.langfuseService;
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     // Support du contexte étendu jusqu'à 400k tokens
     const modelName = process.env.OPENAI_MODEL || "gpt-5.2-thinking";
     const result = await streamText({
-      model: openai(modelName),
+      model: openai(modelName) as any,
       system: ragContext,
       messages,
       temperature: 0.3,

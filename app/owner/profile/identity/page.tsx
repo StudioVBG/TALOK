@@ -90,8 +90,8 @@ export default function OwnerIdentityPage() {
         );
         
         setDocuments({
-          recto: recto || null,
-          verso: verso || null,
+          recto: (recto || null) as IdentityDocument | null,
+          verso: (verso || null) as IdentityDocument | null,
         });
 
         // Générer les URLs signées pour l'aperçu

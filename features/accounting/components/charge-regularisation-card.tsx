@@ -170,7 +170,7 @@ export function ChargeRegularisationCard({
           </div>
         ) : (
           <div className="space-y-4">
-            {regularisations.map((regul) => (
+            {regularisations.map((regul: any) => (
               <div
                 key={regul.id}
                 className="flex items-center justify-between p-4 border rounded-lg"

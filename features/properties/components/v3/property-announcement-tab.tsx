@@ -71,8 +71,9 @@ export function PropertyAnnouncementTab({
     } catch (error: unknown) {
       // Vérifier si c'est l'erreur active_lease_blocking
       // L'erreur peut venir de différentes structures selon le client API
-      const errorMessage = error?.message || "";
-      const errorData = error?.data || error?.response?.data || error;
+      const err = error as any;
+      const errorMessage = err?.message || "";
+      const errorData = err?.data || err?.response?.data || error;
       
       if (
         errorData?.error === "active_lease_blocking" ||

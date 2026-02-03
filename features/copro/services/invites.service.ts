@@ -25,7 +25,7 @@ export async function getInvitesBySite(siteId: string): Promise<CoproInvite[]> {
     .order('created_at', { ascending: false });
   
   if (error) throw error;
-  return data || [];
+  return (data || []) as unknown as CoproInvite[];
 }
 
 export async function getInviteByToken(token: string): Promise<CoproInvite | null> {
@@ -41,8 +41,8 @@ export async function getInviteByToken(token: string): Promise<CoproInvite | nul
     if (error.code === 'PGRST116') return null;
     throw error;
   }
-  
-  return data;
+
+  return data as unknown as CoproInvite;
 }
 
 export async function createInvite(input: CreateInviteInput): Promise<CoproInvite> {
@@ -63,7 +63,7 @@ export async function createInvite(input: CreateInviteInput): Promise<CoproInvit
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as CoproInvite;
 }
 
 export async function createInvitesBatch(
@@ -95,12 +95,12 @@ export async function createInvitesBatch(
         continue;
       }
       
-      created.push(data);
+      created.push(data as unknown as CoproInvite);
       
       // Envoyer l'email si demandé
       if (input.send_emails) {
         try {
-          await sendInviteEmail(data);
+          await sendInviteEmail(data as unknown as CoproInvite);
         } catch (emailError) {
           errors.push(`${invite.email}: Erreur envoi email`);
         }
@@ -147,9 +147,9 @@ export async function resendInvite(id: string): Promise<CoproInvite> {
   if (error) throw error;
   
   // Renvoyer l'email
-  await sendInviteEmail(data);
-  
-  return data;
+  await sendInviteEmail(data as unknown as CoproInvite);
+
+  return data as unknown as CoproInvite;
 }
 
 // =====================================================
@@ -161,11 +161,12 @@ export async function validateInvite(
 ): Promise<InviteValidationResult> {
   const supabase = createClient();
   
-  const { data, error } = await supabase
+  const { data: rawData, error } = await supabase
     .rpc('validate_copro_invite', { p_token: token });
-  
+
   if (error) throw error;
-  
+
+  const data = rawData as Record<string, any>[];
   if (data && data.length > 0) {
     return data[0] as InviteValidationResult;
   }
@@ -197,14 +198,15 @@ export async function acceptInvite(
 ): Promise<InviteAcceptResult> {
   const supabase = createClient();
   
-  const { data, error } = await supabase
+  const { data: rawData, error } = await supabase
     .rpc('accept_copro_invite', {
       p_token: token,
       p_user_id: userId,
     });
-  
+
   if (error) throw error;
-  
+
+  const data = rawData as Record<string, any>[];
   if (data && data.length > 0) {
     return data[0] as InviteAcceptResult;
   }
@@ -268,7 +270,7 @@ export async function getInviteStats(siteId: string): Promise<InviteStats> {
   
   if (error) throw error;
   
-  const invites = data || [];
+  const invites = (data || []) as any[];
   
   return {
     total: invites.length,

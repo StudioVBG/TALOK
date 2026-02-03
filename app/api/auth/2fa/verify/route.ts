@@ -4,12 +4,15 @@ export const runtime = "nodejs";
 /**
  * POST /api/auth/2fa/verify - Vérifier un code TOTP et activer 2FA
  * SOTA 2026 - Support recovery codes + audit logging
+ *
+ * @security CRITICAL - Les secrets TOTP sont déchiffrés avant vérification
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { verifyTOTPCode, verifyRecoveryCode } from "@/lib/auth/totp";
+import { decrypt, isEncrypted } from "@/lib/security/encryption.service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,6 +80,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Déchiffrer le secret TOTP si nécessaire (migration transparente)
+    let totpSecret = twoFAConfig.totp_secret;
+    if (isEncrypted(totpSecret)) {
+      try {
+        totpSecret = decrypt(totpSecret);
+      } catch (decryptError) {
+        console.error("[2FA] Erreur déchiffrement:", decryptError);
+        return NextResponse.json(
+          { error: "Erreur de configuration 2FA" },
+          { status: 500 }
+        );
+      }
+    }
+
     let valid = false;
     let updatedRecoveryCodes = twoFAConfig.recovery_codes || [];
 
@@ -94,8 +111,8 @@ export async function POST(request: NextRequest) {
           .eq("user_id", user.id);
       }
     } else {
-      // Vérifier le code TOTP
-      valid = verifyTOTPCode(twoFAConfig.totp_secret, inputCode);
+      // Vérifier le code TOTP avec le secret déchiffré
+      valid = verifyTOTPCode(totpSecret, inputCode);
     }
 
     if (!valid) {

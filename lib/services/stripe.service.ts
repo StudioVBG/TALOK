@@ -130,6 +130,7 @@ function flattenObject(obj: Record<string, any>, prefix = ""): Record<string, st
 
 /**
  * Crée un PaymentIntent pour un paiement
+ * Active 3D Secure (SCA) pour conformité PSD2/DSP2
  */
 export async function createPaymentIntent(
   options: PaymentIntent
@@ -143,6 +144,12 @@ export async function createPaymentIntent(
       metadata: options.metadata,
       receipt_email: options.receiptEmail,
       automatic_payment_methods: { enabled: true },
+      // Activation 3D Secure (SCA) - Conformité PSD2/DSP2
+      payment_method_options: {
+        card: {
+          request_three_d_secure: "any", // Demande 3DS pour toutes les cartes éligibles
+        },
+      },
     });
 
     return {
@@ -155,7 +162,7 @@ export async function createPaymentIntent(
     console.error("[Stripe] Erreur création PaymentIntent:", error);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -181,7 +188,7 @@ export async function confirmPayment(
     console.error("[Stripe] Erreur confirmation:", error);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -201,7 +208,7 @@ export async function getPaymentStatus(paymentIntentId: string): Promise<Payment
   } catch (error: unknown) {
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -233,7 +240,7 @@ export async function createCustomer(customer: CustomerData): Promise<CustomerRe
     console.error("[Stripe] Erreur création client:", error);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -259,7 +266,7 @@ export async function findCustomerByEmail(email: string): Promise<CustomerResult
   } catch (error: unknown) {
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -293,7 +300,7 @@ export async function createRefund(
     console.error("[Stripe] Erreur remboursement:", error);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }
@@ -348,7 +355,7 @@ export async function verifyWebhookSignature(
   } catch (error: unknown) {
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 }

@@ -66,7 +66,7 @@ export async function GET(request: Request) {
         `
         )
         .eq("lease_id", leaseId)
-        .in("role", ["locataire_principal", "locataire", "colocataire"]);
+        .in("role", ["locataire_principal", "locataire", "colocataire"] as any);
 
       return NextResponse.json({
         success: true,
@@ -125,7 +125,7 @@ export async function GET(request: Request) {
     );
 
     // Filtrer par rôle locataire
-    query = query.in("role", ["locataire_principal", "locataire", "colocataire"]);
+    query = query.in("role", ["locataire_principal", "locataire", "colocataire"] as any);
 
     // Filtrer par propriétaire si spécifié ou si pas admin
     if (ownerId) {

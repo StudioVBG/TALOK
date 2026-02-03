@@ -109,13 +109,13 @@ export function BarChartHorizontal({
                 animationBegin={200}
                 label={
                   showValues
-                    ? {
+                    ? ({
                         position: "right",
                         fill: "hsl(var(--muted-foreground))",
                         fontSize: 12,
                         fontWeight: 500,
                         formatter: valueFormatter,
-                      }
+                      } as any)
                     : false
                 }
               >

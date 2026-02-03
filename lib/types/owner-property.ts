@@ -35,7 +35,7 @@ export type PropertyEtat = "draft" | "pending_review" | "published" | "rejected"
 /**
  * Propriété enrichie avec les données nécessaires pour l'affichage
  */
-export interface OwnerProperty extends Omit<PropertyRow, 'surface' | 'nb_pieces'> {
+export interface OwnerProperty extends Omit<PropertyRow, 'surface' | 'nb_pieces' | 'clim_presence' | 'etage' | 'ascenseur' | 'energie' | 'ges' | 'updated_at' | 'created_at'> {
   // Données de base (depuis PropertyRow)
   id: string;
   owner_id: string;

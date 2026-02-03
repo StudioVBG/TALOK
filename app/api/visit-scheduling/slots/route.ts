@@ -105,14 +105,14 @@ export async function GET(request: Request) {
     });
   } catch (error: unknown) {
     console.error("GET /api/visit-scheduling/slots error:", error);
-    if (error.name === "ZodError") {
+    if ((error as any).name === "ZodError") {
       return NextResponse.json(
-        { error: "Paramètres invalides", details: error.errors },
+        { error: "Paramètres invalides", details: (error as any).errors },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -184,14 +184,14 @@ export async function POST(request: Request) {
     });
   } catch (error: unknown) {
     console.error("POST /api/visit-scheduling/slots error:", error);
-    if (error.name === "ZodError") {
+    if ((error as any).name === "ZodError") {
       return NextResponse.json(
-        { error: "Données invalides", details: error.errors },
+        { error: "Données invalides", details: (error as any).errors },
         { status: 400 }
       );
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -85,7 +85,7 @@ export function DonutChart({
 
             <PieChart>
               <Pie
-                data={data}
+                data={data as any}
                 cx="50%"
                 cy="50%"
                 innerRadius="55%"

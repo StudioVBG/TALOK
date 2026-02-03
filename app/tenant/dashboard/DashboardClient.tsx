@@ -174,9 +174,9 @@ export function DashboardClient() {
 
   // ✅ SOTA 2026: Vérifier si la propriété a été supprimée (soft-delete)
   const isPropertyDeleted = useMemo(() => {
-    return currentLease?.property_deleted || 
-           currentProperty?.etat === "deleted" || 
-           currentProperty?.deleted_at != null;
+    return (currentLease as any)?.property_deleted ||
+           (currentProperty as any)?.etat === "deleted" ||
+           (currentProperty as any)?.deleted_at != null;
   }, [currentLease, currentProperty]);
 
   // 1. Logique de tri du flux d'activité unifié (inclut les événements temps réel)
@@ -198,7 +198,7 @@ export function DashboardClient() {
       // Factures
       ...(dashboard.invoices || []).map(inv => ({
         id: `inv-${inv.id}`,
-        date: new Date(inv.created_at || new Date()),
+        date: new Date((inv as any).created_at || new Date()),
         type: 'invoice',
         title: `Loyer ${inv.periode}`,
         amount: inv.montant_total,
@@ -229,10 +229,10 @@ export function DashboardClient() {
 
   // ✅ FIX: Vérifier si le locataire a déjà signé ce bail
   const hasSignedLease = useMemo(() => {
-    if (!dashboard?.lease?.signers) return false;
-    
+    if (!(dashboard?.lease as any)?.signers) return false;
+
     // Chercher le signataire locataire
-    const tenantSigner = dashboard.lease.signers.find((s: any) => 
+    const tenantSigner = ((dashboard!.lease as any).signers as any[]).find((s: any) =>
       s.role === 'locataire_principal' || s.role === 'tenant' || s.role === 'locataire'
     );
     
@@ -475,7 +475,7 @@ export function DashboardClient() {
         <div className="flex flex-col md:flex-row justify-between items-start gap-6">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-black tracking-tight text-slate-900">
+              <h1 className="text-3xl font-black tracking-tight text-foreground">
                 {isOnboardingIncomplete ? "Votre tableau de bord" : `Bonjour${profile?.prenom ? `, ${profile.prenom}` : ""} 👋`}
               </h1>
               {/* 🔴 SOTA 2026: Indicateur de connexion temps réel */}
@@ -493,7 +493,7 @@ export function DashboardClient() {
                 </motion.div>
               )}
             </div>
-            <p className="text-slate-500 mt-1 font-medium">
+            <p className="text-muted-foreground mt-1 font-medium">
               {!hasLeaseData 
                 ? "Liez votre logement pour accéder à toutes les fonctionnalités."
                 : pendingActions.length > 0 
@@ -544,9 +544,9 @@ export function DashboardClient() {
             transition={{ delay: 0.1 }}
             data-tour="tenant-financial"
           >
-            <GlassCard className="p-6 bg-white shadow-xl border-l-4 border-l-indigo-600 h-full flex flex-col justify-between">
+            <GlassCard className="p-6 bg-card shadow-xl border-l-4 border-l-indigo-600 h-full flex flex-col justify-between">
               <div>
-                <p className="text-xs font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Situation Financière</p>
+                <p className="text-xs font-black uppercase text-muted-foreground tracking-[0.2em] mb-1">Situation Financière</p>
                 {hasLeaseData ? (
                   <>
                     {/* 🔴 SOTA 2026: Utiliser les données temps réel si disponibles */}
@@ -554,14 +554,14 @@ export function DashboardClient() {
                       "transition-all duration-500",
                       realtime.hasRecentLeaseChange && "ring-2 ring-indigo-400 ring-offset-2 rounded-xl p-2 -m-2"
                     )}>
-                      <h3 className="text-3xl font-black text-slate-900 mt-2">
+                      <h3 className="text-3xl font-black text-foreground mt-2">
                         {formatCurrency(
                           realtime.totalMonthly > 0 
                             ? realtime.totalMonthly 
                             : (currentLease?.loyer || 0) + (currentLease?.charges_forfaitaires || 0)
                         )}
                       </h3>
-                      <p className="text-sm text-slate-500 mt-1 font-medium flex items-center gap-2">
+                      <p className="text-sm text-muted-foreground mt-1 font-medium flex items-center gap-2">
                         Loyer mensuel CC
                         {realtime.hasRecentLeaseChange && (
                           <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px] animate-pulse">
@@ -587,8 +587,8 @@ export function DashboardClient() {
                   </>
                 ) : (
                   <>
-                    <h3 className="text-3xl font-black text-slate-300 mt-2">— €</h3>
-                    <p className="text-sm text-slate-400 mt-1 font-medium">En attente de liaison</p>
+                    <h3 className="text-3xl font-black text-muted-foreground/50 mt-2">— €</h3>
+                    <p className="text-sm text-muted-foreground mt-1 font-medium">En attente de liaison</p>
                     <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-center gap-3">
                       <Clock className="h-5 w-5 text-amber-600" />
                       <p className="text-sm font-bold text-amber-700">Liez votre logement</p>
@@ -603,7 +603,7 @@ export function DashboardClient() {
                     <Button className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02]" asChild>
                       <Link href="/tenant/payments">Payer le loyer</Link>
                     </Button>
-                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-slate-200" asChild>
+                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-border" asChild>
                       <Link href="/tenant/payments">Historique & Quittances</Link>
                     </Button>
                   </>
@@ -683,7 +683,7 @@ export function DashboardClient() {
               </GlassCard>
             ) : (
               /* État vide - Pas de logement lié */
-              <GlassCard className="relative overflow-hidden h-full border-2 border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-slate-100 min-h-[300px]">
+              <GlassCard className="relative overflow-hidden h-full border-2 border-dashed border-border bg-gradient-to-br from-muted to-muted/80 min-h-[300px]">
                 <CardContent className="p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center h-full text-center">
                   <div className="relative mb-6">
                     <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-2xl animate-pulse" />
@@ -692,10 +692,10 @@ export function DashboardClient() {
                     </div>
                   </div>
                   
-                  <h2 className="text-2xl font-black text-slate-800 mb-3">
+                  <h2 className="text-2xl font-black text-foreground mb-3">
                     Pas encore de logement
                   </h2>
-                  <p className="text-slate-500 max-w-md mb-8 font-medium leading-relaxed">
+                  <p className="text-muted-foreground max-w-md mb-8 font-medium leading-relaxed">
                     Votre propriétaire doit vous inviter ou vous pouvez entrer le code de votre logement pour accéder à toutes les fonctionnalités.
                   </p>
                   
@@ -711,7 +711,7 @@ export function DashboardClient() {
                     </Button>
                     <Button 
                       variant="outline"
-                      className="font-bold rounded-xl h-12 px-6 border-slate-300"
+                      className="font-bold rounded-xl h-12 px-6 border-border"
                     >
                       <Info className="h-4 w-4 mr-2" />
                       Comment ça marche ?
@@ -727,7 +727,7 @@ export function DashboardClient() {
             <CreditBuilderCard 
               data={creditScoreData || undefined}
               isLoading={isLoadingScores}
-              className="h-full bg-white shadow-xl border-slate-200" 
+              className="h-full bg-card shadow-xl border-border"
             />
           </motion.div>
 
@@ -743,13 +743,13 @@ export function DashboardClient() {
           </motion.div>
 
           <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} data-tour="tenant-activity">
-            <GlassCard className="h-full p-0 overflow-hidden border-slate-200 shadow-xl bg-white">
-              <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                <h3 className="font-bold text-slate-900 flex items-center gap-2">
+            <GlassCard className="h-full p-0 overflow-hidden border-border shadow-xl bg-card">
+              <div className="p-6 border-b border-border flex items-center justify-between bg-muted/50">
+                <h3 className="font-bold text-foreground flex items-center gap-2">
                   <History className="h-4 w-4 text-indigo-600" /> Activité
                 </h3>
               </div>
-              <div className="divide-y divide-slate-100 overflow-y-auto max-h-[250px]">
+              <div className="divide-y divide-border overflow-y-auto max-h-[250px]">
                 {activityFeed.length > 0 ? activityFeed.map((item: any) => (
                   <motion.div 
                     key={item.id} 
@@ -757,7 +757,7 @@ export function DashboardClient() {
                     animate={{ opacity: 1, x: 0, backgroundColor: "transparent" }}
                     transition={{ duration: 0.5 }}
                     className={cn(
-                      "p-4 flex items-center justify-between hover:bg-slate-50/80 transition-colors group cursor-pointer",
+                      "p-4 flex items-center justify-between hover:bg-muted/80 transition-colors group cursor-pointer",
                       item.isRealtime && item.importance === "high" && "bg-indigo-50/50"
                     )}
                   >
@@ -767,7 +767,7 @@ export function DashboardClient() {
                         item.type === 'invoice' ? 'bg-emerald-50 text-emerald-600' : 
                         item.type === 'lease' ? 'bg-indigo-50 text-indigo-600' :
                         item.type === 'document' ? 'bg-amber-50 text-amber-600' :
-                        'bg-slate-50 text-slate-600'
+                        'bg-muted text-muted-foreground'
                       )}>
                         {item.type === 'invoice' ? <FileText className="h-4 w-4" /> : 
                          item.type === 'lease' ? <Home className="h-4 w-4" /> :
@@ -782,16 +782,16 @@ export function DashboardClient() {
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-900 truncate max-w-[120px]">{item.title}</p>
-                        <p className="text-[10px] font-medium text-slate-400">
+                        <p className="text-sm font-bold text-foreground truncate max-w-[120px]">{item.title}</p>
+                        <p className="text-[10px] font-medium text-muted-foreground">
                           {item.isRealtime ? "À l'instant" : formatDateShort(item.date)}
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="h-3 w-3 text-slate-300 group-hover:text-indigo-600" />
+                    <ChevronRight className="h-3 w-3 text-muted-foreground/50 group-hover:text-indigo-600" />
                   </motion.div>
                 )) : (
-                  <div className="p-8 text-center text-slate-400 text-sm">Aucune activité</div>
+                  <div className="p-8 text-center text-muted-foreground text-sm">Aucune activité</div>
                 )}
               </div>
             </GlassCard>
@@ -806,37 +806,37 @@ export function DashboardClient() {
             transition={{ delay: 0.6 }}
           >
             {currentLease?.owner ? (
-              <GlassCard className="p-6 border-slate-200 bg-white shadow-xl flex items-center justify-between">
+              <GlassCard className="p-6 border-border bg-card shadow-xl flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-lg">
                     {currentLease.owner.name?.[0] || "P"}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Mon Bailleur</p>
-                    <p className="font-black text-slate-900 text-lg leading-tight">{currentLease.owner.name}</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Mon Bailleur</p>
+                    <p className="font-black text-foreground text-lg leading-tight">{currentLease.owner.name}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="h-11 rounded-xl border-slate-200 font-bold" asChild>
+                  <Button variant="outline" className="h-11 rounded-xl border-border font-bold" asChild>
                     <Link href="/tenant/requests/new">Aide</Link>
                   </Button>
-                  <Button variant="outline" className="h-11 rounded-xl border-slate-200 font-bold px-4">
+                  <Button variant="outline" className="h-11 rounded-xl border-border font-bold px-4">
                     <Phone className="h-4 w-4" />
                   </Button>
                 </div>
               </GlassCard>
             ) : (
-              <GlassCard className="p-6 border-slate-200 bg-white shadow-xl flex items-center justify-between">
+              <GlassCard className="p-6 border-border bg-card shadow-xl flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-black text-xl">
+                  <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground font-black text-xl">
                     ?
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Mon Bailleur</p>
-                    <p className="font-medium text-slate-400 text-lg leading-tight">Pas encore de propriétaire</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Mon Bailleur</p>
+                    <p className="font-medium text-muted-foreground text-lg leading-tight">Pas encore de propriétaire</p>
                   </div>
                 </div>
-                <Button variant="outline" className="h-11 rounded-xl border-slate-200 font-bold text-slate-400" disabled>
+                <Button variant="outline" className="h-11 rounded-xl border-border font-bold text-muted-foreground" disabled>
                   Aide
                 </Button>
               </GlassCard>

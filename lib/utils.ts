@@ -1,6 +1,9 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+// Re-export common format utilities for convenience
+export { formatCurrency, formatDate } from "@/lib/helpers/format";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

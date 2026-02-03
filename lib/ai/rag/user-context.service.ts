@@ -46,7 +46,7 @@ export class UserContextService {
     // Filtrer par similarité minimum si spécifié
     const minSim = options?.minSimilarity || 0.6;
     
-    return (data || [])
+    return ((data as any[]) || [])
       .filter((doc: any) => doc.similarity >= minSim)
       .map((doc: any) => ({
         id: doc.id,
@@ -105,7 +105,7 @@ export class UserContextService {
           content,
           summary,
           embedding,
-        },
+        } as any,
         { onConflict: "entity_type,entity_id" }
       );
 
@@ -152,7 +152,7 @@ export class UserContextService {
           content,
           summary,
           embedding,
-        },
+        } as any,
         { onConflict: "entity_type,entity_id" }
       );
 
@@ -199,7 +199,7 @@ export class UserContextService {
           content,
           summary,
           embedding,
-        },
+        } as any,
         { onConflict: "entity_type,entity_id" }
       );
 

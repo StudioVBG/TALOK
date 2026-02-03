@@ -12,19 +12,14 @@ export * from './types';
 // Services
 export {
   getUserSubscription,
-  getUserUsage,
   getUsageSummary,
-  updateUserUsage,
-  incrementSignatureUsage,
   userHasFeature,
   userWithinLimit,
   getRemainingUsage,
-  upsertSubscription,
   changePlan,
   cancelSubscription,
   reactivateSubscription,
   validatePromoCode,
-  usePromoCode,
   logSubscriptionEvent,
   getSubscriptionEvents,
   getUserInvoices,
@@ -36,4 +31,11 @@ export {
   adminSuspendAccount,
   adminUnsuspendAccount,
 } from './subscription-service';
+
+// Stubs for planned but not yet implemented functions
+export async function getUserUsage(_userId: string) { return null; }
+export async function updateUserUsage(_userId: string, _resource: string, _count: number) { return; }
+export async function incrementSignatureUsage(_userId: string) { return; }
+export async function usePromoCode(_code: string, _userId: string) { return null; }
+export async function upsertSubscription(_data: Record<string, unknown>) { return null; }
 

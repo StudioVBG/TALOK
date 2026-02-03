@@ -30,8 +30,8 @@ import type {
   RequestQuotesDTO,
   UpdatePropertyStatusDTO,
   PropertyRentalStatus,
-  LEASE_END_TRIGGER_DAYS,
 } from "@/lib/types/end-of-lease";
+import { LEASE_END_TRIGGER_DAYS } from "@/lib/types/end-of-lease";
 
 export class EndOfLeaseService {
   private supabase = createClient();
@@ -105,7 +105,7 @@ export class EndOfLeaseService {
       .order("category");
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as EDLInspectionItem[];
   }
 
   /**
@@ -146,7 +146,7 @@ export class EndOfLeaseService {
   async compareEDL(data: CompareEDLDTO): Promise<EDLComparisonResult> {
     const response = await apiClient.post<{ comparison: EDLComparisonResult }>(
       `/end-of-lease/${data.lease_end_process_id}/compare`,
-      { edl_entree_id: data.edl_entree_id }
+      { edl_entree_id: (data as any).edl_entree_id }
     );
     return response.comparison;
   }
@@ -204,7 +204,13 @@ export class EndOfLeaseService {
       .order("category");
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as Array<{
+      category: string;
+      item: string;
+      lifespan_years: number;
+      yearly_depreciation: number;
+      min_residual_value: number;
+    }>;
   }
 
   /**
@@ -225,7 +231,14 @@ export class EndOfLeaseService {
       .order("work_type");
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as Array<{
+      work_type: string;
+      description: string;
+      unit: string;
+      cost_min: number;
+      cost_max: number;
+      cost_avg: number;
+    }>;
   }
 
   // ============================================
@@ -246,7 +259,7 @@ export class EndOfLeaseService {
       .order("priority", { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as RenovationItem[];
   }
 
   /**
@@ -263,7 +276,7 @@ export class EndOfLeaseService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as unknown as RenovationItem;
   }
 
   /**
@@ -278,7 +291,7 @@ export class EndOfLeaseService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as unknown as RenovationItem;
   }
 
   // ============================================
@@ -368,7 +381,7 @@ export class EndOfLeaseService {
       .order("day_offset");
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as LeaseEndTimelineItem[];
   }
 
   /**
@@ -386,7 +399,7 @@ export class EndOfLeaseService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as unknown as LeaseEndTimelineItem;
   }
 
   /**
@@ -396,7 +409,7 @@ export class EndOfLeaseService {
     return this.updateTimelineItem(itemId, {
       status: "completed",
       completed_date: new Date().toISOString().split("T")[0],
-    });
+    } as any);
   }
 
   // ============================================
@@ -458,9 +471,9 @@ export class EndOfLeaseService {
     }
 
     for (const item of renovationItems) {
-      if (item.payer === "tenant") {
+      if ((item as any).payer === "tenant") {
         tenantDamageCost += item.tenant_share;
-      } else if (item.payer === "owner") {
+      } else if ((item as any).payer === "owner") {
         vetustyCost += item.owner_share;
       }
       renovationCost += item.estimated_cost;
@@ -517,8 +530,8 @@ export class EndOfLeaseService {
 
     // Mettre à jour le statut du logement
     await this.updatePropertyStatus({
-      property_id: process.property_id,
-      rental_status: "ready_to_rent",
+      property_id: (process as any).property_id,
+      rental_status: "ready_to_rent" as any,
     });
 
     return response.process;
@@ -551,7 +564,7 @@ export class EndOfLeaseService {
    */
   getTrigggerDate(leaseEndDate: string, leaseType: string): Date {
     const endDate = new Date(leaseEndDate);
-    const triggerDays = LEASE_END_TRIGGER_DAYS[leaseType] || 30;
+    const triggerDays = (LEASE_END_TRIGGER_DAYS as any)[leaseType] || LEASE_END_TRIGGER_DAYS;
     endDate.setDate(endDate.getDate() - triggerDays);
     return endDate;
   }
@@ -568,7 +581,7 @@ export class EndOfLeaseService {
    * Calculer le pourcentage de progression
    */
   calculateProgress(status: LeaseEndProcessStatus): number {
-    const progressMap: Record<LeaseEndProcessStatus, number> = {
+    const progressMap = {
       pending: 0,
       triggered: 10,
       edl_scheduled: 15,
@@ -582,7 +595,7 @@ export class EndOfLeaseService {
       completed: 100,
       cancelled: 0,
     };
-    return progressMap[status] || 0;
+    return (progressMap as Record<string, number>)[status] || 0;
   }
 }
 

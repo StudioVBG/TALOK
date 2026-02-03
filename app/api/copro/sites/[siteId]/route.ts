@@ -79,7 +79,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const stats = {
       buildings_count: site.buildings?.length || 0,
       units_count: unitsStats?.length || 0,
-      total_tantiemes_actual: unitsStats?.reduce((sum, u) => sum + (u.tantieme_general || 0), 0) || 0,
+      total_tantiemes_actual: unitsStats?.reduce((sum, u) => sum + (Number(u.tantieme_general) || 0), 0) || 0,
       occupied_count: unitsStats?.filter(u => u.occupation_mode === 'owner_occupied').length || 0,
       rented_count: unitsStats?.filter(u => u.occupation_mode === 'rented').length || 0,
       vacant_count: unitsStats?.filter(u => u.occupation_mode === 'vacant').length || 0,

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 /**
@@ -40,8 +41,24 @@ export type AutocompleteValue =
   | "url"
   | "username";
 
+const inputVariants = cva(
+  "flex h-11 w-full rounded-md border bg-background px-3 py-2 text-base sm:text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "border-input focus-visible:ring-ring",
+        error: "border-destructive focus-visible:ring-destructive text-destructive",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+);
+
 export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+  extends React.InputHTMLAttributes<HTMLInputElement>,
+    VariantProps<typeof inputVariants> {
   /**
    * Valeur d'autocomplete pour améliorer l'UX sur mobile
    */
@@ -55,13 +72,10 @@ export interface InputProps
    */
   rightElement?: React.ReactNode;
   /**
-   * État d'erreur visuel
+   * Message d'erreur — quand fourni, active le variant error
+   * et affiche le message sous le champ
    */
-  error?: boolean;
-  /**
-   * Message d'erreur accessible
-   */
-  errorMessage?: string;
+  error?: string;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -69,82 +83,89 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     {
       className,
       type,
+      variant,
       leftIcon,
       rightElement,
       error,
-      errorMessage,
+      id,
       ...props
     },
     ref
   ) => {
-    const errorId = React.useId();
+    const generatedId = React.useId();
+    const inputId = id ?? generatedId;
+    const errorId = `${inputId}-error`;
+    const computedVariant = error ? "error" : variant;
     const hasLeftIcon = !!leftIcon;
     const hasRightElement = !!rightElement;
 
-    // Input de base sans wrapper si pas d'icônes
-    if (!hasLeftIcon && !hasRightElement) {
+    const inputElement = (
+      <input
+        id={inputId}
+        type={type}
+        className={cn(
+          inputVariants({ variant: computedVariant }),
+          hasLeftIcon && "pl-10",
+          hasRightElement && "pr-10",
+          className
+        )}
+        ref={ref}
+        aria-invalid={!!error}
+        aria-describedby={error ? errorId : undefined}
+        {...props}
+      />
+    );
+
+    // Input with icon wrapper
+    if (hasLeftIcon || hasRightElement) {
       return (
-        <input
-          type={type}
-          className={cn(
-            "flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground",
-            "ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium",
-            "placeholder:text-muted-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            "disabled:cursor-not-allowed disabled:opacity-50",
-            error && "border-destructive focus-visible:ring-destructive",
-            className
+        <div className="w-full">
+          <div className="relative">
+            {hasLeftIcon && (
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                {leftIcon}
+              </div>
+            )}
+            {inputElement}
+            {hasRightElement && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {rightElement}
+              </div>
+            )}
+          </div>
+          {error && (
+            <p
+              id={errorId}
+              className="mt-1.5 text-sm text-destructive"
+              role="alert"
+            >
+              {error}
+            </p>
           )}
-          ref={ref}
-          aria-invalid={error ? "true" : undefined}
-          aria-describedby={error && errorMessage ? errorId : undefined}
-          {...props}
-        />
+        </div>
       );
     }
 
-    // Input avec wrapper pour les icônes
+    // Plain input without icons
     return (
-      <div className="relative">
-        {hasLeftIcon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-            {leftIcon}
-          </div>
-        )}
-        <input
-          type={type}
-          className={cn(
-            "flex h-11 w-full rounded-md border border-input bg-background py-2 text-sm text-foreground",
-            "ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium",
-            "placeholder:text-muted-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            "disabled:cursor-not-allowed disabled:opacity-50",
-            hasLeftIcon ? "pl-10 pr-3" : "px-3",
-            hasRightElement && !hasLeftIcon && "pr-10",
-            hasRightElement && hasLeftIcon && "pr-10",
-            error && "border-destructive focus-visible:ring-destructive",
-            className
-          )}
-          ref={ref}
-          aria-invalid={error ? "true" : undefined}
-          aria-describedby={error && errorMessage ? errorId : undefined}
-          {...props}
-        />
-        {hasRightElement && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            {rightElement}
-          </div>
-        )}
-        {error && errorMessage && (
-          <span id={errorId} className="sr-only">
-            {errorMessage}
-          </span>
+      <div className="w-full">
+        {inputElement}
+        {error && (
+          <p
+            id={errorId}
+            className="mt-1.5 text-sm text-destructive"
+            role="alert"
+          >
+            {error}
+          </p>
         )}
       </div>
     );
   }
 );
 Input.displayName = "Input";
+
+export { Input, inputVariants };
 
 /**
  * Inputs pré-configurés avec autocomplete
@@ -260,7 +281,7 @@ export const BirthDateInput = React.forwardRef<HTMLInputElement, SpecializedInpu
 BirthDateInput.displayName = "BirthDateInput";
 
 export const AmountInput = React.forwardRef<HTMLInputElement, SpecializedInputProps & { currency?: string }>(
-  ({ currency = "€", ...props }, ref) => (
+  ({ currency = "\u20ac", ...props }, ref) => (
     <Input
       ref={ref}
       type="number"
@@ -273,5 +294,3 @@ export const AmountInput = React.forwardRef<HTMLInputElement, SpecializedInputPr
   )
 );
 AmountInput.displayName = "AmountInput";
-
-export { Input };

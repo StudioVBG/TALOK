@@ -63,6 +63,7 @@ const TYPE_ICONS: Record<PropertyTypeV3, typeof Home> = {
   bureaux: Building2,
   entrepot: Warehouse,
   fonds_de_commerce: Store,
+  immeuble: Building2,
 };
 
 // Groupes de filtres

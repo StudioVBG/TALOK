@@ -22,8 +22,8 @@ export async function POST(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
-        { status: error.status || 401 }
+        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { status: (error as any).status || 401 }
       );
     }
 
@@ -223,19 +223,20 @@ export async function POST(
       photo: insertedPhoto,
     });
   } catch (error: unknown) {
-    if (error.name === "ZodError") {
+    if (error && typeof error === 'object' && 'name' in error && (error as any).name === "ZodError") {
+      const zodErr = error as any;
       return NextResponse.json(
-        { 
-          error: "Données invalides", 
-          details: error.errors,
-          message: error.errors?.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+        {
+          error: "Données invalides",
+          details: zodErr.errors,
+          message: zodErr.errors?.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
         },
         { status: 400 }
       );
     }
     console.error("[upload-url] Erreur:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
     );
   }

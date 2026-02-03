@@ -72,7 +72,7 @@ export function RoomsStep() {
   const getRoomIcon = useCallback((typePiece: string) => presets.find(p => p.id === typePiece)?.icon || Box, [presets]);
 
   const handleAddRoom = useCallback((preset: RoomPreset) => {
-    addRoom({ type_piece: preset.id as RoomTypeV3, label_affiche: getNumberedLabel(preset.id, preset.label) });
+    addRoom({ type_piece: preset.id as any, label_affiche: getNumberedLabel(preset.id, preset.label) });
   }, [addRoom, getNumberedLabel]);
 
   return (

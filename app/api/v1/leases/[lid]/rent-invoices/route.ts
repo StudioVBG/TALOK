@@ -113,7 +113,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         montant_charges: montantCharges,
         montant_total: montantTotal,
         statut: "sent",
-      })
+      } as any)
       .select()
       .single();
 

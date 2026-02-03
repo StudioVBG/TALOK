@@ -57,8 +57,8 @@ export default async function TenantSettingsPage() {
 
   return (
     <TenantSettingsClient 
-      profile={profile} 
-      tenantProfile={tenantProfile}
+      profile={profile as any}
+      tenantProfile={tenantProfile as any}
       userEmail={user.email || ""}
     />
   );

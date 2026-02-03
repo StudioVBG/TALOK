@@ -47,10 +47,10 @@ export async function runTestScenario(scenario: TestScenario): Promise<TestResul
         throw new Error(`Scénario de test inconnu: ${scenario.id}`);
     }
   } catch (error: unknown) {
-    log(`Erreur: ${error.message}`, logs);
+    log(`Erreur: ${(error as Error).message}`, logs);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
       logs,
     };
   }
@@ -101,7 +101,7 @@ async function testCreateFastT2Habitation(logs: string[]): Promise<TestResult> {
       };
     } catch (error: unknown) {
       // Si la soumission échoue à cause des photos manquantes, c'est attendu
-      if (error.message?.includes("photo") || error.message?.includes("Photo")) {
+      if ((error as Error).message?.includes("photo") || (error as Error).message?.includes("Photo")) {
         log("Soumission échouée (photos manquantes - attendu)", logs);
         return {
           success: false,
@@ -112,10 +112,10 @@ async function testCreateFastT2Habitation(logs: string[]): Promise<TestResult> {
       throw error;
     }
   } catch (error: unknown) {
-    log(`Erreur: ${error.message}`, logs);
+    log(`Erreur: ${(error as Error).message}`, logs);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
       logs,
     };
   }
@@ -166,18 +166,18 @@ async function testCreateDetailedT3Habitation(logs: string[]): Promise<TestResul
         data: { propertyId: draft.id },
       };
     } catch (error: unknown) {
-      log(`Soumission échouée: ${error.message}`, logs);
+      log(`Soumission échouée: ${(error as Error).message}`, logs);
       return {
         success: false,
-        error: error.message,
+        error: (error as Error).message,
         logs,
       };
     }
   } catch (error: unknown) {
-    log(`Erreur: ${error.message}`, logs);
+    log(`Erreur: ${(error as Error).message}`, logs);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
       logs,
     };
   }
@@ -219,18 +219,18 @@ async function testCreateParking(logs: string[]): Promise<TestResult> {
         data: { propertyId: draft.id },
       };
     } catch (error: unknown) {
-      log(`Soumission échouée: ${error.message}`, logs);
+      log(`Soumission échouée: ${(error as Error).message}`, logs);
       return {
         success: false,
-        error: error.message,
+        error: (error as Error).message,
         logs,
       };
     }
   } catch (error: unknown) {
-    log(`Erreur: ${error.message}`, logs);
+    log(`Erreur: ${(error as Error).message}`, logs);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
       logs,
     };
   }
@@ -276,18 +276,18 @@ async function testSubmitWithoutPhotos(logs: string[]): Promise<TestResult> {
       };
     } catch (error: unknown) {
       // C'est attendu que ça échoue
-      log(`Soumission échouée comme attendu: ${error.message}`, logs);
+      log(`Soumission échouée comme attendu: ${(error as Error).message}`, logs);
       return {
         success: true, // Le test est réussi car l'erreur est attendue
         logs,
-        data: { expectedError: error.message },
+        data: { expectedError: (error as Error).message },
       };
     }
   } catch (error: unknown) {
-    log(`Erreur: ${error.message}`, logs);
+    log(`Erreur: ${(error as Error).message}`, logs);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
       logs,
     };
   }
@@ -337,8 +337,8 @@ async function testSwitchModeLocationWithActiveLease(logs: string[]): Promise<Te
       };
     } catch (error: unknown) {
       // Vérifier que c'est bien l'erreur active_lease_blocking
-      const errorMessage = error instanceof Error ? error.message : "";
-      const errorData = error.data || {};
+      const errorMessage = error instanceof Error ? (error as Error).message : "";
+      const errorData = (error as any).data || {};
       if (
         errorData.error === "active_lease_blocking" ||
         errorMessage.includes("active_lease_blocking") ||
@@ -360,10 +360,10 @@ async function testSwitchModeLocationWithActiveLease(logs: string[]): Promise<Te
       }
     }
   } catch (error: unknown) {
-    log(`Erreur: ${error.message}`, logs);
+    log(`Erreur: ${(error as Error).message}`, logs);
     return {
       success: false,
-      error: error.message,
+      error: (error as Error).message,
       logs,
     };
   }

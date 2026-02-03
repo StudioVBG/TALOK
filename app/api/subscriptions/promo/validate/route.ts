@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const now = new Date();
 
     // Vérifier la validité temporelle
-    if (promo.valid_until && new Date(promo.valid_until) < now) {
+    if (promo.valid_until && new Date(promo.valid_until as string) < now) {
       return NextResponse.json({ 
         valid: false, 
         error: "Ce code promo a expiré" 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     // Vérifier les utilisations max
-    if (promo.max_uses && promo.uses_count >= promo.max_uses) {
+    if (promo.max_uses && (promo.uses_count as number) >= (promo.max_uses as number)) {
       return NextResponse.json({ 
         valid: false, 
         error: "Ce code promo a atteint sa limite d'utilisation" 
@@ -61,8 +61,8 @@ export async function POST(request: Request) {
     }
 
     // Vérifier les plans applicables
-    if (promo.applicable_plans && promo.applicable_plans.length > 0 && plan_slug) {
-      if (!promo.applicable_plans.includes(plan_slug)) {
+    if (promo.applicable_plans && (promo.applicable_plans as any[]).length > 0 && plan_slug) {
+      if (!(promo.applicable_plans as any[]).includes(plan_slug)) {
         return NextResponse.json({ 
           valid: false, 
           error: "Ce code n'est pas valide pour ce plan" 
@@ -82,10 +82,10 @@ export async function POST(request: Request) {
     const { count: userUses } = await supabase
       .from("promo_code_uses")
       .select("id", { count: "exact", head: true })
-      .eq("promo_code_id", promo.id)
+      .eq("promo_code_id", promo.id as string)
       .eq("user_id", user.id);
 
-    if (userUses && userUses >= promo.max_uses_per_user) {
+    if (userUses && userUses >= (promo.max_uses_per_user as number)) {
       return NextResponse.json({ 
         valid: false, 
         error: "Vous avez déjà utilisé ce code promo" 
@@ -118,9 +118,9 @@ export async function POST(request: Request) {
       originalPrice = billing_cycle === "yearly" ? (plan.price_yearly || 0) : (plan.price_monthly || 0);
 
       if (promo.discount_type === "percent") {
-        discountAmount = Math.round(originalPrice * (promo.discount_value / 100));
+        discountAmount = Math.round(originalPrice * ((promo.discount_value as number) / 100));
       } else {
-        discountAmount = promo.discount_value;
+        discountAmount = promo.discount_value as number;
       }
 
       finalPrice = Math.max(0, originalPrice - discountAmount);

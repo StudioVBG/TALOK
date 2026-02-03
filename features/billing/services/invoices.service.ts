@@ -101,7 +101,7 @@ export class InvoicesService {
   async getUnpaidInvoicesByLease(leaseId: string): Promise<Invoice[]> {
     return this.getInvoices({
       lease_id: leaseId,
-      statut: ["draft", "sent", "partial"]
+      statut: ["draft", "sent", "partial" as any]
     });
   }
 

@@ -227,10 +227,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       actor_role: profile.role,
       old_status: workOrder.statut,
       new_status: actionConfig.to,
-      event_data: { action, ...validationResult.data },
+      event_data: { ...validationResult.data },
       description: `Action "${action}" effectuée`,
-    }).catch(err => {
-      console.error('Error adding timeline event:', err);
     });
 
     // Créer une notification pour l'autre partie
@@ -258,8 +256,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           title: notif.title,
           message: notif.message,
           data: { work_order_id: workOrderId, action },
-        }).catch(err => {
-          console.error('Error creating notification:', err);
         });
       }
     }
@@ -274,7 +270,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   } catch (error: unknown) {
     console.error('Error in POST /api/work-orders/[id]/flow:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -377,12 +373,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         provider: workOrder.provider,
         dates: {
           created_at: workOrder.created_at,
-          accepted_at: workOrder.accepted_at,
-          visit_scheduled_at: workOrder.visit_scheduled_at,
-          visit_completed_at: workOrder.visit_completed_at,
-          work_started_at: workOrder.work_started_at,
-          work_completed_at: workOrder.work_completed_at,
-          closed_at: workOrder.closed_at,
+          accepted_at: (workOrder as any).accepted_at,
+          visit_scheduled_at: (workOrder as any).visit_scheduled_at,
+          visit_completed_at: (workOrder as any).visit_completed_at,
+          work_started_at: (workOrder as any).work_started_at,
+          work_completed_at: (workOrder as any).work_completed_at,
+          closed_at: (workOrder as any).closed_at,
         },
         costs: {
           estimated: workOrder.cout_estime,
@@ -397,7 +393,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   } catch (error: unknown) {
     console.error('Error in GET /api/work-orders/[id]/flow:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

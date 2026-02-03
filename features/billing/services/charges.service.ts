@@ -22,7 +22,7 @@ export class ChargesService {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return data as Charge[];
+    return data as unknown as Charge[];
   }
 
   async getChargeById(id: string) {
@@ -33,7 +33,7 @@ export class ChargesService {
       .single();
 
     if (error) throw error;
-    return data as Charge;
+    return data as unknown as Charge;
   }
 
   async getChargesByProperty(propertyId: string) {
@@ -44,7 +44,7 @@ export class ChargesService {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return data as Charge[];
+    return data as unknown as Charge[];
   }
 
   async createCharge(data: CreateChargeData) {
@@ -57,7 +57,7 @@ export class ChargesService {
       .single();
 
     if (error) throw error;
-    return charge as Charge;
+    return charge as unknown as Charge;
   }
 
   async updateCharge(id: string, data: UpdateChargeData) {
@@ -69,7 +69,7 @@ export class ChargesService {
       .single();
 
     if (error) throw error;
-    return charge as Charge;
+    return charge as unknown as Charge;
   }
 
   async deleteCharge(id: string) {

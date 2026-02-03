@@ -36,6 +36,7 @@ import type { PropertyDetails } from "../../_data/fetchPropertyDetails";
 import { PropertyMetersSection } from "@/components/owner/properties/PropertyMetersSection";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { EntityNotes } from "@/components/ui/entity-notes";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Navigation, CheckCircle2 } from "lucide-react";
@@ -364,20 +365,20 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       console.error("Erreur sauvegarde globale:", error);
       
       // Extraire le message d'erreur détaillé
-      let errorMessage = error instanceof Error ? error.message : "Erreur lors de la sauvegarde";
+      let errorMessage = error instanceof Error ? (error as Error).message : "Erreur lors de la sauvegarde";
       let errorDetails = "";
       
-      if (error.response?.error) {
-        errorMessage = error.response.error;
-        if (error.response.details) {
+      if ((error as any).response?.error) {
+        errorMessage = (error as any).response.error;
+        if ((error as any).response.details) {
           // Si c'est une erreur de validation Zod
-          if (Array.isArray(error.response.details)) {
-            errorDetails = error.response.details
+          if (Array.isArray((error as any).response.details)) {
+            errorDetails = (error as any).response.details
               .map((d: any) => `${d.path || d.field || "champ"}: ${d.message || d}`)
               .join(", ");
-          } else if (typeof error.response.details === "object") {
+          } else if (typeof (error as any).response.details === "object") {
             // Si c'est une erreur Supabase
-            errorDetails = error.response.details.message || error.response.details.hint || "";
+            errorDetails = (error as any).response.details.message || (error as any).response.details.hint || "";
           }
         }
       }
@@ -462,6 +463,16 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Breadcrumb */}
+      <Breadcrumb
+        items={[
+          { label: "Mes biens", href: "/owner/properties" },
+          { label: property.adresse_complete || "Détails du bien" }
+        ]}
+        homeHref="/owner/dashboard"
+        className="mb-4"
+      />
+
       {/* Bouton retour */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <Button asChild variant="ghost" className="pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-900 w-fit">

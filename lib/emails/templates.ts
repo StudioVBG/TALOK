@@ -768,7 +768,7 @@ export const emailTemplates = {
             <tr>
               <td style="padding: 16px; background: ${COLORS.gray[50]}; border-radius: 8px 0 0 8px; text-align: center; width: 45%;">
                 <p style="color: ${COLORS.gray[500]}; font-size: 12px; margin: 0 0 8px 0;">ANCIEN TARIF</p>
-                <p style="text-decoration: line-through; color: ${COLORS.gray[400]}; font-size: 24px; font-weight: 600; margin: 0;">
+                <p style="text-decoration: line-through; color: ${(COLORS.gray as Record<number, string>)[400] ?? COLORS.gray[300]}; font-size: 24px; font-weight: 600; margin: 0;">
                   ${(data.oldPriceMonthly / 100).toFixed(2)}€
                 </p>
                 <p style="color: ${COLORS.gray[500]}; font-size: 12px; margin: 4px 0 0 0;">/mois</p>

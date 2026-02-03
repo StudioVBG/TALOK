@@ -46,15 +46,15 @@ const MultiAgentState = Annotation.Root({
       role: "owner" as const,
       locale: "fr" as const,
     }),
-  }),
+  } as any),
   // Agent actuellement actif
   activeAgent: Annotation<string | undefined>({
     default: () => undefined,
-  }),
+  } as any),
   // Résultats des agents
   agentResults: Annotation<Record<string, unknown>>({
     default: () => ({}),
-  }),
+  } as any),
 });
 
 type StateType = typeof MultiAgentState.State;

@@ -116,7 +116,7 @@ export async function POST(
   } catch (error: unknown) {
     console.error("POST /api/properties/[id]/share error", error);
     return NextResponse.json(
-      { error: error?.message ?? "Erreur serveur durant la génération du lien." },
+      { error: (error as any)?.message ?? "Erreur serveur durant la génération du lien." },
       { status: 500 }
     );
   }
@@ -155,7 +155,7 @@ export async function GET(
   } catch (error: unknown) {
     console.error("GET /api/properties/[id]/share error", error);
     return NextResponse.json(
-      { error: error?.message ?? "Erreur lors du chargement de l'historique." },
+      { error: (error as any)?.message ?? "Erreur lors du chargement de l'historique." },
       { status: 500 }
     );
   }

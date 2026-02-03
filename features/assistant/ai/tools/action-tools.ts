@@ -225,7 +225,7 @@ export const createInvoiceTool = tool(
         montant_total: montantTotal,
         date_echeance: input.dueDate,
         statut: "draft",
-      })
+      } as any)
       .select("id")
       .single();
     

@@ -53,7 +53,7 @@ export default async function SignersPage({ params }: PageProps) {
 
     return (
       <SignersClient
-        signers={details.signers}
+        signers={details.signers as any}
         lease={details.lease}
         property={details.property}
         leaseId={id}

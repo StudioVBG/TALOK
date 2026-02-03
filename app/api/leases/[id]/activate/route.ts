@@ -253,8 +253,8 @@ export async function POST(
         edl_signed: edl?.status === "signed",
         forced: force_without_edl
       }
-    }).catch(() => {}); // Non bloquant
-    
+    });
+
     // 9. Journaliser
     await serviceClient.from("audit_log").insert({
       user_id: user.id,
@@ -267,7 +267,7 @@ export async function POST(
         edl_id: edl?.id || null,
         forced: force_without_edl
       }
-    }).catch(() => {}); // Non bloquant
+    });
     
     return NextResponse.json({
       success: true,

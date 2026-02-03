@@ -84,7 +84,7 @@ export default function TenantEDLDetailClient({
     profile: s.profile,
   }));
 
-  console.log("[TenantEDLDetail] Adapted signatures:", JSON.stringify(adaptedSignatures.map(s => ({
+  console.log("[TenantEDLDetail] Adapted signatures:", JSON.stringify(adaptedSignatures.map((s: any) => ({
     role: s.signer_type,
     hasUrl: !!s.signature_image_url,
     url: s.signature_image_url ? s.signature_image_url.substring(0, 50) + '...' : null,
@@ -282,7 +282,7 @@ export default function TenantEDLDetailClient({
                               {reading.reading_value} {reading.reading_unit || meter.unit}
                             </span>
                           ) : (
-                            <Badge variant="outline" className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">
+                            <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">
                               À relever
                             </Badge>
                           )}

@@ -33,7 +33,7 @@ interface WelcomeModalProps {
 }
 
 // Configuration par rôle
-const ROLE_CONFIG: Record<UserRole, {
+const ROLE_CONFIG: Record<string, {
   emoji: string;
   title: string;
   subtitle: string;

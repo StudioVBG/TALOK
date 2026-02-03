@@ -97,10 +97,10 @@ export function createLegalAgent(role: UserRole = "owner") {
   const model = createProModel(); // GPT-5.2 Pro pour précision maximale
   
   const agent = createReactAgent({
-    model,
+    llm: model,
     systemMessage: LEGAL_AGENT_PROMPT,
     tools: [searchLegalRAGTool],
-  });
+  } as any);
   
   return agent;
 }

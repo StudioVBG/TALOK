@@ -151,12 +151,18 @@ export async function getSetupIntent(setupIntentId: string): Promise<SetupIntent
 
 /**
  * Confirmer un SetupIntent avec l'IBAN
+ * @param setupIntentId - ID du SetupIntent Stripe
+ * @param iban - IBAN du compte à débiter
+ * @param accountHolderName - Nom du titulaire du compte
+ * @param email - Email du titulaire
+ * @param clientInfo - Informations du client (IP, User-Agent) pour conformité SEPA
  */
 export async function confirmSepaSetupIntent(
   setupIntentId: string,
   iban: string,
   accountHolderName: string,
-  email: string
+  email: string,
+  clientInfo?: { ipAddress?: string; userAgent?: string }
 ): Promise<SetupIntent> {
   // Créer la méthode de paiement
   const paymentMethod = await stripeRequest<StripePaymentMethod>(
@@ -182,8 +188,8 @@ export async function confirmSepaSetupIntent(
         customer_acceptance: {
           type: "online",
           online: {
-            ip_address: "127.0.0.1", // À remplacer par l'IP réelle
-            user_agent: "Talok/1.0",
+            ip_address: clientInfo?.ipAddress || "0.0.0.0",
+            user_agent: clientInfo?.userAgent || "Talok/1.0",
           },
         },
       },

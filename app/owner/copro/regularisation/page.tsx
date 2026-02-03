@@ -409,6 +409,27 @@ export default function RegularisationPage() {
                   <CardTitle className="text-white">Détail des charges récupérables</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <div className="md:hidden space-y-3">
+                    {regularisationData.charges.map((charge) => (
+                      <div key={charge.service_type} className="rounded-lg border border-white/10 bg-slate-800/30 p-4 space-y-2">
+                        <div>
+                          <p className="text-white font-medium">{charge.label}</p>
+                          <p className="text-xs text-slate-400">{SERVICE_TYPE_LABELS[charge.service_type]}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><p className="text-slate-400">Copro</p><p className="text-slate-300">{charge.copro_amount.toLocaleString('fr-FR')} €</p></div>
+                          <div><p className="text-slate-400">Récupérable</p><p className="text-slate-300">{charge.recuperable_amount.toLocaleString('fr-FR')} €</p></div>
+                          <div><p className="text-slate-400">Prorata</p><p className="text-slate-400">{(charge.prorata_tenant * 100).toFixed(1)}%</p></div>
+                          <div><p className="text-slate-400">Montant final</p><p className="font-semibold text-emerald-400">{charge.final_amount.toLocaleString('fr-FR')} €</p></div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="rounded-lg bg-slate-800/50 p-4 flex justify-between items-center">
+                      <span className="text-white font-semibold">TOTAL RÉCUPÉRABLES</span>
+                      <span className="font-bold text-white">{regularisationData.total_recuperable.toLocaleString('fr-FR')} €</span>
+                    </div>
+                  </div>
+                  <div className="hidden md:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-white/10">
@@ -452,6 +473,7 @@ export default function RegularisationPage() {
                       </TableRow>
                     </TableBody>
                   </Table>
+                  </div>
                 </CardContent>
                 <CardFooter className="flex justify-between">
                   <Button

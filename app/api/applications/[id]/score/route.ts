@@ -143,7 +143,7 @@ export async function POST(
           )
         )
       `)
-      .eq("lease_id", application.lease_id || '')
+      .eq("lease_id", (application.lease_id as string) || '')
       .eq("role", "garant")
       .maybeSingle();
 
@@ -166,11 +166,11 @@ export async function POST(
       previousRentHistory: documentsProvided.previousRentReceipts ? 'good' : 'unknown',
       hasUnpaidRentHistory: false,
       ocrData: extractedFields ? {
-        extractedIncome: extractedFields.find(f => f.field_name === 'net_salary')?.field_value 
-          ? parseFloat(extractedFields.find(f => f.field_name === 'net_salary')!.field_value!)
+        extractedIncome: extractedFields.find(f => f.field_name === 'net_salary')?.field_value
+          ? parseFloat(extractedFields.find(f => f.field_name === 'net_salary')!.field_value as string)
           : undefined,
-        extractedEmployer: extractedFields.find(f => f.field_name === 'employer')?.field_value || undefined,
-        confidence: extractedFields.reduce((sum, f) => sum + (f.confidence || 0), 0) / (extractedFields.length || 1),
+        extractedEmployer: (extractedFields.find(f => f.field_name === 'employer')?.field_value as string) || undefined,
+        confidence: extractedFields.reduce((sum, f) => sum + ((f.confidence as number) || 0), 0) / (extractedFields.length || 1),
       } : undefined,
     };
 

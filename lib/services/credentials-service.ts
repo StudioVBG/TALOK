@@ -273,6 +273,9 @@ export async function getStripeCredentials(): Promise<{
 /**
  * Invalide le cache pour un provider (utile après mise à jour des credentials)
  */
+// Alias for generic credential access
+export const getCredentials = getProviderCredentials;
+
 export function invalidateCredentialsCache(providerName?: ProviderName): void {
   if (providerName) {
     credentialsCache.delete(`${providerName}:prod`);

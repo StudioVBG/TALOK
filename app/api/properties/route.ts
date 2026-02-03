@@ -121,8 +121,8 @@ export async function GET(request: Request) {
     let totalCount = 0;
     
     // ✅ PAGINATION: Récupérer les paramètres de pagination
-    const page = parseInt(queryParams.page as string || "1");
-    const limit = Math.min(parseInt(queryParams.limit as string || "100"), 200); // Max 200
+    const page = parseInt(queryParams.page as unknown as string || "1");
+    const limit = Math.min(parseInt(queryParams.limit as unknown as string || "100"), 200); // Max 200
     const offset = (page - 1) * limit;
     
     try {
@@ -374,7 +374,7 @@ async function fetchPropertyMedia(
           })
         ]);
 
-        mediaDocs = fallback.data;
+        mediaDocs = fallback.data as MediaDocument[] | null;
         mediaError = fallback.error;
       } catch (fallbackError: unknown) {
         console.error("[fetchPropertyMedia] Fallback query failed:", fallbackError);
@@ -624,7 +624,9 @@ export async function POST(request: Request) {
     const limitCheck = await withSubscriptionLimit(profile.id, "properties");
     if (!limitCheck.allowed) {
       console.log(`[POST /api/properties] Limite atteinte: ${limitCheck.current}/${limitCheck.max} (plan: ${limitCheck.plan})`);
-      throw new ApiError(403, limitCheck.message || "Limite de propriétés atteinte pour votre forfait.");
+      // SOTA 2026: Utiliser QuotaExceededError pour un message clair avec lien upgrade
+      const { QuotaExceededError } = await import("@/lib/helpers/api-error");
+      throw new QuotaExceededError("properties", limitCheck.current, limitCheck.max, limitCheck.plan);
     }
 
     // ✅ CRÉATION: Créer un draft ou une propriété complète

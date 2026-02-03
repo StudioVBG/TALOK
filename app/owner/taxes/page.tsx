@@ -399,6 +399,37 @@ export default function OwnerTaxesPage() {
                 <p className="text-muted-foreground">Aucun bien enregistré</p>
               </div>
             ) : (
+              <>
+              {/* Mobile card view */}
+              <div className="md:hidden space-y-3">
+                {properties.map((property) => {
+                  const totalIncome = property.rental_income + property.other_income;
+                  const totalCharges = property.interest_charges + property.insurance +
+                    property.management_fees + property.works + property.property_tax + property.other_charges;
+                  const result = totalIncome - totalCharges;
+                  return (
+                    <div key={property.id} className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium">{property.name}</p>
+                          <p className="text-sm text-muted-foreground">{property.address}</p>
+                        </div>
+                        <Badge variant="outline">
+                          {property.regime === "micro_foncier" ? "Micro-foncier" : "Réel"}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div><p className="text-muted-foreground">Revenus</p><p className="font-medium text-green-600">{formatCurrency(totalIncome)}</p></div>
+                        <div><p className="text-muted-foreground">Charges</p><p className="font-medium text-red-600">{formatCurrency(totalCharges)}</p></div>
+                        <div><p className="text-muted-foreground">Résultat</p><p className={`font-bold ${result >= 0 ? "text-green-600" : "text-red-600"}`}>{formatCurrency(result)}</p></div>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => { setEditingProperty(property); setDialogOpen(true); }}>Modifier</Button>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Desktop table view */}
+              <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -413,7 +444,7 @@ export default function OwnerTaxesPage() {
                 <TableBody>
                   {properties.map((property) => {
                     const totalIncome = property.rental_income + property.other_income;
-                    const totalCharges = property.interest_charges + property.insurance + 
+                    const totalCharges = property.interest_charges + property.insurance +
                       property.management_fees + property.works + property.property_tax + property.other_charges;
                     const result = totalIncome - totalCharges;
 
@@ -456,6 +487,8 @@ export default function OwnerTaxesPage() {
                   })}
                 </TableBody>
               </Table>
+              </div>
+              </>
             )}
           </CardContent>
         </Card>

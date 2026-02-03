@@ -82,11 +82,9 @@ export const PropertyCard = memo(function PropertyCard({
 
         <div className="absolute top-3 right-3">
           <StatusBadge
-            status={status === "rented" ? "success" : "neutral"}
-            size="sm"
-          >
-            {status === "rented" ? "Loué" : "Vacant"}
-          </StatusBadge>
+            status={status === "rented" ? "Loué" : "Vacant"}
+            type={status === "rented" ? "success" : "neutral"}
+          />
         </div>
       </div>
 
@@ -204,11 +202,9 @@ export const PropertyCardCompact = memo(function PropertyCardCompact({
             </p>
           </div>
           <StatusBadge
-            status={status === "rented" ? "success" : "neutral"}
-            size="sm"
-          >
-            {status === "rented" ? "Loué" : "Vacant"}
-          </StatusBadge>
+            status={status === "rented" ? "Loué" : "Vacant"}
+            type={status === "rented" ? "success" : "neutral"}
+          />
         </div>
 
         <div className="flex items-center justify-between mt-2">
