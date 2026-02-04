@@ -124,7 +124,21 @@ export function FirstLoginOrchestrator({
   };
 
   const handleClose = () => {
+    localStorage.setItem("lokatif-welcome-seen", "true");
     setShowWelcome(false);
+
+    if (profileId) {
+      import("@/lib/supabase/client").then(({ createClient }) => {
+        const supabase = createClient();
+        supabase
+          .from("profiles")
+          .update({ welcome_seen_at: new Date().toISOString() })
+          .eq("id", profileId)
+          .then(({ error }) => {
+            if (error) console.warn("[FirstLoginOrchestrator] Failed to mark welcome seen on close:", error);
+          });
+      });
+    }
   };
 
   if (!checked || !showWelcome) return null;

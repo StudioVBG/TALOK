@@ -242,7 +242,7 @@ export function WelcomeModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden border-0 bg-transparent shadow-none">
+      <DialogContent hideClose className="sm:max-w-2xl p-0 overflow-hidden border-0 bg-transparent shadow-none">
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -250,8 +250,8 @@ export function WelcomeModal({
           exit="exit"
           className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl overflow-hidden"
         >
-          {/* Background effects */}
-          <div className="absolute inset-0 overflow-hidden">
+          {/* Background effects - pointer-events-none to avoid blocking clicks */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
             <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-5" />
