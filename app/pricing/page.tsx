@@ -161,7 +161,10 @@ function PlanCard({
           {PLAN_ICONS[slug]}
         </div>
         {billing === "yearly" && discount > 0 && price !== null && (
-          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+          <Badge
+            className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-sm font-semibold px-2.5 py-0.5"
+            aria-label={`Reduction de ${discount} pourcent sur l'abonnement annuel`}
+          >
             -{discount}%
           </Badge>
         )}
@@ -242,22 +245,23 @@ function PlanCard({
 }
 
 function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
-  const orderedPlans: PlanSlug[] = ["starter", "confort", "pro", "enterprise"];
+  const orderedPlans: PlanSlug[] = ["gratuit", "starter", "confort", "pro", "enterprise"];
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse" role="table" aria-label="Comparaison des forfaits">
         <thead>
           <tr className="border-b border-slate-700/50">
-            <th className="text-left p-4 text-slate-400 font-medium">
-              Fonctionnalités
+            <th className="text-left p-4 text-slate-400 font-medium min-w-[180px]" scope="col">
+              Fonctionnalites
             </th>
             {orderedPlans.map((slug) => (
               <th
                 key={slug}
+                scope="col"
                 className={cn(
-                  "p-4 text-center",
-                  PLANS[slug].is_popular && "bg-violet-500/10"
+                  "p-4 text-center min-w-[120px]",
+                  PLANS[slug].is_popular && "bg-violet-500/10 border-t-2 border-violet-500"
                 )}
               >
                 <div className="text-white font-semibold">{PLANS[slug].name}</div>
@@ -270,16 +274,84 @@ function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
                       )
                     : "Sur devis"}
                 </div>
+                {PLANS[slug].is_popular && (
+                  <span className="inline-block text-xs text-violet-400 font-medium mt-1">
+                    Le plus choisi
+                  </span>
+                )}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
+          {/* Limits row */}
+          <tr className="bg-slate-800/30">
+            <td
+              colSpan={orderedPlans.length + 1}
+              className="p-3 text-sm font-medium text-slate-300"
+            >
+              Limites
+            </td>
+          </tr>
+          <tr className="border-b border-slate-800/50 hover:bg-slate-800/20">
+            <td className="p-4">
+              <div className="text-slate-300 text-sm">Nombre de biens</div>
+            </td>
+            {orderedPlans.map((slug) => (
+              <td
+                key={slug}
+                className={cn(
+                  "p-4 text-center text-white font-medium",
+                  PLANS[slug].is_popular && "bg-violet-500/5"
+                )}
+              >
+                {PLANS[slug].limits.max_properties === -1 ? "Illimite" : PLANS[slug].limits.max_properties}
+              </td>
+            ))}
+          </tr>
+          <tr className="border-b border-slate-800/50 hover:bg-slate-800/20">
+            <td className="p-4">
+              <div className="text-slate-300 text-sm">Signatures / mois</div>
+            </td>
+            {orderedPlans.map((slug) => (
+              <td
+                key={slug}
+                className={cn(
+                  "p-4 text-center text-white font-medium",
+                  PLANS[slug].is_popular && "bg-violet-500/5"
+                )}
+              >
+                {PLANS[slug].limits.signatures_monthly_quota === -1
+                  ? "Illimite"
+                  : PLANS[slug].limits.signatures_monthly_quota === 0
+                  ? "Aucune"
+                  : PLANS[slug].limits.signatures_monthly_quota}
+              </td>
+            ))}
+          </tr>
+          <tr className="border-b border-slate-800/50 hover:bg-slate-800/20">
+            <td className="p-4">
+              <div className="text-slate-300 text-sm">Utilisateurs</div>
+            </td>
+            {orderedPlans.map((slug) => (
+              <td
+                key={slug}
+                className={cn(
+                  "p-4 text-center text-white font-medium",
+                  PLANS[slug].is_popular && "bg-violet-500/5"
+                )}
+              >
+                {PLANS[slug].limits.max_users === -1 ? "Illimite" : PLANS[slug].limits.max_users}
+              </td>
+            ))}
+          </tr>
+
+          {/* Feature groups */}
           {FEATURE_GROUPS.map((group) => (
             <React.Fragment key={group.id}>
               <tr className="bg-slate-800/30">
                 <td
-                  colSpan={5}
+                  colSpan={orderedPlans.length + 1}
                   className="p-3 text-sm font-medium text-slate-300"
                 >
                   {group.title}
@@ -309,9 +381,9 @@ function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
                           )}
                         >
                           {hasFeature ? (
-                            <Check className="w-5 h-5 text-emerald-400 mx-auto" />
+                            <Check className="w-5 h-5 text-emerald-400 mx-auto" aria-label="Inclus" />
                           ) : (
-                            <X className="w-5 h-5 text-slate-600 mx-auto" />
+                            <X className="w-5 h-5 text-slate-600 mx-auto" aria-label="Non inclus" />
                           )}
                         </td>
                       );
@@ -463,17 +535,26 @@ export default function PricingPage() {
             </span>
           </h1>
             <p className="text-lg text-slate-400 mb-8">
-              Choisissez le forfait adapté à votre portefeuille.
+              Choisissez le forfait adapte a votre portefeuille.
               <br />
-              <span className="text-emerald-400 font-medium">1er mois offert</span> sur tous les plans.
+              <span
+                className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-base border border-emerald-500/30"
+                role="status"
+                aria-label="Offre speciale : premier mois offert sur tous les plans payants"
+              >
+                1er mois offert
+              </span>{" "}
+              sur tous les plans.
             </p>
 
             {/* Billing toggle */}
-            <div className="inline-flex items-center gap-4 p-2 rounded-full bg-slate-800/50 border border-slate-700/50">
+            <div className="inline-flex items-center gap-4 p-2 rounded-full bg-slate-800/50 border border-slate-700/50" role="radiogroup" aria-label="Cycle de facturation">
             <button
               onClick={() => setBilling("monthly")}
+              role="radio"
+              aria-checked={billing === "monthly"}
               className={cn(
-                "px-6 py-2.5 rounded-full text-sm font-medium transition-all",
+                "px-6 py-2.5 rounded-full text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900",
                 billing === "monthly"
                     ? "bg-white text-slate-900 shadow-lg"
                   : "text-slate-400 hover:text-white"
@@ -483,15 +564,17 @@ export default function PricingPage() {
             </button>
             <button
               onClick={() => setBilling("yearly")}
+              role="radio"
+              aria-checked={billing === "yearly"}
               className={cn(
-                "px-6 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2",
+                "px-6 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900",
                 billing === "yearly"
                     ? "bg-white text-slate-900 shadow-lg"
                   : "text-slate-400 hover:text-white"
               )}
             >
               Annuel
-                <Badge className="bg-emerald-500 text-white border-0 text-xs">
+                <Badge className="bg-emerald-500 text-white border-0 text-sm font-semibold px-2 py-0.5">
                 -20%
                 </Badge>
             </button>
@@ -598,33 +681,43 @@ export default function PricingPage() {
       </section>
 
       {/* Feature Comparison */}
-      <section className="py-16 border-t border-slate-800">
+      <section className="py-16 border-t border-slate-800" id="comparison">
         <div className="container mx-auto px-4">
-        <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-8"
           >
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Comparez nos forfaits en detail
+            </h2>
+            <p className="text-slate-400 mb-6">
+              Trouvez le forfait qui correspond a vos besoins
+            </p>
             <Button
               variant="ghost"
               size="lg"
               onClick={() => setShowComparison(!showComparison)}
               className="text-slate-300 hover:text-white"
+              aria-expanded={showComparison}
+              aria-controls="comparison-table"
             >
-              {showComparison ? "Masquer" : "Voir"} la comparaison détaillée
+              {showComparison ? "Masquer" : "Afficher"} le tableau comparatif
               <ChevronDown
                 className={cn(
                   "w-4 h-4 ml-2 transition-transform",
                   showComparison && "rotate-180"
                 )}
+                aria-hidden="true"
               />
-              </Button>
+            </Button>
           </motion.div>
 
           <AnimatePresence>
             {showComparison && (
               <motion.div
+                id="comparison-table"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
