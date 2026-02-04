@@ -89,7 +89,7 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
       
       {/* Lightbox / Gallery Modal */}
       <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
-        <DialogContent className="max-w-5xl w-full h-[90vh] p-0 bg-black/95 border-none text-white overflow-hidden flex flex-col">
+        <DialogContent className="max-w-5xl w-full h-[90vh] p-0 bg-black/95 border-none text-white overflow-hidden flex flex-col" aria-describedby={undefined}>
           {/* DialogTitle requis pour l'accessibilité (screen readers) */}
           <DialogTitle className="sr-only">Galerie photos du bien</DialogTitle>
           

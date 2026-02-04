@@ -19,7 +19,7 @@ import {
   Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/lib/types";
 
@@ -242,7 +242,8 @@ export function WelcomeModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent hideClose className="sm:max-w-2xl p-0 overflow-hidden border-0 bg-transparent shadow-none">
+      <DialogContent hideClose className="sm:max-w-2xl p-0 overflow-hidden border-0 bg-transparent shadow-none" aria-describedby={undefined}>
+        <DialogTitle className="sr-only">Bienvenue sur Talok</DialogTitle>
         <motion.div
           variants={containerVariants}
           initial="hidden"

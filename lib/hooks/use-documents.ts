@@ -57,6 +57,53 @@ function isAllowedRole(role: string | undefined): role is AllowedRole {
   return !!role && ALLOWED_ROLES.includes(role as AllowedRole);
 }
 
+/** Select clause with property join (explicit FK syntax for PostgREST) */
+const SELECT_WITH_PROPERTY = "*, properties:property_id(id, adresse_complete, ville)";
+
+/** Select clause with property + tenant join */
+const SELECT_WITH_PROPERTY_AND_TENANT = `
+  *,
+  properties:property_id(id, adresse_complete, ville),
+  tenant:profiles!tenant_id(id, prenom, nom)
+`;
+
+/**
+ * Tente une requête avec jointures, puis fallback sans jointures si 400
+ * (PostgREST renvoie 400 si les FK ne sont pas exposées)
+ */
+async function queryDocumentsWithFallback(
+  supabaseClient: any,
+  selectClause: string,
+  buildQuery: (query: any) => any
+): Promise<DocumentRow[]> {
+  // Tentative 1 : requête avec jointures
+  const fullQuery = buildQuery(
+    supabaseClient.from("documents").select(selectClause)
+  );
+  const { data, error } = await fullQuery;
+
+  if (!error && data) {
+    return data as DocumentRow[];
+  }
+
+  // Si erreur 400 (relation introuvable), fallback sans jointures
+  if (error && (error.code === "PGRST200" || error.message?.includes("relationship") || error.code?.startsWith("4"))) {
+    console.warn("[useDocuments] Join query failed, falling back to simple select:", error.message);
+    const fallbackQuery = buildQuery(
+      supabaseClient.from("documents").select("*")
+    );
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+    if (fallbackError) {
+      console.error("[useDocuments] Fallback query also failed:", fallbackError);
+      throw fallbackError;
+    }
+    return (fallbackData || []) as DocumentRow[];
+  }
+
+  if (error) throw error;
+  return [];
+}
+
 /**
  * Hook pour récupérer tous les documents de l'utilisateur
  * 
@@ -89,34 +136,28 @@ export function useDocuments(filters?: {
       // ========================================
       if (profile.role === "tenant") {
         // 1. Documents directement liés au profil du locataire
-        const { data: directDocs, error: directError } = await supabaseClient
-          .from("documents")
-          .select("*, properties(id, adresse_complete, ville)")
-          .eq("tenant_id", profile.id) // 🔒 Filtre obligatoire
-          .order("created_at", { ascending: false });
-        
-        if (directError) console.error("Erreur docs directs:", directError);
-        
+        const directDocs = await queryDocumentsWithFallback(
+          supabaseClient,
+          SELECT_WITH_PROPERTY,
+          (q: any) => q.eq("tenant_id", profile.id).order("created_at", { ascending: false })
+        );
+
         // 2. Récupérer les baux où le locataire est signataire
         const { data: signerData } = await supabaseClient
           .from("lease_signers")
           .select("lease_id")
           .eq("profile_id", profile.id); // 🔒 Filtre obligatoire
-        
+
         const leaseIds = signerData?.map((s: any) => s.lease_id).filter(Boolean) || [];
-        
+
         // 3. Documents liés aux baux du locataire
         let leaseDocs: DocumentRow[] = [];
         if (leaseIds.length > 0) {
-          const { data: leaseDocsData, error: leaseDocsError } = await supabaseClient
-            .from("documents")
-            .select("*, properties(id, adresse_complete, ville)")
-            .in("lease_id", leaseIds) // 🔒 Filtre par ses baux uniquement
-            .order("created_at", { ascending: false });
-          
-          if (!leaseDocsError && leaseDocsData) {
-            leaseDocs = leaseDocsData as DocumentRow[];
-          }
+          leaseDocs = await queryDocumentsWithFallback(
+            supabaseClient,
+            SELECT_WITH_PROPERTY,
+            (q: any) => q.in("lease_id", leaseIds).order("created_at", { ascending: false })
+          );
         }
         
         // Fusionner et dédupliquer
@@ -173,38 +214,24 @@ export function useDocuments(filters?: {
         let allDocs: DocumentRow[] = [];
         
         // Documents où owner_id = profile.id
-        const { data: ownerDocs, error: ownerError } = await supabaseClient
-          .from("documents")
-          .select(`
-            *,
-            properties(id, adresse_complete, ville),
-            tenant:profiles!tenant_id(id, prenom, nom)
-          `)
-          .eq("owner_id", profile.id)
-          .order("created_at", { ascending: false });
-        
-        if (!ownerError && ownerDocs) {
-          allDocs = [...ownerDocs as DocumentRow[]];
-        }
-        
+        const ownerDocs = await queryDocumentsWithFallback(
+          supabaseClient,
+          SELECT_WITH_PROPERTY_AND_TENANT,
+          (q: any) => q.eq("owner_id", profile.id).order("created_at", { ascending: false })
+        );
+        allDocs = [...ownerDocs];
+
         // Documents liés aux propriétés du propriétaire (même si owner_id est null)
         if (propertyIds.length > 0) {
-          const { data: propertyDocs, error: propertyError } = await supabaseClient
-            .from("documents")
-            .select(`
-              *,
-              properties(id, adresse_complete, ville),
-              tenant:profiles!tenant_id(id, prenom, nom)
-            `)
-            .in("property_id", propertyIds)
-            .order("created_at", { ascending: false });
-          
-          if (!propertyError && propertyDocs) {
-            // Fusionner et dédupliquer
-            for (const doc of propertyDocs as DocumentRow[]) {
-              if (!allDocs.find(d => d.id === doc.id)) {
-                allDocs.push(doc);
-              }
+          const propertyDocs = await queryDocumentsWithFallback(
+            supabaseClient,
+            SELECT_WITH_PROPERTY_AND_TENANT,
+            (q: any) => q.in("property_id", propertyIds).order("created_at", { ascending: false })
+          );
+          // Fusionner et dédupliquer
+          for (const doc of propertyDocs) {
+            if (!allDocs.find(d => d.id === doc.id)) {
+              allDocs.push(doc);
             }
           }
         }
@@ -266,52 +293,48 @@ export function useDocuments(filters?: {
         const propertyIds = [...new Set(tickets.map((t: any) => t.property_id).filter(Boolean))];
         
         // Documents liés aux propriétés des interventions (devis, rapports, etc.)
-        let query = supabaseClient
-          .from("documents")
-          .select("*, properties(id, adresse_complete, ville)")
-          .in("property_id", propertyIds)
-          .in("type", ["devis", "ordre_mission", "rapport_intervention", "facture"]) // Types limités
-          .order("created_at", { ascending: false });
-        
-        if (filters?.propertyId) {
-          query = query.eq("property_id", filters.propertyId);
-        }
-        if (filters?.type) {
-          query = query.eq("type", filters.type);
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        return data as DocumentRow[];
+        const providerDocs = await queryDocumentsWithFallback(
+          supabaseClient,
+          SELECT_WITH_PROPERTY,
+          (q: any) => {
+            let built = q
+              .in("property_id", propertyIds)
+              .in("type", ["devis", "ordre_mission", "rapport_intervention", "facture"])
+              .order("created_at", { ascending: false });
+            if (filters?.propertyId) {
+              built = built.eq("property_id", filters.propertyId);
+            }
+            if (filters?.type) {
+              built = built.eq("type", filters.type);
+            }
+            return built;
+          }
+        );
+        return providerDocs;
       }
       
       // ========================================
       // ADMIN: Tous les documents (via RLS côté Supabase)
       // ========================================
       if (profile.role === "admin") {
-        let query = supabaseClient
-          .from("documents")
-          .select(`
-            *,
-            properties(id, adresse_complete, ville),
-            tenant:profiles!tenant_id(id, prenom, nom)
-          `)
-          .order("created_at", { ascending: false });
-        
-        // Filtres additionnels
-        if (filters?.propertyId) {
-          query = query.eq("property_id", filters.propertyId);
-        }
-        if (filters?.leaseId) {
-          query = query.eq("lease_id", filters.leaseId);
-        }
-        if (filters?.type) {
-          query = query.eq("type", filters.type);
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        return data as DocumentRow[];
+        const adminDocs = await queryDocumentsWithFallback(
+          supabaseClient,
+          SELECT_WITH_PROPERTY_AND_TENANT,
+          (q: any) => {
+            let built = q.order("created_at", { ascending: false });
+            if (filters?.propertyId) {
+              built = built.eq("property_id", filters.propertyId);
+            }
+            if (filters?.leaseId) {
+              built = built.eq("lease_id", filters.leaseId);
+            }
+            if (filters?.type) {
+              built = built.eq("type", filters.type);
+            }
+            return built;
+          }
+        );
+        return adminDocs;
       }
       
       // 🔒 SÉCURITÉ: Par défaut, aucun document
@@ -343,16 +366,34 @@ export function useDocument(documentId: string | null) {
       }
       
       const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
+
+      // Tentative avec jointure property
       const { data, error } = await supabaseClient
         .from("documents")
-        .select("*, properties(id, adresse_complete, ville)")
+        .select(SELECT_WITH_PROPERTY)
         .eq("id", documentId)
         .single();
-      
+
       if (error) {
         // Si pas trouvé, c'est probablement une restriction RLS
         if (error.code === "PGRST116") {
           throw new Error("Document non trouvé ou accès refusé");
+        }
+        // Si erreur de relation, fallback sans jointure
+        if (error.code === "PGRST200" || error.message?.includes("relationship") || error.code?.startsWith("4")) {
+          console.warn("[useDocument] Join query failed, falling back:", error.message);
+          const { data: fallbackData, error: fallbackError } = await supabaseClient
+            .from("documents")
+            .select("*")
+            .eq("id", documentId)
+            .single();
+          if (fallbackError) {
+            if (fallbackError.code === "PGRST116") {
+              throw new Error("Document non trouvé ou accès refusé");
+            }
+            throw fallbackError;
+          }
+          return fallbackData as DocumentRow;
         }
         throw error;
       }

@@ -66,6 +66,7 @@ export function PDFPreviewModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
+        aria-describedby={undefined}
         className={cn(
           // Taille responsive : plein écran sur mobile, contrainte sur desktop
           "w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-w-5xl",

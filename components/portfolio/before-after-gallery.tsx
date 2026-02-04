@@ -158,7 +158,7 @@ export function BeforeAfterGallery({ items, className }: BeforeAfterGalleryProps
       
       {/* Modal plein écran */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0">
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0" aria-describedby={undefined}>
           <DialogTitle className="sr-only">{currentItem.title}</DialogTitle>
           <div className="relative w-full h-[85vh]">
             {currentItem.before_photo_url ? (
