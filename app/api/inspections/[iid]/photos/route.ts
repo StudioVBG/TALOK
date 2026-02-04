@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient, getUserProfile } from "@/lib/helpers/edl-auth";
 
 /** Max file size: 5 MB (safe margin under Netlify's 6MB body limit) */
@@ -238,6 +238,139 @@ export async function POST(
     });
   } catch (error: unknown) {
     console.error(`[POST /api/inspections/${iid}/photos] Unhandled error:`, error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET /api/inspections/[iid]/photos - Récupérer les photos d'un EDL
+ * ?item_id=xxx - Filtrer par item_id (optionnel)
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ iid: string }> }
+) {
+  let iid = "unknown";
+
+  try {
+    const resolvedParams = await params;
+    iid = resolvedParams.iid;
+
+    // Auth
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    const serviceClient = createServiceClient();
+
+    // Vérifier l'accès à l'EDL
+    const { data: edl, error: edlError } = await serviceClient
+      .from("edl")
+      .select(`
+        id,
+        property_id,
+        lease_id,
+        lease:leases(
+          property_id,
+          property:properties(owner_id),
+          signers:lease_signers(profile_id)
+        )
+      `)
+      .eq("id", iid)
+      .single();
+
+    if (edlError || !edl) {
+      return NextResponse.json(
+        { error: "EDL non trouvé" },
+        { status: 404 }
+      );
+    }
+
+    const profile = await getUserProfile(serviceClient, user.id);
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
+    const edlData = edl as any;
+
+    // Vérifier les droits d'accès
+    let isOwner = false;
+    const propId = edlData.property_id || edlData.lease?.property_id;
+
+    if (propId) {
+      const { data: property } = await serviceClient
+        .from("properties")
+        .select("owner_id")
+        .eq("id", propId)
+        .single();
+      if (property?.owner_id === profile.id) isOwner = true;
+    } else if (edlData.lease?.property?.owner_id === profile.id) {
+      isOwner = true;
+    }
+
+    const isAdmin = profile.role === "admin";
+    const signerIds = edlData?.lease?.signers?.map((s: any) => s.profile_id) || [];
+    const hasAccess = isAdmin || isOwner || signerIds.includes(profile.id);
+
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: "Accès non autorisé" },
+        { status: 403 }
+      );
+    }
+
+    // Récupérer les photos
+    const { searchParams } = new URL(request.url);
+    const itemId = searchParams.get("item_id");
+
+    let query = serviceClient
+      .from("edl_media")
+      .select("*")
+      .eq("edl_id", iid)
+      .order("created_at", { ascending: true });
+
+    if (itemId) {
+      query = query.eq("item_id", itemId);
+    }
+
+    const { data: photos, error: photosError } = await query;
+
+    if (photosError) {
+      console.error(`[GET /api/inspections/${iid}/photos] Query error:`, photosError);
+      return NextResponse.json(
+        { error: photosError.message },
+        { status: 400 }
+      );
+    }
+
+    // Générer les URLs signées pour chaque photo
+    const photosWithUrls = await Promise.all(
+      (photos || []).map(async (photo: any) => {
+        if (!photo.storage_path) return { ...photo, url: null };
+
+        const { data: urlData } = await serviceClient
+          .storage
+          .from("documents")
+          .createSignedUrl(photo.storage_path, 3600);
+
+        return {
+          ...photo,
+          url: urlData?.signedUrl || null,
+        };
+      })
+    );
+
+    return NextResponse.json(photosWithUrls);
+  } catch (error: unknown) {
+    console.error(`[GET /api/inspections/${iid}/photos] Unhandled error:`, error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
