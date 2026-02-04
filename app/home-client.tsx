@@ -12,7 +12,6 @@
  * - Design moderne glassmorphism
  */
 
-import { useMemo } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Building2,
   Home,
   Users,
   Wrench,
@@ -35,14 +33,8 @@ import {
   Brain,
   Landmark,
   FileSignature,
-  Shield,
   MapPin,
-  Clock,
-  Star,
-  Play,
   Zap,
-  TrendingUp,
-  CreditCard,
 } from "lucide-react";
 import { HomepageSchema } from "@/components/seo/JsonLd";
 import { Testimonials } from "@/components/marketing/Testimonials";
@@ -50,6 +42,7 @@ import { TrustBar, CertificationBadges, Guarantees, SocialProofCompact } from "@
 import { WhyChooseUs } from "@/components/marketing/WhyChooseUs";
 import { FAQ } from "@/components/marketing/FAQ";
 import { DemoVideoModal } from "@/components/marketing/DemoVideoModal";
+import { PublicFooter } from "@/components/layout/public-footer";
 
 // ============================================
 // DATA
@@ -488,66 +481,6 @@ function CTASection({ motionEnabled }: { motionEnabled: boolean }) {
 }
 
 // ============================================
-// FOOTER
-// ============================================
-
-function Footer({ motionEnabled }: { motionEnabled: boolean }) {
-  return (
-    <footer className="py-12 border-t border-slate-800">
-      <motion.div
-        initial={motionEnabled ? { opacity: 0 } : undefined}
-        whileInView={motionEnabled ? { opacity: 1 } : undefined}
-        viewport={{ once: true }}
-        className="flex flex-col items-center gap-6"
-      >
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500">
-            <Building2 className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-white">Talok</span>
-        </div>
-
-        {/* Links */}
-        <div className="flex flex-wrap justify-center gap-6 text-sm">
-          <Link href="/pricing" className="text-slate-400 hover:text-white transition-colors">
-            Tarifs
-          </Link>
-          <Link href="/features" className="text-slate-400 hover:text-white transition-colors">
-            Fonctionnalités
-          </Link>
-          <Link href="/blog" className="text-slate-400 hover:text-white transition-colors">
-            Blog
-          </Link>
-          <Link href="/legal/privacy" className="text-slate-400 hover:text-white transition-colors">
-            Confidentialité
-          </Link>
-          <Link href="/legal/terms" className="text-slate-400 hover:text-white transition-colors">
-            CGU
-          </Link>
-        </div>
-
-        {/* Contact */}
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <span>Besoin d'aide ?</span>
-          <a
-            href="mailto:support@talok.fr"
-            className="text-white hover:underline"
-          >
-            support@talok.fr
-          </a>
-        </div>
-
-        {/* Copyright */}
-        <p className="text-xs text-slate-500">
-          © 2026 Talok. Tous droits réservés. Fait avec passion en France.
-        </p>
-      </motion.div>
-    </footer>
-  );
-}
-
-// ============================================
 // MAIN COMPONENT
 // ============================================
 
@@ -603,7 +536,7 @@ export default function HomeClient() {
         <Guarantees />
 
         {/* Footer */}
-        <Footer motionEnabled={motionEnabled} />
+        <PublicFooter variant="dark" />
       </div>
     </div>
   );

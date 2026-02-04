@@ -141,8 +141,8 @@ export function SignInForm() {
         console.log("[SignIn] Redirection vers /tenant/dashboard");
         router.push("/tenant/dashboard");
       } else if (profileData?.role === "provider") {
-        console.log("[SignIn] Redirection vers /vendor/dashboard");
-        router.push("/vendor/dashboard");
+        console.log("[SignIn] Redirection vers /provider/dashboard");
+        router.push("/provider/dashboard");
       } else {
         console.log("[SignIn] Redirection vers /dashboard");
         router.push("/dashboard");
