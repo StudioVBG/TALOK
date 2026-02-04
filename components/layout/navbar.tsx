@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -149,15 +150,21 @@ function MegaMenuPanel({
   // "sections" layout for produit, "links" layout for others
   if ("sections" in menu) {
     return (
-      <div
+      <motion.div
         ref={panelRef}
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
         className="absolute top-full left-0 right-0 z-50 border-b bg-background/98 backdrop-blur-xl shadow-xl"
         onMouseLeave={onClose}
+        role="menu"
+        aria-label={`Menu ${menu.label}`}
       >
         <div className="container mx-auto px-4 py-6">
           <div className="grid grid-cols-2 gap-8">
             {menu.sections.map((section) => (
-              <div key={section.title}>
+              <div key={section.title} role="group" aria-label={section.title}>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                   {section.title}
                 </h3>
@@ -169,10 +176,11 @@ function MegaMenuPanel({
                         key={link.href}
                         href={link.href}
                         onClick={onClose}
-                        className="group flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-accent"
+                        role="menuitem"
+                        className="group flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       >
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background group-hover:border-primary/30 group-hover:bg-primary/5 transition-colors">
-                          <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                          <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium leading-none mb-1 group-hover:text-primary transition-colors">
@@ -193,22 +201,28 @@ function MegaMenuPanel({
             <Link
               href="/fonctionnalites"
               onClick={onClose}
-              className="text-sm font-medium text-primary hover:underline"
+              className="text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
             >
               Voir toutes les fonctionnalites
             </Link>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   // Simple links layout (Solutions, Ressources)
   return (
-    <div
+    <motion.div
       ref={panelRef}
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
       className="absolute top-full left-0 right-0 z-50 border-b bg-background/98 backdrop-blur-xl shadow-xl"
       onMouseLeave={onClose}
+      role="menu"
+      aria-label={`Menu ${menu.links ? (MEGA_MENU as Record<string, { label: string }>)[menuKey]?.label : ""}`}
     >
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-1">
@@ -219,10 +233,11 @@ function MegaMenuPanel({
                 key={link.href}
                 href={link.href}
                 onClick={onClose}
-                className="group flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-accent"
+                role="menuitem"
+                className="group flex items-start gap-3 rounded-lg p-2.5 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-background group-hover:border-primary/30 group-hover:bg-primary/5 transition-colors">
-                  <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium leading-none mb-1 group-hover:text-primary transition-colors">
@@ -237,7 +252,7 @@ function MegaMenuPanel({
           })}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -287,6 +302,21 @@ export function Navbar() {
     redirectTo: "/",
   });
 
+  const closeMenu = useCallback(() => {
+    setOpenMenu(null);
+  }, []);
+
+  // Close mega-menu on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && openMenu) {
+        closeMenu();
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [openMenu, closeMenu]);
+
   // Hide on dashboard routes
   const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor"];
   if (hiddenPaths.some((path) => pathname?.startsWith(path))) {
@@ -305,10 +335,6 @@ export function Navbar() {
     closeTimeoutRef.current = setTimeout(() => {
       setOpenMenu(null);
     }, 150);
-  };
-
-  const closeMenu = () => {
-    setOpenMenu(null);
   };
 
   const getInitials = () => {
@@ -413,7 +439,7 @@ export function Navbar() {
 
             {/* Desktop Navigation - Public Mega-Menu */}
             {!user && (
-              <nav className="hidden lg:flex items-center gap-1">
+              <nav className="hidden lg:flex items-center gap-1" aria-label="Navigation principale">
                 {(Object.keys(MEGA_MENU) as Array<keyof typeof MEGA_MENU>).map(
                   (key) => (
                     <div
@@ -429,6 +455,8 @@ export function Navbar() {
                           "gap-1 text-sm",
                           openMenu === key && "bg-accent"
                         )}
+                        aria-expanded={openMenu === key}
+                        aria-haspopup="true"
                       >
                         {MEGA_MENU[key].label}
                         <ChevronDown
@@ -436,6 +464,7 @@ export function Navbar() {
                             "h-3.5 w-3.5 opacity-60 transition-transform duration-200",
                             openMenu === key && "rotate-180"
                           )}
+                          aria-hidden="true"
                         />
                       </Button>
                     </div>
@@ -740,7 +769,7 @@ export function Navbar() {
 
                 {/* Desktop auth buttons */}
                 <Link href="/auth/signin" className="hidden lg:block">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="outline" size="sm" className="border-border/60 hover:bg-accent">
                     Connexion
                   </Button>
                 </Link>
@@ -750,7 +779,7 @@ export function Navbar() {
 
                 {/* Tablet: show compact auth buttons */}
                 <Link href="/auth/signin" className="hidden sm:block lg:hidden">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="outline" size="sm" className="border-border/60 hover:bg-accent">
                     Connexion
                   </Button>
                 </Link>
@@ -764,12 +793,30 @@ export function Navbar() {
       </div>
 
       {/* Desktop Mega-Menu Panels */}
-      {!user && openMenu && (
-        <MegaMenuPanel
-          menuKey={openMenu as keyof typeof MEGA_MENU}
-          onClose={closeMenu}
-        />
-      )}
+      <AnimatePresence>
+        {!user && openMenu && (
+          <MegaMenuPanel
+            key={openMenu}
+            menuKey={openMenu as keyof typeof MEGA_MENU}
+            onClose={closeMenu}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Backdrop overlay when mega-menu is open */}
+      <AnimatePresence>
+        {!user && openMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 top-16 bg-black/25 z-40"
+            onClick={closeMenu}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
     </nav>
   );
 }
