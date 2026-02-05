@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Suspense } from "react";
 export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
@@ -9,7 +8,7 @@ import { InspectionDetailClient } from "./InspectionDetailClient";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   return {
     title: "Détails EDL | Talok",
     description: "Visualiser et compléter l'état des lieux",
@@ -18,11 +17,13 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 
 async function fetchInspectionDetail(edlId: string, profileId: string) {
   const supabase = await createClient();
+  // Use service client for all queries that need to bypass RLS
+  const serviceClient = getServiceClient();
 
   console.log("[fetchInspectionDetail] Fetching EDL:", edlId);
 
-  // Fetch EDL with basic related data
-  const { data: edl, error } = await supabase
+  // Fetch EDL with basic related data using service client to avoid RLS issues
+  const { data: edl, error } = await serviceClient
     .from("edl")
     .select(`
       *,
@@ -50,40 +51,33 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
   }
 
   // Fetch items and media separately to avoid heavy join
-  const { data: edl_items } = await supabase.from("edl_items").select("*").eq("edl_id", edlId);
-  const { data: edl_media } = await supabase.from("edl_media").select("*").eq("edl_id", edlId);
-  
+  const { data: edl_items } = await serviceClient.from("edl_items").select("*").eq("edl_id", edlId);
+  const { data: edl_media } = await serviceClient.from("edl_media").select("*").eq("edl_id", edlId);
+
   // Fetch signatures
-  const { data: signaturesRaw } = await supabase
+  const { data: signaturesRaw } = await serviceClient
     .from("edl_signatures")
     .select("*")
     .eq("edl_id", edlId);
-  
+
   let edl_signatures = signaturesRaw || [];
-  
-  // 🔧 FIX: Récupérer les profils des signataires EDL avec le client admin (pour contourner RLS)
+
+  // Retrieve signer profiles using service client (bypasses RLS)
   if (edl_signatures.length > 0) {
-    const { createClient: createAdminClient } = await import("@supabase/supabase-js");
-    const adminClient = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
-    
     const signerProfileIds = edl_signatures
       .map((s: any) => s.signer_profile_id)
       .filter(Boolean);
-    
+
     if (signerProfileIds.length > 0) {
-      const { data: signerProfiles } = await adminClient
+      const { data: signerProfiles } = await serviceClient
         .from("profiles")
         .select("*")
         .in("id", signerProfileIds);
-      
+
       if (signerProfiles && signerProfiles.length > 0) {
         console.log("[fetchInspectionDetail] Found signer profiles:", signerProfiles.map((p: any) => `${p.prenom} ${p.nom}`));
-        
-        // Attacher les profils aux signatures
+
+        // Attach profiles to signatures
         edl_signatures = edl_signatures.map((sig: any) => {
           const profile = signerProfiles.find((p: any) => p.id === sig.signer_profile_id);
           return { ...sig, profile };
@@ -92,16 +86,16 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
     }
   }
 
-  // 🔧 FIX: Générer des URLs signées pour les images de signature (bucket privé)
+  // Generate signed URLs for signature images (private bucket)
   for (const sig of edl_signatures) {
     if (sig.signature_image_path) {
-      const { data: signedUrlData } = await supabase.storage
+      const { data: signedUrlData } = await serviceClient.storage
         .from("documents")
-        .createSignedUrl(sig.signature_image_path, 3600); // 1 heure de validité
-      
+        .createSignedUrl(sig.signature_image_path, 3600);
+
       if (signedUrlData?.signedUrl) {
         (sig as any).signature_image_url = signedUrlData.signedUrl;
-        console.log("[fetchInspectionDetail] ✅ Generated signed URL for signature:", sig.signer_role);
+        console.log("[fetchInspectionDetail] Generated signed URL for signature:", sig.signer_role);
       }
     }
   }
@@ -110,128 +104,132 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
   let lease = (edl as any).lease;
   let property = lease?.property || (edl as any).property_details;
 
-  // 🔧 AUTO-HEALING: Si aucune signature n'est enregistrée pour cet EDL, on les injecte depuis le bail
+  // AUTO-HEALING: If no signatures exist for this EDL, inject them from the lease
+  // Use service client to bypass RLS (edl_signatures INSERT requires signer_user = auth.uid())
   if (edl_signatures.length === 0 && lease?.signers) {
-    console.log("[fetchInspectionDetail] 🔧 Injecting missing signers from lease to edl_signatures");
+    console.log("[fetchInspectionDetail] Injecting missing signers from lease to edl_signatures");
     const newSignatures = lease.signers.map((ls: any) => ({
       edl_id: edlId,
       signer_profile_id: ls.profile_id,
-      // Convertir le rôle du bail vers le rôle EDL
       signer_role: (ls.role === "proprietaire" || ls.role === "owner") ? "owner" : "tenant",
       invitation_token: crypto.randomUUID(),
     }));
 
-    const { data: inserted } = await supabase
+    const { data: inserted, error: insertError } = await serviceClient
       .from("edl_signatures")
       .insert(newSignatures)
-      .select("*, profile:signer_profile_id(*)");
-    
-    if (inserted) {
-      edl_signatures = inserted;
-      console.log("[fetchInspectionDetail] ✅ Signers injected successfully");
+      .select("*");
+
+    if (insertError) {
+      console.error("[fetchInspectionDetail] Failed to inject signers:", insertError.message);
+    } else if (inserted) {
+      // Fetch profiles for the newly inserted signatures
+      const newProfileIds = inserted.map((s: any) => s.signer_profile_id).filter(Boolean);
+      if (newProfileIds.length > 0) {
+        const { data: profiles } = await serviceClient
+          .from("profiles")
+          .select("*")
+          .in("id", newProfileIds);
+        edl_signatures = inserted.map((sig: any) => ({
+          ...sig,
+          profile: profiles?.find((p: any) => p.id === sig.signer_profile_id) || null,
+        }));
+      } else {
+        edl_signatures = inserted;
+      }
+      console.log("[fetchInspectionDetail] Signers injected successfully");
     }
   }
-  
-  
-  // 🔧 FIX: Si pas de bail lié mais on a un property_id, chercher le bail actif pour cette propriété
+
+
+  // If no lease linked but we have a property_id, search for active lease
   if (!lease && (property?.id || edl.property_id)) {
     const propId = property?.id || edl.property_id;
     console.log("[fetchInspectionDetail] No lease linked, searching for active lease on property:", propId);
-    const { data: propertyLease } = await supabase
+    const { data: propertyLease } = await serviceClient
       .from("leases")
       .select(`
         *,
         property:properties(*),
-        signers:lease_signers(*, profile:profile_id(*))
+        signers:lease_signers(*, profile:profiles(*))
       `)
       .eq("property_id", propId)
       .in("statut", ["active", "fully_signed", "partially_signed", "pending_signature"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    
+
     if (propertyLease) {
       lease = propertyLease;
       if (!property) property = propertyLease.property;
-      console.log("[fetchInspectionDetail] ✅ Found lease via property:", lease.id, "with", lease.signers?.length || 0, "signers");
+      console.log("[fetchInspectionDetail] Found lease via property:", lease.id, "with", lease.signers?.length || 0, "signers");
     }
   }
-  
+
   // If lease exists but signers are missing, fetch them separately
   if (lease && (!lease.signers || lease.signers.length === 0)) {
     console.log("[fetchInspectionDetail] Signers missing, fetching separately for lease:", lease.id);
-    const { data: signers } = await supabase
+    const { data: signers } = await serviceClient
       .from("lease_signers")
-      .select("*, profile:profile_id(*)")
+      .select("*, profile:profiles(*)")
       .eq("lease_id", lease.id);
     if (signers && signers.length > 0) {
       lease = { ...lease, signers };
       console.log("[fetchInspectionDetail] Found", signers.length, "signers");
     }
   }
-  
-  // If property is still missing, try to find it via lease_id if edl.lease_id exists
+
+  // If property is still missing, try to find it via lease_id
   if (!property && edl.lease_id) {
     console.log("[fetchInspectionDetail] Property missing, fetching via lease_id:", edl.lease_id);
-    const { data: leaseData } = await supabase
+    const { data: leaseData } = await serviceClient
       .from("leases")
       .select(`
         *,
         property:properties(*),
-        signers:lease_signers(*, profile:profile_id(*))
+        signers:lease_signers(*, profile:profiles(*))
       `)
       .eq("id", edl.lease_id)
       .single();
-    
+
     if (leaseData?.property) {
       property = leaseData.property;
       lease = leaseData;
     }
   }
-  
+
   // Final fallback: if we have lease but no signers yet
   if (lease && (!lease.signers || lease.signers.length === 0)) {
-    const { data: signers } = await supabase
+    const { data: signers } = await serviceClient
       .from("lease_signers")
-      .select("*, profile:profile_id(*)")
+      .select("*, profile:profiles(*)")
       .eq("lease_id", lease.id);
     if (signers && signers.length > 0) {
       lease = { ...lease, signers };
     }
   }
 
-  // 🔧 FIX: Si les signataires ont un profile_id mais pas de profile (RLS blocking), 
-  // récupérer les profils séparément avec admin client
+  // If signers have profile_id but no profile (RLS blocking), fetch profiles separately
   if (lease?.signers && lease.signers.length > 0) {
     const signersWithMissingProfiles = lease.signers.filter((s: any) => s.profile_id && !s.profile);
-    
+
     if (signersWithMissingProfiles.length > 0) {
       console.log("[fetchInspectionDetail] Fetching missing profiles for signers:", signersWithMissingProfiles.length);
-      
-      // Créer un client admin pour contourner RLS
-      const { createClient: createAdminClient } = await import("@supabase/supabase-js");
-      const adminClient = createAdminClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { persistSession: false } }
-      );
-      
+
       const profileIds = signersWithMissingProfiles.map((s: any) => s.profile_id);
-      const { data: profiles } = await adminClient
+      const { data: profiles } = await serviceClient
         .from("profiles")
         .select("*")
         .in("id", profileIds);
-      
+
       if (profiles && profiles.length > 0) {
         console.log("[fetchInspectionDetail] Found profiles:", profiles.length, profiles.map((p: any) => p.prenom));
-        
-        // Mettre à jour les signataires avec leurs profils
+
         lease.signers = lease.signers.map((s: any) => {
           if (s.profile_id && !s.profile) {
-            const profile = profiles.find((p: any) => p.id === s.profile_id);
-            if (profile) {
-              console.log("[fetchInspectionDetail] Attaching profile to signer:", s.role, profile.prenom);
-              return { ...s, profile };
+            const matchedProfile = profiles.find((p: any) => p.id === s.profile_id);
+            if (matchedProfile) {
+              return { ...s, profile: matchedProfile };
             }
           }
           return s;
@@ -240,39 +238,24 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
     }
   }
 
-  // DEBUG: Final lease signers state
-  console.log("[fetchInspectionDetail] Final lease signers count:", lease?.signers?.length || 0);
-  lease?.signers?.forEach((s: any) => {
-    console.log(`[fetchInspectionDetail] Signer role: ${s.role}, hasProfile: ${!!s.profile}, name: ${s.profile?.prenom} ${s.profile?.nom}`);
-  });
-
   if (!property) {
     console.error("[fetchInspectionDetail] CRITICAL: No property found for EDL", edl.id);
-    // If no property found, we can't check ownership, but let's try one last thing: 
-    // maybe property_id is set but the join failed?
     if (edl.property_id) {
-      const { data: propData } = await supabase.from("properties").select("*").eq("id", edl.property_id).single();
+      const { data: propData } = await serviceClient.from("properties").select("*").eq("id", edl.property_id).single();
       if (propData) property = propData;
     }
   }
-  
+
   if (!property) return null;
 
   // Check if user is the owner of the property
   if (property.owner_id !== profileId) {
     console.error("[fetchInspectionDetail] Ownership mismatch:", property.owner_id, "vs", profileId);
-    return null; 
+    return null;
   }
 
-  // Fetch owner profile with ADMIN client
-  const { createClient: createAdminClient } = await import("@supabase/supabase-js");
-  const adminClient = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-
-  const { data: ownerProfile } = await adminClient
+  // Fetch owner profile using service client
+  const { data: ownerProfile } = await serviceClient
     .from("owner_profiles")
     .select(`
       *,
@@ -281,8 +264,7 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
     .eq("profile_id", profileId)
     .single();
 
-  // Fetch meter readings (serviceClient pour bypass RLS et garantir meter_id)
-  const serviceClient = getServiceClient();
+  // Fetch meter readings (serviceClient already defined above)
   let meterReadings: any[] = [];
   let propertyMeters: any[] = [];
   try {
@@ -406,8 +388,9 @@ async function DetailContent({ edlId, profileId }: { edlId: string; profileId: s
 export default async function InspectionDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -423,7 +406,7 @@ export default async function InspectionDetailPage({
 
   return (
     <Suspense fallback={<DetailSkeleton />}>
-      <DetailContent edlId={params.id} profileId={profile.id} />
+      <DetailContent edlId={id} profileId={profile.id} />
     </Suspense>
   );
 }

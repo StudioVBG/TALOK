@@ -1,8 +1,8 @@
-// @ts-nocheck
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 import { InspectionsClient } from "./InspectionsClient";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 async function fetchInspections(profileId: string) {
   const supabase = await createClient();
+  const serviceClient = getServiceClient();
 
   const { data: properties } = await supabase
     .from("properties")
@@ -20,7 +21,7 @@ async function fetchInspections(profileId: string) {
 
   const propertyIds = properties.map((p) => p.id);
 
-  const { data, error } = await supabase
+  const { data, error } = await serviceClient
     .from("edl")
     .select(`
       *,
