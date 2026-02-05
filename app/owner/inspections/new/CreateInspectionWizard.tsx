@@ -48,6 +48,7 @@ import { Progress } from "@/components/ui/progress";
 
 // Import extracted types and constants from ./config/
 import type { Lease, RoomData, MeterReading, KeyItem } from "./config/types";
+import { prepareImageForUpload } from "@/lib/helpers/image-compression";
 import {
   ROOM_TEMPLATES,
   CONDITION_OPTIONS,
@@ -601,18 +602,36 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           const photoPath = readingData.reading?.photo_url || null;
 
           // 2b. Sauvegarder spécifiquement pour cet EDL (snapshot)
-          await safeFetch(`/api/edl/${edl.id}/meter-readings`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              meter_id: meterId,
-              meter_type: mr.type,
-              meter_number: mr.meterNumber,
-              reading_value: parseFloat(mr.reading),
-              reading_unit: mr.unit,
-              photo_path: photoPath,
-            }),
-          });
+          // On utilise FormData si on a une photo, sinon JSON avec la valeur obligatoire
+          if (mr.photo) {
+            // Avec photo: utiliser FormData pour upload direct vers edl_meter_readings
+            const edlMeterFormData = new FormData();
+            edlMeterFormData.append("meter_id", meterId);
+            edlMeterFormData.append("meter_type", mr.type);
+            edlMeterFormData.append("meter_number", mr.meterNumber || "");
+            edlMeterFormData.append("manual_value", mr.reading);
+            edlMeterFormData.append("reading_unit", mr.unit);
+            edlMeterFormData.append("photo", mr.photo);
+
+            await safeFetch(`/api/edl/${edl.id}/meter-readings`, {
+              method: "POST",
+              body: edlMeterFormData,
+            });
+          } else {
+            // Sans photo: envoyer JSON avec la valeur manuelle (sera validée automatiquement)
+            await safeFetch(`/api/edl/${edl.id}/meter-readings`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                meter_id: meterId,
+                meter_type: mr.type,
+                meter_number: mr.meterNumber,
+                reading_value: parseFloat(mr.reading),
+                reading_unit: mr.unit,
+                photo_path: photoPath, // Utilise le chemin de la photo déjà uploadée si disponible
+              }),
+            });
+          }
         }
       }
       setUploadProgress(30);
@@ -663,17 +682,42 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       setUploadProgress(40);
 
       // 5. Uploader les photos des items et photos globales
+      // FIX: Compresser les images côté client avant upload pour éviter les erreurs de taille
       if (totalPhotos > 0) {
         setUploadStep("Upload des photos...");
         let uploadedPhotos = 0;
         let itemOffset = 0;
+
+        // Helper pour compresser une photo si nécessaire
+        const compressPhotoIfNeeded = async (photo: File): Promise<File> => {
+          try {
+            const { file, wasCompressed } = await prepareImageForUpload(photo, {
+              maxWidth: 1920,
+              maxHeight: 1080,
+              quality: 0.8,
+              maxSizeBytes: 4 * 1024 * 1024, // 4 Mo max pour laisser une marge sous la limite de 5 Mo
+            });
+            if (wasCompressed) {
+              console.log(`Photo compressée: ${photo.name} (${(photo.size / 1024 / 1024).toFixed(2)} Mo → ${(file.size / 1024 / 1024).toFixed(2)} Mo)`);
+            }
+            return file;
+          } catch (e) {
+            console.warn(`Compression échouée pour ${photo.name}, utilisation de l'original`, e);
+            return photo;
+          }
+        };
 
         for (const room of roomsData) {
           // Photos globales de la pièce
           if (room.globalPhotos && room.globalPhotos.length > 0) {
             setUploadDetails(`Photo ${uploadedPhotos + 1}/${totalPhotos} (${room.name})`);
             const formData = new FormData();
-            room.globalPhotos.forEach(photo => formData.append("files", photo));
+
+            // Compresser les photos avant ajout au FormData
+            for (const photo of room.globalPhotos) {
+              const compressedPhoto = await compressPhotoIfNeeded(photo);
+              formData.append("files", compressedPhoto);
+            }
             formData.append("section", room.name);
 
             await safeFetch(`/api/inspections/${edl.id}/photos`, {
@@ -690,7 +734,12 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
             if (item.photos.length > 0 && insertedItem) {
               setUploadDetails(`Photo ${uploadedPhotos + 1}/${totalPhotos} (${item.name})`);
               const formData = new FormData();
-              item.photos.forEach(photo => formData.append("files", photo));
+
+              // Compresser les photos avant ajout au FormData
+              for (const photo of item.photos) {
+                const compressedPhoto = await compressPhotoIfNeeded(photo);
+                formData.append("files", compressedPhoto);
+              }
               formData.append("section", room.name);
 
               await safeFetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
