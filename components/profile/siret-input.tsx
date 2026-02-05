@@ -47,6 +47,7 @@ export function SiretInput({ value, onChange, error, disabled }: SiretInputProps
         error={error}
         className="font-mono"
         aria-invalid={!!error}
+        aria-required="true"
       />
     </div>
   );

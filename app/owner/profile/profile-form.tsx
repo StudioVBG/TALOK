@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { buildAvatarUrl, formatFullName } from "@/lib/helpers/format";
 import { useProfileForm } from "@/lib/hooks/use-profile-form";
 import { useUnsavedChangesWarning } from "@/lib/hooks/use-unsaved-changes-warning";
@@ -144,12 +145,34 @@ export function ProfileForm() {
                 <p className="font-medium text-lg">
                   {formatFullName(formData.prenom || null, formData.nom || null)}
                 </p>
-                <p className="text-sm text-muted-foreground">{userEmail}</p>
-                {profile?.role && (
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Rôle : {profile.role}
-                  </p>
-                )}
+                <TooltipProvider delayDuration={0}>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm text-muted-foreground">{userEmail}</p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help shrink-0" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p className="text-xs max-w-[200px]">L&apos;adresse e-mail est liée à votre compte et ne peut pas être modifiée ici. Contactez le support si nécessaire.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {profile?.role && (
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Rôle : {profile.role}
+                      </p>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground/60 cursor-help shrink-0" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p className="text-xs max-w-[200px]">Le rôle est défini lors de la création du compte et ne peut pas être modifié.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  )}
+                </TooltipProvider>
                 <div className="mt-3">
                   <Label
                     htmlFor="avatar"
@@ -184,6 +207,7 @@ export function ProfileForm() {
                   onChange={(e) => updateField("prenom", e.target.value)}
                   placeholder="Votre prénom"
                   error={errors.prenom}
+                  aria-required="true"
                 />
               </div>
               <div className="space-y-2">
@@ -196,6 +220,7 @@ export function ProfileForm() {
                   onChange={(e) => updateField("nom", e.target.value)}
                   placeholder="Votre nom"
                   error={errors.nom}
+                  aria-required="true"
                 />
               </div>
               <div className="space-y-2">
@@ -254,6 +279,7 @@ export function ProfileForm() {
               value={formData.owner_type}
               onChange={(e) => updateField("owner_type", e.target.value as OwnerType)}
               disabled={isSaving}
+              aria-required="true"
             >
               <option value="particulier">Particulier</option>
               <option value="societe">Société</option>
@@ -273,6 +299,7 @@ export function ProfileForm() {
                   onChange={(e) => updateField("raison_sociale", e.target.value)}
                   error={errors.raison_sociale}
                   disabled={isSaving}
+                  aria-required="true"
                 />
               </div>
 
@@ -288,6 +315,8 @@ export function ProfileForm() {
                   value={formData.forme_juridique}
                   onChange={(e) => updateField("forme_juridique", e.target.value)}
                   disabled={isSaving}
+                  aria-required="true"
+                  aria-invalid={!!errors.forme_juridique}
                 >
                   <option value="">Sélectionner...</option>
                   <option value="SCI">SCI</option>
@@ -326,6 +355,8 @@ export function ProfileForm() {
                   value={formData.adresse_siege}
                   onChange={(e) => updateField("adresse_siege", e.target.value)}
                   disabled={isSaving}
+                  aria-required="true"
+                  aria-invalid={!!errors.adresse_siege}
                 />
                 {errors.adresse_siege && (
                   <p className="text-sm text-destructive" role="alert">
