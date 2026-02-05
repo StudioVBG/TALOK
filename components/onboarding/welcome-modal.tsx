@@ -267,7 +267,7 @@ export function WelcomeModal({
           </button>
 
           {/* Content */}
-          <div className="relative z-10 p-8 sm:p-10">
+          <div className="relative z-10 p-6 sm:p-8">
             {/* Header */}
             <motion.div variants={itemVariants} className="text-center mb-8">
               <motion.div
@@ -283,7 +283,9 @@ export function WelcomeModal({
                 variants={itemVariants}
                 className="text-3xl sm:text-4xl font-bold text-white mb-3"
               >
-                {config.title.replace("!", `,\n${userName} !`)}
+                {config.title.replace(" !", ",")}
+                <br />
+                <span className="whitespace-nowrap">{userName}&nbsp;!</span>
               </motion.h2>
 
               <motion.p
@@ -317,7 +319,7 @@ export function WelcomeModal({
                         <h4 className="font-semibold text-white mb-1">
                           {feature.title}
                         </h4>
-                        <p className="text-sm text-slate-400">
+                        <p className="text-sm text-slate-300">
                           {feature.description}
                         </p>
                       </div>
@@ -346,7 +348,7 @@ export function WelcomeModal({
                 onClick={handleSkip}
                 variant="ghost"
                 size="lg"
-                className="w-full sm:w-auto text-slate-400 hover:text-white hover:bg-white/10"
+                className="w-full sm:w-auto text-slate-400 hover:text-white hover:bg-white/10 border border-white/20 rounded-lg px-4 py-2"
               >
                 {config.skipText}
               </Button>
@@ -355,7 +357,7 @@ export function WelcomeModal({
             {/* Progress hint */}
             <motion.p
               variants={itemVariants}
-              className="text-center text-xs text-slate-500 mt-6"
+              className="text-center text-xs text-slate-400 mt-4"
             >
               <Sparkles className="w-3 h-3 inline-block mr-1" />
               Configuration rapide en quelques minutes
