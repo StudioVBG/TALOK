@@ -193,9 +193,10 @@ export function InspectionsClient({ inspections }: Props) {
       className: "text-right",
       cell: (edl: Inspection) => (
         <div className="flex justify-end gap-2">
-          <Button size="sm" variant="ghost" asChild className="hover:bg-slate-100 h-8 w-8 p-0" title="Voir">
+          <Button size="sm" variant="outline" asChild className="hover:bg-blue-50 hover:border-blue-300 h-8 gap-1.5 px-2.5 text-blue-600 border-blue-200" title="Voir l'état des lieux">
             <Link href={`/owner/inspections/${edl.id}`}>
-              <Eye className="h-4 w-4 text-slate-600" />
+              <Eye className="h-4 w-4" />
+              <span className="text-xs font-medium">Voir</span>
             </Link>
           </Button>
 
