@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { HelpCircle, MessageSquare, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RestartTourCard } from "@/components/onboarding/RestartTourCard";
 
 const SERVICES = [
   {
@@ -83,6 +84,11 @@ export default function OwnerSupportPage() {
               </p>
             </CardContent>
           </Card>
+
+          {/* Tour guidé */}
+          <div className="mb-8">
+            <RestartTourCard />
+          </div>
 
           {/* Catalogue de services */}
           <div className="mb-8">

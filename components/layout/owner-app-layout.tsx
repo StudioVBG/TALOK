@@ -49,20 +49,65 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navigation = [
-  { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard, tourId: "nav-dashboard" },
-  { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2, tourId: "nav-properties" },
-  { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
-  { name: "États des lieux", href: "/owner/inspections", icon: ClipboardCheck, tourId: "nav-inspections" },
-  { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
-  { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
-  { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
-  { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck, tourId: "nav-documents" },
-  { name: "GED", href: OWNER_ROUTES.ged.path, icon: FolderArchive, badge: "Nouveau" },
-  { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
-  { name: "Facturation", href: "/settings/billing", icon: CreditCard },
-  { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle, tourId: "nav-support" },
+interface NavItem {
+  name: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  tourId?: string;
+  badge?: string;
+}
+
+interface NavGroup {
+  label?: string;
+  items: NavItem[];
+}
+
+const navigationGroups: NavGroup[] = [
+  {
+    items: [
+      { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard, tourId: "nav-dashboard" },
+    ],
+  },
+  {
+    label: "Gestion immobilière",
+    items: [
+      { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2, tourId: "nav-properties" },
+      { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
+      { name: "États des lieux", href: "/owner/inspections", icon: ClipboardCheck, tourId: "nav-inspections" },
+      { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
+    ],
+  },
+  {
+    label: "Finances",
+    items: [
+      { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
+      { name: "Facturation", href: "/settings/billing", icon: CreditCard },
+    ],
+  },
+  {
+    label: "Documents",
+    items: [
+      { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck, tourId: "nav-documents" },
+      { name: "GED", href: OWNER_ROUTES.ged.path, icon: FolderArchive, badge: "Nouveau" },
+    ],
+  },
+  {
+    label: "Juridique",
+    items: [
+      { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
+    ],
+  },
+  {
+    label: "Support",
+    items: [
+      { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
+      { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle, tourId: "nav-support" },
+    ],
+  },
 ];
+
+// Flat list for page title lookup and bottom nav
+const allNavItems = navigationGroups.flatMap((g) => g.items);
 
 interface OwnerAppLayoutProps {
   children: React.ReactNode;
@@ -117,10 +162,11 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
   }
 
   // Trouver le titre de la page active
-  const activeNavItem = navigation.find(
+  const isProfilePage = pathname === "/owner/profile" || pathname?.startsWith("/owner/profile/");
+  const activeNavItem = allNavItems.find(
     (item) => pathname === item.href || pathname?.startsWith(item.href + "/")
   );
-  const pageTitle = activeNavItem?.name || "Tableau de bord";
+  const pageTitle = isProfilePage ? "Mon profil" : (activeNavItem?.name || "Tableau de bord");
 
   // Déterminer si on peut afficher un bouton retour (page de détail)
   const isDetailPage = pathname?.split("/").filter(Boolean).length > 2;
@@ -155,33 +201,40 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
             </div>
           </div>
 
-          {/* Navigation icônes avec tooltips */}
+          {/* Navigation icônes avec tooltips, groupées */}
           <nav className="flex flex-1 flex-col items-center gap-1 py-3 overflow-y-auto">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-              return (
-                <Tooltip key={item.name}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={item.href}
-                      data-tour={(item as any).tourId}
-                      className={cn(
-                        "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 touch-target",
-                        isActive
-                          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      <item.icon className="h-5 w-5" />
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="font-medium">
-                    {item.name}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
+            {navigationGroups.map((group, groupIndex) => (
+              <div key={group.label ?? "main"} className="w-full flex flex-col items-center gap-1">
+                {groupIndex > 0 && (
+                  <div className="w-8 border-t border-border my-1" />
+                )}
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+                  return (
+                    <Tooltip key={item.name}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href={item.href}
+                          data-tour={item.tourId}
+                          className={cn(
+                            "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 touch-target",
+                            isActive
+                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                          aria-current={isActive ? "page" : undefined}
+                        >
+                          <item.icon className="h-5 w-5" />
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="font-medium">
+                        {item.name}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
 
           {/* User avatar en bas du rail */}
@@ -190,7 +243,13 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               <TooltipTrigger asChild>
                 <Link
                   href="/owner/profile"
-                  className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white"
+                  className={cn(
+                    "flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200",
+                    isProfilePage
+                      ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-300 ring-offset-2 ring-offset-background shadow-md"
+                      : "bg-gradient-to-br from-blue-600 to-indigo-600 text-white hover:ring-2 hover:ring-blue-200 hover:ring-offset-2 hover:ring-offset-background"
+                  )}
+                  aria-current={isProfilePage ? "page" : undefined}
                 >
                   <User className="h-4 w-4" />
                 </Link>
@@ -221,29 +280,48 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               </div>
             </div>
 
-            {/* Navigation */}
+            {/* Navigation groupée */}
             <nav className="flex flex-1 flex-col">
-              <ul role="list" className="flex flex-1 flex-col gap-y-1">
-                {navigation.map((item) => {
-                  const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
-                  return (
-                    <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        data-tour={(item as any).tourId}
-                        className={cn(
-                          "group flex gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 transition-all duration-200",
-                          isActive
-                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
-                            : "text-foreground hover:bg-muted hover:text-foreground"
-                        )}
-                      >
-                        <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-white" : "text-muted-foreground group-hover:text-foreground")} />
-                        {item.name}
-                      </Link>
-                    </li>
-                  );
-                })}
+              <ul role="list" className="flex flex-1 flex-col gap-y-4">
+                {navigationGroups.map((group) => (
+                  <li key={group.label ?? "main"}>
+                    {group.label && (
+                      <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {group.label}
+                      </p>
+                    )}
+                    <ul role="list" className="flex flex-col gap-y-1">
+                      {group.items.map((item) => {
+                        const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+                        return (
+                          <li key={item.name}>
+                            <Link
+                              href={item.href}
+                              data-tour={item.tourId}
+                              className={cn(
+                                "group flex gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 transition-all duration-200",
+                                isActive
+                                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                                  : "text-foreground hover:bg-muted hover:text-foreground"
+                              )}
+                            >
+                              <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-white" : "text-muted-foreground group-hover:text-foreground")} />
+                              {item.name}
+                              {item.badge && (
+                                <span className={cn(
+                                  "ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full",
+                                  isActive ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                                )}>
+                                  {item.badge}
+                                </span>
+                              )}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                ))}
               </ul>
             </nav>
           </div>
