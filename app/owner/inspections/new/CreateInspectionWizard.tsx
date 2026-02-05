@@ -76,6 +76,8 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStep, setUploadStep] = useState("");
   const [uploadDetails, setUploadDetails] = useState("");
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Form state - Auto-select lease if preselectedLeaseId is provided
   const initialLease = preselectedLeaseId 
@@ -254,9 +256,26 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
     );
   };
 
+  // Constante pour la limite de taille des photos (4 Mo)
+  const MAX_PHOTO_SIZE_MB = 4;
+  const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
+
+  // Validation et avertissement pour les photos volumineuses
+  const validateAndWarnPhotoSize = (files: File[]): File[] => {
+    const largePhotos = files.filter(f => f.size > MAX_PHOTO_SIZE_BYTES);
+    if (largePhotos.length > 0) {
+      toast({
+        title: "Photos volumineuses détectées",
+        description: `${largePhotos.length} photo(s) dépassent ${MAX_PHOTO_SIZE_MB} Mo et seront compressées automatiquement lors de l'envoi.`,
+        variant: "default",
+      });
+    }
+    return files;
+  };
+
   const handlePhotoUpload = (roomIndex: number, itemIndex: number, files: FileList | null) => {
     if (!files) return;
-    const newPhotos = Array.from(files);
+    const newPhotos = validateAndWarnPhotoSize(Array.from(files));
     setRoomsData((prev) => {
       const updated = [...prev];
       const items = [...updated[roomIndex].items];
@@ -284,7 +303,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
 
   const handleGlobalPhotoUpload = (roomIndex: number, files: FileList | null) => {
     if (!files) return;
-    const newPhotos = Array.from(files);
+    const newPhotos = validateAndWarnPhotoSize(Array.from(files));
     setRoomsData((prev) => {
       const updated = [...prev];
       updated[roomIndex] = {
@@ -489,17 +508,55 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       setUploadStep("Création de l'état des lieux...");
       setUploadDetails("");
 
-      // Helper pour les requêtes avec retry automatique et meilleure gestion d'erreur
+      // Helper pour les requêtes avec retry automatique, indicateur visuel et logs structurés
       const safeFetch = async (url: string, options?: RequestInit, maxRetries = 2) => {
         let lastError: Error | null = null;
+        const startTime = Date.now();
+
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
+            // Indicateur de retry visible
+            if (attempt > 0) {
+              setIsRetrying(true);
+              setRetryCount(attempt);
+              setUploadDetails(prev => `${prev} (tentative ${attempt + 1}/${maxRetries + 1})`);
+
+              // Log structuré pour monitoring
+              console.log(JSON.stringify({
+                event: "edl_wizard_retry",
+                url: url.replace(/\/api\//, ""),
+                attempt: attempt + 1,
+                maxRetries: maxRetries + 1,
+                timestamp: new Date().toISOString(),
+              }));
+            }
+
             const res = await fetch(url, options);
+
+            // Réinitialiser l'indicateur de retry après succès
+            if (attempt > 0) {
+              setIsRetrying(false);
+              setRetryCount(0);
+            }
+
             if (!res.ok) {
               const errorData = await res.json().catch(() => ({}));
               const err = new Error(errorData.error || `Erreur ${res.status}`);
+
+              // Log structuré pour les erreurs HTTP
+              console.error(JSON.stringify({
+                event: "edl_wizard_http_error",
+                url: url.replace(/\/api\//, ""),
+                status: res.status,
+                error: errorData.error || `HTTP ${res.status}`,
+                attempt: attempt + 1,
+                duration: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
+              }));
+
               // Ne pas retry les erreurs 4xx (client) sauf 408/429
               if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+                setIsRetrying(false);
                 throw err;
               }
               lastError = err;
@@ -509,20 +566,46 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
               }
               throw err;
             }
+
+            // Log succès après retry
+            if (attempt > 0) {
+              console.log(JSON.stringify({
+                event: "edl_wizard_retry_success",
+                url: url.replace(/\/api\//, ""),
+                attempts: attempt + 1,
+                duration: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
+              }));
+            }
+
             return res;
           } catch (err: any) {
             lastError = err;
+
+            // Log structuré pour les erreurs réseau
+            console.error(JSON.stringify({
+              event: "edl_wizard_network_error",
+              url: url.replace(/\/api\//, ""),
+              error: err.message,
+              attempt: attempt + 1,
+              duration: Date.now() - startTime,
+              timestamp: new Date().toISOString(),
+            }));
+
             // Retry sur erreurs réseau
             if ((err.message === "Load failed" || err.message === "Failed to fetch") && attempt < maxRetries) {
               await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
               continue;
             }
             if (err.message === "Load failed" || err.message === "Failed to fetch") {
+              setIsRetrying(false);
               throw new Error("Erreur réseau - vérifiez votre connexion internet");
             }
+            setIsRetrying(false);
             throw err;
           }
         }
+        setIsRetrying(false);
         throw lastError || new Error("Erreur inattendue");
       };
 
@@ -1674,6 +1757,13 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
                 {uploadDetails && (
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                     {uploadDetails}
+                  </p>
+                )}
+                {/* Indicateur de retry */}
+                {isRetrying && (
+                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Nouvelle tentative en cours ({retryCount + 1}/3)...
                   </p>
                 )}
               </div>
