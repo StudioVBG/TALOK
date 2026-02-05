@@ -8,6 +8,130 @@ import { InspectionDetailClient } from "./InspectionDetailClient";
 
 export const dynamic = "force-dynamic";
 
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface EDLProfile {
+  id: string;
+  prenom: string;
+  nom: string;
+  email: string;
+  avatar_url?: string;
+  user_id?: string;
+}
+
+interface EDLSignature {
+  id: string;
+  edl_id: string;
+  signer_user: string | null;
+  signer_profile_id: string | null;
+  signer_role: string;
+  signed_at: string | null;
+  signature_image_path: string | null;
+  signature_image_url?: string;
+  invitation_token: string | null;
+  invitation_sent_at: string | null;
+  ip_inet: string | null;
+  profile?: EDLProfile | null;
+}
+
+interface EDLItem {
+  id: string;
+  edl_id: string;
+  room_name: string;
+  item_name: string;
+  condition: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+interface EDLMedia {
+  id: string;
+  edl_id: string;
+  item_id: string | null;
+  storage_path: string;
+  media_type: string;
+  section: string | null;
+  thumbnail_path: string | null;
+  taken_at: string;
+}
+
+interface LeaseSigner {
+  id: string;
+  profile_id: string | null;
+  role: string;
+  signed_at: string | null;
+  invited_email: string | null;
+  invited_name: string | null;
+  profile: EDLProfile | null;
+}
+
+interface Property {
+  id: string;
+  owner_id: string;
+  adresse_complete: string;
+  ville: string;
+  code_postal: string;
+  [key: string]: unknown;
+}
+
+interface Lease {
+  id: string;
+  property_id: string;
+  property: Property | null;
+  signers: LeaseSigner[];
+  [key: string]: unknown;
+}
+
+interface MeterReading {
+  id: string;
+  edl_id: string;
+  meter_id: string;
+  reading_value: number | null;
+  reading_unit: string | null;
+  photo_path: string | null;
+  ocr_value: number | null;
+  ocr_confidence: number | null;
+  is_validated: boolean;
+  created_at: string;
+  meter: {
+    id: string;
+    type: string;
+    meter_number: string | null;
+    serial_number: string | null;
+    unit: string;
+    location: string | null;
+    [key: string]: unknown;
+  } | null;
+}
+
+interface PropertyMeter {
+  id: string;
+  type: string;
+  meter_number: string | null;
+  serial_number: string | null;
+  unit: string;
+  location: string | null;
+  is_active?: boolean;
+  [key: string]: unknown;
+}
+
+interface RoomStats {
+  total: number;
+  completed: number;
+  bon: number;
+  moyen: number;
+  mauvais: number;
+  tres_mauvais: number;
+}
+
+interface Room {
+  name: string;
+  items: Array<EDLItem & { media: EDLMedia[] }>;
+  stats: RoomStats;
+}
+
+// ─── Metadata ───────────────────────────────────────────────────────────────
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   return {
     title: "Détails EDL | Talok",
@@ -15,29 +139,22 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
+// ─── Data Fetching ──────────────────────────────────────────────────────────
+
 async function fetchInspectionDetail(edlId: string, profileId: string) {
-  const supabase = await createClient();
-  // Use service client for all queries that need to bypass RLS
   const serviceClient = getServiceClient();
 
-  console.log("[fetchInspectionDetail] Fetching EDL:", edlId);
-
-  // Fetch EDL with basic related data using service client to avoid RLS issues
+  // 1. Fetch EDL with related data
   const { data: edl, error } = await serviceClient
     .from("edl")
     .select(`
       *,
       lease:leases(
         *,
-        property:properties(
-          *
-        ),
+        property:properties(*),
         signers:lease_signers(
           *,
-          profile:profiles(
-            *,
-            tenant_profile:tenant_profiles(*)
-          )
+          profile:profiles(*, tenant_profile:tenant_profiles(*))
         )
       ),
       property_details:properties(*)
@@ -46,27 +163,26 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
     .single();
 
   if (error || !edl) {
-    console.error("[fetchInspectionDetail] EDL not found or error:", error);
+    console.error("[fetchInspectionDetail] EDL fetch error:", error?.message);
     return null;
   }
 
-  // Fetch items and media separately to avoid heavy join
-  const { data: edl_items } = await serviceClient.from("edl_items").select("*").eq("edl_id", edlId);
-  const { data: edl_media } = await serviceClient.from("edl_media").select("*").eq("edl_id", edlId);
+  // 2. Fetch items and media in parallel
+  const [itemsResult, mediaResult, signaturesResult] = await Promise.all([
+    serviceClient.from("edl_items").select("*").eq("edl_id", edlId),
+    serviceClient.from("edl_media").select("*").eq("edl_id", edlId),
+    serviceClient.from("edl_signatures").select("*").eq("edl_id", edlId),
+  ]);
 
-  // Fetch signatures
-  const { data: signaturesRaw } = await serviceClient
-    .from("edl_signatures")
-    .select("*")
-    .eq("edl_id", edlId);
+  const edl_items: EDLItem[] = (itemsResult.data || []) as EDLItem[];
+  const edl_media: EDLMedia[] = (mediaResult.data || []) as EDLMedia[];
+  let edl_signatures: EDLSignature[] = (signaturesResult.data || []) as EDLSignature[];
 
-  let edl_signatures = signaturesRaw || [];
-
-  // Retrieve signer profiles using service client (bypasses RLS)
+  // 3. Attach profiles to signatures
   if (edl_signatures.length > 0) {
     const signerProfileIds = edl_signatures
-      .map((s: any) => s.signer_profile_id)
-      .filter(Boolean);
+      .map(s => s.signer_profile_id)
+      .filter((id): id is string => !!id);
 
     if (signerProfileIds.length > 0) {
       const { data: signerProfiles } = await serviceClient
@@ -75,18 +191,15 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
         .in("id", signerProfileIds);
 
       if (signerProfiles && signerProfiles.length > 0) {
-        console.log("[fetchInspectionDetail] Found signer profiles:", signerProfiles.map((p: any) => `${p.prenom} ${p.nom}`));
-
-        // Attach profiles to signatures
-        edl_signatures = edl_signatures.map((sig: any) => {
-          const profile = signerProfiles.find((p: any) => p.id === sig.signer_profile_id);
-          return { ...sig, profile };
-        });
+        edl_signatures = edl_signatures.map(sig => ({
+          ...sig,
+          profile: (signerProfiles as EDLProfile[]).find(p => p.id === sig.signer_profile_id) || null,
+        }));
       }
     }
   }
 
-  // Generate signed URLs for signature images (private bucket)
+  // 4. Generate signed URLs for signature images (private bucket)
   for (const sig of edl_signatures) {
     if (sig.signature_image_path) {
       const { data: signedUrlData } = await serviceClient.storage
@@ -94,21 +207,19 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
         .createSignedUrl(sig.signature_image_path, 3600);
 
       if (signedUrlData?.signedUrl) {
-        (sig as any).signature_image_url = signedUrlData.signedUrl;
-        console.log("[fetchInspectionDetail] Generated signed URL for signature:", sig.signer_role);
+        sig.signature_image_url = signedUrlData.signedUrl;
       }
     }
   }
 
-  // Get the lease and property (from lease or directly)
-  let lease = (edl as any).lease;
-  let property = lease?.property || (edl as any).property_details;
+  // 5. Resolve lease and property
+  const edlAny = edl as Record<string, unknown>;
+  let lease: Lease | null = (edlAny.lease as Lease) || null;
+  let property: Property | null = (lease?.property as Property) || (edlAny.property_details as Property) || null;
 
-  // AUTO-HEALING: If no signatures exist for this EDL, inject them from the lease
-  // Use service client to bypass RLS (edl_signatures INSERT requires signer_user = auth.uid())
+  // 6. AUTO-HEALING: Inject missing signatures from lease signers
   if (edl_signatures.length === 0 && lease?.signers) {
-    console.log("[fetchInspectionDetail] Injecting missing signers from lease to edl_signatures");
-    const newSignatures = lease.signers.map((ls: any) => ({
+    const newSignatures = lease.signers.map((ls: LeaseSigner) => ({
       edl_id: edlId,
       signer_profile_id: ls.profile_id,
       signer_role: (ls.role === "proprietaire" || ls.role === "owner") ? "owner" : "tenant",
@@ -123,36 +234,30 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
     if (insertError) {
       console.error("[fetchInspectionDetail] Failed to inject signers:", insertError.message);
     } else if (inserted) {
-      // Fetch profiles for the newly inserted signatures
-      const newProfileIds = inserted.map((s: any) => s.signer_profile_id).filter(Boolean);
+      const newProfileIds = inserted
+        .map((s: Record<string, unknown>) => s.signer_profile_id as string)
+        .filter(Boolean);
       if (newProfileIds.length > 0) {
         const { data: profiles } = await serviceClient
           .from("profiles")
           .select("*")
           .in("id", newProfileIds);
-        edl_signatures = inserted.map((sig: any) => ({
+        edl_signatures = (inserted as EDLSignature[]).map(sig => ({
           ...sig,
-          profile: profiles?.find((p: any) => p.id === sig.signer_profile_id) || null,
+          profile: (profiles as EDLProfile[] | null)?.find(p => p.id === sig.signer_profile_id) || null,
         }));
       } else {
-        edl_signatures = inserted;
+        edl_signatures = inserted as EDLSignature[];
       }
-      console.log("[fetchInspectionDetail] Signers injected successfully");
     }
   }
 
-
-  // If no lease linked but we have a property_id, search for active lease
-  if (!lease && (property?.id || edl.property_id)) {
-    const propId = property?.id || edl.property_id;
-    console.log("[fetchInspectionDetail] No lease linked, searching for active lease on property:", propId);
+  // 7. Fallback: find lease via property_id if not linked
+  if (!lease && (property?.id || (edl as Record<string, unknown>).property_id)) {
+    const propId = property?.id || (edl as Record<string, unknown>).property_id as string;
     const { data: propertyLease } = await serviceClient
       .from("leases")
-      .select(`
-        *,
-        property:properties(*),
-        signers:lease_signers(*, profile:profiles(*))
-      `)
+      .select(`*, property:properties(*), signers:lease_signers(*, profile:profiles(*))`)
       .eq("property_id", propId)
       .in("statut", ["active", "fully_signed", "partially_signed", "pending_signature"])
       .order("created_at", { ascending: false })
@@ -160,77 +265,63 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
       .maybeSingle();
 
     if (propertyLease) {
-      lease = propertyLease;
-      if (!property) property = propertyLease.property;
-      console.log("[fetchInspectionDetail] Found lease via property:", lease.id, "with", lease.signers?.length || 0, "signers");
+      lease = propertyLease as unknown as Lease;
+      if (!property) property = (propertyLease as Record<string, unknown>).property as Property;
     }
   }
 
-  // If lease exists but signers are missing, fetch them separately
+  // 8. Fetch missing signers for lease
   if (lease && (!lease.signers || lease.signers.length === 0)) {
-    console.log("[fetchInspectionDetail] Signers missing, fetching separately for lease:", lease.id);
     const { data: signers } = await serviceClient
       .from("lease_signers")
       .select("*, profile:profiles(*)")
       .eq("lease_id", lease.id);
     if (signers && signers.length > 0) {
-      lease = { ...lease, signers };
-      console.log("[fetchInspectionDetail] Found", signers.length, "signers");
+      lease = { ...lease, signers: signers as unknown as LeaseSigner[] };
     }
   }
 
-  // If property is still missing, try to find it via lease_id
-  if (!property && edl.lease_id) {
-    console.log("[fetchInspectionDetail] Property missing, fetching via lease_id:", edl.lease_id);
+  // 9. Fallback: find property via lease_id
+  if (!property && (edl as Record<string, unknown>).lease_id) {
     const { data: leaseData } = await serviceClient
       .from("leases")
-      .select(`
-        *,
-        property:properties(*),
-        signers:lease_signers(*, profile:profiles(*))
-      `)
-      .eq("id", edl.lease_id)
+      .select(`*, property:properties(*), signers:lease_signers(*, profile:profiles(*))`)
+      .eq("id", (edl as Record<string, unknown>).lease_id)
       .single();
 
-    if (leaseData?.property) {
-      property = leaseData.property;
-      lease = leaseData;
+    if ((leaseData as Record<string, unknown>)?.property) {
+      property = (leaseData as Record<string, unknown>).property as Property;
+      lease = leaseData as unknown as Lease;
     }
   }
 
-  // Final fallback: if we have lease but no signers yet
+  // 10. Final fallback for signers
   if (lease && (!lease.signers || lease.signers.length === 0)) {
     const { data: signers } = await serviceClient
       .from("lease_signers")
       .select("*, profile:profiles(*)")
       .eq("lease_id", lease.id);
     if (signers && signers.length > 0) {
-      lease = { ...lease, signers };
+      lease = { ...lease, signers: signers as unknown as LeaseSigner[] };
     }
   }
 
-  // If signers have profile_id but no profile (RLS blocking), fetch profiles separately
+  // 11. Fetch missing profiles for signers
   if (lease?.signers && lease.signers.length > 0) {
-    const signersWithMissingProfiles = lease.signers.filter((s: any) => s.profile_id && !s.profile);
+    const signersWithMissingProfiles = lease.signers.filter(s => s.profile_id && !s.profile);
 
     if (signersWithMissingProfiles.length > 0) {
-      console.log("[fetchInspectionDetail] Fetching missing profiles for signers:", signersWithMissingProfiles.length);
-
-      const profileIds = signersWithMissingProfiles.map((s: any) => s.profile_id);
+      const profileIds = signersWithMissingProfiles.map(s => s.profile_id).filter(Boolean) as string[];
       const { data: profiles } = await serviceClient
         .from("profiles")
         .select("*")
         .in("id", profileIds);
 
       if (profiles && profiles.length > 0) {
-        console.log("[fetchInspectionDetail] Found profiles:", profiles.length, profiles.map((p: any) => p.prenom));
-
-        lease.signers = lease.signers.map((s: any) => {
+        lease.signers = lease.signers.map(s => {
           if (s.profile_id && !s.profile) {
-            const matchedProfile = profiles.find((p: any) => p.id === s.profile_id);
-            if (matchedProfile) {
-              return { ...s, profile: matchedProfile };
-            }
+            const matchedProfile = (profiles as EDLProfile[]).find(p => p.id === s.profile_id);
+            if (matchedProfile) return { ...s, profile: matchedProfile };
           }
           return s;
         });
@@ -238,134 +329,114 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
     }
   }
 
+  // 12. Last resort: fetch property by ID
   if (!property) {
-    console.error("[fetchInspectionDetail] CRITICAL: No property found for EDL", edl.id);
-    if (edl.property_id) {
-      const { data: propData } = await serviceClient.from("properties").select("*").eq("id", edl.property_id).single();
-      if (propData) property = propData;
+    const propId = (edl as Record<string, unknown>).property_id as string | undefined;
+    if (propId) {
+      const { data: propData } = await serviceClient.from("properties").select("*").eq("id", propId).single();
+      if (propData) property = propData as unknown as Property;
     }
   }
 
   if (!property) return null;
 
-  // Check if user is the owner of the property
+  // 13. Verify ownership
   if (property.owner_id !== profileId) {
-    console.error("[fetchInspectionDetail] Ownership mismatch:", property.owner_id, "vs", profileId);
     return null;
   }
 
-  // Fetch owner profile using service client
+  // 14. Fetch owner profile
   const { data: ownerProfile } = await serviceClient
     .from("owner_profiles")
-    .select(`
-      *,
-      profile:profiles(*)
-    `)
+    .select(`*, profile:profiles(*)`)
     .eq("profile_id", profileId)
     .single();
 
-  // Fetch meter readings (serviceClient already defined above)
-  let meterReadings: any[] = [];
-  let propertyMeters: any[] = [];
+  // 15. Fetch meter readings and property meters in parallel
+  let meterReadings: MeterReading[] = [];
+  let propertyMeters: PropertyMeter[] = [];
   try {
-    const { data: readings, error: readingsError } = await serviceClient
-      .from("edl_meter_readings")
-      .select("id, edl_id, meter_id, reading_value, reading_unit, photo_path, ocr_value, ocr_confidence, is_validated, created_at, meter:meters(*)")
-      .eq("edl_id", edlId);
+    const [readingsResult, metersResult] = await Promise.all([
+      serviceClient
+        .from("edl_meter_readings")
+        .select("id, edl_id, meter_id, reading_value, reading_unit, photo_path, ocr_value, ocr_confidence, is_validated, created_at, meter:meters(*)")
+        .eq("edl_id", edlId),
+      serviceClient
+        .from("meters")
+        .select("*")
+        .eq("property_id", property.id),
+    ]);
 
-    if (readingsError) {
-      console.warn("[fetchInspectionDetail] edl_meter_readings fetch error:", readingsError.message);
-    } else {
-      meterReadings = readings || [];
-      console.log(`[fetchInspectionDetail] Fetched ${meterReadings.length} meter readings`);
+    if (!readingsResult.error) {
+      meterReadings = (readingsResult.data || []) as MeterReading[];
     }
-
-    // Récupérer également tous les compteurs du bien
-    const { data: meters, error: metersError } = await serviceClient
-      .from("meters")
-      .select("*")
-      .eq("property_id", property.id);
-
-    if (metersError) {
-      console.warn("[fetchInspectionDetail] property meters fetch failed:", metersError);
-    } else {
-      // Filtrer en JS pour éviter les erreurs si la colonne is_active n'existe pas encore
-      propertyMeters = meters?.filter(m => m.is_active !== false) || [];
+    if (!metersResult.error) {
+      propertyMeters = ((metersResult.data || []) as PropertyMeter[]).filter(m => m.is_active !== false);
     }
-  } catch (e) {
-    console.warn("[fetchInspectionDetail] meter data fetch failed", e);
+  } catch {
+    // Non-blocking: meter data fetch failure shouldn't break the page
   }
 
-  // 🔧 FIX: Reconstruire la variable rooms manquante pour l'affichage
-  const items = edl_items || [];
-  const media = edl_media || [];
-  
-  const roomsMap = items.reduce((acc: any, item: any) => {
+  // 16. Build rooms from items + media
+  const roomsMap: Record<string, Array<EDLItem & { media: EDLMedia[] }>> = {};
+  for (const item of edl_items) {
     const roomName = item.room_name || "Général";
-    if (!acc[roomName]) acc[roomName] = [];
-    
-    // Attacher les médias de cet item
-    const itemMedia = media.filter((m: any) => m.item_id === item.id);
-    
-    acc[roomName].push({
-      ...item,
-      media: itemMedia
-    });
-    return acc;
-  }, {});
+    if (!roomsMap[roomName]) roomsMap[roomName] = [];
+    const itemMedia = edl_media.filter(m => m.item_id === item.id);
+    roomsMap[roomName].push({ ...item, media: itemMedia });
+  }
 
-  const rooms = Object.entries(roomsMap).map(([name, items]: [string, any[]]) => {
-    const completed = items.filter(i => i.condition).length;
+  const rooms: Room[] = Object.entries(roomsMap).map(([name, roomItems]) => {
+    const completed = roomItems.filter(i => i.condition).length;
     return {
       name,
-      items,
+      items: roomItems,
       stats: {
-        total: items.length,
+        total: roomItems.length,
         completed,
-        bon: items.filter(i => i.condition === 'bon').length,
-        moyen: items.filter(i => i.condition === 'moyen').length,
-        mauvais: items.filter(i => i.condition === 'mauvais').length,
-        tres_mauvais: items.filter(i => i.condition === 'tres_mauvais').length,
-      }
+        bon: roomItems.filter(i => i.condition === "bon").length,
+        moyen: roomItems.filter(i => i.condition === "moyen").length,
+        mauvais: roomItems.filter(i => i.condition === "mauvais").length,
+        tres_mauvais: roomItems.filter(i => i.condition === "tres_mauvais").length,
+      },
     };
   });
 
   return {
     raw: {
       ...edl,
-      lease: lease ? {
-        ...lease,
-        property,
-      } : null,
-      edl_items: items,
-      edl_media: media,
-      edl_signatures: edl_signatures || [],
+      lease: lease ? { ...lease, property } : null,
+      edl_items,
+      edl_media,
+      edl_signatures,
     },
     meterReadings,
     propertyMeters,
     ownerProfile,
     rooms,
     stats: {
-      totalItems: items.length,
-      completedItems: items.filter((i: any) => i.condition).length,
-      totalPhotos: media.length,
-      signaturesCount: (edl_signatures || []).filter((s: any) => s.signature_image_path && s.signed_at).length,
+      totalItems: edl_items.length,
+      completedItems: edl_items.filter(i => i.condition).length,
+      totalPhotos: edl_media.length,
+      signaturesCount: edl_signatures.filter(s => s.signature_image_path && s.signed_at).length,
     },
   };
 }
 
+// ─── Components ─────────────────────────────────────────────────────────────
+
 function DetailSkeleton() {
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      <div className="flex justify-between items-start">
+    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div className="space-y-2">
-          <Skeleton className="h-8 w-72" />
-          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-8 w-48 sm:w-72" />
+          <Skeleton className="h-4 w-36 sm:w-48" />
         </div>
-        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-10 w-full sm:w-32" />
       </div>
       <Skeleton className="h-48 rounded-xl" />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {[...Array(3)].map((_, i) => (
           <Skeleton key={i} className="h-32 rounded-xl" />
         ))}
@@ -410,4 +481,3 @@ export default async function InspectionDetailPage({
     </Suspense>
   );
 }
-

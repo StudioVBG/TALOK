@@ -56,8 +56,19 @@ async function fetchInspections(profileId: string) {
 
 function InspectionsSkeleton() {
   return (
-    <div className="p-6 space-y-6">
-      <Skeleton className="h-8 w-48" />
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 container mx-auto max-w-7xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-36 sm:w-48" />
+          <Skeleton className="h-4 w-48 sm:w-64" />
+        </div>
+        <Skeleton className="h-10 w-full sm:w-36" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-lg" />
+        ))}
+      </div>
       <Skeleton className="h-64 rounded-lg" />
     </div>
   );

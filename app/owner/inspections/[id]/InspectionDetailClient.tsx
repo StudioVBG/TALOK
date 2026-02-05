@@ -470,18 +470,6 @@ export function InspectionDetailClient({ data }: Props) {
   const tenantSigned = !!(tenantSignature?.signed_at && (tenantSignature?.signature_image_path || tenantSignature?.signature_image));
   const actualSignaturesCount = (edl.edl_signatures || []).filter((s: any) => (s.signature_image_path || s.signature_image) && s.signed_at).length;
 
-  // Debug log pour comprendre les données
-  console.log("[EDL Debug]", {
-    tenantHasRealProfile,
-    tenantSignedLease,
-    isPlaceholderEmail,
-    hasDataError,
-    leaseFullySigned,
-    tenantProfileId,
-    tenantEmail,
-    signers: edl.lease?.signers
-  });
-
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col">
       {/* Breadcrumb */}
@@ -497,64 +485,65 @@ export function InspectionDetailClient({ data }: Props) {
 
       {/* Barre supérieure fixe (Header) */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground hover:text-foreground">
+        <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Button asChild variant="ghost" size="sm" className="-ml-1 sm:-ml-2 text-muted-foreground hover:text-foreground flex-shrink-0">
               <Link href="/owner/inspections">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour
+                <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Retour</span>
               </Link>
             </Button>
-            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-bold text-slate-900 hidden sm:block">
+            <div className="h-6 w-px bg-slate-200 hidden sm:block flex-shrink-0" />
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <h1 className="text-sm sm:text-lg font-bold text-slate-900 hidden md:block truncate">
                 EDL {edl.type === "entree" ? "Entrée" : "Sortie"} - {edl.lease?.property?.ville}
               </h1>
-              <Badge className={status.color} variant="outline">
+              <Badge className={`${status.color} flex-shrink-0`} variant="outline">
                 <StatusIcon className="h-3 w-3 mr-1" />
-                {status.label}
+                <span className="hidden xs:inline">{status.label}</span>
               </Badge>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {!ownerSigned && edl.status !== "signed" && (
               <Button
                 size="sm"
                 onClick={() => setIsSignModalOpen(true)}
                 disabled={isSigning}
-                className="bg-blue-600 hover:bg-blue-700 shadow-sm"
+                className="bg-blue-600 hover:bg-blue-700 shadow-sm h-8 sm:h-9 px-2 sm:px-3"
               >
-                {isSigning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileSignature className="h-4 w-4 mr-2" />}
-                Signer l'EDL
+                {isSigning ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <FileSignature className="h-4 w-4 sm:mr-2" />}
+                <span className="hidden sm:inline">Signer</span>
               </Button>
             )}
 
+            {/* Download/Print: icon-only on mobile, full on desktop */}
             <Button
               variant="outline"
               size="sm"
               onClick={handleDownloadPDF}
               disabled={isDownloading}
-              className="hidden sm:flex"
+              className="h-8 sm:h-9 px-2 sm:px-3"
             >
               {isDownloading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
               ) : (
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4 sm:mr-2" />
               )}
-              Télécharger
+              <span className="hidden sm:inline">Télécharger</span>
             </Button>
-            
-            <Button variant="outline" size="sm" onClick={() => window.print()} className="hidden sm:flex">
+
+            <Button variant="outline" size="sm" onClick={() => window.print()} className="hidden md:flex h-8 sm:h-9 px-2 sm:px-3">
               <Printer className="h-4 w-4 mr-2" />
               Imprimer
             </Button>
-            
+
             {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
-              <Button variant="outline" size="sm" asChild className="bg-white border-slate-200 shadow-sm hover:bg-slate-50">
+              <Button variant="outline" size="sm" asChild className="bg-white border-slate-200 shadow-sm hover:bg-slate-50 h-8 sm:h-9 px-2 sm:px-3">
                 <Link href={`/owner/inspections/${edl.id}/edit`}>
-                  <Edit className="h-4 w-4 mr-2 text-indigo-600" />
-                  Modifier
+                  <Edit className="h-4 w-4 sm:mr-2 text-indigo-600" />
+                  <span className="hidden sm:inline">Modifier</span>
                 </Link>
               </Button>
             )}
@@ -562,12 +551,12 @@ export function InspectionDetailClient({ data }: Props) {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+
           {/* Colonne de GAUCHE : L'APERÇU RÉEL DU DOCUMENT */}
           <div className="lg:col-span-8 xl:col-span-9 order-2 lg:order-1">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[800px]">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px] sm:min-h-[800px]">
               <EDLPreview 
                 edlData={edlTemplateData} 
                 edlId={edl.id} 
