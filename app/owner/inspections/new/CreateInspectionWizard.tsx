@@ -48,6 +48,7 @@ import { Progress } from "@/components/ui/progress";
 
 // Import extracted types and constants from ./config/
 import type { Lease, RoomData, MeterReading, KeyItem } from "./config/types";
+import { prepareImageForUpload } from "@/lib/helpers/image-compression";
 import {
   ROOM_TEMPLATES,
   CONDITION_OPTIONS,
@@ -75,6 +76,8 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStep, setUploadStep] = useState("");
   const [uploadDetails, setUploadDetails] = useState("");
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Form state - Auto-select lease if preselectedLeaseId is provided
   const initialLease = preselectedLeaseId 
@@ -253,9 +256,26 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
     );
   };
 
+  // Constante pour la limite de taille des photos (4 Mo)
+  const MAX_PHOTO_SIZE_MB = 4;
+  const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
+
+  // Validation et avertissement pour les photos volumineuses
+  const validateAndWarnPhotoSize = (files: File[]): File[] => {
+    const largePhotos = files.filter(f => f.size > MAX_PHOTO_SIZE_BYTES);
+    if (largePhotos.length > 0) {
+      toast({
+        title: "Photos volumineuses détectées",
+        description: `${largePhotos.length} photo(s) dépassent ${MAX_PHOTO_SIZE_MB} Mo et seront compressées automatiquement lors de l'envoi.`,
+        variant: "default",
+      });
+    }
+    return files;
+  };
+
   const handlePhotoUpload = (roomIndex: number, itemIndex: number, files: FileList | null) => {
     if (!files) return;
-    const newPhotos = Array.from(files);
+    const newPhotos = validateAndWarnPhotoSize(Array.from(files));
     setRoomsData((prev) => {
       const updated = [...prev];
       const items = [...updated[roomIndex].items];
@@ -283,7 +303,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
 
   const handleGlobalPhotoUpload = (roomIndex: number, files: FileList | null) => {
     if (!files) return;
-    const newPhotos = Array.from(files);
+    const newPhotos = validateAndWarnPhotoSize(Array.from(files));
     setRoomsData((prev) => {
       const updated = [...prev];
       updated[roomIndex] = {
@@ -488,17 +508,55 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       setUploadStep("Création de l'état des lieux...");
       setUploadDetails("");
 
-      // Helper pour les requêtes avec retry automatique et meilleure gestion d'erreur
+      // Helper pour les requêtes avec retry automatique, indicateur visuel et logs structurés
       const safeFetch = async (url: string, options?: RequestInit, maxRetries = 2) => {
         let lastError: Error | null = null;
+        const startTime = Date.now();
+
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
+            // Indicateur de retry visible
+            if (attempt > 0) {
+              setIsRetrying(true);
+              setRetryCount(attempt);
+              setUploadDetails(prev => `${prev} (tentative ${attempt + 1}/${maxRetries + 1})`);
+
+              // Log structuré pour monitoring
+              console.log(JSON.stringify({
+                event: "edl_wizard_retry",
+                url: url.replace(/\/api\//, ""),
+                attempt: attempt + 1,
+                maxRetries: maxRetries + 1,
+                timestamp: new Date().toISOString(),
+              }));
+            }
+
             const res = await fetch(url, options);
+
+            // Réinitialiser l'indicateur de retry après succès
+            if (attempt > 0) {
+              setIsRetrying(false);
+              setRetryCount(0);
+            }
+
             if (!res.ok) {
               const errorData = await res.json().catch(() => ({}));
               const err = new Error(errorData.error || `Erreur ${res.status}`);
+
+              // Log structuré pour les erreurs HTTP
+              console.error(JSON.stringify({
+                event: "edl_wizard_http_error",
+                url: url.replace(/\/api\//, ""),
+                status: res.status,
+                error: errorData.error || `HTTP ${res.status}`,
+                attempt: attempt + 1,
+                duration: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
+              }));
+
               // Ne pas retry les erreurs 4xx (client) sauf 408/429
               if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+                setIsRetrying(false);
                 throw err;
               }
               lastError = err;
@@ -508,20 +566,46 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
               }
               throw err;
             }
+
+            // Log succès après retry
+            if (attempt > 0) {
+              console.log(JSON.stringify({
+                event: "edl_wizard_retry_success",
+                url: url.replace(/\/api\//, ""),
+                attempts: attempt + 1,
+                duration: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
+              }));
+            }
+
             return res;
           } catch (err: any) {
             lastError = err;
+
+            // Log structuré pour les erreurs réseau
+            console.error(JSON.stringify({
+              event: "edl_wizard_network_error",
+              url: url.replace(/\/api\//, ""),
+              error: err.message,
+              attempt: attempt + 1,
+              duration: Date.now() - startTime,
+              timestamp: new Date().toISOString(),
+            }));
+
             // Retry sur erreurs réseau
             if ((err.message === "Load failed" || err.message === "Failed to fetch") && attempt < maxRetries) {
               await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
               continue;
             }
             if (err.message === "Load failed" || err.message === "Failed to fetch") {
+              setIsRetrying(false);
               throw new Error("Erreur réseau - vérifiez votre connexion internet");
             }
+            setIsRetrying(false);
             throw err;
           }
         }
+        setIsRetrying(false);
         throw lastError || new Error("Erreur inattendue");
       };
 
@@ -601,18 +685,36 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
           const photoPath = readingData.reading?.photo_url || null;
 
           // 2b. Sauvegarder spécifiquement pour cet EDL (snapshot)
-          await safeFetch(`/api/edl/${edl.id}/meter-readings`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              meter_id: meterId,
-              meter_type: mr.type,
-              meter_number: mr.meterNumber,
-              reading_value: parseFloat(mr.reading),
-              reading_unit: mr.unit,
-              photo_path: photoPath,
-            }),
-          });
+          // On utilise FormData si on a une photo, sinon JSON avec la valeur obligatoire
+          if (mr.photo) {
+            // Avec photo: utiliser FormData pour upload direct vers edl_meter_readings
+            const edlMeterFormData = new FormData();
+            edlMeterFormData.append("meter_id", meterId);
+            edlMeterFormData.append("meter_type", mr.type);
+            edlMeterFormData.append("meter_number", mr.meterNumber || "");
+            edlMeterFormData.append("manual_value", mr.reading);
+            edlMeterFormData.append("reading_unit", mr.unit);
+            edlMeterFormData.append("photo", mr.photo);
+
+            await safeFetch(`/api/edl/${edl.id}/meter-readings`, {
+              method: "POST",
+              body: edlMeterFormData,
+            });
+          } else {
+            // Sans photo: envoyer JSON avec la valeur manuelle (sera validée automatiquement)
+            await safeFetch(`/api/edl/${edl.id}/meter-readings`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                meter_id: meterId,
+                meter_type: mr.type,
+                meter_number: mr.meterNumber,
+                reading_value: parseFloat(mr.reading),
+                reading_unit: mr.unit,
+                photo_path: photoPath, // Utilise le chemin de la photo déjà uploadée si disponible
+              }),
+            });
+          }
         }
       }
       setUploadProgress(30);
@@ -663,17 +765,42 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       setUploadProgress(40);
 
       // 5. Uploader les photos des items et photos globales
+      // FIX: Compresser les images côté client avant upload pour éviter les erreurs de taille
       if (totalPhotos > 0) {
         setUploadStep("Upload des photos...");
         let uploadedPhotos = 0;
         let itemOffset = 0;
+
+        // Helper pour compresser une photo si nécessaire
+        const compressPhotoIfNeeded = async (photo: File): Promise<File> => {
+          try {
+            const { file, wasCompressed } = await prepareImageForUpload(photo, {
+              maxWidth: 1920,
+              maxHeight: 1080,
+              quality: 0.8,
+              maxSizeBytes: 4 * 1024 * 1024, // 4 Mo max pour laisser une marge sous la limite de 5 Mo
+            });
+            if (wasCompressed) {
+              console.log(`Photo compressée: ${photo.name} (${(photo.size / 1024 / 1024).toFixed(2)} Mo → ${(file.size / 1024 / 1024).toFixed(2)} Mo)`);
+            }
+            return file;
+          } catch (e) {
+            console.warn(`Compression échouée pour ${photo.name}, utilisation de l'original`, e);
+            return photo;
+          }
+        };
 
         for (const room of roomsData) {
           // Photos globales de la pièce
           if (room.globalPhotos && room.globalPhotos.length > 0) {
             setUploadDetails(`Photo ${uploadedPhotos + 1}/${totalPhotos} (${room.name})`);
             const formData = new FormData();
-            room.globalPhotos.forEach(photo => formData.append("files", photo));
+
+            // Compresser les photos avant ajout au FormData
+            for (const photo of room.globalPhotos) {
+              const compressedPhoto = await compressPhotoIfNeeded(photo);
+              formData.append("files", compressedPhoto);
+            }
             formData.append("section", room.name);
 
             await safeFetch(`/api/inspections/${edl.id}/photos`, {
@@ -690,7 +817,12 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
             if (item.photos.length > 0 && insertedItem) {
               setUploadDetails(`Photo ${uploadedPhotos + 1}/${totalPhotos} (${item.name})`);
               const formData = new FormData();
-              item.photos.forEach(photo => formData.append("files", photo));
+
+              // Compresser les photos avant ajout au FormData
+              for (const photo of item.photos) {
+                const compressedPhoto = await compressPhotoIfNeeded(photo);
+                formData.append("files", compressedPhoto);
+              }
               formData.append("section", room.name);
 
               await safeFetch(`/api/inspections/${edl.id}/photos?item_id=${insertedItem.id}`, {
@@ -1625,6 +1757,13 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
                 {uploadDetails && (
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                     {uploadDetails}
+                  </p>
+                )}
+                {/* Indicateur de retry */}
+                {isRetrying && (
+                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Nouvelle tentative en cours ({retryCount + 1}/3)...
                   </p>
                 )}
               </div>

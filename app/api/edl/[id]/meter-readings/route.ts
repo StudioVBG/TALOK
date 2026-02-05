@@ -485,6 +485,8 @@ export async function POST(
       console.log(`[POST /api/edl/${edlId}/meter-readings] Photo uploaded but OCR failed - needs manual validation`);
     }
 
+    // FIX: Si on a une valeur manuelle, on peut créer le relevé même sans photo
+    // C'est le cas typique lors de la création d'EDL depuis le wizard
     if (finalValue === null && !finalPhotoPath) {
       // Pas de valeur et pas de photo - on ne peut pas créer de relevé
       console.log(`[POST /api/edl/${edlId}/meter-readings] No value or photo, just updating meter.`);
@@ -494,6 +496,9 @@ export async function POST(
         meter: actualMeterData
       });
     }
+
+    // FIX: Si on a une valeur mais pas de photo, c'est OK - on crée quand même le relevé
+    // La photo est optionnelle pour les relevés manuels
 
     // 🔧 FIX: Ne pas inclure photo_path si undefined (contrainte NOT NULL en DB)
     const readingPayload: any = {
