@@ -47,6 +47,10 @@ import { useAuth } from "@/lib/hooks/use-auth";
 import { ownerProfilesService } from "@/features/profiles/services/owner-profiles.service";
 import type { OwnerProfile } from "@/lib/types";
 
+// ✅ SOTA 2026: Import EntitySelector pour la sélection d'entité signataire
+import { EntitySelector } from "@/components/entities/EntitySelector";
+import { useEntityStore } from "@/stores/useEntityStore";
+
 // Interface étendue pour inclure toutes les données nécessaires au bail
 interface Property {
   id: string;
@@ -103,6 +107,10 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   // ✅ Hooks pour les données utilisateur
   const { profile } = useAuth();
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile | null>(null);
+
+  // ✅ SOTA 2026: Sélection d'entité signataire
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const { entities } = useEntityStore();
 
   // État du wizard
   const [currentStep, setCurrentStep] = useState(1);
@@ -184,17 +192,39 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       date_signature: undefined, // Laisser vide pour signature manuelle ou électronique
       lieu_signature: selectedProperty.ville || "...",
       
-      // ✅ Bailleur (Données réelles)
-      bailleur: {
-        nom: profile?.nom || undefined, // undefined affiche les pointillés
-        prenom: profile?.prenom || undefined,
-        adresse: ownerProfile?.adresse_facturation || undefined,
-        code_postal: "",
-        ville: "",
-        telephone: profile?.telephone || undefined,
-        email: (profile as any)?.email || undefined,
-        type: ownerProfile?.type || "particulier",
-      },
+      // ✅ SOTA 2026: Bailleur — utilise l'entité si sélectionnée, sinon profil personnel
+      bailleur: (() => {
+        const selectedEntity = selectedEntityId
+          ? entities.find((e) => e.id === selectedEntityId)
+          : null;
+
+        if (selectedEntity) {
+          return {
+            nom: selectedEntity.nom || undefined,
+            prenom: "",
+            adresse: undefined, // Sera rempli par resolveOwnerIdentity au moment du PDF
+            code_postal: "",
+            ville: "",
+            telephone: profile?.telephone || undefined,
+            email: (profile as any)?.email || undefined,
+            type: "societe" as const,
+            raison_sociale: selectedEntity.nom,
+            forme_juridique: selectedEntity.legalForm || "",
+            siret: selectedEntity.siret || "",
+          };
+        }
+
+        return {
+          nom: profile?.nom || undefined,
+          prenom: profile?.prenom || undefined,
+          adresse: ownerProfile?.adresse_facturation || undefined,
+          code_postal: "",
+          ville: "",
+          telephone: profile?.telephone || undefined,
+          email: (profile as any)?.email || undefined,
+          type: ownerProfile?.type || "particulier",
+        };
+      })(),
 
       // Locataire(s)
       locataires: isColocation 
@@ -296,10 +326,12 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     isColocation, 
     invitees, 
     leaseConfig,
-    profile,        
+    profile,
     ownerProfile,
     hasGarant,
-    garant
+    garant,
+    selectedEntityId,
+    entities
   ]);
 
   // ✅ Mapping type de bail → types de propriétés compatibles
@@ -507,6 +539,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         body: JSON.stringify({
           property_id: selectedPropertyId,
           type_bail: selectedType,
+          signatory_entity_id: selectedEntityId,
           loyer,
           charges_forfaitaires: charges,
           charges_type: chargesType,
@@ -632,7 +665,19 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
             {/* Étape 2 : Sélection du bien */}
             {currentStep === 2 && (
               <div className="space-y-6">
-                {/* ... (Code existant pour PropertySelector et Données financières) ... */}
+                {/* Sélecteur d'entité signataire */}
+                {entities.length > 0 && (
+                  <div className="bg-white rounded-xl border shadow-sm p-6">
+                    <EntitySelector
+                      value={selectedEntityId}
+                      onChange={setSelectedEntityId}
+                      label="Entité signataire du bail"
+                      hint="Sélectionnez l'entité juridique qui signera ce bail. Le bailleur sur le document sera cette entité."
+                      warnMissingSiret
+                    />
+                  </div>
+                )}
+
                 <div className="bg-white rounded-xl border shadow-sm p-6">
                   {initialPropertyId && selectedProperty ? (
                     <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 mb-6">

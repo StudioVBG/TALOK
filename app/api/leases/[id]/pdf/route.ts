@@ -17,6 +17,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { LeaseTemplateService } from "@/lib/templates/bail";
 import type { TypeBail, BailComplet } from "@/lib/templates/bail/types";
+import { resolveOwnerIdentity, type OwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import crypto from "crypto";
 
 interface RouteParams {
@@ -177,19 +178,21 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     // === CRÉATION: Données ont changé ou document n'existe pas ===
-    
-    // Récupérer les infos du propriétaire
-    const { data: ownerProfile } = await serviceClient
-      .from("owner_profiles")
-      .select("*")
-      .eq("profile_id", property.owner_id)
-      .single();
+
+    // ✅ SOTA 2026: Utiliser resolveOwnerIdentity au lieu d'accès direct owner_profiles
+    const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
+      leaseId,
+      propertyId: property.id,
+      profileId: property.owner_id,
+    });
 
     const typeBail = (lease.type_bail || "meuble") as TypeBail;
     const tenantSigner = (lease.signers as any[])?.find(s => s.role === "locataire_principal");
     const tenant = tenantSigner?.profile;
-    const isOwnerSociete = ownerProfile?.type === "societe" && ownerProfile?.raison_sociale;
-    const ownerAddress = ownerProfile?.adresse_facturation || ownerProfile?.adresse_siege || "";
+    const isOwnerSociete = ownerIdentity.entityType === "company";
+    const ownerAddress = ownerIdentity.address.street
+      ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
+      : "";
 
     const finalDepot = isDraft
       ? (lease.depot_de_garantie ?? finalLoyer)
@@ -202,16 +205,21 @@ export async function GET(request: Request, { params }: RouteParams) {
       lieu_signature: property?.ville || "",
       
       bailleur: {
-        nom: isOwnerSociete ? (ownerProfile.raison_sociale || "") : (profile.nom || ""),
-        prenom: isOwnerSociete ? "" : (profile.prenom || ""),
-        date_naissance: isOwnerSociete ? undefined : (profile.date_naissance ?? undefined),
+        nom: isOwnerSociete ? (ownerIdentity.companyName || "") : ownerIdentity.lastName,
+        prenom: isOwnerSociete ? "" : ownerIdentity.firstName,
+        date_naissance: isOwnerSociete ? undefined : (ownerIdentity.birthDate ?? undefined),
         adresse: ownerAddress || `${property?.adresse_complete}, ${property?.code_postal} ${property?.ville}`,
-        code_postal: "",
-        ville: "",
-        telephone: profile.telephone || "",
-        type: (ownerProfile?.type || "particulier") as "particulier" | "societe",
-        siret: ownerProfile?.siret ?? undefined,
-        raison_sociale: ownerProfile?.raison_sociale || "",
+        code_postal: ownerIdentity.address.postalCode,
+        ville: ownerIdentity.address.city,
+        telephone: ownerIdentity.phone || "",
+        type: isOwnerSociete ? "societe" as const : "particulier" as const,
+        siret: ownerIdentity.siret ?? undefined,
+        raison_sociale: ownerIdentity.companyName || "",
+        forme_juridique: ownerIdentity.legalForm || "",
+        representant_nom: ownerIdentity.representative
+          ? `${ownerIdentity.representative.firstName} ${ownerIdentity.representative.lastName}`.trim()
+          : undefined,
+        representant_qualite: ownerIdentity.representative?.role || undefined,
         est_mandataire: false,
       },
 
