@@ -4,6 +4,7 @@
  */
 
 import { authenticator } from "otplib";
+import crypto from "crypto";
 
 // Configuration TOTP conforme RFC 6238
 authenticator.options = {
@@ -84,8 +85,9 @@ export function generateRecoveryCodes(count: number = 10): RecoveryCode[] {
 
   for (let i = 0; i < count; i++) {
     // Format: XXXX-XXXX-XXXX (12 caractères alphanumériques)
+    // Utilise crypto.randomBytes pour la sécurité cryptographique
     const code = Array.from({ length: 3 }, () =>
-      Math.random().toString(36).substring(2, 6).toUpperCase()
+      crypto.randomBytes(3).toString("hex").substring(0, 4).toUpperCase()
     ).join("-");
 
     codes.push({

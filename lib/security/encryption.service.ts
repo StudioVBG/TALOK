@@ -88,10 +88,13 @@ export function decrypt(ciphertext: string): string {
     return "";
   }
   
-  // Vérifier si la donnée est déjà en clair (migration)
+  // Rejeter les données non chiffrées — jamais de fallback plaintext
   if (!ciphertext.includes(":")) {
-    console.warn("[Encryption] Donnée non chiffrée détectée - retour en clair");
-    return ciphertext;
+    throw new Error(
+      "[Encryption] Donnée non chiffrée détectée. " +
+      "Les données sensibles doivent être chiffrées avant stockage. " +
+      "Lancez une migration pour chiffrer les données existantes."
+    );
   }
   
   const parts = ciphertext.split(":");

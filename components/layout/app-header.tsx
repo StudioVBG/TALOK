@@ -37,7 +37,7 @@ const ROLE_CONFIG = {
   owner: {
     label: "Propriétaire",
     profilePath: "/owner/profile",
-    settingsPath: "/owner/settings",
+    settingsPath: "/owner/profile",
     messagesPath: "/owner/messages",
     supportPath: "/owner/support",
   },
@@ -50,17 +50,17 @@ const ROLE_CONFIG = {
   },
   provider: {
     label: "Prestataire",
-    profilePath: "/provider/profile",
+    profilePath: "/provider/settings",
     settingsPath: "/provider/settings",
-    messagesPath: "/provider/messages",
+    messagesPath: "/provider/jobs",
     supportPath: "/provider/help",
   },
   syndic: {
     label: "Syndic",
-    profilePath: "/syndic/profile",
-    settingsPath: "/syndic/settings",
-    messagesPath: "/syndic/messages",
-    supportPath: "/syndic/help",
+    profilePath: "/syndic/dashboard",
+    settingsPath: "/syndic/dashboard",
+    messagesPath: "/syndic/dashboard",
+    supportPath: "/syndic/dashboard",
   },
 };
 

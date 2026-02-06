@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import type { BuildingUnitRow, BuildingUnitType, BuildingUnitTemplate } from "@/lib/supabase/database.types";
 
@@ -91,6 +91,7 @@ export function UnitsManagementClient({
   buildingCity,
   existingUnits,
 }: UnitsManagementClientProps) {
+  const { toast } = useToast();
   const [units, setUnits] = useState<UnitDraft[]>(() =>
     existingUnits.length > 0
       ? existingUnits.map(u => ({
@@ -127,7 +128,7 @@ export function UnitsManagementClient({
     // Validate
     const hasErrors = units.some(u => !u.position || u.surface <= 0);
     if (hasErrors) {
-      toast.error("Veuillez remplir tous les champs obligatoires");
+      toast({ title: "Veuillez remplir tous les champs obligatoires", variant: "destructive" });
       return;
     }
 
@@ -143,9 +144,9 @@ export function UnitsManagementClient({
         throw new Error("Erreur lors de la sauvegarde");
       }
 
-      toast.success("Lots enregistrés avec succès");
+      toast({ title: "Lots enregistrés avec succès" });
     } catch (error) {
-      toast.error("Erreur lors de la sauvegarde des lots");
+      toast({ title: "Erreur lors de la sauvegarde des lots", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }

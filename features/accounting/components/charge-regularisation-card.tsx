@@ -30,7 +30,7 @@ import {
 import { Calculator, CheckCircle, AlertCircle, Plus, FileText } from "lucide-react";
 import { useRegularisations } from "../hooks/use-accounting";
 import { formatCurrency } from "@/lib/utils";
-import { toast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ChargeRegularisationCardProps {
   leaseId: string;
@@ -43,6 +43,7 @@ export function ChargeRegularisationCard({
   propertyAddress,
   tenantName,
 }: ChargeRegularisationCardProps) {
+  const { toast } = useToast();
   const {
     regularisations,
     isLoading,
@@ -63,10 +64,10 @@ export function ChargeRegularisationCard({
     setIsSubmitting(true);
     try {
       await createRegularisation(parseInt(selectedYear));
-      toast.success("Régularisation créée avec succès");
+      toast({ title: "Régularisation créée avec succès" });
       setIsCreating(false);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Erreur lors de la création");
+      toast({ title: error instanceof Error ? error.message : "Erreur lors de la création", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -75,9 +76,9 @@ export function ChargeRegularisationCard({
   const handleApply = async (id: string) => {
     try {
       await applyRegularisation(id);
-      toast.success("Régularisation appliquée");
+      toast({ title: "Régularisation appliquée" });
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Erreur lors de l'application");
+      toast({ title: error instanceof Error ? error.message : "Erreur lors de l'application", variant: "destructive" });
     }
   };
 

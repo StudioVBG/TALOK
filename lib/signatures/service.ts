@@ -5,6 +5,7 @@
  * utilisant des signatures électroniques simples (SES)
  */
 
+import crypto from "crypto";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type {
   SignatureRequest,
@@ -332,12 +333,7 @@ async function logAuditEntry(
  * Générer un token de signature unique
  */
 export function generateSignatureToken(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let token = "";
-  for (let i = 0; i < 64; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return crypto.randomBytes(48).toString("base64url");
 }
 
 /**

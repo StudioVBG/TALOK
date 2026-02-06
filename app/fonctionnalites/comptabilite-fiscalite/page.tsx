@@ -107,7 +107,7 @@ export default function ComptabiliteFiscalitePage() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
-              <Link href="/guides/declaration-2044">
+              <Link href="/blog">
                 <Button size="lg" variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
                   Guide déclaration 2044
                 </Button>
