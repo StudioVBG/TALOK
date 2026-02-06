@@ -21,11 +21,6 @@ export interface ProfileFormData {
   lieu_naissance: string;
   // owner_profiles table
   owner_type: OwnerType;
-  raison_sociale: string;
-  forme_juridique: string;
-  siret: string;
-  adresse_siege: string;
-  tva: string;
   iban: string;
   adresse_facturation: string;
 }
@@ -60,11 +55,6 @@ function getDefaultFormData(): ProfileFormData {
     date_naissance: "",
     lieu_naissance: "",
     owner_type: "particulier",
-    raison_sociale: "",
-    forme_juridique: "",
-    siret: "",
-    adresse_siege: "",
-    tva: "",
     iban: "",
     adresse_facturation: "",
   };
@@ -81,11 +71,6 @@ function mapToFormData(
     date_naissance: profile?.date_naissance ?? "",
     lieu_naissance: (profile as Record<string, unknown>)?.lieu_naissance as string ?? "",
     owner_type: ownerProfile?.type ?? "particulier",
-    raison_sociale: ownerProfile?.raison_sociale ?? "",
-    forme_juridique: ownerProfile?.forme_juridique ?? "",
-    siret: ownerProfile?.siret ?? "",
-    adresse_siege: ownerProfile?.adresse_siege ?? "",
-    tva: ownerProfile?.tva ?? "",
     iban: ownerProfile?.iban ?? "",
     adresse_facturation: ownerProfile?.adresse_facturation ?? "",
   };
@@ -165,27 +150,6 @@ export function useProfileForm(): UseProfileFormReturn {
       newErrors.nom = "Le nom est obligatoire";
     }
 
-    // Company-specific validation
-    if (formData.owner_type === "societe") {
-      if (!formData.raison_sociale.trim()) {
-        newErrors.raison_sociale = "La raison sociale est obligatoire";
-      }
-      if (!formData.forme_juridique.trim()) {
-        newErrors.forme_juridique = "La forme juridique est obligatoire";
-      }
-      const siretDigits = formData.siret.replace(/\D/g, "");
-      if (!siretDigits) {
-        newErrors.siret = "Le SIRET est obligatoire";
-      } else if (siretDigits.length !== 14) {
-        newErrors.siret = "Le SIRET doit contenir 14 chiffres";
-      } else if (!validateSiret(formData.siret)) {
-        newErrors.siret = "Le SIRET est invalide (contrôle Luhn)";
-      }
-      if (!formData.adresse_siege.trim()) {
-        newErrors.adresse_siege = "L'adresse du siège est obligatoire";
-      }
-    }
-
     // IBAN basic format check (if provided)
     if (formData.iban.trim()) {
       const cleanIban = formData.iban.replace(/\s/g, "").toUpperCase();
@@ -232,17 +196,11 @@ export function useProfileForm(): UseProfileFormReturn {
         profilePayload.lieu_naissance = formData.lieu_naissance || null;
       }
 
-      // 2. Build owner profile payload
-      const cleanSiret = formData.siret.replace(/\s/g, "") || null;
+      // 2. Build owner profile payload (entity fields now managed via /owner/entities)
       const ownerPayload = {
         type: formData.owner_type,
-        siret: formData.owner_type === "societe" ? cleanSiret : null,
-        tva: formData.tva || null,
         iban: formData.iban.replace(/\s/g, "") || null,
         adresse_facturation: formData.adresse_facturation || null,
-        raison_sociale: formData.owner_type === "societe" ? (formData.raison_sociale || null) : null,
-        adresse_siege: formData.owner_type === "societe" ? (formData.adresse_siege || null) : null,
-        forme_juridique: formData.owner_type === "societe" ? (formData.forme_juridique || null) : null,
       };
 
       // 3. Execute both saves

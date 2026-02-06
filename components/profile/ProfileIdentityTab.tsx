@@ -19,17 +19,19 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
-import { Info } from "lucide-react";
+import { Info, Building2, ArrowRight } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { buildAvatarUrl, formatFullName } from "@/lib/helpers/format";
-import { SiretInput } from "@/components/profile/siret-input";
+import { useEntityStore } from "@/stores/useEntityStore";
 import type { ProfileFormData, ProfileFormErrors } from "@/lib/hooks/use-profile-form";
 import type { OwnerType, Profile } from "@/lib/types";
+import Link from "next/link";
 
 const MAX_AVATAR_SIZE_MB = 2;
 
@@ -317,108 +319,9 @@ export function ProfileIdentityTab({
             </select>
           </div>
 
-          {/* Company-specific fields (conditional) */}
+          {/* CTA: Entity management for company owners */}
           {formData.owner_type === "societe" && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="raison_sociale">
-                  Raison sociale{" "}
-                  <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="raison_sociale"
-                  value={formData.raison_sociale}
-                  onChange={(e) =>
-                    updateField("raison_sociale", e.target.value)
-                  }
-                  error={errors.raison_sociale}
-                  disabled={isSaving}
-                  aria-required="true"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="forme_juridique">
-                  Forme juridique{" "}
-                  <span className="text-destructive">*</span>
-                </Label>
-                <select
-                  id="forme_juridique"
-                  className={`flex h-11 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                    errors.forme_juridique
-                      ? "border-destructive"
-                      : "border-input"
-                  }`}
-                  value={formData.forme_juridique}
-                  onChange={(e) =>
-                    updateField("forme_juridique", e.target.value)
-                  }
-                  disabled={isSaving}
-                  aria-required="true"
-                  aria-invalid={!!errors.forme_juridique}
-                >
-                  <option value="">Sélectionner...</option>
-                  <option value="SCI">SCI</option>
-                  <option value="SARL">SARL</option>
-                  <option value="SAS">SAS</option>
-                  <option value="SASU">SASU</option>
-                  <option value="EURL">EURL</option>
-                  <option value="EI">Entreprise Individuelle</option>
-                  <option value="SA">SA</option>
-                  <option value="SCPI">SCPI</option>
-                  <option value="autre">Autre</option>
-                </select>
-                {errors.forme_juridique && (
-                  <p className="text-sm text-destructive" role="alert">
-                    {errors.forme_juridique}
-                  </p>
-                )}
-              </div>
-
-              <SiretInput
-                value={formData.siret}
-                onChange={(value) => updateField("siret", value)}
-                error={errors.siret}
-                disabled={isSaving}
-              />
-
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="adresse_siege">
-                  Adresse du siège social{" "}
-                  <span className="text-destructive">*</span>
-                </Label>
-                <textarea
-                  id="adresse_siege"
-                  className={`flex min-h-[80px] w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                    errors.adresse_siege
-                      ? "border-destructive"
-                      : "border-input"
-                  }`}
-                  value={formData.adresse_siege}
-                  onChange={(e) =>
-                    updateField("adresse_siege", e.target.value)
-                  }
-                  disabled={isSaving}
-                  aria-required="true"
-                  aria-invalid={!!errors.adresse_siege}
-                />
-                {errors.adresse_siege && (
-                  <p className="text-sm text-destructive" role="alert">
-                    {errors.adresse_siege}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tva">Numéro TVA (optionnel)</Label>
-                <Input
-                  id="tva"
-                  value={formData.tva}
-                  onChange={(e) => updateField("tva", e.target.value)}
-                  disabled={isSaving}
-                />
-              </div>
-            </div>
+            <EntityMigrationCTA />
           )}
 
           {/* Always-visible optional fields */}
@@ -453,6 +356,65 @@ export function ProfileIdentityTab({
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+/**
+ * CTA displayed when owner_type is "societe" — directs user to manage entities
+ * in the dedicated Entities tab / page instead of inline fields.
+ */
+function EntityMigrationCTA() {
+  const { entities, isLoading } = useEntityStore();
+
+  if (isLoading) return null;
+
+  if (entities.length > 0) {
+    return (
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+        <div className="flex items-start gap-3">
+          <Building2 className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">
+              {entities.length} entit&eacute;{entities.length > 1 ? "s" : ""} juridique{entities.length > 1 ? "s" : ""} configur&eacute;e{entities.length > 1 ? "s" : ""}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              G&eacute;rez vos entit&eacute;s juridiques (raison sociale, SIRET, forme juridique...)
+              depuis l&apos;onglet Entit&eacute;s ou la page d&eacute;di&eacute;e.
+            </p>
+            <Button variant="link" size="sm" className="px-0 h-auto mt-2" asChild>
+              <Link href="/owner/entities">
+                Voir mes entit&eacute;s
+                <ArrowRight className="h-3.5 w-3.5 ml-1" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20 p-4">
+      <div className="flex items-start gap-3">
+        <Building2 className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+            Cr&eacute;ez votre entit&eacute; juridique
+          </p>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+            En tant que soci&eacute;t&eacute;, cr&eacute;ez une entit&eacute; juridique (SCI, SARL, SAS...)
+            pour renseigner votre raison sociale, SIRET, si&egrave;ge social et autres
+            informations l&eacute;gales utilis&eacute;es dans vos documents.
+          </p>
+          <Button size="sm" className="mt-3" asChild>
+            <Link href="/owner/entities/new">
+              <Building2 className="h-4 w-4 mr-2" />
+              Cr&eacute;er mon entit&eacute;
+            </Link>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

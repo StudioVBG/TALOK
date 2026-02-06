@@ -18,6 +18,7 @@ import { headers } from "next/headers";
 import Stripe from "stripe";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { generateReceiptPDF } from "@/lib/services/receipt-generator";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 
 // Initialiser Stripe de manière lazy pour éviter les erreurs au build
 function getStripe(): Stripe {
@@ -45,19 +46,7 @@ async function processReceiptGeneration(supabase: any, invoiceId: string, paymen
             adresse_complete,
             ville,
             code_postal,
-            owner:profiles!properties_owner_id_fkey (
-              id,
-              nom,
-              prenom,
-              email
-            ),
-            owner_details:owner_profiles (
-              siret,
-              adresse_facturation,
-              adresse_siege,
-              type,
-              raison_sociale
-            )
+            owner_id
           ),
           signers:lease_signers (
             profile:profiles (
@@ -76,30 +65,32 @@ async function processReceiptGeneration(supabase: any, invoiceId: string, paymen
     if (!invoice || !invoice.lease) return;
 
     const property = invoice.lease.property;
-    const owner = property.owner;
-    const ownerDetails = property.owner_details?.[0] || {};
-    
+
     // Trouver le locataire principal
     const tenantSigner = invoice.lease.signers.find((s: any) => s.role === 'locataire_principal');
     const tenant = tenantSigner?.profile;
 
-    if (!owner || !tenant) {
-      console.error("[Receipt] Missing owner or tenant data");
+    if (!property || !tenant) {
+      console.error("[Receipt] Missing property or tenant data");
       return;
     }
 
-    // Déterminer le nom et l'adresse du propriétaire (particulier vs société)
-    const isOwnerSociete = ownerDetails.type === "societe" && ownerDetails.raison_sociale;
-    const ownerDisplayName = isOwnerSociete 
-      ? ownerDetails.raison_sociale 
-      : `${owner.prenom} ${owner.nom}`;
-    const ownerAddress = ownerDetails.adresse_facturation || ownerDetails.adresse_siege || "Adresse non renseignée";
+    // Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
+    const ownerIdentity = await resolveOwnerIdentity(supabase, {
+      leaseId: invoice.lease.id,
+      propertyId: property.id,
+      profileId: property.owner_id,
+    });
+
+    const ownerAddress = ownerIdentity.address.street
+      ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
+      : (ownerIdentity.billingAddress || "Adresse non renseignée");
 
     // 2. Générer le PDF
     const pdfBytes = await generateReceiptPDF({
-      ownerName: ownerDisplayName,
+      ownerName: ownerIdentity.displayName,
       ownerAddress: ownerAddress,
-      ownerSiret: ownerDetails.siret,
+      ownerSiret: ownerIdentity.siret || undefined,
       
       tenantName: `${tenant.prenom} ${tenant.nom}`,
       
@@ -142,7 +133,7 @@ async function processReceiptGeneration(supabase: any, invoiceId: string, paymen
         storage_path: fileName,
         lease_id: invoice.lease.id,
         tenant_id: tenant.id,
-        owner_id: owner.id,
+        owner_id: property.owner_id,
         property_id: property.id,
         status: "valid",
         metadata: {
