@@ -125,6 +125,13 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "Settings",
   },
+  entities: {
+    path: "/owner/entities",
+    name: "Mes entités",
+    component: "OwnerEntitiesPage",
+    auth: ["owner"],
+    icon: "Building2",
+  },
   profile: {
     path: "/owner/profile",
     name: "Mon profil",

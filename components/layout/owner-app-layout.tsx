@@ -40,6 +40,7 @@ import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
 import { OnboardingTourProvider, AutoTourPrompt, StartTourButton, FirstLoginOrchestrator } from "@/components/onboarding";
 import { SkipLinks } from "@/components/ui/skip-links";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import { CompanySwitcher } from "@/components/entities/CompanySwitcher";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -279,6 +280,9 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                 <p className="text-xs text-muted-foreground">Compte Propriétaire</p>
               </div>
             </div>
+
+            {/* Company Switcher */}
+            <CompanySwitcher variant="sidebar" />
 
             {/* Navigation groupée */}
             <nav className="flex flex-1 flex-col">
