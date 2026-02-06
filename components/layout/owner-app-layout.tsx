@@ -82,7 +82,7 @@ const navigationGroups: NavGroup[] = [
     label: "Finances",
     items: [
       { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
-      { name: "Facturation", href: "/settings/billing", icon: CreditCard },
+      { name: "Facturation", href: "/owner/settings/billing", icon: CreditCard },
     ],
   },
   {

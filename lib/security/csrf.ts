@@ -141,22 +141,28 @@ export function setCsrfCookie(response: Response): Response {
   // Clone la réponse pour pouvoir modifier les headers
   const newResponse = new Response(response.body, response);
   
+  const isProduction = process.env.NODE_ENV === "production";
   newResponse.headers.set(
     "Set-Cookie",
-    `${CSRF_COOKIE_NAME}=${token}; Path=/; HttpOnly=false; SameSite=Strict; Max-Age=${Math.floor(TOKEN_EXPIRY_MS / 1000)}`
+    `${CSRF_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Strict${isProduction ? "; Secure" : ""}; Max-Age=${Math.floor(TOKEN_EXPIRY_MS / 1000)}`
   );
+  // Expose token via custom header so client can read it without cookie access
+  newResponse.headers.set("X-CSRF-Token", token);
   
   return newResponse;
 }
 
 /**
- * Helper pour obtenir le token CSRF côté client
+ * Helper pour obtenir le token CSRF côté client.
+ * Le token est lu depuis une meta tag injectée par le serveur,
+ * car le cookie est HttpOnly et inaccessible via JavaScript.
  */
 export function getClientCsrfToken(): string | null {
   if (typeof document === "undefined") return null;
-  
-  const match = document.cookie.match(new RegExp(`${CSRF_COOKIE_NAME}=([^;]+)`));
-  return match ? match[1] : null;
+
+  // Lire depuis la meta tag injectée par le layout serveur
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta?.getAttribute("content") ?? null;
 }
 
 /**

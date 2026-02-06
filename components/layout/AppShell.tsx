@@ -80,7 +80,7 @@ const ownerNavigation: NavSection[] = [
   {
     items: [
       { name: "Aide", href: "/owner/support", icon: HelpCircle },
-      { name: "Paramètres", href: "/owner/settings", icon: Settings },
+      { name: "Paramètres", href: "/owner/profile", icon: Settings },
     ],
   },
 ];

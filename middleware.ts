@@ -114,7 +114,10 @@ export function middleware(request: NextRequest) {
   if (isProtected && !hasAuthCookie) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/signin";
-    url.searchParams.set("redirect", pathname);
+    // Only set redirect for safe internal paths (prevent open redirect)
+    if (pathname.startsWith("/") && !pathname.startsWith("//")) {
+      url.searchParams.set("redirect", pathname);
+    }
     return NextResponse.redirect(url);
   }
 
