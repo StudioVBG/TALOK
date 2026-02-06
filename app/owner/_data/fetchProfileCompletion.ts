@@ -36,9 +36,16 @@ export async function fetchProfileCompletion(
   // Récupérer le profil propriétaire
   const { data: ownerProfile } = await supabase
     .from("owner_profiles")
-    .select("type, siret, iban, adresse_facturation, adresse_siege, raison_sociale")
+    .select("type, iban, adresse_facturation")
     .eq("profile_id", ownerId)
     .single();
+
+  // Vérifier si le propriétaire a au moins une entité juridique configurée
+  const { count: entitiesCount } = await supabase
+    .from("legal_entities")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_profile_id", ownerId)
+    .eq("is_active", true);
 
   // Compter les propriétés
   const { count: propertiesCount } = await supabase
@@ -79,10 +86,9 @@ export async function fetchProfileCompletion(
     hasBirthDate: !!profile?.date_naissance,
     // Owner profile
     hasOwnerType: !!ownerProfile?.type,
-    hasSiret: !!ownerProfile?.siret && ownerProfile.siret.trim().length > 0,
+    hasSiret: (entitiesCount || 0) > 0,
     hasIban: !!ownerProfile?.iban && ownerProfile.iban.trim().length > 0,
-    hasBillingAddress: (!!ownerProfile?.adresse_facturation && ownerProfile.adresse_facturation.trim().length > 0) || 
-                       (!!ownerProfile?.adresse_siege && ownerProfile.adresse_siege.trim().length > 0),
+    hasBillingAddress: !!ownerProfile?.adresse_facturation && ownerProfile.adresse_facturation.trim().length > 0,
     // Documents
     hasIdentityDocument: (identityDocsCount || 0) > 0,
     // Propriétés

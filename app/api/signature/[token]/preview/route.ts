@@ -4,6 +4,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { LeaseTemplateService } from "@/lib/templates/bail/template.service";
 import { numberToWords } from "@/lib/helpers/format";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import type { BailComplet, TypeBail } from "@/lib/templates/bail/types";
 
 interface PageProps {
@@ -29,6 +30,7 @@ function isTokenExpired(timestamp: number): boolean {
 
 /**
  * Mapper les données du bail vers le format BailComplet
+ * ownerProfile: OwnerIdentity from resolveOwnerIdentity or legacy raw object
  */
 function mapLeaseToTemplateData(
   lease: any,
@@ -98,17 +100,22 @@ function mapLeaseToTemplateData(
     lieu_signature: property?.ville || "...",
 
     bailleur: {
-      nom: ownerProfile?.type === "societe" && ownerProfile?.raison_sociale
-        ? ownerProfile.raison_sociale
-        : ownerProfile?.nom || "[NOM PROPRIÉTAIRE]",
-      prenom: ownerProfile?.type === "societe" ? "" : ownerProfile?.prenom || "[PRÉNOM]",
-      adresse: ownerProfile?.adresse || ownerProfile?.adresse_facturation || "[ADRESSE PROPRIÉTAIRE]",
-      code_postal: "",
-      ville: "",
+      nom: ownerProfile?.displayName || ownerProfile?.nom || "[NOM PROPRIÉTAIRE]",
+      prenom: ownerProfile?.entityType === "company" ? "" : (ownerProfile?.firstName || ownerProfile?.prenom || "[PRÉNOM]"),
+      adresse: ownerProfile?.address?.street
+        ? `${ownerProfile.address.street}, ${ownerProfile.address.postalCode} ${ownerProfile.address.city}`.trim()
+        : (ownerProfile?.adresse || ownerProfile?.adresse_facturation || "[ADRESSE PROPRIÉTAIRE]"),
+      code_postal: ownerProfile?.address?.postalCode || "",
+      ville: ownerProfile?.address?.city || "",
       email: ownerProfile?.email || "",
-      telephone: ownerProfile?.telephone || "",
-      type: ownerProfile?.type === "societe" ? "societe" : "particulier",
-      raison_sociale: ownerProfile?.raison_sociale || "",
+      telephone: ownerProfile?.phone || ownerProfile?.telephone || "",
+      type: ownerProfile?.entityType === "company" ? "societe" : "particulier",
+      raison_sociale: ownerProfile?.companyName || ownerProfile?.raison_sociale || "",
+      siret: ownerProfile?.siret ?? undefined,
+      representant_nom: ownerProfile?.representative
+        ? `${ownerProfile.representative.firstName} ${ownerProfile.representative.lastName}`.trim()
+        : undefined,
+      representant_qualite: ownerProfile?.representative?.role || undefined,
       est_mandataire: false,
     },
 
@@ -143,8 +150,8 @@ function mapLeaseToTemplateData(
       usage: "habitation_principale",
       date_debut: lease.date_debut,
       date_fin: lease.date_fin,
-      // ✅ FIX: Passer le type de bailleur pour calcul durée correcte
-      duree_mois: getDureeMois(lease.type_bail, ownerProfile?.type),
+      // Passer le type de bailleur pour calcul durée correcte
+      duree_mois: getDureeMois(lease.type_bail, ownerProfile?.entityType === "company" ? "societe" : "particulier"),
       loyer_hc: loyer,
       loyer_en_lettres: numberToWords(loyer),
       charges_montant: charges,
@@ -244,33 +251,12 @@ export async function GET(request: Request, { params }: PageProps) {
       );
     }
 
-    // Récupérer le profil propriétaire complet via owner_id
-    const ownerId = lease.property?.owner_id;
-    let ownerProfile: Record<string, any> = {};
-
-    if (ownerId) {
-      // D'abord le profil de base
-      const { data: profileData } = await serviceClient
-        .from("profiles")
-        .select("id, prenom, nom, email, telephone")
-        .eq("id", ownerId)
-        .maybeSingle();
-      
-      if (profileData) {
-        ownerProfile = { ...profileData };
-      }
-      
-      // Puis les données propriétaire étendues
-      const { data: ownerProfileData } = await serviceClient
-        .from("owner_profiles")
-        .select("*")
-        .eq("profile_id", ownerId)
-        .maybeSingle();
-
-      if (ownerProfileData) {
-        ownerProfile = { ...ownerProfile, ...ownerProfileData };
-      }
-    }
+    // Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
+    const ownerProfile = await resolveOwnerIdentity(serviceClient, {
+      leaseId: tokenData.leaseId,
+      propertyId: lease.property?.id,
+      profileId: lease.property?.owner_id,
+    });
 
     // Récupérer le profil locataire s'il existe
     // ✅ FIX: Ajouter les colonnes manquantes (date_naissance, lieu_naissance, etc.)
@@ -409,33 +395,12 @@ export async function POST(request: Request, { params }: PageProps) {
     
     console.log("[Preview POST] ✅ Bail trouvé:", lease.id, "Type:", lease.type_bail);
 
-    // ✅ FIX: Récupérer le profil propriétaire via owner_id (pas owner.id qui n'existe pas)
-    const ownerId = lease.property?.owner_id;
-    let ownerProfile: Record<string, any> = {};
-
-    if (ownerId) {
-      // D'abord le profil de base
-      const { data: profileData } = await serviceClient
-        .from("profiles")
-        .select("id, prenom, nom, email, telephone")
-        .eq("id", ownerId)
-        .maybeSingle();
-      
-      if (profileData) {
-        ownerProfile = { ...profileData };
-      }
-      
-      // Puis les données propriétaire étendues
-      const { data: ownerProfileData } = await serviceClient
-        .from("owner_profiles")
-        .select("*")
-        .eq("profile_id", ownerId)
-        .maybeSingle();
-
-      if (ownerProfileData) {
-        ownerProfile = { ...ownerProfile, ...ownerProfileData };
-      }
-    }
+    // Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
+    const ownerProfile = await resolveOwnerIdentity(serviceClient, {
+      leaseId: tokenData.leaseId,
+      propertyId: lease.property?.id,
+      profileId: lease.property?.owner_id,
+    });
 
     // Utiliser les données du locataire passées dans le body
     const tenantProfile = {

@@ -21,15 +21,6 @@ function calculateCompletion(data: ProfileFormData): number {
     { filled: !!data.telephone.trim(), weight: 1 },
     { filled: !!data.date_naissance, weight: 1 },
     { filled: !!data.lieu_naissance.trim(), weight: 1 },
-    // Company fields (conditional, weight 2)
-    ...(data.owner_type === "societe"
-      ? [
-          { filled: !!data.raison_sociale.trim(), weight: 2 },
-          { filled: !!data.forme_juridique.trim(), weight: 2 },
-          { filled: !!data.siret.replace(/\s/g, "").trim(), weight: 2 },
-          { filled: !!data.adresse_siege.trim(), weight: 2 },
-        ]
-      : []),
     // Optional finance fields (weight 1)
     { filled: !!data.iban.trim(), weight: 1 },
     { filled: !!data.adresse_facturation.trim(), weight: 1 },

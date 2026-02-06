@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { LeaseTemplateService } from "@/lib/templates/bail";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import type { TypeBail, BailComplet, DiagnosticsTechniques, Logement, Bailleur } from "@/lib/templates/bail/types";
 
 /**
@@ -60,12 +61,12 @@ export async function GET(
       return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
     }
 
-    // 2. Récupérer les infos du propriétaire
-    const { data: ownerProfile } = await serviceClient
-      .from("owner_profiles")
-      .select("*, profile:profiles(*)")
-      .eq("profile_id", lease.property!.owner_id)
-      .single();
+    // 2. Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
+    const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
+      leaseId,
+      propertyId: lease.property!.id,
+      profileId: lease.property!.owner_id,
+    });
 
     // 3. ✅ FIX: Récupérer les diagnostics depuis la table documents
     const { data: diagnosticsDocuments } = await serviceClient
@@ -268,17 +269,21 @@ export async function GET(
       date_signature: (lease as any).date_signature || lease.created_at,
       lieu_signature: lease.property?.ville || "N/A",
       bailleur: {
-        nom: ownerProfile?.raison_sociale || ownerProfile?.profile?.nom || "",
-        prenom: ownerProfile?.type === 'societe' ? "" : (ownerProfile?.profile?.prenom || ""),
-        adresse: ownerProfile?.adresse_facturation || lease.property?.adresse_complete || "",
-        code_postal: lease.property?.code_postal || "",
-        ville: lease.property?.ville || "",
-        type: (ownerProfile?.type || "particulier") as Bailleur['type'],
+        nom: ownerIdentity.entityType === "company" ? (ownerIdentity.companyName || "") : ownerIdentity.lastName,
+        prenom: ownerIdentity.entityType === "company" ? "" : ownerIdentity.firstName,
+        adresse: ownerIdentity.address.street
+          ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
+          : (lease.property?.adresse_complete || ""),
+        code_postal: ownerIdentity.address.postalCode || lease.property?.code_postal || "",
+        ville: ownerIdentity.address.city || lease.property?.ville || "",
+        type: (ownerIdentity.entityType === "company" ? "societe" : "particulier") as Bailleur['type'],
         est_mandataire: false,
-        // Pour société
-        raison_sociale: ownerProfile?.raison_sociale || "",
-        representant_nom: ownerProfile?.profile ? `${ownerProfile.profile.prenom || ""} ${ownerProfile.profile.nom || ""}`.trim() : "",
-        representant_qualite: ownerProfile?.type === 'societe' ? "Gérant" : undefined,
+        raison_sociale: ownerIdentity.companyName || "",
+        siret: ownerIdentity.siret ?? undefined,
+        representant_nom: ownerIdentity.representative
+          ? `${ownerIdentity.representative.firstName} ${ownerIdentity.representative.lastName}`.trim()
+          : `${ownerIdentity.firstName} ${ownerIdentity.lastName}`.trim(),
+        representant_qualite: ownerIdentity.representative?.role || (ownerIdentity.entityType === "company" ? "Gérant" : undefined),
       },
       locataires,
       logement: {
