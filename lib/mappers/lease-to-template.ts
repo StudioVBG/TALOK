@@ -3,6 +3,7 @@ import type { BailComplet } from "@/lib/templates/bail/types";
 import type { LeaseDetails } from "@/app/owner/_data/fetchLeaseDetails";
 import { getMaxDepotLegal } from "@/lib/validations/lease-financial";
 import { isTenantRole, isOwnerRole, isGuarantorRole, SIGNER_ROLES } from "@/lib/constants/roles";
+import type { OwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 
 interface OwnerProfile {
   id: string;
@@ -20,10 +21,41 @@ interface OwnerProfile {
   representant_qualite?: string;
 }
 
+/**
+ * Adaptateur : convertit un OwnerIdentity en OwnerProfile legacy pour compatibilité.
+ */
+export function ownerIdentityToProfile(identity: OwnerIdentity): OwnerProfile {
+  const isCompany = identity.entityType === "company";
+  return {
+    id: identity.entityId || "",
+    prenom: identity.firstName,
+    nom: identity.lastName,
+    email: identity.email,
+    telephone: identity.phone || undefined,
+    adresse: identity.address.street
+      ? `${identity.address.street}, ${identity.address.postalCode} ${identity.address.city}`.trim()
+      : undefined,
+    type: isCompany ? "societe" : "particulier",
+    raison_sociale: identity.companyName || undefined,
+    forme_juridique: identity.legalForm || undefined,
+    siret: identity.siret || undefined,
+    representant_nom: identity.representative
+      ? `${identity.representative.firstName} ${identity.representative.lastName}`.trim()
+      : undefined,
+    representant_qualite: identity.representative?.role || undefined,
+  };
+}
+
 export function mapLeaseToTemplate(
   details: LeaseDetails,
-  ownerProfile?: OwnerProfile
+  ownerProfile?: OwnerProfile | OwnerIdentity
 ): Partial<BailComplet> {
+  // ✅ SOTA 2026: Auto-adapt OwnerIdentity to legacy OwnerProfile
+  const resolvedProfile: OwnerProfile | undefined = ownerProfile
+    ? "displayName" in ownerProfile
+      ? ownerIdentityToProfile(ownerProfile as OwnerIdentity)
+      : (ownerProfile as OwnerProfile)
+    : undefined;
   const { lease, property, signers } = details;
 
   // Trier les signataires pour mettre ceux qui ont signé en premier (le plus "réel")
@@ -94,7 +126,7 @@ export function mapLeaseToTemplate(
   const paiementAvance = jourPaiement <= 10;
 
   // ✅ FIX: Calculer la durée et la date de fin COHÉRENTES
-  const dureeMois = getDureeMois(lease.type_bail, ownerProfile?.type);
+  const dureeMois = getDureeMois(lease.type_bail, resolvedProfile?.type);
   
   // Recalculer date_fin à partir de date_debut + duree_mois
   // Justification : Évite l'incohérence entre "Six ans" et date_fin réelle
@@ -116,20 +148,20 @@ export function mapLeaseToTemplate(
     lieu_signature: property.ville || "...",
     
     bailleur: {
-      nom: ownerProfile?.nom || "[NOM PROPRIÉTAIRE]",
-      prenom: ownerProfile?.prenom || "",
-      adresse: ownerProfile?.adresse || "[ADRESSE PROPRIÉTAIRE]",
+      nom: resolvedProfile?.nom || "[NOM PROPRIÉTAIRE]",
+      prenom: resolvedProfile?.prenom || "",
+      adresse: resolvedProfile?.adresse || "[ADRESSE PROPRIÉTAIRE]",
       code_postal: "",
       ville: "",
-      email: ownerProfile?.email || "",
-      telephone: ownerProfile?.telephone || "",
-      type: ownerProfile?.type === "societe" ? "societe" : "particulier",
+      email: resolvedProfile?.email || "",
+      telephone: resolvedProfile?.telephone || "",
+      type: resolvedProfile?.type === "societe" ? "societe" : "particulier",
       // Champs société
-      raison_sociale: ownerProfile?.raison_sociale || "",
-      forme_juridique: ownerProfile?.forme_juridique || "SCI",
-      siret: ownerProfile?.siret || "",
-      representant_nom: ownerProfile?.representant_nom || (ownerProfile?.type === "societe" ? `${ownerProfile?.prenom || ""} ${ownerProfile?.nom || ""}`.trim() : ""),
-      representant_qualite: ownerProfile?.representant_qualite || (ownerProfile?.type === "societe" ? "Gérant" : ""),
+      raison_sociale: resolvedProfile?.raison_sociale || "",
+      forme_juridique: resolvedProfile?.forme_juridique || "SCI",
+      siret: resolvedProfile?.siret || "",
+      representant_nom: resolvedProfile?.representant_nom || (resolvedProfile?.type === "societe" ? `${resolvedProfile?.prenom || ""} ${resolvedProfile?.nom || ""}`.trim() : ""),
+      representant_qualite: resolvedProfile?.representant_qualite || (resolvedProfile?.type === "societe" ? "Gérant" : ""),
       est_mandataire: false,
     } as any,
 

@@ -1,8 +1,11 @@
 /**
  * Mapper pour transformer les données brutes de la BDD vers le format EDLComplet
+ *
+ * ✅ SOTA 2026: Support OwnerIdentity via adaptateur ownerIdentityToRawProfile()
  */
 
 import { EDLComplet, EDLItem, EDLMeterReading, EDLSignature } from "@/lib/templates/edl/types";
+import type { OwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 
 function getPublicUrl(path: string) {
   if (!path) return "";
@@ -88,6 +91,33 @@ interface RawOwnerProfile {
     prenom: string;
     email?: string | null;
     telephone?: string | null;
+  };
+}
+
+/**
+ * Convertit un OwnerIdentity en RawOwnerProfile pour compatibilité.
+ */
+export function ownerIdentityToRawProfile(identity: OwnerIdentity): RawOwnerProfile {
+  const isCompany = identity.entityType === "company";
+  return {
+    id: identity.entityId || "",
+    profile_id: "",
+    type: isCompany ? "societe" : "particulier",
+    raison_sociale: identity.companyName,
+    representant_nom: identity.representative
+      ? `${identity.representative.firstName} ${identity.representative.lastName}`.trim()
+      : null,
+    representant_qualite: identity.representative?.role || null,
+    siret: identity.siret,
+    adresse_facturation: identity.address.street
+      ? `${identity.address.street}, ${identity.address.postalCode} ${identity.address.city}`.trim()
+      : null,
+    profile: {
+      nom: identity.lastName,
+      prenom: identity.firstName,
+      email: identity.email || null,
+      telephone: identity.phone,
+    },
   };
 }
 

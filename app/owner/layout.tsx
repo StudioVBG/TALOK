@@ -7,6 +7,7 @@ import { fetchProperties, fetchDashboard, fetchContracts } from "./_data";
 import { OwnerDataProvider } from "./_data/OwnerDataProvider";
 import { OwnerAppLayout } from "@/components/layout/owner-app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { EntityProvider } from "@/providers/EntityProvider";
 
 /**
  * Layout Owner - Server Component
@@ -74,12 +75,14 @@ export default async function OwnerLayout({
 
   return (
     <ErrorBoundary>
-      <OwnerDataProvider 
-        properties={properties} 
+      <OwnerDataProvider
+        properties={properties}
         dashboard={dashboard}
         contracts={contracts}
       >
-        <OwnerAppLayout profile={profile}>{children}</OwnerAppLayout>
+        <EntityProvider>
+          <OwnerAppLayout profile={profile}>{children}</OwnerAppLayout>
+        </EntityProvider>
       </OwnerDataProvider>
     </ErrorBoundary>
   );
