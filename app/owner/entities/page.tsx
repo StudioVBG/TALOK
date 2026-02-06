@@ -25,25 +25,15 @@ export default async function EntitiesPage() {
 
   if (!profile || profile.role !== "owner") redirect("/auth/signin");
 
-  // Fetch owner_profile
-  const { data: ownerProfile } = await supabase
-    .from("owner_profiles")
-    .select("id")
-    .eq("profile_id", profile.id)
-    .single();
+  // Fetch entities — profile.id is the FK value for legal_entities.owner_profile_id
+  const { data } = await supabase
+    .from("legal_entities")
+    .select("*")
+    .eq("owner_profile_id", profile.id)
+    .eq("is_active", true)
+    .order("nom");
 
-  // Fetch entities
-  let entities: Record<string, unknown>[] = [];
-  if (ownerProfile?.id) {
-    const { data } = await supabase
-      .from("legal_entities")
-      .select("*")
-      .eq("owner_profile_id", ownerProfile.id)
-      .eq("is_active", true)
-      .order("nom");
-
-    entities = (data || []) as Record<string, unknown>[];
-  }
+  const entities: Record<string, unknown>[] = (data || []) as Record<string, unknown>[];
 
   return <EntitiesPageClient entities={entities} />;
 }

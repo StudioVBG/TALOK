@@ -101,15 +101,9 @@ async function getAuthenticatedOwnerProfileId(): Promise<{
 
   if (!profile || profile.role !== "owner") return null;
 
-  const { data: ownerProfile } = await supabase
-    .from("owner_profiles")
-    .select("id")
-    .eq("profile_id", profile.id)
-    .single();
-
-  if (!ownerProfile) return null;
-
-  return { ownerProfileId: ownerProfile.id, profileId: profile.id };
+  // profile.id is the FK value for legal_entities.owner_profile_id
+  // (owner_profiles PK is profile_id, not id)
+  return { ownerProfileId: profile.id, profileId: profile.id };
 }
 
 // ============================================

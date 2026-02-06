@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useEntityStore } from "@/stores/useEntityStore";
 import type { ProfileFormData } from "@/lib/hooks/use-profile-form";
 
 interface ProfileCompletionProps {
@@ -12,7 +13,7 @@ interface WeightedField {
   weight: number;
 }
 
-function calculateCompletion(data: ProfileFormData): number {
+function calculateCompletion(data: ProfileFormData, entityCount: number): number {
   const fields: WeightedField[] = [
     // Required fields (weight 2)
     { filled: !!data.prenom.trim(), weight: 2 },
@@ -26,6 +27,11 @@ function calculateCompletion(data: ProfileFormData): number {
     { filled: !!data.adresse_facturation.trim(), weight: 1 },
   ];
 
+  // For "societe" owners, having at least one entity is a required criterion
+  if (data.owner_type === "societe") {
+    fields.push({ filled: entityCount > 0, weight: 2 });
+  }
+
   const totalWeight = fields.reduce((sum, f) => sum + f.weight, 0);
   const filledWeight = fields
     .filter((f) => f.filled)
@@ -35,7 +41,8 @@ function calculateCompletion(data: ProfileFormData): number {
 }
 
 export function ProfileCompletion({ data }: ProfileCompletionProps) {
-  const completion = calculateCompletion(data);
+  const { entities } = useEntityStore();
+  const completion = calculateCompletion(data, entities.length);
 
   return (
     <div className="flex items-center gap-3">
