@@ -42,6 +42,8 @@ import { GarantForm, type Garant } from "./GarantForm";
 import { LeasePreview } from "@/features/leases/components/lease-preview";
 import { RentControlAlert } from "@/components/lease/RentControlAlert";
 import { DomTomDiagnostics } from "@/components/lease/DomTomDiagnostics";
+import { CustomClauses } from "@/components/lease/CustomClauses";
+import { useAutoSave } from "@/hooks/useAutoSave";
 import type { BailComplet } from "@/lib/templates/bail/types";
 
 // ✅ Import pour les données profil
@@ -143,9 +145,49 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   // ✅ États pour le garant
   const [hasGarant, setHasGarant] = useState(false);
   const [garant, setGarant] = useState<Garant | null>(null);
-  
+
+  // ✅ P2-6: Clauses personnalisables
+  const [customClauses, setCustomClauses] = useState<{ id: string; text: string; isCustom: boolean }[]>([]);
+
   // Vérifier si c'est un bail colocation
   const isColocation = selectedType === "colocation";
+
+  // ✅ P2-9: Auto-save du wizard
+  const autoSaveData = useMemo(() => ({
+    selectedType, selectedPropertyId, selectedEntityId,
+    loyer, charges, depot, chargesType, dateDebut,
+    tenantEmail, tenantName, creationMode,
+    colocConfig, invitees, hasGarant, garant, customClauses,
+  }), [
+    selectedType, selectedPropertyId, selectedEntityId,
+    loyer, charges, depot, chargesType, dateDebut,
+    tenantEmail, tenantName, creationMode,
+    colocConfig, invitees, hasGarant, garant, customClauses,
+  ]);
+
+  const { clearSaved: clearAutoSave } = useAutoSave({
+    key: "lease-wizard",
+    data: autoSaveData,
+    onRestore: useCallback((saved: typeof autoSaveData) => {
+      if (saved.selectedType) setSelectedType(saved.selectedType);
+      if (saved.selectedPropertyId) setSelectedPropertyId(saved.selectedPropertyId);
+      if (saved.selectedEntityId) setSelectedEntityId(saved.selectedEntityId);
+      if (saved.loyer) setLoyer(saved.loyer);
+      if (saved.charges) setCharges(saved.charges);
+      if (saved.depot != null) setDepot(saved.depot);
+      if (saved.chargesType) setChargesType(saved.chargesType);
+      if (saved.dateDebut) setDateDebut(saved.dateDebut);
+      if (saved.tenantEmail) setTenantEmail(saved.tenantEmail);
+      if (saved.tenantName) setTenantName(saved.tenantName);
+      if (saved.creationMode) setCreationMode(saved.creationMode);
+      if (saved.colocConfig) setColocConfig(saved.colocConfig);
+      if (saved.invitees) setInvitees(saved.invitees);
+      if (saved.hasGarant != null) setHasGarant(saved.hasGarant);
+      if (saved.garant) setGarant(saved.garant);
+      if (saved.customClauses) setCustomClauses(saved.customClauses);
+      toast({ title: "Brouillon restauré", description: "Votre saisie précédente a été récupérée.", duration: 3000 });
+    }, [toast]),
+  });
 
   // ✅ Charger les infos supplémentaires du propriétaire (adresse, etc.)
   useEffect(() => {
@@ -311,6 +353,9 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         },
       },
 
+      // Clauses additionnelles
+      clauses_additionnelles: customClauses.length > 0 ? customClauses.map(c => c.text) : undefined,
+
       // Garant (si défini)
       garants: hasGarant && garant ? [{
         nom: garant.nom,
@@ -346,6 +391,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     ownerProfile,
     hasGarant,
     garant,
+    customClauses,
     selectedEntityId,
     entities
   ]);
@@ -570,6 +616,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
           depot_garantie: depot,
           date_debut: dateDebut,
           date_fin: dateFin,
+          custom_clauses: customClauses.length > 0 ? customClauses : undefined,
           ...(isColocation ? colocData : {
             tenant_email: creationMode === "invite" ? tenantEmail : null,
             tenant_name: tenantName || null,
@@ -583,6 +630,9 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       if (!response.ok) {
         throw new Error(result.error || result.details || result.hint || "Erreur lors de la création");
       }
+
+      // P2-9: Clear auto-save on successful submit
+      clearAutoSave();
 
       toast({
         title: "✅ Bail créé avec succès !",
@@ -925,6 +975,16 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                           <Input type="date" className="h-8" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
                         </div>
                       </div>
+                    </div>
+
+                    {/* P2-6: Clauses personnalisables */}
+                    <div className="pt-6 border-t">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase mb-4">Clauses additionnelles</h4>
+                      <CustomClauses
+                        typeBail={selectedType || ""}
+                        value={customClauses}
+                        onChange={setCustomClauses}
+                      />
                     </div>
                   </div>
                 </div>
