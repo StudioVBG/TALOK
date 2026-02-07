@@ -12,12 +12,16 @@ import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { EntitySelector } from "@/components/entities/EntitySelector";
+import { useEntityStore } from "@/stores/useEntityStore";
 
 export function PublishStep() {
   const { formData, updateFormData } = usePropertyWizardStore();
-  
+  const { entities } = useEntityStore();
+
   const availableFrom = formData.available_from ? new Date(formData.available_from) : new Date();
   const visibility = (formData as any).visibility || "private";
+  const selectedEntityId = (formData as any).legal_entity_id as string | null;
 
   return (
     <div className="h-full flex flex-col max-w-2xl mx-auto justify-center gap-8 py-4">
@@ -115,6 +119,19 @@ export function PublishStep() {
             </div>
           </RadioGroup>
         </div>
+
+        {/* Entité propriétaire */}
+        {entities.length > 0 && (
+          <EntitySelector
+            value={selectedEntityId}
+            onChange={(entityId) =>
+              updateFormData({ legal_entity_id: entityId } as any)
+            }
+            label="Entité propriétaire"
+            hint="Choisissez quelle entité juridique détient ce bien"
+            warnMissingSiret
+          />
+        )}
 
         {/* Note informative */}
         <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 flex gap-3">

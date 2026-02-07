@@ -17,6 +17,7 @@ import {
   Star,
   Check,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { isDomTomPostalCode, getTvaRate } from "@/lib/entities/resolveOwnerIdentity";
+import { useToast } from "@/components/ui/use-toast";
+import { useEntityStore } from "@/stores/useEntityStore";
+import { deleteEntity } from "../actions";
 
 // ============================================
 // TYPES
@@ -70,7 +74,11 @@ export function EntityDetailClient({
   associates,
 }: EntityDetailClientProps) {
   const router = useRouter();
+  const { toast } = useToast();
+  const { removeEntity } = useEntityStore();
   const [activeTab, setActiveTab] = useState<TabId>("info");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const entityType = (entity.entity_type as string) || "sci_ir";
   const typeLabel = ENTITY_TYPE_LABELS[entityType] || entityType;
@@ -78,8 +86,72 @@ export function EntityDetailClient({
   const postalCode = entity.code_postal_siege as string | null;
   const isDom = isDomTomPostalCode(postalCode);
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteEntity({ id: entity.id as string });
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      removeEntity(entity.id as string);
+      toast({
+        title: "Entité supprimée",
+        description: `${entity.nom as string} a été supprimée.`,
+      });
+      router.push("/owner/entities");
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description:
+          err instanceof Error
+            ? err.message
+            : "Impossible de supprimer l'entité.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Delete confirmation */}
+      {showDeleteConfirm && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+          <div className="flex items-start gap-3">
+            <Trash2 className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-destructive">
+                Supprimer &laquo;{entity.nom as string}&raquo; ?
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Cette action est irr&eacute;versible. Les biens li&eacute;s &agrave; cette entit&eacute;
+                devront &ecirc;tre r&eacute;assign&eacute;s.
+              </p>
+              <div className="flex gap-2 mt-3">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Suppression..." : "Confirmer la suppression"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                >
+                  Annuler
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <Link
@@ -130,9 +202,19 @@ export function EntityDetailClient({
               </div>
             </div>
           </div>
-          <Button variant="outline" onClick={() => router.push(`/owner/entities/${entity.id}/edit`)}>
-            Modifier
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => router.push(`/owner/entities/${entity.id}/edit`)}>
+              Modifier
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

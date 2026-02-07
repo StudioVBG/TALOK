@@ -50,6 +50,7 @@ import type { OwnerProfile } from "@/lib/types";
 // ✅ SOTA 2026: Import EntitySelector pour la sélection d'entité signataire
 import { EntitySelector } from "@/components/entities/EntitySelector";
 import { useEntityStore } from "@/stores/useEntityStore";
+import { EntityCompletionBanner } from "@/components/entities/EntityCompletionBanner";
 
 // Interface étendue pour inclure toutes les données nécessaires au bail
 interface Property {
@@ -604,6 +605,9 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
             </div>
           </div>
         </div>
+
+        {/* Bannière de complétion d'entité si entité active incomplète */}
+        <EntityCompletionBanner requiredContext="bail" className="mb-6" />
 
         {/* Stepper (masqué à l'étape 3 pour maximiser l'espace) */}
         {currentStep < 3 && (
