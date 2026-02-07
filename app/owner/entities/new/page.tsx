@@ -182,6 +182,7 @@ export default function NewEntityPage() {
         adresse_siege: formData.adresseSiege || null,
         code_postal_siege: formData.codePostalSiege || null,
         ville_siege: formData.villeSiege || null,
+        pays_siege: "France",
         iban: formData.iban.replace(/\s/g, "") || null,
         bic: formData.bic || null,
         banque_nom: formData.banqueNom || null,
@@ -197,6 +198,10 @@ export default function NewEntityPage() {
       if (error) throw new Error(error.message);
 
       // Create associate (representative)
+      const qualite = formData.representantQualite || "Gérant(e)";
+      const isGerant = qualite.toLowerCase().includes("gérant") || qualite.toLowerCase().includes("gerant");
+      const isPresident = qualite.toLowerCase().includes("président") || qualite.toLowerCase().includes("president");
+
       if (formData.representantMode === "self") {
         await supabase.from("entity_associates").insert({
           legal_entity_id: (newEntity as Record<string, unknown>).id,
@@ -205,7 +210,9 @@ export default function NewEntityPage() {
           prenom: null,
           nombre_parts: 100,
           pourcentage_capital: 100,
-          is_gerant: true,
+          is_gerant: isGerant || (!isPresident),
+          is_president: isPresident,
+          role_autre: (!isGerant && !isPresident) ? qualite : null,
           is_current: true,
           date_entree: new Date().toISOString().split("T")[0],
         });
@@ -214,9 +221,12 @@ export default function NewEntityPage() {
           legal_entity_id: (newEntity as Record<string, unknown>).id,
           nom: formData.representantNom,
           prenom: formData.representantPrenom,
+          date_naissance: formData.representantDateNaissance || null,
           nombre_parts: 100,
           pourcentage_capital: 100,
-          is_gerant: true,
+          is_gerant: isGerant || (!isPresident),
+          is_president: isPresident,
+          role_autre: (!isGerant && !isPresident) ? qualite : null,
           is_current: true,
           date_entree: new Date().toISOString().split("T")[0],
         });

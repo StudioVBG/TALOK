@@ -79,29 +79,6 @@ export function StepAddress({ formData, onChange }: StepAddressProps) {
           />
         </div>
 
-        {/* Email entité */}
-        <div className="space-y-2">
-          <Label htmlFor="emailEntite">Email de l&apos;entité (optionnel)</Label>
-          <Input
-            id="emailEntite"
-            type="email"
-            value={formData.emailEntite}
-            onChange={(e) => onChange({ emailEntite: e.target.value })}
-            placeholder="contact@atomgiste.fr"
-          />
-        </div>
-
-        {/* Téléphone */}
-        <div className="space-y-2">
-          <Label htmlFor="telephoneEntite">Téléphone (optionnel)</Label>
-          <Input
-            id="telephoneEntite"
-            type="tel"
-            value={formData.telephoneEntite}
-            onChange={(e) => onChange({ telephoneEntite: e.target.value })}
-            placeholder={isDom ? "+596 6XX XX XX XX" : "+33 6XX XX XX XX"}
-          />
-        </div>
       </div>
     </div>
   );

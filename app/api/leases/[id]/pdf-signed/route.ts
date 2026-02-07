@@ -16,6 +16,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { LeaseTemplateService } from "@/lib/templates/bail";
 import type { TypeBail, BailComplet } from "@/lib/templates/bail/types";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -135,18 +136,12 @@ export async function GET(request: Request, { params }: RouteParams) {
       d.type === "bail_signe_locataire" || d.type === "bail_signe_proprietaire"
     );
 
-    // Récupérer les infos du propriétaire
-    const { data: ownerProfileData } = await serviceClient
-      .from("profiles")
-      .select("id, prenom, nom, telephone, email, date_naissance")
-      .eq("id", property.owner_id)
-      .single();
-
-    const { data: ownerProfile } = await serviceClient
-      .from("owner_profiles")
-      .select("*")
-      .eq("profile_id", property.owner_id)
-      .single();
+    // Récupérer les infos du propriétaire via resolveOwnerIdentity
+    const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
+      leaseId,
+      propertyId: property?.id,
+      profileId: property.owner_id,
+    });
 
     // Récupérer l'image de signature du locataire
     const tenantSignatureFile = `leases/${leaseId}/signatures`;
@@ -203,31 +198,31 @@ export async function GET(request: Request, { params }: RouteParams) {
     const tenantProof = signatureProofs.find(p => p?.signer?.role === "locataire");
     const ownerProof = signatureProofs.find(p => p?.signer?.role === "proprietaire");
 
-    // Déterminer le nom et l'adresse du bailleur (particulier vs société)
-    const isOwnerSociete = ownerProfile?.type === "societe" && ownerProfile?.raison_sociale;
-    const ownerAddress = ownerProfile?.adresse_facturation || ownerProfile?.adresse_siege || "";
-    const ownerDisplayName = isOwnerSociete 
-      ? ownerProfile.raison_sociale 
-      : `${ownerProfileData?.prenom || ""} ${ownerProfileData?.nom || ""}`.trim();
+    // Déterminer le nom et l'adresse du bailleur via ownerIdentity
+    const isOwnerSociete = ownerIdentity.entityType === "company";
+    const ownerAddress = ownerIdentity.address.street
+      ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
+      : ownerIdentity.billingAddress || "";
+    const ownerDisplayName = ownerIdentity.displayName;
 
     // Construire les données du bail selon le format attendu
     const bailData: Partial<BailComplet> = {
       reference: leaseId.slice(0, 8).toUpperCase(),
       date_signature: tenantSigner?.signed_at || lease.created_at,
       lieu_signature: property?.ville || "",
-      
+
       // Bailleur
       bailleur: {
-        nom: isOwnerSociete ? (ownerProfile.raison_sociale || "") : (ownerProfileData?.nom || ""),
-        prenom: isOwnerSociete ? "" : (ownerProfileData?.prenom || ""),
-        date_naissance: isOwnerSociete ? undefined : (ownerProfileData?.date_naissance ?? undefined),
+        nom: isOwnerSociete ? (ownerIdentity.companyName || ownerIdentity.lastName) : ownerIdentity.lastName,
+        prenom: isOwnerSociete ? "" : ownerIdentity.firstName,
+        date_naissance: isOwnerSociete ? undefined : (ownerIdentity.birthDate ?? undefined),
         adresse: ownerAddress || `${property?.adresse_complete}, ${property?.code_postal} ${property?.ville}`,
-        code_postal: "",
-        ville: "",
-        telephone: ownerProfileData?.telephone || "",
-        type: (ownerProfile?.type || "particulier") as 'particulier' | 'societe',
-        siret: ownerProfile?.siret ?? undefined,
-        raison_sociale: ownerProfile?.raison_sociale || "",
+        code_postal: ownerIdentity.address.postalCode || "",
+        ville: ownerIdentity.address.city || "",
+        telephone: ownerIdentity.phone || "",
+        type: isOwnerSociete ? "societe" as const : "particulier" as const,
+        siret: ownerIdentity.siret ?? undefined,
+        raison_sociale: ownerIdentity.companyName || "",
         est_mandataire: false,
       },
 

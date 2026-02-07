@@ -258,7 +258,7 @@ export async function deleteEntity(
     const supabase = await createClient();
     const { id } = parsed.data;
 
-    // Check if entity has active properties or leases
+    // Check if entity has active property ownerships
     const { data: ownerships } = await supabase
       .from("property_ownerships")
       .select("id")
@@ -270,7 +270,38 @@ export async function deleteEntity(
       return {
         success: false,
         error:
-          "Impossible de supprimer cette entité : elle possède encore des biens. Transférez-les d'abord.",
+          "Impossible de supprimer cette entité : elle possède encore des biens (ownerships). Transférez-les d'abord.",
+      };
+    }
+
+    // Check if entity is linked to active leases
+    const { data: linkedLeases } = await supabase
+      .from("leases")
+      .select("id")
+      .eq("signatory_entity_id", id)
+      .in("status", ["active", "pending", "signing"])
+      .limit(1);
+
+    if (linkedLeases && linkedLeases.length > 0) {
+      return {
+        success: false,
+        error:
+          "Impossible de supprimer cette entité : elle est liée à des baux actifs. Modifiez-les d'abord.",
+      };
+    }
+
+    // Check if entity is linked to properties directly
+    const { data: linkedProperties } = await supabase
+      .from("properties")
+      .select("id")
+      .eq("legal_entity_id", id)
+      .limit(1);
+
+    if (linkedProperties && linkedProperties.length > 0) {
+      return {
+        success: false,
+        error:
+          "Impossible de supprimer cette entité : elle est liée à des biens. Dissociez-les d'abord.",
       };
     }
 

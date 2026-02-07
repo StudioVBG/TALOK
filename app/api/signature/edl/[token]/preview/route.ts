@@ -9,6 +9,7 @@ import {
   generateEDLHTML,
   EDLComplet,
 } from "@/lib/templates/edl";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 
 /**
  * POST /api/signature/edl/[token]/preview
@@ -77,13 +78,32 @@ export async function POST(
       { data: items },
       { data: media },
       { data: signaturesRaw },
-      { data: ownerProfile }
     ] = await Promise.all([
       serviceClient.from("edl_items").select("*").eq("edl_id", edlId),
       serviceClient.from("edl_media").select("*").eq("edl_id", edlId),
       serviceClient.from("edl_signatures").select("*, profile:profiles(*)").eq("edl_id", edlId),
-      serviceClient.from("owner_profiles").select("*, profile:profiles(*)").eq("profile_id", edl.lease?.property?.owner_id || (edl as any).property_id).single()
     ]);
+
+    // Résoudre l'identité du propriétaire (entité juridique avec fallback)
+    const propertyOwnerId = edl.lease?.property?.owner_id || (edl as any).property_id;
+    const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
+      leaseId: (edl as any).lease_id,
+      propertyId: (edl as any).property_id || edl.lease?.property?.id,
+      profileId: propertyOwnerId,
+    });
+
+    // Adapter ownerIdentity au format attendu par mapDatabaseToEDLComplet
+    const ownerProfile = {
+      type: ownerIdentity.entityType === "company" ? "societe" : "particulier",
+      raison_sociale: ownerIdentity.companyName,
+      adresse_facturation: ownerIdentity.billingAddress || ownerIdentity.address.street,
+      profile: {
+        prenom: ownerIdentity.firstName,
+        nom: ownerIdentity.lastName,
+        email: ownerIdentity.email,
+        telephone: ownerIdentity.phone,
+      },
+    };
 
     // 🔧 Générer des URLs signées pour les images de signature (bucket privé)
     for (const sig of (signaturesRaw || [])) {
