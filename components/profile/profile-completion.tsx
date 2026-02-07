@@ -53,11 +53,11 @@ export function ProfileCompletion({ data }: ProfileCompletionProps) {
         <div
           className={cn(
             "h-full rounded-full transition-all duration-500",
-            completion === 100
-              ? "bg-emerald-500"
-              : completion >= 70
-                ? "bg-primary"
-                : "bg-amber-500"
+            completion >= 80
+              ? "bg-primary"
+              : completion >= 50
+                ? "bg-amber-500"
+                : "bg-red-500"
           )}
           style={{ width: `${completion}%` }}
           role="progressbar"
