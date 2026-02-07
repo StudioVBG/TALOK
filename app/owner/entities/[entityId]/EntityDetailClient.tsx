@@ -17,13 +17,29 @@ import {
   Star,
   Check,
   AlertCircle,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { isDomTomPostalCode, getTvaRate } from "@/lib/entities/resolveOwnerIdentity";
+import { useEntityStore } from "@/stores/useEntityStore";
+import { deleteEntity } from "../actions";
 
 // ============================================
 // TYPES
@@ -70,7 +86,39 @@ export function EntityDetailClient({
   associates,
 }: EntityDetailClientProps) {
   const router = useRouter();
+  const { toast } = useToast();
+  const { removeEntity } = useEntityStore();
   const [activeTab, setActiveTab] = useState<TabId>("info");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteEntity({ id: entity.id as string });
+      if (result.success) {
+        removeEntity(entity.id as string);
+        toast({
+          title: "Entité supprimée",
+          description: `${entity.nom as string} a été supprimée.`,
+        });
+        router.push("/owner/entities");
+      } else {
+        toast({
+          title: "Suppression impossible",
+          description: result.error || "Une erreur est survenue.",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'entité.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const entityType = (entity.entity_type as string) || "sci_ir";
   const typeLabel = ENTITY_TYPE_LABELS[entityType] || entityType;
@@ -130,9 +178,48 @@ export function EntityDetailClient({
               </div>
             </div>
           </div>
-          <Button variant="outline" onClick={() => router.push(`/owner/entities/${entity.id}/edit`)}>
-            Modifier
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => router.push(`/owner/entities/${entity.id}/edit`)}>
+              Modifier
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="icon" className="text-destructive hover:text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Supprimer cette entité ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Vous êtes sur le point de supprimer <strong>{entity.nom as string}</strong>.
+                    Cette action est irréversible. Les associés liés seront également supprimés.
+                    Si l&apos;entité possède encore des biens, la suppression sera refusée.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Suppression...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Supprimer
+                      </>
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
 
