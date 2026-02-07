@@ -106,6 +106,9 @@ export interface WizardFormData {
   visite_virtuelle_url?: string;
   description?: string;
 
+  // Entité juridique propriétaire
+  legal_entity_id?: string | null;
+
   // Usage
   usage_principal?: 'habitation' | 'habitation_secondaire' | 'mixte';
 

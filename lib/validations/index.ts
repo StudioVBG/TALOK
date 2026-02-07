@@ -486,6 +486,8 @@ export const propertyGeneralUpdateSchema = z
     loyer_reference_majoré: z.number().min(0).optional().nullable(),
     complement_loyer: z.number().min(0).optional().nullable(),
     complement_justification: z.string().optional().nullable(),
+    // Entité juridique propriétaire
+    legal_entity_id: z.string().uuid().optional().nullable(),
     // Visite virtuelle (Matterport, Nodalview, etc.)
     visite_virtuelle_url: z.string().url("L'URL de visite virtuelle doit être valide").optional().nullable(),
   })

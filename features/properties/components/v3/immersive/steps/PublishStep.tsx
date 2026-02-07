@@ -12,16 +12,31 @@ import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { EntitySelector } from "@/components/entities/EntitySelector";
+import { useEntityStore } from "@/stores/useEntityStore";
 
 export function PublishStep() {
   const { formData, updateFormData } = usePropertyWizardStore();
-  
+  const { entities } = useEntityStore();
+
   const availableFrom = formData.available_from ? new Date(formData.available_from) : new Date();
   const visibility = (formData as any).visibility || "private";
 
   return (
     <div className="h-full flex flex-col max-w-2xl mx-auto justify-center gap-8 py-4">
       <div className="space-y-6">
+        {/* Entité juridique propriétaire */}
+        {entities.length > 0 && (
+          <div className="space-y-3">
+            <EntitySelector
+              value={formData.legal_entity_id || null}
+              onChange={(id) => updateFormData({ legal_entity_id: id })}
+              label="Entité propriétaire du bien"
+              hint="Sélectionnez l'entité juridique qui détient ce bien. Optionnel pour les particuliers."
+            />
+          </div>
+        )}
+
         {/* Date de disponibilité */}
         <div className="space-y-3">
           <Label className="text-base font-semibold">Date de disponibilité</Label>

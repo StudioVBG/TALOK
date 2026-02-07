@@ -33,6 +33,7 @@ const colocConfigSchema = z.object({
 const inviteSchema = z.object({
   property_id: z.string().uuid("ID de propriété invalide"),
   type_bail: z.string().min(1, "Type de bail requis"),
+  signatory_entity_id: z.string().uuid().nullable().optional(),
   loyer: z.number().positive("Loyer doit être positif"),
   charges_forfaitaires: z.number().min(0).default(0),
   charges_type: z.enum(["forfait", "provisions"]).default("forfait"),
@@ -251,6 +252,7 @@ export async function POST(request: Request) {
     const leaseData: any = {
       property_id: validated.property_id,
       type_bail: validated.type_bail,
+      signatory_entity_id: validated.signatory_entity_id || null,
       loyer: validated.loyer,
       charges_forfaitaires: validated.charges_forfaitaires,
       charges_type: validated.charges_type,
