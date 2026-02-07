@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
+  getLegalEntities,
   getLegalEntitiesWithStats,
   createLegalEntity,
 } from "@/features/legal-entities/services/legal-entities.service";
@@ -65,10 +66,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const includeStats = searchParams.get("stats") !== "false";
 
-    // Récupérer les entités
+    // M14 fix: respect stats=false param
     const entities = includeStats
       ? await getLegalEntitiesWithStats(profile.id)
-      : await getLegalEntitiesWithStats(profile.id);
+      : await getLegalEntities(profile.id);
 
     return NextResponse.json({
       entities,
@@ -143,18 +144,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validation du SIREN si fourni
-    if (body.siren && body.siren.length !== 9) {
+    // M7: Validation du SIREN si fourni (9 chiffres exactement)
+    if (body.siren && !/^\d{9}$/.test(body.siren)) {
       return NextResponse.json(
-        { error: "Le SIREN doit contenir 9 chiffres" },
+        { error: "Le SIREN doit contenir exactement 9 chiffres" },
         { status: 400 }
       );
     }
 
-    // Validation du SIRET si fourni
-    if (body.siret && body.siret.length !== 14) {
+    // M7: Validation du SIRET si fourni (14 chiffres exactement)
+    if (body.siret && !/^\d{14}$/.test(body.siret)) {
       return NextResponse.json(
-        { error: "Le SIRET doit contenir 14 chiffres" },
+        { error: "Le SIRET doit contenir exactement 14 chiffres" },
         { status: 400 }
       );
     }

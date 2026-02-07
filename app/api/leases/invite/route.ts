@@ -148,7 +148,7 @@ export async function POST(request: Request) {
     // Vérifier que le bien appartient au propriétaire
     const { data: property, error: propError } = await supabase
       .from("properties")
-      .select("id, owner_id, adresse_complete, code_postal, ville")
+      .select("id, owner_id, adresse_complete, code_postal, ville, dpe_classe_energie")
       .eq("id", validated.property_id)
       .single();
 
@@ -158,6 +158,16 @@ export async function POST(request: Request) {
 
     if (property.owner_id !== profile.id && profile.role !== "admin") {
       return NextResponse.json({ error: "Ce bien ne vous appartient pas" }, { status: 403 });
+    }
+
+    // P1-5: Loi Climat et Résilience — Interdiction de louer les passoires thermiques
+    const isHabitation = ["nu", "meuble", "colocation", "bail_mobilite", "etudiant", "bail_mixte"].includes(validated.type_bail);
+    const dpe = (property as any).dpe_classe_energie?.toUpperCase();
+    if (isHabitation && dpe === "G") {
+      return NextResponse.json({
+        error: "Location interdite — DPE classe G",
+        details: "Depuis le 1er janvier 2025, les logements classés G au DPE ne peuvent plus être proposés à la location (Loi Climat et Résilience, art. 160). Réalisez des travaux de rénovation énergétique pour améliorer le classement.",
+      }, { status: 422 });
     }
 
     // Utiliser le service client pour bypass les RLS (évite la récursion infinie)
