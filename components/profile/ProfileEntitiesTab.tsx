@@ -55,18 +55,21 @@ export function ProfileEntitiesTab() {
   if (entities.length === 0) {
     return (
       <Card>
-        <CardContent className="text-center py-12">
-          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">
+        <CardContent className="text-center py-16">
+          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <Building2 className="h-8 w-8 text-primary" />
+          </div>
+          <h3 className="text-xl font-bold mb-2">
             Aucune entité juridique
           </h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-8">
             Créez votre première entité juridique (SCI, SARL, SAS...) pour
             séparer vos biens et simplifier votre gestion locative.
+            Les informations de l&apos;entité seront utilisées dans vos baux, quittances et documents officiels.
           </p>
-          <Button asChild>
+          <Button size="lg" asChild>
             <Link href="/owner/entities/new">
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-5 w-5 mr-2" />
               Créer une entité
             </Link>
           </Button>

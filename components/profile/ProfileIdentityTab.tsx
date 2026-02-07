@@ -426,22 +426,18 @@ function EntityMigrationCTA({
             informations l&eacute;gales utilis&eacute;es dans vos documents.
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
-            {onSwitchToEntities && (
-              <Button size="sm" onClick={onSwitchToEntities}>
+            <Button size="sm" asChild>
+              <Link href="/owner/entities/new">
                 <ArrowRight className="h-4 w-4 mr-2" />
                 Cr&eacute;er maintenant
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant={onSwitchToEntities ? "outline" : "default"}
-              asChild
-            >
-              <Link href="/owner/entities/new">
-                <Building2 className="h-4 w-4 mr-2" />
-                Cr&eacute;er mon entit&eacute;
               </Link>
             </Button>
+            {onSwitchToEntities && (
+              <Button size="sm" variant="outline" onClick={onSwitchToEntities}>
+                <Building2 className="h-4 w-4 mr-2" />
+                Voir l&apos;onglet Entit&eacute;s
+              </Button>
+            )}
           </div>
         </div>
       </div>
