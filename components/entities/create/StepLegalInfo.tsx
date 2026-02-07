@@ -101,6 +101,11 @@ export function StepLegalInfo({ formData, onChange }: StepLegalInfoProps) {
             placeholder="123 456 789 01234"
             maxLength={17}
           />
+          {formData.siret.replace(/\s/g, "").length >= 9 && (
+            <p className="text-xs text-muted-foreground">
+              SIREN : {formData.siret.replace(/\s/g, "").slice(0, 9)}
+            </p>
+          )}
         </div>
 
         {/* Capital social */}
@@ -136,6 +141,40 @@ export function StepLegalInfo({ formData, onChange }: StepLegalInfoProps) {
             value={formData.numeroTva}
             onChange={(e) => onChange({ numeroTva: e.target.value })}
             placeholder="FR12345678901"
+          />
+        </div>
+
+        {/* RCS Ville */}
+        <div className="space-y-2">
+          <Label htmlFor="rcsVille">RCS — Ville</Label>
+          <Input
+            id="rcsVille"
+            value={formData.rcsVille}
+            onChange={(e) => onChange({ rcsVille: e.target.value })}
+            placeholder="Fort-de-France"
+          />
+        </div>
+
+        {/* RCS Numéro */}
+        <div className="space-y-2">
+          <Label htmlFor="rcsNumero">RCS — Numéro</Label>
+          <Input
+            id="rcsNumero"
+            value={formData.rcsNumero}
+            onChange={(e) => onChange({ rcsNumero: e.target.value })}
+            placeholder="123 456 789"
+          />
+        </div>
+
+        {/* Code APE */}
+        <div className="space-y-2">
+          <Label htmlFor="codeApe">Code APE / NAF</Label>
+          <Input
+            id="codeApe"
+            value={formData.codeApe}
+            onChange={(e) => onChange({ codeApe: e.target.value.toUpperCase() })}
+            placeholder="6820A"
+            maxLength={6}
           />
         </div>
       </div>

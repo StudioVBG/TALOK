@@ -52,6 +52,17 @@ export function StepAddress({ formData, onChange }: StepAddressProps) {
           />
         </div>
 
+        {/* Complément d'adresse */}
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="complementAdresse">Complément d&apos;adresse</Label>
+          <Input
+            id="complementAdresse"
+            value={formData.complementAdresse}
+            onChange={(e) => onChange({ complementAdresse: e.target.value })}
+            placeholder="Bâtiment A, 2ème étage"
+          />
+        </div>
+
         {/* Code postal */}
         <div className="space-y-2">
           <Label htmlFor="codePostalSiege">

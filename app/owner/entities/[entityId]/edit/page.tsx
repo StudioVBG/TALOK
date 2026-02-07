@@ -76,29 +76,38 @@ export default function EditEntityPage() {
         // Check if representative is the owner (has profile_id) or external
         const hasSelfRepresentant = gerant?.profile_id != null;
 
+        // Derive representative quality from associate flags
+        let repQualite = "Gérant(e)";
+        if (gerant?.is_president) repQualite = "Président(e)";
+        if (gerant?.role_autre) repQualite = gerant.role_autre as string;
+
         setFormData({
           entityType: (e.entity_type as string) || "",
           nom: (e.nom as string) || "",
           formeJuridique: (e.forme_juridique as string) || "",
           regimeFiscal: (e.regime_fiscal as string) || "ir",
           siret: (e.siret as string) || "",
+          siren: (e.siren as string) || "",
+          rcsVille: (e.rcs_ville as string) || "",
+          rcsNumero: (e.rcs_numero as string) || "",
+          codeApe: (e.code_ape as string) || "",
           capitalSocial: e.capital_social != null ? String(e.capital_social) : "",
           dateCreation: (e.date_creation as string) || "",
           numeroTva: (e.numero_tva as string) || "",
           objetSocial: "Gestion de biens immobiliers",
           adresseSiege: (e.adresse_siege as string) || "",
+          complementAdresse: (e.complement_adresse as string) || "",
           codePostalSiege: (e.code_postal_siege as string) || "",
           villeSiege: (e.ville_siege as string) || "",
-          emailEntite: "",
-          telephoneEntite: "",
           representantMode: hasSelfRepresentant ? "self" : "other",
           representantPrenom: (gerant?.prenom as string) || "",
           representantNom: (gerant?.nom as string) || "",
-          representantQualite: "Gérant(e)",
+          representantQualite: repQualite,
           representantDateNaissance: (gerant?.date_naissance as string) || "",
           iban: (e.iban as string) || "",
           bic: (e.bic as string) || "",
           banqueNom: (e.banque_nom as string) || "",
+          titulaireCompte: (e.titulaire_compte as string) || "",
         });
       } catch {
         toast({
@@ -173,21 +182,32 @@ export default function EditEntityPage() {
     try {
       const supabase = createClient();
 
+      // Auto-derive SIREN from SIRET
+      const siretClean = formData.siret.replace(/\s/g, "");
+      const sirenDerived = siretClean.length >= 9 ? siretClean.slice(0, 9) : (formData.siren.replace(/\s/g, "") || null);
+
       const entityPayload = {
         entity_type: formData.entityType || "sci_ir",
         nom: formData.nom,
         forme_juridique: formData.formeJuridique || null,
         regime_fiscal: formData.regimeFiscal || "ir",
-        siret: formData.siret.replace(/\s/g, "") || null,
+        siret: siretClean || null,
+        siren: sirenDerived,
+        rcs_ville: formData.rcsVille || null,
+        rcs_numero: formData.rcsNumero || null,
+        code_ape: formData.codeApe || null,
         capital_social: formData.capitalSocial ? parseFloat(formData.capitalSocial) : null,
         date_creation: formData.dateCreation || null,
         numero_tva: formData.numeroTva || null,
         adresse_siege: formData.adresseSiege || null,
+        complement_adresse: formData.complementAdresse || null,
         code_postal_siege: formData.codePostalSiege || null,
         ville_siege: formData.villeSiege || null,
+        pays_siege: "France",
         iban: formData.iban.replace(/\s/g, "") || null,
         bic: formData.bic || null,
         banque_nom: formData.banqueNom || null,
+        titulaire_compte: formData.titulaireCompte || null,
       };
 
       const { error } = await supabase

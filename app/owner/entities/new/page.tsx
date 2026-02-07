@@ -31,6 +31,10 @@ export interface EntityFormData {
   formeJuridique: string;
   regimeFiscal: string;
   siret: string;
+  siren: string;
+  rcsVille: string;
+  rcsNumero: string;
+  codeApe: string;
   capitalSocial: string;
   dateCreation: string;
   numeroTva: string;
@@ -38,10 +42,9 @@ export interface EntityFormData {
 
   // Step 3: Address
   adresseSiege: string;
+  complementAdresse: string;
   codePostalSiege: string;
   villeSiege: string;
-  emailEntite: string;
-  telephoneEntite: string;
 
   // Step 4: Representative
   representantMode: "self" | "other";
@@ -54,6 +57,7 @@ export interface EntityFormData {
   iban: string;
   bic: string;
   banqueNom: string;
+  titulaireCompte: string;
 }
 
 const INITIAL_DATA: EntityFormData = {
@@ -62,15 +66,18 @@ const INITIAL_DATA: EntityFormData = {
   formeJuridique: "",
   regimeFiscal: "ir",
   siret: "",
+  siren: "",
+  rcsVille: "",
+  rcsNumero: "",
+  codeApe: "",
   capitalSocial: "",
   dateCreation: "",
   numeroTva: "",
   objetSocial: "Gestion de biens immobiliers",
   adresseSiege: "",
+  complementAdresse: "",
   codePostalSiege: "",
   villeSiege: "",
-  emailEntite: "",
-  telephoneEntite: "",
   representantMode: "self",
   representantPrenom: "",
   representantNom: "",
@@ -79,6 +86,7 @@ const INITIAL_DATA: EntityFormData = {
   iban: "",
   bic: "",
   banqueNom: "",
+  titulaireCompte: "",
 };
 
 const STEPS = [
@@ -168,6 +176,10 @@ export default function NewEntityPage() {
         .single();
       if (!profile) throw new Error("Profil non trouvé");
 
+      // Auto-derive SIREN from SIRET (first 9 digits)
+      const siretClean = formData.siret.replace(/\s/g, "");
+      const sirenDerived = siretClean.length >= 9 ? siretClean.slice(0, 9) : (formData.siren.replace(/\s/g, "") || null);
+
       // Map form data to DB
       const entityPayload = {
         owner_profile_id: profile.id,
@@ -175,17 +187,23 @@ export default function NewEntityPage() {
         nom: formData.nom || `Entité de ${profile.id.slice(0, 8)}`,
         forme_juridique: formData.formeJuridique || null,
         regime_fiscal: formData.regimeFiscal || "ir",
-        siret: formData.siret.replace(/\s/g, "") || null,
+        siret: siretClean || null,
+        siren: sirenDerived,
+        rcs_ville: formData.rcsVille || null,
+        rcs_numero: formData.rcsNumero || null,
+        code_ape: formData.codeApe || null,
         capital_social: formData.capitalSocial ? parseFloat(formData.capitalSocial) : null,
         date_creation: formData.dateCreation || null,
         numero_tva: formData.numeroTva || null,
         adresse_siege: formData.adresseSiege || null,
+        complement_adresse: formData.complementAdresse || null,
         code_postal_siege: formData.codePostalSiege || null,
         ville_siege: formData.villeSiege || null,
         pays_siege: "France",
         iban: formData.iban.replace(/\s/g, "") || null,
         bic: formData.bic || null,
         banque_nom: formData.banqueNom || null,
+        titulaire_compte: formData.titulaireCompte || null,
         is_active: true,
       };
 

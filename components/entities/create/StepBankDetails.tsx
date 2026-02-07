@@ -64,6 +64,20 @@ export function StepBankDetails({ formData, onChange }: StepBankDetailsProps) {
             placeholder="BNP Paribas"
           />
         </div>
+
+        {/* Titulaire du compte */}
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="titulaireCompte">Titulaire du compte</Label>
+          <Input
+            id="titulaireCompte"
+            value={formData.titulaireCompte}
+            onChange={(e) => onChange({ titulaireCompte: e.target.value })}
+            placeholder="SCI ATOMGISTE"
+          />
+          <p className="text-xs text-muted-foreground">
+            Nom tel qu&apos;il appara&icirc;t sur le RIB
+          </p>
+        </div>
       </div>
 
       {/* Info box */}
