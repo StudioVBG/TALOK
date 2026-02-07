@@ -157,7 +157,7 @@ export default function NewEntityPage() {
     try {
       const supabase = createClient();
 
-      // Get owner_profile_id
+      // Get profile.id — which is the FK value for legal_entities.owner_profile_id
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
@@ -168,16 +168,9 @@ export default function NewEntityPage() {
         .single();
       if (!profile) throw new Error("Profil non trouvé");
 
-      const { data: ownerProfile } = await supabase
-        .from("owner_profiles")
-        .select("id")
-        .eq("profile_id", profile.id)
-        .single();
-      if (!ownerProfile) throw new Error("Profil propriétaire non trouvé");
-
       // Map form data to DB
       const entityPayload = {
-        owner_profile_id: ownerProfile.id,
+        owner_profile_id: profile.id,
         entity_type: formData.entityType || "sci_ir",
         nom: formData.nom || `Entité de ${profile.id.slice(0, 8)}`,
         forme_juridique: formData.formeJuridique || null,

@@ -9,7 +9,6 @@
 import { useEffect, type ReactNode } from "react";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { createClient } from "@/lib/supabase/client";
 
 interface EntityProviderProps {
   children: ReactNode;
@@ -22,23 +21,14 @@ export function EntityProvider({ children }: EntityProviderProps) {
   useEffect(() => {
     if (!profile?.id) return;
 
-    // Fetch owner_profile_id from profile
+    // owner_profiles.profile_id === profiles.id === legal_entities.owner_profile_id
+    // No intermediate query needed — profile.id is the owner_profile_id FK value.
     const loadEntities = async () => {
       try {
-        const supabase = createClient();
-        const { data: ownerProfile } = await supabase
-          .from("owner_profiles")
-          .select("id")
-          .eq("profile_id", profile.id)
-          .single();
-
-        if (ownerProfile?.id) {
-          // Only re-fetch if stale (> 5 min) or empty
-          const isStale =
-            !lastFetchedAt || Date.now() - lastFetchedAt > 5 * 60 * 1000;
-          if (entities.length === 0 || isStale) {
-            await fetchEntities(ownerProfile.id as string);
-          }
+        const isStale =
+          !lastFetchedAt || Date.now() - lastFetchedAt > 5 * 60 * 1000;
+        if (entities.length === 0 || isStale) {
+          await fetchEntities(profile.id);
         }
       } catch (err) {
         console.error("[EntityProvider] Error loading entities:", err);
