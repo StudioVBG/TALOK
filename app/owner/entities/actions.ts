@@ -279,7 +279,7 @@ export async function deleteEntity(
       .from("leases")
       .select("id")
       .eq("signatory_entity_id", id)
-      .in("status", ["active", "pending", "signing"])
+      .in("statut", ["active", "pending_signature", "fully_signed"])
       .limit(1);
 
     if (linkedLeases && linkedLeases.length > 0) {

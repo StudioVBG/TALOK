@@ -50,8 +50,8 @@ SELECT
   op.raison_sociale,
   op.siret,
   op.forme_juridique,
-  op.adresse_siege,
-  op.tva,
+  COALESCE(op.adresse_siege, op.adresse_facturation),
+  NULL, -- owner_profiles n'a pas de colonne tva
   true,
   NOW(),
   NOW()
