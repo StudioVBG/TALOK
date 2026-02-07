@@ -37,8 +37,8 @@ WHERE l.depot_de_garantie > 0
   AND l.tenant_id IS NOT NULL
   AND l.statut IN ('active', 'terminated')
   AND NOT EXISTS (
-    SELECT 1 FROM public.deposit_operations do
-    WHERE do.lease_id = l.id AND do.operation_type = 'reception'
+    SELECT 1 FROM public.deposit_operations dep
+    WHERE dep.lease_id = l.id AND dep.operation_type = 'reception'
   )
 ON CONFLICT DO NOTHING;
 
@@ -212,13 +212,13 @@ DECLARE
   v_deposit RECORD;
 BEGIN
   FOR v_deposit IN
-    SELECT do.*
-    FROM public.deposit_operations do
-    WHERE do.operation_type = 'reception'
-      AND do.statut = 'completed'
+    SELECT dep.*
+    FROM public.deposit_operations dep
+    WHERE dep.operation_type = 'reception'
+      AND dep.statut = 'completed'
       AND NOT EXISTS (
         SELECT 1 FROM public.accounting_entries ae
-        WHERE ae.piece_ref LIKE 'DEP-' || do.id::TEXT || '%'
+        WHERE ae.piece_ref LIKE 'DEP-' || dep.id::TEXT || '%'
       )
   LOOP
     BEGIN
