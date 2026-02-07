@@ -4,17 +4,19 @@ export const dynamic = 'force-dynamic';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { pdfService } from "@/lib/services/pdf.service";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 
 async function generateReceiptPDF(receipt: any): Promise<string | null> {
   try {
-    // Récupérer les informations nécessaires pour le PDF
     const supabase = await createClient();
     const { data: invoice } = await supabase
       .from("invoices")
       .select(`
         *,
         lease:leases(
-          property:properties(adresse_complete),
+          id,
+          property_id,
+          property:properties(id, adresse_complete, owner_id),
           tenant:lease_signers!inner(
             profile:profiles(prenom, nom)
           )
@@ -30,6 +32,17 @@ async function generateReceiptPDF(receipt: any): Promise<string | null> {
       ? `${invoiceData.lease.tenant[0].profile.prenom} ${invoiceData.lease.tenant[0].profile.nom}`
       : "Locataire";
 
+    // Resolve owner identity via centralized resolver (entity-first + fallback)
+    const ownerIdentity = await resolveOwnerIdentity(supabase, {
+      leaseId: invoiceData?.lease?.id,
+      propertyId: invoiceData?.lease?.property?.id,
+      profileId: invoiceData?.lease?.property?.owner_id,
+    });
+
+    const ownerAddress = ownerIdentity.address.street
+      ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
+      : ownerIdentity.billingAddress || "";
+
     const pdf = await pdfService.generateReceiptPDF({
       invoiceId: receipt.id,
       periode: receipt.periode,
@@ -38,8 +51,8 @@ async function generateReceiptPDF(receipt: any): Promise<string | null> {
       montant_charges: receipt.montant_charges,
       tenantName,
       propertyAddress: invoiceData?.lease?.property?.adresse_complete || "",
-      ownerName: "Propriétaire", // À récupérer depuis la DB
-      ownerAddress: "", // À récupérer depuis la DB
+      ownerName: ownerIdentity.displayName,
+      ownerAddress,
       paidAt: receipt.payments?.[0]?.date_paiement || receipt.updated_at,
       paymentMethod: receipt.payments?.[0]?.moyen || "Non spécifié",
     });
