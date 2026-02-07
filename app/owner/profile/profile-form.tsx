@@ -98,6 +98,7 @@ export function ProfileForm() {
               avatarUrl={avatarUrl}
               userEmail={userEmail}
               updateField={updateField}
+              onSwitchToEntities={() => setActiveTab("entities")}
             />
           </>
         )}

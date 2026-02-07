@@ -46,6 +46,7 @@ interface ProfileIdentityTabProps {
     key: K,
     value: ProfileFormData[K]
   ) => void;
+  onSwitchToEntities?: () => void;
 }
 
 export function ProfileIdentityTab({
@@ -56,6 +57,7 @@ export function ProfileIdentityTab({
   avatarUrl,
   userEmail,
   updateField,
+  onSwitchToEntities,
 }: ProfileIdentityTabProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -321,7 +323,7 @@ export function ProfileIdentityTab({
 
           {/* CTA: Entity management for company owners */}
           {formData.owner_type === "societe" && (
-            <EntityMigrationCTA />
+            <EntityMigrationCTA onSwitchToEntities={onSwitchToEntities} />
           )}
 
           {/* Always-visible optional fields */}
@@ -364,7 +366,11 @@ export function ProfileIdentityTab({
  * CTA displayed when owner_type is "societe" — directs user to manage entities
  * in the dedicated Entities tab / page instead of inline fields.
  */
-function EntityMigrationCTA() {
+function EntityMigrationCTA({
+  onSwitchToEntities,
+}: {
+  onSwitchToEntities?: () => void;
+}) {
   const { entities, isLoading } = useEntityStore();
 
   if (isLoading) return null;
@@ -382,12 +388,24 @@ function EntityMigrationCTA() {
               G&eacute;rez vos entit&eacute;s juridiques (raison sociale, SIRET, forme juridique...)
               depuis l&apos;onglet Entit&eacute;s ou la page d&eacute;di&eacute;e.
             </p>
-            <Button variant="link" size="sm" className="px-0 h-auto mt-2" asChild>
-              <Link href="/owner/entities">
+            {onSwitchToEntities ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="px-0 h-auto mt-2"
+                onClick={onSwitchToEntities}
+              >
                 Voir mes entit&eacute;s
                 <ArrowRight className="h-3.5 w-3.5 ml-1" />
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button variant="link" size="sm" className="px-0 h-auto mt-2" asChild>
+                <Link href="/owner/entities">
+                  Voir mes entit&eacute;s
+                  <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -407,12 +425,24 @@ function EntityMigrationCTA() {
             pour renseigner votre raison sociale, SIRET, si&egrave;ge social et autres
             informations l&eacute;gales utilis&eacute;es dans vos documents.
           </p>
-          <Button size="sm" className="mt-3" asChild>
-            <Link href="/owner/entities/new">
-              <Building2 className="h-4 w-4 mr-2" />
-              Cr&eacute;er mon entit&eacute;
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {onSwitchToEntities && (
+              <Button size="sm" onClick={onSwitchToEntities}>
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Cr&eacute;er maintenant
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={onSwitchToEntities ? "outline" : "default"}
+              asChild
+            >
+              <Link href="/owner/entities/new">
+                <Building2 className="h-4 w-4 mr-2" />
+                Cr&eacute;er mon entit&eacute;
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
