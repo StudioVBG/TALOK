@@ -62,7 +62,7 @@ export function MoneyClient({ data }: MoneyClientProps) {
     const uniqueDromPrefixes = new Set<string>();
     
     invoices.forEach(inv => {
-      const zip = inv.lease?.property?.code_postal;
+      const zip = (inv.lease?.property as any)?.code_postal;
       if (zip && dromPrefixes.includes(zip.substring(0, 3))) {
         uniqueDromPrefixes.add(zip.substring(0, 3));
       }
@@ -220,13 +220,13 @@ export function MoneyClient({ data }: MoneyClientProps) {
                   disabled={
                     isPending &&
                     pendingInvoice?.id === invoice.id &&
-                    pendingInvoice.action === "pay"
+                    pendingInvoice?.action === "pay"
                   }
                   className="gap-2"
                 >
                   {isPending &&
                   pendingInvoice?.id === invoice.id &&
-                  pendingInvoice.action === "pay" ? (
+                  pendingInvoice?.action === "pay" ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <CheckCircle className="h-3 w-3" />
@@ -243,13 +243,13 @@ export function MoneyClient({ data }: MoneyClientProps) {
                   disabled={
                     isPending &&
                     pendingInvoice?.id === invoice.id &&
-                    pendingInvoice.action === "remind"
+                    pendingInvoice?.action === "remind"
                   }
                   className="gap-2"
                 >
                   {isPending &&
                   pendingInvoice?.id === invoice.id &&
-                  pendingInvoice.action === "remind" ? (
+                  pendingInvoice?.action === "remind" ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <AlertCircle className="h-3 w-3" />
@@ -287,7 +287,7 @@ export function MoneyClient({ data }: MoneyClientProps) {
                 className="gap-2 bg-white/50 backdrop-blur-sm"
                 onClick={() => exportInvoices(filteredInvoices.map(inv => ({
                   ...inv,
-                  tenant_name: inv.lease?.signers?.[0]?.profile?.prenom + ' ' + inv.lease?.signers?.[0]?.profile?.nom || 'N/A',
+                  tenant_name: (inv.lease as any)?.signers?.[0]?.profile?.prenom + ' ' + (inv.lease as any)?.signers?.[0]?.profile?.nom || 'N/A',
                   property_address: inv.lease?.property?.adresse_complete || 'N/A',
                 })), "csv")}
                 disabled={filteredInvoices.length === 0}
@@ -520,11 +520,11 @@ export function MoneyClient({ data }: MoneyClientProps) {
           open={paymentDialogOpen}
           onOpenChange={setPaymentDialogOpen}
           invoiceId={selectedInvoiceForPayment.id}
-          invoiceReference={selectedInvoiceForPayment.reference || ""}
+          invoiceReference={(selectedInvoiceForPayment as any).reference || ""}
           amount={Number(selectedInvoiceForPayment.montant_total) || 0}
           tenantName={
-            selectedInvoiceForPayment.lease?.signers?.[0]?.profile
-              ? `${selectedInvoiceForPayment.lease.signers[0].profile.prenom || ""} ${selectedInvoiceForPayment.lease.signers[0].profile.nom || ""}`.trim()
+            (selectedInvoiceForPayment.lease as any)?.signers?.[0]?.profile
+              ? `${(selectedInvoiceForPayment.lease as any)?.signers?.[0]?.profile?.prenom || ""} ${(selectedInvoiceForPayment.lease as any)?.signers?.[0]?.profile?.nom || ""}`.trim()
               : "Locataire"
           }
           ownerName="Propriétaire"

@@ -200,8 +200,8 @@ export default function EDLTemplatePage() {
         : `${profile?.prenom || ""} ${profile?.nom || ""}`.trim() || "Bailleur",
       adresse: ownerProfile?.adresse_facturation || "",
       telephone: profile?.telephone || "",
-      email: profile?.email || "",
-      representant: ownerProfile?.representant_nom || "",
+      email: (profile as any)?.email || "",
+      representant: (ownerProfile as any)?.representant_nom || "",
     },
     locataires: selectedLease ? [{
       nom: selectedLease.tenant_name.split(" ").pop() || "",

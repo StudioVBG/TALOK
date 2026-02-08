@@ -194,13 +194,13 @@ export async function fetchAdminOwnerDetails(ownerId: string): Promise<AdminOwne
     owner_profiles: Array.isArray(ownerProfiles) 
       ? (ownerProfiles[0] as AdminOwnerDetails["owner_profiles"])
       : (ownerProfiles as AdminOwnerDetails["owner_profiles"]),
-    properties,
+    properties: properties as AdminOwnerDetails['properties'],
     stats: {
       totalProperties: properties.length,
       activeLeases
     },
     // Subscription
-    subscription: subscriptionData ? {
+    subscription: subscriptionData ? ({
       id: subscriptionData.id,
       plan_slug: subscriptionData.plan?.slug || "starter",
       plan_name: subscriptionData.plan?.name || "Starter",
@@ -218,6 +218,6 @@ export async function fetchAdminOwnerDetails(ownerId: string): Promise<AdminOwne
       price_monthly: subscriptionData.plan?.price_monthly || 0,
       price_yearly: subscriptionData.plan?.price_yearly || 0,
       created_at: subscriptionData.created_at,
-    } : null,
+    } as AdminOwnerDetails['subscription']) : null,
   };
 }

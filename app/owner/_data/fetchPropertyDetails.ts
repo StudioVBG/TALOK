@@ -82,12 +82,12 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
     coverDocId = cover.id;
   } else if (documentsData && documentsData.length > 0) {
     // Fallback sur documents si pas de photos
-    photos = documentsData.map((doc) => ({
+    photos = documentsData.map((doc: any) => ({
       id: doc.id,
       url: doc.preview_url,
       is_main: doc.is_cover,
       ordre: doc.position
-    }));
+    })) as any;
     const cover = photos.find((p: any) => p.is_main) || photos[0];
     coverUrl = cover.url;
     coverDocId = cover.id;
@@ -120,9 +120,9 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
     property: enrichedProperty,
     units: units || [],
     rooms: rooms || [], // ✅ Retour des rooms
-    leases: leases || [],
+    leases: (leases || []) as unknown as LeaseInfo[],
     tickets: tickets || [],
     invoices: invoices || [],
-    photos: photos
+    photos: photos as unknown as PropertyPhoto[]
   };
 }

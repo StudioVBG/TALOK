@@ -156,7 +156,7 @@ export async function POST(
       .eq("lease_id", leaseId)
       .is("left_on", null);
 
-    const nbPlaces = lease.coloc_config?.nb_places || 10;
+    const nbPlaces = (lease.coloc_config as any)?.nb_places || 10;
     if ((currentRoommates || 0) >= nbPlaces) {
       return NextResponse.json({ 
         error: "Nombre maximum de colocataires atteint",

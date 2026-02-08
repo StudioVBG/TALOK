@@ -66,13 +66,13 @@ function RenewCNIContent() {
 
       const { data: signer } = await supabase
         .from("lease_signers").select("id")
-        .eq("lease_id", leaseId).eq("profile_id", profile.id).single();
+        .eq("lease_id", leaseId!).eq("profile_id", profile.id).single();
       if (!signer) { setError("Accès non autorisé"); return; }
 
       const { data: leaseData } = await supabase
         .from("leases")
         .select(`id, type_bail, properties (adresse_complete, ville)`)
-        .eq("id", leaseId).single();
+        .eq("id", leaseId!).single();
       setLease(leaseData);
     } catch (err: any) {
       setError(err.message);

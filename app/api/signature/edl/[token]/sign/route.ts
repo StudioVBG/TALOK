@@ -32,8 +32,8 @@ export async function POST(
 
     // Vérifier si le token a expiré (7 jours après l'envoi)
     const TOKEN_EXPIRATION_DAYS = 7;
-    if (signatureEntry.invitation_sent_at) {
-      const sentDate = new Date(signatureEntry.invitation_sent_at);
+    if ((signatureEntry as any).invitation_sent_at) {
+      const sentDate = new Date((signatureEntry as any).invitation_sent_at);
       const expirationDate = new Date(sentDate.getTime() + TOKEN_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
       if (new Date() > expirationDate) {
         return NextResponse.json(
@@ -81,9 +81,9 @@ export async function POST(
       documentType: "EDL",
       documentId: signatureEntry.edl_id,
       documentContent: JSON.stringify(signatureEntry.edl),
-      signerName: signatureEntry.signer_name || `${signatureEntry.profile?.prenom || ""} ${signatureEntry.profile?.nom || ""}`.trim() || "Locataire",
+      signerName: (signatureEntry as any).signer_name || `${signatureEntry.profile?.prenom || ""} ${signatureEntry.profile?.nom || ""}`.trim() || "Locataire",
       signerEmail: signatureEntry.profile?.email || "guest@tenant.com",
-      signerProfileId: signatureEntry.signer_profile_id,
+      signerProfileId: (signatureEntry as any).signer_profile_id,
       identityVerified: true, // On considère vérifié par le token unique
       identityMethod: "Lien d'invitation sécurisé",
       signatureType: "draw",

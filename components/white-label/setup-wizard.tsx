@@ -293,7 +293,7 @@ export function SetupWizard({
                       ) : (
                         <span
                           className="text-xl font-bold"
-                          style={{ color: branding.primary_color }}
+                          style={{ color: branding.primary_color ?? undefined }}
                         >
                           🏠 {branding.company_name || "Mon Entreprise"}
                         </span>
@@ -325,7 +325,7 @@ export function SetupWizard({
                     onChange={(color) => updateBranding("primary_color", color)}
                     label="Couleur principale"
                     description="Utilisée pour les boutons et éléments importants"
-                    defaultValue={DEFAULT_BRANDING.primary_color}
+                    defaultValue={DEFAULT_BRANDING.primary_color ?? undefined}
                   />
 
                   {hasWhiteLabelFeature(level, "secondary_color") && (
@@ -334,7 +334,7 @@ export function SetupWizard({
                       onChange={(color) => updateBranding("secondary_color", color)}
                       label="Couleur secondaire"
                       description="Pour les éléments d'accent"
-                      defaultValue={DEFAULT_BRANDING.secondary_color}
+                      defaultValue={DEFAULT_BRANDING.secondary_color ?? undefined}
                     />
                   )}
 
@@ -344,7 +344,7 @@ export function SetupWizard({
                       onChange={(color) => updateBranding("accent_color", color)}
                       label="Couleur d'accent"
                       description="Pour les messages de succès"
-                      defaultValue={DEFAULT_BRANDING.accent_color}
+                      defaultValue={DEFAULT_BRANDING.accent_color ?? undefined}
                     />
                   )}
                 </div>
@@ -355,7 +355,7 @@ export function SetupWizard({
                   <div className="space-y-4">
                     <Button
                       className="w-full"
-                      style={{ backgroundColor: branding.primary_color }}
+                      style={{ backgroundColor: branding.primary_color ?? undefined }}
                     >
                       Bouton principal
                     </Button>
@@ -363,15 +363,15 @@ export function SetupWizard({
                       variant="outline"
                       className="w-full"
                       style={{
-                        borderColor: branding.secondary_color,
-                        color: branding.secondary_color,
+                        borderColor: branding.secondary_color ?? undefined,
+                        color: branding.secondary_color ?? undefined,
                       }}
                     >
                       Bouton secondaire
                     </Button>
                     <div
                       className="p-3 rounded-lg text-white text-center text-sm"
-                      style={{ backgroundColor: branding.accent_color }}
+                      style={{ backgroundColor: branding.accent_color ?? undefined }}
                     >
                       Message de succès
                     </div>
@@ -437,7 +437,7 @@ export function SetupWizard({
                     ) : (
                       <h1
                         className="text-xl font-bold mb-4"
-                        style={{ color: branding.primary_color }}
+                        style={{ color: branding.primary_color ?? undefined }}
                       >
                         🏠 {branding.company_name || "Mon Entreprise"}
                       </h1>

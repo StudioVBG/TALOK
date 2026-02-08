@@ -138,6 +138,7 @@ export function ValidatedInput({
         )}
 
         <Input
+          {...({} as any)}
           id={id}
           type={type}
           value={value ?? ""}

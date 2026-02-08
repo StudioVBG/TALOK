@@ -18,8 +18,8 @@ export async function DELETE(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
-        { status: error.status || 401 }
+        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { status: (error as any).status || 401 }
       );
     }
 
@@ -148,8 +148,8 @@ export async function DELETE(
   } catch (error: unknown) {
     console.error("Error in DELETE /api/documents/[id]:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
-      { status: error.status || 500 }
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
+      { status: (error as any).status || 500 }
     );
   }
 }

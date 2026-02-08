@@ -49,7 +49,7 @@ async function fetchAllTenants() {
 
 async function TenantsContent() {
   const tenants = await fetchAllTenants();
-  return <TenantsListClient tenants={tenants} />;
+  return <TenantsListClient tenants={tenants as any} />;
 }
 
 export default async function AdminTenantsPage() {

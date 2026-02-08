@@ -73,7 +73,7 @@ export class OnboardingNotificationsService {
    */
   async sendWelcomeNotification(data: OnboardingNotificationData): Promise<boolean> {
     try {
-      const roleLabels: Record<UserRole, string> = {
+      const roleLabels: Record<string, string> = {
         owner: "propriétaire",
         tenant: "locataire",
         provider: "prestataire",

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { authenticator } from "otplib";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { encrypt } from "@/lib/security/encryption.service";
 
 /**
  * POST /api/auth/2fa/enable - Activer la 2FA (P1-1)
@@ -34,12 +35,14 @@ export async function POST(request: Request) {
     // Générer l'URL du QR code
     const otpAuthUrl = authenticator.keyuri(accountName, serviceName, secret);
 
+    // Chiffrer le secret avant stockage
+    const encryptedSecret = encrypt(secret);
+
     // Stocker temporairement le secret (en attente de vérification)
-    // En production, utiliser une table dédiée ou un cache Redis
     const { error: updateError } = await supabase
       .from("profiles")
       .update({
-        two_factor_secret: secret, // À chiffrer en production
+        two_factor_secret: encryptedSecret,
         two_factor_enabled: false, // Pas encore activé tant que non vérifié
       } as any)
       .eq("user_id", user.id as any);

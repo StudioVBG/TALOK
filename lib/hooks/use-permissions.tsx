@@ -87,7 +87,7 @@ export function usePermissions(): UsePermissionsReturn {
 
       if (fetchError) throw fetchError;
 
-      setUserRoles(data || []);
+      setUserRoles((data || []) as unknown as UserRoleDetailed[]);
     } catch (err) {
       console.error('Erreur chargement rôles:', err);
       setError(err instanceof Error ? err : new Error('Erreur inconnue'));

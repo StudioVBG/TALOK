@@ -197,7 +197,7 @@ class UnifiedChatService {
     if (error) throw error;
 
     // Filtrer et enrichir les conversations où l'utilisateur est participant
-    return (data || [])
+    return ((data || [])
       .filter((conv: Record<string, unknown>) => {
         const participants = conv.conversation_participants as Array<{
           profile_id: string;
@@ -236,7 +236,7 @@ class UnifiedChatService {
         } | null;
 
         return {
-          ...(conv as Conversation),
+          ...(conv as unknown as Conversation),
           my_unread_count: myParticipant?.unread_count || 0,
           participants: participants.map((p) => ({
             ...p,
@@ -255,7 +255,7 @@ class UnifiedChatService {
               : undefined,
           other_participant_avatar: otherParticipant?.profiles?.avatar_url,
         };
-      });
+      })) as Conversation[];
   }
 
   /**
@@ -350,7 +350,7 @@ class UnifiedChatService {
           ? `${otherParticipants.length} participants`
           : undefined,
       other_participant_avatar: otherParticipant?.profiles?.avatar_url,
-    } as Conversation;
+    } as unknown as Conversation;
   }
 
   /**
@@ -553,10 +553,10 @@ class UnifiedChatService {
       .eq("conversation_id", conversationId);
 
     const roleMap = new Map(
-      (participants || []).map((p: { profile_id: string; participant_role: ParticipantRole }) => [
+      (participants || []).map((p: { profile_id: string; participant_role: string | null }) => [
         p.profile_id,
-        p.participant_role,
-      ])
+        p.participant_role as ParticipantRole,
+      ] as [string, ParticipantRole])
     );
 
     return (data || []).reverse().map((msg: Record<string, unknown>) => {
@@ -629,7 +629,7 @@ class UnifiedChatService {
         ? `${sender.prenom || ""} ${sender.nom || ""}`.trim()
         : "",
       sender_avatar: sender?.avatar_url,
-    } as Message;
+    } as unknown as Message;
   }
 
   /**
@@ -707,7 +707,7 @@ class UnifiedChatService {
       });
 
       if (error) throw error;
-      return data || 0;
+      return (data as number) || 0;
     } catch {
       return 0;
     }

@@ -176,7 +176,7 @@ export class TaxVerificationService {
         );
       }
 
-      return this.createSuccessResult(parsed.data);
+      return this.createSuccessResult(parsed.data as TaxNoticeApiResponse);
     } catch (error) {
       clearTimeout(timeoutId);
 

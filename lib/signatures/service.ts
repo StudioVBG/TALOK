@@ -5,6 +5,7 @@
  * utilisant des signatures électroniques simples (SES)
  */
 
+import crypto from "crypto";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type {
   SignatureRequest,
@@ -76,11 +77,11 @@ export async function createSignatureRequest(
   }
 
   // Audit
-  await logAuditEntry(request.id, undefined, "request_created", {
+  await logAuditEntry(request.id!, undefined, "request_created", {
     signers_count: dto.signers?.length ?? 0,
   });
 
-  return request;
+  return request as unknown as SignatureRequest;
 }
 
 /**
@@ -102,7 +103,7 @@ export async function getSignatureRequest(
     return null;
   }
 
-  return data;
+  return data as unknown as SignatureRequest;
 }
 
 /**
@@ -124,7 +125,7 @@ export async function getSigners(
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []) as unknown as SignatureRequestSigner[];
 }
 
 /**
@@ -322,7 +323,7 @@ async function logAuditEntry(
       signer_id: signerId,
       action,
       metadata,
-    });
+    } as any);
   } catch (error) {
     console.error("Erreur audit log:", error);
   }
@@ -332,12 +333,7 @@ async function logAuditEntry(
  * Générer un token de signature unique
  */
 export function generateSignatureToken(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let token = "";
-  for (let i = 0; i < 64; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return crypto.randomBytes(48).toString("base64url");
 }
 
 /**
@@ -358,11 +354,11 @@ export async function verifySignatureToken(
     return { valid: false };
   }
 
-  const isExpired = new Date(data.expires_at) < new Date();
+  const isExpired = new Date(data.expires_at as string) < new Date();
 
   return {
     valid: !isExpired,
-    signerId: data.signer_id,
-    requestId: data.signature_request_id,
+    signerId: data.signer_id as string | undefined,
+    requestId: data.signature_request_id as string | undefined,
   };
 }

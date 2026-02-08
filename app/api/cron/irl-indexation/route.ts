@@ -171,7 +171,7 @@ export async function GET(request: Request) {
         // L'application se fait manuellement par le propriétaire
 
         // Trouver le propriétaire
-        const owner = lease.owner?.[0]?.owner;
+        const owner = (lease.owner as any)?.[0]?.owner;
         if (!owner) {
           results.errors.push(`Bail ${lease.id}: Propriétaire non trouvé`);
           continue;
@@ -208,7 +208,7 @@ export async function GET(request: Request) {
           user_id: owner.user_id,
           type: "irl_indexation_available",
           title: "Révision de loyer disponible",
-          message: `Le bail de ${lease.property.adresse_complete} peut être révisé. Nouveau loyer proposé: ${newRent.toFixed(2)}€ (+${increasePercent}%).`,
+          message: `Le bail de ${lease.property?.adresse_complete} peut être révisé. Nouveau loyer proposé: ${newRent.toFixed(2)}€ (+${increasePercent}%).`,
           data: {
             lease_id: lease.id,
             indexation_id: indexation?.id,

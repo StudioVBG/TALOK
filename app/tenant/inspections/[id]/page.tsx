@@ -114,7 +114,7 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
     return null;
   }
 
-  console.log(`[fetchTenantEDL] EDL loaded, lease_id: ${edl.lease_id}, property_id: ${edl.property_id}`);
+  console.log(`[fetchTenantEDL] EDL loaded, lease_id: ${edl.lease_id}, property_id: ${(edl as any).property_id}`);
 
   let finalProperty = edl.lease?.property;
   
@@ -123,11 +123,11 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
     console.log("[fetchTenantEDL] Property not found via lease relation, trying with service client...");
     
     // Essai 1: Via property_id direct de l'EDL
-    if (edl.property_id) {
+    if ((edl as any).property_id) {
       const { data: propDirect } = await serviceClient
         .from("properties")
         .select("*")
-        .eq("id", edl.property_id)
+        .eq("id", (edl as any).property_id)
         .single();
       if (propDirect) {
         finalProperty = propDirect;
@@ -262,7 +262,7 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
 
   // 🔧 NOUVEAU: Récupérer tous les compteurs actifs du logement pour le locataire
   let allPropertyMeters: any[] = [];
-  const propertyId = edl.property_id || edl.lease?.property_id;
+  const propertyId = (edl as any).property_id || (edl.lease as any)?.property_id;
   if (propertyId) {
     try {
       const { data: meters } = await serviceClient
@@ -318,9 +318,9 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
     },
     mySignature: mySignature ? {
       ...mySignature,
-      signature_image_url: edl_signatures.find(
+      signature_image_url: (edl_signatures.find(
         (s: any) => s.id === mySignature.id
-      )?.signature_image_url,
+      ) as any)?.signature_image_url,
     } : null,
     meterReadings,
     allPropertyMeters, // On passe tous les compteurs

@@ -48,7 +48,7 @@ export function DetailsStepParking() {
     const numValue = value === "" ? null : parseFloat(value);
     if (numValue === null || !isNaN(numValue)) {
       if (field === "surface") {
-        updateFormData({ surface: numValue, surface_habitable_m2: numValue });
+        updateFormData({ surface: numValue ?? undefined, surface_habitable_m2: numValue ?? undefined });
       } else {
         updateFormData({ [field]: numValue });
       }
@@ -112,7 +112,7 @@ export function DetailsStepParking() {
                 placeholder="Ex: A42, P-12..."
                 className="h-12 text-lg font-bold"
                 value={(formData as any).parking_numero || ""}
-                onChange={(e) => updateFormData({ parking_numero: e.target.value })}
+                onChange={(e) => updateFormData({ parking_numero: e.target.value } as any)}
               />
             </div>
 
@@ -129,7 +129,7 @@ export function DetailsStepParking() {
                 placeholder="Ex: -1, RDC, +2..."
                 className="h-12 text-lg font-bold"
                 value={(formData as any).parking_niveau || ""}
-                onChange={(e) => updateFormData({ parking_niveau: e.target.value })}
+                onChange={(e) => updateFormData({ parking_niveau: e.target.value } as any)}
               />
             </div>
           </div>
@@ -147,7 +147,7 @@ export function DetailsStepParking() {
                 <button
                   key={gabarit.value}
                   type="button"
-                  onClick={() => updateFormData({ parking_gabarit: gabarit.value })}
+                  onClick={() => updateFormData({ parking_gabarit: gabarit.value } as any)}
                   className={`px-4 py-2 rounded-lg border-2 transition-all ${
                     (formData as any).parking_gabarit === gabarit.value
                       ? "border-primary bg-primary/10"
@@ -232,7 +232,7 @@ export function DetailsStepParking() {
                     ? "border-red-500 bg-red-50" 
                     : "border-border hover:border-red-300"
                 }`}
-                onClick={() => updateFormData({ parking_portail_securise: !(formData as any).parking_portail_securise })}
+                onClick={() => updateFormData({ parking_portail_securise: !(formData as any).parking_portail_securise } as any)}
               >
                 <Lock className={`h-6 w-6 mx-auto mb-2 ${(formData as any).parking_portail_securise ? "text-red-600" : "text-muted-foreground"}`} />
                 <p className="text-xs font-medium text-center">Portail sécurisé</p>
@@ -245,7 +245,7 @@ export function DetailsStepParking() {
                     ? "border-red-500 bg-red-50" 
                     : "border-border hover:border-red-300"
                 }`}
-                onClick={() => updateFormData({ parking_video_surveillance: !(formData as any).parking_video_surveillance })}
+                onClick={() => updateFormData({ parking_video_surveillance: !(formData as any).parking_video_surveillance } as any)}
               >
                 <Video className={`h-6 w-6 mx-auto mb-2 ${(formData as any).parking_video_surveillance ? "text-red-600" : "text-muted-foreground"}`} />
                 <p className="text-xs font-medium text-center">Vidéosurveillance</p>
@@ -258,7 +258,7 @@ export function DetailsStepParking() {
                     ? "border-red-500 bg-red-50" 
                     : "border-border hover:border-red-300"
                 }`}
-                onClick={() => updateFormData({ parking_gardien: !(formData as any).parking_gardien })}
+                onClick={() => updateFormData({ parking_gardien: !(formData as any).parking_gardien } as any)}
               >
                 <UserCheck className={`h-6 w-6 mx-auto mb-2 ${(formData as any).parking_gardien ? "text-red-600" : "text-muted-foreground"}`} />
                 <p className="text-xs font-medium text-center">Gardien</p>

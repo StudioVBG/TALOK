@@ -227,32 +227,32 @@ export function DomtomDiagnostics({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {deptInfo.risques.includes("cyclone") && (
+            {(deptInfo.risques as readonly string[]).includes("cyclone") && (
               <Badge variant="secondary" className="gap-1">
                 <Wind className="h-3 w-3" /> Cyclones
               </Badge>
             )}
-            {deptInfo.risques.includes("seisme") && (
+            {(deptInfo.risques as readonly string[]).includes("seisme") && (
               <Badge variant="secondary" className="gap-1">
                 <Mountain className="h-3 w-3" /> Séismes
               </Badge>
             )}
-            {deptInfo.risques.includes("tsunami") && (
+            {(deptInfo.risques as readonly string[]).includes("tsunami") && (
               <Badge variant="secondary" className="gap-1">
                 <Waves className="h-3 w-3" /> Tsunami
               </Badge>
             )}
-            {deptInfo.risques.includes("volcan") && (
+            {(deptInfo.risques as readonly string[]).includes("volcan") && (
               <Badge variant="secondary" className="gap-1">
                 <Flame className="h-3 w-3" /> Volcanisme
               </Badge>
             )}
-            {deptInfo.risques.includes("inondation") && (
+            {(deptInfo.risques as readonly string[]).includes("inondation") && (
               <Badge variant="secondary" className="gap-1">
                 <CloudRain className="h-3 w-3" /> Inondations
               </Badge>
             )}
-            {deptInfo.risques.includes("mouvement_terrain") && (
+            {(deptInfo.risques as readonly string[]).includes("mouvement_terrain") && (
               <Badge variant="secondary" className="gap-1">
                 <Mountain className="h-3 w-3" /> Mouvements de terrain
               </Badge>
@@ -496,7 +496,7 @@ export function DomtomDiagnostics({
               <Separator />
 
               {/* Risque cyclonique */}
-              {deptInfo.risques.includes("cyclone") && (
+              {(deptInfo.risques as readonly string[]).includes("cyclone") && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Wind className="h-5 w-5 text-blue-500" />
@@ -549,7 +549,7 @@ export function DomtomDiagnostics({
               )}
 
               {/* Risque sismique */}
-              {deptInfo.risques.includes("seisme") && (
+              {(deptInfo.risques as readonly string[]).includes("seisme") && (
                 <>
                   <Separator />
                   <div className="space-y-4">
@@ -605,7 +605,7 @@ export function DomtomDiagnostics({
               )}
 
               {/* Risque volcanique */}
-              {deptInfo.risques.includes("volcan") && (
+              {(deptInfo.risques as readonly string[]).includes("volcan") && (
                 <>
                   <Separator />
                   <div className="space-y-4">
@@ -650,7 +650,7 @@ export function DomtomDiagnostics({
               )}
 
               {/* Risque tsunami */}
-              {deptInfo.risques.includes("tsunami") && (
+              {(deptInfo.risques as readonly string[]).includes("tsunami") && (
                 <>
                   <Separator />
                   <div className="space-y-4">
@@ -676,7 +676,7 @@ export function DomtomDiagnostics({
               )}
 
               {/* Risque inondation */}
-              {deptInfo.risques.includes("inondation") && (
+              {(deptInfo.risques as readonly string[]).includes("inondation") && (
                 <>
                   <Separator />
                   <div className="space-y-4">
@@ -732,7 +732,7 @@ export function DomtomDiagnostics({
               )}
 
               {/* Risque mouvement de terrain */}
-              {deptInfo.risques.includes("mouvement_terrain") && (
+              {(deptInfo.risques as readonly string[]).includes("mouvement_terrain") && (
                 <>
                   <Separator />
                   <div className="space-y-4">

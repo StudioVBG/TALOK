@@ -10,9 +10,9 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     }
 
     // Récupérer les add-ons souscrits
-    let addonSubscriptions = [];
+    let addonSubscriptions: any[] = [];
     if (subscription) {
       const { data: addons } = await supabase
         .from("subscription_addon_subscriptions")
@@ -61,6 +61,9 @@ export async function GET(request: Request) {
       addon_subscriptions: addonSubscriptions
     });
   } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'name' in error && (error as any).name === 'AuthApiError') {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
     console.error("[Current Subscription GET]", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }

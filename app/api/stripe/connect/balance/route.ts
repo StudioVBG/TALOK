@@ -60,7 +60,7 @@ export async function GET() {
     }
 
     // Récupérer le solde depuis Stripe
-    const balance = await connectService.getAccountBalance(connectAccount.stripe_account_id);
+    const balance = await connectService.getAccountBalance(connectAccount.stripe_account_id as string);
 
     // Extraire les montants en EUR
     const available = balance.available.find((b) => b.currency === "eur")?.amount || 0;

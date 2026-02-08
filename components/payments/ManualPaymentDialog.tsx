@@ -195,7 +195,8 @@ export function ManualPaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg md:max-w-xl overflow-hidden">
+      <DialogContent className="sm:max-w-lg md:max-w-xl overflow-hidden" aria-describedby={undefined}>
+        <DialogTitle className="sr-only">Enregistrer un paiement manuel</DialogTitle>
         <AnimatePresence mode="wait">
           {/* Step 1: Method Selection */}
           {step === "select" && (

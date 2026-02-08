@@ -63,7 +63,7 @@ function PreviewContent() {
         setShareLinks(shares);
       } catch (error: unknown) {
         console.error("listShareLinks error", error);
-        setShareError(error?.message ?? "Impossible de charger les liens.");
+        setShareError((error as any)?.message ?? "Impossible de charger les liens.");
       } finally {
         setShareLoading(false);
       }
@@ -81,7 +81,7 @@ function PreviewContent() {
       } catch (error: unknown) {
         toast({
           title: "Impossible d'afficher le logement",
-          description: error?.message ?? "Vérifiez que le logement existe toujours.",
+          description: (error as any)?.message ?? "Vérifiez que le logement existe toujours.",
           variant: "destructive",
         });
         router.push("/owner/properties");
@@ -116,7 +116,7 @@ function PreviewContent() {
       console.error("generateShareLink error", error);
       toast({
         title: "Lien impossible à générer",
-        description: error?.message ?? "Réessayez dans quelques minutes.",
+        description: (error as any)?.message ?? "Réessayez dans quelques minutes.",
         variant: "destructive",
       });
     } finally {
@@ -175,7 +175,7 @@ function PreviewContent() {
     } catch (error: unknown) {
       toast({
         title: "Révocation impossible",
-        description: error?.message ?? "Réessayez dans quelques instants.",
+        description: (error as any)?.message ?? "Réessayez dans quelques instants.",
         variant: "destructive",
       });
     } finally {

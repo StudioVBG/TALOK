@@ -87,7 +87,7 @@ export default function EDLSignatureClient({
       router.push(`/tenant/inspections/${edl.id}`);
     } catch (error: unknown) {
       console.error("Erreur signature:", error);
-      alert(error.message);
+      alert((error as Error).message);
     } finally {
       setIsSigning(false);
     }
@@ -197,8 +197,8 @@ export default function EDLSignatureClient({
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-8">
-                <SignaturePad 
-                  signerName="Locataire"
+                <SignaturePad
+                  signerName={edl?.tenant_name || edl?.signer_name || "Locataire"}
                   onSignatureComplete={handleSign}
                   disabled={isSigning}
                 />

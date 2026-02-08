@@ -221,7 +221,7 @@ export class WhiteLabelService {
         role: 'owner',
       });
 
-    return org as Organization;
+    return org as unknown as Organization;
   }
 
   /**
@@ -322,7 +322,7 @@ export class WhiteLabelService {
       throw new Error(`Erreur ajout domaine: ${error.message}`);
     }
 
-    return data as CustomDomain;
+    return data as unknown as CustomDomain;
   }
 
   /**
@@ -343,7 +343,7 @@ export class WhiteLabelService {
     await this.supabase
       .from('custom_domains')
       .update({
-        verification_attempts: domain.verification_attempts + 1,
+        verification_attempts: (domain.verification_attempts as number) + 1,
         last_verification_at: new Date().toISOString(),
       })
       .eq('id', domainId);
@@ -481,7 +481,7 @@ export class WhiteLabelClientService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as unknown as OrganizationBranding;
   }
 
   /**
@@ -536,7 +536,7 @@ export class WhiteLabelClientService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as unknown as CustomDomain;
   }
 
   /**

@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     console.error('Erreur GET /api/copro/sites:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error('Erreur POST /api/copro/sites:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -231,7 +231,7 @@ export function PropertyMap({
         }
         
         .leaflet-control-attribution {
-          font-size: 9px !important;
+          font-size: 10px !important;
           background: rgba(255,255,255,0.8) !important;
           padding: 2px 6px !important;
         }

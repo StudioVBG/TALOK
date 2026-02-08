@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextRequest, NextResponse } from "next/server";
 import { generateReceiptPDF, type ReceiptData } from "@/lib/services/receipt-generator";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import crypto from "crypto";
 
 /**
@@ -141,17 +142,12 @@ export async function GET(
     }
 
     // === ÉTAPE 4: Récupérer les informations complémentaires ===
-    const { data: ownerProfile } = await supabase
-      .from("profiles")
-      .select("prenom, nom")
-      .eq("id", paymentData.invoice.owner_id)
-      .single();
-
-    const { data: ownerDetails } = await supabase
-      .from("owner_profiles")
-      .select("siret, adresse_facturation, adresse_siege, type, raison_sociale")
-      .eq("profile_id", paymentData.invoice.owner_id)
-      .single();
+    // ✅ SOTA 2026: Utiliser resolveOwnerIdentity pour le bailleur
+    const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
+      leaseId: paymentData.invoice.lease_id,
+      propertyId: paymentData.invoice.lease.property.id,
+      profileId: paymentData.invoice.owner_id,
+    });
 
     const { data: tenantProfile } = await supabase
       .from("profiles")
@@ -159,20 +155,16 @@ export async function GET(
       .eq("id", paymentData.invoice.tenant_id)
       .single();
 
-    // Déterminer le nom et l'adresse du propriétaire (particulier vs société)
-    const isOwnerSociete = ownerDetails?.type === "societe" && ownerDetails?.raison_sociale;
-    const ownerDisplayName = isOwnerSociete 
-      ? ownerDetails.raison_sociale 
-      : ownerProfile 
-        ? `${ownerProfile.prenom || ""} ${ownerProfile.nom || ""}`.trim() || "Propriétaire"
-        : "Propriétaire";
-    const ownerAddress = ownerDetails?.adresse_facturation || ownerDetails?.adresse_siege || "";
+    const ownerDisplayName = ownerIdentity.displayName || "Propriétaire";
+    const ownerAddress = ownerIdentity.address.street
+      ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
+      : ownerIdentity.billingAddress || "";
 
     // === ÉTAPE 5: Construire les données pour la quittance ===
     const receiptData: ReceiptData = {
-      ownerName: ownerDisplayName,
+      ownerName: ownerDisplayName || "",
       ownerAddress: ownerAddress,
-      ownerSiret: ownerDetails?.siret || undefined,
+      ownerSiret: ownerIdentity.siret || undefined,
       tenantName: tenantProfile 
         ? `${tenantProfile.prenom || ""} ${tenantProfile.nom || ""}`.trim() || "Locataire"
         : "Locataire",

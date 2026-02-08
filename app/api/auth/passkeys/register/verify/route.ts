@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     // Vérifier la réponse d'enregistrement
     const verification = await verifyRegistrationResponse({
       response: credential,
-      expectedChallenge: challengeData.challenge,
+      expectedChallenge: challengeData.challenge as string,
       expectedOrigin: ORIGIN,
       expectedRPID: RP_ID,
       requireUserVerification: true,

@@ -60,7 +60,7 @@ interface DamageAssessmentResultsProps {
   className?: string;
 }
 
-const DAMAGE_CONFIG: Record<DamageType, {
+const DAMAGE_CONFIG: Record<string, {
   label: string;
   icon: React.ReactNode;
   color: string;
@@ -108,7 +108,7 @@ export function DamageAssessmentResults({
       .filter((d) => d.damageType === "normal_wear")
       .reduce((sum, d) => sum + d.ownerShare, 0),
     recommended: damages
-      .filter((d) => d.damageType === "recommended_renovation")
+      .filter((d) => (d.damageType as string) === "recommended_renovation")
       .reduce((sum, d) => sum + d.estimatedCost, 0),
   };
 
@@ -123,7 +123,7 @@ export function DamageAssessmentResults({
   const groupedDamages = {
     tenant: damages.filter((d) => d.damageType === "tenant_damage"),
     owner: damages.filter((d) => d.damageType === "normal_wear"),
-    recommended: damages.filter((d) => d.damageType === "recommended_renovation"),
+    recommended: damages.filter((d) => (d.damageType as string) === "recommended_renovation"),
   };
 
   return (

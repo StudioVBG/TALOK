@@ -26,6 +26,9 @@ const buttonVariants = cva(
         lg: "h-12 rounded-md px-8",
         icon: "h-11 w-11",
         xs: "h-9 rounded-md px-2 text-xs",
+        // Touch-friendly sizes for mobile (minimum 44px as per WCAG)
+        touch: "h-11 min-w-[44px] px-4 py-2",
+        "touch-icon": "h-11 w-11 min-h-[44px] min-w-[44px]",
       },
     },
     defaultVariants: {
@@ -39,17 +42,63 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  /** Affiche un spinner et désactive le bouton */
+  /**
+   * Affiche un état de chargement
+   */
   loading?: boolean;
-  /** Texte alternatif pendant le chargement */
+  /**
+   * Texte affiché pendant le chargement
+   */
   loadingText?: string;
+  /**
+   * Position de l'icône de chargement
+   * @default "left"
+   */
+  loadingPosition?: "left" | "right";
+  /**
+   * Icône à afficher à gauche du texte
+   */
+  leftIcon?: React.ReactNode;
+  /**
+   * Icône à afficher à droite du texte
+   */
+  rightIcon?: React.ReactNode;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading = false, loadingText, children, disabled, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      loading = false,
+      loadingText,
+      loadingPosition = "left",
+      leftIcon,
+      rightIcon,
+      children,
+      disabled,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? Slot : "button";
+    const isDisabled = disabled || loading;
 
-    // Si asChild est true avec loading, on ne peut pas modifier le contenu
+    // Loader component
+    const LoaderIcon = (
+      <Loader2
+        className={cn(
+          "h-4 w-4 animate-spin",
+          loadingPosition === "left" && children && "mr-2",
+          loadingPosition === "right" && children && "ml-2"
+        )}
+        aria-hidden="true"
+      />
+    );
+
+    // If asChild, render children directly with loading wrapper
     if (asChild) {
       return (
         <Comp
@@ -65,18 +114,72 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        disabled={disabled || loading}
+        disabled={isDisabled}
+        aria-disabled={isDisabled}
+        aria-busy={loading}
         {...props}
       >
-        {loading && (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+        {/* Loading indicator or left icon */}
+        {loading && loadingPosition === "left" && LoaderIcon}
+        {!loading && leftIcon && (
+          <span className={cn(children && "mr-2")} aria-hidden="true">
+            {leftIcon}
+          </span>
         )}
+
+        {/* Button text */}
         {loading && loadingText ? loadingText : children}
+
+        {/* Right icon or loading indicator */}
+        {!loading && rightIcon && (
+          <span className={cn(children && "ml-2")} aria-hidden="true">
+            {rightIcon}
+          </span>
+        )}
+        {loading && loadingPosition === "right" && LoaderIcon}
+
+        {/* Screen reader text for loading state */}
+        {loading && (
+          <span className="sr-only">
+            {loadingText || "Chargement en cours..."}
+          </span>
+        )}
       </Comp>
     );
   }
 );
 Button.displayName = "Button";
 
-export { Button, buttonVariants };
+/**
+ * IconButton - Bouton avec icône uniquement
+ *
+ * Accessibilité: Nécessite un aria-label obligatoire
+ */
+interface IconButtonProps extends Omit<ButtonProps, "children" | "leftIcon" | "rightIcon"> {
+  /**
+   * Label accessible obligatoire pour les lecteurs d'écran
+   */
+  "aria-label": string;
+  /**
+   * Icône à afficher
+   */
+  icon: React.ReactNode;
+}
 
+const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
+  ({ icon, size = "icon", className, ...props }, ref) => {
+    return (
+      <Button
+        ref={ref}
+        size={size}
+        className={cn("p-0", className)}
+        {...props}
+      >
+        <span aria-hidden="true">{icon}</span>
+      </Button>
+    );
+  }
+);
+IconButton.displayName = "IconButton";
+
+export { Button, IconButton, buttonVariants };

@@ -144,7 +144,7 @@ export class DpeService {
       if (!data) return { status: "MISSING", data: null };
 
       const today = new Date().toISOString().split('T')[0];
-      const isExpired = data.valid_until < today;
+      const isExpired = (data.valid_until as string) < today;
 
       return {
         status: isExpired ? "EXPIRED" : "VALID",

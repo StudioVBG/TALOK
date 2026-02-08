@@ -105,6 +105,80 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* ============================================
+     ACCESSIBILITÉ - Focus Visible Amélioré
+     WCAG 2.1 AA - Focus clairement visible
+     ============================================ */
+
+  /* Focus visible global - anneau de focus cohérent */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Focus visible pour les liens */
+  a:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background rounded-sm;
+  }
+
+  /* Focus visible pour les boutons et éléments interactifs */
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:focus-visible:not([tabindex="-1"]) {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Focus visible pour les inputs et selects */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-0 border-ring;
+  }
+
+  /* Suppression du focus pour les clics souris (conserve focus clavier) */
+  :focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+  }
+
+  /* ============================================
+     ACCESSIBILITÉ - Skip Links
+     ============================================ */
+  .skip-links a:focus {
+    @apply not-sr-only fixed top-4 left-4 z-[9999];
+    @apply px-4 py-2 rounded-md;
+    @apply bg-primary text-primary-foreground;
+    @apply shadow-lg font-medium;
+  }
+
+  /* ============================================
+     ACCESSIBILITÉ - Reduced Motion
+     ============================================ */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* ============================================
+     ACCESSIBILITÉ - Contrastes élevés
+     ============================================ */
+  @media (prefers-contrast: more) {
+    :root {
+      --border: 0 0% 20%;
+      --ring: 217 91% 40%;
+    }
+
+    .dark {
+      --border: 0 0% 80%;
+      --ring: 217 91% 70%;
+    }
+  }
 }
 
 /* ============================================
@@ -245,10 +319,80 @@
     min-height: 100vh;
     min-height: 100dvh; /* Dynamic viewport height pour mobile */
   }
-  
+
   .h-screen-safe {
     height: 100vh;
     height: 100dvh;
+  }
+
+  /* pb-safe utility for Tailwind (used by bottom navs) */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* ============================================
+     ANTI-PATTERN FIXES - Mobile Form UX
+     ============================================ */
+
+  /* Sticky submit button at bottom on mobile */
+  .form-actions-sticky {
+    @apply fixed bottom-0 left-0 right-0 z-30 p-4 bg-background/95 backdrop-blur-sm border-t;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+  @media (min-width: 768px) {
+    .form-actions-sticky {
+      @apply static p-0 bg-transparent border-0 backdrop-blur-none;
+      padding-bottom: 0;
+    }
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  .overflow-x-guard {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* ============================================
+     ANTI-PATTERN FIXES - Native Select on iOS
+     Use appearance-auto on mobile for native pickers
+     ============================================ */
+  @media (pointer: coarse) {
+    select.native-mobile {
+      -webkit-appearance: menulist;
+      appearance: menulist;
+    }
+
+    /* Date inputs: native picker on mobile */
+    input[type="date"].native-mobile,
+    input[type="time"].native-mobile,
+    input[type="datetime-local"].native-mobile {
+      -webkit-appearance: auto;
+      appearance: auto;
+    }
+  }
+
+  /* ============================================
+     ANTI-PATTERN FIXES - Horizontal Tables
+     Scroll indicator for tables on mobile
+     ============================================ */
+  .table-scroll-container {
+    @apply relative overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-scroll-container::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 24px;
+    background: linear-gradient(to left, hsl(var(--background)), transparent);
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.2s;
+  }
+  .table-scroll-container.scrolled-end::after {
+    opacity: 0;
   }
 }
 

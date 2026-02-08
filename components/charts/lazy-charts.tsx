@@ -47,7 +47,7 @@ export const LazyBarChartHorizontal = dynamic(
 
 // Finance Chart (pour owner dashboard)
 export const LazyFinanceChart = dynamic(
-  () => import("@/components/owner/dashboard/finance-chart").then((mod) => mod.FinanceChart),
+  () => import("@/components/owner/dashboard/finance-chart").then((mod) => mod.default),
   {
     loading: () => <ChartSkeleton height={300} />,
     ssr: false,

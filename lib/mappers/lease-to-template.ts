@@ -3,6 +3,7 @@ import type { BailComplet } from "@/lib/templates/bail/types";
 import type { LeaseDetails } from "@/app/owner/_data/fetchLeaseDetails";
 import { getMaxDepotLegal } from "@/lib/validations/lease-financial";
 import { isTenantRole, isOwnerRole, isGuarantorRole, SIGNER_ROLES } from "@/lib/constants/roles";
+import type { OwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 
 interface OwnerProfile {
   id: string;
@@ -20,10 +21,41 @@ interface OwnerProfile {
   representant_qualite?: string;
 }
 
+/**
+ * Adaptateur : convertit un OwnerIdentity en OwnerProfile legacy pour compatibilité.
+ */
+export function ownerIdentityToProfile(identity: OwnerIdentity): OwnerProfile {
+  const isCompany = identity.entityType === "company";
+  return {
+    id: identity.entityId || "",
+    prenom: identity.firstName,
+    nom: identity.lastName,
+    email: identity.email,
+    telephone: identity.phone || undefined,
+    adresse: identity.address.street
+      ? `${identity.address.street}, ${identity.address.postalCode} ${identity.address.city}`.trim()
+      : undefined,
+    type: isCompany ? "societe" : "particulier",
+    raison_sociale: identity.companyName || undefined,
+    forme_juridique: identity.legalForm || undefined,
+    siret: identity.siret || undefined,
+    representant_nom: identity.representative
+      ? `${identity.representative.firstName} ${identity.representative.lastName}`.trim()
+      : undefined,
+    representant_qualite: identity.representative?.role || undefined,
+  };
+}
+
 export function mapLeaseToTemplate(
   details: LeaseDetails,
-  ownerProfile?: OwnerProfile
+  ownerProfile?: OwnerProfile | OwnerIdentity
 ): Partial<BailComplet> {
+  // ✅ SOTA 2026: Auto-adapt OwnerIdentity to legacy OwnerProfile
+  const resolvedProfile: OwnerProfile | undefined = ownerProfile
+    ? "displayName" in ownerProfile
+      ? ownerIdentityToProfile(ownerProfile as OwnerIdentity)
+      : (ownerProfile as OwnerProfile)
+    : undefined;
   const { lease, property, signers } = details;
 
   // Trier les signataires pour mettre ceux qui ont signé en premier (le plus "réel")
@@ -94,7 +126,7 @@ export function mapLeaseToTemplate(
   const paiementAvance = jourPaiement <= 10;
 
   // ✅ FIX: Calculer la durée et la date de fin COHÉRENTES
-  const dureeMois = getDureeMois(lease.type_bail, ownerProfile?.type);
+  const dureeMois = getDureeMois(lease.type_bail, resolvedProfile?.type);
   
   // Recalculer date_fin à partir de date_debut + duree_mois
   // Justification : Évite l'incohérence entre "Six ans" et date_fin réelle
@@ -116,22 +148,22 @@ export function mapLeaseToTemplate(
     lieu_signature: property.ville || "...",
     
     bailleur: {
-      nom: ownerProfile?.nom || "[NOM PROPRIÉTAIRE]",
-      prenom: ownerProfile?.prenom || "",
-      adresse: ownerProfile?.adresse || "[ADRESSE PROPRIÉTAIRE]",
+      nom: resolvedProfile?.nom || "[NOM PROPRIÉTAIRE]",
+      prenom: resolvedProfile?.prenom || "",
+      adresse: resolvedProfile?.adresse || "[ADRESSE PROPRIÉTAIRE]",
       code_postal: "",
       ville: "",
-      email: ownerProfile?.email || "",
-      telephone: ownerProfile?.telephone || "",
-      type: ownerProfile?.type === "societe" ? "societe" : "particulier",
+      email: resolvedProfile?.email || "",
+      telephone: resolvedProfile?.telephone || "",
+      type: resolvedProfile?.type === "societe" ? "societe" : "particulier",
       // Champs société
-      raison_sociale: ownerProfile?.raison_sociale || "",
-      forme_juridique: ownerProfile?.forme_juridique || "SCI",
-      siret: ownerProfile?.siret || "",
-      representant_nom: ownerProfile?.representant_nom || (ownerProfile?.type === "societe" ? `${ownerProfile?.prenom || ""} ${ownerProfile?.nom || ""}`.trim() : ""),
-      representant_qualite: ownerProfile?.representant_qualite || (ownerProfile?.type === "societe" ? "Gérant" : ""),
+      raison_sociale: resolvedProfile?.raison_sociale || "",
+      forme_juridique: resolvedProfile?.forme_juridique || "SCI",
+      siret: resolvedProfile?.siret || "",
+      representant_nom: resolvedProfile?.representant_nom || (resolvedProfile?.type === "societe" ? `${resolvedProfile?.prenom || ""} ${resolvedProfile?.nom || ""}`.trim() : ""),
+      representant_qualite: resolvedProfile?.representant_qualite || (resolvedProfile?.type === "societe" ? "Gérant" : ""),
       est_mandataire: false,
-    },
+    } as any,
 
     locataires: mainTenant ? [{
       // ✅ FIX: Priorité aux données du profil, puis invited_name, puis extraction depuis l'email
@@ -146,7 +178,7 @@ export function mapLeaseToTemplate(
       lieu_naissance: mainTenant.profile?.lieu_naissance || "",
       nationalite: mainTenant.profile?.nationalite || "Française",
       adresse: mainTenant.profile?.adresse || "",
-    }] : [],
+    }] as any[] : [],
 
     logement: {
       adresse_complete: property.adresse_complete || (property as any).adresse || "",
@@ -185,23 +217,23 @@ export function mapLeaseToTemplate(
         if (propAny.has_cave) ann.push({ type: 'Cave' });
         if (propAny.has_jardin) ann.push({ type: 'Jardin' });
         if (propAny.has_parking) ann.push({ type: 'Parking' });
-        return ann;
+        return ann as any[];
       })(),
     },
 
     conditions: {
-      type_bail: lease.type_bail || "nu",
+      type_bail: (lease.type_bail || "nu") as any,
       usage: "habitation_principale",
       date_debut: lease.date_debut,
-      // ✅ FIX: Utiliser la date de fin CALCULÉE (cohérente avec duree_mois)
+      // FIX: Utiliser la date de fin CALCULEE (coherente avec duree_mois)
       date_fin: dateFinCalculee,
-      // ✅ FIX: Utiliser la durée calculée (bailleur société = 6 ans)
+      // FIX: Utiliser la duree calculee (bailleur societe = 6 ans)
       duree_mois: dureeMois,
-      // ✅ Utiliser les valeurs synchronisées (property pour draft, lease pour actif)
+      // Utiliser les valeurs synchronisees (property pour draft, lease pour actif)
       loyer_hc: loyer,
       loyer_en_lettres: numberToWords(loyer),
       charges_montant: charges,
-      // ✅ FIX: Ajouter le total loyer + charges en lettres
+      // FIX: Ajouter le total loyer + charges en lettres
       loyer_total: loyer + charges,
       loyer_total_en_lettres: numberToWords(loyer + charges),
       depot_garantie: depotGarantie,
@@ -213,9 +245,9 @@ export function mapLeaseToTemplate(
       charges_type: "provisions", // Default
       revision_autorisee: true,
       indice_reference: "IRL",
-      // ✅ FIX: Terme à échoir si paiement en début de mois
+      // FIX: Terme a echoir si paiement en debut de mois
       paiement_avance: paiementAvance,
-    },
+    } as any,
     
     diagnostics: {
       dpe: {
@@ -240,17 +272,17 @@ export function mapLeaseToTemplate(
         date_realisation: propAny.elec_date,
         anomalies_detectees: propAny.elec_anomalies || false,
         nb_anomalies: propAny.elec_nb_anomalies || 0,
-      } : undefined,
+      } as any : undefined,
       // Gaz - si installation gaz présente
       gaz: propAny.gaz_date ? {
         date_realisation: propAny.gaz_date,
         anomalies_detectees: propAny.gaz_anomalies || false,
         type_anomalie: propAny.gaz_type_anomalie || "",
-      } : undefined,
+      } as any : undefined,
       // ERP (risques)
       erp: propAny.erp_date ? {
         date_realisation: propAny.erp_date,
-      } : undefined,
+      } as any : undefined,
       // Bruit (aéroport)
       bruit: propAny.bruit_date ? {
         date_realisation: propAny.bruit_date,
@@ -258,7 +290,7 @@ export function mapLeaseToTemplate(
       } : undefined,
     },
     
-    // Signatures électroniques
+    // Signatures electroniques
     signatures: {
       bailleur: {
         signed: ownerSigner?.signature_status === "signed",
@@ -280,5 +312,5 @@ export function mapLeaseToTemplate(
     // ✅ SOTA 2026: Transmettre les signers bruts pour le template service
     // Nécessaire pour que les images de signature s'affichent dans le PDF
     signers: sortedSigners,
-  };
+  } as any;
 }

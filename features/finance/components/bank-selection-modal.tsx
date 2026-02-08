@@ -36,7 +36,7 @@ export function BankSelectionModal({ isOpen, onClose }: BankSelectionModalProps)
     try {
       setLoading(true);
       const data = await bankConnectService.getInstitutions();
-      setInstitutions(data);
+      setInstitutions(data as Institution[]);
     } catch (error) {
       console.error("Failed to load banks", error);
     } finally {

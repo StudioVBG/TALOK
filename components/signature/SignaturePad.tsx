@@ -75,19 +75,25 @@ export function SignaturePad({
     canvas.width = 500;
     canvas.height = 150;
     const ctx = canvas.getContext("2d");
-    
+
     if (ctx) {
-      // Fond transparent
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Texte de signature
-      ctx.font = `48px ${SIGNATURE_FONTS[selectedFont].style}`;
+
+      // M11: Auto-scale font to fit canvas width (max 48px, min 20px)
+      const maxWidth = canvas.width - 40; // 20px padding each side
+      let fontSize = 48;
+      ctx.font = `${fontSize}px ${SIGNATURE_FONTS[selectedFont].style}`;
+      while (ctx.measureText(textSignature).width > maxWidth && fontSize > 20) {
+        fontSize -= 2;
+        ctx.font = `${fontSize}px ${SIGNATURE_FONTS[selectedFont].style}`;
+      }
+
       ctx.fillStyle = "#1e3a5f";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(textSignature, canvas.width / 2, canvas.height / 2);
     }
-    
+
     return canvas.toDataURL("image/png");
   };
 

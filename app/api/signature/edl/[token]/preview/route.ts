@@ -35,8 +35,8 @@ export async function POST(
 
     // Vérifier si le token a expiré (7 jours après l'envoi)
     const TOKEN_EXPIRATION_DAYS = 7;
-    if (signatureEntry.invitation_sent_at) {
-      const sentDate = new Date(signatureEntry.invitation_sent_at);
+    if ((signatureEntry as any).invitation_sent_at) {
+      const sentDate = new Date((signatureEntry as any).invitation_sent_at);
       const expirationDate = new Date(sentDate.getTime() + TOKEN_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
       if (new Date() > expirationDate) {
         return NextResponse.json(
@@ -82,7 +82,7 @@ export async function POST(
       serviceClient.from("edl_items").select("*").eq("edl_id", edlId),
       serviceClient.from("edl_media").select("*").eq("edl_id", edlId),
       serviceClient.from("edl_signatures").select("*, profile:profiles(*)").eq("edl_id", edlId),
-      serviceClient.from("owner_profiles").select("*, profile:profiles(*)").eq("profile_id", edl.lease?.property?.owner_id || edl.property_id).single()
+      serviceClient.from("owner_profiles").select("*, profile:profiles(*)").eq("profile_id", edl.lease?.property?.owner_id || (edl as any).property_id).single()
     ]);
 
     // 🔧 Générer des URLs signées pour les images de signature (bucket privé)
@@ -205,7 +205,7 @@ function mapDatabaseToEDLComplet(
     },
     compteurs: edl.meter_readings || [],
     pieces,
-    signatures: mappedSignatures,
+    signatures: mappedSignatures as any,
     is_complete: isComplete,
     is_signed: isSigned,
     status: edl.status || "draft",

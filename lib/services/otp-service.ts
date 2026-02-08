@@ -66,7 +66,7 @@ export async function sendOtp(
       .single();
 
     if (recentOtp) {
-      const createdAt = new Date(recentOtp.created_at);
+      const createdAt = new Date(recentOtp.created_at as string);
       const cooldownEnd = new Date(createdAt.getTime() + COOLDOWN_SECONDS * 1000);
       
       if (cooldownEnd > new Date()) {
@@ -104,7 +104,7 @@ export async function sendOtp(
       expires_at: expiresAt.toISOString(),
       attempts: 0,
       is_used: false,
-    });
+    } as any);
 
     if (insertError) {
       logger.error("Failed to store OTP", { error: insertError });
@@ -118,7 +118,7 @@ export async function sendOtp(
     const smsResult = await sendOTPSMS(phoneNumber, code);
 
     if (!smsResult.success) {
-      logger.error("Failed to send OTP SMS", { error: smsResult.error });
+      logger.error("Failed to send OTP SMS", { error: smsResult.error as string });
       return {
         success: false,
         message: smsResult.error || "Erreur lors de l'envoi du SMS.",
@@ -139,7 +139,7 @@ export async function sendOtp(
       expiresAt,
     };
   } catch (error) {
-    logger.error("OTP generation failed", { error });
+    logger.error("OTP generation failed", { error: error as string });
     return {
       success: false,
       message: "Une erreur est survenue.",
@@ -159,7 +159,7 @@ export async function validateOtp(
     const supabase = await createClient();
 
     // Récupérer le code actif
-    const { data: otpRecord, error } = await supabase
+    const { data, error } = await supabase
       .from("otp_codes")
       .select("*")
       .eq("phone_number", phoneNumber)
@@ -170,12 +170,14 @@ export async function validateOtp(
       .limit(1)
       .single();
 
-    if (error || !otpRecord) {
+    if (error || !data) {
       return {
         success: false,
         message: "Code expiré ou invalide. Veuillez demander un nouveau code.",
       };
     }
+
+    const otpRecord = data as Record<string, any>;
 
     // Vérifier le nombre de tentatives
     if (otpRecord.attempts >= MAX_ATTEMPTS) {
@@ -224,7 +226,7 @@ export async function validateOtp(
       message: "Code vérifié avec succès.",
     };
   } catch (error) {
-    logger.error("OTP validation failed", { error });
+    logger.error("OTP validation failed", { error: error as string });
     return {
       success: false,
       message: "Une erreur est survenue lors de la vérification.",

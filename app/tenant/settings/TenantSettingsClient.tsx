@@ -39,6 +39,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { buildAvatarUrl } from "@/lib/helpers/format";
+import { RestartTourCard } from "@/components/onboarding/RestartTourCard";
 
 interface Profile {
   id: string;
@@ -272,7 +273,7 @@ export function TenantSettingsClient({
                     disabled
                     className="bg-slate-100 dark:bg-slate-800"
                   />
-                  <Shield className="h-5 w-5 text-green-600" title="Email vérifié" />
+                  <Shield {...{className: "h-5 w-5 text-green-600", title: "Email vérifié"} as any} />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   L'email est lié à votre compte et ne peut pas être modifié ici
@@ -373,6 +374,9 @@ export function TenantSettingsClient({
               </div>
             </CardContent>
           </Card>
+
+          {/* Tour guidé */}
+          <RestartTourCard />
 
           {/* Bouton de sauvegarde */}
           <div className="flex justify-end gap-3 pt-4">

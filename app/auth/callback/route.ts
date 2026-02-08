@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // Redirige vers le dashboard après authentification
-  return NextResponse.redirect(new URL("/dashboard", origin));
+  // Aucun code fourni ou échange échoué — rediriger vers la connexion
+  return NextResponse.redirect(new URL("/auth/signin", origin));
 }
 

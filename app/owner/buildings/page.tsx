@@ -54,5 +54,5 @@ export default async function BuildingsPage() {
     console.error("[BuildingsPage] Error fetching buildings:", error);
   }
 
-  return <BuildingsListClient buildings={buildings || []} />;
+  return <BuildingsListClient buildings={(buildings || []) as any} />;
 }

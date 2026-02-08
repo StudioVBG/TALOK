@@ -21,7 +21,7 @@ function decodeToken(token: string): { leaseId: string; tenantEmail: string; tim
   }
 }
 
-// Vérifier si le token est expiré (7 jours)
+// Vérifier si le token est expiré (30 jours)
 function isTokenExpired(timestamp: number): boolean {
   return Date.now() - timestamp > 30 * 24 * 60 * 60 * 1000;
 }
@@ -53,15 +53,16 @@ export async function POST(request: Request, { params }: PageProps) {
 
     const serviceClient = getServiceClient();
 
-    // Récupérer le bail avec ses informations
+    // Récupérer le bail avec ses informations + entité signataire
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select(`
-        id, 
-        property_id, 
-        statut, 
-        type_bail, 
+        id,
+        property_id,
+        statut,
+        type_bail,
         loyer,
+        signatory_entity_id,
         properties (
           adresse_complete,
           ville,
@@ -76,6 +77,24 @@ export async function POST(request: Request, { params }: PageProps) {
         { error: "Bail non trouvé" },
         { status: 404 }
       );
+    }
+
+    // P1-7: Récupérer les données de l'entité juridique si applicable
+    let entityInfo: { nom: string; siret: string | null; type: string; representant: string | null } | null = null;
+    if ((lease as any).signatory_entity_id) {
+      const { data: entity } = await serviceClient
+        .from("legal_entities")
+        .select("nom, siret, entity_type, gerant_nom")
+        .eq("id", (lease as any).signatory_entity_id)
+        .single();
+      if (entity) {
+        entityInfo = {
+          nom: (entity as any).nom,
+          siret: (entity as any).siret,
+          type: (entity as any).entity_type,
+          representant: (entity as any).gerant_nom,
+        };
+      }
     }
 
     // Récupérer les données de signature
@@ -102,13 +121,14 @@ export async function POST(request: Request, { params }: PageProps) {
     // Générer la preuve de signature
     const ipAddress = extractClientIP(request);
 
-    // Créer un contenu de document pour le hash
+    // Créer un contenu de document pour le hash (inclut données entité P1-7)
     const documentContent = JSON.stringify({
       leaseId: lease.id,
       type: lease.type_bail,
       loyer: lease.loyer,
       property: lease.properties,
       signerEmail: tokenData.tenantEmail,
+      entity: entityInfo,
       timestamp: Date.now(),
     });
 
@@ -152,7 +172,7 @@ export async function POST(request: Request, { params }: PageProps) {
         .from("lease_signers")
         .select("id, profile_id, role")
         .eq("lease_id", lease.id)
-        .in("role", ["locataire_principal", "locataire", "tenant", "colocataire", "principal"])
+        .in("role", ["locataire_principal", "locataire", "tenant", "colocataire", "principal"] as any)
         .is("signature_status", null)  // Non encore signé
         .limit(1)
         .maybeSingle();
@@ -293,6 +313,7 @@ export async function POST(request: Request, { params }: PageProps) {
           document_hash: proof.document.hash,
           timestamp: proof.timestamp,
           signer: proof.signer,
+          entity: entityInfo,
           integrity: proof.integrity,
           certificate: certificate,
         },

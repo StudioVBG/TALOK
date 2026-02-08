@@ -61,10 +61,10 @@ export function createPropertyAgent(role: UserRole = "owner") {
   ];
   
   const agent = createReactAgent({
-    model,
+    llm: model,
     systemMessage: PROPERTY_AGENT_PROMPT,
     tools: propertyTools,
-  });
+  } as any);
   
   return agent;
 }

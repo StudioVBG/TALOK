@@ -33,7 +33,7 @@ export function TomAssistant() {
       
       if (toolCall.toolName === 'addRoom') {
         const args = toolCall.args as AddRoomArgs;
-        addRoom(args);
+        addRoom(args as any);
         return `La pièce ${args.label_affiche || args.type_piece} a été ajoutée.`;
       }
     },
@@ -87,7 +87,7 @@ export function TomAssistant() {
       {/* Chat Area */}
       {!isMinimized && (
         <>
-          <ScrollArea className="flex-1 p-4" viewportRef={scrollRef}>
+          <ScrollArea className="flex-1 p-4" ref={scrollRef as any}>
             <div className="space-y-4">
               {messages.length === 0 && (
                 <div className="text-center py-8 text-slate-500">

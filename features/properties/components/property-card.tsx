@@ -70,8 +70,8 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
     } catch (error: unknown) {
       const notFound =
         error instanceof ResourceNotFoundError ||
-        error?.message?.includes("Ressource introuvable") ||
-        error?.message?.includes("Propriété non trouvée");
+        (error as any)?.message?.includes("Ressource introuvable") ||
+        (error as any)?.message?.includes("Propriété non trouvée");
 
       toast({
         title: notFound ? "Déjà supprimé" : "Erreur",
@@ -107,7 +107,7 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
       toast({
         title: "Impossible de soumettre",
         description:
-          error?.message ||
+          (error as any)?.message ||
           "Une erreur est survenue lors de la soumission. Vérifiez les champs requis.",
         variant: "destructive",
       });

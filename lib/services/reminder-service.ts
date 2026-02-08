@@ -256,7 +256,7 @@ export async function createReminder(
     channel,
     recipientId,
     recipientEmail: email,
-    recipientPhone: profile.telephone,
+    recipientPhone: profile.telephone ?? undefined,
     subject: interpolateTemplate(template.subject, variables),
     content: interpolateTemplate(template.content, variables),
     scheduledAt: scheduledAt.toISOString(),

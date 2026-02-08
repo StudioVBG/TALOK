@@ -126,6 +126,9 @@ export interface EDLTemplateVariables {
   EDL_REFERENCE: string;
   EDL_TYPE: string;
   EDL_TYPE_LABEL: string;
+  EDL_TYPE_COLOR?: string;
+  IS_EDL_ENTREE?: boolean;
+  IS_EDL_SORTIE?: boolean;
   DATE_EDL: string;
   DATE_CREATION: string;
   
@@ -141,6 +144,7 @@ export interface EDLTemplateVariables {
   
   // Bailleur
   BAILLEUR_NOM_COMPLET: string;
+  BAILLEUR_LABEL_NOM?: string;
   BAILLEUR_TYPE: string;
   BAILLEUR_ADRESSE: string;
   BAILLEUR_TELEPHONE: string;
@@ -151,7 +155,10 @@ export interface EDLTemplateVariables {
   // Locataires
   LOCATAIRES_NOM_COMPLET: string;
   LOCATAIRES_LISTE: string;
+  LOCATAIRES_TELEPHONE?: string;
+  LOCATAIRES_EMAIL?: string;
   NB_LOCATAIRES: number;
+  IS_SINGLE_TENANT?: boolean;
   
   // Bail
   BAIL_REFERENCE: string;

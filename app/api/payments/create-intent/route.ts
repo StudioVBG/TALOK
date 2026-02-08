@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: formatAmountForStripe(amount),
       currency,
-      metadata: metadata as Record<string, string>,
+      metadata: metadata as unknown as Record<string, string>,
       automatic_payment_methods: {
         enabled: true,
       },

@@ -191,8 +191,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           action,
           new_status: newStatus,
         },
-      }).catch(() => {
-        // Ignorer les erreurs de notification
       });
     }
 
@@ -203,7 +201,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     });
   } catch (error: unknown) {
     console.error('Error in POST /api/provider/jobs/[id]/status:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
 

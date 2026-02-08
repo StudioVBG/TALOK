@@ -168,7 +168,6 @@ export function UXUIShowcase() {
                 onClick: () => alert("Action déclenchée !"),
                 variant: "default",
               }}
-              size="lg"
             />
           </motion.div>
         )}

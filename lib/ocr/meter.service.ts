@@ -103,7 +103,7 @@ class MeterOCRService {
         // Format PNG pour qualité optimale
         .png()
         .toBuffer();
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('[MeterOCR] Prétraitement échoué, utilisation image originale:', error);
       return imageBuffer;
     }
@@ -158,7 +158,7 @@ class MeterOCRService {
       };
 
     } catch (error: unknown) {
-      console.error('[MeterOCR] Erreur:', error.message);
+      console.error('[MeterOCR] Erreur:', (error as Error).message);
       return {
         value: null,
         unit: 'unknown',
@@ -166,7 +166,7 @@ class MeterOCRService {
         rawText: '',
         processingTimeMs: Date.now() - startTime,
         needsValidation: true,
-        error: error.message,
+        error: (error as Error).message,
       };
     }
   }

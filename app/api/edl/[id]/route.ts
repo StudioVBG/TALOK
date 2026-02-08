@@ -196,15 +196,19 @@ export async function PUT(
       console.error("[PUT /api/edl/[id]] DB Update Exception:", err);
     }
 
-    // Mettre à jour les sections (items)
+    // Mettre à jour les sections (items) - batch operations to avoid timeout
+    const sectionErrors: string[] = [];
     if (sections && Array.isArray(sections) && sections.length > 0) {
       console.log(`[PUT /api/edl/${edlId}] Updating ${sections.length} sections`);
       try {
+        // Collect all items to update and insert separately
+        const itemsToUpdate: Array<{ id: string; data: any }> = [];
+        const itemsToInsert: any[] = [];
+
         for (const section of sections) {
           if (!section.items || !Array.isArray(section.items)) {
             continue;
           }
-          
           for (const item of section.items) {
             const itemData = {
               condition: item.condition || item.state || null,
@@ -214,29 +218,58 @@ export async function PUT(
             };
 
             if (item.id && !String(item.id).startsWith("temp_")) {
-              const { error: itemError } = await serviceClient
-                .from("edl_items")
-                .update(itemData as any)
-                .eq("id", item.id);
-              if (itemError) {
-                console.error(`[PUT /api/edl/${edlId}] Item update error:`, itemError);
-              }
+              itemsToUpdate.push({ id: item.id, data: itemData });
             } else {
-              const { error: itemError } = await serviceClient
-                .from("edl_items")
-                .insert({
-                  ...itemData,
-                  edl_id: edlId,
-                } as any);
-              if (itemError) {
-                console.error(`[PUT /api/edl/${edlId}] Item insert error:`, itemError);
-              }
+              itemsToInsert.push({ ...itemData, edl_id: edlId });
+            }
+          }
+        }
+
+        // Batch insert new items in a single call
+        if (itemsToInsert.length > 0) {
+          const { error: batchInsertError } = await serviceClient
+            .from("edl_items")
+            .insert(itemsToInsert as any);
+          if (batchInsertError) {
+            console.error(`[PUT /api/edl/${edlId}] Batch insert error:`, batchInsertError);
+            sectionErrors.push(`Insertion de ${itemsToInsert.length} éléments : ${batchInsertError.message}`);
+          }
+        }
+
+        // Update existing items in parallel batches (max 10 concurrent)
+        if (itemsToUpdate.length > 0) {
+          const BATCH_SIZE = 10;
+          for (let i = 0; i < itemsToUpdate.length; i += BATCH_SIZE) {
+            const batch = itemsToUpdate.slice(i, i + BATCH_SIZE);
+            const results = await Promise.allSettled(
+              batch.map(({ id, data }) =>
+                serviceClient
+                  .from("edl_items")
+                  .update(data as any)
+                  .eq("id", id)
+              )
+            );
+            const failures = results.filter((r) => r.status === "rejected");
+            if (failures.length > 0) {
+              console.error(`[PUT /api/edl/${edlId}] ${failures.length} item updates failed in batch`);
+              sectionErrors.push(`${failures.length} mises à jour échouées`);
             }
           }
         }
       } catch (err) {
         console.error(`[PUT /api/edl/${edlId}] Sections exception:`, err);
+        sectionErrors.push(err instanceof Error ? err.message : "Erreur inattendue");
       }
+    }
+
+    // Return explicit partial failure if some section saves failed
+    if (sectionErrors.length > 0) {
+      return NextResponse.json({
+        success: false,
+        partial: true,
+        errors: sectionErrors,
+        message: "Certaines modifications n'ont pas pu être sauvegardées",
+      }, { status: 207 });
     }
 
     return NextResponse.json({ success: true });

@@ -241,7 +241,7 @@ export async function POST(
       .select("id, status")
       .eq("lease_id", leaseId)
       .eq("type", type)
-      .in("status", ["draft", "scheduled", "in_progress"])
+      .in("status", ["draft", "scheduled", "in_progress"] as any)
       .maybeSingle();
 
     if (existingEdl) {
@@ -275,6 +275,38 @@ export async function POST(
         { error: createError.message || "Erreur lors de la création de l'EDL" },
         { status: 500 }
       );
+    }
+
+    // Créer les signatures EDL depuis les signataires du bail
+    try {
+      const { data: signers } = await supabase
+        .from("lease_signers")
+        .select("id, profile_id, role, invited_email, invited_name")
+        .eq("lease_id", leaseId);
+
+      if (signers && signers.length > 0) {
+        const edlSignatures = signers.map((s: any) => {
+          const isOwnerRole = ["proprietaire", "owner", "bailleur"].includes(s.role);
+          return {
+            edl_id: newEdl.id,
+            signer_role: isOwnerRole ? "owner" : "tenant",
+            signer_profile_id: s.profile_id || null,
+            signer_email: s.invited_email || null,
+            signer_name: s.invited_name || null,
+            invitation_token: crypto.randomUUID(),
+          };
+        });
+
+        const { error: sigError } = await supabase
+          .from("edl_signatures")
+          .insert(edlSignatures as any);
+
+        if (sigError) {
+          console.warn("[POST /api/leases/[id]/edl] Signatures non créées:", sigError.message);
+        }
+      }
+    } catch (sigErr) {
+      console.warn("[POST /api/leases/[id]/edl] Erreur création signatures:", sigErr);
     }
 
     return NextResponse.json({ edl: newEdl }, { status: 201 });

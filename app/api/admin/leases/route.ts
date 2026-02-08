@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
         .select("id")
         .eq("owner_id", ownerIdParam);
       
-      const propertyIds = ownerProperties?.map(p => p.id) || [];
+      const propertyIds = ownerProperties?.map((p: any) => p.id) || [];
       if (propertyIds.length > 0) {
         query = query.in("property_id", propertyIds);
       } else {
@@ -162,10 +162,10 @@ export async function GET(request: NextRequest) {
 
     const stats = {
       total: statsData?.length || 0,
-      draft: statsData?.filter(l => l.statut === "draft").length || 0,
-      pending_signature: statsData?.filter(l => l.statut === "pending_signature").length || 0,
-      active: statsData?.filter(l => l.statut === "active").length || 0,
-      terminated: statsData?.filter(l => l.statut === "terminated").length || 0,
+      draft: statsData?.filter((l: any) => l.statut === "draft").length || 0,
+      pending_signature: statsData?.filter((l: any) => l.statut === "pending_signature").length || 0,
+      active: statsData?.filter((l: any) => l.statut === "active").length || 0,
+      terminated: statsData?.filter((l: any) => l.statut === "terminated").length || 0,
     };
 
     // Formater les données pour l'affichage

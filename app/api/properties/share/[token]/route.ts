@@ -60,7 +60,7 @@ export async function GET(
   } catch (error: unknown) {
     console.error("GET /api/properties/share/[token] error", error);
     return NextResponse.json(
-      { error: error?.message ?? "Erreur serveur lors du chargement du lien public." },
+      { error: (error as any)?.message ?? "Erreur serveur lors du chargement du lien public." },
       { status: 500 }
     );
   }

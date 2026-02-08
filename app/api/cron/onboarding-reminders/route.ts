@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
         let emailData;
         switch (reminder.reminder_type) {
           case "24h":
-            const nextStep = getNextStepLabel(reminder.role, progressData);
+            const nextStep = getNextStepLabel(reminder.role, progressData || []);
             emailData = emailTemplates.onboardingReminder24h({
               userName,
               role: reminder.role as any,
@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     console.error("Erreur cron onboarding-reminders:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Internal server error", details: (error as Error).message },
       { status: 500 }
     );
   }

@@ -89,7 +89,7 @@ export class MetersService {
       .limit(limit);
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as MeterReading[];
   }
 
   /**
@@ -178,7 +178,7 @@ export class MetersService {
     const { data, error } = await query;
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as ConsumptionEstimate[];
   }
 }
 

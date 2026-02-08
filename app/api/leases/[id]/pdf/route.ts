@@ -17,6 +17,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { LeaseTemplateService } from "@/lib/templates/bail";
 import type { TypeBail, BailComplet } from "@/lib/templates/bail/types";
+import { resolveOwnerIdentity, type OwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import crypto from "crypto";
 
 interface RouteParams {
@@ -177,19 +178,21 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     // === CRÉATION: Données ont changé ou document n'existe pas ===
-    
-    // Récupérer les infos du propriétaire
-    const { data: ownerProfile } = await serviceClient
-      .from("owner_profiles")
-      .select("*")
-      .eq("profile_id", property.owner_id)
-      .single();
+
+    // ✅ SOTA 2026: Utiliser resolveOwnerIdentity au lieu d'accès direct owner_profiles
+    const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
+      leaseId,
+      propertyId: property.id,
+      profileId: property.owner_id,
+    });
 
     const typeBail = (lease.type_bail || "meuble") as TypeBail;
     const tenantSigner = (lease.signers as any[])?.find(s => s.role === "locataire_principal");
     const tenant = tenantSigner?.profile;
-    const isOwnerSociete = ownerProfile?.type === "societe" && ownerProfile?.raison_sociale;
-    const ownerAddress = ownerProfile?.adresse_facturation || ownerProfile?.adresse_siege || "";
+    const isOwnerSociete = ownerIdentity.entityType === "company";
+    const ownerAddress = ownerIdentity.address.street
+      ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
+      : "";
 
     const finalDepot = isDraft
       ? (lease.depot_de_garantie ?? finalLoyer)
@@ -202,16 +205,21 @@ export async function GET(request: Request, { params }: RouteParams) {
       lieu_signature: property?.ville || "",
       
       bailleur: {
-        nom: isOwnerSociete ? ownerProfile.raison_sociale : (profile.nom || ""),
-        prenom: isOwnerSociete ? "" : (profile.prenom || ""),
-        date_naissance: isOwnerSociete ? undefined : profile.date_naissance,
+        nom: isOwnerSociete ? (ownerIdentity.companyName || "") : ownerIdentity.lastName,
+        prenom: isOwnerSociete ? "" : ownerIdentity.firstName,
+        date_naissance: isOwnerSociete ? undefined : (ownerIdentity.birthDate ?? undefined),
         adresse: ownerAddress || `${property?.adresse_complete}, ${property?.code_postal} ${property?.ville}`,
-        code_postal: "",
-        ville: "",
-        telephone: profile.telephone || "",
-        type: ownerProfile?.type || "particulier",
-        siret: ownerProfile?.siret,
-        raison_sociale: ownerProfile?.raison_sociale || "",
+        code_postal: ownerIdentity.address.postalCode,
+        ville: ownerIdentity.address.city,
+        telephone: ownerIdentity.phone || "",
+        type: isOwnerSociete ? "societe" as const : "particulier" as const,
+        siret: ownerIdentity.siret ?? undefined,
+        raison_sociale: ownerIdentity.companyName || "",
+        forme_juridique: ownerIdentity.legalForm || "",
+        representant_nom: ownerIdentity.representative
+          ? `${ownerIdentity.representative.firstName} ${ownerIdentity.representative.lastName}`.trim()
+          : undefined,
+        representant_qualite: ownerIdentity.representative?.role || undefined,
         est_mandataire: false,
       },
 
@@ -252,8 +260,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       },
 
       conditions: {
+        type_bail: typeBail,
+        usage: "habitation_principale" as const,
         date_debut: lease.date_debut,
-        date_fin: lease.date_fin,
+        date_fin: lease.date_fin ?? undefined,
         duree_mois: typeBail === "nu" ? 36 : typeBail === "meuble" ? 12 : 12,
         tacite_reconduction: true,
         loyer_hc: parseFloat(String(finalLoyer)) || 0,
@@ -267,14 +277,17 @@ export async function GET(request: Request, { params }: RouteParams) {
         jour_paiement: 5,
         paiement_avance: true,
         revision_autorisee: true,
+        indice_reference: "IRL",
       },
 
       diagnostics: {
         dpe: {
           date_realisation: new Date().toISOString(),
+          date_validite: "",
           classe_energie: property?.energie || "D",
           classe_ges: property?.ges || "D",
           consommation_energie: 150,
+          emissions_ges: 0,
           estimation_cout_min: 800,
           estimation_cout_max: 1200,
         },
@@ -354,7 +367,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Fallback: retourner le PDF directement
     const fileName = `Bail_${typeBail}_${property?.ville || "location"}_${new Date().toISOString().split('T')[0]}.pdf`;
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${fileName}"`,

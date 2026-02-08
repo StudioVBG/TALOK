@@ -134,11 +134,11 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
           setError("Erreur lors du chargement des notifications");
           return;
         }
-        setNotifications(fallbackData || []);
+        setNotifications((fallbackData || []) as Notification[]);
         return;
       }
 
-      setNotifications(data || []);
+      setNotifications((data || []) as Notification[]);
     } catch (err) {
       console.error("[useNotifications] Error:", err);
       setError("Erreur lors du chargement des notifications");

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -11,24 +10,31 @@ import {
   MessageSquare,
   Settings,
   LogOut,
-  Menu,
-  X,
   Home,
   Wrench,
-  Gauge,
-  FileSignature,
-  Users,
   HelpCircle,
-  Bell,
-  ChevronDown,
+  ChevronLeft,
   ClipboardCheck,
   Gift,
-  ShoppingBag
+  ShoppingBag,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
+import { Badge } from "@/components/ui/badge";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { UnifiedFAB } from "@/components/layout/unified-fab";
+import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
+import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import { OnboardingTourProvider, AutoTourPrompt } from "@/components/onboarding";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,11 +43,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { NotificationBell } from "@/components/notifications/NotificationBell";
-import { UnifiedFAB } from "@/components/layout/unified-fab";
-import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
-// Note: Home, FileText, CreditCard, Wrench déjà importés ci-dessus
+import { SkipLinks } from "@/components/ui/skip-links";
+import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
@@ -54,11 +57,38 @@ interface TenantAppLayoutProps {
   } | null;
 }
 
+// Navigation items - single source of truth
+const allNavItems = [
+  { name: "Tableau de bord", href: "/tenant/dashboard", icon: LayoutDashboard, tourId: "nav-dashboard", group: "Mon Foyer" },
+  { name: "Ma Vie au Logement", href: "/tenant/lease", icon: Home, tourId: "nav-lease", group: "Mon Foyer" },
+  { name: "Coffre-fort (Documents)", href: "/tenant/documents", icon: FileText, tourId: "nav-documents", group: "Mon Contrat" },
+  { name: "Suivi Juridique (EDL/Sign)", href: "/tenant/inspections", icon: ClipboardCheck, tourId: "nav-inspections", group: "Mon Contrat" },
+  { name: "Loyers & Factures", href: "/tenant/payments", icon: CreditCard, tourId: "nav-payments", group: "Mes Finances" },
+  { name: "Demandes & SAV", href: "/tenant/requests", icon: Wrench, tourId: "nav-requests", group: "Assistance" },
+  { name: "Messagerie", href: "/tenant/messages", icon: MessageSquare, group: "Assistance" },
+  { name: "Club Récompenses", href: "/tenant/rewards", icon: Gift, group: "Mes Avantages" },
+  { name: "Marketplace", href: "/tenant/marketplace", icon: ShoppingBag, group: "Mes Avantages" },
+];
+
+const footerNavItems = [
+  { name: "Aide & FAQ", href: "/tenant/help", icon: HelpCircle },
+  { name: "Mon Profil", href: "/tenant/settings", icon: Settings },
+];
+
+// Group navigation for desktop sidebar
+const navigationGroups = [
+  { title: "Mon Foyer", items: allNavItems.filter(i => i.group === "Mon Foyer") },
+  { title: "Mon Contrat", items: allNavItems.filter(i => i.group === "Mon Contrat") },
+  { title: "Mes Finances", items: allNavItems.filter(i => i.group === "Mes Finances") },
+  { title: "Assistance", items: allNavItems.filter(i => i.group === "Assistance") },
+  { title: "Mes Avantages", items: allNavItems.filter(i => i.group === "Mes Avantages") },
+];
+
 export function TenantAppLayout({ children, profile: serverProfile }: TenantAppLayoutProps) {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
   const { profile: clientProfile } = useAuth();
-  
+
   // Hook SOTA 2026 pour la déconnexion avec loading state et redirection forcée
   const { signOut: handleSignOut, isLoading: isSigningOut } = useSignOut({
     redirectTo: "/auth/signin",
@@ -66,178 +96,99 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
   const profile = serverProfile || clientProfile;
 
-  const navigationGroups = [
-    {
-      title: "Mon Foyer",
-      items: [
-        {
-          name: "Tableau de bord",
-          href: "/tenant/dashboard",
-          icon: LayoutDashboard,
-          tourId: "nav-dashboard",
-        },
-        {
-          name: "Ma Vie au Logement",
-          href: "/tenant/lease",
-          icon: Home,
-          tourId: "nav-lease",
-        },
-      ],
-    },
-    {
-      title: "Mon Contrat",
-      items: [
-        {
-          name: "Coffre-fort (Documents)",
-          href: "/tenant/documents",
-          icon: FileText,
-          tourId: "nav-documents",
-        },
-        {
-          name: "Suivi Juridique (EDL/Sign)",
-          href: "/tenant/inspections",
-          icon: ClipboardCheck,
-          tourId: "nav-inspections",
-        },
-      ],
-    },
-    {
-      title: "Mes Finances",
-      items: [
-        {
-          name: "Loyers & Factures",
-          href: "/tenant/payments",
-          icon: CreditCard,
-          tourId: "nav-payments",
-        },
-      ],
-    },
-    {
-      title: "Assistance",
-      items: [
-        {
-          name: "Demandes & SAV",
-          href: "/tenant/requests",
-          icon: Wrench,
-          tourId: "nav-requests",
-        },
-        {
-          name: "Messagerie",
-          href: "/tenant/messages",
-          icon: MessageSquare,
-        },
-      ],
-    },
-    {
-      title: "Mes Avantages",
-      items: [
-        {
-          name: "Club Récompenses",
-          href: "/tenant/rewards",
-          icon: Gift,
-        },
-        {
-          name: "Marketplace",
-          href: "/tenant/marketplace",
-          icon: ShoppingBag,
-        },
-      ],
-    },
-  ];
-
-  const bottomNavigation = [
-    {
-      name: "Aide & FAQ",
-      href: "/tenant/help",
-      icon: HelpCircle,
-    },
-    {
-      name: "Mon Profil",
-      href: "/tenant/settings",
-      icon: Settings,
-    },
-  ];
-
   const isCurrent = (href: string) =>
     pathname === href || pathname?.startsWith(href + "/");
 
+  // Page title from active nav item
+  const activeItem = [...allNavItems, ...footerNavItems].find(item => isCurrent(item.href));
+  const pageTitle = activeItem?.name || "Tableau de bord";
+
+  // Back button for detail pages (depth > 2)
+  const isDetailPage = pathname?.split("/").filter(Boolean).length > 2;
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Mobile Header */}
-      <div className="lg:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b shadow-sm sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </Button>
-          <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Talok
+    <OnboardingTourProvider role="tenant" profileId={profile?.id}>
+    <TooltipProvider delayDuration={0}>
+    <div className="min-h-screen bg-background">
+      {/* Offline indicator */}
+      <OfflineIndicator />
+
+      {/* Skip Links pour accessibilité clavier */}
+      <SkipLinks />
+
+      {/* ============================================
+          TABLET Rail Nav (md-lg) - Icônes + tooltip hover
+          ============================================ */}
+      <aside
+        id="main-navigation"
+        aria-label="Navigation principale"
+        className="hidden md:flex lg:hidden fixed inset-y-0 left-0 z-50 w-16 flex-col bg-card border-r border-border"
+      >
+        {/* Logo compact */}
+        <div className="flex h-14 shrink-0 items-center justify-center border-b border-border">
+          <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            T
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <NotificationBell />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-9 w-9 p-0 rounded-full">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-blue-100 text-blue-700 text-sm">
-                    {profile?.prenom?.[0]}
-                    {profile?.nom?.[0]}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex flex-col">
-                  <span>
-                    {profile?.prenom} {profile?.nom}
-                  </span>
-                  <span className="text-xs text-muted-foreground font-normal">
-                    Locataire
-                  </span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/tenant/settings">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Paramètres
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleSignOut}
-                disabled={isSigningOut}
-                className="text-red-600 focus:text-red-600 disabled:opacity-50"
-              >
-                {isSigningOut ? (
-                  <>
-                    <span className="mr-2 h-4 w-4 inline-block animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
-                    Déconnexion...
-                  </>
-                ) : (
-                  <>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Déconnexion
-                  </>
-                )}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
 
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-slate-800 border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
+        {/* Navigation icônes avec tooltips */}
+        <nav className="flex flex-1 flex-col items-center gap-1 py-3 overflow-y-auto">
+          {allNavItems.map((item) => {
+            const isActive = isCurrent(item.href);
+            return (
+              <Tooltip key={item.name}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={item.href}
+                    data-tour={item.tourId}
+                    className={cn(
+                      "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 touch-target",
+                      isActive
+                        ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    <item.icon className="h-5 w-5" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-medium">
+                  {item.name}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </nav>
+
+        {/* Footer items: aide + profil */}
+        <div className="flex flex-col items-center gap-1 py-3 border-t border-border">
+          {footerNavItems.map((item) => (
+            <Tooltip key={item.name}>
+              <TooltipTrigger asChild>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "flex items-center justify-center w-10 h-10 rounded-lg transition-colors touch-target",
+                    isCurrent(item.href)
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {item.name}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      </aside>
+
+      {/* ============================================
+          DESKTOP Full Sidebar (lg+) - Texte + icônes groupés
+          ============================================ */}
+      <aside data-tour-sidebar className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col bg-card border-r">
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b shrink-0">
           <Link href="/tenant/dashboard" className="flex items-center gap-2">
@@ -250,26 +201,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           </Link>
         </div>
 
-        {/* User Profile Card */}
-        <div className="p-4 border-b shrink-0">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-            <Avatar className="h-11 w-11 ring-2 ring-white dark:ring-slate-700 shadow-sm">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
-                {profile?.prenom?.[0]}
-                {profile?.nom?.[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="overflow-hidden flex-1">
-              <p className="text-sm font-semibold truncate">
-                {profile?.prenom} {profile?.nom}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">Locataire</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Navigation */}
+        {/* Main Navigation - Grouped */}
         <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
           {navigationGroups.map((group) => (
             <div key={group.title} className="space-y-1">
@@ -285,16 +217,15 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                     isCurrent(item.href)
                       ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
-                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                      : "text-muted-foreground hover:bg-muted"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <item.icon
                     className={cn(
                       "h-5 w-5",
                       isCurrent(item.href)
                         ? "text-blue-600 dark:text-blue-400"
-                        : "text-slate-400"
+                        : "text-muted-foreground"
                     )}
                   />
                   {item.name}
@@ -304,21 +235,20 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           ))}
         </nav>
 
-        {/* Bottom Navigation */}
+        {/* Footer Navigation */}
         <div className="p-4 border-t space-y-1 shrink-0">
-          {bottomNavigation.map((item) => (
+          {footerNavItems.map((item) => (
             <Link
               key={item.name}
               href={item.href}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 isCurrent(item.href)
-                  ? "bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-white"
-                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted"
               )}
-              onClick={() => setSidebarOpen(false)}
             >
-              <item.icon className="h-5 w-5 text-slate-400" />
+              <item.icon className="h-5 w-5 text-muted-foreground" />
               {item.name}
             </Link>
           ))}
@@ -343,32 +273,149 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         </div>
       </aside>
 
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-sm"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* ============================================
+          Main Content Area
+          md: pl-16 (rail), lg: pl-64
+          ============================================ */}
+      <div className="md:pl-16 lg:pl-64">
+        {/* ============================================
+            Top Header - Contextuel
+            Mobile: Brand + actions (no hamburger)
+            Tablet+: Page title + actions
+            ============================================ */}
+        <header className="sticky top-0 z-50 flex items-center justify-between px-3 xs:px-4 sm:px-6 lg:px-8 py-3 bg-card border-b shadow-sm">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {/* Mobile: back button for detail pages */}
+            {isDetailPage && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden shrink-0"
+                onClick={() => router.back()}
+                aria-label="Retour"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
 
-      {/* Main Content */}
-      <main className="lg:pl-64 min-h-screen transition-all duration-200">
-        {children}
-      </main>
+            {/* Mobile: Brand (when no sidebar visible) */}
+            <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent md:hidden">
+              Talok
+            </span>
 
-      {/* SOTA 2026 - Bottom Navigation Mobile */}
-      <SharedBottomNav 
+            {/* Tablet+: Page title */}
+            <h2 className="hidden md:block text-base lg:text-lg font-semibold text-foreground truncate">
+              {pageTitle}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+
+            {/* Dark mode toggle - Masqué sur mobile */}
+            <div className="hidden md:block">
+              <DarkModeToggle />
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-9 w-9 p-0 rounded-full">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={profile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-blue-100 text-blue-700 text-sm">
+                      {profile?.prenom?.[0]}
+                      {profile?.nom?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span>
+                      {profile?.prenom} {profile?.nom}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-normal">
+                      Locataire
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/tenant/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Paramètres
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/tenant/help">
+                    <HelpCircle className="mr-2 h-4 w-4" />
+                    Aide & FAQ
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="text-red-600 focus:text-red-600 disabled:opacity-50"
+                >
+                  {isSigningOut ? (
+                    <>
+                      <span className="mr-2 h-4 w-4 inline-block animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                      Déconnexion...
+                    </>
+                  ) : (
+                    <>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Déconnexion
+                    </>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-h-[calc(100vh-4rem)] outline-none"
+        >
+          {children}
+        </main>
+      </div>
+
+      {/* ============================================
+          Mobile Bottom Navigation (< md)
+          Hidden on tablet+ where rail nav takes over
+          ============================================ */}
+      <SharedBottomNav
         items={[
           { href: "/tenant/dashboard", label: "Accueil", icon: LayoutDashboard },
           { href: "/tenant/lease", label: "Logement", icon: Home },
           { href: "/tenant/payments", label: "Paiements", icon: CreditCard },
           { href: "/tenant/requests", label: "Demandes", icon: Wrench },
         ]}
+        moreItems={[
+          { href: "/tenant/documents", label: "Documents", icon: FileText },
+          { href: "/tenant/inspections", label: "Suivi EDL", icon: ClipboardCheck },
+          { href: "/tenant/messages", label: "Messages", icon: MessageSquare },
+          { href: "/tenant/rewards", label: "Récompenses", icon: Gift },
+          { href: "/tenant/marketplace", label: "Marketplace", icon: ShoppingBag },
+          { href: "/tenant/help", label: "Aide", icon: HelpCircle },
+        ]}
+        hideAbove="md"
         hiddenOnPaths={['/tenant/onboarding']}
       />
 
       {/* SOTA 2026 - FAB Unifié (Assistant + Actions) */}
       <UnifiedFAB />
+
+      {/* SOTA 2026 - Tour guidé d'onboarding */}
+      <AutoTourPrompt />
     </div>
+    </TooltipProvider>
+    </OnboardingTourProvider>
   );
 }

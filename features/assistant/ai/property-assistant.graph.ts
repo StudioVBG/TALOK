@@ -49,21 +49,21 @@ const AssistantState = Annotation.Root({
       role: "owner" as const,
       locale: "fr" as const,
     }),
-  }),
-  
+  } as any),
+
   // Résultats des tools
   toolResults: Annotation<Record<string, unknown>>({
     default: () => ({}),
-  }),
-  
+  } as any),
+
   // Metadata
   lastToolCalled: Annotation<string | undefined>(),
   confidence: Annotation<number>({
     default: () => 0.5,
-  }),
+  } as any),
   requiresHumanApproval: Annotation<boolean>({
     default: () => false,
-  }),
+  } as any),
   approvalType: Annotation<"signature" | "payment" | "legal" | "other" | undefined>(),
 });
 
@@ -250,7 +250,7 @@ function createModel() {
 
 function createToolNodeForRole(role: UserRole) {
   const tools = getToolsForRole(role);
-  return new ToolNode(tools);
+  return new ToolNode(tools as any);
 }
 
 // ============================================
@@ -263,7 +263,7 @@ function createToolNodeForRole(role: UserRole) {
 async function callModel(state: StateType): Promise<Partial<StateType>> {
   const model = createModel();
   const roleTools = getToolsForRole(state.context.role);
-  const modelWithTools = model.bindTools(roleTools);
+  const modelWithTools = model.bindTools(roleTools as any);
   
   // Construire le prompt système basé sur le rôle
   const systemPrompt = SYSTEM_PROMPTS[state.context.role] || SYSTEM_PROMPTS.owner;
@@ -486,7 +486,7 @@ export async function invokeAssistant(
   const result = await graph.invoke(
     {
       messages: [new HumanMessage(message)],
-      context,
+      context: context as any,
     },
     config
   );
@@ -542,7 +542,7 @@ export async function* streamAssistant(
   const stream = await graph.stream(
     {
       messages: [new HumanMessage(message)],
-      context,
+      context: context as any,
     },
     {
       ...config,

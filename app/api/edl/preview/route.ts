@@ -9,6 +9,7 @@ import {
   generateEDLViergeHTML,
   EDLComplet,
 } from "@/lib/templates/edl";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 
 /**
  * POST /api/edl/preview
@@ -167,13 +168,28 @@ export async function POST(request: Request) {
             }
           }
 
-          // 🔧 FIX: Récupérer le profil propriétaire avec ADMIN
+          // Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
           const propertyOwnerId = (edl as any).lease?.property?.owner_id;
-          const { data: ownerProfile } = await adminClient
-            .from("owner_profiles")
-            .select("*, profile:profiles(*)")
-            .eq("profile_id", propertyOwnerId)
-            .single();
+          const ownerIdentity = await resolveOwnerIdentity(adminClient, {
+            leaseId: (edl as any).lease_id,
+            propertyId: (edl as any).property_id || (edl as any).lease?.property?.id,
+            profileId: propertyOwnerId,
+          });
+          // Build ownerProfile-like object for backward compat with mapDatabaseToEDLComplet
+          const ownerProfile = {
+            type: ownerIdentity.entityType === "company" ? "societe" : "particulier",
+            raison_sociale: ownerIdentity.companyName,
+            representant_nom: ownerIdentity.representative
+              ? `${ownerIdentity.representative.firstName} ${ownerIdentity.representative.lastName}`.trim()
+              : null,
+            adresse_facturation: ownerIdentity.billingAddress || ownerIdentity.address.street,
+            profile: {
+              prenom: ownerIdentity.firstName,
+              nom: ownerIdentity.lastName,
+              telephone: ownerIdentity.phone,
+              email: ownerIdentity.email,
+            },
+          };
 
           // 🔧 FIX: S'assurer que les signataires du bail ont aussi leurs profils (via ADMIN si besoin)
           if (edl.lease?.signers) {
@@ -379,7 +395,7 @@ function mapDatabaseToEDLComplet(
       }) || [];
   
   // Fallback: si on n'a vraiment aucun nom de locataire, chercher dans les signatures
-  if ((locataires.length === 0 || locataires.every(l => l.nom_complet === "Locataire")) && signatures.length > 0) {
+  if ((locataires.length === 0 || locataires.every((l: any) => l.nom_complet === "Locataire")) && signatures.length > 0) {
     const signatureTenants = signatures
       .filter((s: any) => s.signer_role === "tenant" || s.signer_role === "locataire")
       .map((s: any) => ({
@@ -512,7 +528,7 @@ function mapDatabaseToEDLComplet(
       quantite: k.quantite || k.quantity || 0,
       notes: k.notes,
     })),
-    signatures: mappedSignatures,
+    signatures: mappedSignatures as any,
     is_complete: edl.status === "completed" || edl.status === "signed",
     is_signed: edl.status === "signed" || mappedSignatures.filter((s: any) => s.signed_at).length >= 2,
     status: edl.status,

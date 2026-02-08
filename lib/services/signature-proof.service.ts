@@ -80,7 +80,8 @@ export async function generateHash(data: string): Promise<string> {
  */
 function generateProofId(): string {
   const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 10);
+  const randomBytes = crypto.getRandomValues(new Uint8Array(6));
+  const random = Array.from(randomBytes).map(b => b.toString(16).padStart(2, "0")).join("");
   return `SIG-${timestamp}-${random}`.toUpperCase();
 }
 

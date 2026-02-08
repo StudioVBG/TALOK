@@ -80,12 +80,6 @@ export async function verifyEDLAccess(
   // Créer le service client si non fourni
   const client = serviceClient || createServiceClient();
 
-  console.log(`[verifyEDLAccess] Checking access for EDL ${edlId}`, {
-    userId: userId.slice(0, 8) + "...",
-    profileId: profileId.slice(0, 8) + "...",
-    profileRole
-  });
-
   try {
     // 1. Récupérer l'EDL avec les relations nécessaires
     // La table EDL possède property_id en FK directe (dénormalisé depuis leases.property_id)
@@ -113,7 +107,6 @@ export async function verifyEDLAccess(
     }
 
     if (!edl) {
-      console.log(`[verifyEDLAccess] EDL not found for id: ${edlId}`);
       return {
         authorized: false,
         edl: null,
@@ -125,13 +118,11 @@ export async function verifyEDLAccess(
 
     // 2. Admin = accès total
     if (profileRole === "admin") {
-      console.log(`[verifyEDLAccess] ✅ Admin access granted`);
       return { authorized: true, edl: edlData, accessType: "admin" };
     }
 
     // 3. Créateur de l'EDL
     if (edlData.created_by === userId) {
-      console.log(`[verifyEDLAccess] ✅ Creator access granted`);
       return { authorized: true, edl: edlData, accessType: "creator" };
     }
 
@@ -140,16 +131,7 @@ export async function verifyEDLAccess(
     const leaseData = Array.isArray(edlData.lease) ? edlData.lease[0] : edlData.lease;
     const propertyOwnerId = leaseData?.property?.owner_id;
 
-    console.log(`[verifyEDLAccess] Checking owner access:`, {
-      leaseId: edlData.lease_id,
-      leaseFound: !!leaseData,
-      propertyId: edlData.property_id || leaseData?.property_id,
-      propertyOwnerId,
-      profileId
-    });
-
     if (propertyOwnerId && propertyOwnerId === profileId) {
-      console.log(`[verifyEDLAccess] ✅ Owner access granted`);
       return { authorized: true, edl: edlData, accessType: "owner" };
     }
 
@@ -164,20 +146,17 @@ export async function verifyEDLAccess(
           .single();
 
         if (property?.owner_id === profileId) {
-          console.log(`[verifyEDLAccess] ✅ Owner access granted (via direct property_id)`);
           return { authorized: true, edl: edlData, accessType: "owner" };
         }
       } else if (edlData.lease_id) {
-        console.log(`[verifyEDLAccess] Fallback: fetching lease directly for lease_id: ${edlData.lease_id}`);
         const { data: leaseWithProperty } = await client
           .from("leases")
           .select("property:properties(owner_id)")
           .eq("id", edlData.lease_id)
           .single();
 
-        const fallbackOwnerId = leaseWithProperty?.property?.owner_id;
+        const fallbackOwnerId = (leaseWithProperty?.property as any)?.owner_id;
         if (fallbackOwnerId && fallbackOwnerId === profileId) {
-          console.log(`[verifyEDLAccess] ✅ Owner access granted (via lease fallback)`);
           return { authorized: true, edl: edlData, accessType: "owner" };
         }
       }
@@ -192,7 +171,6 @@ export async function verifyEDLAccess(
       .maybeSingle();
 
     if (edlSignature) {
-      console.log(`[verifyEDLAccess] ✅ EDL signer access granted`);
       return { authorized: true, edl: edlData, accessType: "edl_signer" };
     }
 
@@ -206,7 +184,6 @@ export async function verifyEDLAccess(
         .maybeSingle();
 
       if (leaseSigner) {
-        console.log(`[verifyEDLAccess] ✅ Lease signer access granted`);
         return { authorized: true, edl: edlData, accessType: "lease_signer" };
       }
     }
@@ -221,7 +198,6 @@ export async function verifyEDLAccess(
         .maybeSingle();
 
       if (roommate) {
-        console.log(`[verifyEDLAccess] ✅ Roommate access granted`);
         return { authorized: true, edl: edlData, accessType: "roommate" };
       }
     }

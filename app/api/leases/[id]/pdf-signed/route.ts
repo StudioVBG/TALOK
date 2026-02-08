@@ -218,15 +218,15 @@ export async function GET(request: Request, { params }: RouteParams) {
       
       // Bailleur
       bailleur: {
-        nom: isOwnerSociete ? ownerProfile.raison_sociale : (ownerProfileData?.nom || ""),
+        nom: isOwnerSociete ? (ownerProfile.raison_sociale || "") : (ownerProfileData?.nom || ""),
         prenom: isOwnerSociete ? "" : (ownerProfileData?.prenom || ""),
-        date_naissance: isOwnerSociete ? undefined : ownerProfileData?.date_naissance,
+        date_naissance: isOwnerSociete ? undefined : (ownerProfileData?.date_naissance ?? undefined),
         adresse: ownerAddress || `${property?.adresse_complete}, ${property?.code_postal} ${property?.ville}`,
         code_postal: "",
         ville: "",
         telephone: ownerProfileData?.telephone || "",
-        type: ownerProfile?.type || "particulier",
-        siret: ownerProfile?.siret,
+        type: (ownerProfile?.type || "particulier") as 'particulier' | 'societe',
+        siret: ownerProfile?.siret ?? undefined,
         raison_sociale: ownerProfile?.raison_sociale || "",
         est_mandataire: false,
       },
@@ -272,30 +272,35 @@ export async function GET(request: Request, { params }: RouteParams) {
 
       // Conditions du bail
       conditions: {
+        type_bail: typeBail as any,
+        usage: "habitation_principale",
         date_debut: lease.date_debut,
-        date_fin: lease.date_fin,
+        date_fin: lease.date_fin ?? undefined,
         duree_mois: typeBail === "nu" ? 36 : typeBail === "meuble" ? 12 : 12,
         tacite_reconduction: true,
-        loyer_hc: parseFloat(lease.loyer) || 0,
-        loyer_en_lettres: numberToWords(parseFloat(lease.loyer) || 0),
-        charges_montant: parseFloat(lease.charges_forfaitaires) || 0,
+        loyer_hc: parseFloat(String(lease.loyer)) || 0,
+        loyer_en_lettres: numberToWords(parseFloat(String(lease.loyer)) || 0),
+        charges_montant: parseFloat(String(lease.charges_forfaitaires)) || 0,
         charges_type: "forfait",
-        depot_garantie: parseFloat(lease.depot_de_garantie) || 0,
-        depot_garantie_en_lettres: numberToWords(parseFloat(lease.depot_de_garantie) || 0),
+        depot_garantie: parseFloat(String(lease.depot_de_garantie)) || 0,
+        depot_garantie_en_lettres: numberToWords(parseFloat(String(lease.depot_de_garantie)) || 0),
         mode_paiement: "virement",
         periodicite_paiement: "mensuelle",
         jour_paiement: 5,
         paiement_avance: true,
         revision_autorisee: true,
+        indice_reference: "IRL",
       },
 
       // Diagnostics
       diagnostics: {
         dpe: {
           date_realisation: new Date().toISOString(),
+          date_validite: new Date(Date.now() + 10 * 365.25 * 24 * 3600 * 1000).toISOString(),
           classe_energie: property?.energie || "D",
           classe_ges: property?.ges || "D",
           consommation_energie: 150,
+          emissions_ges: 0,
           estimation_cout_min: 800,
           estimation_cout_max: 1200,
         },
@@ -337,7 +342,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Retourner le PDF
     const fileName = `Bail_Signe_${property?.ville || "location"}_${new Date().toISOString().split('T')[0]}.pdf`;
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as any, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${fileName}"`,

@@ -9,6 +9,7 @@ import {
   generateEDLViergeHTML,
   EDLComplet,
 } from "@/lib/templates/edl";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 
 /**
  * POST /api/edl/pdf
@@ -126,11 +127,25 @@ export async function POST(request: Request) {
           }
 
           const propertyOwnerId = (edl as any).lease?.property?.owner_id;
-          const { data: ownerProfile } = await adminClient
-            .from("owner_profiles")
-            .select("*, profile:profiles(*)")
-            .eq("profile_id", propertyOwnerId)
-            .single();
+          const ownerIdentity = await resolveOwnerIdentity(adminClient, {
+            leaseId: (edl as any).lease_id,
+            propertyId: (edl as any).property_id || (edl as any).lease?.property?.id,
+            profileId: propertyOwnerId,
+          });
+          const ownerProfile = {
+            type: ownerIdentity.entityType === "company" ? "societe" : "particulier",
+            raison_sociale: ownerIdentity.companyName,
+            representant_nom: ownerIdentity.representative
+              ? `${ownerIdentity.representative.firstName} ${ownerIdentity.representative.lastName}`.trim()
+              : null,
+            adresse_facturation: ownerIdentity.billingAddress || ownerIdentity.address.street,
+            profile: {
+              prenom: ownerIdentity.firstName,
+              nom: ownerIdentity.lastName,
+              telephone: ownerIdentity.phone,
+              email: ownerIdentity.email,
+            },
+          };
 
           const { data: meterReadings } = await adminClient
             .from("edl_meter_readings")
@@ -384,7 +399,7 @@ function mapDatabaseToEDLComplet(
       quantite: k.quantite || k.quantity || 0,
       notes: k.notes,
     })),
-    signatures: mappedSignatures,
+    signatures: mappedSignatures as any,
     is_complete: edl.status === "completed" || edl.status === "signed",
     is_signed: edl.status === "signed" || mappedSignatures.filter((s: any) => s.signed_at).length >= 2,
     status: edl.status,

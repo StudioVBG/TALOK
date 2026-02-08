@@ -93,7 +93,7 @@ export class OnboardingService {
       .single();
 
     if (error || !data) return null;
-    return data;
+    return data as unknown as OnboardingDraft;
   }
 
   /**
@@ -161,7 +161,7 @@ export class OnboardingService {
       .single();
 
     if (error || !data) return false;
-    return data.completed;
+    return data.completed as boolean;
   }
 
   /**
@@ -181,7 +181,7 @@ export class OnboardingService {
       .order("completed_at", { ascending: true });
 
     if (error || !data) return [];
-    return data;
+    return data as unknown as OnboardingProgress[];
   }
 
   /**

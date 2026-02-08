@@ -109,7 +109,7 @@ export async function GET(request: Request) {
     if (error) {
       console.error("[Visit Reminders] Query error:", error);
       return NextResponse.json(
-        { error: "Database query failed", details: error.message },
+        { error: "Database query failed", details: (error as Error).message },
         { status: 500 }
       );
     }
@@ -243,7 +243,7 @@ export async function GET(request: Request) {
   } catch (error: unknown) {
     console.error("[Visit Reminders] Fatal error:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Internal server error", details: (error as Error).message },
       { status: 500 }
     );
   }

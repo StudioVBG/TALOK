@@ -158,7 +158,7 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
           amount: formatAmountFromStripe(paymentIntent.amount),
           paymentDate: format(new Date(), "d MMMM yyyy", { locale: fr }),
           paymentMethod: "Carte bancaire",
-          period: invoice?.periode || "N/A",
+          period: (invoice as any)?.periode || "N/A",
           paymentId: payment.id,
         });
         console.log(`[webhook/payments] Email de confirmation envoyé à ${authUser.user.email}`);

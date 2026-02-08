@@ -115,12 +115,12 @@ export function useDashboard() {
         console.error("[useDashboard] Error fetching dashboard:", error);
         
         // Si c'est une erreur de timeout ou réseau
-        if (error?.statusCode === 504 || error?.message?.includes("timeout")) {
+        if ((error as any)?.statusCode === 504 || (error as any)?.message?.includes("timeout")) {
           throw new Error("Le chargement prend trop de temps. Veuillez réessayer.");
         }
-        
+
         // Si c'est une erreur d'authentification
-        if (error?.statusCode === 401 || error?.statusCode === 403) {
+        if ((error as any)?.statusCode === 401 || (error as any)?.statusCode === 403) {
           throw new Error("Vous n'êtes pas autorisé à accéder à ces données.");
         }
         

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { LeaseTemplateService } from "@/lib/templates/bail/template.service";
 import { mapLeaseToTemplate } from "@/lib/mappers/lease-to-template";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 
 /**
  * POST /api/leases/[id]/seal
@@ -84,14 +85,16 @@ export async function POST(
       }, { status: 400 });
     }
     
-    // 4. Récupérer le profil propriétaire complet
+    // 4. Résoudre l'identité propriétaire via le résolveur centralisé (entity-first + fallback)
     const propertyOwnerId = (lease as any).property?.owner_id;
-    const { data: ownerProfile } = await serviceClient
-      .from("owner_profiles")
-      .select("*, profile:profiles(*)")
-      .eq("profile_id", propertyOwnerId)
-      .single();
-    
+    const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
+      leaseId,
+      propertyId: (lease as any).property?.id,
+      profileId: propertyOwnerId,
+    });
+
+    const isOwnerSociete = ownerIdentity.entityType === "company";
+
     // 5. Mapper les données pour le template
     const leaseDetails = {
       lease: lease as any,
@@ -100,17 +103,17 @@ export async function POST(
       payments: [],
       documents: [],
     };
-    
-    const bailData = mapLeaseToTemplate(leaseDetails, {
-      id: ownerProfile?.profile_id || propertyOwnerId,
-      prenom: (ownerProfile as any)?.profile?.prenom || "",
-      nom: (ownerProfile as any)?.profile?.nom || "",
-      email: (ownerProfile as any)?.profile?.email || "",
-      telephone: (ownerProfile as any)?.profile?.telephone || "",
-      type: ownerProfile?.type || "particulier",
-      raison_sociale: ownerProfile?.raison_sociale || "",
-      forme_juridique: ownerProfile?.forme_juridique || "",
-      siret: ownerProfile?.siret || "",
+
+    const bailData = mapLeaseToTemplate(leaseDetails as any, {
+      id: propertyOwnerId,
+      prenom: isOwnerSociete ? "" : ownerIdentity.firstName,
+      nom: isOwnerSociete ? (ownerIdentity.companyName || ownerIdentity.lastName) : ownerIdentity.lastName,
+      email: ownerIdentity.email,
+      telephone: ownerIdentity.phone || "",
+      type: isOwnerSociete ? "societe" : "particulier",
+      raison_sociale: ownerIdentity.companyName || "",
+      forme_juridique: ownerIdentity.legalForm || "",
+      siret: ownerIdentity.siret || "",
     });
     
     // 6. Générer le HTML final

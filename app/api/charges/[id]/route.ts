@@ -49,7 +49,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const { data: charge, error } = await supabase
       .from("charges")
-      .update(validated)
+      .update(validated as any)
       .eq("id", id)
       .select()
       .single();

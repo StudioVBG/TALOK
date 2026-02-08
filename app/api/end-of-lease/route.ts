@@ -52,6 +52,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ processes: processes || [] });
   } catch (error) {
+    // Détecter les erreurs d'authentification (AuthApiError de Supabase)
+    if (error && typeof error === 'object' && 'name' in error && (error as any).name === 'AuthApiError') {
+      console.error("Erreur auth API end-of-lease GET:", (error as Error).message);
+      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    }
     console.error("Erreur API end-of-lease GET:", error);
     return NextResponse.json(
       { error: "Erreur serveur" },
@@ -189,6 +194,11 @@ export async function POST(request: NextRequest) {
         { error: "Données invalides", details: error.errors },
         { status: 400 }
       );
+    }
+    // Détecter les erreurs d'authentification (AuthApiError de Supabase)
+    if (error && typeof error === 'object' && 'name' in error && (error as any).name === 'AuthApiError') {
+      console.error("Erreur auth API end-of-lease POST:", (error as Error).message);
+      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
     console.error("Erreur API end-of-lease POST:", error);
     return NextResponse.json(

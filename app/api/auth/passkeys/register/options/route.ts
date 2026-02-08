@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
         ? `${profile.prenom} ${profile.nom}`
         : user.email || "Utilisateur",
       attestationType: "none",
-      excludeCredentials,
+      excludeCredentials: excludeCredentials as any,
       authenticatorSelection: {
         residentKey: "preferred",
         userVerification: "preferred",

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Suspense } from "react";
 export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
@@ -83,8 +82,9 @@ async function WizardContent({ profileId, preselectedLeaseId }: { profileId: str
 export default async function NewInspectionPage({
   searchParams,
 }: {
-  searchParams: { lease_id?: string; property_id?: string };
+  searchParams: Promise<{ lease_id?: string; property_id?: string }>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -98,7 +98,7 @@ export default async function NewInspectionPage({
 
   if (!profile || profile.role !== "owner") redirect("/dashboard");
 
-  const preselectedLeaseId = searchParams?.lease_id;
+  const preselectedLeaseId = resolvedSearchParams?.lease_id;
 
   return (
     <Suspense fallback={<WizardSkeleton />}>

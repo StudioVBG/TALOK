@@ -60,7 +60,7 @@ export async function requireAdmin(request: Request) {
   if (error) {
     console.error("requireAdmin: Auth error:", error);
     return {
-      error: { message: "Erreur d'authentification", details: error.message, status: 401 },
+      error: { message: "Erreur d'authentification", details: (error as Error).message, status: 401 },
       user: null,
       profile: null,
       supabase: null,
@@ -123,9 +123,9 @@ export async function requireAdmin(request: Request) {
     }
   } catch (error: unknown) {
     console.error("requireAdmin: Unexpected error:", error);
-    console.error("requireAdmin: Error stack:", error.stack);
+    console.error("requireAdmin: Error stack:", error instanceof Error ? error.stack : "N/A");
     return {
-      error: { message: error instanceof Error ? error.message : "Erreur inattendue lors de la vérification", status: 500 },
+      error: { message: error instanceof Error ? (error as Error).message : "Erreur inattendue lors de la vérification", status: 500 },
       user: null,
       profile: null,
       supabase: null,

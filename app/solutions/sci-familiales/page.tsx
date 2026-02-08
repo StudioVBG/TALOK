@@ -122,7 +122,7 @@ export default function SCIFamilialesPage() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
-              <Link href="/guides/gestion-sci">
+              <Link href="/blog">
                 <Button size="lg" variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
                   Guide SCI gratuit
                 </Button>

@@ -26,7 +26,7 @@ interface LeaseEndProcessCardProps {
   className?: string;
 }
 
-const STATUS_CONFIG: Record<LeaseEndProcessStatus, {
+const STATUS_CONFIG: Record<string, {
   label: string;
   color: string;
   bgColor: string;
@@ -50,9 +50,9 @@ export function LeaseEndProcessCard({
   onClick,
   className,
 }: LeaseEndProcessCardProps) {
-  const statusConfig = STATUS_CONFIG[process.status];
+  const statusConfig = STATUS_CONFIG[process.status] || STATUS_CONFIG.pending;
   const daysUntilEnd = Math.ceil(
-    (new Date(process.lease_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    (new Date((process as any).lease_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
   const isUrgent = daysUntilEnd <= 30;
 
@@ -102,9 +102,9 @@ export function LeaseEndProcessCard({
               <div className="space-y-1">
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Progression</span>
-                  <span className="font-medium">{process.progress_percentage}%</span>
+                  <span className="font-medium">{(process as any).progress_percentage}%</span>
                 </div>
-                <Progress value={process.progress_percentage} className="h-1.5" />
+                <Progress value={(process as any).progress_percentage} className="h-1.5" />
               </div>
             </div>
 
@@ -136,7 +136,7 @@ export function LeaseEndProcessCard({
           <div className="mt-3 pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
-              Fin de bail : {new Date(process.lease_end_date).toLocaleDateString("fr-FR")}
+              Fin de bail : {new Date((process as any).lease_end_date).toLocaleDateString("fr-FR")}
             </div>
 
             {process.ready_to_rent_date && (

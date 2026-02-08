@@ -105,8 +105,8 @@ export class PaymentSharesService {
     if (othersError) throw othersError;
 
     return {
-      own: ownShare || null,
-      others: othersShares || [],
+      own: (ownShare as PaymentShare | null) ?? null,
+      others: (othersShares || []) as unknown as PaymentSharePublic[],
     };
   }
 
@@ -141,7 +141,7 @@ export class PaymentSharesService {
       .limit(limit);
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as PaymentShare[];
   }
 
   /**
@@ -157,7 +157,7 @@ export class PaymentSharesService {
       .single();
 
     if (error) throw error;
-    return share;
+    return share as unknown as PaymentShare;
   }
 
   /**
@@ -185,7 +185,7 @@ export class PaymentSharesService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as unknown as PaymentShare;
   }
 
   /**
@@ -211,7 +211,7 @@ export class PaymentSharesService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as unknown as PaymentShare;
   }
 
   /**

@@ -44,7 +44,7 @@ export class EndOfLeaseService {
       );
       return notice;
     } catch (error: unknown) {
-      if (error.status === 404) return null;
+      if ((error as any).status === 404) return null;
       throw error;
     }
   }
@@ -59,7 +59,7 @@ export class EndOfLeaseService {
       );
       return notice;
     } catch (error: unknown) {
-      if (error.status === 404) return null;
+      if ((error as any).status === 404) return null;
       throw error;
     }
   }
@@ -154,7 +154,7 @@ export class EndOfLeaseService {
       );
       return settlement;
     } catch (error: unknown) {
-      if (error.status === 404) return null;
+      if ((error as any).status === 404) return null;
       throw error;
     }
   }
@@ -169,7 +169,7 @@ export class EndOfLeaseService {
       );
       return settlement;
     } catch (error: unknown) {
-      if (error.status === 404) return null;
+      if ((error as any).status === 404) return null;
       throw error;
     }
   }

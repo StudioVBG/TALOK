@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 /**
  * Page: Fin de Bail + Rénovation
@@ -107,7 +106,7 @@ export default function EndOfLeasePage() {
     active: processes.filter((p) => !["completed", "cancelled"].includes(p.status)).length,
     urgent: processes.filter((p) => {
       const days = Math.ceil(
-        (new Date(p.lease_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        (new Date((p as any).lease_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       );
       return days <= 30 && !["completed", "cancelled"].includes(p.status);
     }).length,
@@ -122,7 +121,7 @@ export default function EndOfLeasePage() {
         lease_id: lease.lease_id,
         property_id: lease.property.id,
         lease_end_date: lease.date_fin,
-      });
+      } as any);
       setProcesses([newProcess, ...processes]);
       setSelectedProcess(newProcess);
     } catch (error) {
@@ -132,8 +131,7 @@ export default function EndOfLeasePage() {
 
   return (
     <PageContainer
-      title="Fin de Bail & Rénovation"
-      description="Gérez vos fins de bail en moins de 10 minutes"
+      {...{title: "Fin de Bail & Rénovation", description: "Gérez vos fins de bail en moins de 10 minutes"} as any}
     >
       {/* Alertes pour les baux à venir */}
       {upcomingLeases.filter((l) => l.will_trigger_soon).length > 0 && (
@@ -150,13 +148,13 @@ export default function EndOfLeasePage() {
                   loyer: lease.loyer,
                   date_debut: "",
                   date_fin: lease.date_fin,
-                }}
+                } as any}
                 property={{
                   id: lease.property.id,
                   adresse_complete: lease.property.adresse_complete,
                   ville: lease.property.ville,
                   type: lease.property.type,
-                }}
+                } as any}
                 daysUntilEnd={Math.ceil(
                   (new Date(lease.date_fin).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                 )}

@@ -245,7 +245,7 @@ export function SignatureRequestCard({ request, onSend, onCancel, onRefresh }: S
               </Button>
             )}
 
-            {request.status === "pending_validation" && (
+            {request.status === ("pending_validation" as any) && (
               <Button variant="outline" className="flex-1" disabled>
                 <Clock className="mr-2 h-4 w-4" />
                 En attente de validation

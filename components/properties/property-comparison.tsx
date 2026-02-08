@@ -321,7 +321,7 @@ function AddPropertyDialog({ availableProperties, selectedIds, onAdd }: AddPrope
           </div>
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Sélectionner un bien à comparer</DialogTitle>
         </DialogHeader>

@@ -184,12 +184,13 @@ export type LeaseFinancialData = z.infer<typeof LeaseFinancialSchema>;
 export const LeaseCreateSchema = z.object({
   property_id: z.string().uuid("ID de bien invalide"),
   type_bail: z.enum(BAIL_TYPES),
+  signatory_entity_id: z.string().uuid("ID entité invalide").optional().nullable(),
   loyer: z.number().min(1, "Loyer obligatoire"),
   charges_forfaitaires: z.number().min(0).default(0),
   depot_de_garantie: z.number().min(0).optional(), // Optionnel - calculé auto si non fourni
   date_debut: z.string().min(1, "Date de début obligatoire"),
   date_fin: z.string().optional().nullable(),
-  
+
   // Locataire (optionnel à la création)
   tenant_email: z.string().email().optional().nullable(),
   tenant_name: z.string().optional().nullable(),

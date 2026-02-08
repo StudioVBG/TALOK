@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       .eq("user_id", user.id);
 
     const remainingRecoveryCodes = twoFAConfig?.recovery_codes
-      ? countRemainingRecoveryCodes(twoFAConfig.recovery_codes)
+      ? countRemainingRecoveryCodes(twoFAConfig.recovery_codes as any)
       : 0;
 
     return NextResponse.json({

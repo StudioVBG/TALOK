@@ -38,7 +38,7 @@ export class BankConnectService {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return data as BankConnection[];
+    return data as unknown as BankConnection[];
   }
 
   /**

@@ -50,7 +50,7 @@ interface QuoteRequestFormProps {
   className?: string;
 }
 
-const WORK_TYPE_LABELS: Record<RenovationWorkType, { label: string; icon: string }> = {
+const WORK_TYPE_LABELS: Record<string, { label: string; icon: string }> = {
   peinture: { label: "Peinture", icon: "🎨" },
   sol: { label: "Sols", icon: "🪵" },
   plomberie: { label: "Plomberie", icon: "🔧" },
@@ -210,7 +210,7 @@ export function QuoteRequestForm({
                   />
                   <span className="text-2xl">{config.icon}</span>
                   <div className="flex-1">
-                    <div className="font-medium">{item.title}</div>
+                    <div className="font-medium">{item.description}</div>
                     <div className="text-sm text-muted-foreground">
                       {config.label}
                     </div>

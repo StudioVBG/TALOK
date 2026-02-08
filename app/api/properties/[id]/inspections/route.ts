@@ -1,27 +1,32 @@
 export const dynamic = "force-dynamic";
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { createEDL } from "@/lib/services/edl-creation.service";
 
 /**
- * POST /api/properties/[id]/inspections - Planifier un EDL
- * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ * POST /api/properties/[id]/inspections - Schedule an EDL for a specific property
+ *
+ * This route resolves the lease from the request body or finds one for the property,
+ * then delegates to the shared createEDL service.
  */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: propertyId } = await params;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
+
+    const serviceClient = getServiceClient();
 
     const body = await request.json();
     const { type, scheduled_at, lease_id, notes, general_notes, keys } = body;
@@ -40,134 +45,63 @@ export async function POST(
       );
     }
 
-    // Vérifier que l'utilisateur est propriétaire
-    const { data: property } = await supabase
-      .from("properties")
-      .select("id, owner_id")
-      .eq("id", id as any)
-      .single();
-
-    if (!property) {
-      return NextResponse.json(
-        { error: "Logement non trouvé" },
-        { status: 404 }
-      );
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const propertyData = property as any;
-    const profileData = profile as any;
-    if (propertyData.owner_id !== profileData?.id) {
-      return NextResponse.json(
-        { error: "Accès non autorisé" },
-        { status: 403 }
-      );
-    }
-
-    // 🔧 FIX: Éviter les doublons d'EDL en brouillon/planifiés pour le même bail et même type
-    if (lease_id) {
-      const { data: existingEdl } = await supabase
-        .from("edl")
-        .select("*")
-        .eq("lease_id", lease_id)
-        .eq("type", type)
-        .in("status", ["draft", "scheduled"])
+    // Resolve lease_id: either provided or find active lease for the property
+    let resolvedLeaseId = lease_id;
+    if (!resolvedLeaseId) {
+      const { data: activeLease } = await serviceClient
+        .from("leases")
+        .select("id")
+        .eq("property_id", propertyId)
+        .in("statut", ["active", "fully_signed"])
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (existingEdl) {
-        console.log("[api/inspections] EDL existant trouvé pour ce bail, réutilisation de:", existingEdl.id);
-        return NextResponse.json({ edl: existingEdl });
+      if (!activeLease) {
+        return NextResponse.json(
+          { error: "Aucun bail actif trouvé pour ce logement" },
+          { status: 404 }
+        );
       }
+      resolvedLeaseId = activeLease.id;
     }
 
-    // Créer l'EDL
-    const scheduledDate = scheduled_at ? new Date(scheduled_at).toISOString().split("T")[0] : null;
-    const { data: edl, error } = await supabase
-      .from("edl")
-      .insert({
-        property_id: id,
-        lease_id: lease_id || null,
-        type,
-        scheduled_at: scheduled_at,
-        scheduled_date: scheduledDate,
-        status: "scheduled",
-        general_notes: general_notes || notes || null,
-        keys: keys || [],
-        created_by: user.id,
-      } as any)
-      .select()
+    // Resolve profile
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
       .single();
 
-    if (error) {
-      console.error("[POST /api/properties/[id]/inspections] DB Error:", error);
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
+    const result = await createEDL(serviceClient, {
+      userId: user.id,
+      profileId: (profile as Record<string, unknown>).id as string,
+      profileRole: (profile as Record<string, unknown>).role as string,
+      leaseId: resolvedLeaseId,
+      propertyId,
+      type,
+      scheduledAt: scheduled_at,
+      generalNotes: general_notes || notes || null,
+      keys,
+    });
+
+    if (!result.success) {
       return NextResponse.json(
-        { error: error.message || "Erreur lors de la création de l'EDL" },
-        { status: 500 }
+        { error: result.error },
+        { status: result.status || 500 }
       );
     }
 
-    const edlData = edl as any;
-
-    // 🔧 FIX: Injecter automatiquement les signataires du bail dans l'EDL
-    if (lease_id) {
-      const { data: leaseSigners } = await supabase
-        .from("lease_signers")
-        .select("profile_id, role")
-        .eq("lease_id", lease_id);
-
-      if (leaseSigners && leaseSigners.length > 0) {
-        const edlSignatures = leaseSigners.map((ls: any) => ({
-          edl_id: edlData.id,
-          signer_user: null, // Sera rempli lors de la signature via auth.uid()
-          signer_profile_id: ls.profile_id,
-          // Convertir le rôle du bail vers le rôle EDL (supporte les formats FR et EN)
-          signer_role: (ls.role === "proprietaire" || ls.role === "owner") ? "owner" : "tenant",
-          invitation_token: crypto.randomUUID(),
-        }));
-
-        await supabase.from("edl_signatures").insert(edlSignatures);
-        console.log(`[api/inspections] ${edlSignatures.length} signataires injectés depuis le bail`);
-      }
-    }
-
-    // Émettre un événement
-    await supabase.from("outbox").insert({
-      event_type: "Inspection.Scheduled",
-      payload: {
-        edl_id: edlData.id,
-        property_id: id as any,
-        lease_id,
-        type,
-        scheduled_at,
-      },
-    } as any);
-
-    // Journaliser
-    await supabase.from("audit_log").insert({
-      user_id: user.id,
-      action: "edl_scheduled",
-      entity_type: "edl",
-      entity_id: edlData.id,
-      metadata: { type, scheduled_at },
-    } as any);
-
-    return NextResponse.json({ edl: edlData });
+    return NextResponse.json({ edl: result.edl });
   } catch (error: unknown) {
+    console.error("[POST /api/properties/inspections] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }
 }
-
-
-
-
-

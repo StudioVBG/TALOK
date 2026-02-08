@@ -30,7 +30,7 @@ export async function getSites(): Promise<Site[]> {
     .order('name');
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as Site[]) || [];
 }
 
 export async function getSiteById(id: string): Promise<Site | null> {
@@ -47,7 +47,7 @@ export async function getSiteById(id: string): Promise<Site | null> {
     throw error;
   }
   
-  return data;
+  return data as unknown as Site;
 }
 
 export async function createSite(input: CreateSiteInput): Promise<Site> {
@@ -65,7 +65,7 @@ export async function createSite(input: CreateSiteInput): Promise<Site> {
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Site;
 }
 
 export async function updateSite(input: UpdateSiteInput): Promise<Site> {
@@ -81,7 +81,7 @@ export async function updateSite(input: UpdateSiteInput): Promise<Site> {
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Site;
 }
 
 export async function deleteSite(id: string): Promise<void> {
@@ -111,7 +111,7 @@ export async function getBuildingsBySite(siteId: string): Promise<Building[]> {
     .order('display_order');
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as Building[]) || [];
 }
 
 export async function createBuilding(input: CreateBuildingInput): Promise<Building> {
@@ -124,7 +124,7 @@ export async function createBuilding(input: CreateBuildingInput): Promise<Buildi
     .single();
   
   if (error) throw error;
-  return data;
+  return data as unknown as Building;
 }
 
 export async function createBuildingsWithFloors(
@@ -163,25 +163,26 @@ export async function createBuildingsWithFloors(
       .single();
     
     if (buildingError) throw buildingError;
-    createdBuildings.push(building);
-    
+    const typedBuilding = building as unknown as Building;
+    createdBuildings.push(typedBuilding);
+
     // Créer les étages (sous-sol + RDC + étages)
     const floorsToCreate: Partial<Floor>[] = [];
-    
+
     // Sous-sols
     for (let level = -(buildingInput.basement_levels || 0); level < 0; level++) {
       floorsToCreate.push({
-        building_id: building.id,
+        building_id: typedBuilding.id,
         level,
         name: `Sous-sol ${Math.abs(level)}`,
         display_order: level + 100,
       });
     }
-    
+
     // RDC et étages
     for (let level = 0; level <= buildingInput.floors_count; level++) {
       floorsToCreate.push({
-        building_id: building.id,
+        building_id: typedBuilding.id,
         level,
         name: level === 0 ? 'Rez-de-chaussée' : `${level}${level === 1 ? 'er' : 'ème'} étage`,
         display_order: level + 100,
@@ -195,7 +196,7 @@ export async function createBuildingsWithFloors(
         .select();
       
       if (floorsError) throw floorsError;
-      createdFloors.push(...(floors || []));
+      createdFloors.push(...((floors as unknown as Floor[]) || []));
     }
   }
   
@@ -216,7 +217,7 @@ export async function updateBuilding(
     .single();
   
   if (error) throw error;
-  return building;
+  return building as unknown as Building;
 }
 
 export async function deleteBuilding(id: string): Promise<void> {
@@ -244,7 +245,7 @@ export async function getFloorsByBuilding(buildingId: string): Promise<Floor[]> 
     .order('level');
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as Floor[]) || [];
 }
 
 // =====================================================
@@ -262,7 +263,7 @@ export async function getUnitsBySite(siteId: string): Promise<CoproUnit[]> {
     .order('lot_number');
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as CoproUnit[]) || [];
 }
 
 export async function getUnitsWithDetailsBySite(
@@ -277,7 +278,7 @@ export async function getUnitsWithDetailsBySite(
     .order('lot_number');
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as CoproUnitWithDetails[]) || [];
 }
 
 export async function createUnit(input: CreateUnitInput): Promise<CoproUnit> {
@@ -285,12 +286,12 @@ export async function createUnit(input: CreateUnitInput): Promise<CoproUnit> {
   
   const { data, error } = await supabase
     .from('copro_units')
-    .insert(input)
+    .insert(input as any)
     .select()
     .single();
-  
+
   if (error) throw error;
-  return data;
+  return data as unknown as CoproUnit;
 }
 
 export async function createUnitsBatch(
@@ -300,11 +301,11 @@ export async function createUnitsBatch(
   
   const { data, error } = await supabase
     .from('copro_units')
-    .insert(units)
+    .insert(units as any)
     .select();
-  
+
   if (error) throw error;
-  return data || [];
+  return (data as unknown as CoproUnit[]) || [];
 }
 
 export async function updateUnit(
@@ -321,7 +322,7 @@ export async function updateUnit(
     .single();
   
   if (error) throw error;
-  return unit;
+  return unit as unknown as CoproUnit;
 }
 
 export async function updateUnitsTantiemes(
@@ -364,7 +365,7 @@ export async function getSiteStructure(siteId: string): Promise<SiteStructure[]>
     .eq('site_id', siteId);
   
   if (error) throw error;
-  return data || [];
+  return (data as unknown as SiteStructure[]) || [];
 }
 
 // =====================================================
@@ -388,11 +389,12 @@ export async function validateSiteTantiemes(
     .rpc('validate_site_tantiemes', { p_site_id: siteId });
   
   if (error) throw error;
-  
-  if (data && data.length > 0) {
-    return data[0] as TantiemesValidation;
+
+  const rows = data as unknown as TantiemesValidation[];
+  if (rows && rows.length > 0) {
+    return rows[0];
   }
-  
+
   throw new Error('Validation des tantièmes impossible');
 }
 
@@ -421,19 +423,21 @@ export async function getSiteStats(siteId: string): Promise<SiteStats> {
     .eq('is_active', true);
   
   // Récupérer les lots et calculer les stats
-  const { data: units } = await supabase
+  const { data: unitsData } = await supabase
     .from('copro_units')
     .select('tantieme_general, occupation_mode')
     .eq('site_id', siteId)
     .eq('is_active', true);
-  
+  const units = unitsData as unknown as Pick<CoproUnit, 'tantieme_general' | 'occupation_mode'>[] | null;
+
   // Compter les propriétaires distincts
-  const { data: ownerships } = await supabase
+  const { data: ownershipsData } = await supabase
     .from('ownerships')
     .select('profile_id, unit_id!inner(site_id)')
     .eq('unit_id.site_id', siteId)
     .eq('is_current', true);
-  
+  const ownerships = ownershipsData as unknown as Array<{ profile_id: string }> | null;
+
   const uniqueOwners = new Set(ownerships?.map(o => o.profile_id));
   
   const stats: SiteStats = {

@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       } as any)
       .eq("user_id", user_id)
-      .select("*", { count: "exact", head: true });
+      .select("*");
 
     result.tables_processed.push({
       table: "profiles",
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
         adresse_facturation: null,
       } as any)
       .eq("profile_id", profileId)
-      .select("*", { count: "exact", head: true });
+      .select("*");
 
     if (ownerCount) {
       result.tables_processed.push({
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
         employeur_telephone: null,
       } as any)
       .eq("profile_id", profileId)
-      .select("*", { count: "exact", head: true });
+      .select("*");
 
     if (tenantCount) {
       result.tables_processed.push({
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
         zones_intervention: null,
       } as any)
       .eq("profile_id", profileId)
-      .select("*", { count: "exact", head: true });
+      .select("*");
 
     if (providerCount) {
       result.tables_processed.push({
@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
       .from("user_consents")
       .delete()
       .eq("user_id", user_id)
-      .select("*", { count: "exact", head: true });
+      .select("*");
 
     if (consentsCount) {
       result.tables_processed.push({
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
         description: "[Contenu supprimé - RGPD]",
       } as any)
       .eq("created_by_profile_id", profileId)
-      .select("*", { count: "exact", head: true });
+      .select("*");
 
     if (ticketsCount) {
       result.tables_processed.push({
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
           content: "[Message supprimé - RGPD]",
         } as any)
         .in("ticket_id", ticketIds)
-        .select("*", { count: "exact", head: true });
+        .select("*");
 
       if (messagesCount) {
         result.tables_processed.push({
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
       .from("notifications")
       .delete()
       .eq("profile_id", profileId)
-      .select("*", { count: "exact", head: true });
+      .select("*");
 
     if (notificationsCount) {
       result.tables_processed.push({
@@ -310,7 +310,7 @@ export async function POST(request: NextRequest) {
           metadata: { anonymized: true, anonymized_at: new Date().toISOString() },
         } as any)
         .or(`owner_id.eq.${profileId},tenant_id.eq.${profileId}`)
-        .select("*", { count: "exact", head: true });
+        .select("*");
 
       if (docsCount) {
         result.tables_processed.push({
@@ -331,7 +331,7 @@ export async function POST(request: NextRequest) {
           metadata: { anonymized: true },
         } as any)
         .or(`owner_id.eq.${profileId},tenant_id.eq.${profileId}`)
-        .select("*", { count: "exact", head: true });
+        .select("*");
 
       if (invoicesCount) {
         result.tables_processed.push({
@@ -351,7 +351,7 @@ export async function POST(request: NextRequest) {
         ip_address: null,
       } as any)
       .eq("user_id", user_id)
-      .select("*", { count: "exact", head: true });
+      .select("*");
 
     if (auditCount) {
       result.tables_processed.push({
@@ -384,7 +384,7 @@ export async function POST(request: NextRequest) {
         .from("tenant_identity_documents")
         .delete()
         .eq("tenant_id", profileId)
-        .select("*", { count: "exact", head: true });
+        .select("*");
 
       if (identityCount) {
         result.tables_processed.push({

@@ -59,23 +59,23 @@ export class AuthService {
 
       if (error) {
         console.error("[AuthService] Erreur Supabase:", {
-          message: error.message,
-          status: error.status,
-          code: error.code,
+          message: (error as Error).message,
+          status: (error as any).status,
+          code: (error as any).code,
           email_used: normalizedEmail,
         });
         
         // Améliorer les messages d'erreur
-        if (error.message?.includes("Invalid login credentials") || error.status === 400) {
+        if ((error as Error).message?.includes("Invalid login credentials") || (error as any).status === 400) {
           const improvedError = new Error("Email ou mot de passe incorrect. Vérifiez vos identifiants.");
-          (improvedError as any).code = error.code;
-          (improvedError as any).status = error.status;
+          (improvedError as any).code = (error as any).code;
+          (improvedError as any).status = (error as any).status;
           throw improvedError;
         }
-        if (error.message?.includes("Email not confirmed") || error.message?.includes("email_not_confirmed")) {
+        if ((error as Error).message?.includes("Email not confirmed") || (error as Error).message?.includes("email_not_confirmed")) {
           const improvedError = new Error("Veuillez confirmer votre email avant de vous connecter");
-          (improvedError as any).code = error.code;
-          (improvedError as any).status = error.status;
+          (improvedError as any).code = (error as any).code;
+          (improvedError as any).status = (error as any).status;
           throw improvedError;
         }
         throw error;
@@ -85,11 +85,11 @@ export class AuthService {
       return authData;
     } catch (error: unknown) {
       // Logger toutes les erreurs pour le debug (sauf les 400 normales)
-      if (error.status !== 400) {
+      if ((error as any).status !== 400) {
         console.error("[AuthService] Erreur d'authentification:", {
-          message: error.message,
-          status: error.status,
-          code: error.code,
+          message: (error as Error).message,
+          status: (error as any).status,
+          code: (error as any).code,
         });
       }
       throw error;
@@ -136,7 +136,7 @@ export class AuthService {
       }
 
       console.log("[AuthService] Déconnexion réussie");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("[AuthService] Erreur lors de la déconnexion:", error);
       // On ne throw pas, on veut quand même permettre la redirection
     }
@@ -183,8 +183,8 @@ export class AuthService {
       // Si erreur liée à la session, on peut quand même essayer
       // car resend peut fonctionner sans session si l'email est fourni
       if (
-        error.message?.includes("session") ||
-        error.message?.includes("Auth session missing")
+        (error as Error).message?.includes("session") ||
+        (error as Error).message?.includes("Auth session missing")
       ) {
         // Créer un nouveau client pour forcer l'envoi sans session
         const { createClient } = await import("@/lib/supabase/client");
@@ -235,7 +235,7 @@ export class AuthService {
       if (error) {
         console.error("[AuthService] Erreur récupération profil:", error);
         // Si erreur RLS, essayer via API
-        if (error.code === "42501" || error.code === "42P17") {
+        if ((error as any).code === "42501" || (error as any).code === "42P17") {
           console.warn("[AuthService] Erreur RLS détectée, tentative via API...");
           try {
             const response = await fetch("/api/me/profile", {
@@ -250,7 +250,7 @@ export class AuthService {
             console.error("[AuthService] Erreur API fallback:", apiError);
           }
         }
-        if (error.code === "PGRST116") {
+        if ((error as any).code === "PGRST116") {
           console.warn("[AuthService] Aucun profil trouvé (PGRST116)");
           return null;
         }
@@ -413,7 +413,7 @@ export async function signInWithPasskey(email?: string): Promise<{
   } catch (error: unknown) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Erreur d'authentification passkey",
+      error: error instanceof Error ? (error as Error).message : "Erreur d'authentification passkey",
     };
   }
 }

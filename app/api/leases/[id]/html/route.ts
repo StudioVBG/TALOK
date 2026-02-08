@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { LeaseTemplateService } from "@/lib/templates/bail";
-import type { TypeBail, BailComplet, DiagnosticsTechniques } from "@/lib/templates/bail/types";
+import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
+import type { TypeBail, BailComplet, DiagnosticsTechniques, Logement, Bailleur } from "@/lib/templates/bail/types";
 
 /**
  * GET /api/leases/[id]/html - Récupérer le HTML d'un bail (signé ou non)
@@ -60,18 +61,18 @@ export async function GET(
       return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
     }
 
-    // 2. Récupérer les infos du propriétaire
-    const { data: ownerProfile } = await serviceClient
-      .from("owner_profiles")
-      .select("*, profile:profiles(*)")
-      .eq("profile_id", lease.property.owner_id)
-      .single();
+    // 2. Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
+    const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
+      leaseId,
+      propertyId: lease.property!.id,
+      profileId: lease.property!.owner_id,
+    });
 
     // 3. ✅ FIX: Récupérer les diagnostics depuis la table documents
     const { data: diagnosticsDocuments } = await serviceClient
       .from("documents")
       .select("*")
-      .or(`property_id.eq.${lease.property.id},lease_id.eq.${leaseId}`)
+      .or(`property_id.eq.${lease.property!.id},lease_id.eq.${leaseId}`)
       .in("type", [
         "diagnostic_performance", "dpe",
         "crep", "plomb",
@@ -93,8 +94,8 @@ export async function GET(
         classe_ges: (lease.property.dpe_classe_climat || lease.property.ges || "D") as any,
         consommation_energie: lease.property.dpe_consommation || 0,
         emissions_ges: lease.property.dpe_emissions || 0,
-        estimation_cout_min: lease.property.dpe_estimation_conso_min,
-        estimation_cout_max: lease.property.dpe_estimation_conso_max,
+        estimation_cout_min: lease.property.dpe_estimation_conso_min ?? undefined,
+        estimation_cout_max: lease.property.dpe_estimation_conso_max ?? undefined,
       };
     }
 
@@ -102,7 +103,7 @@ export async function GET(
     if (diagnosticsDocuments) {
       for (const doc of diagnosticsDocuments) {
         const docType = doc.type?.toLowerCase();
-        const metadata = doc.metadata || {};
+        const metadata = (doc.metadata || {}) as Record<string, any>;
         
         if (docType?.includes("dpe") || docType?.includes("performance")) {
           diagnostics.dpe = {
@@ -251,7 +252,7 @@ export async function GET(
               .createSignedUrl(signer.signature_image_path, 3600);
             
             if (signedUrl?.signedUrl) {
-              signer.signature_image = signedUrl.signedUrl;
+              signer.signature_image_path = signedUrl.signedUrl;
               console.log(`[Lease HTML] ✅ Signed URL generated for ${signer.role}`);
             } else {
               console.log(`[Lease HTML] ❌ Failed to generate signed URL for ${signer.role}:`, urlError);
@@ -265,38 +266,42 @@ export async function GET(
 
     const bailData: Partial<BailComplet> = {
       reference: lease.id.slice(0, 8).toUpperCase(),
-      date_signature: lease.date_signature || lease.created_at,
+      date_signature: (lease as any).date_signature || lease.created_at,
       lieu_signature: lease.property?.ville || "N/A",
       bailleur: {
-        nom: ownerProfile?.raison_sociale || ownerProfile?.profile?.nom || "",
-        prenom: ownerProfile?.type === 'societe' ? "" : (ownerProfile?.profile?.prenom || ""),
-        adresse: ownerProfile?.adresse_facturation || lease.property?.adresse_complete || "",
-        code_postal: lease.property?.code_postal || "",
-        ville: lease.property?.ville || "",
-        type: ownerProfile?.type || "particulier",
+        nom: ownerIdentity.entityType === "company" ? (ownerIdentity.companyName || "") : ownerIdentity.lastName,
+        prenom: ownerIdentity.entityType === "company" ? "" : ownerIdentity.firstName,
+        adresse: ownerIdentity.address.street
+          ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
+          : (lease.property?.adresse_complete || ""),
+        code_postal: ownerIdentity.address.postalCode || lease.property?.code_postal || "",
+        ville: ownerIdentity.address.city || lease.property?.ville || "",
+        type: (ownerIdentity.entityType === "company" ? "societe" : "particulier") as Bailleur['type'],
         est_mandataire: false,
-        // Pour société
-        raison_sociale: ownerProfile?.raison_sociale || "",
-        representant_nom: ownerProfile?.profile ? `${ownerProfile.profile.prenom || ""} ${ownerProfile.profile.nom || ""}`.trim() : "",
-        representant_qualite: ownerProfile?.type === 'societe' ? "Gérant" : undefined,
+        raison_sociale: ownerIdentity.companyName || "",
+        siret: ownerIdentity.siret ?? undefined,
+        representant_nom: ownerIdentity.representative
+          ? `${ownerIdentity.representative.firstName} ${ownerIdentity.representative.lastName}`.trim()
+          : `${ownerIdentity.firstName} ${ownerIdentity.lastName}`.trim(),
+        representant_qualite: ownerIdentity.representative?.role || (ownerIdentity.entityType === "company" ? "Gérant" : undefined),
       },
       locataires,
       logement: {
         adresse_complete: lease.property?.adresse_complete || "",
         code_postal: lease.property?.code_postal || "",
         ville: lease.property?.ville || "",
-        type: lease.property?.type || "appartement",
+        type: (lease.property?.type || "appartement") as Logement['type'],
         surface_habitable: lease.property?.surface || lease.property?.surface_habitable_m2 || 0,
         nb_pieces_principales: lease.property?.nb_pieces || 1,
-        etage: lease.property?.etage,
-        nb_etages_immeuble: lease.property?.nb_etages_immeuble,
+        etage: lease.property?.etage ?? undefined,
+        nb_etages_immeuble: lease.property?.nb_etages_immeuble ?? undefined,
         ascenseur: lease.property?.ascenseur,
-        regime: lease.property?.regime || "mono_propriete",
-        annee_construction: lease.property?.annee_construction,
-        chauffage_type: lease.property?.chauffage_type,
-        chauffage_energie: lease.property?.chauffage_energie,
-        eau_chaude_type: lease.property?.eau_chaude_type,
-        equipements_privatifs: lease.property?.equipments || [],
+        regime: (lease.property?.regime || "mono_propriete") as Logement['regime'],
+        annee_construction: lease.property?.annee_construction ?? undefined,
+        chauffage_type: lease.property?.chauffage_type as Logement['chauffage_type'],
+        chauffage_energie: lease.property?.chauffage_energie as Logement['chauffage_energie'],
+        eau_chaude_type: lease.property?.eau_chaude_type as Logement['eau_chaude_type'],
+        equipements_privatifs: (lease.property?.equipments as string[] | null) || [],
         annexes: [],
       },
       conditions: {

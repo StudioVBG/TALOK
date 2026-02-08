@@ -203,7 +203,7 @@ export default function TenantSignaturesPage() {
                           type="lease" 
                           leaseId={dashboard.lease?.id} 
                           signed={true}
-                          variant="secondary"
+                          variant={"secondary" as any}
                           className="w-full h-14 text-lg font-bold bg-white text-indigo-600 hover:bg-slate-50 shadow-xl border-none"
                           label="Télécharger le Bail Signé"
                         />

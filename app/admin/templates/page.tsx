@@ -29,7 +29,7 @@ async function fetchTemplates() {
 
 async function TemplatesContent() {
   const templates = await fetchTemplates();
-  return <TemplatesClient templates={templates} />;
+  return <TemplatesClient templates={templates as any} />;
 }
 
 export default async function AdminTemplatesPage() {

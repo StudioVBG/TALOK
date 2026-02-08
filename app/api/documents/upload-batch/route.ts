@@ -8,6 +8,8 @@ import { documentSchema } from "@/lib/validations";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
 
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
 function isImage(mimeType: string) {
   return mimeType.startsWith("image/");
 }
@@ -20,8 +22,8 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
-        { status: error.status || 401 }
+        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { status: (error as any).status || 401 }
       );
     }
 
@@ -314,10 +316,23 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ documents: refreshedDocs });
   } catch (error: unknown) {
+    // Handle ZodError from documentSchema.parse
+    if (error && typeof error === 'object' && 'name' in error && (error as any).name === "ZodError") {
+      const zodErr = error as any;
+      return NextResponse.json(
+        {
+          error: "Données invalides",
+          details: zodErr.errors,
+          message: zodErr.errors?.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+        },
+        { status: 400 }
+      );
+    }
     console.error("Error in POST /api/documents/upload-batch:", error);
+    const statusCode = error && typeof error === 'object' && 'status' in error ? (error as any).status : 500;
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
-      { status: error.status || 500 }
+      { status: statusCode || 500 }
     );
   }
 }

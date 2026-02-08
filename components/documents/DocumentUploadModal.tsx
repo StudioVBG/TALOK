@@ -122,7 +122,7 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
           Ajouter un document
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>Ajouter un document</DialogTitle>
         </DialogHeader>

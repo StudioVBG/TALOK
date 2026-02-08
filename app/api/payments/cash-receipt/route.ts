@@ -115,7 +115,7 @@ export async function POST(request: Request) {
 
     // ✅ SOTA 2026: Utiliser la fonction RPC atomique au lieu de multiples INSERT
     // Avantage: Transaction complète, pas de rollback manuel, intégrité garantie
-    const { data: receipt, error: rpcError } = await serviceClient.rpc(
+    const { data: receiptRaw, error: rpcError } = await serviceClient.rpc(
       "create_cash_receipt",
       {
         p_invoice_id: invoice_id,
@@ -143,11 +143,16 @@ export async function POST(request: Request) {
       throw new Error(rpcError.message || "Erreur lors de la création du reçu");
     }
 
+    const receipt = receiptRaw as Record<string, any>;
+
     // Récupérer le payment_id depuis le reçu créé
     const payment = { id: receipt.payment_id };
 
     // Récupérer le hash généré par la fonction SQL
     const documentHash = receipt.document_hash;
+
+    // Convertir le montant en lettres pour le PDF
+    const amountWords = convertAmountToWords(amount);
 
     // Générer le PDF (appel asynchrone)
     let pdfUrl = null;

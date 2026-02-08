@@ -27,7 +27,7 @@ function EditLeasePageContent() {
         description: error instanceof Error ? error.message : "Impossible de charger le bail.",
         variant: "destructive",
       });
-      router.push("/leases");
+      router.push("/owner/leases");
     } finally {
       setLoading(false);
     }
@@ -40,11 +40,11 @@ function EditLeasePageContent() {
   }, [params.id, fetchLease]);
 
   const handleSuccess = () => {
-    router.push(`/leases/${params.id}`);
+    router.push(`/owner/leases/${params.id}`);
   };
 
   const handleCancel = () => {
-    router.push(`/leases/${params.id}`);
+    router.push(`/owner/leases/${params.id}`);
   };
 
   if (loading) {

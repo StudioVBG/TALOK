@@ -41,6 +41,8 @@ import {
   type ParkingLease,
   type ParkingLeaseConditions,
   type ParkingSpecifications,
+  type ParkingOwner,
+  type ParkingTenant,
   getParkingPreset,
   getAccessMethodLabel,
   getSecurityFeatureLabel,
@@ -220,7 +222,7 @@ export function ParkingLeaseWizard({ propertyId, onComplete, onCancel }: Parking
         specifications: {
           ...prev.specifications,
           category,
-          features: { ...prev.specifications.features, ...preset.commonFeatures },
+          features: { ...prev.specifications.features, ...preset.commonFeatures } as ParkingSpecifications['features'],
           security: preset.commonSecurity,
         },
         conditions: {
@@ -229,11 +231,11 @@ export function ParkingLeaseWizard({ propertyId, onComplete, onCancel }: Parking
           financial: {
             ...prev.conditions.financial,
             ...preset.defaultConditions?.financial,
-            rentMonthly: preset.suggestedRent.min + 
+            rentMonthly: preset.suggestedRent.min +
               Math.round((preset.suggestedRent.max - preset.suggestedRent.min) / 2),
-          },
+          } as ParkingLeaseConditions['financial'],
         },
-      }));
+      } as typeof prev));
     }
   }, []);
 
@@ -266,8 +268,8 @@ export function ParkingLeaseWizard({ propertyId, onComplete, onCancel }: Parking
           specifications: formData.specifications as ParkingSpecifications,
         },
         conditions: formData.conditions as ParkingLeaseConditions,
-        owner: formData.owner,
-        tenant: formData.tenant,
+        owner: formData.owner as ParkingOwner,
+        tenant: formData.tenant as ParkingTenant,
         specialClauses: formData.specialClauses,
       };
 
@@ -714,7 +716,7 @@ function StepDetails({
                   features: {
                     ...specifications.features,
                     [feature.key]: !specifications.features?.[feature.key as keyof typeof specifications.features],
-                  },
+                  } as ParkingSpecifications['features'],
                 })}
               >
                 <span className="text-xl">{feature.icon}</span>
@@ -937,7 +939,7 @@ function StepConditions({
                 value={conditions.duration?.startDate || ""}
                 onChange={(e) => onUpdate({
                   ...conditions,
-                  duration: { ...conditions.duration, startDate: e.target.value },
+                  duration: { ...conditions.duration, type: conditions.duration?.type || 'indeterminee', startDate: e.target.value },
                 })}
                 className="bg-slate-700 border-slate-600 text-white mt-2"
               />
@@ -951,7 +953,7 @@ function StepConditions({
                   value={conditions.duration?.months || 12}
                   onChange={(e) => onUpdate({
                     ...conditions,
-                    duration: { ...conditions.duration, months: parseInt(e.target.value) },
+                    duration: { ...conditions.duration, type: conditions.duration?.type || 'determinee', startDate: conditions.duration?.startDate || '', months: parseInt(e.target.value) },
                   })}
                   className="bg-slate-700 border-slate-600 text-white mt-2"
                 />
@@ -1031,7 +1033,7 @@ function StepFinancial({
   onUpdate: (cond: Partial<ParkingLeaseConditions>) => void;
 }) {
   const preset = getParkingPreset(category);
-  const financial = conditions.financial || {};
+  const financial = (conditions.financial || {}) as ParkingLeaseConditions['financial'];
 
   const totalMonthly = (financial.rentMonthly || 0) + (financial.chargesMonthly || 0);
 

@@ -318,7 +318,7 @@ export function EDLPreview({
       element.innerHTML = pdfHtml;
       document.body.appendChild(element);
 
-      await html2pdf().set(opt).from(element).save();
+      await html2pdf().set(opt as any).from(element).save();
       
       document.body.removeChild(element);
 

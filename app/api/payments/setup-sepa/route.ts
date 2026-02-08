@@ -176,15 +176,15 @@ export async function POST(request: NextRequest) {
       amount: mandate.amount,
     }, { status: 201 });
   } catch (error: unknown) {
-    if (error.name === "ZodError") {
+    if ((error as any).name === "ZodError") {
       return NextResponse.json(
-        { error: "Données invalides", details: error.errors },
+        { error: "Données invalides", details: (error as any).errors },
         { status: 400 }
       );
     }
     console.error("Erreur setup SEPA:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
       { status: 500 }
     );
   }

@@ -92,7 +92,7 @@ export async function GET() {
           category
         )
       `)
-      .eq("property_id", propertyId)
+      .eq("property_id", propertyId as string)
       .order("created_at", { ascending: false })
       .limit(12);
 

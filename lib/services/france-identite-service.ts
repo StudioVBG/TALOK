@@ -69,7 +69,7 @@ export interface UserInfoResult {
  * Récupère la configuration FranceConnect
  */
 async function getConfig(): Promise<FranceConnectConfig | null> {
-  const credentials = await getCredentials("France Identité");
+  const credentials = await getCredentials("France Identité" as any);
   
   if (!credentials?.apiKey) {
     // Fallback sur les variables d'environnement
@@ -208,7 +208,7 @@ export async function exchangeCodeForTokens(
       idToken: data.id_token,
     };
   } catch (error) {
-    logger.error("FranceConnect token exchange error", { error });
+    logger.error("FranceConnect token exchange error", { error: error as Error });
     return { success: false, error: "Erreur de connexion" };
   }
 }
@@ -245,7 +245,7 @@ export async function getUserInfo(accessToken: string): Promise<UserInfoResult> 
 
     return { success: true, user };
   } catch (error) {
-    logger.error("FranceConnect userinfo error", { error });
+    logger.error("FranceConnect userinfo error", { error: error as Error });
     return { success: false, error: "Erreur lors de la récupération des informations" };
   }
 }

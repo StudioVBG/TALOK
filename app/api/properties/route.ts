@@ -121,8 +121,8 @@ export async function GET(request: Request) {
     let totalCount = 0;
     
     // ✅ PAGINATION: Récupérer les paramètres de pagination
-    const page = parseInt(queryParams.page as string || "1");
-    const limit = Math.min(parseInt(queryParams.limit as string || "100"), 200); // Max 200
+    const page = parseInt(queryParams.page as unknown as string || "1");
+    const limit = Math.min(parseInt(queryParams.limit as unknown as string || "100"), 200); // Max 200
     const offset = (page - 1) * limit;
     
     try {
@@ -374,7 +374,7 @@ async function fetchPropertyMedia(
           })
         ]);
 
-        mediaDocs = fallback.data;
+        mediaDocs = fallback.data as MediaDocument[] | null;
         mediaError = fallback.error;
       } catch (fallbackError: unknown) {
         console.error("[fetchPropertyMedia] Fallback query failed:", fallbackError);

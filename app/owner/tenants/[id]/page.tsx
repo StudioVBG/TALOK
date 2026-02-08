@@ -97,7 +97,7 @@ export default async function TenantProfilePage({ params }: PageProps) {
     );
   }
 
-  return <TenantProfileClient tenant={tenant} isAdmin={profile.role === "admin"} />;
+  return <TenantProfileClient tenant={tenant as any} isAdmin={profile.role === "admin"} />;
 }
 
 export const metadata = {

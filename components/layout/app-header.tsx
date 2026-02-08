@@ -37,7 +37,7 @@ const ROLE_CONFIG = {
   owner: {
     label: "Propriétaire",
     profilePath: "/owner/profile",
-    settingsPath: "/owner/settings",
+    settingsPath: "/owner/profile",
     messagesPath: "/owner/messages",
     supportPath: "/owner/support",
   },
@@ -50,17 +50,17 @@ const ROLE_CONFIG = {
   },
   provider: {
     label: "Prestataire",
-    profilePath: "/provider/profile",
+    profilePath: "/provider/settings",
     settingsPath: "/provider/settings",
-    messagesPath: "/provider/messages",
+    messagesPath: "/provider/jobs",
     supportPath: "/provider/help",
   },
   syndic: {
     label: "Syndic",
-    profilePath: "/syndic/profile",
-    settingsPath: "/syndic/settings",
-    messagesPath: "/syndic/messages",
-    supportPath: "/syndic/help",
+    profilePath: "/syndic/dashboard",
+    settingsPath: "/syndic/dashboard",
+    messagesPath: "/syndic/dashboard",
+    supportPath: "/syndic/dashboard",
   },
 };
 
@@ -80,7 +80,7 @@ export function AppHeader({ profile, role }: AppHeaderProps) {
   const fullName = [profile.prenom, profile.nom].filter(Boolean).join(" ") || "Utilisateur";
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 sm:gap-x-6 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-border bg-background/80 backdrop-blur-sm px-4 sm:gap-x-6 sm:px-6 lg:px-8">
       <div className="flex flex-1 gap-x-4 self-stretch items-center justify-end lg:gap-x-6">
         {/* Actions de droite */}
         <div className="flex items-center gap-x-2 lg:gap-x-4">
@@ -103,7 +103,7 @@ export function AppHeader({ profile, role }: AppHeaderProps) {
           <DarkModeToggle />
 
           {/* Separator */}
-          <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-slate-200" />
+          <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-border" />
 
           {/* User menu */}
           <DropdownMenu>
@@ -121,7 +121,7 @@ export function AppHeader({ profile, role }: AppHeaderProps) {
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden lg:flex lg:items-center">
-                  <span className="text-sm font-semibold leading-6 text-slate-900">
+                  <span className="text-sm font-semibold leading-6 text-foreground">
                     {fullName}
                   </span>
                 </span>

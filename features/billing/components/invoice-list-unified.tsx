@@ -13,7 +13,7 @@ import {
   AlertCircle,
   Clock
 } from "lucide-react";
-import { toast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,7 @@ interface InvoiceListProps {
 }
 
 export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
+  const { toast } = useToast();
   const [optimisticInvoices, setOptimisticInvoices] = useState(invoices);
 
   // Fonction pour formater la période (YYYY-MM -> Mois Année)
@@ -66,19 +67,21 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
   };
 
   const handleSend = async (id: string) => {
-    toast.promise(sendInvoiceAction(id), {
-      loading: "Envoi en cours...",
-      success: "Facture envoyée au locataire !",
-      error: "Erreur lors de l'envoi",
-    });
+    try {
+      await sendInvoiceAction(id);
+      toast({ title: "Facture envoyée au locataire !" });
+    } catch {
+      toast({ title: "Erreur lors de l'envoi", variant: "destructive" });
+    }
   };
 
   const handleMarkPaid = async (id: string) => {
-    toast.promise(updateInvoiceStatusAction(id, "paid"), {
-      loading: "Mise à jour...",
-      success: "Facture marquée comme payée",
-      error: "Erreur lors de la mise à jour",
-    });
+    try {
+      await updateInvoiceStatusAction(id, "paid");
+      toast({ title: "Facture marquée comme payée" });
+    } catch {
+      toast({ title: "Erreur lors de la mise à jour", variant: "destructive" });
+    }
   };
 
   return (

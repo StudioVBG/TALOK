@@ -72,7 +72,7 @@ export function LeaseEndWizard({
         description: getCategoryDescription(item.category),
         status: item.status,
         photos: item.photos || [],
-        problemDescription: item.problem_description,
+        problemDescription: (item as any).problem_description,
         estimatedCost: item.estimated_cost ?? 0,
         damageType: item.damage_type ?? "tenant_damage",
       }));
@@ -130,7 +130,7 @@ export function LeaseEndWizard({
         status: data.status,
         problem_description: data.problemDescription,
         photos: data.photos,
-      });
+      } as any);
 
       // Mettre à jour l'état local
       setInspectionItems((prev) =>
@@ -150,7 +150,7 @@ export function LeaseEndWizard({
       await endOfLeaseService.compareEDL({
         lease_end_process_id: process.id,
         edl_entree_id: "", // L'API trouvera automatiquement
-      });
+      } as any);
 
       // Recharger les données
       await loadProcessData();
@@ -173,14 +173,14 @@ export function LeaseEndWizard({
       // Estimer les coûts
       await endOfLeaseService.estimateRenovationCosts({
         lease_end_process_id: process.id,
-      });
+      } as any);
 
       // Générer la timeline
       await endOfLeaseService.generateTimeline({
         lease_end_process_id: process.id,
         start_date: new Date().toISOString(),
         renovation_items_count: renovationItems.length,
-      });
+      } as any);
 
       // Recharger et passer à l'étape suivante
       const updatedProcess = await endOfLeaseService.getProcessById(process.id);
@@ -349,7 +349,7 @@ export function LeaseEndWizard({
                 </Card>
               ) : (
                 <BudgetTimeline
-                  timeline={timeline}
+                  timeline={timeline as any}
                   budgetSummary={budgetSummary}
                   estimatedReadyDate={process.ready_to_rent_date || new Date().toISOString()}
                   onActionClick={handleTimelineAction}

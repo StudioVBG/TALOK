@@ -262,9 +262,9 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             table: "leases",
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
-            const lease = payload.new;
-            const oldLease = payload.old;
-            
+            const lease = payload.new as Record<string, any>;
+            const oldLease = payload.old as Record<string, any>;
+
             // Vérifier que c'est un de nos baux
             if (!leaseIds.includes(lease.id)) return;
             
@@ -347,8 +347,8 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             table: "invoices",
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
-            const invoice = payload.new;
-            
+            const invoice = payload.new as Record<string, any>;
+
             // Vérifier que c'est pour un de nos baux
             if (!leaseIds.includes(invoice.lease_id)) return;
             
@@ -377,9 +377,9 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             table: "invoices",
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
-            const invoice = payload.new;
-            const oldInvoice = payload.old;
-            
+            const invoice = payload.new as Record<string, any>;
+            const oldInvoice = payload.old as Record<string, any>;
+
             if (!leaseIds.includes(invoice.lease_id)) return;
             
             // Facture payée
@@ -415,8 +415,8 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             table: "documents",
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
-            const doc = payload.new;
-            
+            const doc = payload.new as Record<string, any>;
+
             // Vérifier que c'est pour nous ou un de nos baux
             if (doc.tenant_id !== profile.id && !leaseIds.includes(doc.lease_id)) return;
             
@@ -453,9 +453,9 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             table: "tickets",
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
-            const ticket = payload.new;
-            const oldTicket = payload.old;
-            
+            const ticket = payload.new as Record<string, any>;
+            const oldTicket = payload.old as Record<string, any>;
+
             // Seulement les tickets créés par ce locataire
             if (ticket.created_by_profile_id !== profile.id) return;
             
@@ -500,9 +500,9 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             table: "lease_signers",
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
-            const signer = payload.new;
-            const oldSigner = payload.old;
-            
+            const signer = payload.new as Record<string, any>;
+            const oldSigner = payload.old as Record<string, any>;
+
             // Autre signataire a signé (ex: propriétaire)
             if (signer.profile_id !== profile.id && 
                 oldSigner.signature_status === "pending" && 
@@ -534,9 +534,9 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             table: "properties",
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
-            const property = payload.new;
-            const oldProperty = payload.old;
-            
+            const property = payload.new as Record<string, any>;
+            const oldProperty = payload.old as Record<string, any>;
+
             // Changements importants
             if (oldProperty.adresse_complete !== property.adresse_complete ||
                 oldProperty.ville !== property.ville) {

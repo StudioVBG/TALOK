@@ -14,7 +14,23 @@ export function useAuth() {
 
   useEffect(() => {
     // Récupère l'utilisateur actuel
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      // Si erreur de refresh token, nettoyer et rediriger
+      if (error && (
+        error.message?.includes('refresh_token') ||
+        error.message?.includes('Invalid Refresh Token') ||
+        error.message?.includes('Refresh Token Not Found')
+      )) {
+        console.error('[useAuth] Refresh token invalide, nettoyage de la session');
+        supabase.auth.signOut().finally(() => {
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth')) {
+            window.location.href = '/auth/signin?error=session_expired';
+          }
+        });
+        setLoading(false);
+        return;
+      }
+
       setUser(user);
       if (user) {
         fetchProfile(user.id);

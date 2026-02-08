@@ -106,7 +106,7 @@ export async function POST(request: Request, context: Context) {
     }
 
     // Si l'écriture originale affectait un compte mandant, mettre à jour le solde
-    if (original.owner_id && original.compte_num.startsWith("4671")) {
+    if (original.owner_id && (original.compte_num as string).startsWith("4671")) {
       // Inverser l'impact sur le solde mandant propriétaire
       await supabase.rpc("update_mandant_balance", {
         p_profile_id: original.owner_id,

@@ -90,6 +90,13 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "FileCheck",
   },
+  ged: {
+    path: "/owner/ged",
+    name: "GED",
+    component: "GedPage",
+    auth: ["owner"],
+    icon: "FolderArchive",
+  },
   inspections: {
     path: "/owner/inspections",
     name: "États des lieux",
@@ -117,6 +124,13 @@ export const OWNER_ROUTES = {
     component: "OwnerSettingsPage",
     auth: ["owner"],
     icon: "Settings",
+  },
+  entities: {
+    path: "/owner/entities",
+    name: "Mes entités",
+    component: "OwnerEntitiesPage",
+    auth: ["owner"],
+    icon: "Building2",
   },
   profile: {
     path: "/owner/profile",

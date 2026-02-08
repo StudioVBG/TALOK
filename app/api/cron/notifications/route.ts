@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       .gte("created_at", in5Days.toISOString().split("T")[0])
       .lt("created_at", new Date(in5Days.getTime() + 86400000).toISOString().split("T")[0]);
 
-    for (const invoice of dueIn5Days || []) {
+    for (const invoice of (dueIn5Days || []) as any[]) {
       if (!invoice.tenant?.user_id) continue;
       
       try {
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
       .gte("created_at", tomorrow.toISOString().split("T")[0])
       .lt("created_at", new Date(tomorrow.getTime() + 86400000).toISOString().split("T")[0]);
 
-    for (const invoice of dueTomorrow || []) {
+    for (const invoice of (dueTomorrow || []) as any[]) {
       if (!invoice.tenant?.user_id) continue;
       
       try {
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
       .gte("updated_at", yesterday.toISOString().split("T")[0])
       .lt("updated_at", today.toISOString().split("T")[0]);
 
-    for (const invoice of overdueSinceYesterday || []) {
+    for (const invoice of (overdueSinceYesterday || []) as any[]) {
       // Notifier le locataire
       if (invoice.tenant?.user_id) {
         try {
@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
         .eq("statut", "active")
         .eq("date_fin", dateStr);
 
-      for (const lease of expiringLeases || []) {
+      for (const lease of (expiringLeases || []) as any[]) {
         // Récupérer le propriétaire
         const { data: owner } = await supabase
           .from("profiles")

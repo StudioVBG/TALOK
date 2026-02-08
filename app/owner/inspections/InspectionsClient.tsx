@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -140,9 +139,9 @@ export function InspectionsClient({ inspections }: Props) {
     {
       header: "Logement",
       cell: (edl: Inspection) => (
-        <div>
-          <p className="font-medium truncate max-w-[200px] text-slate-900">{edl.property_address}</p>
-          <p className="text-xs text-muted-foreground">{edl.property_city}</p>
+        <div className="min-w-0">
+          <p className="font-medium truncate max-w-[140px] sm:max-w-[200px] text-slate-900">{edl.property_address}</p>
+          <p className="text-xs text-muted-foreground truncate">{edl.property_city}</p>
         </div>
       ),
     },
@@ -193,9 +192,10 @@ export function InspectionsClient({ inspections }: Props) {
       className: "text-right",
       cell: (edl: Inspection) => (
         <div className="flex justify-end gap-2">
-          <Button size="sm" variant="ghost" asChild className="hover:bg-slate-100 h-8 w-8 p-0" title="Voir">
+          <Button size="sm" variant="outline" asChild className="hover:bg-blue-50 hover:border-blue-300 h-8 gap-1.5 px-2.5 text-blue-600 border-blue-200" title="Voir l'état des lieux">
             <Link href={`/owner/inspections/${edl.id}`}>
-              <Eye className="h-4 w-4 text-slate-600" />
+              <Eye className="h-4 w-4" />
+              <span className="text-xs font-medium">Voir</span>
             </Link>
           </Button>
 
@@ -222,31 +222,31 @@ export function InspectionsClient({ inspections }: Props) {
 
   return (
     <PageTransition>
-      <div className="space-y-8 container mx-auto px-4 py-8 max-w-7xl">
+      <div className="space-y-6 sm:space-y-8 container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-700">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent">
               États des lieux
             </h1>
-            <p className="text-muted-foreground mt-2 text-lg">
+            <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-lg">
               Gérez les entrées et sorties de vos locataires
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* Bouton de synchronisation */}
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="icon"
               onClick={handleSyncStatuses}
               disabled={isSyncing}
-              className="shadow hover:shadow-md transition-all duration-300"
+              className="shadow hover:shadow-md transition-all duration-300 h-9 w-9"
               title="Synchroniser les statuts"
             >
               <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
             </Button>
-            {/* Template à imprimer - disponible pour tous */}
-            <Button variant="outline" asChild className="shadow hover:shadow-md transition-all duration-300">
+            {/* Template à imprimer - hidden on mobile */}
+            <Button variant="outline" asChild className="shadow hover:shadow-md transition-all duration-300 hidden sm:flex">
               <Link href="/owner/inspections/template">
                 <Printer className="mr-2 h-4 w-4" />
                 Template à imprimer

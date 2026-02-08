@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     if (error) throw error;
     return NextResponse.json({ workOrders: data });
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Erreur serveur" }, { status: 500 });
   }
 }
 
@@ -91,10 +91,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ workOrder });
   } catch (error: unknown) {
-    if (error.name === "ZodError") {
-      return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
+    if ((error as any).name === "ZodError") {
+      return NextResponse.json({ error: "Données invalides", details: (error as any).errors }, { status: 400 });
     }
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Erreur serveur" }, { status: 500 });
   }
 }
 
