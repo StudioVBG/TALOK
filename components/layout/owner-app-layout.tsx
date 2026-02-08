@@ -25,6 +25,7 @@ import {
   CreditCard,
   ClipboardCheck,
   Search,
+  Briefcase,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { SharedBottomNav } from "./shared-bottom-nav";
@@ -95,6 +96,7 @@ const navigationGroups: NavGroup[] = [
   {
     label: "Juridique",
     items: [
+      { name: "Mes entités", href: "/owner/entities", icon: Briefcase, tourId: "nav-entities" },
       { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
     ],
   },
