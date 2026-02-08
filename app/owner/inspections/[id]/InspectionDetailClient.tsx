@@ -172,6 +172,7 @@ export function InspectionDetailClient({ data }: Props) {
   const [isSigning, setIsSigning] = useState(false);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
 
   // Données
   const { raw: edl, meterReadings, propertyMeters, ownerProfile, stats } = data;
@@ -398,6 +399,52 @@ export function InspectionDetailClient({ data }: Props) {
     }
   };
 
+  // Valider / Finaliser l'EDL (passe en "completed" ou "signed")
+  const handleValidate = async (force = false) => {
+    try {
+      setIsValidating(true);
+      const response = await fetch(`/api/edl/${edl.id}/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        // 422 = validation incomplète mais peut forcer
+        if (response.status === 422 && result.can_force) {
+          const msgs = (result.details || []).join("\n• ");
+          const shouldForce = window.confirm(
+            `Validation incomplète :\n• ${msgs}\n\nVoulez-vous forcer la validation ?`
+          );
+          if (shouldForce) {
+            return handleValidate(true);
+          }
+          return;
+        }
+        throw new Error(result.error || "Erreur lors de la validation");
+      }
+
+      toast({
+        title: result.status === "signed" ? "EDL validé et signé" : "EDL finalisé",
+        description: result.status === "signed"
+          ? "L'état des lieux est complet avec toutes les signatures."
+          : "L'EDL est prêt pour les signatures.",
+      });
+
+      router.refresh();
+    } catch (error: unknown) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        variant: "destructive",
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   // Calculs pour l'affichage
   const status = statusConfig[edl.status] || statusConfig.draft;
   const StatusIcon = status.icon;
@@ -506,6 +553,19 @@ export function InspectionDetailClient({ data }: Props) {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* Bouton Valider — visible quand l'EDL est en brouillon/en cours */}
+            {["draft", "in_progress", "scheduled"].includes(edl.status) && (
+              <Button
+                size="sm"
+                onClick={() => handleValidate(false)}
+                disabled={isValidating}
+                className="bg-amber-600 hover:bg-amber-700 shadow-sm h-8 sm:h-9 px-2 sm:px-3"
+              >
+                {isValidating ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <CheckCircle2 className="h-4 w-4 sm:mr-2" />}
+                <span className="hidden sm:inline">Valider</span>
+              </Button>
+            )}
+
             {!ownerSigned && edl.status !== "signed" && (
               <Button
                 size="sm"
@@ -694,6 +754,29 @@ export function InspectionDetailClient({ data }: Props) {
                 </p>
               </CardContent>
             </Card>
+
+            {/* CTA: Activer le bail — affiché quand EDL signé + type entrée */}
+            {edl.status === "signed" && edl.type === "entree" && (
+              <Card className="border-2 border-green-200 shadow-md bg-gradient-to-br from-green-50 to-emerald-50 overflow-hidden">
+                <CardContent className="p-4 text-center space-y-3">
+                  <div className="mx-auto h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle2 className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-green-900">EDL d&apos;entrée complet</p>
+                    <p className="text-xs text-green-700 mt-1">
+                      L&apos;état des lieux est signé par les deux parties. Vous pouvez maintenant activer le bail.
+                    </p>
+                  </div>
+                  <Button asChild className="w-full bg-green-600 hover:bg-green-700 shadow-lg">
+                    <Link href={`/owner/leases/${edl.lease?.id}`}>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Voir et activer le bail
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Détails du Logement */}
             <Card className="border-none shadow-sm bg-white overflow-hidden">

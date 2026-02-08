@@ -33,6 +33,7 @@ const colocConfigSchema = z.object({
 const inviteSchema = z.object({
   property_id: z.string().uuid("ID de propriété invalide"),
   type_bail: z.string().min(1, "Type de bail requis"),
+  signatory_entity_id: z.string().uuid("ID entité invalide").nullable().optional(),
   loyer: z.number().positive("Loyer doit être positif"),
   charges_forfaitaires: z.number().min(0).default(0),
   charges_type: z.enum(["forfait", "provisions"]).default("forfait"),
@@ -43,6 +44,12 @@ const inviteSchema = z.object({
   tenant_email: z.string().email("Email du locataire invalide").nullable().optional(), // Nullable pour manual draft
   tenant_name: z.string().nullable().optional(),
   is_manual_draft: z.boolean().optional(), // Nouveau flag
+  // Clauses personnalisées (P2-6)
+  custom_clauses: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    isCustom: z.boolean(),
+  })).optional(),
   // Colocation
   coloc_config: colocConfigSchema.optional(),
   invitees: z.array(inviteeSchema).optional(),
@@ -147,7 +154,7 @@ export async function POST(request: Request) {
     // Vérifier que le bien appartient au propriétaire
     const { data: property, error: propError } = await supabase
       .from("properties")
-      .select("id, owner_id, adresse_complete, code_postal, ville")
+      .select("id, owner_id, adresse_complete, code_postal, ville, dpe_classe_energie")
       .eq("id", validated.property_id)
       .single();
 
@@ -157,6 +164,16 @@ export async function POST(request: Request) {
 
     if (property.owner_id !== profile.id && profile.role !== "admin") {
       return NextResponse.json({ error: "Ce bien ne vous appartient pas" }, { status: 403 });
+    }
+
+    // P1-5: Loi Climat et Résilience — Interdiction de louer les passoires thermiques
+    const isHabitation = ["nu", "meuble", "colocation", "bail_mobilite", "etudiant", "bail_mixte"].includes(validated.type_bail);
+    const dpe = (property as any).dpe_classe_energie?.toUpperCase();
+    if (isHabitation && dpe === "G") {
+      return NextResponse.json({
+        error: "Location interdite — DPE classe G",
+        details: "Depuis le 1er janvier 2025, les logements classés G au DPE ne peuvent plus être proposés à la location (Loi Climat et Résilience, art. 160). Réalisez des travaux de rénovation énergétique pour améliorer le classement.",
+      }, { status: 422 });
     }
 
     // Utiliser le service client pour bypass les RLS (évite la récursion infinie)
@@ -251,6 +268,7 @@ export async function POST(request: Request) {
     const leaseData: any = {
       property_id: validated.property_id,
       type_bail: validated.type_bail,
+      signatory_entity_id: validated.signatory_entity_id || null,
       loyer: validated.loyer,
       charges_forfaitaires: validated.charges_forfaitaires,
       charges_type: validated.charges_type,
@@ -259,6 +277,10 @@ export async function POST(request: Request) {
       date_fin: validated.date_fin || null,
       // Si manuel, le statut est "draft", sinon "pending_signature"
       statut: isManualDraft ? "draft" : "pending_signature",
+      // P2-6: Clauses personnalisées → colonne clauses_particulieres (TEXT)
+      clauses_particulieres: validated.custom_clauses && validated.custom_clauses.length > 0
+        ? JSON.stringify(validated.custom_clauses)
+        : null,
     };
     
     // Ajouter la config colocation si applicable
@@ -311,8 +333,13 @@ export async function POST(request: Request) {
           joined_on: validated.date_debut,
           invitation_status: existingProfile ? "accepted" : "pending",
           invited_email: invitee.email,
+          // FIX: Store room_label and guarantor data
+          room_label: invitee.room_label || null,
+          has_guarantor: invitee.has_guarantor || false,
+          guarantor_email: invitee.guarantor_email || null,
+          guarantor_name: invitee.guarantor_name || null,
         };
-        
+
         if (existingProfile) {
           roommateData.user_id = existingProfile.user_id;
         }

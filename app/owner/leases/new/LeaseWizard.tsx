@@ -40,6 +40,10 @@ import { ColocationConfig, DEFAULT_COLOCATION_CONFIG, type ColocationConfigData 
 import { MultiTenantInvite, type Invitee } from "./MultiTenantInvite";
 import { GarantForm, type Garant } from "./GarantForm";
 import { LeasePreview } from "@/features/leases/components/lease-preview";
+import { RentControlAlert } from "@/components/lease/RentControlAlert";
+import { DomTomDiagnostics } from "@/components/lease/DomTomDiagnostics";
+import { CustomClauses } from "@/components/lease/CustomClauses";
+import { useAutoSave } from "@/hooks/useAutoSave";
 import type { BailComplet } from "@/lib/templates/bail/types";
 
 // ✅ Import pour les données profil
@@ -141,9 +145,49 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   // ✅ États pour le garant
   const [hasGarant, setHasGarant] = useState(false);
   const [garant, setGarant] = useState<Garant | null>(null);
-  
+
+  // ✅ P2-6: Clauses personnalisables
+  const [customClauses, setCustomClauses] = useState<{ id: string; text: string; isCustom: boolean }[]>([]);
+
   // Vérifier si c'est un bail colocation
   const isColocation = selectedType === "colocation";
+
+  // ✅ P2-9: Auto-save du wizard
+  const autoSaveData = useMemo(() => ({
+    selectedType, selectedPropertyId, selectedEntityId,
+    loyer, charges, depot, chargesType, dateDebut,
+    tenantEmail, tenantName, creationMode,
+    colocConfig, invitees, hasGarant, garant, customClauses,
+  }), [
+    selectedType, selectedPropertyId, selectedEntityId,
+    loyer, charges, depot, chargesType, dateDebut,
+    tenantEmail, tenantName, creationMode,
+    colocConfig, invitees, hasGarant, garant, customClauses,
+  ]);
+
+  const { clearSaved: clearAutoSave } = useAutoSave({
+    key: "lease-wizard",
+    data: autoSaveData,
+    onRestore: useCallback((saved: typeof autoSaveData) => {
+      if (saved.selectedType) setSelectedType(saved.selectedType);
+      if (saved.selectedPropertyId) setSelectedPropertyId(saved.selectedPropertyId);
+      if (saved.selectedEntityId) setSelectedEntityId(saved.selectedEntityId);
+      if (saved.loyer) setLoyer(saved.loyer);
+      if (saved.charges) setCharges(saved.charges);
+      if (saved.depot != null) setDepot(saved.depot);
+      if (saved.chargesType) setChargesType(saved.chargesType);
+      if (saved.dateDebut) setDateDebut(saved.dateDebut);
+      if (saved.tenantEmail) setTenantEmail(saved.tenantEmail);
+      if (saved.tenantName) setTenantName(saved.tenantName);
+      if (saved.creationMode) setCreationMode(saved.creationMode);
+      if (saved.colocConfig) setColocConfig(saved.colocConfig);
+      if (saved.invitees) setInvitees(saved.invitees);
+      if (saved.hasGarant != null) setHasGarant(saved.hasGarant);
+      if (saved.garant) setGarant(saved.garant);
+      if (saved.customClauses) setCustomClauses(saved.customClauses);
+      toast({ title: "Brouillon restauré", description: "Votre saisie précédente a été récupérée.", duration: 3000 });
+    }, [toast]),
+  });
 
   // ✅ Charger les infos supplémentaires du propriétaire (adresse, etc.)
   useEffect(() => {
@@ -167,11 +211,25 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   // Configuration du type de bail sélectionné
   const leaseConfig = selectedType ? LEASE_TYPE_CONFIGS[selectedType] : null;
 
+  // P1-4 SOTA 2026: Durée bail SCI = 6 ans min (loi 89-462 art. 10)
+  // Si l'entité signataire est une SCI/SARL/SAS et le bail est habitation, durée = 72 mois
+  const effectiveDurationMonths = useMemo(() => {
+    if (!leaseConfig || !selectedEntityId) return leaseConfig?.durationMonths ?? 12;
+    const entity = entities.find((e) => e.id === selectedEntityId);
+    if (!entity) return leaseConfig.durationMonths;
+    const isPersonneMorale = !["particulier"].includes(entity.entityType);
+    const isHabitation = ["nu", "bail_mixte"].includes(selectedType || "");
+    if (isPersonneMorale && isHabitation && leaseConfig.durationMonths < 72) {
+      return 72; // 6 ans minimum pour personne morale bailleur
+    }
+    return leaseConfig.durationMonths;
+  }, [leaseConfig, selectedEntityId, entities, selectedType]);
+
   // Date de fin calculée
   const dateFin = useMemo(() => {
     if (!dateDebut || !leaseConfig) return null;
-    return calculateEndDate(dateDebut, leaseConfig.durationMonths);
-  }, [dateDebut, leaseConfig]);
+    return calculateEndDate(dateDebut, effectiveDurationMonths);
+  }, [dateDebut, leaseConfig, effectiveDurationMonths]);
 
   // Dépôt max légal
   const maxDepot = useMemo(() => {
@@ -268,7 +326,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       conditions: {
         date_debut: dateDebut,
         date_fin: dateFin || undefined,
-        duree_mois: leaseConfig?.durationMonths || 12,
+        duree_mois: effectiveDurationMonths,
         tacite_reconduction: true,
         loyer_hc: loyer,
         loyer_en_lettres: numberToWords(loyer),
@@ -294,6 +352,9 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
           estimation_cout_max: selectedProperty.dpe_estimation_conso_max || undefined,
         },
       },
+
+      // Clauses additionnelles
+      clauses_additionnelles: customClauses.length > 0 ? customClauses.map(c => c.text) : undefined,
 
       // Garant (si défini)
       garants: hasGarant && garant ? [{
@@ -330,6 +391,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     ownerProfile,
     hasGarant,
     garant,
+    customClauses,
     selectedEntityId,
     entities
   ]);
@@ -357,6 +419,14 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     const allowedTypes = PROPERTY_TYPES_BY_LEASE[selectedType];
     return properties.filter((p) => allowedTypes.includes(p.type || ""));
   }, [properties, selectedType]);
+
+  // P1-5: Vérification DPE G (Loi Climat et Résilience)
+  const isDpeBlocked = useMemo(() => {
+    if (!selectedProperty || !selectedType) return false;
+    const isHabitation = ["nu", "meuble", "colocation", "bail_mobilite", "etudiant", "bail_mixte"].includes(selectedType);
+    const dpe = (selectedProperty.dpe_classe_energie || "").toUpperCase();
+    return isHabitation && dpe === "G";
+  }, [selectedProperty, selectedType]);
 
   // ✅ SOTA 2026: Gestion de la sélection de propriété avec feedback UX
   const handlePropertySelect = useCallback((property: Property) => {
@@ -460,7 +530,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       case 1:
         return selectedType !== null;
       case 2:
-        return selectedPropertyId !== null && loyer > 0;
+        return selectedPropertyId !== null && loyer > 0 && !isDpeBlocked;
       case 3:
         if (isColocation) {
           const validInvitees = invitees.filter(i => 
@@ -546,6 +616,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
           depot_garantie: depot,
           date_debut: dateDebut,
           date_fin: dateFin,
+          custom_clauses: customClauses.length > 0 ? customClauses : undefined,
           ...(isColocation ? colocData : {
             tenant_email: creationMode === "invite" ? tenantEmail : null,
             tenant_name: tenantName || null,
@@ -559,6 +630,9 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       if (!response.ok) {
         throw new Error(result.error || result.details || result.hint || "Erreur lors de la création");
       }
+
+      // P2-9: Clear auto-save on successful submit
+      clearAutoSave();
 
       toast({
         title: "✅ Bail créé avec succès !",
@@ -674,6 +748,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                       label="Entité signataire du bail"
                       hint="Sélectionnez l'entité juridique qui signera ce bail. Le bailleur sur le document sera cette entité."
                       warnMissingSiret
+                      propertyEntityId={selectedProperty?.legal_entity_id || null}
                     />
                   </div>
                 )}
@@ -697,8 +772,35 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                     />
                   )}
 
+                  {/* P1-5: Alerte DPE G — Loi Climat et Résilience */}
+                  {isDpeBlocked && (
+                    <div className="mt-6 p-4 rounded-xl bg-red-50 border-2 border-red-300">
+                      <p className="text-base font-bold text-red-800">Location interdite — DPE classe G</p>
+                      <p className="text-sm text-red-700 mt-2">
+                        Depuis le 1er janvier 2025, les logements classés G au DPE ne peuvent plus
+                        faire l'objet d'un nouveau bail d'habitation (Loi Climat et Résilience, art. 160).
+                      </p>
+                      <p className="text-sm text-red-600 mt-1">
+                        Effectuez des travaux de rénovation énergétique pour améliorer le DPE avant de louer.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* P2-8: Encadrement des loyers + P2-5: DOM-TOM */}
+                  {selectedProperty && !isDpeBlocked && (
+                    <div className="mt-6 space-y-3">
+                      <RentControlAlert
+                        codePostal={selectedProperty.code_postal}
+                        loyer={loyer}
+                        surface={selectedProperty.surface}
+                        typeBail={selectedType || ""}
+                      />
+                      <DomTomDiagnostics codePostal={selectedProperty.code_postal} />
+                    </div>
+                  )}
+
                   {/* Données financières */}
-                  {selectedPropertyId && (
+                  {selectedPropertyId && !isDpeBlocked && (
                     <div ref={financialSectionRef} className="mt-8 pt-8 border-t scroll-mt-4">
                       <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                         <Euro className="h-5 w-5 text-amber-600" />
@@ -782,6 +884,19 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                           <Input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
                         </div>
                       </div>
+
+                      {/* P1-4: Avertissement durée SCI */}
+                      {effectiveDurationMonths > (leaseConfig?.durationMonths ?? 0) && (
+                        <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                          <p className="text-sm text-amber-800 font-medium">
+                            Durée ajustée : {effectiveDurationMonths / 12} ans
+                          </p>
+                          <p className="text-xs text-amber-600 mt-1">
+                            Loi 89-462, Art. 10 : lorsque le bailleur est une personne morale,
+                            la durée minimum du bail est de 6 ans (au lieu de 3 ans).
+                          </p>
+                        </div>
+                      )}
                       
                       {/* Récapitulatif */}
                       <div className="mt-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
@@ -860,6 +975,16 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                           <Input type="date" className="h-8" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
                         </div>
                       </div>
+                    </div>
+
+                    {/* P2-6: Clauses personnalisables */}
+                    <div className="pt-6 border-t">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase mb-4">Clauses additionnelles</h4>
+                      <CustomClauses
+                        typeBail={selectedType || ""}
+                        value={customClauses}
+                        onChange={setCustomClauses}
+                      />
                     </div>
                   </div>
                 </div>

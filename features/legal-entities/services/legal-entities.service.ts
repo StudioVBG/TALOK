@@ -122,7 +122,7 @@ export async function getLegalEntitiesWithStats(
       total_value: stats?.total_value ?? 0,
       monthly_rent: stats?.monthly_rent ?? 0,
       active_leases: stats?.active_leases ?? 0,
-      associates_count: 0, // À calculer séparément
+      associates_count: stats?.associates_count ?? 0,
     };
   });
 }

@@ -80,7 +80,35 @@ export const useEntityStore = create<EntityState>()(
             return;
           }
 
-          // Fetch property counts per entity
+          // M9: Fetch property and lease counts per entity
+          const entityIds = (entities || []).map((e: Record<string, unknown>) => e.id as string);
+          const propertyCounts: Record<string, number> = {};
+          const leaseCounts: Record<string, number> = {};
+
+          if (entityIds.length > 0) {
+            const { data: props } = await supabase
+              .from("properties")
+              .select("legal_entity_id")
+              .in("legal_entity_id", entityIds)
+              .is("deleted_at", null);
+            if (props) {
+              for (const p of props as any[]) {
+                if (p.legal_entity_id) propertyCounts[p.legal_entity_id] = (propertyCounts[p.legal_entity_id] || 0) + 1;
+              }
+            }
+
+            const { data: leases } = await supabase
+              .from("leases")
+              .select("signatory_entity_id")
+              .in("signatory_entity_id", entityIds)
+              .in("statut", ["active", "pending_signature", "fully_signed"]);
+            if (leases) {
+              for (const l of leases as any[]) {
+                if (l.signatory_entity_id) leaseCounts[l.signatory_entity_id] = (leaseCounts[l.signatory_entity_id] || 0) + 1;
+              }
+            }
+          }
+
           const entitySummaries: LegalEntitySummary[] = (entities || []).map(
             (e: Record<string, unknown>) => ({
               id: e.id as string,
@@ -94,8 +122,8 @@ export const useEntityStore = create<EntityState>()(
               isDefault: false, // Will be computed
               isActive: (e.is_active as boolean) ?? true,
               couleur: (e.couleur as string) || null,
-              propertyCount: 0,
-              activeLeaseCount: 0,
+              propertyCount: propertyCounts[e.id as string] || 0,
+              activeLeaseCount: leaseCounts[e.id as string] || 0,
               hasIban: !!(e.iban as string),
             })
           );

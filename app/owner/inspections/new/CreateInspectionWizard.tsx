@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -58,6 +58,7 @@ import {
   DEFAULT_METER_READINGS,
   DEFAULT_KEYS,
 } from "./config/constants";
+import { useAutoSave } from "@/hooks/useAutoSave";
 
 interface Props {
   leases: Lease[];
@@ -98,6 +99,41 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
 
   // État pour les clés (defaults imported from ./config/constants)
   const [keys, setKeys] = useState<KeyItem[]>(DEFAULT_KEYS);
+
+  // Auto-save: persiste l'état du wizard dans localStorage
+  const autoSaveData = useMemo(() => ({
+    step,
+    selectedLeaseId: selectedLease?.id || null,
+    edlType,
+    scheduledDate,
+    selectedRooms,
+    roomsData,
+    currentRoomIndex,
+    generalNotes,
+    meterReadings,
+    keys,
+  }), [step, selectedLease, edlType, scheduledDate, selectedRooms, roomsData, currentRoomIndex, generalNotes, meterReadings, keys]);
+
+  const { clearSaved: clearAutoSave } = useAutoSave({
+    key: "edl-wizard",
+    data: autoSaveData,
+    onRestore: useCallback((saved: typeof autoSaveData) => {
+      if (saved.step) setStep(saved.step);
+      if (saved.selectedLeaseId) {
+        const lease = leases.find(l => l.id === saved.selectedLeaseId);
+        if (lease) setSelectedLease(lease);
+      }
+      if (saved.edlType) setEdlType(saved.edlType);
+      if (saved.scheduledDate) setScheduledDate(saved.scheduledDate);
+      if (saved.selectedRooms?.length) setSelectedRooms(saved.selectedRooms);
+      if (saved.roomsData?.length) setRoomsData(saved.roomsData);
+      if (saved.currentRoomIndex != null) setCurrentRoomIndex(saved.currentRoomIndex);
+      if (saved.generalNotes) setGeneralNotes(saved.generalNotes);
+      if (saved.meterReadings?.length) setMeterReadings(saved.meterReadings);
+      if (saved.keys?.length) setKeys(saved.keys);
+      toast({ title: "Brouillon restauré", description: "Votre saisie précédente a été récupérée.", duration: 3000 });
+    }, [leases, toast]),
+  });
 
   // Auto-avancer si bail présélectionné (depuis lien direct)
   useEffect(() => {
@@ -840,6 +876,9 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
       setUploadProgress(100);
       setUploadStep("Finalisation...");
       setUploadDetails("");
+
+      // Effacer le brouillon auto-save après succès
+      clearAutoSave();
 
       toast({
         title: "État des lieux créé",

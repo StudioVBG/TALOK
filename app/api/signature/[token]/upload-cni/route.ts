@@ -379,21 +379,31 @@ export async function POST(request: Request, { params }: PageProps) {
     }
 
     if (docError) {
-      console.warn("[Upload CNI] Erreur création document DB:", docError);
-      // On continue quand même, le fichier est uploadé
-    } else {
-      console.log("[Upload CNI] Document créé:", docData?.id, "expiry_date:", expiryDate);
+      console.error("[Upload CNI] Erreur création document DB:", docError);
+      // FIX: Retourner une erreur au lieu de succès silencieux
+      return NextResponse.json({
+        success: false,
+        error: "Le fichier a été uploadé mais l'enregistrement en base a échoué",
+        details: docError.message,
+        file_path: filePath,
+        side,
+        extracted_data: extractedData,
+        ocr_source: ocrSource,
+      }, { status: 500 });
     }
+
+    console.log("[Upload CNI] Document créé:", docData?.id, "expiry_date:", expiryDate);
 
     // Retourner les données avec info OCR
     return NextResponse.json({
       success: true,
       file_path: filePath,
+      document_id: docData?.id,
       side,
       extracted_data: extractedData,
       ocr_source: ocrSource,
-      message: side === "recto" 
-        ? "Photo recto enregistrée avec succès" 
+      message: side === "recto"
+        ? "Photo recto enregistrée avec succès"
         : "Photo verso enregistrée avec succès",
     });
 

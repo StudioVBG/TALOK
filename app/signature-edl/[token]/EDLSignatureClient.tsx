@@ -197,8 +197,8 @@ export default function EDLSignatureClient({
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-8">
-                <SignaturePad 
-                  signerName="Locataire"
+                <SignaturePad
+                  signerName={edl?.tenant_name || edl?.signer_name || "Locataire"}
                   onSignatureComplete={handleSign}
                   disabled={isSigning}
                 />
