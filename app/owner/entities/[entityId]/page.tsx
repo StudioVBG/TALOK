@@ -39,10 +39,37 @@ export default async function EntityDetailPage({ params }: PageProps) {
     .eq("is_current", true)
     .order("pourcentage_capital", { ascending: false });
 
+  // Fetch properties linked to this entity
+  const { data: ownedProperties } = await supabase
+    .from("properties")
+    .select("id, adresse_complete, ville, code_postal, type, surface, loyer_hc, legal_entity_id, detention_mode")
+    .eq("legal_entity_id", entityId)
+    .is("deleted_at", null)
+    .order("adresse_complete");
+
+  // Fetch unassigned properties (no entity, available for assignment)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+
+  const { data: unassignedProperties } = profile
+    ? await supabase
+        .from("properties")
+        .select("id, adresse_complete, ville, code_postal, type, surface, loyer_hc, legal_entity_id")
+        .eq("owner_id", profile.id)
+        .is("legal_entity_id", null)
+        .is("deleted_at", null)
+        .order("adresse_complete")
+    : { data: [] };
+
   return (
     <EntityDetailClient
       entity={entity as Record<string, unknown>}
       associates={(associates || []) as Record<string, unknown>[]}
+      properties={(ownedProperties || []) as Record<string, unknown>[]}
+      unassignedProperties={(unassignedProperties || []) as Record<string, unknown>[]}
     />
   );
 }

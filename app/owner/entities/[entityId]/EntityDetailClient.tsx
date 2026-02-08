@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * EntityDetailClient — Fiche détaillée d'une entité avec 5 onglets
+ * EntityDetailClient — Fiche détaillée d'une entité avec 6 onglets
  */
 
 import { useState } from "react";
@@ -14,16 +14,17 @@ import {
   Users,
   FileText,
   Info,
+  Home,
   Star,
-  Check,
   AlertCircle,
   Trash2,
   Loader2,
+  X,
+  Plus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,12 +49,15 @@ import { deleteEntity } from "../actions";
 interface EntityDetailClientProps {
   entity: Record<string, unknown>;
   associates: Record<string, unknown>[];
+  properties: Record<string, unknown>[];
+  unassignedProperties: Record<string, unknown>[];
 }
 
-type TabId = "info" | "bank" | "stripe" | "associates" | "documents";
+type TabId = "info" | "properties" | "bank" | "stripe" | "associates" | "documents";
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof Info }> = [
   { id: "info", label: "Infos", icon: Info },
+  { id: "properties", label: "Biens", icon: Home },
   { id: "bank", label: "Bancaire", icon: CreditCard },
   { id: "stripe", label: "Stripe", icon: CreditCard },
   { id: "associates", label: "Associés", icon: Users },
@@ -84,12 +88,16 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
 export function EntityDetailClient({
   entity,
   associates,
+  properties: initialProperties,
+  unassignedProperties: initialUnassigned,
 }: EntityDetailClientProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { removeEntity } = useEntityStore();
   const [activeTab, setActiveTab] = useState<TabId>("info");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [properties, setProperties] = useState(initialProperties);
+  const [unassignedProperties, setUnassignedProperties] = useState(initialUnassigned);
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -239,6 +247,11 @@ export function EntityDetailClient({
             >
               <tab.icon className="h-4 w-4" />
               {tab.label}
+              {tab.id === "properties" && properties.length > 0 && (
+                <span className="text-xs bg-muted rounded-full px-1.5 py-0.5">
+                  {properties.length}
+                </span>
+              )}
               {tab.id === "associates" && associates.length > 0 && (
                 <span className="text-xs bg-muted rounded-full px-1.5 py-0.5">
                   {associates.length}
@@ -252,6 +265,28 @@ export function EntityDetailClient({
       {/* Tab content */}
       <div>
         {activeTab === "info" && <InfoTab entity={entity} />}
+        {activeTab === "properties" && (
+          <PropertiesTab
+            entityId={entity.id as string}
+            properties={properties}
+            unassignedProperties={unassignedProperties}
+            onAssigned={(prop) => {
+              setProperties((prev) => [...prev, prop]);
+              setUnassignedProperties((prev) =>
+                prev.filter((p) => p.id !== prop.id)
+              );
+            }}
+            onRemoved={(propertyId) => {
+              const removed = properties.find((p) => p.id === propertyId);
+              setProperties((prev) =>
+                prev.filter((p) => p.id !== propertyId)
+              );
+              if (removed) {
+                setUnassignedProperties((prev) => [...prev, { ...removed, legal_entity_id: null }]);
+              }
+            }}
+          />
+        )}
         {activeTab === "bank" && <BankTab entity={entity} />}
         {activeTab === "stripe" && <StripeTab />}
         {activeTab === "associates" && (
@@ -472,6 +507,282 @@ function DocumentsTab() {
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+// ============================================
+// PROPERTIES TAB
+// ============================================
+
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  appartement: "Appartement",
+  maison: "Maison",
+  studio: "Studio",
+  local_commercial: "Local commercial",
+  bureau: "Bureau",
+  parking: "Parking",
+  garage: "Garage",
+  terrain: "Terrain",
+  immeuble: "Immeuble",
+  cave: "Cave",
+  autre: "Autre",
+};
+
+const DETENTION_MODE_LABELS: Record<string, string> = {
+  direct: "Directe",
+  societe: "Via société",
+  indivision: "Indivision",
+  demembrement: "Démembrement",
+};
+
+function PropertiesTab({
+  entityId,
+  properties,
+  unassignedProperties,
+  onAssigned,
+  onRemoved,
+}: {
+  entityId: string;
+  properties: Record<string, unknown>[];
+  unassignedProperties: Record<string, unknown>[];
+  onAssigned: (property: Record<string, unknown>) => void;
+  onRemoved: (propertyId: string) => void;
+}) {
+  const { toast } = useToast();
+  const [selectedPropertyId, setSelectedPropertyId] = useState("");
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const handleAssign = async () => {
+    if (!selectedPropertyId) return;
+    setIsAssigning(true);
+    try {
+      const res = await fetch(
+        `/api/owner/legal-entities/${entityId}/properties`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ property_id: selectedPropertyId }),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Erreur lors de l'affectation");
+      }
+      const assigned = unassignedProperties.find(
+        (p) => p.id === selectedPropertyId
+      );
+      if (assigned) {
+        onAssigned({ ...assigned, legal_entity_id: entityId });
+      }
+      setSelectedPropertyId("");
+      toast({
+        title: "Bien affecté",
+        description: "Le bien a été rattaché à cette entité.",
+      });
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description:
+          err instanceof Error ? err.message : "Impossible d'affecter le bien.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleRemove = async (propertyId: string) => {
+    setRemovingId(propertyId);
+    try {
+      const res = await fetch(
+        `/api/owner/legal-entities/${entityId}/properties?propertyId=${propertyId}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Erreur lors du retrait");
+      }
+      onRemoved(propertyId);
+      toast({
+        title: "Bien retiré",
+        description: "Le bien est revenu en détention directe.",
+      });
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description:
+          err instanceof Error ? err.message : "Impossible de retirer le bien.",
+        variant: "destructive",
+      });
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Assign property */}
+      {unassignedProperties.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <select
+                className="flex h-11 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={selectedPropertyId}
+                onChange={(e) => setSelectedPropertyId(e.target.value)}
+              >
+                <option value="">Sélectionner un bien à affecter…</option>
+                {unassignedProperties.map((p) => (
+                  <option key={p.id as string} value={p.id as string}>
+                    {(p.adresse_complete as string) ||
+                      `${(p.ville as string) || "Bien"} ${(p.code_postal as string) || ""}`}
+                  </option>
+                ))}
+              </select>
+              <Button
+                onClick={handleAssign}
+                disabled={!selectedPropertyId || isAssigning}
+              >
+                {isAssigning ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
+                Affecter
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Property list */}
+      {properties.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-8">
+            <Home className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+            <p className="font-medium">Aucun bien rattaché</p>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              {unassignedProperties.length > 0
+                ? "Utilisez le sélecteur ci-dessus pour affecter un bien à cette entité."
+                : "Créez d'abord un bien, puis affectez-le à cette entité."}
+            </p>
+            {unassignedProperties.length === 0 && (
+              <Button variant="outline" asChild>
+                <Link href="/owner/properties/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer un bien
+                </Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Biens détenus ({properties.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {properties.map((p) => {
+                const propId = p.id as string;
+                const typeLabel =
+                  PROPERTY_TYPE_LABELS[(p.type as string) || ""] ||
+                  (p.type as string) ||
+                  "Bien";
+                const detentionLabel =
+                  DETENTION_MODE_LABELS[
+                    (p.detention_mode as string) || ""
+                  ] || null;
+                const loyerHc = p.loyer_hc as number | null;
+                const surface = p.surface as number | null;
+
+                return (
+                  <div
+                    key={propId}
+                    className="flex items-center gap-3 p-3 rounded-lg border group"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                      <Home className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`/owner/properties/${propId}`}
+                        className="font-medium text-sm hover:underline truncate block"
+                      >
+                        {(p.adresse_complete as string) ||
+                          `${(p.ville as string) || "Bien"} ${(p.code_postal as string) || ""}`}
+                      </Link>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <Badge variant="secondary" className="text-xs">
+                          {typeLabel}
+                        </Badge>
+                        {detentionLabel && (
+                          <Badge variant="outline" className="text-xs">
+                            {detentionLabel}
+                          </Badge>
+                        )}
+                        {surface && (
+                          <span className="text-xs text-muted-foreground">
+                            {surface} m²
+                          </span>
+                        )}
+                        {loyerHc != null && loyerHc > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {loyerHc.toLocaleString("fr-FR")} €/mois
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Retirer ce bien de l&apos;entité ?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Le bien reviendra en détention directe (nom propre).
+                            Vous pourrez le réaffecter à une autre entité
+                            ultérieurement.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleRemove(propId)}
+                            disabled={removingId === propId}
+                          >
+                            {removingId === propId ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Retrait…
+                              </>
+                            ) : (
+                              "Retirer"
+                            )}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 
