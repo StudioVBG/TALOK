@@ -7,9 +7,16 @@ import type { EntityFormData } from "@/app/owner/entities/new/page";
 interface StepBankDetailsProps {
   formData: EntityFormData;
   onChange: (updates: Partial<EntityFormData>) => void;
+  errors?: Record<string, string>;
+  showNomField?: boolean;
 }
 
-export function StepBankDetails({ formData, onChange }: StepBankDetailsProps) {
+export function StepBankDetails({
+  formData,
+  onChange,
+  errors,
+  showNomField,
+}: StepBankDetailsProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -18,6 +25,24 @@ export function StepBankDetails({ formData, onChange }: StepBankDetailsProps) {
           Pour recevoir les loyers et configurer Stripe Connect
         </p>
       </div>
+
+      {/* Nom field for "particulier" type (skipped legal step) */}
+      {showNomField && (
+        <div className="space-y-2">
+          <Label htmlFor="nom-particulier">
+            Nom de l&apos;entité
+          </Label>
+          <Input
+            id="nom-particulier"
+            value={formData.nom}
+            onChange={(e) => onChange({ nom: e.target.value })}
+            placeholder="Patrimoine personnel"
+          />
+          <p className="text-xs text-muted-foreground">
+            Un nom pour identifier votre patrimoine en nom propre
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* IBAN */}
@@ -33,11 +58,15 @@ export function StepBankDetails({ formData, onChange }: StepBankDetailsProps) {
               onChange({ iban: v });
             }}
             placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
-            className="font-mono"
+            className={`font-mono ${errors?.iban ? "border-destructive" : ""}`}
           />
-          <p className="text-xs text-muted-foreground">
-            L&apos;IBAN sera utilisé pour les virements de loyers
-          </p>
+          {errors?.iban ? (
+            <p className="text-xs text-destructive">{errors.iban}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              L&apos;IBAN sera utilisé pour les virements de loyers
+            </p>
+          )}
         </div>
 
         {/* BIC */}
