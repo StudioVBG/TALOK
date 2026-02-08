@@ -44,6 +44,12 @@ const inviteSchema = z.object({
   tenant_email: z.string().email("Email du locataire invalide").nullable().optional(), // Nullable pour manual draft
   tenant_name: z.string().nullable().optional(),
   is_manual_draft: z.boolean().optional(), // Nouveau flag
+  // Clauses personnalisées (P2-6)
+  custom_clauses: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    isCustom: z.boolean(),
+  })).optional(),
   // Colocation
   coloc_config: colocConfigSchema.optional(),
   invitees: z.array(inviteeSchema).optional(),
@@ -271,6 +277,10 @@ export async function POST(request: Request) {
       date_fin: validated.date_fin || null,
       // Si manuel, le statut est "draft", sinon "pending_signature"
       statut: isManualDraft ? "draft" : "pending_signature",
+      // P2-6: Clauses personnalisées → colonne clauses_particulieres (TEXT)
+      clauses_particulieres: validated.custom_clauses && validated.custom_clauses.length > 0
+        ? JSON.stringify(validated.custom_clauses)
+        : null,
     };
     
     // Ajouter la config colocation si applicable
@@ -323,8 +333,13 @@ export async function POST(request: Request) {
           joined_on: validated.date_debut,
           invitation_status: existingProfile ? "accepted" : "pending",
           invited_email: invitee.email,
+          // FIX: Store room_label and guarantor data
+          room_label: invitee.room_label || null,
+          has_guarantor: invitee.has_guarantor || false,
+          guarantor_email: invitee.guarantor_email || null,
+          guarantor_name: invitee.guarantor_name || null,
         };
-        
+
         if (existingProfile) {
           roommateData.user_id = existingProfile.user_id;
         }

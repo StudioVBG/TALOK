@@ -141,7 +141,7 @@ export async function createEDL(
   try {
     const { data: leaseSigners } = await serviceClient
       .from("lease_signers")
-      .select("profile_id, role")
+      .select("profile_id, role, invited_email, invited_name")
       .eq("lease_id", leaseId);
 
     if (leaseSigners && leaseSigners.length > 0) {
@@ -150,6 +150,8 @@ export async function createEDL(
         signer_user: null,
         signer_profile_id: ls.profile_id,
         signer_role: (ls.role === "proprietaire" || ls.role === "owner") ? "owner" : "tenant",
+        signer_email: ls.invited_email || null,
+        signer_name: ls.invited_name || null,
         invitation_token: crypto.randomUUID(),
       }));
 

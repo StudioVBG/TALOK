@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { verifyOTP, deleteOTP } from "@/lib/services/otp-store";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { extractClientIP } from "@/lib/utils/ip-address";
+import { generateSignatureProof, generateHash } from "@/lib/services/signature-proof.service";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -175,16 +176,19 @@ export async function POST(request: Request, { params }: PageProps) {
     const signerName = actualSigner.invited_name || tokenData.tenantEmail;
 
     // 2. Préparer les données de mise à jour
+    const ipAddress = extractClientIP(request);
+    const userAgent = request.headers.get("user-agent") || "unknown";
     const updateData: Record<string, any> = {
       signature_status: "signed",
       signed_at: new Date().toISOString(),
-      ip_inet: extractClientIP(request),
+      ip_inet: ipAddress,
+      user_agent: userAgent,
     };
-    
+
     // ✅ FIX: Sauvegarder l'image de signature dans Storage + base64
     if (signatureImage) {
       updateData.signature_image = signatureImage; // Base64 comme fallback
-      
+
       // Uploader aussi dans Storage pour cohérence
       try {
         const signaturePath = `signatures/${lease.id}/${actualSigner.id}_${Date.now()}.png`;
@@ -192,14 +196,14 @@ export async function POST(request: Request, { params }: PageProps) {
           signatureImage.replace(/^data:image\/\w+;base64,/, ""),
           "base64"
         );
-        
+
         const { error: uploadError } = await serviceClient.storage
           .from("documents")
           .upload(signaturePath, signatureBuffer, {
             contentType: "image/png",
             upsert: true,
           });
-        
+
         if (!uploadError) {
           updateData.signature_image_path = signaturePath;
           console.log(`[Signature OTP] ✅ Image uploadée: ${signaturePath}`);
@@ -208,7 +212,33 @@ export async function POST(request: Request, { params }: PageProps) {
         console.warn("[Signature OTP] ⚠️ Erreur upload image:", uploadError);
       }
     }
-    
+
+    // FIX #5: Générer la preuve cryptographique (parité avec sign-with-pad)
+    try {
+      const documentContent = `lease:${lease.id}|signer:${normalizedEmail}|role:${signerRole}|otp_verified:true`;
+      const proof = await generateSignatureProof({
+        documentType: "bail",
+        documentId: lease.id,
+        documentContent,
+        signerName,
+        signerEmail: normalizedEmail,
+        signerProfileId: signerProfileId || undefined,
+        identityVerified: true,
+        identityMethod: "otp_sms",
+        signatureType: signatureImage ? "draw" : "text",
+        signatureImage: signatureImage || `OTP_VERIFIED:${normalizedEmail}`,
+        userAgent,
+        screenSize: "unknown",
+        touchDevice: false,
+        ipAddress: ipAddress || undefined,
+      });
+      updateData.proof_id = proof.proofId;
+      updateData.proof_metadata = proof;
+      updateData.document_hash = proof.document.hash;
+    } catch (proofErr) {
+      console.warn("[Signature OTP] ⚠️ Erreur génération preuve:", proofErr);
+    }
+
     await serviceClient
       .from("lease_signers")
       .update(updateData)

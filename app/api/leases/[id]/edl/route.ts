@@ -289,10 +289,11 @@ export async function POST(
           const isOwnerRole = ["proprietaire", "owner", "bailleur"].includes(s.role);
           return {
             edl_id: newEdl.id,
-            role: isOwnerRole ? "owner" : "tenant",
+            signer_role: isOwnerRole ? "owner" : "tenant",
             signer_profile_id: s.profile_id || null,
             signer_email: s.invited_email || null,
             signer_name: s.invited_name || null,
+            invitation_token: crypto.randomUUID(),
           };
         });
 
