@@ -303,15 +303,14 @@ export async function deleteEntity(
     const supabase = await createClient();
     const { id } = parsed.data;
 
-    // Check if entity has active properties or leases
-    const { data: ownerships } = await supabase
-      .from("property_ownerships")
+    // Check if entity has properties linked to it
+    const { data: linkedProperties } = await supabase
+      .from("properties")
       .select("id")
       .eq("legal_entity_id", id)
-      .eq("is_current", true)
       .limit(1);
 
-    if (ownerships && ownerships.length > 0) {
+    if (linkedProperties && linkedProperties.length > 0) {
       return {
         success: false,
         error:

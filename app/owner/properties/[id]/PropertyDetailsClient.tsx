@@ -44,6 +44,7 @@ import dynamic from "next/dynamic";
 import type { OwnerProperty, PropertyPhoto, LeaseInfo, TenantInfo, EdlInfo } from "@/lib/types/owner-property";
 import { PropertyCharacteristicsBadges } from "./components/PropertyCharacteristicsBadges";
 import { PropertyEditForm } from "./components/PropertyEditForm";
+import { useEntityStore } from "@/stores/useEntityStore";
 
 // Import dynamique de la carte pour éviter les erreurs SSR
 const PropertyMap = dynamic(
@@ -75,6 +76,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
   const [legalEntity, setLegalEntity] = useState(details.legalEntity);
   const [photos, setPhotos] = useState(details.photos || []);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { entities } = useEntityStore();
   
   // ========== MODE ÉDITION GLOBAL ==========
   const [isEditing, setIsEditing] = useState(false);
@@ -308,6 +310,11 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         })
       );
 
+      // Entité juridique propriétaire (si modifiée)
+      if (editedValues.legal_entity_id !== undefined) {
+        cleanPayload.legal_entity_id = editedValues.legal_entity_id || null;
+      }
+
       console.log('[PropertyDetailsClient] Payload nettoyé:', cleanPayload);
 
       const response = await apiClient.patch<{ property: typeof property }>(
@@ -315,6 +322,24 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         cleanPayload
       );
       setProperty(response.property);
+
+      // Update legalEntity state if changed
+      if (editedValues.legal_entity_id !== undefined) {
+        const newEntityId = editedValues.legal_entity_id || null;
+        if (newEntityId) {
+          const matched = entities.find((e) => e.id === newEntityId);
+          if (matched) {
+            setLegalEntity({
+              id: matched.id,
+              nom: matched.nom,
+              entity_type: matched.entityType,
+              forme_juridique: matched.legalForm || undefined,
+            });
+          }
+        } else {
+          setLegalEntity(null);
+        }
+      }
 
       // 2. Supprimer les photos marquées
       for (const photoId of photosToDelete) {
@@ -896,7 +921,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         {/* Colonne Droite */}
         <div className="space-y-6">
           {/* Entité propriétaire */}
-          <Card>
+          <Card className={isEditing ? "ring-2 ring-primary/20" : ""}>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Building2 className="h-5 w-5 text-indigo-600" />
@@ -904,7 +929,34 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {legalEntity ? (
+              {isEditing ? (
+                <div className="space-y-3">
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={
+                      editedValues.legal_entity_id !== undefined
+                        ? editedValues.legal_entity_id || ""
+                        : legalEntity?.id || ""
+                    }
+                    onChange={(e) =>
+                      setEditedValues((prev) => ({
+                        ...prev,
+                        legal_entity_id: e.target.value || null,
+                      }))
+                    }
+                  >
+                    <option value="">Nom propre (détention directe)</option>
+                    {entities.map((entity) => (
+                      <option key={entity.id} value={entity.id}>
+                        {entity.nom} ({entity.legalForm || entity.entityType})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Sélectionnez l&apos;entité qui détient ce bien, ou &quot;Nom propre&quot; pour une détention directe.
+                  </p>
+                </div>
+              ) : legalEntity ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center">

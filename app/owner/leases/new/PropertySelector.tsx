@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/helpers/format";
+import { useEntityStore } from "@/stores/useEntityStore";
 
 interface Property {
   id: string;
@@ -32,6 +33,7 @@ interface Property {
   charges_forfaitaires?: number;
   dpe_classe?: string;
   dpe_classe_climat?: string;
+  legal_entity_id?: string | null;
 }
 
 interface PropertySelectorProps {
@@ -63,6 +65,12 @@ const dpeColors: Record<string, string> = {
 
 export function PropertySelector({ properties, selectedPropertyId, onSelect }: PropertySelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const { entities } = useEntityStore();
+  const entityNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of entities) map.set(e.id, e.nom);
+    return map;
+  }, [entities]);
   
   const filteredProperties = useMemo(() => {
     if (!searchQuery) return properties;
@@ -158,6 +166,12 @@ export function PropertySelector({ properties, selectedPropertyId, onSelect }: P
                           <MapPin className="h-3 w-3" />
                           {property.code_postal} {property.ville}
                         </p>
+                        {property.legal_entity_id && entityNameMap.get(property.legal_entity_id) && (
+                          <p className="text-xs text-indigo-600 flex items-center gap-1 mt-0.5">
+                            <Building2 className="h-3 w-3" />
+                            {entityNameMap.get(property.legal_entity_id)}
+                          </p>
+                        )}
                       </div>
                       
                       {/* Badge sélectionné */}

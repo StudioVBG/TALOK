@@ -83,6 +83,7 @@ export default function OwnerPropertiesPage() {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [entityFilter, setEntityFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
 
@@ -157,6 +158,14 @@ export default function OwnerPropertiesPage() {
       filtered = filtered.filter((p: any) => p.status === statusFilter);
     }
 
+    if (entityFilter !== "all") {
+      if (entityFilter === "none") {
+        filtered = filtered.filter((p: any) => !p.legal_entity_id);
+      } else {
+        filtered = filtered.filter((p: any) => p.legal_entity_id === entityFilter);
+      }
+    }
+
     if (debouncedSearchQuery) {
       const searchLower = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter((p: any) =>
@@ -167,7 +176,7 @@ export default function OwnerPropertiesPage() {
     }
 
     return filtered;
-  }, [propertiesWithStatus, moduleFilter, typeFilter, statusFilter, debouncedSearchQuery]);
+  }, [propertiesWithStatus, moduleFilter, typeFilter, statusFilter, entityFilter, debouncedSearchQuery]);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -562,6 +571,25 @@ export default function OwnerPropertiesPage() {
                   </SelectContent>
                 </Select>
               </motion.div>
+
+              {entities.length > 0 && (
+                <motion.div>
+                  <Select value={entityFilter} onValueChange={setEntityFilter}>
+                    <SelectTrigger className="bg-background/80 backdrop-blur-sm">
+                      <SelectValue placeholder="Entité" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les entités</SelectItem>
+                      <SelectItem value="none">Nom propre</SelectItem>
+                      {entities.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.nom}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </motion.div>
+              )}
 
               <motion.div className="flex items-center justify-end gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
                 <Button
