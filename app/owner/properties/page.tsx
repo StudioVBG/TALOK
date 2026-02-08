@@ -27,6 +27,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
+import { useEntityStore } from "@/stores/useEntityStore";
 
 // Imports SOTA
 import { PageTransition } from "@/components/ui/page-transition";
@@ -63,10 +64,20 @@ export default function OwnerPropertiesPage() {
   const moduleFilter = searchParams.get("module");
   const { data: properties = [], isLoading, error: propertiesError, refetch: refetchProperties } = useProperties();
   const handlePullRefresh = async () => { await refetchProperties(); };
-  
+  const { entities } = useEntityStore();
+
   const { data: leases = [], error: leasesError } = useLeases(undefined, {
     enabled: !isLoading && properties.length > 0,
   });
+
+  // Build entity name lookup map for property cards
+  const entityNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of entities) {
+      map.set(e.id, e.nom);
+    }
+    return map;
+  }, [entities]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -278,6 +289,17 @@ export default function OwnerPropertiesPage() {
     {
       header: "Type",
       cell: (property: any) => getTypeLabel(property.type)
+    },
+    {
+      header: "Entité",
+      cell: (property: any) => {
+        const name = property.legal_entity_id ? entityNameMap.get(property.legal_entity_id) : null;
+        return (
+          <span className={name ? "text-sm" : "text-sm text-muted-foreground"}>
+            {name || "Nom propre"}
+          </span>
+        );
+      }
     },
     {
       header: "Surface / Pièces",
@@ -608,10 +630,10 @@ export default function OwnerPropertiesPage() {
                             src={property.cover_url}
                             alt={property.adresse_complete || "Propriété sans nom"}
                             priority={index < 4}
-                            
+
                             // Titres intégrés
                             title={property.adresse_complete || "Nouvelle propriété"}
-                            subtitle={`${getTypeLabel(property.type)} • ${property.ville || ""}`}
+                            subtitle={`${getTypeLabel(property.type)} • ${property.ville || ""}${property.legal_entity_id && entityNameMap.get(property.legal_entity_id) ? ` • ${entityNameMap.get(property.legal_entity_id)}` : ""}`}
                             
                             // Badges automatiques adaptés au type de bien
                             badges={getBadgesForProperty(property)}

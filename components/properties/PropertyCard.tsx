@@ -28,6 +28,7 @@ export interface PropertyCardProps {
     date_fin?: string;
     tenant_name?: string;
   } | null;
+  entityName?: string | null;
   href?: string;
   className?: string;
   onClick?: () => void;
@@ -50,6 +51,7 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
 export const PropertyCard = memo(function PropertyCard({
   property,
   activeLease,
+  entityName,
   href,
   className,
   onClick,
@@ -102,6 +104,14 @@ export const PropertyCard = memo(function PropertyCard({
             </span>
           </div>
         </div>
+
+        {/* Entity badge */}
+        {entityName && (
+          <div className="flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5 text-indigo-500" />
+            <span className="text-xs text-indigo-600 font-medium truncate">{entityName}</span>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground">

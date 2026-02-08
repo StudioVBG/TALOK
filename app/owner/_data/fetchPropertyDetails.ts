@@ -9,6 +9,7 @@ export interface PropertyDetails {
   tickets: unknown[];
   invoices: unknown[];
   photos: PropertyPhoto[];
+  legalEntity: { id: string; nom: string; entity_type: string; forme_juridique?: string } | null;
 }
 
 export async function fetchPropertyDetails(propertyId: string, ownerId: string): Promise<PropertyDetails | null> {
@@ -112,9 +113,22 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
   // Calcul simple du statut
   const activeLease = leases?.find((l) => l.statut === "active");
   const pendingLease = leases?.find((l) => ["pending_signature", "fully_signed", "partially_signed"].includes(l.statut));
-  
+
   if (activeLease) enrichedProperty.status = "loue";
   else if (pendingLease) enrichedProperty.status = "en_preavis";
+
+  // 6. Récupérer l'entité juridique propriétaire si liée
+  let legalEntity: { id: string; nom: string; entity_type: string; forme_juridique?: string } | null = null;
+  if (property.legal_entity_id) {
+    const { data: entityData } = await supabase
+      .from("legal_entities")
+      .select("id, nom, entity_type, forme_juridique")
+      .eq("id", property.legal_entity_id)
+      .single();
+    if (entityData) {
+      legalEntity = entityData as typeof legalEntity;
+    }
+  }
 
   return {
     property: enrichedProperty,
@@ -123,6 +137,7 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
     leases: (leases || []) as unknown as LeaseInfo[],
     tickets: tickets || [],
     invoices: invoices || [],
-    photos: photos as unknown as PropertyPhoto[]
+    photos: photos as unknown as PropertyPhoto[],
+    legalEntity,
   };
 }

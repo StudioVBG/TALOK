@@ -2,9 +2,10 @@
 
 import { useMemo } from "react";
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
+import { useEntityStore } from "@/stores/useEntityStore";
 import {
   MapPin, Home, Ruler, Euro, Image as ImageIcon,
-  Edit2, AlertCircle, Car, LayoutGrid, Building,
+  Edit2, AlertCircle, Car, LayoutGrid, Building, Building2, User,
   Sparkles, Calendar, Globe, Lock, CheckCircle2, XCircle, AlertTriangle
 } from "lucide-react";
 import Image from "next/image";
@@ -132,7 +133,8 @@ const VALIDATION_FIELDS: ValidationField[] = [
 ];
 
 export function RecapStep() {
-  const { formData, rooms, photos, setStep, mode } = usePropertyWizardStore();
+  const { formData, rooms, photos, setStep, mode, updateFormData } = usePropertyWizardStore();
+  const { entities } = useEntityStore();
 
   // SOTA 2026: Calcul de la validation avec required dynamique
   const validation = useMemo(() => {
@@ -375,6 +377,59 @@ export function RecapStep() {
               </div>
             </Section>
           )}
+
+          {/* Entité propriétaire — toujours visible */}
+          <Card className={cn(
+            "overflow-hidden relative",
+            entities.length > 0 ? "md:col-span-3" : "md:col-span-3"
+          )}>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                <Building2 className="h-3.5 w-3.5" /> Entité propriétaire
+              </div>
+              {entities.length > 0 ? (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <select
+                    className="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={formData.legal_entity_id || ""}
+                    onChange={(e) => updateFormData({ legal_entity_id: e.target.value || null })}
+                  >
+                    <option value="">
+                      Nom propre (détention directe)
+                    </option>
+                    {entities.map((entity) => (
+                      <option key={entity.id} value={entity.id}>
+                        {entity.nom} ({entity.legalForm || entity.entityType})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-2 text-sm shrink-0">
+                    {formData.legal_entity_id ? (
+                      <Badge variant="secondary" className="text-xs">
+                        <Building2 className="h-3 w-3 mr-1" />
+                        Via entité
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        <User className="h-3 w-3 mr-1" />
+                        Nom propre
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="text-xs">
+                    <User className="h-3 w-3 mr-1" />
+                    Nom propre
+                  </Badge>
+                  <p className="text-xs text-muted-foreground">
+                    Ce bien sera détenu en nom propre. Créez une entité juridique pour le rattacher à une société.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
         
         {/* SOTA 2026: Alerte DOM-TOM si applicable */}

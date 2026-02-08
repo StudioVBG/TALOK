@@ -70,8 +70,9 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
   const router = useRouter();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [property, setProperty] = useState(details.property);
+  const [legalEntity, setLegalEntity] = useState(details.legalEntity);
   const [photos, setPhotos] = useState(details.photos || []);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
@@ -894,6 +895,75 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
         {/* Colonne Droite */}
         <div className="space-y-6">
+          {/* Entité propriétaire */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Building2 className="h-5 w-5 text-indigo-600" />
+                Entité propriétaire
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {legalEntity ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center">
+                      <Building2 className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`/owner/entities/${legalEntity.id}`}
+                        className="font-medium text-sm hover:underline block truncate"
+                      >
+                        {legalEntity.nom}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        {legalEntity.forme_juridique || legalEntity.entity_type}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs"
+                    asChild
+                  >
+                    <Link href={`/owner/entities/${legalEntity.id}`}>
+                      Voir la fiche entité
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-slate-50 flex items-center justify-center">
+                      <Building2 className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Nom propre</p>
+                      <p className="text-xs text-muted-foreground">
+                        Détention directe
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Ce bien n&apos;est rattaché à aucune entité juridique.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs"
+                    asChild
+                  >
+                    <Link href="/owner/entities">
+                      Gérer les entités
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Occupation</CardTitle>

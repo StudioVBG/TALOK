@@ -109,6 +109,9 @@ export interface WizardFormData {
   // Usage
   usage_principal?: 'habitation' | 'habitation_secondaire' | 'mixte';
 
+  // Entité juridique propriétaire
+  legal_entity_id?: string | null;
+
   // SOTA 2026 - Champs spécifiques immeuble
   building_floors?: number;
   building_units?: BuildingUnit[];

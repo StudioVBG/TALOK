@@ -309,6 +309,32 @@ export async function PATCH(
 
     const updates: Record<string, unknown> = { ...validated, updated_at: new Date().toISOString() };
 
+    // Auto-compute detention_mode when legal_entity_id changes
+    if (Object.prototype.hasOwnProperty.call(validated, "legal_entity_id")) {
+      if (validated.legal_entity_id) {
+        const { data: linkedEntity } = await serviceClient
+          .from("legal_entities")
+          .select("entity_type")
+          .eq("id", validated.legal_entity_id)
+          .single();
+        if (linkedEntity) {
+          const et = linkedEntity.entity_type as string;
+          if (et === "indivision") {
+            updates.detention_mode = "indivision";
+          } else if (et.startsWith("demembrement")) {
+            updates.detention_mode = "demembrement";
+          } else if (et === "particulier") {
+            updates.detention_mode = "direct";
+          } else {
+            updates.detention_mode = "societe";
+          }
+        }
+      } else {
+        // Removing entity → back to direct ownership
+        updates.detention_mode = "direct";
+      }
+    }
+
     // TODO: Réactiver après application de la migration 20251207231451_add_visite_virtuelle_url.sql
     // Supprimer temporairement le champ visite_virtuelle_url car la colonne n'existe pas encore
     delete updates.visite_virtuelle_url;

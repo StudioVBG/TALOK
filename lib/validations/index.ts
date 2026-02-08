@@ -488,6 +488,8 @@ export const propertyGeneralUpdateSchema = z
     complement_justification: z.string().optional().nullable(),
     // Visite virtuelle (Matterport, Nodalview, etc.)
     visite_virtuelle_url: z.string().url("L'URL de visite virtuelle doit être valide").optional().nullable(),
+    // Entité juridique propriétaire
+    legal_entity_id: z.string().uuid().optional().nullable(),
   })
   .refine(
     (data) => {
