@@ -12,9 +12,9 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
@@ -41,6 +41,11 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error: unknown) {
+    // Détecter les erreurs d'authentification (AuthApiError de Supabase)
+    if (error && typeof error === 'object' && 'name' in error && (error as any).name === 'AuthApiError') {
+      console.error("[Invoices GET] Auth error:", (error as Error).message);
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
     const errorMessage = error instanceof Error ? error.message : "Erreur serveur";
     console.error("[Invoices GET]", error);
     return NextResponse.json({ error: errorMessage }, { status: 500 });
