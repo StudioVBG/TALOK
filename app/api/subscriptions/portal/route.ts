@@ -14,10 +14,10 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const {
-      data: { user },
+      data: { user }, error: authError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (authError || !user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
@@ -53,6 +53,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'name' in error && (error as any).name === 'AuthApiError') {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
     console.error("Erreur création portail:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },

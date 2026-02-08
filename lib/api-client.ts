@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 
 const API_BASE = '/api';
 
+// Empêcher plusieurs redirections simultanées vers la page de connexion
+let isRedirectingToSignIn = false;
+
 export class ResourceNotFoundError extends Error {
   constructor(message: string) {
     super(message);
@@ -14,25 +17,51 @@ export class ResourceNotFoundError extends Error {
 }
 
 export class ApiClient {
+  /**
+   * Redirige vers la page de connexion en nettoyant la session invalide.
+   * Utilise un flag pour éviter les redirections multiples en cascade.
+   */
+  private async handleSessionExpired(supabase: ReturnType<typeof createClient>): Promise<never> {
+    if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth') && !isRedirectingToSignIn) {
+      isRedirectingToSignIn = true;
+      console.error('[api-client] Session invalide, redirection vers connexion');
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // Ignorer les erreurs de signOut - on redirige quand même
+      }
+      window.location.href = '/auth/signin?error=session_expired';
+    }
+    throw new Error('Session expirée. Veuillez vous reconnecter.');
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const supabase = createClient();
     let timeoutId: NodeJS.Timeout | null = null;
-    
+
+    // Si une redirection est déjà en cours, ne pas envoyer de requête
+    if (isRedirectingToSignIn) {
+      throw new Error('Session expirée. Veuillez vous reconnecter.');
+    }
+
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       // Gérer l'erreur de refresh token invalide
-      if (sessionError && (sessionError.message?.includes('refresh_token') || sessionError.message?.includes('Invalid Refresh Token'))) {
-        console.error('[api-client] Refresh token invalide, redirection vers connexion');
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth')) {
-          // Nettoyer la session invalide
-          await supabase.auth.signOut();
-          window.location.href = '/auth/signin?error=session_expired';
-        }
-        throw new Error('Session expirée. Veuillez vous reconnecter.');
+      if (sessionError && (
+        sessionError.message?.includes('refresh_token') ||
+        sessionError.message?.includes('Invalid Refresh Token') ||
+        sessionError.message?.includes('Refresh Token Not Found')
+      )) {
+        await this.handleSessionExpired(supabase);
+      }
+
+      // Si pas de session (token expiré et refresh échoué silencieusement), rediriger
+      if (!session) {
+        await this.handleSessionExpired(supabase);
       }
 
       const headers = new Headers({
@@ -40,9 +69,7 @@ export class ApiClient {
         ...options.headers,
       });
 
-      if (session?.access_token) {
-        headers.set('Authorization', `Bearer ${session.access_token}`);
-      }
+      headers.set('Authorization', `Bearer ${session!.access_token}`);
 
       const url = `${API_BASE}${endpoint}`;
       if (process.env.NODE_ENV === "development") {
@@ -69,6 +96,11 @@ export class ApiClient {
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Erreur serveur' }));
         console.error(`[api-client] Error ${response.status}:`, error);
+
+        // Session invalide côté serveur - rediriger vers connexion
+        if (response.status === 401) {
+          await this.handleSessionExpired(supabase);
+        }
         if (response.status === 404) {
           const notFoundError = new ResourceNotFoundError(error.error || "Ressource introuvable");
           (notFoundError as any).statusCode = 404;
@@ -103,14 +135,14 @@ export class ApiClient {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      
+
       // Gérer les erreurs de timeout/abort
       if ((error as any).name === 'AbortError' || (error as Error).message?.includes('aborted')) {
         const timeoutError = new Error("Le chargement prend trop de temps. Veuillez réessayer.");
         (timeoutError as any).statusCode = 504;
         throw timeoutError;
       }
-      
+
       // Propager les autres erreurs (y compris les erreurs de session)
       throw error;
     }
