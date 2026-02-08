@@ -2,15 +2,51 @@
 
 /**
  * EntityCard — Carte résumé d'une entité juridique
+ *
+ * - Toute la carte est cliquable (lien vers la fiche détail)
+ * - Menu contextuel (...) avec actions rapides Modifier / Supprimer
+ * - Suppression avec confirmation (AlertDialog)
  */
 
+import { useState } from "react";
 import Link from "next/link";
-import { Building2, User, Users, ArrowUpDown, Check, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  Building2,
+  User,
+  Users,
+  ArrowUpDown,
+  Check,
+  AlertCircle,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Loader2,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
-import type { LegalEntitySummary } from "@/stores/useEntityStore";
+import { useEntityStore, type LegalEntitySummary } from "@/stores/useEntityStore";
+import { deleteEntity } from "@/app/owner/entities/actions";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
   particulier: "Personnel",
@@ -43,98 +79,216 @@ interface EntityCardProps {
 }
 
 export function EntityCard({ entity, isActive }: EntityCardProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const { removeEntity } = useEntityStore();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const Icon = getEntityIcon(entity.entityType);
   const typeLabel = ENTITY_TYPE_LABELS[entity.entityType] || entity.entityType;
-  const hasWarnings = !entity.hasIban || !entity.siret;
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteEntity({ id: entity.id });
+      if (result.success) {
+        removeEntity(entity.id);
+        toast({
+          title: "Entité supprimée",
+          description: `${entity.nom} a été supprimée.`,
+        });
+      } else {
+        toast({
+          title: "Suppression impossible",
+          description: result.error || "Une erreur est survenue.",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'entité.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
 
   return (
-    <Card
-      className={cn(
-        "relative transition-all hover:shadow-md",
-        isActive && "ring-2 ring-primary"
-      )}
-    >
-      <CardContent className="p-5">
-        {/* Header */}
-        <div className="flex items-start gap-3 mb-4">
-          <div
-            className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0"
-            style={{
-              backgroundColor: entity.couleur
-                ? `${entity.couleur}20`
-                : "hsl(var(--muted))",
-            }}
-          >
-            <Icon
-              className="h-5 w-5"
-              style={{ color: entity.couleur || undefined }}
+    <>
+      <Card
+        className={cn(
+          "relative transition-all hover:shadow-md group cursor-pointer",
+          isActive && "ring-2 ring-primary"
+        )}
+      >
+        {/* Clickable card link */}
+        <Link
+          href={`/owner/entities/${entity.id}`}
+          className="absolute inset-0 z-0"
+          aria-label={`Voir ${entity.nom}`}
+        />
+
+        <CardContent className="p-5">
+          {/* Header */}
+          <div className="flex items-start gap-3 mb-4">
+            <div
+              className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                backgroundColor: entity.couleur
+                  ? `${entity.couleur}20`
+                  : "hsl(var(--muted))",
+              }}
+            >
+              <Icon
+                className="h-5 w-5"
+                style={{ color: entity.couleur || undefined }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-base truncate">{entity.nom}</h3>
+              <p className="text-sm text-muted-foreground">{typeLabel}</p>
+            </div>
+
+            {/* Actions dropdown — above the card link */}
+            <div className="relative z-10 flex items-center gap-1">
+              {entity.isDefault && (
+                <Badge variant="secondary" className="text-xs shrink-0">
+                  Par défaut
+                </Badge>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push(`/owner/entities/${entity.id}`);
+                    }}
+                  >
+                    <Building2 className="h-4 w-4 mr-2" />
+                    Voir la fiche
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      router.push(`/owner/entities/${entity.id}/edit`);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Modifier
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowDeleteDialog(true);
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="space-y-2 mb-4">
+            {entity.siret && (
+              <p className="text-xs text-muted-foreground font-mono">
+                SIRET {entity.siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, "$1 $2 $3 $4")}
+              </p>
+            )}
+            {entity.villeSiege && (
+              <p className="text-xs text-muted-foreground">
+                {entity.codePostalSiege} {entity.villeSiege}
+              </p>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="flex gap-3 mb-4">
+            <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
+              <p className="text-lg font-bold">{entity.propertyCount}</p>
+              <p className="text-xs text-muted-foreground">
+                bien{entity.propertyCount > 1 ? "s" : ""}
+              </p>
+            </div>
+            <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
+              <p className="text-lg font-bold">{entity.activeLeaseCount}</p>
+              <p className="text-xs text-muted-foreground">
+                ba{entity.activeLeaseCount > 1 ? "ux" : "il"}
+              </p>
+            </div>
+          </div>
+
+          {/* Status indicators */}
+          <div className="space-y-1.5">
+            <StatusRow
+              label="IBAN"
+              ok={entity.hasIban}
+              okLabel="Configuré"
+              koLabel="Non configuré"
+            />
+            <StatusRow
+              label="SIRET"
+              ok={!!entity.siret}
+              okLabel="Renseigné"
+              koLabel="Manquant"
             />
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base truncate">{entity.nom}</h3>
-            <p className="text-sm text-muted-foreground">{typeLabel}</p>
-          </div>
-          {entity.isDefault && (
-            <Badge variant="secondary" className="text-xs shrink-0">
-              Par défaut
-            </Badge>
-          )}
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Info */}
-        <div className="space-y-2 mb-4">
-          {entity.siret && (
-            <p className="text-xs text-muted-foreground font-mono">
-              SIRET {entity.siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, "$1 $2 $3 $4")}
-            </p>
-          )}
-          {entity.villeSiege && (
-            <p className="text-xs text-muted-foreground">
-              {entity.codePostalSiege} {entity.villeSiege}
-            </p>
-          )}
-        </div>
-
-        {/* Stats */}
-        <div className="flex gap-3 mb-4">
-          <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
-            <p className="text-lg font-bold">{entity.propertyCount}</p>
-            <p className="text-xs text-muted-foreground">
-              bien{entity.propertyCount > 1 ? "s" : ""}
-            </p>
-          </div>
-          <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
-            <p className="text-lg font-bold">{entity.activeLeaseCount}</p>
-            <p className="text-xs text-muted-foreground">
-              ba{entity.activeLeaseCount > 1 ? "ux" : "il"}
-            </p>
-          </div>
-        </div>
-
-        {/* Status indicators */}
-        <div className="space-y-1.5 mb-4">
-          <StatusRow
-            label="IBAN"
-            ok={entity.hasIban}
-            okLabel="Configuré"
-            koLabel="Non configuré"
-          />
-          <StatusRow
-            label="SIRET"
-            ok={!!entity.siret}
-            okLabel="Renseigné"
-            koLabel="Manquant"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" asChild>
-            <Link href={`/owner/entities/${entity.id}`}>Gérer</Link>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette entité ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vous êtes sur le point de supprimer <strong>{entity.nom}</strong>.
+              Cette action est irréversible. Les associés liés seront également
+              supprimés. Si l&apos;entité possède encore des biens, la suppression
+              sera refusée.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
