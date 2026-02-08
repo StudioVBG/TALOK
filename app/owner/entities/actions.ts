@@ -51,16 +51,42 @@ const createEntitySchema = z.object({
   date_creation: z.string().optional(),
   numero_tva: z.string().optional(),
   adresse_siege: z.string().optional(),
-  code_postal_siege: z.string().optional(),
+  code_postal_siege: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d{5}$/.test(val), {
+      message: "Le code postal doit contenir 5 chiffres",
+    }),
   ville_siege: z.string().optional(),
   pays_siege: z.string().default("France"),
-  iban: z.string().optional(),
+  iban: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        const clean = val.replace(/\s/g, "");
+        return clean.length >= 15 && clean.length <= 34;
+      },
+      { message: "L'IBAN doit contenir entre 15 et 34 caractères" }
+    ),
   bic: z.string().optional(),
   banque_nom: z.string().optional(),
   couleur: z.string().optional(),
+  // Representative
+  representant_mode: z.enum(["self", "other"]).default("self"),
   representant_prenom: z.string().optional(),
   representant_nom: z.string().optional(),
   representant_qualite: z.string().optional(),
+  representant_date_naissance: z.string().optional(),
+  // Contact info (stored in metadata JSONB)
+  email_entite: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+      message: "Format d'email invalide",
+    }),
+  telephone_entite: z.string().optional(),
 });
 
 const updateEntitySchema = createEntitySchema.partial().extend({
@@ -130,6 +156,11 @@ export async function createEntity(
     const supabase = await createClient();
     const data = parsed.data;
 
+    // Build metadata for fields without dedicated DB columns
+    const metadata: Record<string, unknown> = {};
+    if (data.email_entite) metadata.email = data.email_entite;
+    if (data.telephone_entite) metadata.telephone = data.telephone_entite;
+
     const { data: entity, error } = await supabase
       .from("legal_entities")
       .insert({
@@ -150,6 +181,7 @@ export async function createEntity(
         bic: data.bic || null,
         banque_nom: data.banque_nom || null,
         couleur: data.couleur || null,
+        metadata: Object.keys(metadata).length > 0 ? metadata : null,
       })
       .select("id")
       .single();
@@ -159,15 +191,28 @@ export async function createEntity(
       return { success: false, error: "Erreur lors de la création" };
     }
 
-    // Create representative as associate if provided
-    if (data.representant_prenom || data.representant_nom) {
+    // Create representative as associate
+    if (data.representant_mode === "self") {
+      await supabase.from("entity_associates").insert({
+        legal_entity_id: entity.id,
+        profile_id: auth.profileId,
+        nombre_parts: 100,
+        pourcentage_capital: 100,
+        is_gerant: true,
+        is_current: true,
+        date_entree: new Date().toISOString().split("T")[0],
+      });
+    } else if (data.representant_nom || data.representant_prenom) {
       await supabase.from("entity_associates").insert({
         legal_entity_id: entity.id,
         prenom: data.representant_prenom || "",
         nom: data.representant_nom || "",
-        qualite: data.representant_qualite || "Gérant",
+        date_naissance: data.representant_date_naissance || null,
+        nombre_parts: 100,
+        pourcentage_capital: 100,
         is_gerant: true,
         is_current: true,
+        date_entree: new Date().toISOString().split("T")[0],
       });
     }
 

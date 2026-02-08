@@ -8,9 +8,10 @@ import type { EntityFormData } from "@/app/owner/entities/new/page";
 interface StepAddressProps {
   formData: EntityFormData;
   onChange: (updates: Partial<EntityFormData>) => void;
+  errors?: Record<string, string>;
 }
 
-export function StepAddress({ formData, onChange }: StepAddressProps) {
+export function StepAddress({ formData, onChange, errors }: StepAddressProps) {
   const isDom = isDomTomPostalCode(formData.codePostalSiege);
   const tvaRate = getTvaRate(formData.codePostalSiege);
 
@@ -45,11 +46,14 @@ export function StepAddress({ formData, onChange }: StepAddressProps) {
           </Label>
           <textarea
             id="adresseSiege"
-            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={`flex min-h-[80px] w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${errors?.adresseSiege ? "border-destructive" : "border-input"}`}
             value={formData.adresseSiege}
             onChange={(e) => onChange({ adresseSiege: e.target.value })}
             placeholder="12 rue Victor Schoelcher"
           />
+          {errors?.adresseSiege && (
+            <p className="text-xs text-destructive">{errors.adresseSiege}</p>
+          )}
         </div>
 
         {/* Code postal */}
@@ -63,7 +67,11 @@ export function StepAddress({ formData, onChange }: StepAddressProps) {
             onChange={(e) => onChange({ codePostalSiege: e.target.value.replace(/\D/g, "").slice(0, 5) })}
             placeholder="97200"
             maxLength={5}
+            className={errors?.codePostalSiege ? "border-destructive" : ""}
           />
+          {errors?.codePostalSiege && (
+            <p className="text-xs text-destructive">{errors.codePostalSiege}</p>
+          )}
         </div>
 
         {/* Ville */}
@@ -76,7 +84,11 @@ export function StepAddress({ formData, onChange }: StepAddressProps) {
             value={formData.villeSiege}
             onChange={(e) => onChange({ villeSiege: e.target.value })}
             placeholder="Fort-de-France"
+            className={errors?.villeSiege ? "border-destructive" : ""}
           />
+          {errors?.villeSiege && (
+            <p className="text-xs text-destructive">{errors.villeSiege}</p>
+          )}
         </div>
 
         {/* Email entité */}
@@ -88,7 +100,11 @@ export function StepAddress({ formData, onChange }: StepAddressProps) {
             value={formData.emailEntite}
             onChange={(e) => onChange({ emailEntite: e.target.value })}
             placeholder="contact@atomgiste.fr"
+            className={errors?.emailEntite ? "border-destructive" : ""}
           />
+          {errors?.emailEntite && (
+            <p className="text-xs text-destructive">{errors.emailEntite}</p>
+          )}
         </div>
 
         {/* Téléphone */}

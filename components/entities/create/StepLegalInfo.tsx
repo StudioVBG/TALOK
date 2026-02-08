@@ -2,11 +2,13 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { isRegimeFiscalLocked } from "@/app/owner/entities/new/page";
 import type { EntityFormData } from "@/app/owner/entities/new/page";
 
 interface StepLegalInfoProps {
   formData: EntityFormData;
   onChange: (updates: Partial<EntityFormData>) => void;
+  errors?: Record<string, string>;
 }
 
 const FORME_JURIDIQUE_OPTIONS = [
@@ -25,7 +27,9 @@ const REGIME_FISCAL_OPTIONS = [
   { value: "is", label: "Impôt sur les Sociétés (IS)" },
 ];
 
-export function StepLegalInfo({ formData, onChange }: StepLegalInfoProps) {
+export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps) {
+  const regimeLocked = isRegimeFiscalLocked(formData.entityType);
+
   return (
     <div className="space-y-4">
       <div>
@@ -46,7 +50,11 @@ export function StepLegalInfo({ formData, onChange }: StepLegalInfoProps) {
             value={formData.nom}
             onChange={(e) => onChange({ nom: e.target.value })}
             placeholder="Ex: ATOMGISTE"
+            className={errors?.nom ? "border-destructive" : ""}
           />
+          {errors?.nom && (
+            <p className="text-xs text-destructive">{errors.nom}</p>
+          )}
         </div>
 
         {/* Forme juridique */}
@@ -56,7 +64,7 @@ export function StepLegalInfo({ formData, onChange }: StepLegalInfoProps) {
           </Label>
           <select
             id="formeJuridique"
-            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={`flex h-11 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${errors?.formeJuridique ? "border-destructive" : "border-input"}`}
             value={formData.formeJuridique}
             onChange={(e) => onChange({ formeJuridique: e.target.value })}
           >
@@ -67,6 +75,9 @@ export function StepLegalInfo({ formData, onChange }: StepLegalInfoProps) {
               </option>
             ))}
           </select>
+          {errors?.formeJuridique && (
+            <p className="text-xs text-destructive">{errors.formeJuridique}</p>
+          )}
         </div>
 
         {/* Régime fiscal */}
@@ -76,9 +87,10 @@ export function StepLegalInfo({ formData, onChange }: StepLegalInfoProps) {
           </Label>
           <select
             id="regimeFiscal"
-            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             value={formData.regimeFiscal}
             onChange={(e) => onChange({ regimeFiscal: e.target.value })}
+            disabled={regimeLocked}
           >
             {REGIME_FISCAL_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -86,6 +98,11 @@ export function StepLegalInfo({ formData, onChange }: StepLegalInfoProps) {
               </option>
             ))}
           </select>
+          {regimeLocked && (
+            <p className="text-xs text-muted-foreground">
+              Imposé par le type de structure sélectionné
+            </p>
+          )}
         </div>
 
         {/* SIRET */}
@@ -100,7 +117,11 @@ export function StepLegalInfo({ formData, onChange }: StepLegalInfoProps) {
             }}
             placeholder="123 456 789 01234"
             maxLength={17}
+            className={errors?.siret ? "border-destructive" : ""}
           />
+          {errors?.siret && (
+            <p className="text-xs text-destructive">{errors.siret}</p>
+          )}
         </div>
 
         {/* Capital social */}

@@ -8,6 +8,7 @@ import type { EntityFormData } from "@/app/owner/entities/new/page";
 interface StepRepresentativeProps {
   formData: EntityFormData;
   onChange: (updates: Partial<EntityFormData>) => void;
+  errors?: Record<string, string>;
 }
 
 const QUALITE_OPTIONS: Record<string, string[]> = {
@@ -23,6 +24,7 @@ const QUALITE_OPTIONS: Record<string, string[]> = {
 export function StepRepresentative({
   formData,
   onChange,
+  errors,
 }: StepRepresentativeProps) {
   const qualiteOptions =
     QUALITE_OPTIONS[formData.formeJuridique] || ["Gérant(e)", "Président(e)"];
@@ -101,7 +103,13 @@ export function StepRepresentative({
                 onChange({ representantPrenom: e.target.value })
               }
               placeholder="Marie-Line"
+              className={errors?.representantPrenom ? "border-destructive" : ""}
             />
+            {errors?.representantPrenom && (
+              <p className="text-xs text-destructive">
+                {errors.representantPrenom}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="representantNom">
@@ -114,7 +122,13 @@ export function StepRepresentative({
                 onChange({ representantNom: e.target.value })
               }
               placeholder="VOLBERG"
+              className={errors?.representantNom ? "border-destructive" : ""}
             />
+            {errors?.representantNom && (
+              <p className="text-xs text-destructive">
+                {errors.representantNom}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="representantDateNaissance">
