@@ -23,6 +23,7 @@ import {
   Shield,
   CreditCard,
   ClipboardCheck,
+  Briefcase,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { OwnerBottomNav } from "./owner-bottom-nav";
@@ -40,6 +41,7 @@ import { OnboardingTourProvider, AutoTourPrompt, StartTourButton } from "@/compo
 const navigation = [
   { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard, tourId: "nav-dashboard" },
   { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2, tourId: "nav-properties" },
+  { name: "Mes entités", href: "/owner/entities", icon: Briefcase, tourId: "nav-entities" },
   { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
   { name: "États des lieux", href: "/owner/inspections", icon: ClipboardCheck, tourId: "nav-inspections" },
   { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
