@@ -127,6 +127,200 @@ export interface TenantDashboardData {
   };
 }
 
+/**
+ * Fallback : requêtes directes quand la RPC tenant_dashboard n'est pas disponible
+ */
+async function fetchTenantDashboardFallback(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  profileId: string
+): Promise<TenantDashboardData> {
+  // Profil
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("prenom, nom, kyc_status")
+    .eq("user_id", userId)
+    .single();
+
+  // Trouver les baux via lease_signers (par profile_id)
+  const { data: signerRows } = await supabase
+    .from("lease_signers")
+    .select("lease_id, role, signature_status, signed_at")
+    .eq("profile_id", profileId);
+
+  const leaseIds = signerRows?.map((s) => s.lease_id) || [];
+
+  let leases: TenantLease[] = [];
+  let invoices: TenantInvoice[] = [];
+  let tickets: TenantTicket[] = [];
+
+  if (leaseIds.length > 0) {
+    // Baux avec propriétés
+    const { data: leaseRows } = await supabase
+      .from("leases")
+      .select(`
+        id, type_bail, loyer, charges_forfaitaires, depot_de_garantie,
+        date_debut, date_fin, statut, created_at, property_id,
+        properties:property_id (
+          id, adresse_complete, ville, code_postal, type, surface, nb_pieces,
+          etage, ascenseur, annee_construction, parking_numero, cave_numero,
+          num_lot, digicode, interphone, dpe_classe_energie, dpe_classe_climat, cover_url
+        )
+      `)
+      .in("id", leaseIds)
+      .in("statut", ["active", "pending_signature", "fully_signed"]);
+
+    if (leaseRows) {
+      const propertyIds = leaseRows.map((l: any) => l.property_id).filter(Boolean);
+
+      // Propriétaire de chaque propriété
+      let ownerMap: Record<string, { id: string; name: string; email?: string }> = {};
+      if (propertyIds.length > 0) {
+        const { data: props } = await supabase
+          .from("properties")
+          .select("id, owner_id, profiles:owner_id (id, prenom, nom, email)")
+          .in("id", propertyIds);
+        if (props) {
+          for (const p of props as any[]) {
+            if (p.profiles) {
+              ownerMap[p.id] = {
+                id: p.profiles.id,
+                name: `${p.profiles.prenom || ""} ${p.profiles.nom || ""}`.trim() || "Propriétaire",
+                email: p.profiles.email,
+              };
+            }
+          }
+        }
+      }
+
+      // Signataires par bail
+      const { data: allSigners } = await supabase
+        .from("lease_signers")
+        .select("id, lease_id, profile_id, role, signature_status, signed_at, profiles:profile_id (prenom, nom, avatar_url)")
+        .in("lease_id", leaseIds);
+
+      const signersByLease: Record<string, any[]> = {};
+      if (allSigners) {
+        for (const s of allSigners as any[]) {
+          if (!signersByLease[s.lease_id]) signersByLease[s.lease_id] = [];
+          signersByLease[s.lease_id].push({
+            id: s.id,
+            profile_id: s.profile_id,
+            role: s.role,
+            signature_status: s.signature_status,
+            signed_at: s.signed_at,
+            prenom: s.profiles?.prenom || "",
+            nom: s.profiles?.nom || "",
+            avatar_url: s.profiles?.avatar_url,
+          });
+        }
+      }
+
+      leases = leaseRows.map((l: any) => ({
+        id: l.id,
+        property_id: l.property_id,
+        type_bail: l.type_bail,
+        loyer: l.loyer,
+        charges_forfaitaires: l.charges_forfaitaires,
+        depot_de_garantie: l.depot_de_garantie,
+        date_debut: l.date_debut,
+        date_fin: l.date_fin,
+        statut: l.statut,
+        created_at: l.created_at,
+        lease_signers: signersByLease[l.id] || [],
+        property: l.properties ? {
+          ...l.properties,
+          ville: l.properties.ville || "Ville inconnue",
+          code_postal: l.properties.code_postal || "00000",
+          adresse_complete: l.properties.adresse_complete || "Adresse non renseignée",
+          meters: [],
+          keys: [],
+        } : null,
+        owner: ownerMap[l.property_id] || { id: "", name: "Propriétaire" },
+      }));
+    }
+
+    // Factures liées aux baux
+    const { data: invoiceRows } = await supabase
+      .from("invoices")
+      .select("id, lease_id, periode, montant_total, montant_loyer, montant_charges, statut, due_date")
+      .in("lease_id", leaseIds)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (invoiceRows) {
+      invoices = invoiceRows.map((inv: any) => {
+        const lease = leases.find((l) => l.id === inv.lease_id);
+        return {
+          id: inv.id,
+          lease_id: inv.lease_id,
+          periode: inv.periode,
+          montant_total: inv.montant_total,
+          montant_loyer: inv.montant_loyer,
+          montant_charges: inv.montant_charges,
+          statut: inv.statut,
+          due_date: inv.due_date,
+          property_type: lease?.property?.type || "",
+          property_address: lease?.property?.adresse_complete || "",
+        };
+      });
+    }
+
+    // Tickets liés aux propriétés des baux
+    const ticketPropertyIds = leases.map((l) => l.property_id).filter(Boolean);
+    if (ticketPropertyIds.length > 0) {
+      const { data: ticketRows } = await supabase
+        .from("tickets")
+        .select("id, titre, description, priorite, statut, created_at, property_id")
+        .in("property_id", ticketPropertyIds)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (ticketRows) {
+        tickets = ticketRows.map((t: any) => {
+          const lease = leases.find((l) => l.property_id === t.property_id);
+          return {
+            id: t.id,
+            titre: t.titre,
+            description: t.description,
+            priorite: t.priorite,
+            statut: t.statut,
+            created_at: t.created_at,
+            property_id: t.property_id,
+            property_address: lease?.property?.adresse_complete || "",
+            property_type: lease?.property?.type || "",
+          };
+        });
+      }
+    }
+  }
+
+  // Stats
+  const unpaidInvoices = invoices.filter((i) => i.statut === "sent" || i.statut === "late");
+  const activeLeases = leases.filter((l) => l.statut === "active");
+
+  return {
+    profile_id: profileId,
+    kyc_status: (profile?.kyc_status as any) || "pending",
+    tenant: profile ? { prenom: profile.prenom, nom: profile.nom } : undefined,
+    leases,
+    properties: leases.map((l) => l.property).filter(Boolean),
+    lease: leases.length > 0 ? leases[0] : null,
+    property: leases.length > 0 ? leases[0].property : null,
+    invoices,
+    tickets,
+    notifications: [],
+    pending_edls: [],
+    insurance: { has_insurance: false },
+    stats: {
+      unpaid_amount: unpaidInvoices.reduce((sum, i) => sum + (i.montant_total || 0), 0),
+      unpaid_count: unpaidInvoices.length,
+      total_monthly_rent: activeLeases.reduce((sum, l) => sum + (l.loyer || 0) + (l.charges_forfaitaires || 0), 0),
+      active_leases_count: activeLeases.length,
+    },
+  };
+}
+
 export async function fetchTenantDashboard(userId: string): Promise<TenantDashboardData | null> {
   const supabase = await createClient();
 
@@ -137,28 +331,30 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
     throw new Error("Accès non autorisé");
   }
 
+  // Récupérer le profile_id (nécessaire pour le fallback)
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select("id, prenom, nom, kyc_status")
+    .eq("user_id", userId)
+    .single();
+
+  // 1. Tenter la RPC tenant_dashboard
   const { data, error } = await supabase.rpc("tenant_dashboard", {
     p_tenant_user_id: userId,
   });
 
   if (error) {
-    console.error("[fetchTenantDashboard] RPC Error:", error);
-    throw new Error("Erreur lors du chargement du dashboard locataire");
+    console.error("[fetchTenantDashboard] RPC Error, fallback sur requêtes directes:", error.message);
+    if (!profileRow) return null;
+    return fetchTenantDashboardFallback(supabase, userId, profileRow.id);
   }
 
   if (!data) return null;
 
-  // Récupérer les infos du profil pour le message de bienvenue
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("prenom, nom")
-    .eq("user_id", userId)
-    .single();
-
   // Nettoyage des données pour éviter les "undefined" et assurer la cohérence
   const cleanData = data as any;
-  cleanData.tenant = profile;
-  
+  cleanData.tenant = profileRow ? { prenom: profileRow.prenom, nom: profileRow.nom } : undefined;
+
   if (cleanData.leases) {
     cleanData.leases = cleanData.leases.map((l: any) => ({
       ...l,
@@ -173,7 +369,7 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
         name: l.owner.name && !l.owner.name.includes('undefined') ? l.owner.name : "Propriétaire"
       } : l.owner
     }));
-    
+
     // Mettre à jour les raccourcis
     if (cleanData.leases.length > 0) {
       cleanData.lease = cleanData.leases[0];

@@ -1,6 +1,7 @@
 /**
  * Data fetching pour le dashboard Owner
  * Utilise une RPC Supabase pour batch les requêtes
+ * Fallback sur des requêtes directes si la RPC échoue
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -84,11 +85,98 @@ interface OwnerDashboardRPCResponse {
       action_url: string;
     }>;
   };
+  recentActivity?: Array<{
+    type: string;
+    title: string;
+    date: string;
+  }>;
+}
+
+/**
+ * Fallback : requêtes directes quand la RPC n'est pas disponible
+ */
+async function fetchDashboardFallback(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ownerId: string
+): Promise<OwnerDashboardData> {
+  // Récupérer les IDs des propriétés de ce propriétaire
+  const { data: ownedProperties } = await supabase
+    .from("properties")
+    .select("id, etat")
+    .eq("owner_id", ownerId);
+
+  const propertyIds = ownedProperties?.map((p) => p.id) || [];
+
+  const propertiesStats = {
+    total: ownedProperties?.length || 0,
+    active: ownedProperties?.filter((p) => p.etat === "published").length || 0,
+    draft: ownedProperties?.filter((p) => p.etat === "draft").length || 0,
+  };
+
+  // Baux
+  let leasesStats = { total: 0, active: 0, pending: 0 };
+  if (propertyIds.length > 0) {
+    const { data: leases } = await supabase
+      .from("leases")
+      .select("id, statut")
+      .in("property_id", propertyIds);
+
+    if (leases) {
+      leasesStats = {
+        total: leases.length,
+        active: leases.filter((l) => l.statut === "active").length,
+        pending: leases.filter((l) => l.statut === "pending_signature").length,
+      };
+    }
+  }
+
+  // Factures
+  let invoicesStats = { total: 0, paid: 0, pending: 0, late: 0 };
+  const { data: invoices } = await supabase
+    .from("invoices")
+    .select("id, statut")
+    .eq("owner_id", ownerId);
+
+  if (invoices) {
+    invoicesStats = {
+      total: invoices.length,
+      paid: invoices.filter((i) => i.statut === "paid").length,
+      pending: invoices.filter((i) => i.statut === "sent").length,
+      late: invoices.filter((i) => i.statut === "late").length,
+    };
+  }
+
+  // Tickets
+  let ticketsStats = { total: 0, open: 0, in_progress: 0 };
+  if (propertyIds.length > 0) {
+    const { data: tickets } = await supabase
+      .from("tickets")
+      .select("id, statut")
+      .in("property_id", propertyIds);
+
+    if (tickets) {
+      ticketsStats = {
+        total: tickets.length,
+        open: tickets.filter((t) => t.statut === "open").length,
+        in_progress: tickets.filter((t) => t.statut === "in_progress").length,
+      };
+    }
+  }
+
+  return {
+    properties: propertiesStats,
+    leases: leasesStats,
+    invoices: invoicesStats,
+    tickets: ticketsStats,
+    edl: { total: 0, pending_owner_signature: 0 },
+    zone3_portfolio: { compliance: [] },
+    recentActivity: [],
+  };
 }
 
 /**
  * Récupère les données du dashboard pour un propriétaire
- * Utilise une RPC Supabase pour réduire les appels
+ * Tente la RPC Supabase, fallback sur requêtes directes si échec
  */
 export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardData> {
   const supabase = await createClient();
@@ -114,19 +202,18 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
     throw new Error("Accès non autorisé");
   }
 
-  // Utilisation de la RPC unique owner_dashboard
-  // Cette fonction a été créée via la migration 20250101000001_owner_dashboard_rpc.sql
+  // 1. Tenter la RPC owner_dashboard
   const { data, error } = await supabase.rpc("owner_dashboard", {
     p_owner_id: ownerId,
   });
 
   if (error) {
-    console.error("Erreur RPC dashboard:", error);
-    // En cas d'erreur RPC, on pourrait envisager un fallback, mais ici on propage l'erreur
-    // pour ne pas masquer le problème de configuration DB
-    throw new Error(`Erreur lors du chargement du dashboard: ${error.message}`);
+    console.error("Erreur RPC dashboard, fallback sur requêtes directes:", error.message);
+    // Fallback : requêtes directes table par table
+    return fetchDashboardFallback(supabase, ownerId);
   }
 
+  // 2. Mapper la réponse RPC
   const dashboardData = data as OwnerDashboardRPCResponse;
 
   return {
@@ -136,7 +223,6 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
     tickets: dashboardData?.tickets_stats || { total: 0, open: 0, in_progress: 0 },
     edl: dashboardData?.edl_stats || { total: 0, pending_owner_signature: 0 },
     zone3_portfolio: dashboardData?.zone3_portfolio || { compliance: [] },
-    recentActivity: [], // À implémenter plus tard
+    recentActivity: dashboardData?.recentActivity || [],
   };
 }
-
