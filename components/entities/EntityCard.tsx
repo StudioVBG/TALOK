@@ -48,93 +48,95 @@ export function EntityCard({ entity, isActive }: EntityCardProps) {
   const hasWarnings = !entity.hasIban || !entity.siret;
 
   return (
-    <Card
-      className={cn(
-        "relative transition-all hover:shadow-md",
-        isActive && "ring-2 ring-primary"
-      )}
-    >
-      <CardContent className="p-5">
-        {/* Header */}
-        <div className="flex items-start gap-3 mb-4">
-          <div
-            className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0"
-            style={{
-              backgroundColor: entity.couleur
-                ? `${entity.couleur}20`
-                : "hsl(var(--muted))",
-            }}
-          >
-            <Icon
-              className="h-5 w-5"
-              style={{ color: entity.couleur || undefined }}
+    <Link href={`/owner/entities/${entity.id}`} className="block">
+      <Card
+        className={cn(
+          "relative transition-all hover:shadow-md cursor-pointer h-full",
+          isActive && "ring-2 ring-primary"
+        )}
+      >
+        <CardContent className="p-5">
+          {/* Header */}
+          <div className="flex items-start gap-3 mb-4">
+            <div
+              className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                backgroundColor: entity.couleur
+                  ? `${entity.couleur}20`
+                  : "hsl(var(--muted))",
+              }}
+            >
+              <Icon
+                className="h-5 w-5"
+                style={{ color: entity.couleur || undefined }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-base truncate">{entity.nom}</h3>
+              <p className="text-sm text-muted-foreground">{typeLabel}</p>
+            </div>
+            {entity.isDefault && (
+              <Badge variant="secondary" className="text-xs shrink-0">
+                Par défaut
+              </Badge>
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="space-y-2 mb-4">
+            {entity.siret && (
+              <p className="text-xs text-muted-foreground font-mono">
+                SIRET {entity.siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, "$1 $2 $3 $4")}
+              </p>
+            )}
+            {entity.villeSiege && (
+              <p className="text-xs text-muted-foreground">
+                {entity.codePostalSiege} {entity.villeSiege}
+              </p>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="flex gap-3 mb-4">
+            <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
+              <p className="text-lg font-bold">{entity.propertyCount}</p>
+              <p className="text-xs text-muted-foreground">
+                bien{entity.propertyCount > 1 ? "s" : ""}
+              </p>
+            </div>
+            <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
+              <p className="text-lg font-bold">{entity.activeLeaseCount}</p>
+              <p className="text-xs text-muted-foreground">
+                ba{entity.activeLeaseCount > 1 ? "ux" : "il"}
+              </p>
+            </div>
+          </div>
+
+          {/* Status indicators */}
+          <div className="space-y-1.5 mb-4">
+            <StatusRow
+              label="IBAN"
+              ok={entity.hasIban}
+              okLabel="Configuré"
+              koLabel="Non configuré"
+            />
+            <StatusRow
+              label="SIRET"
+              ok={!!entity.siret}
+              okLabel="Renseigné"
+              koLabel="Manquant"
             />
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base truncate">{entity.nom}</h3>
-            <p className="text-sm text-muted-foreground">{typeLabel}</p>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1">
+              Gérer
+            </Button>
           </div>
-          {entity.isDefault && (
-            <Badge variant="secondary" className="text-xs shrink-0">
-              Par défaut
-            </Badge>
-          )}
-        </div>
-
-        {/* Info */}
-        <div className="space-y-2 mb-4">
-          {entity.siret && (
-            <p className="text-xs text-muted-foreground font-mono">
-              SIRET {entity.siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, "$1 $2 $3 $4")}
-            </p>
-          )}
-          {entity.villeSiege && (
-            <p className="text-xs text-muted-foreground">
-              {entity.codePostalSiege} {entity.villeSiege}
-            </p>
-          )}
-        </div>
-
-        {/* Stats */}
-        <div className="flex gap-3 mb-4">
-          <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
-            <p className="text-lg font-bold">{entity.propertyCount}</p>
-            <p className="text-xs text-muted-foreground">
-              bien{entity.propertyCount > 1 ? "s" : ""}
-            </p>
-          </div>
-          <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
-            <p className="text-lg font-bold">{entity.activeLeaseCount}</p>
-            <p className="text-xs text-muted-foreground">
-              ba{entity.activeLeaseCount > 1 ? "ux" : "il"}
-            </p>
-          </div>
-        </div>
-
-        {/* Status indicators */}
-        <div className="space-y-1.5 mb-4">
-          <StatusRow
-            label="IBAN"
-            ok={entity.hasIban}
-            okLabel="Configuré"
-            koLabel="Non configuré"
-          />
-          <StatusRow
-            label="SIRET"
-            ok={!!entity.siret}
-            okLabel="Renseigné"
-            koLabel="Manquant"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" asChild>
-            <Link href={`/owner/entities/${entity.id}`}>Gérer</Link>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
