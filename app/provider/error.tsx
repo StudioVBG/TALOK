@@ -8,7 +8,7 @@ import { logger } from "@/lib/monitoring";
 
 /**
  * Page d'erreur pour le tableau de bord Prestataire
- * Capture les erreurs non gerees dans la section prestataire
+ * Capture les erreurs non gérées dans la section prestataire
  */
 export default function ProviderError({
   error,
@@ -34,7 +34,7 @@ export default function ProviderError({
           </div>
           <CardTitle className="text-xl">Erreur dans votre espace Prestataire</CardTitle>
           <CardDescription>
-            Une erreur inattendue s&apos;est produite. Notre equipe technique a ete notifiee.
+            Une erreur inattendue s&apos;est produite. Notre équipe technique a été notifiée.
           </CardDescription>
         </CardHeader>
 
@@ -42,7 +42,7 @@ export default function ProviderError({
           {process.env.NODE_ENV === "development" && (
             <details className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-sm">
               <summary className="cursor-pointer font-medium">
-                Details de l&apos;erreur (dev uniquement)
+                Détails de l&apos;erreur (dev uniquement)
               </summary>
               <pre className="mt-2 text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap break-all">
                 {error.message}
@@ -56,7 +56,7 @@ export default function ProviderError({
           )}
 
           <p className="text-sm text-muted-foreground text-center">
-            Vous pouvez reessayer ou retourner au tableau de bord.
+            Vous pouvez réessayer ou retourner au tableau de bord.
           </p>
         </CardContent>
 
@@ -71,7 +71,7 @@ export default function ProviderError({
           </Button>
           <Button onClick={reset} className="w-full sm:w-auto">
             <RefreshCw className="h-4 w-4 mr-2" />
-            Reessayer
+            Réessayer
           </Button>
         </CardFooter>
       </Card>

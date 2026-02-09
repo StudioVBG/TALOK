@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Context Provider pour propager les données Owner
  * Évite les refetch inutiles lors de la navigation
@@ -16,6 +15,7 @@ export interface OwnerDataContextValue {
   dashboard: OwnerDashboardData | null;
   contracts: LeaseRow[] | null;
   isLoading?: boolean;
+  error?: string | null;
   refetch?: () => void;
 }
 
@@ -27,6 +27,7 @@ export interface OwnerDataProviderProps {
   dashboard?: OwnerDashboardData | null;
   contracts?: LeaseRow[] | null;
   isLoading?: boolean;
+  error?: string | null;
   refetch?: () => void;
 }
 
@@ -36,6 +37,7 @@ export function OwnerDataProvider({
   dashboard = null,
   contracts = null,
   isLoading = false,
+  error = null,
   refetch = () => {},
 }: OwnerDataProviderProps) {
   return (
@@ -45,6 +47,7 @@ export function OwnerDataProvider({
         dashboard,
         contracts,
         isLoading,
+        error,
         refetch,
       }}
     >
@@ -58,11 +61,10 @@ export function OwnerDataProvider({
  */
 export function useOwnerData(): OwnerDataContextValue {
   const context = useContext(OwnerDataContext);
-  
+
   if (!context) {
     throw new Error("useOwnerData must be used within OwnerDataProvider");
   }
-  
+
   return context;
 }
-

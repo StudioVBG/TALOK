@@ -304,6 +304,30 @@ export const roleStyles = {
     border: 'border-rose-200 dark:border-rose-900',
     badge: 'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-300',
   },
+  agency: {
+    primary: 'text-indigo-600 dark:text-indigo-400',
+    bg: 'bg-indigo-50 dark:bg-indigo-950/50',
+    border: 'border-indigo-200 dark:border-indigo-900',
+    badge: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
+  },
+  guarantor: {
+    primary: 'text-teal-600 dark:text-teal-400',
+    bg: 'bg-teal-50 dark:bg-teal-950/50',
+    border: 'border-teal-200 dark:border-teal-900',
+    badge: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-300',
+  },
+  syndic: {
+    primary: 'text-cyan-600 dark:text-cyan-400',
+    bg: 'bg-cyan-50 dark:bg-cyan-950/50',
+    border: 'border-cyan-200 dark:border-cyan-900',
+    badge: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300',
+  },
+  copro: {
+    primary: 'text-sky-600 dark:text-sky-400',
+    bg: 'bg-sky-50 dark:bg-sky-950/50',
+    border: 'border-sky-200 dark:border-sky-900',
+    badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-300',
+  },
 } as const;
 
 export type UserRole = keyof typeof roleStyles;

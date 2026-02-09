@@ -62,16 +62,24 @@ export default async function OwnerLayout({
   const dashboard = dashboardResult.status === "fulfilled" ? dashboardResult.value : null;
   const contracts = contractsResult.status === "fulfilled" ? contractsResult.value : null;
 
-  // Log des erreurs en développement
+  // Collecter les erreurs pour les transmettre au client
+  const errors: string[] = [];
   if (propertiesResult.status === "rejected") {
     console.error("[OwnerLayout] Error fetching properties:", propertiesResult.reason);
+    errors.push("propriétés");
   }
   if (dashboardResult.status === "rejected") {
     console.error("[OwnerLayout] Error fetching dashboard:", dashboardResult.reason);
+    errors.push("tableau de bord");
   }
   if (contractsResult.status === "rejected") {
     console.error("[OwnerLayout] Error fetching contracts:", contractsResult.reason);
+    errors.push("contrats");
   }
+
+  const dataError = errors.length > 0
+    ? `Impossible de charger : ${errors.join(", ")}. Veuillez rafraîchir la page.`
+    : null;
 
   return (
     <ErrorBoundary>
@@ -79,6 +87,7 @@ export default async function OwnerLayout({
         properties={properties}
         dashboard={dashboard}
         contracts={contracts}
+        error={dataError}
       >
         <EntityProvider>
           <OwnerAppLayout profile={profile}>{children}</OwnerAppLayout>

@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { logger } from "@/lib/monitoring";
 
 /**
- * Page d'erreur pour le tableau de bord Proprietaire
- * Capture les erreurs non gerees dans la section proprietaire
+ * Page d'erreur pour le tableau de bord Propriétaire
+ * Capture les erreurs non gérées dans la section propriétaire
  */
 export default function OwnerError({
   error,
@@ -32,9 +32,9 @@ export default function OwnerError({
           <div className="mx-auto mb-4 p-3 bg-red-100 dark:bg-red-900/30 rounded-full w-fit">
             <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
           </div>
-          <CardTitle className="text-xl">Erreur dans votre espace Proprietaire</CardTitle>
+          <CardTitle className="text-xl">Erreur dans votre espace Propriétaire</CardTitle>
           <CardDescription>
-            Une erreur inattendue s&apos;est produite. Notre equipe technique a ete notifiee.
+            Une erreur inattendue s&apos;est produite. Notre équipe technique a été notifiée.
           </CardDescription>
         </CardHeader>
 
@@ -42,7 +42,7 @@ export default function OwnerError({
           {process.env.NODE_ENV === "development" && (
             <details className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-sm">
               <summary className="cursor-pointer font-medium">
-                Details de l&apos;erreur (dev uniquement)
+                Détails de l&apos;erreur (dev uniquement)
               </summary>
               <pre className="mt-2 text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap break-all">
                 {error.message}
@@ -56,7 +56,7 @@ export default function OwnerError({
           )}
 
           <p className="text-sm text-muted-foreground text-center">
-            Vous pouvez reessayer ou retourner au tableau de bord.
+            Vous pouvez réessayer ou retourner au tableau de bord.
           </p>
         </CardContent>
 
@@ -71,7 +71,7 @@ export default function OwnerError({
           </Button>
           <Button onClick={reset} className="w-full sm:w-auto">
             <RefreshCw className="h-4 w-4 mr-2" />
-            Reessayer
+            Réessayer
           </Button>
         </CardFooter>
       </Card>

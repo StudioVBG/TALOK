@@ -9,6 +9,7 @@ import type { TenantDashboardData } from "./fetchTenantDashboard";
 export interface TenantDataContextValue {
   dashboard: TenantDashboardData | null;
   profile: any | null;
+  error?: string | null;
 }
 
 const TenantDataContext = createContext<TenantDataContextValue | null>(null);
@@ -17,15 +18,17 @@ export interface TenantDataProviderProps {
   children: ReactNode;
   dashboard?: TenantDashboardData | null;
   profile?: any | null;
+  error?: string | null;
 }
 
 export function TenantDataProvider({
   children,
   dashboard = null,
   profile = null,
+  error = null,
 }: TenantDataProviderProps) {
   return (
-    <TenantDataContext.Provider value={{ dashboard, profile }}>
+    <TenantDataContext.Provider value={{ dashboard, profile, error }}>
       {children}
     </TenantDataContext.Provider>
   );
@@ -38,4 +41,3 @@ export function useTenantData(): TenantDataContextValue {
   }
   return context;
 }
-

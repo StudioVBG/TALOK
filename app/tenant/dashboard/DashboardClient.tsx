@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTenantData } from "../_data/TenantDataProvider";
-import { createClient } from "@/lib/supabase/client";
 import { useTenantRealtime } from "@/lib/hooks/use-realtime-tenant";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,16 +67,24 @@ const LEASE_TYPE_LABELS: Record<string, string> = {
   mobilite: "Bail mobilité",
 };
 
-export function DashboardClient() {
-  const { dashboard, profile } = useTenantData();
+interface DashboardClientProps {
+  serverPendingEDLs?: Array<{
+    id: string;
+    type: string;
+    status: string;
+    scheduled_at: string;
+    invitation_token: string;
+    property_address: string;
+  }>;
+}
+
+export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps) {
+  const { dashboard, profile, error } = useTenantData();
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
-  
+
   // Gestion du logement sélectionné si multi-baux
   const [selectedLeaseIndex, setSelectedLeaseIndex] = useState(0);
-  
-  // État pour les EDLs en attente (récupérés directement si la RPC ne les renvoie pas)
-  const [pendingEDLs, setPendingEDLs] = useState<any[]>([]);
   
   // 🔴 SOTA 2026: États pour les données dynamiques (Credit Score & Consommation)
   const [creditScoreData, setCreditScoreData] = useState<CreditScoreData | null>(null);
@@ -87,55 +94,13 @@ export function DashboardClient() {
   // 🔴 SOTA 2026: Hook temps réel pour synchronisation avec propriétaire
   const realtime = useTenantRealtime({ showToasts: true, enableSound: false });
   
-  // Récupérer les EDLs en attente directement depuis le client
-  useEffect(() => {
-    async function fetchPendingEDLs() {
-      // Si la RPC a déjà renvoyé des EDLs, on les utilise
-      if (dashboard?.pending_edls && dashboard.pending_edls.length > 0) {
-        setPendingEDLs(dashboard.pending_edls);
-        return;
-      }
-      
-      // Sinon, on récupère directement
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-      
-      if (!profileData) return;
-      
-      // Récupérer les EDLs où la signature n'est pas complète (pas d'image = pas vraiment signé)
-      const { data: edls } = await supabase
-        .from("edl_signatures")
-        .select(`
-          id, invitation_token, signed_at, signature_image_path,
-          edl:edl_id(id, type, status, scheduled_at, property:property_id(adresse_complete))
-        `)
-        .eq("signer_profile_id", profileData.id)
-        .is("signature_image_path", null); // Vérifie l'absence d'image, pas signed_at
-      
-      if (edls && edls.length > 0) {
-        const formatted = edls
-          .filter((sig: any) => sig.edl && sig.edl.status !== 'draft')
-          .map((sig: any) => ({
-            id: sig.edl.id,
-            type: sig.edl.type,
-            status: sig.edl.status,
-            scheduled_at: sig.edl.scheduled_at,
-            invitation_token: sig.invitation_token,
-            property_address: sig.edl.property?.adresse_complete || 'Adresse non renseignée'
-          }));
-        setPendingEDLs(formatted);
-      }
+  // EDLs en attente : priorité aux données du context (RPC), puis fallback sur les données du Server Component
+  const pendingEDLs = useMemo(() => {
+    if (dashboard?.pending_edls && dashboard.pending_edls.length > 0) {
+      return dashboard.pending_edls;
     }
-    
-    fetchPendingEDLs();
-  }, [dashboard?.pending_edls]);
+    return serverPendingEDLs;
+  }, [dashboard?.pending_edls, serverPendingEDLs]);
 
   // 🔴 SOTA 2026: Charger les données dynamiques (Credit Score & Consommation)
   useEffect(() => {
@@ -331,6 +296,23 @@ export function DashboardClient() {
     
     return { steps, completed, percentage: Math.round((completed / steps) * 100) };
   }, [hasLeaseData, dashboard?.kyc_status, currentLease?.statut]);
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] p-4">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="mx-auto p-3 bg-red-100 dark:bg-red-900/30 rounded-full w-fit">
+            <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Erreur de chargement</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={() => window.location.reload()} className="mt-2">
+            Rafraîchir la page
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!dashboard) {
     return (
