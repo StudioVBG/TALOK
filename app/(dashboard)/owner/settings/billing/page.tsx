@@ -37,6 +37,7 @@ import {
 import {
   CreditCard,
   Download,
+  DatabaseBackup,
   ExternalLink,
   FileText,
   Loader2,
@@ -53,6 +54,7 @@ import {
   PenTool,
   HardDrive,
 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import type { SubscriptionInvoice } from "@/lib/subscriptions/types";
@@ -257,8 +259,9 @@ function InvoicesTable() {
                     href={invoice.invoice_pdf_url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    aria-label={`Télécharger la facture ${invoice.invoice_number || ""}`}
                   >
-                    <Download className="w-4 h-4" />
+                    <Download className="w-4 h-4" aria-hidden="true" />
                   </a>
                 </Button>
               )}
@@ -294,8 +297,8 @@ export default function BillingPage() {
   const [portalLoading, setPortalLoading] = useState(false);
 
   const plan = PLANS[currentPlan];
-  const isPaid = currentPlan !== "starter";
-  const canUpgrade = getPlanLevel(currentPlan) < getPlanLevel("enterprise");
+  const isPaid = currentPlan !== "gratuit";
+  const canUpgrade = getPlanLevel(currentPlan) < getPlanLevel("enterprise_xl");
   const canDowngrade = getPlanLevel(currentPlan) > 0;
 
   // Check for success param
@@ -303,7 +306,7 @@ export default function BillingPage() {
     const success = searchParams.get("success");
     if (success === "true") {
       toast({
-        title: "🎉 Abonnement activé !",
+        title: "Abonnement activé !",
         description: "Merci pour votre confiance. Profitez de vos nouvelles fonctionnalités !",
       });
       refresh();
@@ -490,10 +493,23 @@ export default function BillingPage() {
                       ? plan.price_yearly
                       : plan.price_monthly
                   )}
+                  <span className="text-sm font-normal text-slate-400 ml-1">
+                    HT/{subscription?.billing_cycle === "yearly" ? "an" : "mois"}
+                  </span>
                 </div>
-                <div className="text-sm text-slate-400">
-                  /{subscription?.billing_cycle === "yearly" ? "an" : "mois"}
-                </div>
+                {(plan.price_monthly > 0) && (
+                  <div className="text-xs text-slate-500">
+                    soit{" "}
+                    {formatPrice(
+                      Math.round(
+                        (subscription?.billing_cycle === "yearly"
+                          ? plan.price_yearly
+                          : plan.price_monthly) * 1.20
+                      )
+                    )}{" "}
+                    TTC
+                  </div>
+                )}
               </div>
             </div>
 
@@ -573,6 +589,47 @@ export default function BillingPage() {
           <InvoicesTable />
         </CardContent>
       </Card>
+
+      {/* RGPD & Legal */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-slate-700/50">
+        <div className="flex flex-wrap gap-4 text-xs text-slate-500">
+          <span>Prix HT. TVA 20% en sus (France métropolitaine).</span>
+          <Link href="/legal/cgv" className="underline hover:text-slate-300">CGV</Link>
+          <Link href="/legal/cgu" className="underline hover:text-slate-300">CGU</Link>
+          <Link href="/legal/privacy" className="underline hover:text-slate-300">Politique de confidentialité</Link>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs border-slate-700 text-slate-400 hover:text-white"
+          onClick={async () => {
+            try {
+              const res = await fetch("/api/subscriptions/export", { method: "POST" });
+              if (!res.ok) throw new Error("Erreur lors de l'export");
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `talok-export-${new Date().toISOString().slice(0, 10)}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast({
+                title: "Export réussi",
+                description: "Vos données ont été téléchargées.",
+              });
+            } catch (error) {
+              toast({
+                title: "Erreur",
+                description: "Impossible d'exporter vos données pour le moment.",
+                variant: "destructive",
+              });
+            }
+          }}
+        >
+          <DatabaseBackup className="w-3 h-3 mr-1" aria-hidden="true" />
+          Exporter mes données (RGPD)
+        </Button>
+      </div>
 
       {/* Modals */}
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} />

@@ -64,8 +64,8 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
   const router = useRouter();
   const { toast } = useToast();
 
-  // Plans disponibles pour upgrade (using real tiers instead of legacy enterprise)
-  const availablePlans = (["confort", "pro", "enterprise_s"] as PlanSlug[]).filter(
+  // Plans disponibles pour upgrade (all tiers including Enterprise M/L/XL)
+  const availablePlans = (["confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"] as PlanSlug[]).filter(
     (slug) => getPlanLevel(slug) > getPlanLevel(currentPlan)
   );
 
@@ -75,7 +75,8 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
     : [];
 
   const handleUpgrade = async (planSlug: PlanSlug) => {
-    if (planSlug === "enterprise_s") {
+    // Only Enterprise L and XL require contact (custom contracts)
+    if (planSlug === "enterprise_l" || planSlug === "enterprise_xl") {
       router.push("/contact?subject=enterprise");
       onClose();
       return;
@@ -113,6 +114,9 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
     }
   };
 
+  const isContactPlan = (slug: PlanSlug) =>
+    slug === "enterprise_l" || slug === "enterprise_xl";
+
   const getPlanIcon = (slug: PlanSlug) => {
     switch (slug) {
       case "confort":
@@ -120,6 +124,12 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
       case "pro":
         return <Zap className="w-5 h-5" />;
       case "enterprise_s":
+        return <Building2 className="w-5 h-5" />;
+      case "enterprise_m":
+        return <Building2 className="w-5 h-5" />;
+      case "enterprise_l":
+        return <Crown className="w-5 h-5" />;
+      case "enterprise_xl":
         return <Crown className="w-5 h-5" />;
       default:
         return <Building2 className="w-5 h-5" />;
@@ -128,7 +138,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border-slate-700/50 p-0 overflow-hidden">
+      <DialogContent className="max-w-4xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border-slate-700/50 p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Header avec gradient */}
         <div className="relative px-6 pt-6 pb-4 border-b border-slate-700/50">
           <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/10 to-indigo-500/10" />
@@ -187,7 +197,12 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
           </div>
 
           {/* Plans cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={cn(
+            "grid gap-4",
+            availablePlans.length <= 3
+              ? "grid-cols-1 md:grid-cols-3"
+              : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+          )}>
             <AnimatePresence mode="popLayout">
               {availablePlans.map((slug, index) => {
                 const plan = PLANS[slug];
@@ -300,14 +315,14 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
                     >
                       {isLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : slug === "enterprise_s" ? (
+                      ) : isContactPlan(slug) ? (
                         <>
                           Nous contacter
                           <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
                         </>
                       ) : (
                         <>
-                          {plan.cta_text}
+                          {plan.cta_text || "Souscrire"}
                           <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
                         </>
                       )}
