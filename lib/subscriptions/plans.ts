@@ -789,7 +789,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
     },
     highlights: [
       'Choisissez votre taille : S, M, L ou XL',
-      'À partir de 199€/mois',
+      'À partir de 249€/mois',
       'Toutes les fonctionnalités incluses',
       'Support dédié',
     ],

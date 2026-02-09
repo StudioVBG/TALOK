@@ -3,6 +3,12 @@
 /**
  * Page Pricing - Affichage des plans et tarifs
  * Design moderne avec animations et UX optimisée
+ *
+ * Conformité :
+ * - Art. L112-1 Code de la Consommation (affichage HT/TTC)
+ * - Art. L221-18 Code de la Consommation (droit de rétractation 14 jours)
+ * - LCEN (accès CGV/CGU)
+ * - WCAG 2.2 AA (accessibilité)
  */
 
 import React, { useState, useEffect } from "react";
@@ -52,6 +58,12 @@ import { PublicFooter } from "@/components/layout/public-footer";
 type BillingCycle = "monthly" | "yearly";
 
 // ============================================
+// CONSTANTS
+// ============================================
+
+const TVA_RATE = 20; // 20% TVA métropole
+
+// ============================================
 // DATA
 // ============================================
 
@@ -66,23 +78,27 @@ const FAQ_ITEMS = [
   },
   {
     question: "Quels sont les tarifs des différents plans ?",
-    answer: "Gratuit (1 bien), Starter 9€ (3 biens), Confort 35€ (10 biens + 2 signatures), Pro 69€ (50 biens + 10 signatures). Enterprise à partir de 249€ avec Account Manager inclus. -20% sur l'abonnement annuel.",
+    answer: "Gratuit (1 bien), Starter 9 € HT (3 biens), Confort 35 € HT (10 biens + 2 signatures), Pro 69 € HT (50 biens + 10 signatures). Enterprise à partir de 249 € HT avec Account Manager inclus. -20 % sur l'abonnement annuel. TVA en sus (20 % en France métropolitaine).",
   },
   {
     question: "Y a-t-il des frais cachés ?",
-    answer: "Non, aucun frais caché. Le prix affiché est le prix que vous payez. Les seuls coûts supplémentaires sont les biens au-delà du quota (+2€ à +3€/bien selon le plan) et les signatures électroniques au-delà du quota inclus.",
+    answer: "Non, aucun frais caché. Le prix affiché est le prix hors taxes. Les seuls coûts supplémentaires sont les biens au-delà du quota (+2 € à +3 €/bien selon le plan) et les signatures électroniques au-delà du quota inclus. La TVA applicable s'ajoute selon votre localisation.",
   },
   {
     question: "Comment fonctionnent les frais de paiement ?",
-    answer: "Les frais sont de 2,2% pour les paiements CB et 0,50€ par prélèvement SEPA. Les clients Enterprise bénéficient de tarifs réduits (1,9% CB, 0,40€ SEPA). Les virements bancaires sont gratuits.",
+    answer: "Les frais sont de 2,2 % pour les paiements CB et 0,50 € par prélèvement SEPA. Les clients Enterprise bénéficient de tarifs réduits (1,9 % CB, 0,40 € SEPA). Les virements bancaires sont gratuits.",
   },
   {
     question: "Puis-je récupérer mes données si je résilie ?",
-    answer: "Absolument. Vous pouvez exporter toutes vos données à tout moment. Après résiliation, vos données sont conservées 30 jours avant suppression définitive, vous laissant le temps de les récupérer.",
+    answer: "Absolument. Conformément à l'Art. 20 du RGPD (droit à la portabilité), vous pouvez exporter toutes vos données à tout moment depuis la section Abonnement. Après résiliation, vos données sont conservées 30 jours avant suppression définitive.",
   },
   {
     question: "Comment fonctionne la réduction GLI ?",
-    answer: "Selon votre forfait, vous bénéficiez de -5% à -25% sur les primes d'assurance Garantie Loyers Impayés de nos partenaires. Enterprise XL offre le meilleur taux à -25%.",
+    answer: "Selon votre forfait, vous bénéficiez de -5 % à -25 % sur les primes d'assurance Garantie Loyers Impayés de nos partenaires. Enterprise XL offre le meilleur taux à -25 %.",
+  },
+  {
+    question: "Quel est le droit de rétractation ?",
+    answer: "Conformément à l'Art. L221-18 du Code de la Consommation, vous disposez d'un droit de rétractation de 14 jours à compter de la souscription. Vous pouvez exercer ce droit directement depuis votre espace de gestion ou en nous contactant.",
   },
 ];
 
@@ -117,8 +133,8 @@ function PlanCard({
 }) {
   const plan = PLANS[slug];
   const price = billing === "yearly" ? plan.price_yearly : plan.price_monthly;
-  const monthlyEquivalent = billing === "yearly" && plan.price_yearly 
-    ? Math.round(plan.price_yearly / 12) 
+  const monthlyEquivalent = billing === "yearly" && plan.price_yearly
+    ? Math.round(plan.price_yearly / 12)
     : null;
   const discount = getYearlyDiscount(plan);
   const isLoading = loading === slug;
@@ -142,7 +158,7 @@ function PlanCard({
       {plan.is_popular && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <Badge className="bg-gradient-to-r from-violet-500 to-indigo-500 text-white border-0 px-4 py-1 shadow-lg">
-            <Sparkles className="w-3 h-3 mr-1" />
+            <Sparkles className="w-3 h-3 mr-1" aria-hidden="true" />
             {plan.badge || "Le plus populaire"}
           </Badge>
         </div>
@@ -163,7 +179,7 @@ function PlanCard({
         {billing === "yearly" && discount > 0 && price !== null && (
           <Badge
             className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-sm font-semibold px-2.5 py-0.5"
-            aria-label={`Reduction de ${discount} pourcent sur l'abonnement annuel`}
+            aria-label={`Réduction de ${discount} pourcent sur l'abonnement annuel`}
           >
             -{discount}%
           </Badge>
@@ -183,12 +199,17 @@ function PlanCard({
                 {formatPrice(price)}
               </span>
               <span className="text-slate-400">
-                /{billing === "yearly" ? "an" : "mois"}
+                HT/{billing === "yearly" ? "an" : "mois"}
               </span>
             </div>
             {monthlyEquivalent && (
-              <p className="text-sm text-slate-500 mt-1">
-                soit {formatPrice(monthlyEquivalent)}/mois
+              <p className="text-sm text-slate-400 mt-1">
+                soit {formatPrice(monthlyEquivalent)} HT/mois
+              </p>
+            )}
+            {price > 0 && (
+              <p className="text-xs text-slate-500 mt-0.5">
+                {formatPrice(Math.round(price * (1 + TVA_RATE / 100)))} TTC
               </p>
             )}
           </>
@@ -216,17 +237,17 @@ function PlanCard({
         ) : slug === "enterprise" || slug === "enterprise_l" || slug === "enterprise_xl" ? (
           <>
             Nous contacter
-            <MessageSquare className="w-4 h-4 ml-2" />
+            <MessageSquare className="w-4 h-4 ml-2" aria-hidden="true" />
           </>
         ) : slug === "starter" || slug === "gratuit" ? (
           <>
             Commencer
-            <ArrowRight className="w-4 h-4 ml-2" />
+            <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
           </>
         ) : (
           <>
             {plan.cta_text}
-            <ArrowRight className="w-4 h-4 ml-2" />
+            <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
           </>
         )}
       </Button>
@@ -235,7 +256,7 @@ function PlanCard({
       <ul className="space-y-3">
         {plan.highlights.map((highlight, i) => (
           <li key={i} className="flex items-start gap-3 text-sm">
-            <Check className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <Check className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" aria-hidden="true" />
             <span className="text-slate-300">{highlight}</span>
           </li>
         ))}
@@ -245,15 +266,15 @@ function PlanCard({
 }
 
 function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
-  const orderedPlans: PlanSlug[] = ["gratuit", "starter", "confort", "pro", "enterprise"];
+  const orderedPlans: PlanSlug[] = ["gratuit", "starter", "confort", "pro", "enterprise_s"];
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse" role="table" aria-label="Comparaison des forfaits">
+      <table className="w-full border-collapse" role="table" aria-label="Comparaison détaillée des forfaits">
         <thead>
           <tr className="border-b border-slate-700/50">
             <th className="text-left p-4 text-slate-400 font-medium min-w-[180px]" scope="col">
-              Fonctionnalites
+              Fonctionnalités
             </th>
             {orderedPlans.map((slug) => (
               <th
@@ -267,11 +288,11 @@ function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
                 <div className="text-white font-semibold">{PLANS[slug].name}</div>
                 <div className="text-sm text-slate-400 mt-1">
                   {PLANS[slug].price_monthly !== null
-                    ? formatPrice(
+                    ? `${formatPrice(
                         billing === "yearly"
                           ? PLANS[slug].price_yearly
                           : PLANS[slug].price_monthly
-                      )
+                      )} HT`
                     : "Sur devis"}
                 </div>
                 {PLANS[slug].is_popular && (
@@ -305,7 +326,7 @@ function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
                   PLANS[slug].is_popular && "bg-violet-500/5"
                 )}
               >
-                {PLANS[slug].limits.max_properties === -1 ? "Illimite" : PLANS[slug].limits.max_properties}
+                {PLANS[slug].limits.max_properties === -1 ? "Illimité" : PLANS[slug].limits.max_properties}
               </td>
             ))}
           </tr>
@@ -322,7 +343,7 @@ function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
                 )}
               >
                 {PLANS[slug].limits.signatures_monthly_quota === -1
-                  ? "Illimite"
+                  ? "Illimité"
                   : PLANS[slug].limits.signatures_monthly_quota === 0
                   ? "Aucune"
                   : PLANS[slug].limits.signatures_monthly_quota}
@@ -341,7 +362,7 @@ function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
                   PLANS[slug].is_popular && "bg-violet-500/5"
                 )}
               >
-                {PLANS[slug].limits.max_users === -1 ? "Illimite" : PLANS[slug].limits.max_users}
+                {PLANS[slug].limits.max_users === -1 ? "Illimité" : PLANS[slug].limits.max_users}
               </td>
             ))}
           </tr>
@@ -381,9 +402,15 @@ function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
                           )}
                         >
                           {hasFeature ? (
-                            <Check className="w-5 h-5 text-emerald-400 mx-auto" aria-label="Inclus" />
+                            <span className="inline-flex items-center gap-1">
+                              <Check className="w-5 h-5 text-emerald-400 mx-auto" aria-hidden="true" />
+                              <span className="sr-only">Inclus</span>
+                            </span>
                           ) : (
-                            <X className="w-5 h-5 text-slate-600 mx-auto" aria-label="Non inclus" />
+                            <span className="inline-flex items-center gap-1">
+                              <X className="w-5 h-5 text-slate-600 mx-auto" aria-hidden="true" />
+                              <span className="sr-only">Non inclus</span>
+                            </span>
                           )}
                         </td>
                       );
@@ -419,7 +446,7 @@ export default function PricingPage() {
 
     if (success === "true") {
       toast({
-        title: "🎉 Paiement réussi !",
+        title: "Paiement réussi",
         description: "Votre abonnement a été activé avec succès.",
       });
       router.replace("/owner/dashboard?subscription=success");
@@ -460,18 +487,8 @@ export default function PricingPage() {
       return;
     }
 
-    if (slug === "starter") {
-      if (user) {
-        router.push("/owner/dashboard");
-      } else {
-        router.push("/auth/signup");
-      }
-      return;
-    }
-
-    // Paid plans - need to be authenticated
+    // Paid plans (including Starter) - need to be authenticated, then checkout
     if (!user) {
-      // Save intended plan in session storage
       sessionStorage.setItem("intendedPlan", JSON.stringify({ slug, billing }));
       router.push("/auth/signup?redirect=/pricing");
       return;
@@ -525,7 +542,7 @@ export default function PricingPage() {
             className="text-center max-w-3xl mx-auto"
           >
             <Badge className="bg-violet-500/20 text-violet-300 border-violet-500/30 mb-4">
-              <Sparkles className="w-3 h-3 mr-1" />
+              <Sparkles className="w-3 h-3 mr-1" aria-hidden="true" />
               Tarification simple et transparente
             </Badge>
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
@@ -535,12 +552,12 @@ export default function PricingPage() {
             </span>
           </h1>
             <p className="text-lg text-slate-400 mb-8">
-              Choisissez le forfait adapte a votre portefeuille.
+              Choisissez le forfait adapté à votre portefeuille.
               <br />
               <span
                 className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-base border border-emerald-500/30"
                 role="status"
-                aria-label="Offre speciale : premier mois offert sur tous les plans payants"
+                aria-label="Offre spéciale : premier mois offert sur tous les plans payants"
               >
                 1er mois offert
               </span>{" "}
@@ -579,6 +596,11 @@ export default function PricingPage() {
                 </Badge>
             </button>
           </div>
+
+            {/* HT mention */}
+            <p className="text-xs text-slate-500 mt-4">
+              Tous les prix sont affichés hors taxes (HT). TVA {TVA_RATE}% en sus (France métropolitaine).
+            </p>
           </motion.div>
             </div>
       </section>
@@ -619,7 +641,7 @@ export default function PricingPage() {
             className="text-center mb-12"
           >
             <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 mb-4">
-              <Crown className="w-3 h-3 mr-1" />
+              <Crown className="w-3 h-3 mr-1" aria-hidden="true" />
               Solutions Enterprise
             </Badge>
             <h2 className="text-3xl font-bold text-white mb-4">
@@ -666,8 +688,8 @@ export default function PricingPage() {
           >
             {[
               { label: "Frais CB réduits", value: "1,9%", sublabel: "au lieu de 2,2%" },
-              { label: "Frais SEPA", value: "0,40€", sublabel: "au lieu de 0,50€" },
-              { label: "Réduction GLI", value: "jusqu'à -25%", sublabel: "sur les primes" },
+              { label: "Frais SEPA", value: "0,40\u00A0\u20AC", sublabel: "au lieu de 0,50\u00A0\u20AC" },
+              { label: "Réduction GLI", value: "jusqu'\u00E0 -25%", sublabel: "sur les primes" },
               { label: "Account Manager", value: "Inclus", sublabel: "dès Enterprise S" },
             ].map((item, i) => (
               <div key={i} className="text-center p-4 rounded-xl bg-slate-800/30 border border-slate-700/50">
@@ -690,10 +712,10 @@ export default function PricingPage() {
             className="text-center mb-8"
           >
             <h2 className="text-3xl font-bold text-white mb-4">
-              Comparez nos forfaits en detail
+              Comparez nos forfaits en détail
             </h2>
             <p className="text-slate-400 mb-6">
-              Trouvez le forfait qui correspond a vos besoins
+              Trouvez le forfait qui correspond à vos besoins
             </p>
             <Button
               variant="ghost"
@@ -751,10 +773,10 @@ export default function PricingPage() {
                 className="text-center"
               >
                 <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-800 flex items-center justify-center">
-                  <item.icon className="w-6 h-6 text-violet-400" />
+                  <item.icon className="w-6 h-6 text-violet-400" aria-hidden="true" />
                 </div>
                 <div className="font-semibold text-white">{item.label}</div>
-                <div className="text-sm text-slate-500">{item.sublabel}</div>
+                <div className="text-sm text-slate-400">{item.sublabel}</div>
         </motion.div>
             ))}
           </div>
@@ -828,7 +850,7 @@ export default function PricingPage() {
                 className="bg-white text-slate-900 hover:bg-slate-100"
                 onClick={() => handleSelectPlan("starter")}
               >
-                <Home className="w-4 h-4 mr-2" />
+                <Home className="w-4 h-4 mr-2" aria-hidden="true" />
                 Commencer avec Starter
               </Button>
               <Button
@@ -837,11 +859,34 @@ export default function PricingPage() {
                 className="border-violet-500/50 text-violet-300 hover:bg-violet-500/10"
                 onClick={() => handleSelectPlan("confort")}
               >
-                <Sparkles className="w-4 h-4 mr-2" />
+                <Sparkles className="w-4 h-4 mr-2" aria-hidden="true" />
                 1er mois offert
               </Button>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Legal & CGV section */}
+      <section className="py-8 border-t border-slate-800">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-xs text-slate-500 space-y-2 text-center">
+            <p>
+              Tous les prix sont affichés hors taxes (HT). TVA applicable : {TVA_RATE}% (France métropolitaine).
+              Tarifs spécifiques DOM-TOM (TVA réduite, octroi de mer) disponibles sur demande.
+            </p>
+            <p>
+              Conformément à l&apos;Art. L221-18 du Code de la Consommation, vous disposez d&apos;un droit de rétractation de 14 jours
+              à compter de la souscription.
+            </p>
+            <p>
+              <a href="/legal/cgv" className="underline hover:text-slate-300 transition-colors">Conditions Générales de Vente</a>
+              {" — "}
+              <a href="/legal/cgu" className="underline hover:text-slate-300 transition-colors">Conditions Générales d&apos;Utilisation</a>
+              {" — "}
+              <a href="/legal/privacy" className="underline hover:text-slate-300 transition-colors">Politique de confidentialité</a>
+            </p>
+          </div>
         </div>
       </section>
 
