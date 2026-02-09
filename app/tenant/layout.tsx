@@ -50,18 +50,18 @@ export default async function TenantLayout({
   }
 
   // 4. Charger les données du dashboard (RPC)
-  // On utilise un try/catch pour ne pas bloquer tout le layout si la RPC échoue
-  // mais idéalement on voudrait afficher une erreur
   let dashboardData = null;
+  let dataError: string | null = null;
   try {
     dashboardData = await fetchTenantDashboard(user.id);
   } catch (err) {
     console.error("Error fetching tenant dashboard:", err);
+    dataError = "Impossible de charger votre tableau de bord. Veuillez rafraîchir la page.";
   }
 
   return (
     <ErrorBoundary>
-      <TenantDataProvider dashboard={dashboardData} profile={profile}>
+      <TenantDataProvider dashboard={dashboardData} profile={profile} error={dataError}>
         <TenantAppLayout profile={profile}>{children}</TenantAppLayout>
       </TenantDataProvider>
     </ErrorBoundary>

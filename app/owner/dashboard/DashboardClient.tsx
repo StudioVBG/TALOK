@@ -123,12 +123,29 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ profileCompletion }: DashboardClientProps) {
-  const { dashboard } = useOwnerData();
+  const { dashboard, error } = useOwnerData();
   const completionPercentage = profileCompletion ? calculateCompletionPercentage(profileCompletion) : 0;
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh] p-4">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="mx-auto p-3 bg-red-100 dark:bg-red-900/30 rounded-full w-fit">
+            <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Erreur de chargement</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={() => window.location.reload()} className="mt-2">
+            Rafraîchir la page
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!dashboard) {
     return (
-      <EmptyState 
+      <EmptyState
         title="Bienvenue !"
         description="Chargement de votre tableau de bord..."
         icon={Sparkles}
