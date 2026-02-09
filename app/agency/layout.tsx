@@ -61,7 +61,7 @@ export default async function AgencyLayout({
   // 4. Récupérer les données de l'agence
   const { data: agencyProfile } = await supabase
     .from("agency_profiles")
-    .select("*")
+    .select("id, nom_agence, logo_url, adresse, telephone, email, siret")
     .eq("profile_id", profile.id)
     .single();
 

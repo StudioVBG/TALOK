@@ -9,6 +9,9 @@
 // Réexporter le composant unifié SOTA 2026
 export { KpiCard, KpiGrid, type KpiVariant } from "@/components/ui/kpi-card";
 
+import { KpiCard } from "@/components/ui/kpi-card";
+import type { IconName } from "@/lib/icons";
+
 // Alias pour la compatibilité avec l'ancienne API
 export default function DeprecatedKpiCard(props: {
   title: string;
@@ -20,9 +23,7 @@ export default function DeprecatedKpiCard(props: {
   href?: string;
   className?: string;
 }) {
-  // Mapper iconName vers icon pour le nouveau composant
-  const { KpiCard } = require("@/components/ui/kpi-card");
   const { iconName, ...rest } = props;
 
-  return <KpiCard {...rest} icon={iconName as any} />;
+  return <KpiCard {...rest} icon={iconName as IconName} />;
 }

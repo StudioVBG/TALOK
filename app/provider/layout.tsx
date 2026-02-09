@@ -1,7 +1,6 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// @ts-nocheck
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
@@ -14,6 +13,7 @@ import {
   Settings,
   HelpCircle,
   FileText,
+  FolderOpen,
   Shield
 } from "lucide-react";
 import { NotificationCenter } from "@/components/notifications/notification-center";
@@ -27,7 +27,7 @@ const navigation = [
   { name: "Calendrier", href: "/provider/calendar", icon: Calendar },
   { name: "Mes devis", href: "/provider/quotes", icon: FileText },
   { name: "Mes factures", href: "/provider/invoices", icon: Receipt },
-  { name: "Mes documents", href: "/provider/documents", icon: FileText },
+  { name: "Mes documents", href: "/provider/documents", icon: FolderOpen },
   { name: "Mes avis", href: "/provider/reviews", icon: Star },
   { name: "Conformité", href: "/provider/compliance", icon: Shield },
 ];
@@ -45,9 +45,10 @@ export default async function VendorLayout({
   const supabase = await createClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !user) {
     redirect("/auth/signin");
   }
 

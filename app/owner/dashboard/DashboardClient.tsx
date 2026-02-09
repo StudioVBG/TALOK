@@ -62,7 +62,7 @@ const OwnerRiskSection = dynamic(
 const ProfileCompletionCard = dynamic(
   () => import("@/components/owner/dashboard/profile-completion-card").then((mod) => ({ default: mod.ProfileCompletionCard })),
   { 
-    loading: () => <Skeleton className="h-80 w-full rounded-2xl rounded-xl" />,
+    loading: () => <Skeleton className="h-80 w-full rounded-xl" />,
     ssr: false 
   }
 );
@@ -119,13 +119,11 @@ function calculateCompletionPercentage(data: ProfileCompletionData): number {
 }
 
 interface DashboardClientProps {
-  dashboardData: OwnerDashboardData | null;
   profileCompletion: ProfileCompletionData | null;
 }
 
-export function DashboardClient({ dashboardData, profileCompletion }: DashboardClientProps) {
-  const { dashboard: contextDashboard } = useOwnerData();
-  const dashboard = contextDashboard || dashboardData;
+export function DashboardClient({ profileCompletion }: DashboardClientProps) {
+  const { dashboard } = useOwnerData();
   const completionPercentage = profileCompletion ? calculateCompletionPercentage(profileCompletion) : 0;
 
   if (!dashboard) {
