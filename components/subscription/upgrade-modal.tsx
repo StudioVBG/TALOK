@@ -3,6 +3,10 @@
 /**
  * UpgradeModal - Modal pour upgrader son forfait
  * Affiche les plans disponibles avec les features gagnées
+ *
+ * Conformité :
+ * - Affichage HT/TTC (Art. L112-1 Code de la Consommation)
+ * - WCAG 2.2 AA (ARIA, focus, contraste)
  */
 
 import React, { useState } from "react";
@@ -48,6 +52,8 @@ interface UpgradeModalProps {
   requiredPlan?: PlanSlug;
 }
 
+const TVA_RATE = 20;
+
 export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeModalProps) {
   const { currentPlan, subscription } = useSubscription();
   const [selectedPlan, setSelectedPlan] = useState<PlanSlug | null>(requiredPlan || null);
@@ -58,8 +64,8 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
   const router = useRouter();
   const { toast } = useToast();
 
-  // Plans disponibles pour upgrade
-  const availablePlans = (["confort", "pro", "enterprise"] as PlanSlug[]).filter(
+  // Plans disponibles pour upgrade (using real tiers instead of legacy enterprise)
+  const availablePlans = (["confort", "pro", "enterprise_s"] as PlanSlug[]).filter(
     (slug) => getPlanLevel(slug) > getPlanLevel(currentPlan)
   );
 
@@ -69,7 +75,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
     : [];
 
   const handleUpgrade = async (planSlug: PlanSlug) => {
-    if (planSlug === "enterprise") {
+    if (planSlug === "enterprise_s") {
       router.push("/contact?subject=enterprise");
       onClose();
       return;
@@ -113,7 +119,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
         return <Star className="w-5 h-5" />;
       case "pro":
         return <Zap className="w-5 h-5" />;
-      case "enterprise":
+      case "enterprise_s":
         return <Crown className="w-5 h-5" />;
       default:
         return <Building2 className="w-5 h-5" />;
@@ -129,7 +135,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
           <DialogHeader className="relative">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-                <Sparkles className="w-5 h-5 text-white" />
+                <Sparkles className="w-5 h-5 text-white" aria-hidden="true" />
               </div>
               <DialogTitle className="text-xl font-bold text-white">
                 Débloquez plus de fonctionnalités
@@ -147,11 +153,13 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
         <div className="p-6 space-y-6">
           {/* Toggle mensuel/annuel */}
           <div className="flex justify-center">
-            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-slate-800/50 border border-slate-700/50">
+            <div className="inline-flex items-center gap-1 p-1 rounded-full bg-slate-800/50 border border-slate-700/50" role="radiogroup" aria-label="Cycle de facturation">
               <button
                 onClick={() => setBilling("monthly")}
+                role="radio"
+                aria-checked={billing === "monthly"}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-medium transition-all",
+                  "px-4 py-2 rounded-full text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
                   billing === "monthly"
                     ? "bg-white text-slate-900 shadow-md"
                     : "text-slate-400 hover:text-white"
@@ -161,8 +169,10 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
               </button>
               <button
                 onClick={() => setBilling("yearly")}
+                role="radio"
+                aria-checked={billing === "yearly"}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2",
+                  "px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
                   billing === "yearly"
                     ? "bg-white text-slate-900 shadow-md"
                     : "text-slate-400 hover:text-white"
@@ -170,7 +180,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
               >
                 Annuel
                 <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs">
-                  -17%
+                  -20%
                 </Badge>
               </button>
             </div>
@@ -204,6 +214,10 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
                         : "border-slate-700/50 bg-slate-800/30 hover:border-slate-600"
                     )}
                     onClick={() => setSelectedPlan(slug)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPlan(slug); }}}
+                    aria-pressed={isSelected}
                   >
                     {/* Badge recommandé */}
                     {isRecommended && (
@@ -241,12 +255,17 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
                               {formatPrice(price)}
                             </span>
                             <span className="text-slate-400 text-sm">
-                              /{billing === "yearly" ? "an" : "mois"}
+                              HT/{billing === "yearly" ? "an" : "mois"}
                             </span>
                           </div>
                           {monthlyEquivalent && (
-                            <p className="text-xs text-slate-500 mt-1">
-                              soit {formatPrice(monthlyEquivalent)}/mois
+                            <p className="text-xs text-slate-400 mt-1">
+                              soit {formatPrice(monthlyEquivalent)} HT/mois
+                            </p>
+                          )}
+                          {price > 0 && (
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {formatPrice(Math.round(price * (1 + TVA_RATE / 100)))} TTC
                             </p>
                           )}
                         </>
@@ -259,7 +278,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
                     <ul className="space-y-2 mb-4">
                       {plan.highlights.slice(0, 4).map((highlight, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm">
-                          <Check className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                          <Check className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" aria-hidden="true" />
                           <span className="text-slate-300">{highlight}</span>
                         </li>
                       ))}
@@ -281,15 +300,15 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
                     >
                       {isLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : slug === "enterprise" ? (
+                      ) : slug === "enterprise_s" ? (
                         <>
                           Nous contacter
-                          <ArrowRight className="w-4 h-4 ml-2" />
+                          <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
                         </>
                       ) : (
                         <>
                           {plan.cta_text}
-                          <ArrowRight className="w-4 h-4 ml-2" />
+                          <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
                         </>
                       )}
                     </Button>
@@ -307,7 +326,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
               className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30"
             >
               <h4 className="text-sm font-medium text-emerald-400 mb-3 flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-4 h-4" aria-hidden="true" />
                 Fonctionnalités débloquées avec {PLANS[selectedPlan].name}
               </h4>
               <div className="flex flex-wrap gap-2">
@@ -317,7 +336,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
                     variant="outline"
                     className="border-emerald-500/30 text-emerald-300 bg-emerald-500/10"
                   >
-                    <Check className="w-3 h-3 mr-1" />
+                    <Check className="w-3 h-3 mr-1" aria-hidden="true" />
                     {FEATURE_LABELS[feat]?.label || feat}
                   </Badge>
                 ))}
@@ -331,10 +350,14 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
           )}
 
           {/* Footer */}
-          <div className="text-center text-sm text-slate-500">
+          <div className="text-center text-xs text-slate-500 space-y-1">
             <p>
-              {billing === "yearly" && "💰 Économisez jusqu'à 17% avec le paiement annuel • "}
-              ✅ 1er mois offert • 🔒 Paiement sécurisé par Stripe
+              {billing === "yearly" && "Économisez jusqu'à 20% avec le paiement annuel — "}
+              1er mois offert — Paiement sécurisé par Stripe
+            </p>
+            <p>
+              Prix HT. TVA {TVA_RATE}% en sus.{" "}
+              <a href="/legal/cgv" className="underline hover:text-slate-300">CGV</a>
             </p>
           </div>
         </div>
@@ -344,4 +367,3 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
 }
 
 export default UpgradeModal;
-

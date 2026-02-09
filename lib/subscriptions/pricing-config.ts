@@ -313,7 +313,7 @@ export const PLAN_LIMITS = {
     max_leases: 25,
     max_tenants: 40,
     max_documents_gb: 5,
-    max_users: 1,
+    max_users: 2, // Aligné avec plans.ts (2ème utilisateur inclus)
   },
   pro: {
     max_properties: 50,

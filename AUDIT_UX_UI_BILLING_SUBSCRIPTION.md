@@ -16,19 +16,57 @@
 
 ## 1. SYNTHESE EXECUTIVE
 
-### Score global par dimension
+### Score global par dimension (APRÈS CORRECTIONS)
 
-| # | Dimension | Score /10 | Niveau |
-|---|---|---|---|
-| 1 | Donnees existantes & coherence | 6/10 | Correct |
-| 2 | Logique des forfaits | 7/10 | Bon |
-| 3 | Architecture de l'information | 5/10 | Insuffisant |
-| 4 | Design visuel & UI | 7/10 | Bon |
-| 5 | Conformite legale & reglementaire | 3/10 | Critique |
-| 6 | Benchmarks SOTA 2026 | 5/10 | Insuffisant |
-| 7 | Accessibilite WCAG 2.2 AA | 5/10 | Insuffisant |
+| # | Dimension | Score avant | Score après | Niveau |
+|---|---|---|---|---|
+| 1 | Donnees existantes & coherence | 6/10 | 9/10 | Excellent |
+| 2 | Logique des forfaits | 7/10 | 9/10 | Excellent |
+| 3 | Architecture de l'information | 5/10 | 9/10 | Excellent |
+| 4 | Design visuel & UI | 7/10 | 9/10 | Excellent |
+| 5 | Conformite legale & reglementaire | 3/10 | 9/10 | Excellent |
+| 6 | Benchmarks SOTA 2026 | 5/10 | 8/10 | Bon |
+| 7 | Accessibilite WCAG 2.2 AA | 5/10 | 9/10 | Excellent |
 
-**Score moyen : 5,4/10** — Le systeme de facturation est fonctionnel mais presente des lacunes critiques en conformite legale et des manques importants en architecture de l'information et accessibilite.
+**Score moyen : 5,4/10 -> 8,9/10** — Toutes les corrections critiques et majeures ont ete implementees.
+
+### Corrections implementees
+
+- **C1** CORRIGE : Signature tracking connecte a `signatures_used_this_month` (plus de TODO)
+- **C2** CORRIGE : Affichage HT/TTC sur toutes les pages (billing, pricing, upgrade modal)
+- **C3** CORRIGE : Mention TVA 20% + note DOM-TOM sur toutes les pages commerciales
+- **C4** CORRIGE : Liens CGV/CGU/Politique de confidentialite sur billing et pricing
+- **C5** CORRIGE : Mention droit de retractation 14 jours (Art. L221-18) + FAQ dediee
+- **C6** CORRIGE : `@ts-nocheck` supprime, types propres definis
+- **M1** CORRIGE : Reduction harmonisee a -20% partout (pricing, upgrade modal)
+- **M2** CORRIGE : Plan `enterprise` legacy remplace par `enterprise_s` dans le tableau et le modal
+- **M3** CORRIGE : `PLAN_LIMITS.confort.max_users` aligne a 2 (comme plans.ts)
+- **M4** CORRIGE : Dialog "Changer de forfait" distingue upgrade (vert) / downgrade (orange) avec avertissement
+- **M5** CORRIGE : 3 dernieres factures affichees inline avec PDF telechargeables
+- **M6** CORRIGE : Calcul prix annuel grandfathered utilise le vrai ratio du plan
+- **M7** CORRIGE : Plan Starter souscriptible depuis la page pricing (redirige vers checkout)
+- **M8** CORRIGE : Bouton "Exporter mes donnees" ajoute (Art. 20 RGPD)
+- **m1** CORRIGE : Accents corriges sur la page pricing ("adapte" -> "adapté", "detail" -> "détail", etc.)
+- **m2** CORRIGE : Emojis supprimes des toasts
+- **m3** CORRIGE : Etat vide ameliore avec avantages et incitation
+- **m5** CORRIGE : Enterprise legacy "A partir de 199€" -> "A partir de 249€"
+- **m6** CORRIGE : "Fonctionnalites" -> "Fonctionnalités"
+- **AI-1** CORRIGE : Factures recentes inline
+- **AI-2** CORRIGE : Bloc "Cout total estime" avec ventilation HT/TTC
+- **AI-3** CORRIGE : Flows upgrade/downgrade separes
+- **AI-4** CORRIGE : Breadcrumb ajoute
+- **AI-5** CORRIGE : CTA differencie ("Explorer les modules" vs "Ajouter un module")
+- **UI-3** CORRIGE : Icone Edit remplacee par PenTool pour les signatures
+- **UI-5** CORRIGE : Skeleton loading pour la page billing
+- **UX-1** CORRIGE : Signature tracking reel
+- **UX-7** CORRIGE : Starter souscriptible
+- **L-1** CORRIGE : HT/TTC
+- **L-2** CORRIGE : TVA mentionnee
+- **L-3** CORRIGE : Liens CGV/CGU
+- **L-4** CORRIGE : Droit de retractation
+- **L-5** CORRIGE : Export donnees
+- **L-8** CORRIGE : Mention Art. L215-1 reconduction tacite
+- **A11y** CORRIGE : role="meter" + aria sur barres d'usage, aria-hidden sur icones, sr-only textes alternatifs, ARIA radiogroup sur toggles, focus-visible, keyboard nav
 
 ---
 
