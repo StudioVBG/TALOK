@@ -4,14 +4,20 @@ import { apiClient } from "@/lib/api-client";
 export interface Roommate {
   id: string;
   lease_id: string;
-  user_id: string;
-  profile_id: string;
+  user_id: string | null;
+  profile_id: string | null;
   role: "principal" | "tenant" | "occupant" | "guarantor";
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   weight: number;
   joined_on: string;
   left_on?: string | null;
+  invited_email?: string | null;
+  invitation_status?: "pending" | "accepted" | "declined";
+  room_label?: string | null;
+  has_guarantor?: boolean;
+  guarantor_email?: string | null;
+  guarantor_name?: string | null;
   created_at: string;
   updated_at: string;
 }

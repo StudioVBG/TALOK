@@ -194,6 +194,10 @@ export async function POST(
       joined_on: validated.joined_on || new Date().toISOString().split("T")[0],
       invitation_status: existingProfile ? "accepted" : "pending",
       invited_email: validated.email,
+      room_label: validated.room_label ?? null,
+      has_guarantor: validated.has_guarantor ?? false,
+      guarantor_email: validated.guarantor_email ?? null,
+      guarantor_name: validated.guarantor_name ?? null,
     };
 
     if (existingProfile) {
