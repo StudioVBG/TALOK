@@ -5,7 +5,7 @@
  */
 
 import Link from "next/link";
-import { Building2, User, Users, ArrowUpDown, Check, AlertCircle } from "lucide-react";
+import { Building2, User, Users, ArrowUpDown, Check, AlertCircle, Pencil, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -130,7 +130,16 @@ export function EntityCard({ entity, isActive }: EntityCardProps) {
         {/* Actions */}
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="flex-1" asChild>
-            <Link href={`/owner/entities/${entity.id}`}>Gérer</Link>
+            <Link href={`/owner/entities/${entity.id}/edit`}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />
+              Modifier
+            </Link>
+          </Button>
+          <Button variant="default" size="sm" className="flex-1" asChild>
+            <Link href={`/owner/entities/${entity.id}`}>
+              Voir la fiche
+              <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+            </Link>
           </Button>
         </div>
       </CardContent>
