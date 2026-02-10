@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * EntityDetailClient — Fiche détaillée d'une entité avec 5 onglets
+ * EntityDetailClient — Fiche détaillée d'une entité avec 6 onglets
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -19,6 +19,9 @@ import {
   AlertCircle,
   Trash2,
   Loader2,
+  Home,
+  MapPin,
+  ArrowRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,10 +53,11 @@ interface EntityDetailClientProps {
   associates: Record<string, unknown>[];
 }
 
-type TabId = "info" | "bank" | "stripe" | "associates" | "documents";
+type TabId = "info" | "patrimoine" | "bank" | "stripe" | "associates" | "documents";
 
 const TABS: Array<{ id: TabId; label: string; icon: typeof Info }> = [
   { id: "info", label: "Infos", icon: Info },
+  { id: "patrimoine", label: "Patrimoine", icon: Home },
   { id: "bank", label: "Bancaire", icon: CreditCard },
   { id: "stripe", label: "Stripe", icon: CreditCard },
   { id: "associates", label: "Associés", icon: Users },
@@ -252,6 +256,9 @@ export function EntityDetailClient({
       {/* Tab content */}
       <div>
         {activeTab === "info" && <InfoTab entity={entity} />}
+        {activeTab === "patrimoine" && (
+          <PatrimoineTab entityId={entity.id as string} entityType={entityType} />
+        )}
         {activeTab === "bank" && <BankTab entity={entity} />}
         {activeTab === "stripe" && <StripeTab />}
         {activeTab === "associates" && (
@@ -472,6 +479,228 @@ function DocumentsTab() {
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+// ============================================
+// PATRIMOINE TAB
+// ============================================
+
+interface EntityProperty {
+  id: string;
+  property: {
+    id: string;
+    adresse_complete: string;
+    ville: string;
+    type: string;
+    loyer_hc: number | null;
+    surface: number | null;
+  } | null;
+  detention_type: string;
+  quote_part_numerateur: number;
+  quote_part_denominateur: number;
+  pourcentage_detention: number | null;
+  date_acquisition: string | null;
+  mode_acquisition: string | null;
+  prix_acquisition: number | null;
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  appartement: "Appartement",
+  maison: "Maison",
+  studio: "Studio",
+  colocation: "Colocation",
+  parking: "Parking",
+  box: "Box / Garage",
+  local_commercial: "Local commercial",
+  bureaux: "Bureaux",
+  entrepot: "Entrepôt",
+  fonds_de_commerce: "Fonds de commerce",
+  immeuble: "Immeuble",
+};
+
+const DETENTION_LABELS: Record<string, string> = {
+  pleine_propriete: "Pleine propriété",
+  nue_propriete: "Nue-propriété",
+  usufruit: "Usufruit",
+  usufruit_temporaire: "Usufruit temporaire",
+  indivision: "Indivision",
+};
+
+function PatrimoineTab({ entityId, entityType }: { entityId: string; entityType: string }) {
+  const [properties, setProperties] = useState<EntityProperty[]>([]);
+  const [totals, setTotals] = useState({ count: 0, totalValue: 0, monthlyRent: 0, totalSurface: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchProperties() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/owner/legal-entities/${entityId}/properties`);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Erreur de chargement");
+        }
+        const data = await res.json();
+        setProperties(data.properties || []);
+        setTotals(data.totals || { count: 0, totalValue: 0, monthlyRent: 0, totalSurface: 0 });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erreur de chargement");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchProperties();
+  }, [entityId]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="text-center py-8">
+          <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-3" />
+          <p className="font-medium">Erreur</p>
+          <p className="text-sm text-muted-foreground mt-1">{error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (properties.length === 0) {
+    return (
+      <Card>
+        <CardContent className="text-center py-8">
+          <Home className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+          <p className="font-medium">Aucun bien rattaché</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+            {entityType === "particulier"
+              ? "Vos biens détenus en nom propre apparaîtront ici une fois affectés."
+              : "Affectez des biens à cette entité depuis la page de gestion des biens."}
+          </p>
+          <Button variant="outline" className="mt-4" asChild>
+            <Link href="/owner/properties">
+              Voir mes biens
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+
+  return (
+    <div className="space-y-4">
+      {/* Totaux */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <p className="text-xs text-muted-foreground">Biens</p>
+            <p className="text-2xl font-bold">{totals.count}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <p className="text-xs text-muted-foreground">Valeur d&apos;acquisition</p>
+            <p className="text-2xl font-bold">{formatCurrency(totals.totalValue)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <p className="text-xs text-muted-foreground">Loyers mensuels</p>
+            <p className="text-2xl font-bold">{formatCurrency(totals.monthlyRent)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3 px-4">
+            <p className="text-xs text-muted-foreground">Surface totale</p>
+            <p className="text-2xl font-bold">{totals.totalSurface} m&sup2;</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Liste des biens */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            Biens détenus ({properties.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {properties.map((p) => {
+              const prop = p.property;
+              if (!prop) return null;
+              const detentionLabel = DETENTION_LABELS[p.detention_type] || p.detention_type;
+              const isPartial = p.quote_part_numerateur !== p.quote_part_denominateur;
+
+              return (
+                <Link
+                  key={p.id}
+                  href={`/owner/properties/${prop.id}`}
+                  className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors group"
+                >
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Home className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">
+                      {prop.adresse_complete}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+                      <span className="text-xs text-muted-foreground">
+                        {TYPE_LABELS[prop.type] || prop.type}
+                      </span>
+                      {prop.ville && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                          <MapPin className="h-3 w-3" />
+                          {prop.ville}
+                        </span>
+                      )}
+                      {prop.surface && (
+                        <span className="text-xs text-muted-foreground">
+                          {prop.surface} m&sup2;
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-medium">
+                      {prop.loyer_hc ? formatCurrency(prop.loyer_hc) : "—"}
+                      <span className="text-xs text-muted-foreground font-normal">/mois</span>
+                    </p>
+                    <div className="flex items-center gap-1 justify-end mt-0.5">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        {detentionLabel}
+                      </Badge>
+                      {isPartial && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {p.quote_part_numerateur}/{p.quote_part_denominateur}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </Link>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

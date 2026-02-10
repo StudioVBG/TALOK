@@ -40,13 +40,28 @@ export async function GET(request: Request) {
       throw new ApiError(403, "Accès réservé aux propriétaires");
     }
 
+    // ✅ FILTRAGE PAR ENTITÉ (optionnel)
+    const { searchParams } = new URL(request.url);
+    const entityId = searchParams.get("entityId");
+
     // ✅ RÉCUPÉRATION: Récupérer les propriétés du propriétaire
     // Utiliser SELECT * pour récupérer toutes les colonnes disponibles (évite les erreurs si certaines colonnes n'existent pas)
-    const { data: properties, error: propertiesError, count } = await supabase
+    let propertiesQuery = supabase
       .from("properties")
-      .select("*", { count: "exact" })
+      .select("*, legal_entity:legal_entities(id, nom, entity_type, couleur)", { count: "exact" })
       .eq("owner_id", profile.id)
       .order("created_at", { ascending: false });
+
+    if (entityId === "personal") {
+      // Biens en nom propre : legal_entity_id est null
+      propertiesQuery = propertiesQuery.is("legal_entity_id", null);
+    } else if (entityId && entityId !== "all") {
+      // Biens d'une entité spécifique
+      propertiesQuery = propertiesQuery.eq("legal_entity_id", entityId);
+    }
+    // Si entityId absent ou "all" : pas de filtre, retourner tous les biens
+
+    const { data: properties, error: propertiesError, count } = await propertiesQuery;
 
     if (propertiesError) {
       console.error("[GET /api/owner/properties] Error fetching properties:", propertiesError);
@@ -84,6 +99,9 @@ export async function GET(request: Request) {
       // Normaliser loyer : utiliser loyer_hc (colonne V3)
       const normalizedLoyer = property.loyer_hc != null ? Number(property.loyer_hc) : 0;
 
+      // Enrichir avec le nom de l'entité propriétaire
+      const legalEntity = property.legal_entity as Record<string, unknown> | null;
+
       return {
         ...property,
         // Champs normalisés pour compatibilité frontend
@@ -96,6 +114,11 @@ export async function GET(request: Request) {
         cover_url: media.cover_url,
         cover_document_id: media.cover_document_id,
         documents_count: media.documents_count,
+        // Entité propriétaire
+        entity_nom: legalEntity?.nom as string | null ?? null,
+        entity_type: legalEntity?.entity_type as string | null ?? null,
+        entity_couleur: legalEntity?.couleur as string | null ?? null,
+        legal_entity: undefined, // Ne pas renvoyer l'objet joint brut
       } as OwnerProperty;
     });
 

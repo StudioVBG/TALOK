@@ -18,6 +18,7 @@ import {
 import { Plus, Search, LayoutGrid, LayoutList, Download } from "lucide-react";
 import { exportProperties } from "@/lib/services/export-service";
 import { useProperties, useLeases } from "@/lib/hooks";
+import { useEntityStore } from "@/stores/useEntityStore";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useDebounce } from "@/lib/hooks/use-debounce";
@@ -61,7 +62,20 @@ export default function OwnerPropertiesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const moduleFilter = searchParams.get("module");
-  const { data: properties = [], isLoading, error: propertiesError, refetch: refetchProperties } = useProperties();
+  const { activeEntityId, entities, getActiveEntity } = useEntityStore();
+
+  // Déterminer l'entityId pour le filtrage :
+  // - null (toutes les entités) → pas de filtre
+  // - un ID d'entité de type "particulier" → "personal" (biens en nom propre)
+  // - un ID d'entité spécifique → cet ID
+  const activeEntity = getActiveEntity();
+  const entityFilterId = activeEntityId === null
+    ? undefined
+    : activeEntity?.entityType === "particulier"
+      ? "personal"
+      : activeEntityId;
+
+  const { data: properties = [], isLoading, error: propertiesError, refetch: refetchProperties } = useProperties(entityFilterId);
   const handlePullRefresh = async () => { await refetchProperties(); };
   
   const { data: leases = [], error: leasesError } = useLeases(undefined, {
@@ -262,15 +276,28 @@ export default function OwnerPropertiesPage() {
       cell: (property: any) => (
         <div className="flex items-center gap-3">
           {property.cover_url && (
-            <img 
-              src={property.cover_url} 
-              alt="" 
+            <img
+              src={property.cover_url}
+              alt=""
               className="w-10 h-10 rounded-md object-cover border hidden sm:block"
             />
           )}
           <div>
             <div className="font-medium text-foreground">{property.adresse_complete || "Adresse inconnue"}</div>
-            <div className="text-xs text-muted-foreground">{property.ville} {property.code_postal}</div>
+            <div className="text-xs text-muted-foreground">
+              {property.ville} {property.code_postal}
+              {!activeEntityId && property.entity_nom && (
+                <span className="ml-1.5 inline-flex items-center gap-1">
+                  <span className="text-muted-foreground/50">·</span>
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted"
+                    style={property.entity_couleur ? { borderLeft: `2px solid ${property.entity_couleur}` } : undefined}
+                  >
+                    {property.entity_nom}
+                  </span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )
@@ -415,7 +442,7 @@ export default function OwnerPropertiesPage() {
                     backgroundSize: "200% 100%",
                   }}
                 >
-                  Mes biens
+                  {activeEntity ? `Biens · ${activeEntity.nom}` : "Mes biens"}
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0, y: 10 }}
@@ -423,7 +450,9 @@ export default function OwnerPropertiesPage() {
                   transition={{ delay: 0.2, duration: 0.5 }}
                   className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-lg"
                 >
-                  Gérez votre portefeuille locatif
+                  {activeEntity
+                    ? `${filteredProperties.length} bien${filteredProperties.length > 1 ? "s" : ""} détenu${filteredProperties.length > 1 ? "s" : ""} par ${activeEntity.nom}`
+                    : "Gérez votre portefeuille locatif"}
                 </motion.p>
               </motion.div>
               <motion.div
@@ -608,18 +637,23 @@ export default function OwnerPropertiesPage() {
                             src={property.cover_url}
                             alt={property.adresse_complete || "Propriété sans nom"}
                             priority={index < 4}
-                            
+
                             // Titres intégrés
                             title={property.adresse_complete || "Nouvelle propriété"}
-                            subtitle={`${getTypeLabel(property.type)} • ${property.ville || ""}`}
-                            
+                            subtitle={`${getTypeLabel(property.type)} • ${property.ville || ""}${!activeEntityId && property.entity_nom ? ` • ${property.entity_nom}` : ""}`}
+
                             // Badges automatiques adaptés au type de bien
-                            badges={getBadgesForProperty(property)}
-                            
+                            badges={[
+                              ...getBadgesForProperty(property),
+                              // Badge entité si on est en vue "toutes les entités"
+                              ...(!activeEntityId && property.entity_nom ? [{
+                                label: property.entity_nom,
+                                variant: "outline" as const,
+                              }] : []),
+                            ]}
+
                             // Status badge
                             status={getStatusBadge(property.status)}
-                            
-                            // Overlay Action retiré
                           />
                         </Link>
                       </motion.div>
