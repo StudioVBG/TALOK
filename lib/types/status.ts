@@ -286,3 +286,11 @@ export const TICKET_STATUS_VARIANTS: Record<TicketStatus, StatusVariant> = {
   resolved: "success",
   closed: "muted",
 };
+
+export const EDL_STATUS_VARIANTS: Record<EDLStatus, StatusVariant> = {
+  draft: "muted",
+  in_progress: "warning",
+  completed: "info",
+  signed: "success",
+  disputed: "danger",
+};

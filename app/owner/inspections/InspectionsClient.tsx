@@ -140,7 +140,7 @@ export function InspectionsClient({ inspections }: Props) {
       header: "Logement",
       cell: (edl: Inspection) => (
         <div className="min-w-0">
-          <p className="font-medium truncate max-w-[140px] sm:max-w-[200px] text-slate-900">{edl.property_address}</p>
+          <p className="font-medium truncate max-w-[200px] sm:max-w-[280px] text-slate-900" title={edl.property_address}>{edl.property_address}</p>
           <p className="text-xs text-muted-foreground truncate">{edl.property_city}</p>
         </div>
       ),
@@ -170,22 +170,23 @@ export function InspectionsClient({ inspections }: Props) {
     },
     {
       header: "Statut",
-      cell: (edl: Inspection) => (
-        <StatusBadge 
-          status={
-            edl.status === 'signed' ? 'Signé' : 
-            edl.status === 'completed' ? 'Terminé' : 
-            edl.status === 'in_progress' ? 'En cours' : 
-            edl.status === 'disputed' ? 'Contesté' : 'Brouillon'
-          }
-          type={
-            edl.status === 'signed' ? 'success' : 
-            edl.status === 'completed' ? 'info' : 
-            edl.status === 'in_progress' ? 'warning' : 
-            edl.status === 'disputed' ? 'error' : 'neutral'
-          }
-        />
-      ),
+      cell: (edl: Inspection) => {
+        const statusMap: Record<string, { label: string; type: "success" | "warning" | "error" | "info" | "neutral"; animate: boolean }> = {
+          signed: { label: "Signé", type: "success", animate: false },
+          completed: { label: "Terminé", type: "info", animate: false },
+          in_progress: { label: "En cours", type: "warning", animate: true },
+          disputed: { label: "Contesté", type: "error", animate: true },
+          draft: { label: "Brouillon", type: "neutral", animate: false },
+        };
+        const config = statusMap[edl.status] || statusMap.draft;
+        return (
+          <StatusBadge
+            status={config.label}
+            type={config.type}
+            animate={config.animate}
+          />
+        );
+      },
     },
     {
       header: "Actions",
