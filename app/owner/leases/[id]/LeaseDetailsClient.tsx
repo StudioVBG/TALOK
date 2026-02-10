@@ -83,78 +83,56 @@ interface LeaseDetailsClientProps {
   };
 }
 
-// ✅ SOTA 2026: Config des statuts - FLUX COMPLET avec tous les statuts légaux
-const STATUS_CONFIG: Record<string, { label: string; color: string; description?: string; icon?: string }> = {
-  draft: { 
-    label: "Brouillon", 
-    color: "bg-slate-100 text-slate-700 border-slate-300", 
+/**
+ * SSOT 2026 — Config des statuts alignée avec la CHECK DB.
+ * Seuls les statuts réellement écrits par l'API sont listés.
+ * Migration : 20260108400000_lease_lifecycle_sota2026.sql
+ */
+const STATUS_CONFIG: Record<string, { label: string; color: string; description?: string }> = {
+  draft: {
+    label: "Brouillon",
+    color: "bg-slate-100 text-slate-700 border-slate-300",
     description: "Le bail est en cours de rédaction",
-    icon: "📝"
   },
-  sent: { 
-    label: "Envoyé", 
-    color: "bg-blue-100 text-blue-700 border-blue-300", 
-    description: "Le bail a été envoyé pour signature",
-    icon: "📤"
-  },
-  pending_signature: { 
-    label: "Signature en attente", 
-    color: "bg-amber-100 text-amber-700 border-amber-300", 
+  pending_signature: {
+    label: "Signature en attente",
+    color: "bg-amber-100 text-amber-700 border-amber-300",
     description: "En attente de toutes les signatures",
-    icon: "⏳"
   },
-  partially_signed: { 
-    label: "Partiellement signé", 
-    color: "bg-orange-100 text-orange-700 border-orange-300", 
+  partially_signed: {
+    label: "Partiellement signé",
+    color: "bg-orange-100 text-orange-700 border-orange-300",
     description: "Certaines parties ont signé",
-    icon: "✍️"
   },
-  pending_owner_signature: { 
-    label: "À signer (propriétaire)", 
-    color: "bg-blue-100 text-blue-700 border-blue-300", 
-    description: "Attente de la signature du propriétaire",
-    icon: "🔐"
-  },
-  fully_signed: { 
-    label: "Signé - EDL requis", 
-    color: "bg-indigo-100 text-indigo-700 border-indigo-300", 
+  fully_signed: {
+    label: "Signé - EDL requis",
+    color: "bg-indigo-100 text-indigo-700 border-indigo-300",
     description: "Bail entièrement signé. Un état des lieux d'entrée est requis pour activer le bail.",
-    icon: "✅"
   },
-  active: { 
-    label: "Actif", 
-    color: "bg-green-100 text-green-700 border-green-300", 
+  active: {
+    label: "Actif",
+    color: "bg-green-100 text-green-700 border-green-300",
     description: "Le bail est en cours",
-    icon: "🏠"
   },
-  notice_given: { 
-    label: "Congé donné", 
-    color: "bg-orange-100 text-orange-700 border-orange-300", 
-    description: "Un congé a été donné, préavis en cours",
-    icon: "📬"
-  },
-  amended: { 
-    label: "Avenant en cours", 
-    color: "bg-purple-100 text-purple-700 border-purple-300", 
-    description: "Un avenant au bail est en cours de traitement",
-    icon: "📋"
-  },
-  terminated: { 
-    label: "Terminé", 
-    color: "bg-slate-100 text-slate-600 border-slate-300", 
+  terminated: {
+    label: "Terminé",
+    color: "bg-slate-100 text-slate-600 border-slate-300",
     description: "Le bail est terminé",
-    icon: "🔚"
   },
-  archived: { 
-    label: "Archivé", 
-    color: "bg-gray-200 text-gray-600 border-gray-300", 
+  archived: {
+    label: "Archivé",
+    color: "bg-gray-200 text-gray-600 border-gray-300",
     description: "Le bail est archivé",
-    icon: "📦"
+  },
+  cancelled: {
+    label: "Annulé",
+    color: "bg-red-100 text-red-600 border-red-300",
+    description: "Le bail a été annulé",
   },
 };
 
 export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDetailsClientProps) {
-  const { lease, property, signers, payments, documents, edl } = details;
+  const { lease, property, signers, payments, invoices, documents, edl } = details;
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -964,6 +942,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   <LeasePaymentsTab
                     leaseId={leaseId}
                     payments={payments || []}
+                    invoices={invoices || []}
                     leaseStatus={lease.statut}
                   />
                 </div>

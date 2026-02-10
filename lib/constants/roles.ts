@@ -187,6 +187,13 @@ export type SignatureStatus = typeof SIGNATURE_STATUS[keyof typeof SIGNATURE_STA
 // STATUTS DE BAIL
 // ============================================
 
+/**
+ * SSOT 2026 — Statuts de bail alignés avec la contrainte CHECK en base.
+ * Migration de référence : 20260108400000_lease_lifecycle_sota2026.sql
+ *
+ * Flux normal : draft → pending_signature → fully_signed → active → terminated → archived
+ * Annulation : draft|pending_signature → cancelled
+ */
 export const LEASE_STATUS = {
   DRAFT: "draft",
   PENDING_SIGNATURE: "pending_signature",
@@ -194,6 +201,8 @@ export const LEASE_STATUS = {
   FULLY_SIGNED: "fully_signed",
   ACTIVE: "active",
   TERMINATED: "terminated",
+  ARCHIVED: "archived",
+  CANCELLED: "cancelled",
 } as const;
 
 export type LeaseStatus = typeof LEASE_STATUS[keyof typeof LEASE_STATUS];
@@ -209,6 +218,8 @@ export function getLeaseStatusLabel(status: string | null | undefined): string {
     case LEASE_STATUS.FULLY_SIGNED: return "Entièrement signé";
     case LEASE_STATUS.ACTIVE: return "Actif";
     case LEASE_STATUS.TERMINATED: return "Résilié";
+    case LEASE_STATUS.ARCHIVED: return "Archivé";
+    case LEASE_STATUS.CANCELLED: return "Annulé";
     default: return "Inconnu";
   }
 }

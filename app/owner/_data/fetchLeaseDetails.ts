@@ -19,19 +19,19 @@ export interface EDLEntry {
   completed_date?: string | null;
 }
 
-/** Statuts possibles d'un bail */
-export type LeaseStatus = 
-  | "draft" 
-  | "sent" 
-  | "pending_signature" 
-  | "partially_signed" 
-  | "pending_owner_signature" 
-  | "fully_signed" 
-  | "active" 
-  | "notice_given" 
-  | "amended" 
-  | "terminated" 
-  | "archived";
+/**
+ * Statuts possibles d'un bail — alignés avec la CHECK DB
+ * Migration : 20260108400000_lease_lifecycle_sota2026.sql
+ */
+export type LeaseStatus =
+  | "draft"
+  | "pending_signature"
+  | "partially_signed"
+  | "fully_signed"
+  | "active"
+  | "terminated"
+  | "archived"
+  | "cancelled";
 
 /** Statuts possibles d'une signature */
 export type SignatureStatus = "pending" | "signed" | "refused" | "expired";
@@ -70,6 +70,18 @@ export interface Payment {
   montant: number;
   statut: "pending" | "succeeded" | "paid" | "failed" | "refunded";
   periode: string | null;
+}
+
+/** Structure d'une facture */
+export interface Invoice {
+  id: string;
+  periode: string;
+  montant_total: number;
+  montant_loyer: number;
+  montant_charges: number;
+  statut: "draft" | "sent" | "paid" | "late";
+  created_at: string;
+  metadata?: Record<string, any> | null;
 }
 
 /** Structure du bail avec données SSOT */
@@ -123,6 +135,7 @@ export interface LeaseDetails {
   property: Property;
   signers: Signer[];
   payments: Payment[];
+  invoices: Invoice[];
   documents: Document[];
   /** EDL est un OBJET UNIQUE ou null, PAS un tableau ! */
   edl: EDLEntry | null;
@@ -312,13 +325,21 @@ async function fetchLeaseDetailsFallback(
     .order("date_paiement", { ascending: false })
     .limit(12);
 
-  // 4. Récupérer les documents
+  // 4. Récupérer les factures du bail (SSOT 2026)
+  const { data: invoices } = await supabase
+    .from("invoices")
+    .select("id, periode, montant_total, montant_loyer, montant_charges, statut, created_at, metadata")
+    .eq("lease_id", leaseId)
+    .order("periode", { ascending: false })
+    .limit(24);
+
+  // 5. Récupérer les documents
   const { data: documents } = await supabase
     .from("documents")
     .select("*")
     .eq("lease_id", leaseId);
 
-  // 5. Récupérer la photo principale
+  // 6. Récupérer la photo principale
   const { data: mainPhoto } = await supabase
     .from("property_photos")
     .select("url")
@@ -327,7 +348,7 @@ async function fetchLeaseDetailsFallback(
     .limit(1)
     .maybeSingle();
 
-  // 6. Récupérer l'EDL le plus récent pour ce bail
+  // 7. Récupérer l'EDL le plus récent pour ce bail
   const { data: edl } = await supabase
     .from("edl")
     .select("id, status, type, scheduled_at, completed_date")
@@ -337,7 +358,7 @@ async function fetchLeaseDetailsFallback(
     .limit(1)
     .maybeSingle();
 
-  // 7. Vérifier si la première facture est payée (SOTA 2026)
+  // 8. Vérifier si la première facture est payée (SSOT 2026)
   const { data: initialInvoice } = await supabase
     .from("invoices")
     .select("statut")
@@ -428,11 +449,23 @@ async function fetchLeaseDetailsFallback(
     periode: p.invoices?.periode,
   }));
 
+  const formattedInvoices = (invoices || []).map((inv: any) => ({
+    id: inv.id,
+    periode: inv.periode,
+    montant_total: inv.montant_total,
+    montant_loyer: inv.montant_loyer,
+    montant_charges: inv.montant_charges,
+    statut: inv.statut,
+    created_at: inv.created_at,
+    metadata: inv.metadata,
+  }));
+
   const result = {
     lease: cleanLease,
     property,
     signers: formattedSigners,
     payments: formattedPayments,
+    invoices: formattedInvoices,
     documents: documents || [],
     edl: edl || null,
   };
@@ -442,6 +475,7 @@ async function fetchLeaseDetailsFallback(
     propertyId: result.property?.id,
     signersCount: result.signers?.length,
     paymentsCount: result.payments?.length,
+    invoicesCount: result.invoices?.length,
     documentsCount: result.documents?.length,
   });
 
