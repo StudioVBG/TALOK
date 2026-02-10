@@ -447,12 +447,17 @@ export function LeasePreview({
                     </Button>
                   </div>
                 </DialogHeader>
-                <div className="flex-1 min-h-0">
-                  <iframe
-                    srcDoc={html}
-                    className="w-full h-full border-0"
-                    title="Prévisualisation du bail (plein écran)"
-                  />
+                <div className="flex-1 min-h-0 bg-[#525659] overflow-y-auto">
+                  <div className="flex justify-center py-6 px-4">
+                    <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
+                      <iframe
+                        srcDoc={html}
+                        className="w-full border-0"
+                        style={{ height: "calc(297mm * 2)" }}
+                        title="Prévisualisation du bail (plein écran)"
+                      />
+                    </div>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -551,10 +556,10 @@ export function LeasePreview({
           </div>
         )}
 
-        {/* Zone de prévisualisation - Responsive */}
-        <div className="flex-1 border rounded-lg overflow-hidden bg-slate-50 relative min-h-[300px] sm:min-h-[400px] md:min-h-[500px]">
+        {/* Zone de prévisualisation - Format A4 Document Viewer */}
+        <div className="flex-1 rounded-lg overflow-hidden bg-[#525659] relative min-h-0">
           {loading ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10 px-4">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10 px-4">
                <div className="flex flex-col items-center gap-2 sm:gap-3 text-center">
                  <RefreshCw className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 animate-spin" />
                  <p className="text-xs sm:text-sm text-slate-500 font-medium">Génération de l'aperçu...</p>
@@ -562,12 +567,17 @@ export function LeasePreview({
                </div>
             </div>
           ) : (
-            <iframe
-              ref={iframeRef}
-              srcDoc={html}
-              className="w-full h-[50vh] sm:h-[60vh] md:h-full min-h-[300px] border-0 bg-white"
-              title="Prévisualisation du bail"
-            />
+            <div className="h-full flex justify-center overflow-y-auto py-4 px-2 sm:px-4">
+              <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
+                <iframe
+                  ref={iframeRef}
+                  srcDoc={html}
+                  className="w-full border-0 bg-white"
+                  style={{ height: "calc(297mm * 1.5)" }}
+                  title="Prévisualisation du bail"
+                />
+              </div>
+            </div>
           )}
         </div>
 

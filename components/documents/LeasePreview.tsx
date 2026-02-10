@@ -54,7 +54,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
   }, [html]);
 
   return (
-    <Card className="h-full">
+    <Card className="h-full flex flex-col">
       <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-blue-600" />
@@ -76,35 +76,45 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
                 <Maximize2 className="h-4 w-4" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-[90vw] max-h-[90vh] p-0" aria-describedby={undefined}>
-              <DialogHeader className="p-4 border-b">
+            <DialogContent className="max-w-[95vw] h-[95vh] p-0 flex flex-col" aria-describedby={undefined}>
+              <DialogHeader className="p-4 border-b shrink-0">
                 <DialogTitle>Contrat de location - Plein écran</DialogTitle>
               </DialogHeader>
-              <div className="h-[80vh] overflow-hidden">
-                <iframe
-                  srcDoc={html}
-                  className="w-full h-full border-0"
-                  title="Aperçu bail plein écran"
-                />
+              <div className="flex-1 min-h-0 bg-[#525659] overflow-y-auto">
+                <div className="flex justify-center py-6 px-4">
+                  <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
+                    <iframe
+                      srcDoc={html}
+                      className="w-full border-0"
+                      style={{ height: "calc(297mm * 2)" }}
+                      title="Aperçu bail plein écran"
+                    />
+                  </div>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
         </div>
       </CardHeader>
-      <CardContent className="p-0">
-        {/* Conteneur responsive avec hauteur adaptative */}
-        <div className="relative bg-slate-100 min-h-[300px] sm:min-h-[400px] md:min-h-[500px]">
+      <CardContent className="p-0 flex-1 flex flex-col min-h-0">
+        {/* Conteneur A4 Document Viewer */}
+        <div className="relative bg-[#525659] flex-1 min-h-[400px]">
           {loading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
               <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-blue-600 mb-2" />
-              <p className="text-xs sm:text-sm text-muted-foreground text-center">Chargement du contrat...</p>
+              <p className="text-xs sm:text-sm text-white/80 text-center">Chargement du contrat...</p>
             </div>
           ) : (
-            <iframe
-              ref={iframeRef}
-              className="w-full h-[50vh] sm:h-[60vh] md:h-[70vh] max-h-[700px] border-0 bg-white"
-              title="Aperçu du bail"
-            />
+            <div className="h-full overflow-y-auto flex justify-center py-4 px-2 sm:px-4">
+              <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
+                <iframe
+                  ref={iframeRef}
+                  className="w-full border-0 bg-white"
+                  style={{ height: "calc(297mm * 1.5)" }}
+                  title="Aperçu du bail"
+                />
+              </div>
+            </div>
           )}
         </div>
       </CardContent>
