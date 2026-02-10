@@ -121,6 +121,11 @@ export interface OwnerProperty extends Omit<PropertyRow, 'surface' | 'nb_pieces'
   cover_document_id: string | null;
   documents_count: number;
 
+  // Entité propriétaire (ajoutée par l'API)
+  entity_nom?: string | null;
+  entity_type?: string | null;
+  entity_couleur?: string | null;
+
   // Données calculées côté client (optionnel)
   status?: "loue" | "en_preavis" | "vacant";
   currentLease?: LeaseInfo | null;

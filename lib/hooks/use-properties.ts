@@ -15,78 +15,69 @@ import { apiClient } from "@/lib/api-client";
 const ITEMS_PER_PAGE = 12;
 
 /**
- * Hook pour récupérer toutes les propriétés de l'utilisateur (mode standard)
+ * Hook pour récupérer les propriétés de l'utilisateur
+ * @param entityId - Optionnel. Si fourni, filtre par entité. "personal" = biens en nom propre. null/undefined = tous.
  */
-export function useProperties() {
+export function useProperties(entityId?: string | null) {
   const { profile } = useAuth();
-  
+
+  // Clé de cache segmentée par entité pour éviter les collisions
+  const cacheKey = entityId ? ["properties", profile?.id, entityId] : ["properties", profile?.id];
+
   return useQuery({
-    queryKey: ["properties", profile?.id],
+    queryKey: cacheKey,
     queryFn: async () => {
       if (!profile) {
         throw new Error("Non authentifié");
       }
-      
+
       try {
-        // ✅ Utiliser l'API route scopée aux propriétaires /api/owner/properties
-        const response = await apiClient.get<{ 
+        // Construire l'URL avec le paramètre entityId si fourni
+        const params = entityId ? `?entityId=${encodeURIComponent(entityId)}` : "";
+        const response = await apiClient.get<{
           properties: PropertyRow[];
           pagination: {
             page: number;
             limit: number;
             total: number;
           };
-        }>("/owner/properties");
-        
-        // ✅ Gérer le format de réponse OwnerPropertiesResponse
+        }>(`/owner/properties${params}`);
+
         if (response && typeof response === "object") {
           if ("properties" in response && Array.isArray(response.properties)) {
             return response.properties;
           }
-          // Fallback : si la réponse est directement un tableau (rétrocompatibilité)
           if (Array.isArray(response)) {
             return response;
           }
         }
-        
-        console.warn("[useProperties] Unexpected response format:", response);
+
         return [];
       } catch (error: unknown) {
         const err = error as Record<string, any>;
-        console.error("[useProperties] Error fetching properties:", err);
-        console.error("[useProperties] Error details:", {
-          message: err?.message,
-          statusCode: err?.statusCode,
-          data: err?.data,
-        });
 
-        // Si c'est une erreur de timeout ou réseau
         if (err?.statusCode === 504 || err?.message?.includes("timeout") || err?.message?.includes("Timeout")) {
           throw new Error("Le chargement prend trop de temps. Veuillez réessayer.");
         }
 
-        // Si c'est une erreur d'authentification
         if (err?.statusCode === 401 || err?.statusCode === 403) {
           throw new Error("Vous n'êtes pas autorisé à accéder à ces données.");
         }
 
-        // Pour les autres erreurs, propager l'erreur originale avec le message détaillé
         const errorMessage = err?.data?.error || err?.message || "Erreur lors de la récupération des propriétés";
         throw new Error(errorMessage);
       }
     },
     enabled: !!profile,
     retry: (failureCount, error: any) => {
-      // Ne pas réessayer si c'est une erreur d'authentification ou de timeout
       if (error?.statusCode === 401 || error?.statusCode === 403 || error?.statusCode === 504) {
         return false;
       }
-      // Réessayer une seule fois pour les autres erreurs
       return failureCount < 1;
     },
-    staleTime: 30 * 1000, // 30 secondes - considérer les données comme fraîches pendant 30s
-    gcTime: 5 * 60 * 1000, // 5 minutes - garder en cache pendant 5 minutes
-    refetchOnWindowFocus: false, // Ne pas refetch automatiquement quand la fenêtre reprend le focus
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 

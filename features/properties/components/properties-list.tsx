@@ -24,15 +24,6 @@ export function PropertiesList() {
   const { data: properties = [], isLoading, error, isError } = useProperties();
   const deleteProperty = useDeleteProperty();
 
-  // Debug logs
-  console.log("[PropertiesList] State:", {
-    propertiesCount: properties.length,
-    isLoading,
-    isError,
-    error: error?.message,
-    properties,
-  });
-
   const pagination = usePagination({
     totalItems: properties.length,
     itemsPerPage: 12,

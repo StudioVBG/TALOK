@@ -80,20 +80,33 @@ export const useEntityStore = create<EntityState>()(
             return;
           }
 
-          // M9: Fetch property and lease counts per entity
+          // Fetch property and lease counts per entity
           const entityIds = (entities || []).map((e: Record<string, unknown>) => e.id as string);
           const propertyCounts: Record<string, number> = {};
           const leaseCounts: Record<string, number> = {};
 
+          // Trouver l'entité "particulier" pour y rattacher les biens sans entité
+          const particulierEntity = (entities || []).find(
+            (e: Record<string, unknown>) => e.entity_type === "particulier"
+          );
+
           if (entityIds.length > 0) {
+            // Fetch ALL properties to count both entity-assigned and personal
             const { data: props } = await supabase
               .from("properties")
               .select("legal_entity_id")
-              .in("legal_entity_id", entityIds)
+              .eq("owner_id", ownerProfileId)
               .is("deleted_at", null);
             if (props) {
               for (const p of props as any[]) {
-                if (p.legal_entity_id) propertyCounts[p.legal_entity_id] = (propertyCounts[p.legal_entity_id] || 0) + 1;
+                if (p.legal_entity_id && entityIds.includes(p.legal_entity_id)) {
+                  // Bien affecté à une entité connue
+                  propertyCounts[p.legal_entity_id] = (propertyCounts[p.legal_entity_id] || 0) + 1;
+                } else if (!p.legal_entity_id && particulierEntity) {
+                  // Bien sans entité → compter dans l'entité "particulier" (nom propre)
+                  const pId = particulierEntity.id as string;
+                  propertyCounts[pId] = (propertyCounts[pId] || 0) + 1;
+                }
               }
             }
 
