@@ -87,15 +87,10 @@ const navigationGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Documents",
+    label: "Documents & Juridique",
     items: [
       { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck, tourId: "nav-documents" },
-      { name: "GED", href: OWNER_ROUTES.ged.path, icon: FolderArchive, badge: "Nouveau" },
-    ],
-  },
-  {
-    label: "Juridique",
-    items: [
+      { name: "Coffre-fort", href: OWNER_ROUTES.ged.path, icon: FolderArchive, badge: "Nouveau" },
       { name: "Mes entités", href: "/owner/entities", icon: Briefcase, tourId: "nav-entities" },
       { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
     ],
@@ -495,7 +490,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench },
               { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck },
               { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
-              { href: "/owner/legal-protocols", label: "Juridique", icon: Shield },
+              { href: "/owner/entities", label: "Entités", icon: Briefcase },
               { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
             ]}
             hideAbove="md"

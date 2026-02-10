@@ -617,13 +617,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               </Button>
             )}
             
-            {/* Bouton d'activation - apparaît quand le bail est fully_signed */}
+            {/* Bouton d'activation — désactivé si EDL ou DPE manquant */}
             {canActivate && (
               <Button
                 size="sm"
                 onClick={() => handleActivate(false)}
-                disabled={isActivating}
-                className="bg-green-600 hover:bg-green-700 shadow-sm"
+                disabled={isActivating || (!hasSignedEdl && dpeStatus?.status !== "VALID")}
+                className={hasSignedEdl ? "bg-green-600 hover:bg-green-700 shadow-sm" : "bg-slate-400 cursor-not-allowed shadow-sm"}
+                title={!hasSignedEdl ? "L'état des lieux d'entrée doit être réalisé avant d'activer le bail" : !dpeStatus || dpeStatus.status !== "VALID" ? "Le DPE doit être valide avant d'activer le bail" : "Activer le bail"}
               >
                 {isActivating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                 Activer le bail
@@ -894,9 +895,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 <div className="flex flex-col h-full">
                   <div className="flex items-center justify-between px-4 py-3 border-b bg-amber-50">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-amber-600" />
-                      <span className="font-medium text-amber-800">Document en cours de génération</span>
+                      <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
+                      <span className="font-medium text-amber-800">PDF signé en cours de génération</span>
                     </div>
+                    <span className="text-xs text-amber-600">Aperçu du contrat ci-dessous</span>
                   </div>
                   {/* Afficher l'aperçu en attendant */}
                   <LeasePreview
@@ -955,80 +957,95 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               </CardContent>
             </Card>
             
-            {/* ===== CARTE ACTIVATION - Visible si fully_signed ===== */}
+            {/* ===== PRÉREQUIS ACTIVATION — Checklist compacte si fully_signed ===== */}
             {canActivate && (
-              <Card className="border-2 border-indigo-200 shadow-sm bg-gradient-to-br from-indigo-50 to-white">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold text-indigo-900 flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-indigo-600" />
-                    Bail signé - Prochaine étape
+              <Card className="border border-slate-200 shadow-sm bg-white">
+                <CardHeader className="pb-2 border-b border-slate-50">
+                  <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <CheckCircle className="h-3 w-3 text-indigo-500" />
+                    Prérequis activation
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Alerte DPE manquant/expiré avant activation */}
-                  {dpeStatus?.status !== "VALID" && (
-                    <div className="p-3 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3">
-                      <ShieldAlert className="h-5 w-5 text-red-600 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-red-900">DPE Non Conforme</p>
-                        <p className="text-xs text-red-700 leading-relaxed">
-                          Le DPE est {dpeStatus?.status === "EXPIRED" ? "expiré" : "manquant"}. 
-                          Il est légalement obligatoire pour louer ce bien.
-                        </p>
-                        <Button variant="link" size="sm" className="h-auto p-0 text-red-600 text-xs font-bold" asChild>
-                          <Link href={`/owner/properties/${property.id}/diagnostics`}>
-                            Régulariser maintenant →
+                <CardContent className="p-3 space-y-3">
+                  {/* Checklist des prérequis */}
+                  <div className="space-y-2">
+                    {/* Signatures */}
+                    <div className="flex items-center gap-2">
+                      <div className="h-5 w-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <CheckCircle className="h-3 w-3 text-emerald-600" />
+                      </div>
+                      <span className="text-xs text-emerald-700 font-medium">Bail signé par toutes les parties</span>
+                    </div>
+
+                    {/* EDL */}
+                    <div className="flex items-center gap-2">
+                      <div className={`h-5 w-5 rounded-full flex items-center justify-center ${hasSignedEdl ? "bg-emerald-100" : "bg-amber-100"}`}>
+                        {hasSignedEdl ? (
+                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                        ) : (
+                          <Clock className="h-3 w-3 text-amber-600" />
+                        )}
+                      </div>
+                      <span className={`text-xs font-medium ${hasSignedEdl ? "text-emerald-700" : "text-amber-700"}`}>
+                        {hasSignedEdl ? "État des lieux réalisé" : "État des lieux requis"}
+                      </span>
+                    </div>
+
+                    {/* DPE */}
+                    <div className="flex items-center gap-2">
+                      <div className={`h-5 w-5 rounded-full flex items-center justify-center ${dpeStatus?.status === "VALID" ? "bg-emerald-100" : "bg-red-100"}`}>
+                        {dpeStatus?.status === "VALID" ? (
+                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                        ) : (
+                          <ShieldAlert className="h-3 w-3 text-red-600" />
+                        )}
+                      </div>
+                      <span className={`text-xs font-medium ${dpeStatus?.status === "VALID" ? "text-emerald-700" : "text-red-700"}`}>
+                        {dpeStatus?.status === "VALID" ? "DPE conforme" : `DPE ${dpeStatus?.status === "EXPIRED" ? "expiré" : "manquant"}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions contextuelles */}
+                  <div className="space-y-2 pt-1">
+                    {!hasSignedEdl && (
+                      edl ? (
+                        <Button asChild size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700">
+                          <Link href={`/owner/inspections/${edl.id}`}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer l'EDL" : "Voir l'EDL"}
                           </Link>
                         </Button>
-                      </div>
-                    </div>
-                  )}
+                      ) : (
+                        <Button asChild size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700">
+                          <Link href={`/owner/inspections/new?lease_id=${leaseId}&type=entree`}>
+                            <ClipboardCheck className="h-4 w-4 mr-2" />
+                            Créer l&apos;EDL d&apos;entrée
+                          </Link>
+                        </Button>
+                      )
+                    )}
 
-                  <p className="text-sm text-indigo-700">
-                    Toutes les parties ont signé. Pour activer le bail, réalisez l&apos;état des lieux d&apos;entrée.
-                  </p>
-                  
-                  <div className="space-y-2">
-                    {edl ? (
-                      <Button 
-                        asChild
-                        className="w-full bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        <Link href={`/owner/inspections/${edl.id}`}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer l'état des lieux" : "Voir l'état des lieux"}
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button 
-                        asChild
-                        className="w-full bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        <Link href={`/owner/inspections/new?lease_id=${leaseId}&type=entree`}>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Créer l&apos;état des lieux d&apos;entrée
+                    {dpeStatus?.status !== "VALID" && (
+                      <Button variant="outline" size="sm" className="w-full text-red-600 border-red-200 hover:bg-red-50" asChild>
+                        <Link href={`/owner/properties/${property.id}/diagnostics`}>
+                          <ShieldAlert className="h-4 w-4 mr-2" />
+                          Régulariser le DPE
                         </Link>
                       </Button>
                     )}
-                    
-                    <Button 
-                      variant="outline" 
-                      className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs text-slate-500 hover:text-slate-700"
                       onClick={() => handleActivate(true)}
                       disabled={isActivating}
                     >
-                      {isActivating ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <XCircle className="h-4 w-4 mr-2" />
-                      )}
+                      {isActivating && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
                       Activer sans EDL (non recommandé)
                     </Button>
                   </div>
-                  
-                  <p className="text-xs text-indigo-500 italic">
-                    💡 L&apos;EDL est obligatoire et protège les deux parties en cas de litige.
-                  </p>
                 </CardContent>
               </Card>
             )}

@@ -19,6 +19,8 @@ import {
   ArrowRight,
   Loader2,
   FileText,
+  Info,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -165,237 +167,279 @@ export default function EndOfLeasePage() {
         </div>
       )}
 
-      {/* Statistiques */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Clock className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{stats.active}</div>
-                <div className="text-xs text-muted-foreground">En cours</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <AlertTriangle className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{stats.urgent}</div>
-                <div className="text-xs text-muted-foreground">Urgents (J-30)</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{stats.completed}</div>
-                <div className="text-xs text-muted-foreground">Terminés</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <FileText className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">
-                  {stats.totalBudget.toLocaleString("fr-FR")} €
+      {/* Statistiques — masquées si tout est à zéro */}
+      {(stats.active > 0 || stats.urgent > 0 || stats.completed > 0 || stats.totalBudget > 0) && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <Clock className="w-5 h-5 text-blue-600" />
                 </div>
-                <div className="text-xs text-muted-foreground">Budget total</div>
+                <div>
+                  <div className="text-2xl font-bold">{stats.active}</div>
+                  <div className="text-xs text-muted-foreground">En cours</div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
 
-      {/* Filtres et recherche */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher par adresse ou ville..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{stats.urgent}</div>
+                  <div className="text-xs text-muted-foreground">Urgents (J-30)</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{stats.completed}</div>
+                  <div className="text-xs text-muted-foreground">Terminés</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                  <FileText className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">
+                    {stats.totalBudget.toLocaleString("fr-FR")} €
+                  </div>
+                  <div className="text-xs text-muted-foreground">Budget total</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+      )}
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Statut" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous les statuts</SelectItem>
-            <SelectItem value="triggered">Démarré</SelectItem>
-            <SelectItem value="edl_in_progress">EDL en cours</SelectItem>
-            <SelectItem value="renovation_in_progress">Travaux en cours</SelectItem>
-            <SelectItem value="ready_to_rent">Prêt à louer</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Filtres et recherche — masqués si aucun processus */}
+      {processes.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par adresse ou ville..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
 
-      {/* Onglets */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="active" className="gap-2">
-            <Clock className="w-4 h-4" />
-            En cours ({stats.active})
-          </TabsTrigger>
-          <TabsTrigger value="completed" className="gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            Terminés ({stats.completed})
-          </TabsTrigger>
-          <TabsTrigger value="upcoming" className="gap-2">
-            <Calendar className="w-4 h-4" />
-            À venir ({upcomingLeases.length})
-          </TabsTrigger>
-        </TabsList>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Statut" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              <SelectItem value="triggered">Démarré</SelectItem>
+              <SelectItem value="edl_in_progress">EDL en cours</SelectItem>
+              <SelectItem value="renovation_in_progress">Travaux en cours</SelectItem>
+              <SelectItem value="ready_to_rent">Prêt à louer</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
-        <TabsContent value="active" className="space-y-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : filteredProcesses.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Home className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                <h3 className="text-lg font-semibold mb-2">Aucun processus en cours</h3>
-                <p className="text-muted-foreground mb-4">
-                  Les fins de bail seront automatiquement détectées
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {filteredProcesses.map((process, index) => (
-                <motion.div
-                  key={process.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
+      {/* Onglets — affichés seulement s'il y a des données */}
+      {processes.length > 0 || upcomingLeases.length > 0 ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="active" className="gap-2">
+              <Clock className="w-4 h-4" />
+              En cours{stats.active > 0 && ` (${stats.active})`}
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              Terminés{stats.completed > 0 && ` (${stats.completed})`}
+            </TabsTrigger>
+            <TabsTrigger value="upcoming" className="gap-2">
+              <Calendar className="w-4 h-4" />
+              À venir{upcomingLeases.length > 0 && ` (${upcomingLeases.length})`}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active" className="space-y-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : filteredProcesses.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Home className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <h3 className="text-lg font-semibold mb-2">Aucun processus en cours</h3>
+                  <p className="text-muted-foreground">
+                    Les fins de bail seront automatiquement détectées
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {filteredProcesses.map((process, index) => (
+                  <motion.div
+                    key={process.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <LeaseEndProcessCard
+                      process={process}
+                      onClick={() => setSelectedProcess(process)}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="completed" className="space-y-4">
+            {filteredProcesses.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <CheckCircle2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <h3 className="text-lg font-semibold mb-2">Aucun processus terminé</h3>
+                  <p className="text-muted-foreground">
+                    Vos fins de bail terminées apparaîtront ici
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {filteredProcesses.map((process) => (
                   <LeaseEndProcessCard
+                    key={process.id}
                     process={process}
                     onClick={() => setSelectedProcess(process)}
                   />
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
-        <TabsContent value="completed" className="space-y-4">
-          {filteredProcesses.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <CheckCircle2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                <h3 className="text-lg font-semibold mb-2">Aucun processus terminé</h3>
-                <p className="text-muted-foreground">
-                  Vos fins de bail terminées apparaîtront ici
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {filteredProcesses.map((process) => (
-                <LeaseEndProcessCard
-                  key={process.id}
-                  process={process}
-                  onClick={() => setSelectedProcess(process)}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="upcoming" className="space-y-4">
-          {upcomingLeases.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Calendar className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                <h3 className="text-lg font-semibold mb-2">Aucune fin de bail à venir</h3>
-                <p className="text-muted-foreground">
-                  Les baux arrivant à échéance dans les 90 jours apparaîtront ici
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {upcomingLeases.map((lease, index) => (
-                <motion.div
-                  key={lease.lease_id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Card className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 bg-primary/10 rounded-xl">
-                            <Home className="w-6 h-6 text-primary" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold">
-                              {lease.property.adresse_complete}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              {lease.property.ville} • {lease.type_bail}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <Badge
-                              variant={lease.days_until_trigger <= 0 ? "destructive" : "secondary"}
-                            >
-                              {lease.days_until_trigger <= 0
-                                ? "À déclencher"
-                                : `J-${lease.days_until_trigger}`}
-                            </Badge>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              Fin : {new Date(lease.date_fin).toLocaleDateString("fr-FR")}
+          <TabsContent value="upcoming" className="space-y-4">
+            {upcomingLeases.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Calendar className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <h3 className="text-lg font-semibold mb-2">Aucune fin de bail à venir</h3>
+                  <p className="text-muted-foreground">
+                    Les baux arrivant à échéance dans les 90 jours apparaîtront ici
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {upcomingLeases.map((lease, index) => (
+                  <motion.div
+                    key={lease.lease_id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <Card className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary/10 rounded-xl">
+                              <Home className="w-6 h-6 text-primary" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold">
+                                {lease.property.adresse_complete}
+                              </h4>
+                              <p className="text-sm text-muted-foreground">
+                                {lease.property.ville} • {lease.type_bail}
+                              </p>
                             </div>
                           </div>
 
-                          <Button
-                            size="sm"
-                            onClick={() => handleStartProcess(lease)}
-                          >
-                            Démarrer
-                            <ArrowRight className="w-4 h-4 ml-1" />
-                          </Button>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <Badge
+                                variant={lease.days_until_trigger <= 0 ? "destructive" : "secondary"}
+                              >
+                                {lease.days_until_trigger <= 0
+                                  ? "À déclencher"
+                                  : `J-${lease.days_until_trigger}`}
+                              </Badge>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Fin : {new Date(lease.date_fin).toLocaleDateString("fr-FR")}
+                              </div>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              onClick={() => handleStartProcess(lease)}
+                            >
+                              Démarrer
+                              <ArrowRight className="w-4 h-4 ml-1" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        /* Empty state intelligent — guide l'utilisateur */
+        <Card className="border-dashed border-2 border-slate-200">
+          <CardContent className="py-16 text-center">
+            <div className="mx-auto mb-6 w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+              <ShieldCheck className="w-8 h-8 text-blue-600" />
             </div>
-          )}
-        </TabsContent>
-      </Tabs>
+            <h3 className="text-xl font-bold text-slate-900 mb-3">
+              Aucune fin de bail à gérer
+            </h3>
+            <p className="text-muted-foreground max-w-md mx-auto mb-6 leading-relaxed">
+              Les fins de bail sont détectées automatiquement <strong>6 mois avant l&apos;échéance</strong> de vos baux actifs.
+              Vous serez notifié et guidé pour chaque étape : EDL de sortie, restitution du dépôt, remise en location.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Button asChild variant="default">
+                <a href="/owner/leases">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Voir mes baux actifs
+                </a>
+              </Button>
+              <Button asChild variant="outline">
+                <a href="/owner/leases/new">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Créer un bail
+                </a>
+              </Button>
+            </div>
+            <div className="mt-8 flex items-start gap-3 max-w-sm mx-auto text-left p-4 bg-blue-50 rounded-lg border border-blue-100">
+              <Info className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-blue-700 leading-relaxed">
+                <strong>Comment ça marche ?</strong> Dès qu&apos;un bail actif approche de sa date de fin, un processus de fin de bail est automatiquement créé avec toutes les étapes nécessaires (préavis, EDL sortie, restitution dépôt, travaux).
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Wizard modal */}
       {selectedProcess && (

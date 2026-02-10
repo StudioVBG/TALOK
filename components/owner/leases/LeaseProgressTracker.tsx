@@ -50,49 +50,52 @@ export function LeaseProgressTracker({
 }: LeaseProgressTrackerProps) {
   
   const steps = [
-    { 
-      id: "signature", 
-      label: "Signatures", 
+    {
+      id: "signature",
+      label: "Signatures",
       description: "Bail signé par tous",
-      detailDone: "✅ Locataire et propriétaire ont signé",
-      detailInProgress: "⏳ En attente de signatures",
+      detailDone: "Locataire et propriétaire ont signé",
+      detailInProgress: "En attente de signatures",
       detailPending: "Les deux parties doivent signer",
-      icon: FileSignature, 
+      icon: FileSignature,
       isDone: ["fully_signed", "active", "notice_given", "terminated"].includes(status),
       isInProgress: ["sent", "pending_signature", "partially_signed", "pending_owner_signature"].includes(status)
     },
-    { 
-      id: "edl", 
-      label: "État des lieux", 
+    {
+      id: "edl",
+      label: "État des lieux",
       description: "EDL d'entrée",
-      detailDone: "✅ État des lieux signé",
-      detailInProgress: "📋 EDL à compléter et signer",
+      detailDone: "État des lieux signé",
+      detailInProgress: "EDL à compléter et signer",
       detailPending: "L'EDL sera créé après signature",
-      icon: ClipboardCheck, 
-      isDone: hasSignedEdl || status === "active",
-      isInProgress: status === "fully_signed" && !hasSignedEdl
+      icon: ClipboardCheck,
+      // Ne pas marquer comme fait par défaut si on est "active" —
+      // utiliser uniquement hasSignedEdl comme source de vérité
+      isDone: hasSignedEdl,
+      isInProgress: (status === "fully_signed" || status === "active") && !hasSignedEdl
     },
-    { 
-      id: "payment", 
-      label: "1er paiement", 
+    {
+      id: "payment",
+      label: "1er paiement",
       description: "Loyer + dépôt",
-      detailDone: "✅ Premier versement reçu",
-      detailInProgress: "💳 En attente du paiement initial",
+      detailDone: "Premier versement reçu",
+      detailInProgress: "En attente du paiement initial",
       detailPending: "Loyer + charges + dépôt de garantie",
-      icon: Euro, 
-      isDone: hasPaidInitial || status === "active",
-      isInProgress: status === "active" && !hasPaidInitial
+      icon: Euro,
+      // Ne pas assumer que le paiement est fait juste parce que le bail est actif
+      isDone: hasPaidInitial,
+      isInProgress: (status === "fully_signed" && hasSignedEdl && !hasPaidInitial) || (status === "active" && !hasPaidInitial)
     },
-    { 
-      id: "keys", 
-      label: "Remise des clés", 
+    {
+      id: "keys",
+      label: "Remise des clés",
       description: "Bail actif",
-      detailDone: "🎉 Le locataire est installé !",
-      detailInProgress: "🔑 Prêt pour la remise des clés",
+      detailDone: "Le locataire est installé !",
+      detailInProgress: "Prêt pour la remise des clés",
       detailPending: "Étape finale",
-      icon: Key, 
-      isDone: status === "active",
-      isInProgress: hasSignedEdl && status === "fully_signed"
+      icon: Key,
+      isDone: status === "active" && hasSignedEdl && hasPaidInitial,
+      isInProgress: (status === "active" && (!hasSignedEdl || !hasPaidInitial)) || (hasSignedEdl && hasPaidInitial && status === "fully_signed")
     }
   ];
 
