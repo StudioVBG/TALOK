@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,9 +19,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { 
-  ArrowLeft, 
-  Trash2, 
+import {
+  ArrowLeft,
+  Trash2,
   Loader2,
   Edit,
   Users,
@@ -61,6 +62,7 @@ import { useEffect } from "react";
 import { LeaseProgressTracker, type LeaseProgressStatus } from "@/components/owner/leases/LeaseProgressTracker";
 import { Celebration, useCelebration } from "@/components/ui/celebration";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { CreateInspectionWizard } from "@/app/owner/inspections/new/CreateInspectionWizard";
 
 interface LeaseDetailsClientProps {
   details: LeaseDetails;
@@ -162,6 +164,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const [isTerminating, setIsTerminating] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
   const [dpeStatus, setDpeStatus] = useState<{ status: string; data?: any } | null>(null);
+  const [activeMainTab, setActiveMainTab] = useState<string>("contrat");
   
   // ✅ SOTA 2026: Hook de célébration
   const { celebrate, celebrationProps } = useCelebration();
@@ -277,6 +280,32 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     return false;
   }, [edl]);
   
+  // ✅ Données du bail au format attendu par CreateInspectionWizard
+  const wizardLeaseData = useMemo(() => {
+    const tenantName = signers
+      ?.filter((s: any) => {
+        const role = (s.role || "").toLowerCase();
+        return role === "locataire_principal" || role === "locataire" || role === "tenant" || role === "colocataire";
+      })
+      .map((s: any) => `${s.prenom || s.profiles?.prenom || ""} ${s.nom || s.profiles?.nom || ""}`.trim())
+      .filter(Boolean)
+      .join(", ") || "Locataire";
+
+    return [{
+      id: leaseId,
+      type_bail: lease.type_bail,
+      statut: lease.statut,
+      date_debut: lease.date_debut || "",
+      property: {
+        id: property.id,
+        adresse_complete: property.adresse_complete || `${property.adresse || ""} ${property.ville || ""}`.trim(),
+        ville: property.ville || "",
+        code_postal: property.code_postal || "",
+      },
+      tenant_name: tenantName,
+    }];
+  }, [leaseId, lease, property, signers]);
+
   // ✅ SOTA 2026: Priorité aux données pré-calculées dans lease.has_signed_edl
   const hasSignedEdl = useMemo(() => {
     // 1. Utiliser la valeur pré-calculée par fetchLeaseDetails (SSOT)
@@ -339,14 +368,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       };
     }
     
-    // 3. Bail signé, EDL requis
+    // 3. Bail signé, EDL requis — redirige vers l'onglet EDL intégré
     if (lease.statut === "fully_signed" && !hasSignedEdl) {
       return {
         type: "create_edl",
         icon: ClipboardCheck,
         title: "Créer l'état des lieux",
         description: "Le bail est signé. Créez l'EDL d'entrée pour l'activer.",
-        href: `/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}`,
+        action: () => setActiveMainTab("edl"),
         actionLabel: "Créer l'EDL",
         color: "indigo"
       };
@@ -423,7 +452,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         type: "milestone",
         nextAction: {
           label: "Créer l'état des lieux",
-          href: `/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}`,
+          onClick: () => setActiveMainTab("edl"),
         },
       });
       
@@ -823,99 +852,177 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Colonne de gauche : Document */}
+          {/* Colonne de gauche : Document + EDL (onglets) */}
           <div className="lg:col-span-8 xl:col-span-9 order-2 lg:order-1 flex flex-col h-[calc(100vh-8rem)]">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-              
-              {/* ✅ BAIL SCELLÉ : Afficher le document final signé */}
-              {isSealed && signedPdfPath ? (
-                <div className="flex flex-col h-full">
-                  {/* Header avec badge scellé */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-green-50">
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 rounded-full">
-                        <Lock className="h-3.5 w-3.5 text-emerald-700" />
-                        <span className="text-xs font-semibold text-emerald-700">Document scellé</span>
+            <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="flex flex-col flex-1">
+              <TabsList className="w-full justify-start rounded-b-none border border-b-0 border-slate-200 bg-white h-11 px-1">
+                <TabsTrigger value="contrat" className="gap-2 data-[state=active]:shadow-sm">
+                  <FileText className="h-4 w-4" />
+                  Contrat
+                </TabsTrigger>
+                <TabsTrigger
+                  value="edl"
+                  className="gap-2 data-[state=active]:shadow-sm"
+                >
+                  <ClipboardCheck className="h-4 w-4" />
+                  État des lieux
+                  {canActivate && !hasSignedEdl && (
+                    <span className="ml-1 h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  )}
+                  {hasSignedEdl && (
+                    <CheckCircle className="ml-1 h-3.5 w-3.5 text-emerald-500" />
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Onglet Contrat */}
+              <TabsContent value="contrat" className="flex-1 mt-0 data-[state=inactive]:hidden">
+                <div className="bg-white rounded-b-xl rounded-tr-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col h-full">
+                  {/* ✅ BAIL SCELLÉ : Afficher le document final signé */}
+                  {isSealed && signedPdfPath ? (
+                    <div className="flex flex-col h-full">
+                      {/* Header avec badge scellé */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-green-50">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 rounded-full">
+                            <Lock className="h-3.5 w-3.5 text-emerald-700" />
+                            <span className="text-xs font-semibold text-emerald-700">Document scellé</span>
+                          </div>
+                          {sealedAt && (
+                            <span className="text-xs text-slate-500">
+                              le {new Date(sealedAt).toLocaleDateString("fr-FR")}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                          >
+                            <a
+                              href={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink className="h-4 w-4 mr-1.5" />
+                              Ouvrir
+                            </a>
+                          </Button>
+                          <Button
+                            size="sm"
+                            asChild
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                          >
+                            <a
+                              href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_${leaseId.substring(0, 8).toUpperCase()}.html`}
+                              download
+                            >
+                              <Download className="h-4 w-4 mr-1.5" />
+                              Télécharger
+                            </a>
+                          </Button>
+                        </div>
                       </div>
-                      {sealedAt && (
-                        <span className="text-xs text-slate-500">
-                          le {new Date(sealedAt).toLocaleDateString("fr-FR")}
-                        </span>
-                      )}
+
+                      {/* Iframe avec le document signé */}
+                      <iframe
+                        src={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`}
+                        className="flex-1 w-full border-0"
+                        title="Bail de location signé"
+                      />
+
+                      {/* Footer informatif */}
+                      <div className="px-4 py-2 border-t bg-slate-50 text-center">
+                        <p className="text-xs text-slate-500">
+                          <Lock className="h-3 w-3 inline mr-1" />
+                          Ce document est légalement scellé et ne peut plus être modifié.
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        asChild
-                        className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                      >
-                        <a 
-                          href={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1.5" />
-                          Ouvrir
-                        </a>
-                      </Button>
-                      <Button 
-                        size="sm"
-                        asChild
-                        className="bg-emerald-600 hover:bg-emerald-700"
-                      >
-                        <a 
-                          href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_${leaseId.substring(0, 8).toUpperCase()}.html`}
-                          download
-                        >
-                          <Download className="h-4 w-4 mr-1.5" />
-                          Télécharger
-                        </a>
-                      </Button>
+                  ) : isSealed && !signedPdfPath ? (
+                    // Bail scellé mais PDF pas encore généré
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-center justify-between px-4 py-3 border-b bg-amber-50">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
+                          <span className="font-medium text-amber-800">PDF signé en cours de génération</span>
+                        </div>
+                        <span className="text-xs text-amber-600">Aperçu du contrat ci-dessous</span>
+                      </div>
+                      {/* Afficher l'aperçu en attendant */}
+                      <LeasePreview
+                        typeBail={lease.type_bail as any}
+                        bailData={bailData}
+                        leaseId={leaseId}
+                      />
                     </div>
-                  </div>
-                  
-                  {/* Iframe avec le document signé */}
-                  <iframe 
-                    src={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`}
-                    className="flex-1 w-full border-0"
-                    title="Bail de location signé"
-                  />
-                  
-                  {/* Footer informatif */}
-                  <div className="px-4 py-2 border-t bg-slate-50 text-center">
-                    <p className="text-xs text-slate-500">
-                      <Lock className="h-3 w-3 inline mr-1" />
-                      Ce document est légalement scellé et ne peut plus être modifié.
-                    </p>
-                  </div>
+                  ) : (
+                    // Bail non scellé : Aperçu dynamique modifiable
+                    <LeasePreview
+                      typeBail={lease.type_bail as any}
+                      bailData={bailData}
+                      leaseId={leaseId}
+                    />
+                  )}
                 </div>
-              ) : isSealed && !signedPdfPath ? (
-                // Bail scellé mais PDF pas encore généré
-                <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-between px-4 py-3 border-b bg-amber-50">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
-                      <span className="font-medium text-amber-800">PDF signé en cours de génération</span>
+              </TabsContent>
+
+              {/* Onglet État des lieux */}
+              <TabsContent value="edl" className="flex-1 mt-0 data-[state=inactive]:hidden">
+                <div className="bg-white rounded-b-xl rounded-tr-xl shadow-sm border border-slate-200 overflow-y-auto h-full">
+                  {hasEdl && edl ? (
+                    /* EDL existant — afficher le résumé et lien vers le détail */
+                    <div className="p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${hasSignedEdl ? "bg-emerald-100" : "bg-amber-100"}`}>
+                            <ClipboardCheck className={`h-5 w-5 ${hasSignedEdl ? "text-emerald-600" : "text-amber-600"}`} />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-slate-900">
+                              EDL d&apos;{(edl as any).type === "sortie" ? "sortie" : "entrée"}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {hasSignedEdl ? "Signé et finalisé" : `Statut : ${(edl as any).status || "en cours"}`}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge className={hasSignedEdl ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"} variant="outline">
+                          {hasSignedEdl ? "Signé" : (edl as any).status === "in_progress" ? "En cours" : "Brouillon"}
+                        </Badge>
+                      </div>
+                      <Button asChild className="w-full">
+                        <Link href={`/owner/inspections/${(edl as any).id}`}>
+                          <ClipboardCheck className="h-4 w-4 mr-2" />
+                          {hasSignedEdl ? "Voir l\u2019état des lieux" : "Continuer l\u2019état des lieux"}
+                        </Link>
+                      </Button>
                     </div>
-                    <span className="text-xs text-amber-600">Aperçu du contrat ci-dessous</span>
-                  </div>
-                  {/* Afficher l'aperçu en attendant */}
-                  <LeasePreview
-                    typeBail={lease.type_bail as any}
-                    bailData={bailData}
-                    leaseId={leaseId}
-                  />
+                  ) : canActivate || lease.statut === "active" ? (
+                    /* Bail signé, pas d'EDL → Afficher le wizard de création inline */
+                    <CreateInspectionWizard
+                      leases={wizardLeaseData}
+                      preselectedLeaseId={leaseId}
+                    />
+                  ) : (
+                    /* Bail pas encore signé → message d'attente */
+                    <div className="p-8 text-center space-y-4">
+                      <div className="mx-auto w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
+                        <Clock className="h-7 w-7 text-slate-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-700">
+                        État des lieux non disponible
+                      </h3>
+                      <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                        L&apos;état des lieux pourra être créé une fois le bail signé par toutes les parties.
+                      </p>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                // Bail non scellé : Aperçu dynamique modifiable
-                <LeasePreview
-                  typeBail={lease.type_bail as any}
-                  bailData={bailData}
-                  leaseId={leaseId}
-                />
-              )}
-            </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Colonne de droite : Contexte & Actions */}
@@ -1009,21 +1116,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   {/* Actions contextuelles */}
                   <div className="space-y-2 pt-1">
                     {!hasSignedEdl && (
-                      edl ? (
-                        <Button asChild size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700">
-                          <Link href={`/owner/inspections/${edl.id}`}>
-                            <FileText className="h-4 w-4 mr-2" />
-                            {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer l'EDL" : "Voir l'EDL"}
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button asChild size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700">
-                          <Link href={`/owner/inspections/new?lease_id=${leaseId}&type=entree`}>
-                            <ClipboardCheck className="h-4 w-4 mr-2" />
-                            Créer l&apos;EDL d&apos;entrée
-                          </Link>
-                        </Button>
-                      )
+                      <Button
+                        size="sm"
+                        className="w-full bg-indigo-600 hover:bg-indigo-700"
+                        onClick={() => setActiveMainTab("edl")}
+                      >
+                        <ClipboardCheck className="h-4 w-4 mr-2" />
+                        {hasEdl ? "Continuer l\u2019EDL" : "Créer l\u2019EDL d\u2019entrée"}
+                      </Button>
                     )}
 
                     {dpeStatus?.status !== "VALID" && (
