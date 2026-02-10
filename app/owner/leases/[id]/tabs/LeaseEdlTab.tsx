@@ -48,7 +48,7 @@ const EDL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: ty
 
 export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEdl }: LeaseEdlTabProps) {
   // Bail pas encore signé : EDL non disponible
-  const bailNotReady = !["fully_signed", "active", "notice_given", "terminated", "archived"].includes(leaseStatus);
+  const bailNotReady = !["fully_signed", "active", "terminated", "archived"].includes(leaseStatus);
 
   if (bailNotReady) {
     return (

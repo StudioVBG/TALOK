@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +18,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { 
-  ArrowLeft, 
-  Trash2, 
+import {
+  ArrowLeft,
+  Trash2,
   Loader2,
   Edit,
   Users,
@@ -28,18 +28,12 @@ import {
   CreditCard,
   CheckCircle,
   RefreshCw,
-  XCircle,
   CalendarOff,
   Lock,
   FileText,
   Download,
   ExternalLink,
-  AlertTriangle,
-  ShieldAlert,
-  ShieldCheck,
   ClipboardCheck,
-  Sparkles,
-  PartyPopper,
   ArrowRight,
   PenTool,
   Key,
@@ -47,7 +41,6 @@ import {
   Zap,
   Clock,
   Send,
-  Bell
 } from "lucide-react";
 import { LeaseRenewalWizard } from "@/features/leases/components/lease-renewal-wizard";
 import { useToast } from "@/components/ui/use-toast";
@@ -328,15 +321,28 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       };
     }
     
-    // 3. Bail signé, EDL requis — switch vers l'onglet EDL
+    // 3. Bail signé, EDL requis — lien direct vers création/continuation EDL
     if (lease.statut === "fully_signed" && !hasSignedEdl) {
+      // Si un EDL existe déjà (en cours), lier directement vers lui
+      if (edl) {
+        return {
+          type: "continue_edl",
+          icon: ClipboardCheck,
+          title: "Compléter l'état des lieux",
+          description: "L'EDL d'entrée est en cours. Complétez-le pour activer le bail.",
+          href: `/owner/inspections/${edl.id}`,
+          actionLabel: ["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer l'EDL" : "Voir l'EDL",
+          color: "indigo"
+        };
+      }
+      // Sinon, lien de création direct
       return {
         type: "create_edl",
         icon: ClipboardCheck,
         title: "Créer l'état des lieux",
         description: "Le bail est signé. Créez l'EDL d'entrée pour l'activer.",
-        action: () => setActiveTab("edl"),
-        actionLabel: "Voir l'onglet EDL",
+        href: `/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}&type=entree`,
+        actionLabel: "Créer l'EDL d'entrée",
         color: "indigo"
       };
     }
@@ -381,7 +387,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     }
     
     return null;
-  }, [lease.statut, mainTenant, needsOwnerSignature, hasSignedEdl, hasPaidInitial, premierVersement, leaseId, property.id]);
+  }, [lease.statut, mainTenant, needsOwnerSignature, hasSignedEdl, hasPaidInitial, premierVersement, leaseId, property.id, edl]);
 
   // Construire bailData pour la prévisualisation (via mapper)
   const bailData = mapLeaseToTemplate(details, ownerProfile);
@@ -840,9 +846,11 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 <TabsTrigger value="documents" className="gap-2 data-[state=active]:bg-slate-100">
                   <FolderOpen className="h-4 w-4" />
                   <span className="hidden sm:inline">Documents</span>
-                  <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                    {documents?.length || 0}
-                  </Badge>
+                  {leaseAnnexes.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                      {leaseAnnexes.length}
+                    </Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="paiements" className="gap-2 data-[state=active]:bg-slate-100">
                   <CreditCard className="h-4 w-4" />
@@ -953,135 +961,6 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
           {/* Colonne de droite : Contexte & Actions */}
           <div className="lg:col-span-4 xl:col-span-3 order-1 lg:order-2 space-y-6">
             
-            {/* ✅ Checklist Conformité Express */}
-            <Card className="border-none shadow-sm bg-white overflow-hidden">
-              <CardHeader className="pb-2 border-b border-slate-50">
-                <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                  <ShieldCheck className="h-3 w-3 text-emerald-500" />
-                  Conformité du dossier
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium">Diagnostic Énergie (DPE)</span>
-                  {dpeStatus?.status === "VALID" ? (
-                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[10px] h-5">✓ Conforme</Badge>
-                  ) : (
-                    <Badge variant="destructive" className="text-[10px] h-5 animate-pulse">! Manquant</Badge>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium">Assurance Habitation</span>
-                  {leaseAnnexes.some(a => a.type === "attestation_assurance") ? (
-                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[10px] h-5">✓ Reçu</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-slate-400 text-[10px] h-5 border-slate-200">En attente</Badge>
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium">État des Lieux (EDL)</span>
-                  {leaseAnnexes.some(a => a.type === "EDL_entree") ? (
-                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[10px] h-5">✓ Réalisé</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-slate-400 text-[10px] h-5 border-slate-200">À faire</Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* ===== PRÉREQUIS ACTIVATION — Checklist compacte si fully_signed ===== */}
-            {canActivate && (
-              <Card className="border border-slate-200 shadow-sm bg-white">
-                <CardHeader className="pb-2 border-b border-slate-50">
-                  <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                    <CheckCircle className="h-3 w-3 text-indigo-500" />
-                    Prérequis activation
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 space-y-3">
-                  {/* Checklist des prérequis */}
-                  <div className="space-y-2">
-                    {/* Signatures */}
-                    <div className="flex items-center gap-2">
-                      <div className="h-5 w-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                        <CheckCircle className="h-3 w-3 text-emerald-600" />
-                      </div>
-                      <span className="text-xs text-emerald-700 font-medium">Bail signé par toutes les parties</span>
-                    </div>
-
-                    {/* EDL */}
-                    <div className="flex items-center gap-2">
-                      <div className={`h-5 w-5 rounded-full flex items-center justify-center ${hasSignedEdl ? "bg-emerald-100" : "bg-amber-100"}`}>
-                        {hasSignedEdl ? (
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
-                        ) : (
-                          <Clock className="h-3 w-3 text-amber-600" />
-                        )}
-                      </div>
-                      <span className={`text-xs font-medium ${hasSignedEdl ? "text-emerald-700" : "text-amber-700"}`}>
-                        {hasSignedEdl ? "État des lieux réalisé" : "État des lieux requis"}
-                      </span>
-                    </div>
-
-                    {/* DPE */}
-                    <div className="flex items-center gap-2">
-                      <div className={`h-5 w-5 rounded-full flex items-center justify-center ${dpeStatus?.status === "VALID" ? "bg-emerald-100" : "bg-red-100"}`}>
-                        {dpeStatus?.status === "VALID" ? (
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
-                        ) : (
-                          <ShieldAlert className="h-3 w-3 text-red-600" />
-                        )}
-                      </div>
-                      <span className={`text-xs font-medium ${dpeStatus?.status === "VALID" ? "text-emerald-700" : "text-red-700"}`}>
-                        {dpeStatus?.status === "VALID" ? "DPE conforme" : `DPE ${dpeStatus?.status === "EXPIRED" ? "expiré" : "manquant"}`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Actions contextuelles */}
-                  <div className="space-y-2 pt-1">
-                    {!hasSignedEdl && (
-                      edl ? (
-                        <Button asChild size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700">
-                          <Link href={`/owner/inspections/${edl.id}`}>
-                            <FileText className="h-4 w-4 mr-2" />
-                            {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer l'EDL" : "Voir l'EDL"}
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button asChild size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700">
-                          <Link href={`/owner/inspections/new?lease_id=${leaseId}&type=entree`}>
-                            <ClipboardCheck className="h-4 w-4 mr-2" />
-                            Créer l&apos;EDL d&apos;entrée
-                          </Link>
-                        </Button>
-                      )
-                    )}
-
-                    {dpeStatus?.status !== "VALID" && (
-                      <Button variant="outline" size="sm" className="w-full text-red-600 border-red-200 hover:bg-red-50" asChild>
-                        <Link href={`/owner/properties/${property.id}/diagnostics`}>
-                          <ShieldAlert className="h-4 w-4 mr-2" />
-                          Régulariser le DPE
-                        </Link>
-                      </Button>
-                    )}
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-xs text-slate-500 hover:text-slate-700"
-                      onClick={() => handleActivate(true)}
-                      disabled={isActivating}
-                    >
-                      {isActivating && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                      Activer sans EDL (non recommandé)
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            
             {/* Carte Info Rapide */}
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="pb-3 border-b border-slate-50">
@@ -1138,58 +1017,15 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               </CardContent>
             </Card>
 
-            {/* Menu de Gestion — Raccourcis onglets + Liens externes */}
+            {/* Gestion du bail — Liens externes + Cycle de vie */}
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="pb-3 border-b border-slate-50">
                 <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Navigation rapide
+                  Gestion
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-2 p-2">
                 <nav className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("edl")}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-indigo-50 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <ClipboardCheck className="h-4 w-4 text-indigo-500" />
-                      État des lieux
-                    </div>
-                    {canActivate && !hasSignedEdl && (
-                      <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">Requis</Badge>
-                    )}
-                    {hasSignedEdl && (
-                      <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">Signé</Badge>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("documents")}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-50 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FolderOpen className="h-4 w-4 text-slate-500" />
-                      Documents
-                    </div>
-                    <Badge variant="secondary" className="text-xs">{documents?.length || 0}</Badge>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("paiements")}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-50 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <CreditCard className="h-4 w-4 text-slate-500" />
-                      Paiements
-                    </div>
-                    <Badge variant="secondary" className="text-xs">{payments?.length || 0}</Badge>
-                  </button>
-
-                  <div className="h-px bg-slate-100 my-1" />
-
                   <Link
                     href={`/owner/leases/${leaseId}/signers`}
                     className="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-50 transition-colors"
@@ -1205,6 +1041,16 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                       <Badge variant="secondary" className="text-xs">{signers?.length || 0}</Badge>
                     </div>
                   </Link>
+
+                  <Link
+                    href={`/owner/properties/${property.id}`}
+                    className="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ExternalLink className="h-4 w-4 text-slate-500" />
+                      Voir le bien
+                    </div>
+                  </Link>
                 </nav>
 
                 {/* Actions de cycle de vie */}
@@ -1213,11 +1059,11 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
                       Cycle de vie
                     </p>
-                    
+
                     {canRenew && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="w-full justify-start text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
                         onClick={() => setShowRenewalWizard(true)}
                       >
@@ -1225,13 +1071,13 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                         Renouveler le bail
                       </Button>
                     )}
-                    
+
                     {canTerminate && (
                       <AlertDialog open={showTerminateDialog} onOpenChange={setShowTerminateDialog}>
                         <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="w-full justify-start text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
                           >
                             <CalendarOff className="h-4 w-4 mr-2" />
@@ -1245,7 +1091,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                               Résilier ce bail ?
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                              Cette action mettra fin au bail. Le locataire sera notifié et 
+                              Cette action mettra fin au bail. Le locataire sera notifié et
                               le processus de fin de bail (EDL, restitution dépôt) sera initié.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
