@@ -61,6 +61,10 @@ import { useEffect } from "react";
 import { LeaseProgressTracker, type LeaseProgressStatus } from "@/components/owner/leases/LeaseProgressTracker";
 import { Celebration, useCelebration } from "@/components/ui/celebration";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { LeaseEdlTab } from "./tabs/LeaseEdlTab";
+import { LeaseDocumentsTab } from "./tabs/LeaseDocumentsTab";
+import { LeasePaymentsTab } from "./tabs/LeasePaymentsTab";
 
 interface LeaseDetailsClientProps {
   details: LeaseDetails;
@@ -79,78 +83,56 @@ interface LeaseDetailsClientProps {
   };
 }
 
-// ✅ SOTA 2026: Config des statuts - FLUX COMPLET avec tous les statuts légaux
-const STATUS_CONFIG: Record<string, { label: string; color: string; description?: string; icon?: string }> = {
-  draft: { 
-    label: "Brouillon", 
-    color: "bg-slate-100 text-slate-700 border-slate-300", 
+/**
+ * SSOT 2026 — Config des statuts alignée avec la CHECK DB.
+ * Seuls les statuts réellement écrits par l'API sont listés.
+ * Migration : 20260108400000_lease_lifecycle_sota2026.sql
+ */
+const STATUS_CONFIG: Record<string, { label: string; color: string; description?: string }> = {
+  draft: {
+    label: "Brouillon",
+    color: "bg-slate-100 text-slate-700 border-slate-300",
     description: "Le bail est en cours de rédaction",
-    icon: "📝"
   },
-  sent: { 
-    label: "Envoyé", 
-    color: "bg-blue-100 text-blue-700 border-blue-300", 
-    description: "Le bail a été envoyé pour signature",
-    icon: "📤"
-  },
-  pending_signature: { 
-    label: "Signature en attente", 
-    color: "bg-amber-100 text-amber-700 border-amber-300", 
+  pending_signature: {
+    label: "Signature en attente",
+    color: "bg-amber-100 text-amber-700 border-amber-300",
     description: "En attente de toutes les signatures",
-    icon: "⏳"
   },
-  partially_signed: { 
-    label: "Partiellement signé", 
-    color: "bg-orange-100 text-orange-700 border-orange-300", 
+  partially_signed: {
+    label: "Partiellement signé",
+    color: "bg-orange-100 text-orange-700 border-orange-300",
     description: "Certaines parties ont signé",
-    icon: "✍️"
   },
-  pending_owner_signature: { 
-    label: "À signer (propriétaire)", 
-    color: "bg-blue-100 text-blue-700 border-blue-300", 
-    description: "Attente de la signature du propriétaire",
-    icon: "🔐"
-  },
-  fully_signed: { 
-    label: "Signé - EDL requis", 
-    color: "bg-indigo-100 text-indigo-700 border-indigo-300", 
+  fully_signed: {
+    label: "Signé - EDL requis",
+    color: "bg-indigo-100 text-indigo-700 border-indigo-300",
     description: "Bail entièrement signé. Un état des lieux d'entrée est requis pour activer le bail.",
-    icon: "✅"
   },
-  active: { 
-    label: "Actif", 
-    color: "bg-green-100 text-green-700 border-green-300", 
+  active: {
+    label: "Actif",
+    color: "bg-green-100 text-green-700 border-green-300",
     description: "Le bail est en cours",
-    icon: "🏠"
   },
-  notice_given: { 
-    label: "Congé donné", 
-    color: "bg-orange-100 text-orange-700 border-orange-300", 
-    description: "Un congé a été donné, préavis en cours",
-    icon: "📬"
-  },
-  amended: { 
-    label: "Avenant en cours", 
-    color: "bg-purple-100 text-purple-700 border-purple-300", 
-    description: "Un avenant au bail est en cours de traitement",
-    icon: "📋"
-  },
-  terminated: { 
-    label: "Terminé", 
-    color: "bg-slate-100 text-slate-600 border-slate-300", 
+  terminated: {
+    label: "Terminé",
+    color: "bg-slate-100 text-slate-600 border-slate-300",
     description: "Le bail est terminé",
-    icon: "🔚"
   },
-  archived: { 
-    label: "Archivé", 
-    color: "bg-gray-200 text-gray-600 border-gray-300", 
+  archived: {
+    label: "Archivé",
+    color: "bg-gray-200 text-gray-600 border-gray-300",
     description: "Le bail est archivé",
-    icon: "📦"
+  },
+  cancelled: {
+    label: "Annulé",
+    color: "bg-red-100 text-red-600 border-red-300",
+    description: "Le bail a été annulé",
   },
 };
 
 export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDetailsClientProps) {
-  const { lease, property, signers, payments, documents, edl } = details;
+  const { lease, property, signers, payments, invoices, documents, edl } = details;
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -172,6 +154,13 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     missing_conditions: string[];
     edl?: { id: string; status: string } | null;
   } | null>(null);
+
+  // ✅ SSOT 2026: Onglet actif — auto-switch vers EDL quand bail fully_signed
+  const defaultTab = useMemo(() => {
+    if (lease.statut === "fully_signed") return "edl";
+    return "contrat";
+  }, [lease.statut]);
+  const [activeTab, setActiveTab] = useState(defaultTab);
 
   // Charger le statut DPE au chargement
   useEffect(() => {
@@ -339,15 +328,15 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       };
     }
     
-    // 3. Bail signé, EDL requis
+    // 3. Bail signé, EDL requis — switch vers l'onglet EDL
     if (lease.statut === "fully_signed" && !hasSignedEdl) {
       return {
         type: "create_edl",
         icon: ClipboardCheck,
         title: "Créer l'état des lieux",
         description: "Le bail est signé. Créez l'EDL d'entrée pour l'activer.",
-        href: `/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}`,
-        actionLabel: "Créer l'EDL",
+        action: () => setActiveTab("edl"),
+        actionLabel: "Voir l'onglet EDL",
         color: "indigo"
       };
     }
@@ -416,14 +405,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       
       setShowSignatureModal(false);
       
-      // 🎉 SOTA 2026: Célébration après signature réussie !
+      // 🎉 SSOT 2026: Célébration après signature réussie + switch onglet EDL
       celebrate({
         title: "Bail signé ! 🎉",
         subtitle: "Toutes les parties ont signé. Prochaine étape : l'état des lieux d'entrée.",
         type: "milestone",
         nextAction: {
-          label: "Créer l'état des lieux",
-          href: `/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}`,
+          label: "Aller à l'onglet EDL",
+          onClick: () => setActiveTab("edl"),
         },
       });
       
@@ -822,100 +811,143 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Colonne de gauche : Document */}
+
+          {/* Colonne de gauche : Onglets Contrat / EDL / Documents / Paiements */}
           <div className="lg:col-span-8 xl:col-span-9 order-2 lg:order-1 flex flex-col h-[calc(100vh-8rem)]">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
-              
-              {/* ✅ BAIL SCELLÉ : Afficher le document final signé */}
-              {isSealed && signedPdfPath ? (
-                <div className="flex flex-col h-full">
-                  {/* Header avec badge scellé */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-green-50">
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 rounded-full">
-                        <Lock className="h-3.5 w-3.5 text-emerald-700" />
-                        <span className="text-xs font-semibold text-emerald-700">Document scellé</span>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1">
+              {/* Barre d'onglets */}
+              <TabsList className="w-full justify-start bg-white border border-slate-200 rounded-t-xl rounded-b-none h-12 px-2 gap-1">
+                <TabsTrigger value="contrat" className="gap-2 data-[state=active]:bg-slate-100">
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Contrat</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="edl"
+                  className="gap-2 data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700"
+                >
+                  <ClipboardCheck className="h-4 w-4" />
+                  <span className="hidden sm:inline">EDL d&apos;entrée</span>
+                  {lease.statut === "fully_signed" && !hasSignedEdl && (
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+                    </span>
+                  )}
+                  {hasSignedEdl && (
+                    <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="gap-2 data-[state=active]:bg-slate-100">
+                  <FolderOpen className="h-4 w-4" />
+                  <span className="hidden sm:inline">Documents</span>
+                  <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                    {documents?.length || 0}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="paiements" className="gap-2 data-[state=active]:bg-slate-100">
+                  <CreditCard className="h-4 w-4" />
+                  <span className="hidden sm:inline">Paiements</span>
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Contenu : Contrat */}
+              <TabsContent value="contrat" className="flex-1 mt-0">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-hidden flex-1 flex flex-col h-full">
+                  {isSealed && signedPdfPath ? (
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-green-50">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 rounded-full">
+                            <Lock className="h-3.5 w-3.5 text-emerald-700" />
+                            <span className="text-xs font-semibold text-emerald-700">Document scellé</span>
+                          </div>
+                          {sealedAt && (
+                            <span className="text-xs text-slate-500">
+                              le {new Date(sealedAt).toLocaleDateString("fr-FR")}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" asChild className="text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                            <a href={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4 mr-1.5" />
+                              Ouvrir
+                            </a>
+                          </Button>
+                          <Button size="sm" asChild className="bg-emerald-600 hover:bg-emerald-700">
+                            <a href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_${leaseId.substring(0, 8).toUpperCase()}.html`} download>
+                              <Download className="h-4 w-4 mr-1.5" />
+                              Télécharger
+                            </a>
+                          </Button>
+                        </div>
                       </div>
-                      {sealedAt && (
-                        <span className="text-xs text-slate-500">
-                          le {new Date(sealedAt).toLocaleDateString("fr-FR")}
-                        </span>
-                      )}
+                      <iframe
+                        src={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`}
+                        className="flex-1 w-full border-0"
+                        title="Bail de location signé"
+                      />
+                      <div className="px-4 py-2 border-t bg-slate-50 text-center">
+                        <p className="text-xs text-slate-500">
+                          <Lock className="h-3 w-3 inline mr-1" />
+                          Ce document est légalement scellé et ne peut plus être modifié.
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        asChild
-                        className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                      >
-                        <a 
-                          href={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1.5" />
-                          Ouvrir
-                        </a>
-                      </Button>
-                      <Button 
-                        size="sm"
-                        asChild
-                        className="bg-emerald-600 hover:bg-emerald-700"
-                      >
-                        <a 
-                          href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_${leaseId.substring(0, 8).toUpperCase()}.html`}
-                          download
-                        >
-                          <Download className="h-4 w-4 mr-1.5" />
-                          Télécharger
-                        </a>
-                      </Button>
+                  ) : isSealed && !signedPdfPath ? (
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-center justify-between px-4 py-3 border-b bg-amber-50">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
+                          <span className="font-medium text-amber-800">PDF signé en cours de génération</span>
+                        </div>
+                        <span className="text-xs text-amber-600">Aperçu du contrat ci-dessous</span>
+                      </div>
+                      <LeasePreview typeBail={lease.type_bail as any} bailData={bailData} leaseId={leaseId} />
                     </div>
-                  </div>
-                  
-                  {/* Iframe avec le document signé */}
-                  <iframe 
-                    src={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`}
-                    className="flex-1 w-full border-0"
-                    title="Bail de location signé"
-                  />
-                  
-                  {/* Footer informatif */}
-                  <div className="px-4 py-2 border-t bg-slate-50 text-center">
-                    <p className="text-xs text-slate-500">
-                      <Lock className="h-3 w-3 inline mr-1" />
-                      Ce document est légalement scellé et ne peut plus être modifié.
-                    </p>
-                  </div>
+                  ) : (
+                    <LeasePreview typeBail={lease.type_bail as any} bailData={bailData} leaseId={leaseId} />
+                  )}
                 </div>
-              ) : isSealed && !signedPdfPath ? (
-                // Bail scellé mais PDF pas encore généré
-                <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-between px-4 py-3 border-b bg-amber-50">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
-                      <span className="font-medium text-amber-800">PDF signé en cours de génération</span>
-                    </div>
-                    <span className="text-xs text-amber-600">Aperçu du contrat ci-dessous</span>
-                  </div>
-                  {/* Afficher l'aperçu en attendant */}
-                  <LeasePreview
-                    typeBail={lease.type_bail as any}
-                    bailData={bailData}
+              </TabsContent>
+
+              {/* Contenu : EDL d'entrée */}
+              <TabsContent value="edl" className="flex-1 mt-0">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-auto p-6 h-full">
+                  <LeaseEdlTab
                     leaseId={leaseId}
+                    propertyId={property.id}
+                    leaseStatus={lease.statut}
+                    edl={edl}
+                    hasSignedEdl={hasSignedEdl}
                   />
                 </div>
-              ) : (
-                // Bail non scellé : Aperçu dynamique modifiable
-                <LeasePreview
-                  typeBail={lease.type_bail as any}
-                  bailData={bailData}
-                  leaseId={leaseId}
-                />
-              )}
-            </div>
+              </TabsContent>
+
+              {/* Contenu : Documents */}
+              <TabsContent value="documents" className="flex-1 mt-0">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-auto p-6 h-full">
+                  <LeaseDocumentsTab
+                    leaseId={leaseId}
+                    propertyId={property.id}
+                    documents={documents || []}
+                    dpeStatus={dpeStatus}
+                  />
+                </div>
+              </TabsContent>
+
+              {/* Contenu : Paiements */}
+              <TabsContent value="paiements" className="flex-1 mt-0">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-auto p-6 h-full">
+                  <LeasePaymentsTab
+                    leaseId={leaseId}
+                    payments={payments || []}
+                    invoices={invoices || []}
+                    leaseStatus={lease.statut}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Colonne de droite : Contexte & Actions */}
@@ -1106,112 +1138,59 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               </CardContent>
             </Card>
 
-            {/* ✅ NOUVEAU : Bloc Annexes & Documents */}
-            <Card className="border-none shadow-sm bg-white overflow-hidden">
-              <CardHeader className="pb-3 border-b border-slate-50 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Annexes Contractuelles
-                </CardTitle>
-                <Badge variant="outline" className="text-[10px] bg-slate-50">
-                  {leaseAnnexes.length}
-                </Badge>
-              </CardHeader>
-              <CardContent className="p-0">
-                {/* Alert DPE dans la liste des documents */}
-                {dpeStatus?.status !== "VALID" && (
-                  <div className="p-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between group">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded bg-amber-100 flex items-center justify-center">
-                        <AlertTriangle className="h-4 w-4 text-amber-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-amber-900">DPE {dpeStatus?.status === "EXPIRED" ? "Expiré" : "Manquant"}</p>
-                        <p className="text-[10px] text-amber-700 font-medium">Obligatoire pour le bail</p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] bg-white border-amber-200 hover:bg-amber-100" asChild>
-                      <Link href={`/owner/properties/${property.id}/diagnostics`}>Régulariser</Link>
-                    </Button>
-                  </div>
-                )}
-
-                {leaseAnnexes.length > 0 ? (
-                  <div className="divide-y divide-slate-50">
-                    {leaseAnnexes.slice(0, 5).map((doc: any) => {
-                      // Formater le libellé pour éviter les noms techniques
-                      const getDocLabel = (d: any) => {
-                        if (d.title) return d.title;
-                        const labels: Record<string, string> = {
-                          diagnostic_performance: "DPE (Énergie)",
-                          diagnostic_amiante: "Diagnostic Amiante",
-                          attestation_assurance: "Attestation Assurance",
-                          EDL_entree: "État des Lieux d'entrée",
-                          annexe_pinel: "Annexe Loi Pinel",
-                          etat_travaux: "État des travaux",
-                          autre: d.name || "Document annexe"
-                        };
-                        return labels[d.type] || d.type;
-                      };
-
-                      return (
-                        <div key={doc.id} className="flex items-center justify-between p-3 hover:bg-slate-50 transition-colors group">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-8 w-8 rounded bg-slate-100 flex items-center justify-center flex-shrink-0">
-                              <FileText className="h-4 w-4 text-slate-500" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium truncate pr-2">
-                                {getDocLabel(doc)}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {new Date(doc.created_at).toLocaleDateString("fr-FR")}
-                              </p>
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" asChild>
-                            <a href={`/api/documents/view?path=${encodeURIComponent(doc.storage_path)}`} target="_blank">
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          </Button>
-                        </div>
-                      );
-                    })}
-                    {leaseAnnexes.length > 5 && (
-                      <Link 
-                        href={`/owner/documents?lease_id=${leaseId}`}
-                        className="block w-full text-center py-2 text-[10px] font-medium text-blue-600 hover:bg-blue-50 transition-colors"
-                      >
-                        Voir les {leaseAnnexes.length - 5} autres annexes
-                      </Link>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-6 text-center">
-                    <FolderOpen className="h-8 w-8 text-slate-200 mx-auto mb-2" />
-                    <p className="text-xs text-slate-400">Aucune annexe contractuelle jointe</p>
-                  </div>
-                )}
-                <div className="p-3 bg-slate-50 border-t border-slate-100">
-                  <Button variant="outline" size="sm" className="w-full text-[10px] h-8 border-dashed" asChild>
-                    <Link href={`/owner/documents?lease_id=${leaseId}`}>
-                      <FolderOpen className="h-3 w-3 mr-2" />
-                      Gérer le dossier et les pièces d&apos;identité
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Menu de Gestion */}
+            {/* Menu de Gestion — Raccourcis onglets + Liens externes */}
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="pb-3 border-b border-slate-50">
                 <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Gestion
+                  Navigation rapide
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-2 p-2">
                 <nav className="space-y-1">
-                  <Link 
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("edl")}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-indigo-50 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ClipboardCheck className="h-4 w-4 text-indigo-500" />
+                      État des lieux
+                    </div>
+                    {canActivate && !hasSignedEdl && (
+                      <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">Requis</Badge>
+                    )}
+                    {hasSignedEdl && (
+                      <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">Signé</Badge>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("documents")}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FolderOpen className="h-4 w-4 text-slate-500" />
+                      Documents
+                    </div>
+                    <Badge variant="secondary" className="text-xs">{documents?.length || 0}</Badge>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("paiements")}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <CreditCard className="h-4 w-4 text-slate-500" />
+                      Paiements
+                    </div>
+                    <Badge variant="secondary" className="text-xs">{payments?.length || 0}</Badge>
+                  </button>
+
+                  <div className="h-px bg-slate-100 my-1" />
+
+                  <Link
                     href={`/owner/leases/${leaseId}/signers`}
                     className="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-50 transition-colors"
                   >
@@ -1223,43 +1202,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                       {lease.statut === "pending_signature" && signers?.some((s: any) => s.signature_status === "signed") && (
                         <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" title="Signatures en cours" />
                       )}
-                    <Badge variant="secondary" className="text-xs">{signers?.length || 0}</Badge>
+                      <Badge variant="secondary" className="text-xs">{signers?.length || 0}</Badge>
                     </div>
-                  </Link>
-                  
-                  <Link 
-                    href={`/owner/inspections?lease_id=${leaseId}`}
-                    className="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-4 w-4 text-slate-500" />
-                      État des lieux
-                    </div>
-                    {canActivate && (
-                      <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">Requis</Badge>
-                    )}
-                  </Link>
-
-                  <Link 
-                    href={`/owner/documents?lease_id=${leaseId}`}
-                    className="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FolderOpen className="h-4 w-4 text-slate-500" />
-                      Documents
-                    </div>
-                    <Badge variant="secondary" className="text-xs">{documents?.length || 0}</Badge>
-                  </Link>
-
-                  <Link 
-                    href={`/owner/money?lease_id=${leaseId}`}
-                    className="flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <CreditCard className="h-4 w-4 text-slate-500" />
-                      Paiements
-                    </div>
-                    <Badge variant="secondary" className="text-xs">{payments?.length || 0}</Badge>
                   </Link>
                 </nav>
 

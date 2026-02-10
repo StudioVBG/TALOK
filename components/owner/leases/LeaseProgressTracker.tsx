@@ -19,19 +19,19 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// ✅ SOTA 2026: Tous les statuts de bail possibles
-export type LeaseProgressStatus = 
+/**
+ * SSOT 2026 — Statuts alignés avec la CHECK DB.
+ * Migration : 20260108400000_lease_lifecycle_sota2026.sql
+ */
+export type LeaseProgressStatus =
   | "draft"              // Brouillon initial
-  | "sent"               // Envoyé pour signature
   | "pending_signature"  // En attente de signatures
-  | "partially_signed"   // Partiellement signé
-  | "pending_owner_signature" // Locataire signé, attente propriétaire
+  | "partially_signed"   // Partiellement signé (colocation multi-signataires)
   | "fully_signed"       // Entièrement signé (attente EDL)
   | "active"             // Bail en cours
-  | "notice_given"       // Congé donné (préavis)
-  | "amended"            // Avenant en cours
   | "terminated"         // Terminé
-  | "archived";          // Archivé
+  | "archived"           // Archivé
+  | "cancelled";         // Annulé
 
 interface LeaseProgressTrackerProps {
   status: LeaseProgressStatus;
@@ -58,8 +58,8 @@ export function LeaseProgressTracker({
       detailInProgress: "En attente de signatures",
       detailPending: "Les deux parties doivent signer",
       icon: FileSignature,
-      isDone: ["fully_signed", "active", "notice_given", "terminated"].includes(status),
-      isInProgress: ["sent", "pending_signature", "partially_signed", "pending_owner_signature"].includes(status)
+      isDone: ["fully_signed", "active", "terminated", "archived"].includes(status),
+      isInProgress: ["pending_signature", "partially_signed"].includes(status)
     },
     {
       id: "edl",
