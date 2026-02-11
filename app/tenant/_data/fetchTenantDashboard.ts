@@ -127,6 +127,79 @@ export interface TenantDashboardData {
   };
 }
 
+/**
+ * Fallback: requêtes directes quand la RPC tenant_dashboard n'est pas disponible
+ */
+async function fetchTenantDashboardDirect(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<TenantDashboardData | null> {
+  // Récupérer le profil
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, prenom, nom, kyc_status")
+    .eq("user_id", userId)
+    .single();
+
+  if (!profile) return null;
+
+  // Récupérer les baux via lease_signers
+  const { data: signers } = await supabase
+    .from("lease_signers")
+    .select("lease_id")
+    .eq("profile_id", profile.id);
+
+  const leaseIds = (signers || []).map((s: { lease_id: string }) => s.lease_id);
+
+  let leases: any[] = [];
+  if (leaseIds.length > 0) {
+    const { data: leasesData } = await supabase
+      .from("leases")
+      .select("id, property_id, type_bail, loyer, charges_forfaitaires, depot_de_garantie, date_debut, date_fin, statut, created_at")
+      .in("id", leaseIds);
+    leases = leasesData || [];
+  }
+
+  // Récupérer les factures
+  let invoices: TenantInvoice[] = [];
+  if (leaseIds.length > 0) {
+    const { data: invoicesData } = await supabase
+      .from("invoices")
+      .select("id, lease_id, periode, montant_total, montant_loyer, montant_charges, statut, due_date")
+      .in("lease_id", leaseIds)
+      .order("periode", { ascending: false })
+      .limit(20);
+    invoices = (invoicesData || []).map((i: any) => ({
+      ...i,
+      property_type: "",
+      property_address: "",
+    })) as TenantInvoice[];
+  }
+
+  const unpaidInvoices = invoices.filter((i) => i.statut === "sent" || i.statut === "late");
+
+  return {
+    profile_id: profile.id,
+    kyc_status: (profile as any).kyc_status || "pending",
+    tenant: { prenom: profile.prenom, nom: profile.nom },
+    leases: leases as any[],
+    properties: [],
+    lease: leases.length > 0 ? leases[0] as any : null,
+    property: null,
+    invoices,
+    tickets: [],
+    notifications: [],
+    pending_edls: [],
+    insurance: { has_insurance: false },
+    stats: {
+      unpaid_amount: unpaidInvoices.reduce((sum, i) => sum + Number(i.montant_total || 0), 0),
+      unpaid_count: unpaidInvoices.length,
+      total_monthly_rent: leases.reduce((sum, l) => sum + Number(l.loyer || 0), 0),
+      active_leases_count: leases.filter((l) => l.statut === "active").length,
+    },
+  };
+}
+
 export async function fetchTenantDashboard(userId: string): Promise<TenantDashboardData | null> {
   const supabase = await createClient();
 
@@ -142,8 +215,8 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
   });
 
   if (error) {
-    console.error("[fetchTenantDashboard] RPC Error:", error);
-    throw new Error("Erreur lors du chargement du dashboard locataire");
+    console.warn("[fetchTenantDashboard] RPC failed, using direct queries fallback:", error.message);
+    return fetchTenantDashboardDirect(supabase, userId);
   }
 
   if (!data) return null;
