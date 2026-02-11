@@ -114,8 +114,16 @@ export async function POST(request: Request) {
       policy = created;
     }
 
+    // Archiver les anciens documents d'assurance pour ce bail (éviter les doublons)
+    await serviceClient
+      .from("documents")
+      .update({ is_archived: true } as any)
+      .eq("type", "attestation_assurance")
+      .eq("lease_id", lease_id)
+      .is("is_archived", null);
+
     // Créer un document avec toutes les liaisons
-    await serviceClient.from("documents").insert({
+    const { error: docError } = await serviceClient.from("documents").insert({
       type: "attestation_assurance",
       title: "Attestation d'assurance habitation",
       lease_id,
@@ -123,11 +131,21 @@ export async function POST(request: Request) {
       owner_id: ownerId,              // ✅ AJOUT - Liaison avec le propriétaire
       tenant_id: (profile as any)?.id,
       storage_path: uploadData.path,
-      metadata: { 
+      metadata: {
         insurance_policy_id: (policy as any)?.id,
         uploaded_at: new Date().toISOString(),
       },
     } as any);
+
+    if (docError) {
+      // Nettoyer le fichier uploadé en cas d'erreur DB
+      console.error("[POST /api/insurance/upload] Document creation error:", docError);
+      await serviceClient.storage.from("documents").remove([fileName]);
+      return NextResponse.json(
+        { error: docError.message || "Erreur lors de la création du document" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ policy });
   } catch (error: unknown) {

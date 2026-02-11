@@ -543,11 +543,26 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       await serviceClient.from("edl").delete().in("id", edlIds);
     }
 
-    // 2. Supprimer les documents liés
-    await serviceClient
+    // 2. Supprimer les documents liés (storage + DB)
+    const { data: leaseDocuments } = await serviceClient
       .from("documents")
-      .delete()
+      .select("id, storage_path")
       .eq("lease_id", leaseId);
+
+    if (leaseDocuments && leaseDocuments.length > 0) {
+      // Supprimer les fichiers du storage d'abord
+      const storagePaths = leaseDocuments
+        .map((d: any) => d.storage_path)
+        .filter((p: string | null): p is string => Boolean(p));
+      if (storagePaths.length > 0) {
+        await serviceClient.storage.from("documents").remove(storagePaths);
+      }
+      // Puis supprimer les entrées DB
+      await serviceClient
+        .from("documents")
+        .delete()
+        .eq("lease_id", leaseId);
+    }
 
     // 3. Supprimer les paiements liés aux factures
     const { data: invoices } = await serviceClient

@@ -261,6 +261,8 @@ export async function POST(request: Request) {
         .single();
 
       if (insertError || !document) {
+        // Nettoyer le fichier uploadé en cas d'erreur DB
+        await serviceClient.storage.from("documents").remove([filePath]);
         return NextResponse.json(
           { error: insertError?.message || `Erreur lors de l'enregistrement du fichier ${file.name}` },
           { status: 500 }
