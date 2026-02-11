@@ -403,6 +403,19 @@ export async function POST(request: Request) {
       }
     }
 
+    // ✅ P2: Vérifier s'il existe déjà un bail draft pour cette propriété
+    let existingDraftWarning: string | null = null;
+    const { data: existingDrafts } = await serviceClient
+      .from("leases")
+      .select("id, created_at")
+      .eq("property_id", validatedData.property_id)
+      .eq("statut", "draft");
+
+    if (existingDrafts && existingDrafts.length > 0) {
+      existingDraftWarning = `Attention : ${existingDrafts.length} bail(s) en brouillon existe(nt) déjà pour ce bien.`;
+      console.warn(`[POST /api/leases] ${existingDraftWarning} IDs: ${existingDrafts.map((d: any) => d.id).join(", ")}`);
+    }
+
     // ✅ SSOT 2026: Créer le bail avec les données VALIDÉES + dépôt calculé
     const leaseData = {
       property_id: validatedData.property_id,
@@ -526,7 +539,12 @@ export async function POST(request: Request) {
 
     console.log("[POST /api/leases] Bail créé avec signataires:", leaseResult.id);
 
-    return NextResponse.json(lease, { status: 201 });
+    const response: Record<string, unknown> = { ...lease as Record<string, unknown> };
+    if (existingDraftWarning) {
+      response.warning = existingDraftWarning;
+    }
+
+    return NextResponse.json(response, { status: 201 });
   } catch (error: unknown) {
     return handleApiError(error);
   }

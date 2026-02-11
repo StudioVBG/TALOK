@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { documentSchema } from "@/lib/validations";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -232,7 +233,7 @@ export async function POST(request: Request) {
 
       const {
         data: { publicUrl },
-      } = serviceClient.storage.from("documents").getPublicUrl(filePath);
+      } = serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).getPublicUrl(filePath);
 
       const record: Record<string, unknown> = {
         type,
@@ -262,7 +263,7 @@ export async function POST(request: Request) {
 
       if (insertError || !document) {
         // Nettoyer le fichier uploadé en cas d'erreur DB
-        await serviceClient.storage.from("documents").remove([filePath]);
+        await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([filePath]);
         return NextResponse.json(
           { error: insertError?.message || `Erreur lors de l'enregistrement du fichier ${file.name}` },
           { status: 500 }
@@ -281,7 +282,7 @@ export async function POST(request: Request) {
 
         const publicUrlForAnalysis =
           (record.preview_url as string) ||
-          serviceClient.storage.from("documents").getPublicUrl(filePath).data.publicUrl;
+          serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).getPublicUrl(filePath).data.publicUrl;
 
         // We await here to ensure execution in serverless environment, 
         // though ideally this would be offloaded to a background job

@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient, getUserProfile } from "@/lib/helpers/edl-auth";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 
 /** Max file size: 5 MB (safe margin under Netlify's 6MB body limit) */
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -190,7 +191,7 @@ export async function POST(
           error: mediaError.message,
         }));
         // Cleanup: remove the orphaned storage file
-        await serviceClient.storage.from("documents").remove([uploadData.path]).catch(() => {});
+        await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([uploadData.path]).catch(() => {});
         throw mediaError;
       }
 

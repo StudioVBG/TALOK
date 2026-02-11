@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { STORAGE_BUCKETS } from '@/lib/config/storage-buckets';
 import { documentTypeEnum } from '@/lib/validations/provider-compliance';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     if (createError) {
       // Nettoyer le fichier uploadé en cas d'erreur
-      await supabase.storage.from('documents').remove([filePath]);
+      await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([filePath]);
       console.error('Error creating document record:', createError);
       return NextResponse.json({ error: createError.message }, { status: 500 });
     }

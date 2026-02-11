@@ -3,6 +3,7 @@
 // =====================================================
 
 import { createClient } from '@/lib/supabase/client';
+import { STORAGE_BUCKETS } from '@/lib/config/storage-buckets';
 import type {
   Assembly,
   AssemblySummary,
@@ -606,7 +607,7 @@ export async function deleteDocument(id: string): Promise<void> {
     .single();
   
   if (doc?.file_path) {
-    await supabase.storage.from('assembly-documents').remove([doc.file_path as string]);
+    await supabase.storage.from(STORAGE_BUCKETS.ASSEMBLY_DOCUMENTS).remove([doc.file_path as string]);
   }
   
   const { error } = await supabase

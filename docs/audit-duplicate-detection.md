@@ -175,24 +175,32 @@
 
 ---
 
-## 6. CORRECTIONS RECOMMANDÉES (NON APPLIQUÉES)
+## 6. CORRECTIONS P2 APPLIQUÉES
 
 ### P2 - Amélioration
 
-6. **Contrainte UNIQUE sur documents** - Ajouter une migration :
-   ```sql
-   CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_unique_generated
-   ON documents (type, lease_id, content_hash)
-   WHERE content_hash IS NOT NULL AND is_generated = TRUE;
-   ```
+6. **Contrainte UNIQUE sur documents** - ✅ CORRIGÉ
+   - Migration `20260211000000_p2_unique_constraint_and_gdpr_rpc.sql`
+   - `CREATE UNIQUE INDEX idx_documents_unique_type_lease_hash ON documents (type, lease_id, content_hash) WHERE content_hash IS NOT NULL AND lease_id IS NOT NULL`
 
-7. **Warning bail draft doublon** - Dans `POST /api/leases`, vérifier qu'il n'existe pas déjà un bail draft pour la même propriété
+7. **Warning bail draft doublon** - ✅ CORRIGÉ
+   - `app/api/leases/route.ts` : Vérifie s'il existe des baux draft pour la même propriété avant création
+   - Retourne un champ `warning` dans la réponse 201 si des drafts existent déjà
 
-8. **Transaction GDPR** - Wrapper l'anonymisation dans une transaction Postgres via RPC
+8. **Transaction GDPR** - ✅ CORRIGÉ
+   - RPC `anonymize_user_cascade()` dans la migration (PL/pgSQL, SECURITY DEFINER)
+   - Toutes les opérations DB en une seule transaction atomique (rollback automatique si erreur)
+   - `app/api/privacy/anonymize/cascade/route.ts` refactoré : Phase 1 (collecte Storage) → Phase 2 (RPC transactionnelle) → Phase 3 (suppression fichiers Storage)
 
-9. **Cron cleanup orphelins** - Ajouter une Edge Function planifiée pour le nettoyage automatique
+9. **Cron cleanup orphelins** - ✅ CORRIGÉ
+   - RPC `cleanup_orphan_documents()` dans la migration (transactionnelle)
+   - Edge Function `supabase/functions/cleanup-orphans/index.ts` (planification recommandée : `0 3 * * *`)
+   - Nettoie : documents orphelins (lease/property supprimé), notifications > 90j, OTP expirés, preview cache expiré
+   - Supprime aussi les fichiers Storage correspondants
 
-10. **Centraliser les noms de buckets** - Créer un fichier `lib/config/storage-buckets.ts`
+10. **Centraliser les noms de buckets** - ✅ CORRIGÉ
+    - `lib/config/storage-buckets.ts` : constantes `STORAGE_BUCKETS.DOCUMENTS`, `.AVATARS`, `.PROPERTY_PHOTOS`, `.IDENTITY`, `.ASSEMBLY_DOCUMENTS`
+    - 20+ occurrences remplacées dans 19 fichiers (API routes, services, composants)
 
 ---
 

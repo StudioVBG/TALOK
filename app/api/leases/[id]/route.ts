@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { NextResponse } from "next/server";
 import { LeaseUpdateSchema, getMaxDepotLegal, getMaxDepotMois } from "@/lib/validations/lease-financial";
 import { SIGNER_ROLES, isTenantRole, isOwnerRole } from "@/lib/constants/roles";
@@ -555,7 +556,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
         .map((d: any) => d.storage_path)
         .filter((p: string | null): p is string => Boolean(p));
       if (storagePaths.length > 0) {
-        await serviceClient.storage.from("documents").remove(storagePaths);
+        await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove(storagePaths);
       }
       // Puis supprimer les entrées DB
       await serviceClient

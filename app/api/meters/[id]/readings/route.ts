@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient, getUserProfile } from "@/lib/helpers/edl-auth";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 
 // Schema for UUID validation
 const uuidSchema = z.string().uuid("Invalid meter ID format");
@@ -271,7 +272,7 @@ export async function POST(
       if (photoFile) {
         const fileName = `meters/${meterId}/${Date.now()}_${photoFile.name}`;
         const { data: uploadData, error: uploadError } =
-          await serviceClient.storage.from("documents").upload(fileName, photoFile, {
+          await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).upload(fileName, photoFile, {
             contentType: photoFile.type,
             upsert: false,
           });
@@ -308,7 +309,7 @@ export async function POST(
     if (photoFile) {
       const fileName = `meters/${meterId}/${Date.now()}_${photoFile.name}`;
       const { data: uploadData, error: uploadError } =
-        await serviceClient.storage.from("documents").upload(fileName, photoFile, {
+        await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).upload(fileName, photoFile, {
           contentType: photoFile.type,
           upsert: false,
         });

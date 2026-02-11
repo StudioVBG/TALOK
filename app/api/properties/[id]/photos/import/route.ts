@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 secondes max pour télécharger les images
@@ -155,7 +156,7 @@ export async function POST(
         if (insertError) {
           console.error(`[ImportPhoto] Insert error:`, insertError);
           // Nettoyer le fichier uploadé
-          await serviceClient.storage.from("property-photos").remove([fileName]);
+          await serviceClient.storage.from(STORAGE_BUCKETS.PROPERTY_PHOTOS).remove([fileName]);
           results.push({ url, success: false, error: insertError.message });
           continue;
         }

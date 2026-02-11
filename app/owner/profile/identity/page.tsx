@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { useAuth } from "@/lib/hooks/use-auth";
 import Image from "next/image";
 import { DocumentScan } from "@/features/identity-verification/components/document-scan";
@@ -160,7 +161,7 @@ export default function OwnerIdentityPage() {
       if (oldDoc) {
         await supabase.from("documents").delete().eq("id", oldDoc.id);
         if (oldDoc.storage_path) {
-          await supabase.storage.from("documents").remove([oldDoc.storage_path]);
+          await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([oldDoc.storage_path]);
         }
       }
 
@@ -225,7 +226,7 @@ export default function OwnerIdentityPage() {
 
       // Supprimer du storage
       if (doc.storage_path) {
-        await supabase.storage.from("documents").remove([doc.storage_path]);
+        await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([doc.storage_path]);
       }
 
       setDocuments(prev => ({ ...prev, [side]: null }));

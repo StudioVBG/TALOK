@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { NextResponse } from "next/server";
 
 /**
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
     if (docError) {
       // Nettoyer le fichier uploadé en cas d'erreur DB
       console.error("[POST /api/insurance/upload] Document creation error:", docError);
-      await serviceClient.storage.from("documents").remove([fileName]);
+      await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([fileName]);
       return NextResponse.json(
         { error: docError.message || "Erreur lors de la création du document" },
         { status: 500 }

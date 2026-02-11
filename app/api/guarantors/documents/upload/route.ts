@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
 import { guarantorDocumentTypeEnum } from "@/lib/validations/guarantor";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES = [
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       // Supprimer le fichier uploadé en cas d'erreur
-      await serviceClient.storage.from("documents").remove([storagePath]);
+      await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([storagePath]);
       console.error("Erreur création document:", dbError);
       return NextResponse.json({ error: dbError.message }, { status: 500 });
     }
