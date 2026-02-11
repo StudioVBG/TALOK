@@ -644,14 +644,20 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               </Button>
             )}
             
-            {/* Bouton d'activation — désactivé si EDL ou DPE manquant */}
+            {/* Bouton d'activation — désactivé si EDL OU DPE manquant */}
             {canActivate && (
               <Button
                 size="sm"
                 onClick={() => handleActivate(false)}
-                disabled={isActivating || (!hasSignedEdl && dpeStatus?.status !== "VALID")}
-                className={hasSignedEdl ? "bg-green-600 hover:bg-green-700 shadow-sm" : "bg-slate-400 cursor-not-allowed shadow-sm"}
-                title={!hasSignedEdl ? "L'état des lieux d'entrée doit être réalisé avant d'activer le bail" : !dpeStatus || dpeStatus.status !== "VALID" ? "Le DPE doit être valide avant d'activer le bail" : "Activer le bail"}
+                disabled={isActivating || !hasSignedEdl || dpeStatus?.status !== "VALID"}
+                className={hasSignedEdl && dpeStatus?.status === "VALID"
+                  ? "bg-green-600 hover:bg-green-700 shadow-sm"
+                  : "bg-slate-400 hover:bg-slate-400 cursor-not-allowed shadow-sm opacity-60"}
+                title={!hasSignedEdl
+                  ? "L'état des lieux d'entrée doit être réalisé avant d'activer le bail"
+                  : dpeStatus?.status !== "VALID"
+                  ? "Le DPE doit être valide avant d'activer le bail"
+                  : "Activer le bail"}
               >
                 {isActivating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                 Activer le bail
@@ -867,8 +873,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   <span className="hidden sm:inline">EDL d&apos;entrée</span>
                   {lease.statut === "fully_signed" && !hasSignedEdl && (
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
                     </span>
                   )}
                   {hasSignedEdl && (
@@ -878,9 +884,11 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 <TabsTrigger value="documents" className="gap-2 data-[state=active]:bg-slate-100">
                   <FolderOpen className="h-4 w-4" />
                   <span className="hidden sm:inline">Documents</span>
-                  <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
-                    {documents?.length || 0}
-                  </Badge>
+                  {(documents?.length || 0) > 0 && (
+                    <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                      {documents!.length}
+                    </Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="paiements" className="gap-2 data-[state=active]:bg-slate-100">
                   <CreditCard className="h-4 w-4" />
@@ -1005,7 +1013,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   {dpeStatus?.status === "VALID" ? (
                     <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[10px] h-5">✓ Conforme</Badge>
                   ) : (
-                    <Badge variant="destructive" className="text-[10px] h-5 animate-pulse">! Manquant</Badge>
+                    <Badge variant="destructive" className="text-[10px] h-5">! Manquant</Badge>
                   )}
                 </div>
                 <div className="flex items-center justify-between">
@@ -1018,8 +1026,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium">État des Lieux (EDL)</span>
-                  {leaseAnnexes.some(a => a.type === "EDL_entree") ? (
+                  {hasSignedEdl ? (
                     <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[10px] h-5">✓ Réalisé</Badge>
+                  ) : canActivate ? (
+                    <Badge variant="destructive" className="text-[10px] h-5">! Requis</Badge>
                   ) : (
                     <Badge variant="outline" className="text-slate-400 text-[10px] h-5 border-slate-200">À faire</Badge>
                   )}
@@ -1076,26 +1086,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     </div>
                   </div>
 
-                  {/* Actions contextuelles */}
+                  {/* Action contextuelle — DPE seulement (le CTA EDL est dans la bannière principale) */}
                   <div className="space-y-2 pt-1">
-                    {!hasSignedEdl && (
-                      edl ? (
-                        <Button asChild size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700">
-                          <Link href={`/owner/inspections/${edl.id}`}>
-                            <FileText className="h-4 w-4 mr-2" />
-                            {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer l'EDL" : "Voir l'EDL"}
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button asChild size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700">
-                          <Link href={`/owner/inspections/new?lease_id=${leaseId}&type=entree`}>
-                            <ClipboardCheck className="h-4 w-4 mr-2" />
-                            Créer l&apos;EDL d&apos;entrée
-                          </Link>
-                        </Button>
-                      )
-                    )}
-
                     {dpeStatus?.status !== "VALID" && (
                       <Button variant="outline" size="sm" className="w-full text-red-600 border-red-200 hover:bg-red-50" asChild>
                         <Link href={`/owner/properties/${property.id}/diagnostics`}>
@@ -1105,16 +1097,53 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                       </Button>
                     )}
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-xs text-slate-500 hover:text-slate-700"
-                      onClick={() => handleActivate(true)}
-                      disabled={isActivating}
-                    >
-                      {isActivating && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                      Activer sans EDL (non recommandé)
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-xs text-slate-400 hover:text-slate-600"
+                          disabled={isActivating}
+                        >
+                          Activer sans EDL (non recommandé)
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-amber-600 flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5" />
+                            Activer sans état des lieux ?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="space-y-2">
+                            <p>
+                              L&apos;état des lieux d&apos;entrée est une obligation légale (loi ALUR, art. 3-2).
+                              Sans EDL, vous ne pourrez pas prouver l&apos;état initial du logement en cas de litige
+                              avec le locataire à la fin du bail.
+                            </p>
+                            <p className="font-medium text-amber-700">
+                              En cas de dégradations, la retenue sur le dépôt de garantie pourra être contestée.
+                            </p>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleActivate(true)}
+                            disabled={isActivating}
+                            className="bg-amber-600 hover:bg-amber-700"
+                          >
+                            {isActivating ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Activation...
+                              </>
+                            ) : (
+                              "Activer quand même"
+                            )}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </CardContent>
               </Card>
@@ -1146,6 +1175,9 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   <div>
                     <p className="text-xs text-muted-foreground">1er versement</p>
                     <p className="text-base font-semibold text-emerald-600">{formatCurrency(premierVersement)}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Loyer + charges + dépôt
+                    </p>
                   </div>
                 </div>
                 

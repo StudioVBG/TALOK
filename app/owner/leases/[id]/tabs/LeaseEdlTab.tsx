@@ -76,18 +76,20 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center justify-center py-12 px-4"
+        className="flex flex-col items-center py-8 px-4 space-y-8"
       >
-        <div className="p-4 bg-indigo-100 rounded-full mb-4">
-          <ClipboardCheck className="h-8 w-8 text-indigo-600" />
+        {/* CTA principal */}
+        <div className="text-center">
+          <div className="p-4 bg-indigo-100 rounded-full mb-4 inline-flex">
+            <ClipboardCheck className="h-8 w-8 text-indigo-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">
+            Créer l&apos;état des lieux d&apos;entrée
+          </h3>
+          <p className="text-sm text-slate-600 text-center max-w-md">
+            L&apos;EDL est requis pour activer le bail et remettre les clés.
+          </p>
         </div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">
-          Créer l&apos;état des lieux d&apos;entrée
-        </h3>
-        <p className="text-sm text-slate-600 text-center max-w-md mb-6">
-          Le bail est signé. L&apos;état des lieux d&apos;entrée est requis pour activer le bail
-          et remettre les clés au locataire.
-        </p>
 
         <Card className="w-full max-w-lg border-2 border-dashed border-indigo-200 bg-indigo-50/50">
           <CardContent className="p-6">
@@ -115,6 +117,25 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
             </Button>
           </CardContent>
         </Card>
+
+        {/* Étapes suivantes — remplit la zone vide */}
+        <div className="w-full max-w-lg">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Étapes suivantes</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+              <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">1</div>
+              <span className="text-sm text-slate-600">Réaliser l&apos;état des lieux avec le locataire</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+              <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-400">2</div>
+              <span className="text-sm text-slate-400">Signature électronique de l&apos;EDL par les deux parties</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+              <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-400">3</div>
+              <span className="text-sm text-slate-400">Activation du bail et remise des clés</span>
+            </div>
+          </div>
+        </div>
       </motion.div>
     );
   }
