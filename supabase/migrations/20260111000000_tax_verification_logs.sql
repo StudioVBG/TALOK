@@ -49,29 +49,29 @@ CREATE TABLE IF NOT EXISTS tax_verification_logs (
 -- ============================================================================
 
 -- Index pour les requêtes par utilisateur
-CREATE INDEX idx_tax_verification_logs_user_id
+CREATE INDEX IF NOT EXISTS idx_tax_verification_logs_user_id
   ON tax_verification_logs(user_id);
 
 -- Index pour les requêtes par locataire
-CREATE INDEX idx_tax_verification_logs_tenant_id
+CREATE INDEX IF NOT EXISTS idx_tax_verification_logs_tenant_id
   ON tax_verification_logs(tenant_id)
   WHERE tenant_id IS NOT NULL;
 
 -- Index pour les requêtes par candidature
-CREATE INDEX idx_tax_verification_logs_application_id
+CREATE INDEX IF NOT EXISTS idx_tax_verification_logs_application_id
   ON tax_verification_logs(application_id)
   WHERE application_id IS NOT NULL;
 
 -- Index pour les statistiques par statut
-CREATE INDEX idx_tax_verification_logs_status
+CREATE INDEX IF NOT EXISTS idx_tax_verification_logs_status
   ON tax_verification_logs(status);
 
 -- Index pour les requêtes temporelles
-CREATE INDEX idx_tax_verification_logs_created_at
+CREATE INDEX IF NOT EXISTS idx_tax_verification_logs_created_at
   ON tax_verification_logs(created_at DESC);
 
 -- Index composite pour détecter les vérifications répétées
-CREATE INDEX idx_tax_verification_logs_dedup
+CREATE INDEX IF NOT EXISTS idx_tax_verification_logs_dedup
   ON tax_verification_logs(numero_fiscal_hash, reference_avis_hash, created_at DESC);
 
 -- ============================================================================
@@ -81,18 +81,21 @@ CREATE INDEX idx_tax_verification_logs_dedup
 ALTER TABLE tax_verification_logs ENABLE ROW LEVEL SECURITY;
 
 -- Politique : Les utilisateurs ne voient que leurs propres vérifications
+DROP POLICY IF EXISTS "Users can view their own verification logs" ON tax_verification_logs;
 CREATE POLICY "Users can view their own verification logs"
   ON tax_verification_logs
   FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Politique : Les utilisateurs peuvent créer leurs propres logs
+DROP POLICY IF EXISTS "Users can create their own verification logs" ON tax_verification_logs;
 CREATE POLICY "Users can create their own verification logs"
   ON tax_verification_logs
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Politique : Les admins peuvent tout voir
+DROP POLICY IF EXISTS "Admins can view all verification logs" ON tax_verification_logs;
 CREATE POLICY "Admins can view all verification logs"
   ON tax_verification_logs
   FOR SELECT

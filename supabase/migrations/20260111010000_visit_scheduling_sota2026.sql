@@ -44,10 +44,10 @@ CREATE TABLE IF NOT EXISTS owner_availability_patterns (
 );
 
 -- Indexes
-CREATE INDEX idx_availability_patterns_owner ON owner_availability_patterns(owner_id);
-CREATE INDEX idx_availability_patterns_property ON owner_availability_patterns(property_id);
-CREATE INDEX idx_availability_patterns_active ON owner_availability_patterns(is_active) WHERE is_active = true;
-CREATE INDEX idx_availability_patterns_valid ON owner_availability_patterns(valid_from, valid_until);
+CREATE INDEX IF NOT EXISTS idx_availability_patterns_owner ON owner_availability_patterns(owner_id);
+CREATE INDEX IF NOT EXISTS idx_availability_patterns_property ON owner_availability_patterns(property_id);
+CREATE INDEX IF NOT EXISTS idx_availability_patterns_active ON owner_availability_patterns(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_availability_patterns_valid ON owner_availability_patterns(valid_from, valid_until);
 
 -- ============================================
 -- 2. AVAILABILITY EXCEPTIONS
@@ -80,10 +80,10 @@ CREATE TABLE IF NOT EXISTS availability_exceptions (
 );
 
 -- Indexes
-CREATE INDEX idx_availability_exceptions_owner ON availability_exceptions(owner_id);
-CREATE INDEX idx_availability_exceptions_pattern ON availability_exceptions(pattern_id);
-CREATE INDEX idx_availability_exceptions_date ON availability_exceptions(exception_date);
-CREATE UNIQUE INDEX idx_availability_exceptions_unique ON availability_exceptions(owner_id, property_id, exception_date)
+CREATE INDEX IF NOT EXISTS idx_availability_exceptions_owner ON availability_exceptions(owner_id);
+CREATE INDEX IF NOT EXISTS idx_availability_exceptions_pattern ON availability_exceptions(pattern_id);
+CREATE INDEX IF NOT EXISTS idx_availability_exceptions_date ON availability_exceptions(exception_date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_availability_exceptions_unique ON availability_exceptions(owner_id, property_id, exception_date)
   WHERE property_id IS NOT NULL;
 
 -- ============================================
@@ -120,12 +120,12 @@ CREATE TABLE IF NOT EXISTS visit_slots (
 );
 
 -- Indexes pour performance
-CREATE INDEX idx_visit_slots_property ON visit_slots(property_id);
-CREATE INDEX idx_visit_slots_owner ON visit_slots(owner_id);
-CREATE INDEX idx_visit_slots_date ON visit_slots(slot_date);
-CREATE INDEX idx_visit_slots_status ON visit_slots(status);
-CREATE INDEX idx_visit_slots_available ON visit_slots(property_id, slot_date, status) WHERE status = 'available';
-CREATE UNIQUE INDEX idx_visit_slots_unique ON visit_slots(property_id, start_time);
+CREATE INDEX IF NOT EXISTS idx_visit_slots_property ON visit_slots(property_id);
+CREATE INDEX IF NOT EXISTS idx_visit_slots_owner ON visit_slots(owner_id);
+CREATE INDEX IF NOT EXISTS idx_visit_slots_date ON visit_slots(slot_date);
+CREATE INDEX IF NOT EXISTS idx_visit_slots_status ON visit_slots(status);
+CREATE INDEX IF NOT EXISTS idx_visit_slots_available ON visit_slots(property_id, slot_date, status) WHERE status = 'available';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_visit_slots_unique ON visit_slots(property_id, start_time);
 
 -- ============================================
 -- 4. VISIT BOOKINGS
@@ -184,15 +184,15 @@ CREATE TABLE IF NOT EXISTS visit_bookings (
 );
 
 -- Indexes
-CREATE INDEX idx_visit_bookings_slot ON visit_bookings(slot_id);
-CREATE INDEX idx_visit_bookings_property ON visit_bookings(property_id);
-CREATE INDEX idx_visit_bookings_tenant ON visit_bookings(tenant_id);
-CREATE INDEX idx_visit_bookings_status ON visit_bookings(status);
-CREATE INDEX idx_visit_bookings_pending ON visit_bookings(status, booked_at) WHERE status = 'pending';
-CREATE INDEX idx_visit_bookings_upcoming ON visit_bookings(status) WHERE status IN ('pending', 'confirmed');
+CREATE INDEX IF NOT EXISTS idx_visit_bookings_slot ON visit_bookings(slot_id);
+CREATE INDEX IF NOT EXISTS idx_visit_bookings_property ON visit_bookings(property_id);
+CREATE INDEX IF NOT EXISTS idx_visit_bookings_tenant ON visit_bookings(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_visit_bookings_status ON visit_bookings(status);
+CREATE INDEX IF NOT EXISTS idx_visit_bookings_pending ON visit_bookings(status, booked_at) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_visit_bookings_upcoming ON visit_bookings(status) WHERE status IN ('pending', 'confirmed');
 
 -- Un locataire ne peut avoir qu'une réservation active par bien
-CREATE UNIQUE INDEX idx_visit_bookings_tenant_property_active
+CREATE UNIQUE INDEX IF NOT EXISTS idx_visit_bookings_tenant_property_active
   ON visit_bookings(tenant_id, property_id)
   WHERE status IN ('pending', 'confirmed');
 
@@ -232,9 +232,9 @@ CREATE TABLE IF NOT EXISTS calendar_connections (
 );
 
 -- Indexes
-CREATE INDEX idx_calendar_connections_user ON calendar_connections(user_id);
-CREATE INDEX idx_calendar_connections_provider ON calendar_connections(provider);
-CREATE INDEX idx_calendar_connections_sync ON calendar_connections(sync_enabled, last_sync_at) WHERE sync_enabled = true;
+CREATE INDEX IF NOT EXISTS idx_calendar_connections_user ON calendar_connections(user_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_connections_provider ON calendar_connections(provider);
+CREATE INDEX IF NOT EXISTS idx_calendar_connections_sync ON calendar_connections(sync_enabled, last_sync_at) WHERE sync_enabled = true;
 
 -- ============================================
 -- 6. FUNCTION: generate_visit_slots
@@ -491,18 +491,22 @@ $$ LANGUAGE plpgsql;
 -- ============================================
 
 -- Trigger updated_at pour toutes les tables
+DROP TRIGGER IF EXISTS update_owner_availability_patterns_updated_at ON owner_availability_patterns;
 CREATE TRIGGER update_owner_availability_patterns_updated_at
   BEFORE UPDATE ON owner_availability_patterns
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_visit_slots_updated_at ON visit_slots;
 CREATE TRIGGER update_visit_slots_updated_at
   BEFORE UPDATE ON visit_slots
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_visit_bookings_updated_at ON visit_bookings;
 CREATE TRIGGER update_visit_bookings_updated_at
   BEFORE UPDATE ON visit_bookings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_calendar_connections_updated_at ON calendar_connections;
 CREATE TRIGGER update_calendar_connections_updated_at
   BEFORE UPDATE ON calendar_connections
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -518,6 +522,7 @@ ALTER TABLE visit_bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE calendar_connections ENABLE ROW LEVEL SECURITY;
 
 -- Policies pour owner_availability_patterns
+DROP POLICY IF EXISTS "Owners can manage their availability patterns" ON owner_availability_patterns;
 CREATE POLICY "Owners can manage their availability patterns"
   ON owner_availability_patterns
   FOR ALL
@@ -525,6 +530,7 @@ CREATE POLICY "Owners can manage their availability patterns"
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Admins can view all availability patterns" ON owner_availability_patterns;
 CREATE POLICY "Admins can view all availability patterns"
   ON owner_availability_patterns
   FOR SELECT
@@ -533,6 +539,7 @@ CREATE POLICY "Admins can view all availability patterns"
   );
 
 -- Policies pour availability_exceptions
+DROP POLICY IF EXISTS "Owners can manage their exceptions" ON availability_exceptions;
 CREATE POLICY "Owners can manage their exceptions"
   ON availability_exceptions
   FOR ALL
@@ -541,6 +548,7 @@ CREATE POLICY "Owners can manage their exceptions"
   );
 
 -- Policies pour visit_slots
+DROP POLICY IF EXISTS "Owners can manage their visit slots" ON visit_slots;
 CREATE POLICY "Owners can manage their visit slots"
   ON visit_slots
   FOR ALL
@@ -548,6 +556,7 @@ CREATE POLICY "Owners can manage their visit slots"
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Tenants can view available slots" ON visit_slots;
 CREATE POLICY "Tenants can view available slots"
   ON visit_slots
   FOR SELECT
@@ -556,6 +565,7 @@ CREATE POLICY "Tenants can view available slots"
   );
 
 -- Policies pour visit_bookings
+DROP POLICY IF EXISTS "Owners can view and manage bookings for their properties" ON visit_bookings;
 CREATE POLICY "Owners can view and manage bookings for their properties"
   ON visit_bookings
   FOR ALL
@@ -566,6 +576,7 @@ CREATE POLICY "Owners can view and manage bookings for their properties"
     )
   );
 
+DROP POLICY IF EXISTS "Tenants can view and manage their own bookings" ON visit_bookings;
 CREATE POLICY "Tenants can view and manage their own bookings"
   ON visit_bookings
   FOR ALL
@@ -573,6 +584,7 @@ CREATE POLICY "Tenants can view and manage their own bookings"
     tenant_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Admins can view all bookings" ON visit_bookings;
 CREATE POLICY "Admins can view all bookings"
   ON visit_bookings
   FOR SELECT
@@ -581,6 +593,7 @@ CREATE POLICY "Admins can view all bookings"
   );
 
 -- Policies pour calendar_connections
+DROP POLICY IF EXISTS "Users can manage their calendar connections" ON calendar_connections;
 CREATE POLICY "Users can manage their calendar connections"
   ON calendar_connections
   FOR ALL
