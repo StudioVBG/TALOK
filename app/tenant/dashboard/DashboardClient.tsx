@@ -282,9 +282,9 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     steps++;
     if (hasLeaseData) completed++;
     
-    // Étape 3: Dossier locataire
+    // Étape 3: Dossier locataire (assurance déposée)
     steps++;
-    // TODO: Vérifier si le dossier est complet
+    if (dashboard?.insurance?.has_insurance) completed++;
     
     // Étape 4: Identité vérifiée
     steps++;
@@ -802,8 +802,10 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                   <Button variant="outline" className="h-11 rounded-xl border-border font-bold" asChild>
                     <Link href="/tenant/requests/new">Aide</Link>
                   </Button>
-                  <Button variant="outline" className="h-11 rounded-xl border-border font-bold px-4">
-                    <Phone className="h-4 w-4" />
+                  <Button variant="outline" className="h-11 rounded-xl border-border font-bold px-4" asChild>
+                    <Link href="/tenant/requests/new">
+                      <Phone className="h-4 w-4" />
+                    </Link>
                   </Button>
                 </div>
               </GlassCard>
@@ -825,8 +827,8 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
             )}
           </motion.div>
 
-          {/* G. IA TIP - 6/12 */}
-          <motion.div 
+          {/* G. IA TIP - 6/12 — Conseil dynamique basé sur le contexte utilisateur */}
+          <motion.div
             className="lg:col-span-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -838,11 +840,27 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                   <Sparkles className="h-5 w-5" /> Conseil de Tom
                 </p>
                 <p className="text-sm text-white/90 leading-relaxed font-medium max-w-sm">
-                  Votre assurance expire bientôt. Mettez-la à jour pour rester protégé.
+                  {!dashboard.insurance?.has_insurance
+                    ? "Pensez à déposer votre attestation d'assurance habitation pour être en conformité avec votre bail."
+                    : (dashboard.stats?.unpaid_amount > 0)
+                      ? "Vous avez un impayé en cours. Régularisez-le rapidement pour maintenir un bon score locataire."
+                      : (currentLease?.statut === 'pending_signature' && !hasSignedLease)
+                        ? "Votre bail est prêt à être signé ! Finalisez la signature pour activer votre espace."
+                        : "Tout est en ordre ! Pensez à vérifier régulièrement vos relevés de compteurs pour suivre votre consommation."}
                 </p>
               </div>
               <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-md h-11 px-6 rounded-xl font-bold" asChild>
-                <Link href="/tenant/documents">Mettre à jour</Link>
+                <Link href={
+                  !dashboard.insurance?.has_insurance ? "/tenant/documents" :
+                  (dashboard.stats?.unpaid_amount > 0) ? "/tenant/payments" :
+                  (currentLease?.statut === 'pending_signature' && !hasSignedLease) ? "/tenant/onboarding/sign" :
+                  "/tenant/meters"
+                }>
+                  {!dashboard.insurance?.has_insurance ? "Déposer" :
+                   (dashboard.stats?.unpaid_amount > 0) ? "Régulariser" :
+                   (currentLease?.statut === 'pending_signature' && !hasSignedLease) ? "Signer" :
+                   "Mes compteurs"}
+                </Link>
               </Button>
               <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-white/10 rotate-12" />
             </GlassCard>
@@ -858,7 +876,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                 invoiceId={selectedInvoice.id}
                 amount={selectedInvoice.montant_total}
                 description={`Loyer ${selectedInvoice.periode}`}
-                onSuccess={() => { setIsPaymentOpen(false); window.location.reload(); }}
+                onSuccess={() => { setIsPaymentOpen(false); setSelectedInvoice(null); }}
                 onCancel={() => setIsPaymentOpen(false)}
               />
             )}

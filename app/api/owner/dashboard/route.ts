@@ -457,8 +457,9 @@ export async function GET(request: Request) {
         });
       }
     } catch (dpeError) {
-      // Ignorer si la colonne n'existe pas
-      console.warn("[GET /api/owner/dashboard] DPE date check skipped:", dpeError);
+      // La colonne dpe_date_expiration n'existe peut-être pas encore — log et continue
+      console.warn("[GET /api/owner/dashboard] DPE date check skipped (colonne peut-être absente):",
+        dpeError instanceof Error ? dpeError.message : dpeError);
     }
 
     // ✅ PERFORMANCE: Calculer ROI et rendement si prix d'achat renseigné
@@ -503,12 +504,58 @@ export async function GET(request: Request) {
         };
       }
     } catch (performanceError) {
-      // Ignorer si la colonne n'existe pas
-      console.warn("[GET /api/owner/dashboard] Performance calculation skipped:", performanceError);
+      // La colonne prix_achat n'existe peut-être pas encore — log et continue
+      console.warn("[GET /api/owner/dashboard] Performance calculation skipped (colonne peut-être absente):",
+        performanceError instanceof Error ? performanceError.message : performanceError);
     }
+
+    // 12. Activité récente (agrégation des dernières actions)
+    const recentActivity: Array<{
+      id: string;
+      type: "invoice" | "ticket" | "signature" | "lease";
+      title: string;
+      description: string;
+      date: string;
+      status?: string;
+    }> = [];
+
+    // Dernières factures (5 plus récentes)
+    const recentInvoices = (invoices || [])
+      .sort((a, b) => b.periode.localeCompare(a.periode))
+      .slice(0, 5);
+    recentInvoices.forEach((inv) => {
+      const statusLabel = inv.statut === "paid" ? "Payée" : inv.statut === "sent" ? "Envoyée" : inv.statut === "draft" ? "Brouillon" : inv.statut;
+      recentActivity.push({
+        id: `inv-${inv.id}`,
+        type: "invoice",
+        title: `Facture ${inv.periode}`,
+        description: `${Number(inv.montant_total || 0).toLocaleString("fr-FR")} € — ${statusLabel}`,
+        date: inv.periode + "-01",
+        status: inv.statut,
+      });
+    });
+
+    // Signatures en attente
+    if (pendingSignatures && pendingSignatures.length > 0) {
+      pendingSignatures.forEach((sig: any) => {
+        recentActivity.push({
+          id: `sig-${sig.id}`,
+          type: "signature",
+          title: `Signature en attente`,
+          description: sig.leases?.properties?.adresse_complete || "Bail en cours",
+          date: new Date().toISOString(),
+          status: "pending",
+        });
+      });
+    }
+
+    // Trier par date décroissante et limiter à 10
+    recentActivity.sort((a, b) => b.date.localeCompare(a.date));
+    const limitedActivity = recentActivity.slice(0, 10);
 
     return NextResponse.json({
       zone1_tasks: tasks.slice(0, 5), // Max 5 tâches
+      recentActivity: limitedActivity,
       zone2_finances: {
         chart_data: chartData,
         kpis: {

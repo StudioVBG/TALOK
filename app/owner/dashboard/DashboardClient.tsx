@@ -243,6 +243,22 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
       })),
   ] as UrgentAction[];
 
+  // Construction unique des alertes compliance (évite la duplication)
+  const complianceAlerts = [
+    // Factures en retard
+    ...(dashboard.invoices?.late > 0 ? [{
+      id: "late-invoices",
+      type: "compliance" as const,
+      severity: "high" as const,
+      label: `${dashboard.invoices.late} facture(s) en retard de paiement`,
+      action_url: "/owner/money",
+    }] : []),
+    // Alertes DPE expirantes (depuis l'API)
+    ...(dashboard.zone3_portfolio?.compliance || []).filter(
+      (c) => c.type === "dpe_expiring"
+    ),
+  ];
+
   const transformedData = {
     zone1_tasks: urgentActions.map(action => ({
       id: action.id,
@@ -255,12 +271,12 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
     zone2_finances: {
       chart_data: [],
       kpis: {
-        revenue_current_month: { 
-          collected: dashboard.invoices?.paid || 0, 
-          expected: (dashboard.invoices?.paid || 0) + (dashboard.invoices?.pending || 0), 
-          percentage: dashboard.invoices?.paid && dashboard.invoices?.pending 
-            ? Math.round((dashboard.invoices.paid / (dashboard.invoices.paid + dashboard.invoices.pending)) * 100) 
-            : 0 
+        revenue_current_month: {
+          collected: dashboard.invoices?.paid || 0,
+          expected: (dashboard.invoices?.paid || 0) + (dashboard.invoices?.pending || 0),
+          percentage: dashboard.invoices?.paid && dashboard.invoices?.pending
+            ? Math.round((dashboard.invoices.paid / (dashboard.invoices.paid + dashboard.invoices.pending)) * 100)
+            : 0
         },
         revenue_last_month: { collected: 0, expected: 0, percentage: 0 },
         arrears_amount: dashboard.invoices?.late || 0,
@@ -268,31 +284,18 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
     },
     zone3_portfolio: {
       modules: [
-        { 
-          module: "habitation" as const, 
-          label: "Habitation", 
-          stats: { 
-            properties_count: dashboard.properties?.total || 0, 
+        {
+          module: "habitation" as const,
+          label: "Habitation",
+          stats: {
+            properties_count: dashboard.properties?.total || 0,
             active_leases: dashboard.leases?.active || 0,
             monthly_revenue: dashboard.invoices?.total || 0,
           },
-          action_url: "/owner/properties" 
+          action_url: "/owner/properties"
         },
       ],
-      compliance: [
-        // Factures en retard
-        ...(dashboard.invoices?.late > 0 ? [{
-          id: "late-invoices",
-          type: "compliance" as const,
-          severity: "high" as const,
-          label: `${dashboard.invoices.late} facture(s) en retard de paiement`,
-          action_url: "/owner/money",
-        }] : []),
-        // Alertes DPE expirantes (depuis l'API)
-        ...(dashboard.zone3_portfolio?.compliance || []).filter(
-          (c) => c.type === "dpe_expiring"
-        ),
-      ],
+      compliance: complianceAlerts,
     },
   };
 
@@ -504,7 +507,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
           </div>
           
           <div className="md:col-span-2 lg:col-span-1">
-            <OwnerRecentActivity activities={(dashboard.recentActivity || []) as any} />
+            <OwnerRecentActivity activities={((dashboard as any).recentActivity || dashboard.recentActivity || []) as any} />
           </div>
         </div>
 
