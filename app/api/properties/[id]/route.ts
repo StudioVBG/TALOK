@@ -682,16 +682,13 @@ export async function DELETE(
       throw new ApiError(403, "Vous n'avez pas la permission de supprimer cette propriété");
     }
 
-    // ✅ VALIDATION MÉTIER: Vérifier l'état (seuls les brouillons peuvent être supprimés)
-    if (!isAdmin && property.etat && property.etat !== "draft") {
-      throw new ApiError(400, "Seuls les brouillons peuvent être supprimés");
-    }
-
-    // ✅ SOTA 2026: Vérifier s'il y a des baux actifs
+    // ✅ Vérifier s'il y a des baux actifs (seuls les baux actifs bloquent la suppression)
+    // Les baux en cours de signature ou signés mais non activés ne bloquent PAS
+    // car l'EDL, le paiement et la remise des clés ne sont pas encore effectués
     const { data: activeLeases, error: leasesError } = await serviceClient
       .from("leases")
       .select(`
-        id, 
+        id,
         statut,
         type_bail,
         signers:lease_signers(
@@ -701,29 +698,29 @@ export async function DELETE(
         )
       `)
       .eq("property_id", propertyId)
-      .in("statut", ["active", "pending_signature", "partially_signed", "fully_signed"]);
+      .in("statut", ["active"]);
 
     if (leasesError) {
       console.error("[DELETE Property] Erreur vérification baux:", leasesError);
     }
 
-    // ✅ BLOQUER si bail actif (sauf admin)
+    // ✅ BLOQUER uniquement si bail actif (sauf admin)
     if (!isAdmin && activeLeases && activeLeases.length > 0) {
       const activeLease = activeLeases[0] as any;
-      const tenantSigner = activeLease.signers?.find((s: any) => 
+      const tenantSigner = activeLease.signers?.find((s: any) =>
         s.role === "locataire_principal" || s.role === "colocataire"
       );
-      const tenantName = tenantSigner?.profile 
+      const tenantName = tenantSigner?.profile
         ? `${tenantSigner.profile.prenom || ""} ${tenantSigner.profile.nom || ""}`.trim() || tenantSigner.profile.email
         : "un locataire";
 
       throw new ApiError(
-        400, 
-        `Impossible de supprimer : bail ${activeLease.statut === "active" ? "actif" : "en cours de signature"} avec ${tenantName}. Terminez d'abord le bail.`,
-        { 
-          leaseId: activeLease.id, 
+        400,
+        `Impossible de supprimer : bail actif avec ${tenantName}. Terminez d'abord le bail.`,
+        {
+          leaseId: activeLease.id,
           leaseStatus: activeLease.statut,
-          tenantName 
+          tenantName
         }
       );
     }

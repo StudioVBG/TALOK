@@ -463,30 +463,27 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       );
     }
 
-    // ✅ SOTA 2026: Bloquer la suppression des baux actifs/terminés/archivés
-    const NON_DELETABLE_STATUS = ["fully_signed", "active", "terminated", "archived"];
+    // ✅ Bloquer la suppression uniquement des baux actifs/terminés/archivés
+    // Un bail signé mais non activé (fully_signed) PEUT être supprimé car
+    // l'EDL, le paiement et la remise des clés ne sont pas encore effectués
+    const NON_DELETABLE_STATUS = ["active", "terminated", "archived"];
     const leaseStatus = (lease as any).statut;
-    
+
     if (!isAdmin && NON_DELETABLE_STATUS.includes(leaseStatus)) {
-      // Trouver le locataire principal pour le message
-      const tenantSigner = (lease as any).signers?.find((s: any) => 
+      const tenantSigner = (lease as any).signers?.find((s: any) =>
         isTenantRole(s.role)
       );
-      const tenantName = tenantSigner?.profile 
+      const tenantName = tenantSigner?.profile
         ? `${tenantSigner.profile.prenom || ""} ${tenantSigner.profile.nom || ""}`.trim() || tenantSigner.profile.email
         : null;
 
       let errorMessage = "";
       let suggestion = "";
-      
+
       switch (leaseStatus) {
         case "active":
           errorMessage = `Ce bail est actif${tenantName ? ` avec ${tenantName}` : ""}. Il ne peut pas être supprimé.`;
           suggestion = "Terminez d'abord le bail via la procédure de fin de bail (EDL sortie + restitution caution).";
-          break;
-        case "fully_signed":
-          errorMessage = "Ce bail est entièrement signé et en attente d'activation. Il ne peut pas être supprimé.";
-          suggestion = "Activez le bail ou demandez une annulation aux signataires.";
           break;
         case "terminated":
         case "archived":
@@ -505,8 +502,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       }, { status: 400 });
     }
 
-    // ✅ Notifier les locataires avant suppression (si bail en attente de signature)
-    if (leaseStatus === "pending_signature" || leaseStatus === "partially_signed") {
+    // ✅ Notifier les locataires avant suppression (bail signé ou en attente)
+    if (leaseStatus === "pending_signature" || leaseStatus === "partially_signed" || leaseStatus === "fully_signed") {
       const tenantSigners = (lease as any).signers?.filter((s: any) => 
         isTenantRole(s.role) && s.profile_id
       ) || [];
