@@ -15,58 +15,73 @@
 -- ============================================
 
 -- États d'infestation termites
-CREATE TYPE etat_termites AS ENUM (
-  'absence',
-  'indices_anciens',
-  'presence_active',
-  'non_visible'
-);
+DO $$ BEGIN
+  CREATE TYPE etat_termites AS ENUM (
+    'absence',
+    'indices_anciens',
+    'presence_active',
+    'non_visible'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Types de termites tropicaux
-CREATE TYPE type_termite AS ENUM (
-  'reticulitermes',
-  'cryptotermes',
-  'coptotermes',
-  'nasutitermes',
-  'heterotermes'
-);
+DO $$ BEGIN
+  CREATE TYPE type_termite AS ENUM (
+    'reticulitermes',
+    'cryptotermes',
+    'coptotermes',
+    'nasutitermes',
+    'heterotermes'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Zones d'inspection termites
-CREATE TYPE zone_diagnostic_termites AS ENUM (
-  'interieur',
-  'exterieur',
-  'parties_communes',
-  'dependances'
-);
+DO $$ BEGIN
+  CREATE TYPE zone_diagnostic_termites AS ENUM (
+    'interieur',
+    'exterieur',
+    'parties_communes',
+    'dependances'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Risques naturels spécifiques DOM
-CREATE TYPE risque_naturel_dom AS ENUM (
-  'cyclone',
-  'seisme',
-  'volcan',
-  'tsunami',
-  'inondation',
-  'mouvement_terrain',
-  'submersion_marine',
-  'erosion_cotiere',
-  'recul_trait_cote',
-  'radon',
-  'feu_foret'
-);
+DO $$ BEGIN
+  CREATE TYPE risque_naturel_dom AS ENUM (
+    'cyclone',
+    'seisme',
+    'volcan',
+    'tsunami',
+    'inondation',
+    'mouvement_terrain',
+    'submersion_marine',
+    'erosion_cotiere',
+    'recul_trait_cote',
+    'radon',
+    'feu_foret'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Zones volcaniques
-CREATE TYPE zone_volcanique AS ENUM (
-  'zone_interdite',
-  'zone_danger_immediat',
-  'zone_proximite',
-  'zone_eloignee'
-);
+DO $$ BEGIN
+  CREATE TYPE zone_volcanique AS ENUM (
+    'zone_interdite',
+    'zone_danger_immediat',
+    'zone_proximite',
+    'zone_eloignee'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ============================================
 -- TABLE: diagnostics_termites
 -- Diagnostic termites obligatoire en DOM
 -- ============================================
-CREATE TABLE diagnostics_termites (
+CREATE TABLE IF NOT EXISTS diagnostics_termites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Bien concerné
@@ -115,18 +130,18 @@ CREATE TABLE diagnostics_termites (
 );
 
 -- Index
-CREATE INDEX idx_diagnostics_termites_property ON diagnostics_termites(property_id);
-CREATE INDEX idx_diagnostics_termites_owner ON diagnostics_termites(owner_id);
-CREATE INDEX idx_diagnostics_termites_departement ON diagnostics_termites(departement);
-CREATE INDEX idx_diagnostics_termites_validite ON diagnostics_termites(date_validite);
-CREATE INDEX idx_diagnostics_termites_actifs ON diagnostics_termites(property_id)
+CREATE INDEX IF NOT EXISTS idx_diagnostics_termites_property ON diagnostics_termites(property_id);
+CREATE INDEX IF NOT EXISTS idx_diagnostics_termites_owner ON diagnostics_termites(owner_id);
+CREATE INDEX IF NOT EXISTS idx_diagnostics_termites_departement ON diagnostics_termites(departement);
+CREATE INDEX IF NOT EXISTS idx_diagnostics_termites_validite ON diagnostics_termites(date_validite);
+CREATE INDEX IF NOT EXISTS idx_diagnostics_termites_actifs ON diagnostics_termites(property_id)
   WHERE presence_active = true;
 
 -- ============================================
 -- TABLE: diagnostics_termites_zones
 -- Détail par zone inspectée
 -- ============================================
-CREATE TABLE diagnostics_termites_zones (
+CREATE TABLE IF NOT EXISTS diagnostics_termites_zones (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   diagnostic_id UUID NOT NULL REFERENCES diagnostics_termites(id) ON DELETE CASCADE,
@@ -140,13 +155,13 @@ CREATE TABLE diagnostics_termites_zones (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_termites_zones_diagnostic ON diagnostics_termites_zones(diagnostic_id);
+CREATE INDEX IF NOT EXISTS idx_termites_zones_diagnostic ON diagnostics_termites_zones(diagnostic_id);
 
 -- ============================================
 -- TABLE: erp_dom_tom
 -- État des Risques et Pollutions spécifique DOM
 -- ============================================
-CREATE TABLE erp_dom_tom (
+CREATE TABLE IF NOT EXISTS erp_dom_tom (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Bien concerné
@@ -220,15 +235,15 @@ CREATE TABLE erp_dom_tom (
 );
 
 -- Index
-CREATE INDEX idx_erp_dom_tom_property ON erp_dom_tom(property_id);
-CREATE INDEX idx_erp_dom_tom_departement ON erp_dom_tom(departement);
-CREATE INDEX idx_erp_dom_tom_validite ON erp_dom_tom(date_validite);
+CREATE INDEX IF NOT EXISTS idx_erp_dom_tom_property ON erp_dom_tom(property_id);
+CREATE INDEX IF NOT EXISTS idx_erp_dom_tom_departement ON erp_dom_tom(departement);
+CREATE INDEX IF NOT EXISTS idx_erp_dom_tom_validite ON erp_dom_tom(date_validite);
 
 -- ============================================
 -- TABLE: dom_referentiel
 -- Référentiel des DOM et leurs caractéristiques
 -- ============================================
-CREATE TABLE dom_referentiel (
+CREATE TABLE IF NOT EXISTS dom_referentiel (
   departement VARCHAR(3) PRIMARY KEY CHECK (departement IN ('971', '972', '973', '974', '976')),
 
   nom VARCHAR(100) NOT NULL,
@@ -280,26 +295,31 @@ ALTER TABLE erp_dom_tom ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dom_referentiel ENABLE ROW LEVEL SECURITY;
 
 -- Référentiel DOM: lecture publique
+DROP POLICY IF EXISTS "Référentiel DOM lisible par tous" ON dom_referentiel;
 CREATE POLICY "Référentiel DOM lisible par tous" ON dom_referentiel
   FOR SELECT USING (true);
 
 -- Diagnostics termites: accès propriétaire
+DROP POLICY IF EXISTS "Diagnostics termites visibles par propriétaire" ON diagnostics_termites;
 CREATE POLICY "Diagnostics termites visibles par propriétaire" ON diagnostics_termites
   FOR SELECT USING (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Diagnostics termites créables par propriétaire" ON diagnostics_termites;
 CREATE POLICY "Diagnostics termites créables par propriétaire" ON diagnostics_termites
   FOR INSERT WITH CHECK (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Diagnostics termites modifiables par propriétaire" ON diagnostics_termites;
 CREATE POLICY "Diagnostics termites modifiables par propriétaire" ON diagnostics_termites
   FOR UPDATE USING (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
 -- Zones termites: accès via diagnostic parent
+DROP POLICY IF EXISTS "Zones termites visibles si diagnostic visible" ON diagnostics_termites_zones;
 CREATE POLICY "Zones termites visibles si diagnostic visible" ON diagnostics_termites_zones
   FOR SELECT USING (
     diagnostic_id IN (
@@ -308,6 +328,7 @@ CREATE POLICY "Zones termites visibles si diagnostic visible" ON diagnostics_ter
     )
   );
 
+DROP POLICY IF EXISTS "Zones termites créables si diagnostic propriétaire" ON diagnostics_termites_zones;
 CREATE POLICY "Zones termites créables si diagnostic propriétaire" ON diagnostics_termites_zones
   FOR INSERT WITH CHECK (
     diagnostic_id IN (
@@ -317,16 +338,19 @@ CREATE POLICY "Zones termites créables si diagnostic propriétaire" ON diagnost
   );
 
 -- ERP DOM: accès propriétaire
+DROP POLICY IF EXISTS "ERP DOM visibles par propriétaire" ON erp_dom_tom;
 CREATE POLICY "ERP DOM visibles par propriétaire" ON erp_dom_tom
   FOR SELECT USING (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "ERP DOM créables par propriétaire" ON erp_dom_tom;
 CREATE POLICY "ERP DOM créables par propriétaire" ON erp_dom_tom
   FOR INSERT WITH CHECK (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "ERP DOM modifiables par propriétaire" ON erp_dom_tom;
 CREATE POLICY "ERP DOM modifiables par propriétaire" ON erp_dom_tom
   FOR UPDATE USING (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
@@ -337,10 +361,12 @@ CREATE POLICY "ERP DOM modifiables par propriétaire" ON erp_dom_tom
 -- ============================================
 
 -- Updated_at triggers
+DROP TRIGGER IF EXISTS set_updated_at_diagnostics_termites ON diagnostics_termites;
 CREATE TRIGGER set_updated_at_diagnostics_termites
   BEFORE UPDATE ON diagnostics_termites
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS set_updated_at_erp_dom_tom ON erp_dom_tom;
 CREATE TRIGGER set_updated_at_erp_dom_tom
   BEFORE UPDATE ON erp_dom_tom
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();

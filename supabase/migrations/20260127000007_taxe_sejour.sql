@@ -12,71 +12,83 @@
 -- ============================================
 
 -- Types d'hébergement touristique
-CREATE TYPE hebergement_touristique_type AS ENUM (
-  'palace',
-  'hotel_5_etoiles',
-  'hotel_4_etoiles',
-  'hotel_3_etoiles',
-  'hotel_2_etoiles',
-  'hotel_1_etoile',
-  'hotel_non_classe',
-  'residence_tourisme_5',
-  'residence_tourisme_4',
-  'residence_tourisme_3',
-  'residence_tourisme_2',
-  'residence_tourisme_1',
-  'residence_tourisme_nc',
-  'meuble_tourisme_5',
-  'meuble_tourisme_4',
-  'meuble_tourisme_3',
-  'meuble_tourisme_2',
-  'meuble_tourisme_1',
-  'meuble_tourisme_nc',
-  'chambre_hotes',
-  'camping_5_etoiles',
-  'camping_4_etoiles',
-  'camping_3_etoiles',
-  'camping_2_etoiles',
-  'camping_1_etoile',
-  'camping_non_classe',
-  'village_vacances_4_5',
-  'village_vacances_1_2_3',
-  'auberge_jeunesse',
-  'port_plaisance',
-  'aire_camping_car',
-  'autre_hebergement'
-);
+DO $$ BEGIN
+  CREATE TYPE hebergement_touristique_type AS ENUM (
+    'palace',
+    'hotel_5_etoiles',
+    'hotel_4_etoiles',
+    'hotel_3_etoiles',
+    'hotel_2_etoiles',
+    'hotel_1_etoile',
+    'hotel_non_classe',
+    'residence_tourisme_5',
+    'residence_tourisme_4',
+    'residence_tourisme_3',
+    'residence_tourisme_2',
+    'residence_tourisme_1',
+    'residence_tourisme_nc',
+    'meuble_tourisme_5',
+    'meuble_tourisme_4',
+    'meuble_tourisme_3',
+    'meuble_tourisme_2',
+    'meuble_tourisme_1',
+    'meuble_tourisme_nc',
+    'chambre_hotes',
+    'camping_5_etoiles',
+    'camping_4_etoiles',
+    'camping_3_etoiles',
+    'camping_2_etoiles',
+    'camping_1_etoile',
+    'camping_non_classe',
+    'village_vacances_4_5',
+    'village_vacances_1_2_3',
+    'auberge_jeunesse',
+    'port_plaisance',
+    'aire_camping_car',
+    'autre_hebergement'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Mode de perception
-CREATE TYPE mode_perception_taxe AS ENUM (
-  'au_reel',
-  'au_forfait'
-);
+DO $$ BEGIN
+  CREATE TYPE mode_perception_taxe AS ENUM (
+    'au_reel',
+    'au_forfait'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Statut de déclaration
-CREATE TYPE declaration_taxe_status AS ENUM (
-  'brouillon',
-  'a_declarer',
-  'declaree',
-  'validee',
-  'payee',
-  'annulee'
-);
+DO $$ BEGIN
+  CREATE TYPE declaration_taxe_status AS ENUM (
+    'brouillon',
+    'a_declarer',
+    'declaree',
+    'validee',
+    'payee',
+    'annulee'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Motifs d'exonération
-CREATE TYPE motif_exoneration_taxe AS ENUM (
-  'mineur',
-  'intermediaire_agence',
-  'travailleur_saisonnier',
-  'logement_urgence',
-  'resident_secondaire_taxe'
-);
+DO $$ BEGIN
+  CREATE TYPE motif_exoneration_taxe AS ENUM (
+    'mineur',
+    'intermediaire_agence',
+    'travailleur_saisonnier',
+    'logement_urgence',
+    'resident_secondaire_taxe'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ============================================
 -- TABLE: taxe_sejour_communes
 -- Configuration par commune
 -- ============================================
-CREATE TABLE taxe_sejour_communes (
+CREATE TABLE IF NOT EXISTS taxe_sejour_communes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Identification commune
@@ -113,14 +125,14 @@ CREATE TABLE taxe_sejour_communes (
 );
 
 -- Index pour recherche par code postal / département
-CREATE INDEX idx_taxe_sejour_communes_code_postal ON taxe_sejour_communes(code_postal);
-CREATE INDEX idx_taxe_sejour_communes_departement ON taxe_sejour_communes(departement);
+CREATE INDEX IF NOT EXISTS idx_taxe_sejour_communes_code_postal ON taxe_sejour_communes(code_postal);
+CREATE INDEX IF NOT EXISTS idx_taxe_sejour_communes_departement ON taxe_sejour_communes(departement);
 
 -- ============================================
 -- TABLE: sejours_touristiques
 -- Séjours soumis à taxe de séjour
 -- ============================================
-CREATE TABLE sejours_touristiques (
+CREATE TABLE IF NOT EXISTS sejours_touristiques (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Liens
@@ -170,20 +182,20 @@ CREATE TABLE sejours_touristiques (
 );
 
 -- Index pour requêtes fréquentes
-CREATE INDEX idx_sejours_touristiques_lease ON sejours_touristiques(lease_id);
-CREATE INDEX idx_sejours_touristiques_property ON sejours_touristiques(property_id);
-CREATE INDEX idx_sejours_touristiques_owner ON sejours_touristiques(owner_id);
-CREATE INDEX idx_sejours_touristiques_dates ON sejours_touristiques(date_arrivee, date_depart);
-CREATE INDEX idx_sejours_touristiques_non_collectes ON sejours_touristiques(owner_id)
+CREATE INDEX IF NOT EXISTS idx_sejours_touristiques_lease ON sejours_touristiques(lease_id);
+CREATE INDEX IF NOT EXISTS idx_sejours_touristiques_property ON sejours_touristiques(property_id);
+CREATE INDEX IF NOT EXISTS idx_sejours_touristiques_owner ON sejours_touristiques(owner_id);
+CREATE INDEX IF NOT EXISTS idx_sejours_touristiques_dates ON sejours_touristiques(date_arrivee, date_depart);
+CREATE INDEX IF NOT EXISTS idx_sejours_touristiques_non_collectes ON sejours_touristiques(owner_id)
   WHERE NOT taxe_collectee;
-CREATE INDEX idx_sejours_touristiques_non_declares ON sejours_touristiques(owner_id)
+CREATE INDEX IF NOT EXISTS idx_sejours_touristiques_non_declares ON sejours_touristiques(owner_id)
   WHERE declaration_id IS NULL AND taxe_collectee;
 
 -- ============================================
 -- TABLE: declarations_taxe_sejour
 -- Déclarations périodiques à la commune
 -- ============================================
-CREATE TABLE declarations_taxe_sejour (
+CREATE TABLE IF NOT EXISTS declarations_taxe_sejour (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Liens
@@ -235,18 +247,18 @@ ALTER TABLE sejours_touristiques
   FOREIGN KEY (declaration_id) REFERENCES declarations_taxe_sejour(id) ON DELETE SET NULL;
 
 -- Index
-CREATE INDEX idx_declarations_taxe_owner ON declarations_taxe_sejour(owner_id);
-CREATE INDEX idx_declarations_taxe_commune ON declarations_taxe_sejour(commune_config_id);
-CREATE INDEX idx_declarations_taxe_periode ON declarations_taxe_sejour(annee_fiscale, periode_reference);
-CREATE INDEX idx_declarations_taxe_statut ON declarations_taxe_sejour(statut);
-CREATE INDEX idx_declarations_taxe_en_retard ON declarations_taxe_sejour(owner_id, date_limite)
+CREATE INDEX IF NOT EXISTS idx_declarations_taxe_owner ON declarations_taxe_sejour(owner_id);
+CREATE INDEX IF NOT EXISTS idx_declarations_taxe_commune ON declarations_taxe_sejour(commune_config_id);
+CREATE INDEX IF NOT EXISTS idx_declarations_taxe_periode ON declarations_taxe_sejour(annee_fiscale, periode_reference);
+CREATE INDEX IF NOT EXISTS idx_declarations_taxe_statut ON declarations_taxe_sejour(statut);
+CREATE INDEX IF NOT EXISTS idx_declarations_taxe_en_retard ON declarations_taxe_sejour(owner_id, date_limite)
   WHERE statut IN ('brouillon', 'a_declarer');
 
 -- ============================================
 -- TABLE: tarifs_plafonds_taxe_sejour
 -- Référentiel des tarifs plafonds légaux
 -- ============================================
-CREATE TABLE tarifs_plafonds_taxe_sejour (
+CREATE TABLE IF NOT EXISTS tarifs_plafonds_taxe_sejour (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   type_hebergement hebergement_touristique_type NOT NULL UNIQUE,
@@ -305,29 +317,35 @@ ALTER TABLE declarations_taxe_sejour ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tarifs_plafonds_taxe_sejour ENABLE ROW LEVEL SECURITY;
 
 -- Communes: lecture publique (référentiel)
+DROP POLICY IF EXISTS "Communes lisibles par tous" ON taxe_sejour_communes;
 CREATE POLICY "Communes lisibles par tous" ON taxe_sejour_communes
   FOR SELECT USING (true);
 
 -- Tarifs plafonds: lecture publique
+DROP POLICY IF EXISTS "Tarifs plafonds lisibles par tous" ON tarifs_plafonds_taxe_sejour;
 CREATE POLICY "Tarifs plafonds lisibles par tous" ON tarifs_plafonds_taxe_sejour
   FOR SELECT USING (true);
 
 -- Séjours: accès propriétaire uniquement
+DROP POLICY IF EXISTS "Séjours visibles par propriétaire" ON sejours_touristiques;
 CREATE POLICY "Séjours visibles par propriétaire" ON sejours_touristiques
   FOR SELECT USING (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Séjours créables par propriétaire" ON sejours_touristiques;
 CREATE POLICY "Séjours créables par propriétaire" ON sejours_touristiques
   FOR INSERT WITH CHECK (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Séjours modifiables par propriétaire" ON sejours_touristiques;
 CREATE POLICY "Séjours modifiables par propriétaire" ON sejours_touristiques
   FOR UPDATE USING (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Séjours supprimables par propriétaire" ON sejours_touristiques;
 CREATE POLICY "Séjours supprimables par propriétaire" ON sejours_touristiques
   FOR DELETE USING (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
@@ -335,16 +353,19 @@ CREATE POLICY "Séjours supprimables par propriétaire" ON sejours_touristiques
   );
 
 -- Déclarations: accès propriétaire uniquement
+DROP POLICY IF EXISTS "Déclarations visibles par propriétaire" ON declarations_taxe_sejour;
 CREATE POLICY "Déclarations visibles par propriétaire" ON declarations_taxe_sejour
   FOR SELECT USING (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Déclarations créables par propriétaire" ON declarations_taxe_sejour;
 CREATE POLICY "Déclarations créables par propriétaire" ON declarations_taxe_sejour
   FOR INSERT WITH CHECK (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Déclarations modifiables par propriétaire" ON declarations_taxe_sejour;
 CREATE POLICY "Déclarations modifiables par propriétaire" ON declarations_taxe_sejour
   FOR UPDATE USING (
     owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
@@ -356,14 +377,17 @@ CREATE POLICY "Déclarations modifiables par propriétaire" ON declarations_taxe
 -- ============================================
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS set_updated_at_taxe_sejour_communes ON taxe_sejour_communes;
 CREATE TRIGGER set_updated_at_taxe_sejour_communes
   BEFORE UPDATE ON taxe_sejour_communes
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS set_updated_at_sejours_touristiques ON sejours_touristiques;
 CREATE TRIGGER set_updated_at_sejours_touristiques
   BEFORE UPDATE ON sejours_touristiques
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS set_updated_at_declarations_taxe_sejour ON declarations_taxe_sejour;
 CREATE TRIGGER set_updated_at_declarations_taxe_sejour
   BEFORE UPDATE ON declarations_taxe_sejour
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();

@@ -11,30 +11,36 @@
 -- - Décret n°2015-981 du 31 juillet 2015
 
 -- Type enum pour les catégories de mobilier
-CREATE TYPE furniture_category AS ENUM (
-  'literie',
-  'occultation',
-  'cuisine',
-  'rangement',
-  'luminaire',
-  'vaisselle',
-  'entretien'
-);
+DO $$ BEGIN
+  CREATE TYPE furniture_category AS ENUM (
+    'literie',
+    'occultation',
+    'cuisine',
+    'rangement',
+    'luminaire',
+    'vaisselle',
+    'entretien'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Type enum pour l'état du mobilier
-CREATE TYPE furniture_condition AS ENUM (
-  'neuf',
-  'tres_bon',
-  'bon',
-  'usage',
-  'mauvais',
-  'absent'
-);
+DO $$ BEGIN
+  CREATE TYPE furniture_condition AS ENUM (
+    'neuf',
+    'tres_bon',
+    'bon',
+    'usage',
+    'mauvais',
+    'absent'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Table principale des inventaires de mobilier
 CREATE TABLE IF NOT EXISTS furniture_inventories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  edl_id UUID NOT NULL REFERENCES etats_des_lieux(id) ON DELETE CASCADE,
+  edl_id UUID NOT NULL REFERENCES edl(id) ON DELETE CASCADE,
   lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('entree', 'sortie')),
   is_complete BOOLEAN DEFAULT FALSE,
@@ -65,11 +71,11 @@ CREATE TABLE IF NOT EXISTS furniture_items (
 );
 
 -- Index pour les requêtes fréquentes
-CREATE INDEX idx_furniture_inventories_edl_id ON furniture_inventories(edl_id);
-CREATE INDEX idx_furniture_inventories_lease_id ON furniture_inventories(lease_id);
-CREATE INDEX idx_furniture_items_inventory_id ON furniture_items(inventory_id);
-CREATE INDEX idx_furniture_items_category ON furniture_items(category);
-CREATE INDEX idx_furniture_items_condition ON furniture_items(condition);
+CREATE INDEX IF NOT EXISTS idx_furniture_inventories_edl_id ON furniture_inventories(edl_id);
+CREATE INDEX IF NOT EXISTS idx_furniture_inventories_lease_id ON furniture_inventories(lease_id);
+CREATE INDEX IF NOT EXISTS idx_furniture_items_inventory_id ON furniture_items(inventory_id);
+CREATE INDEX IF NOT EXISTS idx_furniture_items_category ON furniture_items(category);
+CREATE INDEX IF NOT EXISTS idx_furniture_items_condition ON furniture_items(condition);
 
 -- Trigger pour mettre à jour updated_at
 CREATE OR REPLACE FUNCTION update_furniture_inventory_updated_at()
@@ -80,11 +86,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_furniture_inventories_updated_at ON furniture_inventories;
 CREATE TRIGGER trigger_furniture_inventories_updated_at
   BEFORE UPDATE ON furniture_inventories
   FOR EACH ROW
   EXECUTE FUNCTION update_furniture_inventory_updated_at();
 
+DROP TRIGGER IF EXISTS trigger_furniture_items_updated_at ON furniture_items;
 CREATE TRIGGER trigger_furniture_items_updated_at
   BEFORE UPDATE ON furniture_items
   FOR EACH ROW
@@ -124,16 +132,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_inventory_counts_insert ON furniture_items;
 CREATE TRIGGER trigger_update_inventory_counts_insert
   AFTER INSERT ON furniture_items
   FOR EACH ROW
   EXECUTE FUNCTION update_inventory_counts();
 
+DROP TRIGGER IF EXISTS trigger_update_inventory_counts_update ON furniture_items;
 CREATE TRIGGER trigger_update_inventory_counts_update
   AFTER UPDATE ON furniture_items
   FOR EACH ROW
   EXECUTE FUNCTION update_inventory_counts();
 
+DROP TRIGGER IF EXISTS trigger_update_inventory_counts_delete ON furniture_items;
 CREATE TRIGGER trigger_update_inventory_counts_delete
   AFTER DELETE ON furniture_items
   FOR EACH ROW
@@ -144,6 +155,7 @@ ALTER TABLE furniture_inventories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE furniture_items ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Les propriétaires peuvent gérer les inventaires de leurs baux
+DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories;
 CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
   FOR ALL
   USING (
@@ -156,6 +168,7 @@ CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
   );
 
 -- Policy: Les locataires peuvent voir les inventaires de leurs baux
+DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories;
 CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
   FOR SELECT
   USING (
@@ -167,6 +180,7 @@ CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
   );
 
 -- Policy: Les propriétaires peuvent gérer les items de leurs inventaires
+DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items;
 CREATE POLICY furniture_items_owner_policy ON furniture_items
   FOR ALL
   USING (
@@ -180,6 +194,7 @@ CREATE POLICY furniture_items_owner_policy ON furniture_items
   );
 
 -- Policy: Les locataires peuvent voir les items de leurs inventaires
+DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items;
 CREATE POLICY furniture_items_tenant_policy ON furniture_items
   FOR SELECT
   USING (

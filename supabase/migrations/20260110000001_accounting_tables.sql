@@ -389,18 +389,21 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- accounting_entries
 ALTER TABLE public.accounting_entries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can view all entries" ON public.accounting_entries;
 CREATE POLICY "Admins can view all entries" ON public.accounting_entries
   FOR SELECT TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND role = 'admin')
   );
 
+DROP POLICY IF EXISTS "Owners can view their entries" ON public.accounting_entries;
 CREATE POLICY "Owners can view their entries" ON public.accounting_entries
   FOR SELECT TO authenticated
   USING (
     owner_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Admins can insert entries" ON public.accounting_entries;
 CREATE POLICY "Admins can insert entries" ON public.accounting_entries
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -410,12 +413,14 @@ CREATE POLICY "Admins can insert entries" ON public.accounting_entries
 -- mandant_accounts
 ALTER TABLE public.mandant_accounts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can view all mandant accounts" ON public.mandant_accounts;
 CREATE POLICY "Admins can view all mandant accounts" ON public.mandant_accounts
   FOR SELECT TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND role = 'admin')
   );
 
+DROP POLICY IF EXISTS "Users can view their own mandant account" ON public.mandant_accounts;
 CREATE POLICY "Users can view their own mandant account" ON public.mandant_accounts
   FOR SELECT TO authenticated
   USING (
@@ -425,12 +430,14 @@ CREATE POLICY "Users can view their own mandant account" ON public.mandant_accou
 -- charge_regularisations
 ALTER TABLE public.charge_regularisations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can manage regularisations" ON public.charge_regularisations;
 CREATE POLICY "Admins can manage regularisations" ON public.charge_regularisations
   FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND role = 'admin')
   );
 
+DROP POLICY IF EXISTS "Tenants can view their regularisations" ON public.charge_regularisations;
 CREATE POLICY "Tenants can view their regularisations" ON public.charge_regularisations
   FOR SELECT TO authenticated
   USING (
@@ -440,18 +447,21 @@ CREATE POLICY "Tenants can view their regularisations" ON public.charge_regulari
 -- deposit_operations
 ALTER TABLE public.deposit_operations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can manage deposits" ON public.deposit_operations;
 CREATE POLICY "Admins can manage deposits" ON public.deposit_operations
   FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND role = 'admin')
   );
 
+DROP POLICY IF EXISTS "Owners can view their deposit operations" ON public.deposit_operations;
 CREATE POLICY "Owners can view their deposit operations" ON public.deposit_operations
   FOR SELECT TO authenticated
   USING (
     owner_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "Tenants can view their deposit operations" ON public.deposit_operations;
 CREATE POLICY "Tenants can view their deposit operations" ON public.deposit_operations
   FOR SELECT TO authenticated
   USING (
@@ -461,6 +471,7 @@ CREATE POLICY "Tenants can view their deposit operations" ON public.deposit_oper
 -- bank_reconciliations
 ALTER TABLE public.bank_reconciliations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins only for reconciliations" ON public.bank_reconciliations;
 CREATE POLICY "Admins only for reconciliations" ON public.bank_reconciliations
   FOR ALL TO authenticated
   USING (
@@ -480,18 +491,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_mandant_accounts_updated_at ON public.mandant_accounts;
 CREATE TRIGGER update_mandant_accounts_updated_at
   BEFORE UPDATE ON public.mandant_accounts
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_charge_regularisations_updated_at ON public.charge_regularisations;
 CREATE TRIGGER update_charge_regularisations_updated_at
   BEFORE UPDATE ON public.charge_regularisations
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_deposit_operations_updated_at ON public.deposit_operations;
 CREATE TRIGGER update_deposit_operations_updated_at
   BEFORE UPDATE ON public.deposit_operations
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_bank_reconciliations_updated_at ON public.bank_reconciliations;
 CREATE TRIGGER update_bank_reconciliations_updated_at
   BEFORE UPDATE ON public.bank_reconciliations
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
