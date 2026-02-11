@@ -78,10 +78,10 @@ export function LeaseDocumentsTab({ leaseId, propertyId, documents, dpeStatus }:
               <p className="text-xs text-amber-700">Obligatoire pour le bail (loi Climat 2021)</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="border-amber-200 text-amber-700 hover:bg-amber-100" asChild>
+          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white" asChild>
             <Link href={`/owner/properties/${propertyId}/diagnostics`}>
               <ShieldAlert className="h-4 w-4 mr-2" />
-              Régulariser
+              Ajouter le DPE
             </Link>
           </Button>
         </div>
