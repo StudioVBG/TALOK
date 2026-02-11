@@ -766,40 +766,26 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   
                   {/* Bouton d'action */}
                   {(nextAction.action || nextAction.href) && (
-                    nextAction.href ? (
-                      <Button asChild size="lg" className={`gap-2 shadow-lg ${
+                    <Button
+                      size="lg"
+                      onClick={nextAction.href ? () => router.push(nextAction.href) : nextAction.action}
+                      disabled={isSigning || isActivating}
+                      className={`gap-2 shadow-lg ${
                         nextAction.color === "blue" ? "bg-blue-600 hover:bg-blue-700" :
                         nextAction.color === "green" ? "bg-green-600 hover:bg-green-700" :
                         nextAction.color === "indigo" ? "bg-indigo-600 hover:bg-indigo-700" :
                         "bg-slate-600 hover:bg-slate-700"
-                      }`}>
-                        <Link href={nextAction.href}>
+                      }`}
+                    >
+                      {(isSigning || isActivating) ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
                           {nextAction.actionLabel}
                           <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button 
-                        size="lg" 
-                        onClick={nextAction.action}
-                        disabled={isSigning || isActivating}
-                        className={`gap-2 shadow-lg ${
-                          nextAction.color === "blue" ? "bg-blue-600 hover:bg-blue-700" :
-                          nextAction.color === "green" ? "bg-green-600 hover:bg-green-700" :
-                          nextAction.color === "indigo" ? "bg-indigo-600 hover:bg-indigo-700" :
-                          "bg-slate-600 hover:bg-slate-700"
-                        }`}
-                      >
-                        {(isSigning || isActivating) ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            {nextAction.actionLabel}
-                            <ArrowRight className="h-4 w-4" />
-                          </>
-                        )}
-                      </Button>
-                    )
+                        </>
+                      )}
+                    </Button>
                   )}
                   
                   {/* Pour les actions en attente */}
@@ -1080,18 +1066,22 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   <div className="space-y-2 pt-1">
                     {!hasSignedEdl && (
                       edl ? (
-                        <Button asChild size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700">
-                          <Link href={`/owner/inspections/${edl.id}`}>
-                            <FileText className="h-4 w-4 mr-2" />
-                            {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer l'EDL" : "Voir l'EDL"}
-                          </Link>
+                        <Button
+                          size="sm"
+                          className="w-full bg-indigo-600 hover:bg-indigo-700"
+                          onClick={() => router.push(`/owner/inspections/${edl.id}`)}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer l'EDL" : "Voir l'EDL"}
                         </Button>
                       ) : (
-                        <Button asChild size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700">
-                          <Link href={`/owner/inspections/new?lease_id=${leaseId}&type=entree`}>
-                            <ClipboardCheck className="h-4 w-4 mr-2" />
-                            Créer l&apos;EDL d&apos;entrée
-                          </Link>
+                        <Button
+                          size="sm"
+                          className="w-full bg-indigo-600 hover:bg-indigo-700"
+                          onClick={() => router.push(`/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}&type=entree`)}
+                        >
+                          <ClipboardCheck className="h-4 w-4 mr-2" />
+                          Créer l&apos;EDL d&apos;entrée
                         </Button>
                       )
                     )}

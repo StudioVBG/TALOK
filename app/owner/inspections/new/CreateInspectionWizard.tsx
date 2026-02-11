@@ -63,9 +63,10 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 interface Props {
   leases: Lease[];
   preselectedLeaseId?: string;
+  preselectedType?: "entree" | "sortie";
 }
 
-export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
+export function CreateInspectionWizard({ leases, preselectedLeaseId, preselectedType }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const { confirm, ConfirmDialogComponent } = useConfirmDialog();
@@ -85,7 +86,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
     ? leases.find(l => l.id === preselectedLeaseId) || null 
     : null;
   const [selectedLease, setSelectedLease] = useState<Lease | null>(initialLease);
-  const [edlType, setEdlType] = useState<"entree" | "sortie">("entree");
+  const [edlType, setEdlType] = useState<"entree" | "sortie">(preselectedType || "entree");
   const [scheduledDate, setScheduledDate] = useState("");
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
   const [roomsData, setRoomsData] = useState<RoomData[]>([]);

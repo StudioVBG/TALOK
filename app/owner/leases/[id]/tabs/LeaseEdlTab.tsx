@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +47,8 @@ const EDL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: ty
 };
 
 export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEdl }: LeaseEdlTabProps) {
+  const router = useRouter();
+
   // Bail pas encore signé : EDL non disponible
   const bailNotReady = !["fully_signed", "active", "notice_given", "terminated", "archived"].includes(leaseStatus);
 
@@ -106,12 +108,14 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
               </div>
             </div>
 
-            <Button asChild size="lg" className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2">
-              <Link href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${propertyId}&type=entree`}>
-                <Plus className="h-4 w-4" />
-                Créer l&apos;EDL d&apos;entrée
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+            <Button
+              size="lg"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2"
+              onClick={() => router.push(`/owner/inspections/new?lease_id=${leaseId}&property_id=${propertyId}&type=entree`)}
+            >
+              <Plus className="h-4 w-4" />
+              Créer l&apos;EDL d&apos;entrée
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </CardContent>
         </Card>
@@ -175,29 +179,33 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
           {/* Boutons d'action selon le statut */}
           <div className="flex flex-wrap gap-2 pt-2">
             {["draft", "scheduled", "in_progress"].includes(edl.status) && (
-              <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
-                <Link href={`/owner/inspections/${edl.id}`}>
-                  <ClipboardCheck className="h-4 w-4 mr-2" />
-                  Continuer l&apos;EDL
-                </Link>
+              <Button
+                className="bg-indigo-600 hover:bg-indigo-700"
+                onClick={() => router.push(`/owner/inspections/${edl.id}`)}
+              >
+                <ClipboardCheck className="h-4 w-4 mr-2" />
+                Continuer l&apos;EDL
               </Button>
             )}
 
             {edl.status === "completed" && (
-              <Button asChild className="bg-blue-600 hover:bg-blue-700">
-                <Link href={`/owner/inspections/${edl.id}`}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Signer l&apos;EDL
-                </Link>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => router.push(`/owner/inspections/${edl.id}`)}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Signer l&apos;EDL
               </Button>
             )}
 
             {hasSignedEdl && (
-              <Button asChild variant="outline" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-                <Link href={`/owner/inspections/${edl.id}`}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Voir l&apos;EDL signé
-                </Link>
+              <Button
+                variant="outline"
+                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => router.push(`/owner/inspections/${edl.id}`)}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Voir l&apos;EDL signé
               </Button>
             )}
           </div>
