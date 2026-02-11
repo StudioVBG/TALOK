@@ -393,6 +393,258 @@ export function suggestRent(
   };
 }
 
+// ============================================
+// BIC COMPLIANCE: Amortissement bien + mobilier
+// ============================================
+
+export interface DepreciationScheduleItem {
+  year: number;
+  startValue: number;
+  annualDepreciation: number;
+  cumulativeDepreciation: number;
+  remainingValue: number;
+}
+
+export interface DepreciationResult {
+  annualDepreciation: number;
+  totalDepreciation: number;
+  duration: number;
+  schedule: DepreciationScheduleItem[];
+}
+
+export interface BICAmortizationInput {
+  // Bien immobilier
+  propertyValue: number; // Valeur du bien (hors terrain)
+  landPercentage?: number; // Part du terrain en % (défaut: 15%, non amortissable)
+  propertyDepreciationYears?: number; // Durée amortissement (défaut: 25 ans)
+
+  // Mobilier
+  furnitureValue: number; // Valeur totale du mobilier
+  furnitureDepreciationYears?: number; // Durée amortissement (défaut: 7 ans)
+
+  // Travaux d'amélioration
+  improvementValue?: number; // Valeur des travaux
+  improvementDepreciationYears?: number; // Durée (défaut: 10 ans)
+
+  // Frais d'acquisition
+  acquisitionFees?: number; // Frais de notaire, agence
+  acquisitionDepreciationYears?: number; // Durée (défaut: 25 ans, ou déduit en 1 an)
+  deductAcquisitionImmediately?: boolean; // Déduire immédiatement ou amortir
+}
+
+export interface BICAmortizationResult {
+  property: DepreciationResult;
+  furniture: DepreciationResult;
+  improvement: DepreciationResult | null;
+  acquisitionFees: DepreciationResult | null;
+  totalAnnualDepreciation: number;
+  totalDepreciableBase: number;
+  landExcluded: number;
+}
+
+/**
+ * Calcule un tableau d'amortissement linéaire
+ */
+function calculateLinearDepreciation(
+  value: number,
+  durationYears: number
+): DepreciationResult {
+  if (value <= 0 || durationYears <= 0) {
+    return {
+      annualDepreciation: 0,
+      totalDepreciation: 0,
+      duration: 0,
+      schedule: [],
+    };
+  }
+
+  const annualDepreciation = Math.round((value / durationYears) * 100) / 100;
+  const schedule: DepreciationScheduleItem[] = [];
+  let remaining = value;
+
+  for (let year = 1; year <= durationYears; year++) {
+    const depreciation = year === durationYears
+      ? remaining // Dernière année : prendre le reste
+      : annualDepreciation;
+    const cumulative = value - remaining + depreciation;
+    remaining = Math.max(0, remaining - depreciation);
+
+    schedule.push({
+      year,
+      startValue: remaining + depreciation,
+      annualDepreciation: Math.round(depreciation * 100) / 100,
+      cumulativeDepreciation: Math.round(cumulative * 100) / 100,
+      remainingValue: Math.round(remaining * 100) / 100,
+    });
+  }
+
+  return {
+    annualDepreciation: Math.round(annualDepreciation),
+    totalDepreciation: Math.round(value),
+    duration: durationYears,
+    schedule,
+  };
+}
+
+/**
+ * Calcule l'amortissement BIC complet (bien + mobilier + travaux)
+ * Conforme aux règles LMNP/LMP
+ */
+export function calculateBICAmortization(
+  input: BICAmortizationInput
+): BICAmortizationResult {
+  const {
+    propertyValue,
+    landPercentage = 15,
+    propertyDepreciationYears = 25,
+    furnitureValue,
+    furnitureDepreciationYears = 7,
+    improvementValue = 0,
+    improvementDepreciationYears = 10,
+    acquisitionFees = 0,
+    acquisitionDepreciationYears = 25,
+    deductAcquisitionImmediately = false,
+  } = input;
+
+  // Exclure le terrain (non amortissable)
+  const landExcluded = Math.round(propertyValue * (landPercentage / 100));
+  const depreciablePropertyValue = propertyValue - landExcluded;
+
+  // Calculer chaque composante
+  const property = calculateLinearDepreciation(
+    depreciablePropertyValue,
+    propertyDepreciationYears
+  );
+  const furniture = calculateLinearDepreciation(
+    furnitureValue,
+    furnitureDepreciationYears
+  );
+  const improvement = improvementValue > 0
+    ? calculateLinearDepreciation(improvementValue, improvementDepreciationYears)
+    : null;
+  const acqFees = acquisitionFees > 0
+    ? calculateLinearDepreciation(
+        acquisitionFees,
+        deductAcquisitionImmediately ? 1 : acquisitionDepreciationYears
+      )
+    : null;
+
+  // Total annuel
+  const totalAnnualDepreciation =
+    property.annualDepreciation +
+    furniture.annualDepreciation +
+    (improvement?.annualDepreciation || 0) +
+    (acqFees?.annualDepreciation || 0);
+
+  const totalDepreciableBase =
+    depreciablePropertyValue +
+    furnitureValue +
+    improvementValue +
+    acquisitionFees;
+
+  return {
+    property,
+    furniture,
+    improvement,
+    acquisitionFees: acqFees,
+    totalAnnualDepreciation: Math.round(totalAnnualDepreciation),
+    totalDepreciableBase: Math.round(totalDepreciableBase),
+    landExcluded: Math.round(landExcluded),
+  };
+}
+
+/**
+ * Calcule le résultat fiscal BIC (réel simplifié)
+ */
+export function calculateBICTaxResult(input: {
+  annualRent: number;
+  annualCharges: number;
+  amortization: BICAmortizationResult;
+  loanInterest: number;
+  marginalTaxRate: number;
+  isLMP: boolean;
+}): {
+  taxableIncome: number;
+  incomeTax: number;
+  socialCharges: number;
+  totalTax: number;
+  deficit: number;
+  isDeficit: boolean;
+} {
+  const { annualRent, annualCharges, amortization, loanInterest, marginalTaxRate, isLMP } = input;
+
+  // Résultat avant amortissement
+  const resultBeforeAmort = annualRent - annualCharges - loanInterest;
+
+  // Résultat après amortissement (ne peut pas créer de déficit via amortissement)
+  // L'amortissement ne peut pas rendre le résultat négatif
+  const maxAmort = Math.max(0, resultBeforeAmort);
+  const usedAmort = Math.min(amortization.totalAnnualDepreciation, maxAmort);
+  const taxableIncome = Math.max(0, resultBeforeAmort - usedAmort);
+
+  // Déficit (sans amortissement, report possible)
+  const deficit = resultBeforeAmort < 0 ? Math.abs(resultBeforeAmort) : 0;
+  const isDeficit = deficit > 0;
+
+  // Impôts
+  const incomeTax = Math.round(taxableIncome * (marginalTaxRate / 100));
+
+  // Prélèvements sociaux : 17.2% (LMNP) ou SSI (LMP ~22-45%)
+  const socialRate = isLMP ? 0.30 : 0.172; // Estimation SSI pour LMP
+  const socialCharges = Math.round(taxableIncome * socialRate);
+
+  const totalTax = incomeTax + socialCharges;
+
+  return {
+    taxableIncome: Math.round(taxableIncome),
+    incomeTax,
+    socialCharges,
+    totalTax,
+    deficit: Math.round(deficit),
+    isDeficit,
+  };
+}
+
+/**
+ * Détermine le statut LMNP vs LMP
+ */
+export function determineLMNPStatus(input: {
+  furnishedRentalIncome: number;
+  otherProfessionalIncome: number;
+}): {
+  status: "lmnp" | "lmp";
+  reason: string;
+  incomeThresholdMet: boolean;
+  majorityThresholdMet: boolean;
+} {
+  const { furnishedRentalIncome, otherProfessionalIncome } = input;
+  const totalIncome = furnishedRentalIncome + otherProfessionalIncome;
+
+  const incomeThresholdMet = furnishedRentalIncome > 23000;
+  const majorityThresholdMet = totalIncome > 0
+    ? furnishedRentalIncome > totalIncome / 2
+    : false;
+
+  // LMP si les DEUX conditions sont réunies
+  const isLMP = incomeThresholdMet && majorityThresholdMet;
+
+  let reason: string;
+  if (isLMP) {
+    reason = `LMP : recettes meublées (${furnishedRentalIncome.toLocaleString("fr-FR")} €) > 23 000 € ET > 50% des revenus professionnels`;
+  } else if (incomeThresholdMet && !majorityThresholdMet) {
+    reason = `LMNP : recettes > 23 000 € mais < 50% des revenus professionnels`;
+  } else {
+    reason = `LMNP : recettes meublées < 23 000 €/an`;
+  }
+
+  return {
+    status: isLMP ? "lmp" : "lmnp",
+    reason,
+    incomeThresholdMet,
+    majorityThresholdMet,
+  };
+}
+
 export default {
   calculateNotaryFees,
   calculateLoanPayment,
@@ -402,5 +654,8 @@ export default {
   calculateBorrowingCapacity,
   compareScenarios,
   suggestRent,
+  calculateBICAmortization,
+  calculateBICTaxResult,
+  determineLMNPStatus,
 };
 
