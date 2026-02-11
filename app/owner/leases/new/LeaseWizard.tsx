@@ -46,6 +46,10 @@ import { CustomClauses } from "@/components/lease/CustomClauses";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import type { BailComplet } from "@/lib/templates/bail/types";
 
+// ✅ BIC Compliance: Inventaire mobilier + Régime fiscal
+import { FurnitureInventoryStep, createInitialInventory, type FurnitureInventoryData } from "./FurnitureInventoryStep";
+import { TaxRegimeSelector, type TaxRegimeData, createInitialTaxRegime } from "./TaxRegimeSelector";
+
 // ✅ Import pour les données profil
 import { useAuth } from "@/lib/hooks/use-auth";
 import { ownerProfilesService } from "@/features/profiles/services/owner-profiles.service";
@@ -149,8 +153,17 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   // ✅ P2-6: Clauses personnalisables
   const [customClauses, setCustomClauses] = useState<{ id: string; text: string; isCustom: boolean }[]>([]);
 
+  // ✅ BIC Compliance: Inventaire mobilier obligatoire (Décret 2015-981)
+  const [furnitureInventory, setFurnitureInventory] = useState<FurnitureInventoryData>(createInitialInventory());
+
+  // ✅ BIC Compliance: Régime fiscal meublé
+  const [taxRegime, setTaxRegime] = useState<TaxRegimeData>(createInitialTaxRegime());
+
   // Vérifier si c'est un bail colocation
   const isColocation = selectedType === "colocation";
+
+  // ✅ Déterminer si le bail est meublé (BIC)
+  const isFurnishedLease = ["meuble", "bail_mobilite", "etudiant"].includes(selectedType || "");
 
   // ✅ P2-9: Auto-save du wizard
   const autoSaveData = useMemo(() => ({
@@ -158,11 +171,13 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     loyer, charges, depot, chargesType, dateDebut,
     tenantEmail, tenantName, creationMode,
     colocConfig, invitees, hasGarant, garant, customClauses,
+    furnitureInventory, taxRegime,
   }), [
     selectedType, selectedPropertyId, selectedEntityId,
     loyer, charges, depot, chargesType, dateDebut,
     tenantEmail, tenantName, creationMode,
     colocConfig, invitees, hasGarant, garant, customClauses,
+    furnitureInventory, taxRegime,
   ]);
 
   const { clearSaved: clearAutoSave } = useAutoSave({
@@ -185,6 +200,8 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       if (saved.hasGarant != null) setHasGarant(saved.hasGarant);
       if (saved.garant) setGarant(saved.garant);
       if (saved.customClauses) setCustomClauses(saved.customClauses);
+      if (saved.furnitureInventory) setFurnitureInventory(saved.furnitureInventory);
+      if (saved.taxRegime) setTaxRegime(saved.taxRegime);
       toast({ title: "Brouillon restauré", description: "Votre saisie précédente a été récupérée.", duration: 3000 });
     }, [toast]),
   });
@@ -530,6 +547,10 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       case 1:
         return selectedType !== null;
       case 2:
+        // ✅ BIC: Si bail meublé, inventaire doit être complet
+        if (isFurnishedLease && !furnitureInventory.isComplete) {
+          return false;
+        }
         return selectedPropertyId !== null && loyer > 0 && !isDpeBlocked;
       case 3:
         if (isColocation) {
@@ -617,6 +638,18 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
           date_debut: dateDebut,
           date_fin: dateFin,
           custom_clauses: customClauses.length > 0 ? customClauses : undefined,
+          // ✅ BIC Compliance: envoyer inventaire + régime fiscal
+          ...(isFurnishedLease ? {
+            tax_regime: taxRegime.regime,
+            lmnp_status: taxRegime.lmnpStatus,
+            furniture_inventory: furnitureInventory.items.map(item => ({
+              name: item.name,
+              condition: item.condition,
+              quantity: item.quantity,
+              is_mandatory: item.isMandatory,
+            })),
+            furniture_additional: furnitureInventory.additionalItems,
+          } : {}),
           ...(isColocation ? colocData : {
             tenant_email: creationMode === "invite" ? tenantEmail : null,
             tenant_name: tenantName || null,
@@ -898,6 +931,28 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         </div>
                       )}
                       
+                      {/* ✅ BIC Compliance: Régime fiscal pour baux meublés */}
+                      {isFurnishedLease && (
+                        <div className="mt-6 pt-6 border-t">
+                          <TaxRegimeSelector
+                            value={taxRegime}
+                            onChange={setTaxRegime}
+                            annualRent={loyer * 12}
+                          />
+                        </div>
+                      )}
+
+                      {/* ✅ BIC Compliance: Inventaire mobilier obligatoire */}
+                      {isFurnishedLease && (
+                        <div className="mt-6 pt-6 border-t">
+                          <FurnitureInventoryStep
+                            value={furnitureInventory}
+                            onChange={setFurnitureInventory}
+                            typeBail={selectedType || ""}
+                          />
+                        </div>
+                      )}
+
                       {/* Récapitulatif */}
                       <div className="mt-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
                         <p className="text-sm font-medium text-blue-900">

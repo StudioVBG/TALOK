@@ -50,6 +50,20 @@ const inviteSchema = z.object({
     text: z.string(),
     isCustom: z.boolean(),
   })).optional(),
+  // ✅ BIC Compliance: régime fiscal meublé
+  tax_regime: z.enum(["micro_bic", "reel_bic", "micro_foncier", "reel_foncier"]).nullable().optional(),
+  lmnp_status: z.enum(["lmnp", "lmp"]).nullable().optional(),
+  furniture_inventory: z.array(z.object({
+    name: z.string(),
+    condition: z.string(),
+    quantity: z.number(),
+    is_mandatory: z.boolean(),
+  })).optional(),
+  furniture_additional: z.array(z.object({
+    name: z.string(),
+    condition: z.string(),
+    quantity: z.number(),
+  })).optional(),
   // Colocation
   coloc_config: colocConfigSchema.optional(),
   invitees: z.array(inviteeSchema).optional(),
@@ -280,6 +294,16 @@ export async function POST(request: Request) {
       // P2-6: Clauses personnalisées → colonne clauses_particulieres (TEXT)
       clauses_particulieres: validated.custom_clauses && validated.custom_clauses.length > 0
         ? JSON.stringify(validated.custom_clauses)
+        : null,
+      // ✅ BIC Compliance: régime fiscal + inventaire mobilier
+      tax_regime: validated.tax_regime || null,
+      lmnp_status: validated.lmnp_status || null,
+      furniture_inventory: validated.furniture_inventory
+        ? JSON.stringify({
+            mandatory: validated.furniture_inventory,
+            additional: validated.furniture_additional || [],
+            created_at: new Date().toISOString(),
+          })
         : null,
     };
     
