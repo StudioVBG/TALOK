@@ -162,7 +162,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   }, [lease.statut]);
   const [activeTab, setActiveTab] = useState(defaultTab);
 
-  // Charger le statut DPE au chargement
+  // Charger le statut DPE et les conditions d'activation au chargement
   useEffect(() => {
     async function checkDPE() {
       try {
@@ -173,7 +173,15 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       }
     }
     checkDPE();
-  }, [property.id]);
+
+    // Charger les conditions d'activation si bail fully_signed
+    if (lease.statut === "fully_signed") {
+      fetch(`/api/leases/${leaseId}/activate`)
+        .then(r => r.json())
+        .then(data => setActivationCheck(data))
+        .catch(() => {});
+    }
+  }, [property.id, lease.statut, leaseId]);
 
   const statusConfig = STATUS_CONFIG[lease.statut] || STATUS_CONFIG.draft;
   
@@ -644,13 +652,13 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               </Button>
             )}
             
-            {/* Bouton d'activation — désactivé si EDL ou DPE manquant */}
+            {/* Bouton d'activation — désactivé si EDL OU DPE manquant */}
             {canActivate && (
               <Button
                 size="sm"
                 onClick={() => handleActivate(false)}
-                disabled={isActivating || (!hasSignedEdl && dpeStatus?.status !== "VALID")}
-                className={hasSignedEdl ? "bg-green-600 hover:bg-green-700 shadow-sm" : "bg-slate-400 cursor-not-allowed shadow-sm"}
+                disabled={isActivating || !hasSignedEdl || (dpeStatus !== null && dpeStatus.status !== "VALID")}
+                className={hasSignedEdl && dpeStatus?.status === "VALID" ? "bg-green-600 hover:bg-green-700 shadow-sm" : "bg-slate-400 cursor-not-allowed shadow-sm"}
                 title={!hasSignedEdl ? "L'état des lieux d'entrée doit être réalisé avant d'activer le bail" : !dpeStatus || dpeStatus.status !== "VALID" ? "Le DPE doit être valide avant d'activer le bail" : "Activer le bail"}
               >
                 {isActivating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
@@ -1018,8 +1026,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium">État des Lieux (EDL)</span>
-                  {leaseAnnexes.some(a => a.type === "EDL_entree") ? (
+                  {hasSignedEdl ? (
                     <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[10px] h-5">✓ Réalisé</Badge>
+                  ) : hasEdl ? (
+                    <Badge variant="outline" className="text-amber-500 text-[10px] h-5 border-amber-200">En cours</Badge>
                   ) : (
                     <Badge variant="outline" className="text-slate-400 text-[10px] h-5 border-slate-200">À faire</Badge>
                   )}

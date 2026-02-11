@@ -143,11 +143,30 @@ export async function POST(
       }, { status: 400 });
     }
     
+    // 5bis. Vérifier le DPE (obligation légale Loi Climat 2021 pour baux résidentiels)
+    let dpeWarning: string | null = null;
+    try {
+      const { data: dpeDoc } = await serviceClient
+        .from("documents")
+        .select("id, type, created_at")
+        .eq("property_id", lease.property_id)
+        .eq("type", "diagnostic_performance")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!dpeDoc) {
+        dpeWarning = "Attention : aucun DPE (Diagnostic de Performance Énergétique) n'est associé au bien. Ce document est obligatoire pour les baux résidentiels (Loi Climat 2021).";
+      }
+    } catch {
+      // DPE check is non-blocking
+    }
+
     // 6. Vérifier la date de début (avertissement si dans le futur)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const startDate = new Date(lease.date_debut);
-    
+
     let dateWarning = null;
     if (startDate > today && !skip_date_check) {
       dateWarning = `La date de début du bail (${lease.date_debut}) est dans le futur. L'activation anticipée est possible mais inhabituelle.`;
@@ -269,13 +288,16 @@ export async function POST(
       }
     });
     
+    const warnings = [dateWarning, dpeWarning].filter(Boolean);
+
     return NextResponse.json({
       success: true,
       message: "Bail activé avec succès",
       lease_id: leaseId,
       new_status: "active",
       edl_status: edl?.status || null,
-      warning: dateWarning
+      warning: dateWarning,
+      warnings
     });
     
   } catch (error: unknown) {
@@ -347,19 +369,30 @@ export async function GET(
       .from("lease_signers")
       .select("role, signature_status")
       .eq("lease_id", leaseId);
-    
+
+    // Vérifier le DPE
+    const { data: dpeDoc } = await serviceClient
+      .from("documents")
+      .select("id, type, created_at")
+      .eq("property_id", lease.property_id)
+      .eq("type", "diagnostic_performance")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     // Analyser les conditions
     const conditions = {
       bail_signe: lease.statut === "fully_signed",
       edl_existe: !!edl,
       edl_signe: edl?.status === "signed",
+      dpe_present: !!dpeDoc,
       date_debut_atteinte: new Date(lease.date_debut) <= new Date(),
       toutes_signatures: signers?.every((s: any) => s.signature_status === "signed") || false
     };
-    
+
     const canActivate = conditions.bail_signe && conditions.edl_signe;
     const canForceActivate = conditions.bail_signe; // Force si au moins signé
-    
+
     const missingConditions: string[] = [];
     if (!conditions.bail_signe) {
       missingConditions.push("Le bail n'est pas entièrement signé");
@@ -368,6 +401,9 @@ export async function GET(
       missingConditions.push("Aucun état des lieux d'entrée n'a été créé");
     } else if (!conditions.edl_signe) {
       missingConditions.push(`L'état des lieux d'entrée n'est pas signé (statut: ${edl?.status})`);
+    }
+    if (!conditions.dpe_present) {
+      missingConditions.push("Le DPE (Diagnostic de Performance Énergétique) est manquant — obligatoire (Loi Climat 2021)");
     }
     if (!conditions.date_debut_atteinte) {
       missingConditions.push(`La date de début (${lease.date_debut}) n'est pas encore atteinte`);

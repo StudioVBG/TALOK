@@ -973,7 +973,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         </Button>
                       ) : (
                         <Button asChild variant="default" size="sm" className="mt-2 w-full bg-blue-600 hover:bg-blue-700">
-                          <Link href={`/owner/inspections/new?propertyId=${propertyId}&leaseId=${existingLease.id}`}>
+                          <Link href={`/owner/inspections/new?property_id=${propertyId}&lease_id=${existingLease.id}&type=entree`}>
                             <Plus className="h-4 w-4 mr-2" />
                             Créer l'EDL d'entrée
                           </Link>

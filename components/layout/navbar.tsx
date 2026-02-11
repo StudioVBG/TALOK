@@ -666,7 +666,13 @@ export function Navbar() {
                           </Link>
                         ))}
                         <div className="pt-4 border-t">
-                          <Link href="/profile">
+                          <Link href={
+                            profile?.role === "owner" ? "/owner/profile" :
+                            profile?.role === "tenant" ? "/tenant/profile" :
+                            profile?.role === "provider" ? "/provider/profile" :
+                            profile?.role === "admin" ? "/admin/profile" :
+                            "/profile"
+                          }>
                             <Button variant="ghost" className="w-full justify-start gap-2">
                               <User className="h-4 w-4" />
                               Mon profil

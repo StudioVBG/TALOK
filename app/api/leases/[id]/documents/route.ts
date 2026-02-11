@@ -28,7 +28,23 @@ export async function GET(
 
     const leaseId = id;
 
-    // Vérifier que l'utilisateur a accès à ce bail
+    // Vérifier que l'utilisateur a accès à ce bail (propriétaire, locataire ou colocataire)
+    // 1. Vérifier si c'est le propriétaire du bien lié au bail
+    const { data: leaseProperty } = await supabaseClient
+      .from("leases")
+      .select("property_id, properties!leases_property_id_fkey(owner_id)")
+      .eq("id", leaseId as any)
+      .single();
+
+    const { data: userProfile } = await supabaseClient
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id as any)
+      .single();
+
+    const isOwner = userProfile && (leaseProperty as any)?.properties?.owner_id === userProfile.id;
+
+    // 2. Vérifier si c'est un colocataire/locataire
     const { data: roommate } = await supabaseClient
       .from("roommates")
       .select("id")
@@ -36,7 +52,15 @@ export async function GET(
       .eq("user_id", user.id as any)
       .maybeSingle();
 
-    if (!roommate) {
+    // 3. Vérifier si c'est un signataire du bail
+    const { data: signer } = await supabaseClient
+      .from("lease_signers")
+      .select("id")
+      .eq("lease_id", leaseId as any)
+      .eq("profile_id", userProfile?.id as any)
+      .maybeSingle();
+
+    if (!isOwner && !roommate && !signer) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
