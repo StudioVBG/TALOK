@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Data fetching pour les documents (Owner)
  * Server-side uniquement
@@ -9,12 +8,14 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
 // Client service role pour bypass les RLS (évite la récursion infinie)
+// Retourne null si les variables d'environnement ne sont pas configurées
 function getServiceClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("Configuration Supabase manquante");
+    console.warn("[getServiceClient] SUPABASE_SERVICE_ROLE_KEY manquant, utilisation du client standard");
+    return null;
   }
 
   return createSupabaseClient(supabaseUrl, serviceRoleKey, {
@@ -79,7 +80,8 @@ export async function fetchDocuments(
   }
 
   // Utiliser le service client pour bypass les RLS (évite la récursion infinie sur lease_signers)
-  const serviceClient = getServiceClient();
+  // Fallback sur le client standard si le service client n'est pas disponible
+  const serviceClient = getServiceClient() || supabase;
 
   // Vérifier les permissions avec le service client
   const { data: profile } = await serviceClient
@@ -178,7 +180,8 @@ export async function fetchDocument(
   }
 
   // Utiliser le service client pour bypass les RLS
-  const serviceClient = getServiceClient();
+  // Fallback sur le client standard si le service client n'est pas disponible
+  const serviceClient = getServiceClient() || supabase;
 
   const { data: profile } = await serviceClient
     .from("profiles")

@@ -10,6 +10,8 @@ import type { OwnerPropertyPhoto } from "@/lib/owner/types";
 import { cn } from "@/lib/utils";
 import { useSwipeable } from "react-swipeable";
 
+const PHOTO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23f1f5f9' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' fill='%2394a3b8' font-size='14' dy='.3em'%3EImage non disponible%3C/text%3E%3C/svg%3E";
+
 interface OwnerPropertyPhotosProps {
   photos: OwnerPropertyPhoto[];
   propertyId: string;
@@ -91,6 +93,7 @@ export function OwnerPropertyPhotos({ photos, propertyId, onUploadClick }: Owner
                 alt={mainPhoto.tag ? PHOTO_TAG_LABELS[mainPhoto.tag] || "Photo principale" : "Photo principale"}
                 className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => openLightbox(0)}
+                onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -123,6 +126,7 @@ export function OwnerPropertyPhotos({ photos, propertyId, onUploadClick }: Owner
                       src={photo.url}
                       alt={photo.tag ? PHOTO_TAG_LABELS[photo.tag] || `Photo ${index + 2}` : `Photo ${index + 2}`}
                       className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -198,6 +202,7 @@ export function OwnerPropertyPhotos({ photos, propertyId, onUploadClick }: Owner
                 src={photos[selectedIndex].url}
                 alt={`Photo ${selectedIndex + 1}`}
                 className="max-w-full max-h-[90vh] object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
               />
             )}
           </div>

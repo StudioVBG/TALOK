@@ -70,11 +70,15 @@ export function DocumentDownloadButton({
         } as any;
 
         const element = document.createElement("div");
-        element.innerHTML = pdfHtml;
+        const parser = new DOMParser();
+        const parsed = parser.parseFromString(pdfHtml, "text/html");
+        while (parsed.body.firstChild) {
+          element.appendChild(parsed.body.firstChild);
+        }
         document.body.appendChild(element);
         await html2pdf().set(opt).from(element).save();
         document.body.removeChild(element);
-        
+
         toast({
           title: "Téléchargement démarré",
           description: "Votre bail est en cours de préparation.",
@@ -105,7 +109,11 @@ export function DocumentDownloadButton({
         } as any;
 
         const element = document.createElement("div");
-        element.innerHTML = pdfHtml;
+        const parser = new DOMParser();
+        const parsed = parser.parseFromString(pdfHtml, "text/html");
+        while (parsed.body.firstChild) {
+          element.appendChild(parsed.body.firstChild);
+        }
         document.body.appendChild(element);
         await html2pdf().set(opt).from(element).save();
         document.body.removeChild(element);

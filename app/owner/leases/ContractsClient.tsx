@@ -31,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, FileText, Plus, MoreHorizontal, Eye, Download, Trash2, Loader2, PenLine, AlertTriangle, RefreshCw } from "lucide-react";
+import { Search, FileText, Plus, MoreHorizontal, Eye, Download, Trash2, Loader2, PenLine, AlertTriangle, RefreshCw, AlertCircle } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { exportLeases } from "@/lib/services/export-service";
 import { useToast } from "@/components/ui/use-toast";
@@ -56,11 +56,12 @@ export function ContractsClient() {
   const filterParam = searchParams.get("filter");
 
   // ✅ React Query : données réactives avec mise à jour automatique
-  const { data: leases = [], isLoading: isLoadingLeases } = useLeases();
-  const { data: properties = [], isLoading: isLoadingProperties } = useProperties();
+  const { data: leases = [], isLoading: isLoadingLeases, error: leasesError } = useLeases();
+  const { data: properties = [], isLoading: isLoadingProperties, error: propertiesError } = useProperties();
   const deleteLeaseMutation = useDeleteLease();
-  
+
   const isLoading = isLoadingLeases || isLoadingProperties;
+  const hasError = !!(leasesError || propertiesError);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -599,6 +600,14 @@ export function ContractsClient() {
                       </div>
                     ))}
                   </div>
+                </GlassCard>
+              ) : hasError ? (
+                <GlassCard className="p-6 text-center">
+                  <AlertCircle className="h-8 w-8 mx-auto text-red-500 mb-2" />
+                  <p className="text-red-600 font-medium">Erreur lors du chargement</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {leasesError ? "Impossible de charger les baux." : "Impossible de charger les propriétés."}
+                  </p>
                 </GlassCard>
               ) : filteredLeases.length === 0 ? (
                 <EmptyState

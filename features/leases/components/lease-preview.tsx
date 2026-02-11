@@ -557,7 +557,7 @@ export function LeasePreview({
         )}
 
         {/* Zone de prévisualisation - Format A4 Document Viewer */}
-        <div className="flex-1 rounded-lg overflow-hidden bg-[#525659] relative min-h-0">
+        <div className="flex-1 rounded-lg overflow-auto bg-[#525659] relative min-h-0">
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10 px-4">
                <div className="flex flex-col items-center gap-2 sm:gap-3 text-center">

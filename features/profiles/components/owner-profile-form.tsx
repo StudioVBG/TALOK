@@ -21,6 +21,7 @@ export function OwnerProfileForm({ onSuccess }: OwnerProfileFormProps) {
   const { profile, ownerProfile } = useProfile();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<CreateOwnerProfileData>({
     type: "particulier",
     siret: null,
@@ -47,9 +48,32 @@ export function OwnerProfileForm({ onSuccess }: OwnerProfileFormProps) {
     }
   }, [ownerProfile]);
 
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.type) {
+      newErrors.type = "Le type de propriétaire est requis.";
+    }
+    if (formData.type === "societe") {
+      if (!formData.raison_sociale?.trim()) {
+        newErrors.raison_sociale = "La raison sociale est requise.";
+      }
+      if (!formData.forme_juridique) {
+        newErrors.forme_juridique = "La forme juridique est requise.";
+      }
+      if (!formData.siret?.trim()) {
+        newErrors.siret = "Le SIRET est requis.";
+      } else if (formData.siret.replace(/\s/g, "").length !== 14) {
+        newErrors.siret = "Le SIRET doit contenir 14 chiffres.";
+      }
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+    if (!validate()) return;
 
     setLoading(true);
 
@@ -96,6 +120,7 @@ export function OwnerProfileForm({ onSuccess }: OwnerProfileFormProps) {
               <option value="particulier">Particulier</option>
               <option value="societe">Société</option>
             </select>
+            {errors.type && <p className="text-sm text-destructive">{errors.type}</p>}
           </div>
 
           {formData.type === "societe" && (
@@ -105,12 +130,14 @@ export function OwnerProfileForm({ onSuccess }: OwnerProfileFormProps) {
                 <Input
                   id="raison_sociale"
                   value={formData.raison_sociale || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, raison_sociale: e.target.value || null })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, raison_sociale: e.target.value || null });
+                    if (errors.raison_sociale) setErrors((prev) => ({ ...prev, raison_sociale: "" }));
+                  }}
                   required
                   disabled={loading}
                 />
+                {errors.raison_sociale && <p className="text-sm text-destructive">{errors.raison_sociale}</p>}
               </div>
 
               <div className="space-y-2">
@@ -136,6 +163,7 @@ export function OwnerProfileForm({ onSuccess }: OwnerProfileFormProps) {
                   <option value="SCPI">SCPI</option>
                   <option value="autre">Autre</option>
                 </select>
+                {errors.forme_juridique && <p className="text-sm text-destructive">{errors.forme_juridique}</p>}
               </div>
 
               <div className="space-y-2">
@@ -143,14 +171,16 @@ export function OwnerProfileForm({ onSuccess }: OwnerProfileFormProps) {
                 <Input
                   id="siret"
                   value={formData.siret || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, siret: e.target.value || null })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, siret: e.target.value || null });
+                    if (errors.siret) setErrors((prev) => ({ ...prev, siret: "" }));
+                  }}
                   placeholder="12345678901234"
                   maxLength={14}
                   required
                   disabled={loading}
                 />
+                {errors.siret && <p className="text-sm text-destructive">{errors.siret}</p>}
               </div>
 
               <div className="space-y-2">

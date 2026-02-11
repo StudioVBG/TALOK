@@ -144,10 +144,12 @@ export async function activateLease(leaseId: string): Promise<ActionResult> {
     return { success: false, error: "Ce bail est déjà actif" };
   }
 
-  const { error } = await supabase
+  const { data: updatedLease, error } = await supabase
     .from("leases")
     .update({ statut: "active" })
-    .eq("id", leaseId);
+    .eq("id", leaseId)
+    .select("*")
+    .single();
 
   if (error) {
     return { success: false, error: "Erreur lors de l'activation" };
@@ -156,7 +158,7 @@ export async function activateLease(leaseId: string): Promise<ActionResult> {
   revalidatePath("/owner/leases");
   revalidatePath(`/owner/leases/${leaseId}`);
 
-  return { success: true };
+  return { success: true, data: updatedLease };
 }
 
 /**

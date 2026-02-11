@@ -121,7 +121,7 @@ async function fetchDashboardDirect(
   }
 
   // Requêtes parallèles pour les stats
-  const [leasesResult, invoicesResult, ticketsResult] = await Promise.allSettled([
+  const [leasesResult, invoicesResult, ticketsResult, activityResult] = await Promise.allSettled([
     supabase
       .from("leases")
       .select("id, statut")
@@ -134,11 +134,18 @@ async function fetchDashboardDirect(
       .from("tickets")
       .select("id, statut")
       .in("property_id", propertyIds),
+    supabase
+      .from("audit_log")
+      .select("id, action, entity_type, created_at")
+      .eq("owner_id", ownerId)
+      .order("created_at", { ascending: false })
+      .limit(10),
   ]);
 
   const leases = leasesResult.status === "fulfilled" ? leasesResult.value.data || [] : [];
   const invoices = invoicesResult.status === "fulfilled" ? invoicesResult.value.data || [] : [];
   const tickets = ticketsResult.status === "fulfilled" ? ticketsResult.value.data || [] : [];
+  const activityRows = activityResult.status === "fulfilled" ? activityResult.value.data || [] : [];
 
   return {
     properties: propertiesStats,
@@ -160,7 +167,11 @@ async function fetchDashboardDirect(
     },
     edl: { total: 0, pending_owner_signature: 0 },
     zone3_portfolio: { compliance: [] },
-    recentActivity: [],
+    recentActivity: activityRows.map((row: { action: string; entity_type: string; created_at: string }) => ({
+      type: row.entity_type || "activity",
+      title: row.action || "Action",
+      date: row.created_at,
+    })),
   };
 }
 
@@ -205,6 +216,20 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
 
   const dashboardData = data as OwnerDashboardRPCResponse;
 
+  // Fetch recent activity from audit_log (not included in RPC response)
+  const { data: activityData } = await supabase
+    .from("audit_log")
+    .select("id, action, entity_type, created_at")
+    .eq("owner_id", ownerId)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  const recentActivity = (activityData || []).map((row: { action: string; entity_type: string; created_at: string }) => ({
+    type: row.entity_type || "activity",
+    title: row.action || "Action",
+    date: row.created_at,
+  }));
+
   return {
     properties: dashboardData?.properties_stats || { total: 0, active: 0, draft: 0 },
     leases: dashboardData?.leases_stats || { total: 0, active: 0, pending: 0 },
@@ -212,7 +237,7 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
     tickets: dashboardData?.tickets_stats || { total: 0, open: 0, in_progress: 0 },
     edl: dashboardData?.edl_stats || { total: 0, pending_owner_signature: 0 },
     zone3_portfolio: dashboardData?.zone3_portfolio || { compliance: [] },
-    recentActivity: [],
+    recentActivity,
   };
 }
 

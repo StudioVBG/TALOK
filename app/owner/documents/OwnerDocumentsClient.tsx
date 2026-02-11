@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useState } from "react";
 import Link from "next/link";
@@ -66,6 +65,14 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  // Réinitialiser tous les filtres
+  const resetFilters = () => {
+    setSearchQuery("");
+    setTypeFilter("all");
+    setStatusFilter("all");
+    setCategoryFilter("all");
+  };
   
   // 🎨 Mode d'affichage : "table" (tableau) ou "cascade" (groupé par bien)
   const [viewMode, setViewMode] = useState<"table" | "cascade">("cascade");
@@ -107,10 +114,22 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
       } else {
         console.error("Erreur génération URL signée");
         setPreviewUrl(null);
+        setPreviewOpen(false);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger la prévisualisation du document.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Erreur fetch URL signée:", error);
       setPreviewUrl(null);
+      setPreviewOpen(false);
+      toast({
+        title: "Erreur",
+        description: "Erreur de connexion lors du chargement du document.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoadingPreview(false);
     }
@@ -520,14 +539,25 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
                 ))}
               </div>
             </GlassCard>
-          ) : filteredDocuments.length === 0 ? (
-            <EmptyState 
+          ) : documents.length === 0 ? (
+            <EmptyState
                 title="Aucun document"
                 description="Téléversez vos baux, quittances et diagnostics pour les retrouver ici."
                 icon={FileText}
                 action={{
                     label: "Téléverser un document",
                     href: ownerDocumentRoutes.upload(),
+                    variant: "outline"
+                }}
+            />
+          ) : filteredDocuments.length === 0 ? (
+            <EmptyState
+                title="Aucun résultat"
+                description="Aucun document ne correspond à vos critères de recherche."
+                icon={Search}
+                action={{
+                    label: "Réinitialiser les filtres",
+                    onClick: resetFilters,
                     variant: "outline"
                 }}
             />

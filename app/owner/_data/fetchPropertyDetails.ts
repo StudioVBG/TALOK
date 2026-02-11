@@ -61,8 +61,13 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
     supabase.from("edl").select("id, lease_id, type, status, scheduled_at, completed_date").eq("property_id", propertyId),
     // Tickets
     supabase.from("tickets").select("*").eq("property_id", propertyId).order("created_at", { ascending: false }).limit(5),
-    // Invoices (dernières factures)
-    supabase.from("invoices").select("*").eq("lease_id", propertyId).order("created_at", { ascending: false }).limit(5),
+    // Invoices (dernières factures) - Récupération via les baux liés à la propriété
+    (async () => {
+      const { data: propertyLeases } = await supabase.from("leases").select("id").eq("property_id", propertyId);
+      const leaseIds = (propertyLeases || []).map(l => l.id);
+      if (leaseIds.length === 0) return { data: [] };
+      return supabase.from("invoices").select("*").in("lease_id", leaseIds).order("created_at", { ascending: false }).limit(5);
+    })(),
     // Photos (table photos)
     supabase.from("photos").select("*").eq("property_id", propertyId).order("ordre", { ascending: true }),
     // Documents (table documents - pour fallback photos)
@@ -82,11 +87,11 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
     coverDocId = cover.id;
   } else if (documentsData && documentsData.length > 0) {
     // Fallback sur documents si pas de photos
-    photos = documentsData.map((doc: any) => ({
+    photos = documentsData.map((doc: any, index: number) => ({
       id: doc.id,
-      url: doc.preview_url,
-      is_main: doc.is_cover,
-      ordre: doc.position
+      url: doc.url || doc.storage_path || null,
+      is_main: index === 0,
+      ordre: index
     })) as any;
     const cover = photos.find((p: any) => p.is_main) || photos[0];
     coverUrl = cover.url;

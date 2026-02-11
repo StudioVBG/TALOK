@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Data fetching pour les factures (Owner)
  * Server-side uniquement
@@ -112,15 +111,21 @@ export async function fetchInvoices(
   const { data: invoices, error, count } = await query;
 
   if (error) {
-    // Gérer l'erreur de récursion RLS gracieusement
+    // Gérer l'erreur de récursion RLS gracieusement avec requête simplifiée
     if (error.message.includes("infinite recursion")) {
-      console.warn("[fetchInvoices] Recursion RLS détectée, fallback sans jointures");
-      // Retourner des données vides plutôt que de crasher
+      console.warn("[fetchInvoices] Recursion RLS détectée, fallback requête simplifiée");
+      const { data: fallbackInvoices, count: fallbackCount } = await supabase
+        .from("invoices")
+        .select("id, lease_id, owner_id, tenant_id, periode, montant_total, montant_loyer, montant_charges, statut, created_at, updated_at", { count: "exact" })
+        .eq("owner_id", options.ownerId)
+        .order("periode", { ascending: false })
+        .range(offset, offset + limit - 1);
+
       return {
-        invoices: [],
-        total: 0,
-        page: 1,
-        limit: options.limit || 50,
+        invoices: (fallbackInvoices as any[]) || [],
+        total: fallbackCount || 0,
+        page: Math.floor(offset / limit) + 1,
+        limit,
         stats: { totalDue: 0, totalCollected: 0, totalUnpaid: 0 }
       };
     }

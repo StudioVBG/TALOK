@@ -932,7 +932,12 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         {(existingLease?.tenants?.filter((t: TenantInfo) => t.role === 'locataire_principal' || t.role === 'tenant').length ?? 0) > 0
                           ? existingLease?.tenants
                               ?.filter((t: TenantInfo) => t.role === 'locataire_principal' || t.role === 'tenant')
-                              .map((t: TenantInfo) => t.profile ? `${t.profile.prenom} ${t.profile.nom}` : t.invited_name || "Locataire")
+                              .map((t: TenantInfo) => {
+                                if (t.profile && (t.profile.prenom || t.profile.nom)) {
+                                  return [t.profile.prenom, t.profile.nom].filter(Boolean).join(" ");
+                                }
+                                return t.invited_name || "Locataire";
+                              })
                               .join(", ")
                           : "En attente"}
                       </p>

@@ -15,6 +15,8 @@ import { EditableText } from "@/components/ui/editable-text";
 import { useMutationWithToast } from "@/lib/hooks/use-mutation-with-toast";
 import { apiClient } from "@/lib/api-client";
 
+const PHOTO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23f1f5f9' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' fill='%2394a3b8' font-size='14' dy='.3em'%3EImage non disponible%3C/text%3E%3C/svg%3E";
+
 interface PropertyHeroProps {
   property: OwnerProperty;
   activeLease?: any;
@@ -104,13 +106,14 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
           <div className="flex-1 relative w-full h-full flex items-center justify-center bg-black">
             {photos.length > 0 && (
               <div className="relative w-full h-full max-h-[80vh]">
-                <Image 
-                  src={photos[selectedPhotoIndex]?.url || ""} 
-                  alt={`Photo ${selectedPhotoIndex + 1}`}
+                <Image
+                  src={photos[selectedPhotoIndex]?.url || ""}
+                  alt={`Photo ${selectedPhotoIndex + 1} - ${property.adresse_complete || "Bien immobilier"}`}
                   fill
                   sizes="(max-width: 768px) 100vw, 80vw"
                   className="object-contain"
                   priority
+                  onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
                 />
               </div>
             )}
@@ -125,7 +128,7 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
                   idx === selectedPhotoIndex ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"
                 }`}
               >
-                <Image src={photo.url} alt={`Thumbnail ${idx}`} fill sizes="80px" className="object-cover" />
+                <Image src={photo.url} alt={`Thumbnail ${idx + 1} - ${property.adresse_complete || "Bien immobilier"}`} fill sizes="80px" className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }} />
               </button>
             ))}
           </div>

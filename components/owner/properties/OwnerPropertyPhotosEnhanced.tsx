@@ -10,6 +10,8 @@ import type { OwnerPropertyPhoto } from "@/lib/owner/types";
 import { cn } from "@/lib/utils";
 import { useSwipeable } from "react-swipeable";
 
+const PHOTO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23f1f5f9' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' fill='%2394a3b8' font-size='14' dy='.3em'%3EImage non disponible%3C/text%3E%3C/svg%3E";
+
 interface OwnerPropertyPhotosEnhancedProps {
   photos: OwnerPropertyPhoto[];
   propertyId: string;
@@ -153,6 +155,7 @@ export function OwnerPropertyPhotosEnhanced({
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.3 }}
                 onClick={() => openLightbox(0)}
+                onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -225,6 +228,7 @@ export function OwnerPropertyPhotosEnhanced({
                       src={photo.url}
                       alt={photo.tag ? PHOTO_TAG_LABELS[photo.tag] || `Photo ${index + 2}` : `Photo ${index + 2}`}
                       className="w-full h-full object-cover transition-opacity group-hover:opacity-90"
+                      onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -348,6 +352,7 @@ export function OwnerPropertyPhotosEnhanced({
                   alt={`Photo ${selectedIndex + 1}`}
                   className="max-w-full max-h-[90vh] object-contain select-none"
                   draggable={false}
+                  onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
                 />
               </AnimatePresence>
             </motion.div>
@@ -390,6 +395,7 @@ export function OwnerPropertyPhotosEnhanced({
                       src={photo.url}
                       alt={`Thumbnail ${index + 1}`}
                       className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
                     />
                   </motion.button>
                 ))}

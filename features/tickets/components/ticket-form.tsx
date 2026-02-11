@@ -23,6 +23,7 @@ export function TicketForm({ propertyId, onSuccess, onCancel }: TicketFormProps)
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [leases, setLeases] = useState<Lease[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<CreateTicketData>({
     property_id: propertyId || "",
     lease_id: null,
@@ -44,8 +45,24 @@ export function TicketForm({ propertyId, onSuccess, onCancel }: TicketFormProps)
     }
   }, [profile, propertyId]);
 
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.titre.trim()) {
+      newErrors.titre = "Le titre est requis.";
+    }
+    if (!formData.description.trim()) {
+      newErrors.description = "La description est requise.";
+    }
+    if (!formData.priorite) {
+      newErrors.priorite = "La priorité est requise.";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setLoading(true);
 
     try {
@@ -79,11 +96,15 @@ export function TicketForm({ propertyId, onSuccess, onCancel }: TicketFormProps)
             <Input
               id="titre"
               value={formData.titre}
-              onChange={(e) => setFormData({ ...formData, titre: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, titre: e.target.value });
+                if (errors.titre) setErrors((prev) => ({ ...prev, titre: "" }));
+              }}
               placeholder="Ex: Fuite d'eau dans la salle de bain"
               required
               disabled={loading}
             />
+            {errors.titre && <p className="text-sm text-destructive">{errors.titre}</p>}
           </div>
 
           <div className="space-y-2">
@@ -92,11 +113,15 @@ export function TicketForm({ propertyId, onSuccess, onCancel }: TicketFormProps)
               id="description"
               className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, description: e.target.value });
+                if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
+              }}
               placeholder="Décrivez le problème en détail..."
               required
               disabled={loading}
             />
+            {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
           </div>
 
           <div className="space-y-2">
@@ -115,6 +140,7 @@ export function TicketForm({ propertyId, onSuccess, onCancel }: TicketFormProps)
               <option value="normale">Normale</option>
               <option value="haute">Haute</option>
             </select>
+            {errors.priorite && <p className="text-sm text-destructive">{errors.priorite}</p>}
           </div>
 
           {leases.length > 0 && (

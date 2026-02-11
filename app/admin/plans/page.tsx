@@ -909,7 +909,7 @@ function ExportImportDialog({
                 <span className="text-sm font-medium">Aperçu</span>
                 <Badge variant="outline">{plans.length} plans • {addons.length} add-ons</Badge>
               </div>
-              <pre className="text-xs overflow-auto max-h-64 bg-background rounded p-3 border">
+              <pre className="text-xs overflow-auto max-h-64 overflow-y-auto bg-background rounded p-3 border">
                 {JSON.stringify(exportData, null, 2)}
               </pre>
             </div>

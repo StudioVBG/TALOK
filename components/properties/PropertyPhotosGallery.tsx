@@ -21,6 +21,8 @@ import {
 import { cn } from "@/lib/utils";
 import type { PropertyPhoto, PropertyType } from "./types";
 
+const PHOTO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23f1f5f9' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' fill='%2394a3b8' font-size='14' dy='.3em'%3EImage non disponible%3C/text%3E%3C/svg%3E";
+
 interface PropertyPhotosGalleryProps {
   photos: PropertyPhoto[];
   propertyType?: PropertyType;
@@ -116,11 +118,12 @@ export function PropertyPhotosGallery({
         >
           <Image
             src={mainPhoto.url}
-            alt="Photo principale"
+            alt={address ? `Photo principale - ${address}` : "Photo principale du bien"}
             fill
             sizes="(max-width: 768px) 100vw, 75vw"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             priority
+            onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
           />
           
           {/* Gradient overlay */}
@@ -184,10 +187,11 @@ export function PropertyPhotosGallery({
             >
               <Image
                 src={photo.url}
-                alt={`Photo ${idx + 2}`}
+                alt={address ? `Photo ${idx + 2} - ${address}` : `Photo ${idx + 2}`}
                 fill
                 sizes="25vw"
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
+                onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
               />
               
               {/* Overlay +N sur dernière thumbnail */}
@@ -259,13 +263,14 @@ export function PropertyPhotosGallery({
                 transition={{ duration: 0.2 }}
                 className="relative w-full h-full max-h-[75vh]"
               >
-                <Image 
-                  src={photos[selectedPhotoIndex]?.url || ""} 
-                  alt={`Photo ${selectedPhotoIndex + 1}`}
+                <Image
+                  src={photos[selectedPhotoIndex]?.url || ""}
+                  alt={address ? `Photo ${selectedPhotoIndex + 1} - ${address}` : `Photo ${selectedPhotoIndex + 1}`}
                   fill
                   sizes="95vw"
                   className="object-contain"
                   priority
+                  onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
                 />
               </motion.div>
             </AnimatePresence>
@@ -295,12 +300,13 @@ export function PropertyPhotosGallery({
                     : "border-transparent opacity-60 hover:opacity-100 hover:border-white/50"
                 )}
               >
-                <Image 
-                  src={photo.url} 
-                  alt={`Miniature ${idx + 1}`} 
-                  fill 
+                <Image
+                  src={photo.url}
+                  alt={`Miniature ${idx + 1}`}
+                  fill
                   sizes="64px"
-                  className="object-cover" 
+                  className="object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).src = PHOTO_FALLBACK; }}
                 />
               </button>
             ))}

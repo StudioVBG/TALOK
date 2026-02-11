@@ -611,10 +611,36 @@ export default function OwnerPropertiesPage() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <EmptyState 
-                    title="Aucun bien"
-                    description="Aucun bien ne correspond à vos critères de recherche."
-                  />
+                  {properties.length === 0 ? (
+                    <EmptyState
+                      title="Aucun bien"
+                      description="Vous n'avez pas encore ajouté de bien."
+                    >
+                      <Button asChild className="mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                        <Link href="/owner/properties/new">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Ajouter un bien
+                        </Link>
+                      </Button>
+                    </EmptyState>
+                  ) : (
+                    <EmptyState
+                      title="Aucun résultat"
+                      description="Aucun bien ne correspond à vos critères de recherche."
+                    >
+                      <Button
+                        variant="outline"
+                        className="mt-4"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setTypeFilter("all");
+                          setStatusFilter("all");
+                        }}
+                      >
+                        Réinitialiser les filtres
+                      </Button>
+                    </EmptyState>
+                  )}
                 </motion.div>
               ) : !isLoading ? (
                 viewMode === "grid" ? (
@@ -678,38 +704,6 @@ export default function OwnerPropertiesPage() {
               ) : null}
             </AnimatePresence>
 
-            {/* Gestion d'erreur avec animation */}
-            {propertiesError && !isLoading && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-8"
-              >
-                <Card className="max-w-md mx-auto border-destructive/50">
-                  <CardHeader>
-                    <CardTitle className="text-destructive">Erreur de chargement</CardTitle>
-                    <CardDescription>
-                      Impossible de charger vos propriétés
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      {propertiesError instanceof Error 
-                        ? propertiesError.message 
-                        : "Une erreur est survenue lors du chargement des données"}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button onClick={() => refetchProperties()} variant="default">
-                        Réessayer
-                      </Button>
-                      <Button onClick={() => window.location.reload()} variant="outline">
-                        Recharger la page
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
           </div>
         </motion.div>
         </PullToRefreshContainer>

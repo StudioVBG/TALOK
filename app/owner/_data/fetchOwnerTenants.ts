@@ -56,9 +56,7 @@ export async function fetchOwnerTenants(ownerId: string): Promise<OwnerTenant[]>
       property_id,
       loyer,
       charges_forfaitaires,
-      statut,
-      date_debut,
-      date_fin
+      statut
     `)
     .in("property_id", propertyIds)
     .in("statut", ["active", "pending_signature", "terminated"]);

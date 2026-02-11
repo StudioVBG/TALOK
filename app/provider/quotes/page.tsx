@@ -293,12 +293,22 @@ export default function ProviderQuotesPage() {
                       ? "Vous n'avez pas encore créé de devis."
                       : "Aucun devis ne correspond à vos critères."}
                   </p>
-                  {quotes.length === 0 && (
+                  {quotes.length === 0 ? (
                     <Button asChild>
                       <Link href="/provider/quotes/new">
                         <Plus className="mr-2 h-4 w-4" />
                         Créer un devis
                       </Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setStatusFilter("all");
+                      }}
+                    >
+                      Réinitialiser les filtres
                     </Button>
                   )}
                 </div>

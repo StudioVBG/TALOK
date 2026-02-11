@@ -19,6 +19,7 @@ export function TenantProfileForm({ onSuccess }: TenantProfileFormProps) {
   const { profile, tenantProfile } = useProfile();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<CreateTenantProfileData>({
     situation_pro: null,
     revenus_mensuels: null,
@@ -39,9 +40,22 @@ export function TenantProfileForm({ onSuccess }: TenantProfileFormProps) {
     }
   }, [tenantProfile]);
 
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (formData.nb_adultes == null || formData.nb_adultes < 1) {
+      newErrors.nb_adultes = "Le nombre d'adultes doit être au moins 1.";
+    }
+    if (formData.nb_enfants == null || formData.nb_enfants < 0) {
+      newErrors.nb_enfants = "Le nombre d'enfants ne peut pas être négatif.";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
+    if (!validate()) return;
 
     setLoading(true);
 
@@ -110,12 +124,14 @@ export function TenantProfileForm({ onSuccess }: TenantProfileFormProps) {
                 type="number"
                 min="1"
                 value={formData.nb_adultes}
-                onChange={(e) =>
-                  setFormData({ ...formData, nb_adultes: parseInt(e.target.value) || 1 })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, nb_adultes: parseInt(e.target.value) || 1 });
+                  if (errors.nb_adultes) setErrors((prev) => ({ ...prev, nb_adultes: "" }));
+                }}
                 required
                 disabled={loading}
               />
+              {errors.nb_adultes && <p className="text-sm text-destructive">{errors.nb_adultes}</p>}
             </div>
 
             <div className="space-y-2">
@@ -125,12 +141,14 @@ export function TenantProfileForm({ onSuccess }: TenantProfileFormProps) {
                 type="number"
                 min="0"
                 value={formData.nb_enfants}
-                onChange={(e) =>
-                  setFormData({ ...formData, nb_enfants: parseInt(e.target.value) || 0 })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, nb_enfants: parseInt(e.target.value) || 0 });
+                  if (errors.nb_enfants) setErrors((prev) => ({ ...prev, nb_enfants: "" }));
+                }}
                 required
                 disabled={loading}
               />
+              {errors.nb_enfants && <p className="text-sm text-destructive">{errors.nb_enfants}</p>}
             </div>
           </div>
 

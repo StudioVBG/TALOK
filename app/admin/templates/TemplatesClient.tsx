@@ -700,7 +700,7 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
 
       {/* Modal de prévisualisation */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-6xl h-[90vh] p-0 overflow-hidden flex flex-col gap-0">
+        <DialogContent className="max-w-6xl h-[90vh] p-0 overflow-y-auto flex flex-col gap-0">
           <DialogHeader className="p-6 pb-4 border-b bg-slate-50 dark:bg-slate-900 shrink-0">
             <div className="flex items-center justify-between pr-8">
               <div className="flex items-center gap-3">

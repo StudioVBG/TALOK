@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -147,7 +146,7 @@ export default function GuarantorDashboardPage() {
         {/* Lien vers les documents */}
         <div className="mt-6 flex justify-center">
           <Button variant="outline" asChild>
-            <Link href="/documents">
+            <Link href="/guarantor/documents">
               <FileText className="h-4 w-4 mr-2" />
               Accéder à mes documents
             </Link>

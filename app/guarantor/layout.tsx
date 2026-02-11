@@ -1,7 +1,6 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// @ts-nocheck
 import { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -32,6 +31,15 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
 
   if (profileError || !profile) {
     redirect("/auth/signin");
+  }
+
+  // Vérifier que l'utilisateur a le rôle garant
+  if (profile.role !== "guarantor") {
+    if (profile.role === "owner") redirect("/owner/dashboard");
+    if (profile.role === "tenant") redirect("/tenant/dashboard");
+    if (profile.role === "provider") redirect("/provider/dashboard");
+    if (profile.role === "admin") redirect("/admin/dashboard");
+    redirect("/");
   }
 
   return (
