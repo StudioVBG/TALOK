@@ -92,10 +92,10 @@ export function RealtimeRevenueWidget() {
       {/* Montant principal avec animation */}
       <div className="mb-6">
         <motion.div
-          key={totalRevenue}
-          initial={{ scale: 1.05, color: "#10b981" }}
-          animate={{ scale: 1, color: "#1e293b" }}
-          transition={{ duration: 0.5 }}
+          key="revenue-counter"
+          initial={{ scale: 1 }}
+          animate={{ scale: [1, 1.02, 1] }}
+          transition={{ duration: 0.3 }}
           className="text-4xl font-bold text-slate-900"
         >
           <AnimatedCounter value={totalRevenue} type="currency" />

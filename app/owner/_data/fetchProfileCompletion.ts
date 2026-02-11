@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Data fetching pour la complétion du profil (Owner)
  * Server-side uniquement

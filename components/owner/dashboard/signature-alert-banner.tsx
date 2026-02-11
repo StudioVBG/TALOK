@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PenLine, AlertTriangle, X, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api-client";
+import { formatCurrency } from "@/lib/helpers/format";
 import { cn } from "@/lib/utils";
 
 interface PendingSignature {
@@ -116,7 +117,7 @@ export function SignatureAlertBanner({ className, dismissible = true }: Signatur
                         {sig.property.adresse || "Adresse non renseignée"}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {sig.lease.loyer ? `${sig.lease.loyer.toLocaleString('fr-FR')} €/mois` : "Loyer non renseigné"}
+                        {sig.lease.loyer ? `${formatCurrency(sig.lease.loyer)}/mois` : "Loyer non renseigné"}
                       </p>
                     </div>
                   </div>
