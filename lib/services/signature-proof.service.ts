@@ -1,26 +1,28 @@
 /**
  * Service de génération de preuve de signature électronique
- * 
+ *
  * Conforme au règlement eIDAS et à l'Article 1367 du Code Civil français
- * 
+ *
  * Génère une preuve cryptographique contenant :
  * - Hash SHA-256 du document
- * - Horodatage
+ * - Horodatage local + horodatage certifié TSA (RFC 3161)
  * - Métadonnées du signataire
  * - Signature du signataire (image base64)
  */
 
+import { timestampSignatureProof } from "./tsa.service";
+
 export interface SignatureProof {
   // Identifiant unique de la preuve
   proofId: string;
-  
+
   // Document signé
   document: {
     type: string;
     id: string;
     hash: string; // SHA-256 du contenu
   };
-  
+
   // Signataire
   signer: {
     name: string;
@@ -29,21 +31,30 @@ export interface SignatureProof {
     identityVerified: boolean;
     identityMethod?: string;
   };
-  
+
   // Signature
   signature: {
     type: "draw" | "text";
     imageData: string; // Base64
     hash: string; // SHA-256 de l'image
   };
-  
+
   // Horodatage
   timestamp: {
     iso: string;
     unix: number;
     timezone: string;
   };
-  
+
+  // Horodatage certifié (TSA RFC 3161)
+  tsa?: {
+    token: string;
+    provider: string;
+    status: "granted" | "rejection" | "waiting" | "fallback";
+    fallbackUsed: boolean;
+    timestampedAt: string;
+  };
+
   // Métadonnées techniques
   metadata: {
     ipAddress?: string;
@@ -56,7 +67,7 @@ export interface SignatureProof {
       accuracy: number;
     };
   };
-  
+
   // Intégrité
   integrity: {
     algorithm: "SHA-256";
@@ -152,9 +163,27 @@ export async function generateSignatureProof(params: {
     },
   };
   const proofHash = await generateHash(JSON.stringify(proofForHash));
-  
+
+  // Demander un horodatage certifié TSA (RFC 3161)
+  let tsa: SignatureProof["tsa"] = undefined;
+  try {
+    const tsaResult = await timestampSignatureProof(proofHash);
+    if (tsaResult.success && tsaResult.token) {
+      tsa = {
+        token: tsaResult.token.token,
+        provider: tsaResult.token.provider,
+        status: tsaResult.token.status,
+        fallbackUsed: tsaResult.fallbackUsed,
+        timestampedAt: tsaResult.token.timestamp,
+      };
+    }
+  } catch (tsaError) {
+    console.warn("[SignatureProof] TSA horodatage indisponible:", tsaError);
+  }
+
   return {
     ...proof,
+    tsa,
     integrity: {
       algorithm: "SHA-256",
       proofHash,
@@ -259,10 +288,18 @@ INTÉGRITÉ
 ───────────────────────────────────────────────────────────────────
 Algorithme : ${proof.integrity.algorithm}
 Empreinte de la preuve : ${proof.integrity.proofHash}
-
+${proof.tsa ? `
+───────────────────────────────────────────────────────────────────
+HORODATAGE CERTIFIÉ (RFC 3161)
+───────────────────────────────────────────────────────────────────
+Fournisseur : ${proof.tsa.provider}
+Statut : ${proof.tsa.status === "granted" ? "Certifié" : proof.tsa.status === "fallback" ? "Fallback local" : proof.tsa.status}
+Horodaté à : ${proof.tsa.timestampedAt}
+${proof.tsa.fallbackUsed ? "⚠ Horodatage local (TSA indisponible)" : "✓ Horodatage certifié par un tiers de confiance"}
+` : ""}
 ═══════════════════════════════════════════════════════════════════
-Ce certificat atteste que le signataire a apposé sa signature 
-électronique sur le document identifié ci-dessus, conformément 
+Ce certificat atteste que le signataire a apposé sa signature
+électronique sur le document identifié ci-dessus, conformément
 au règlement eIDAS (UE) n°910/2014 et à l'article 1367 du Code Civil.
 ═══════════════════════════════════════════════════════════════════
 `.trim();
