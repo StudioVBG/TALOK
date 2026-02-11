@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { STORAGE_BUCKETS } from '@/lib/config/storage-buckets';
 
 interface RouteParams {
   params: { id: string };
@@ -124,7 +125,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Supprimer le fichier du storage
     if (document.storage_path) {
-      await supabase.storage.from('documents').remove([document.storage_path as string]);
+      await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([document.storage_path as string]);
     }
 
     // Supprimer le document de la base

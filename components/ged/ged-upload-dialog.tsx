@@ -123,8 +123,8 @@ export function GedUploadDialog({
   };
 
   const handleSubmit = async () => {
-    if (!file) {
-      toast({ title: "Aucun fichier sélectionné", variant: "destructive" });
+    if (!file || uploadMutation.isPending) {
+      if (!file) toast({ title: "Aucun fichier sélectionné", variant: "destructive" });
       return;
     }
 

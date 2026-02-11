@@ -70,9 +70,12 @@ export async function POST(request: NextRequest) {
       .select("id, storage_path, metadata, created_at")
       .eq("type", type);
 
-    // Filtrer par hash si fourni
+    // Filtrer par hash si fourni (sanitization pour éviter l'injection dans le filtre .or())
     if (hash) {
-      query = query.or(`metadata->>hash.eq.${hash},content_hash.eq.${hash}`);
+      const safeHash = hash.replace(/[^a-zA-Z0-9-_]/g, "");
+      if (safeHash.length > 0 && safeHash.length <= 128) {
+        query = query.or(`metadata->>hash.eq.${safeHash},content_hash.eq.${safeHash}`);
+      }
     }
 
     // Filtrer par références
@@ -200,7 +203,10 @@ export async function GET(request: NextRequest) {
       .eq("type", type);
 
     if (hash) {
-      query = query.or(`metadata->>hash.eq.${hash},content_hash.eq.${hash}`);
+      const safeHash = hash.replace(/[^a-zA-Z0-9-_]/g, "");
+      if (safeHash.length > 0 && safeHash.length <= 128) {
+        query = query.or(`metadata->>hash.eq.${safeHash},content_hash.eq.${safeHash}`);
+      }
     }
     if (lease_id) query = query.eq("lease_id", lease_id);
     if (payment_id) {

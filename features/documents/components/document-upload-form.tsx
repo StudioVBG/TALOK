@@ -50,6 +50,7 @@ export function DocumentUploadForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // Protection double-clic
     if (!formData.file) {
       toast({
         title: "Fichier requis",

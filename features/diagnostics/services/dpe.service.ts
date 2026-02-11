@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
-import { 
-  DpeRequestInput, 
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
+import {
+  DpeRequestInput,
   DpeDeliverableInput,
   isValidAdemeNumber
 } from "@/lib/validations/dpe";
@@ -107,7 +108,7 @@ export class DpeService {
 
     if (error) {
       // Nettoyage storage en cas d'échec
-      await this.supabase.storage.from("documents").remove([storagePath]);
+      await this.supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([storagePath]);
       throw error;
     }
 

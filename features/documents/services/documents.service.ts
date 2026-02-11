@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import { createClient } from "@/lib/supabase/client";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { documentSchema } from "@/lib/validations";
 import type { Document, DocumentType } from "@/lib/types";
 import { isDocumentGalleryColumnError } from "@/lib/features/document-gallery";
@@ -157,7 +158,7 @@ export class DocumentsService {
   async getDocumentUrl(document: Document): Promise<string> {
     const {
       data: { publicUrl },
-    } = this.supabase.storage.from("documents").getPublicUrl(document.storage_path);
+    } = this.supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).getPublicUrl(document.storage_path);
     return publicUrl;
   }
 

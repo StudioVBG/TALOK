@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { createClient } from "@supabase/supabase-js";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 
 /**
  * POST /api/documents/upload - Upload un document
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
     if (docError) {
       console.error("[POST /api/documents/upload] Document creation error:", docError);
       // Nettoyer le fichier uploadé en cas d'erreur
-      await serviceClient.storage.from("documents").remove([filePath]);
+      await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([filePath]);
       return NextResponse.json(
         { error: docError.message || "Erreur lors de la création du document" },
         { status: 500 }

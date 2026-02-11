@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { LeaseTemplateService } from "@/lib/templates/bail/template.service";
 import { mapLeaseToTemplate } from "@/lib/mappers/lease-to-template";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
@@ -213,7 +214,7 @@ export async function POST(
     if (updateError) {
       console.error("[Seal] Erreur mise à jour bail:", updateError);
       // Essayer de supprimer le fichier uploadé
-      await serviceClient.storage.from("documents").remove([storagePath]);
+      await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([storagePath]);
       
       return NextResponse.json({ 
         error: "Erreur lors de la mise à jour du bail",

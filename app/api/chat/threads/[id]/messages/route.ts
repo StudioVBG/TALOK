@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { NextResponse } from "next/server";
 
 /**
@@ -113,7 +114,7 @@ export async function POST(
       for (const file of attachments) {
         const fileName = `chat/${id}/${Date.now()}_${file.name}`;
         const { data: uploadData, error: uploadError } =
-          await supabase.storage.from("documents").upload(fileName, file, {
+          await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).upload(fileName, file, {
             contentType: file.type,
             upsert: false,
           });

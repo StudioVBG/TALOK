@@ -9,6 +9,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -206,7 +207,7 @@ export async function POST(request: Request) {
         // Supprimer les fichiers du storage
         const storagePaths = docsToDelete.map(d => d.storage_path).filter((p): p is string => Boolean(p));
         if (storagePaths.length > 0) {
-          await serviceClient.storage.from("documents").remove(storagePaths);
+          await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove(storagePaths);
         }
 
         // Supprimer les entrées de la BDD

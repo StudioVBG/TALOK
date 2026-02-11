@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
 
     const {
       data: { publicUrl },
-    } = supabase.storage.from("avatars").getPublicUrl(path);
+    } = supabase.storage.from(STORAGE_BUCKETS.AVATARS).getPublicUrl(path);
 
     const { data: profile, error: updateError } = await supabaseClient
       .from("profiles")
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
     // Supprimer l'ancien avatar si différent
     const previousPath = existingProfile?.avatar_url;
     if (previousPath && previousPath !== path) {
-      await supabase.storage.from("avatars").remove([previousPath]);
+      await supabase.storage.from(STORAGE_BUCKETS.AVATARS).remove([previousPath]);
     }
 
     return NextResponse.json({
