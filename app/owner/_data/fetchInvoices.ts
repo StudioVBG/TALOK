@@ -23,6 +23,7 @@ export interface InvoiceRow {
     property?: {
       adresse_complete: string;
       ville: string;
+      code_postal?: string;
     }
   }
 }

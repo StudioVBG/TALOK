@@ -137,7 +137,7 @@ async function fetchDashboardDirect(
     supabase
       .from("audit_log")
       .select("id, action, entity_type, created_at")
-      .eq("owner_id", ownerId)
+      .eq("profile_id", ownerId)
       .order("created_at", { ascending: false })
       .limit(10),
   ]);
@@ -220,7 +220,7 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
   const { data: activityData } = await supabase
     .from("audit_log")
     .select("id, action, entity_type, created_at")
-    .eq("owner_id", ownerId)
+    .eq("profile_id", ownerId)
     .order("created_at", { ascending: false })
     .limit(10);
 
