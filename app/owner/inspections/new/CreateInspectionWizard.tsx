@@ -64,14 +64,21 @@ interface Props {
   leases: Lease[];
   preselectedLeaseId?: string;
   preselectedType?: "entree" | "sortie";
+  /** Mode inline : embarqué dans l'onglet EDL de la page bail */
+  inline?: boolean;
+  /** Callback après création EDL (mode inline) */
+  onEdlCreated?: (edlId: string) => void;
 }
 
-export function CreateInspectionWizard({ leases, preselectedLeaseId, preselectedType }: Props) {
+/** Steps visibles selon le mode */
+const INLINE_STEPS = STEPS.filter((_, i) => i > 0); // skip "Bail" step
+
+export function CreateInspectionWizard({ leases, preselectedLeaseId, preselectedType, inline = false, onEdlCreated }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const { confirm, ConfirmDialogComponent } = useConfirmDialog();
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(inline && preselectedLeaseId ? 1 : 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // État pour la barre de progression lors de la création
@@ -116,7 +123,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
   }), [step, selectedLease, edlType, scheduledDate, selectedRooms, roomsData, currentRoomIndex, generalNotes, meterReadings, keys]);
 
   const { clearSaved: clearAutoSave } = useAutoSave({
-    key: "edl-wizard",
+    key: inline ? `edl-wizard-inline-${preselectedLeaseId}` : "edl-wizard",
     data: autoSaveData,
     onRestore: useCallback((saved: typeof autoSaveData) => {
       if (saved.step) setStep(saved.step);
@@ -136,15 +143,16 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
     }, [leases, toast]),
   });
 
-  // Auto-avancer si bail présélectionné (depuis lien direct)
+  // Auto-avancer si bail présélectionné (depuis lien direct ou inline)
   useEffect(() => {
     if (preselectedLeaseId && initialLease && step === 0) {
-      // Auto-avancer vers l'étape "Type d'EDL"
       setStep(1);
-      toast({
-        title: "Bail sélectionné",
-        description: `${initialLease.property.adresse_complete} - ${initialLease.tenant_name}`,
-      });
+      if (!inline) {
+        toast({
+          title: "Bail sélectionné",
+          description: `${initialLease.property.adresse_complete} - ${initialLease.tenant_name}`,
+        });
+      }
     }
   }, [preselectedLeaseId, initialLease]);
 
@@ -464,11 +472,13 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
     }
   };
 
+  const minStep = inline ? 1 : 0;
+
   const handlePrev = () => {
     if (step === 4 && currentRoomIndex > 0) {
       setCurrentRoomIndex(prev => prev - 1);
     } else {
-      setStep((prev) => Math.max(prev - 1, 0));
+      setStep((prev) => Math.max(prev - 1, minStep));
     }
   };
 
@@ -886,7 +896,11 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
         description: "L'EDL a été créé avec succès avec tous les relevés et photos.",
       });
 
-      router.push(`/owner/inspections/${edl.id}`);
+      if (onEdlCreated) {
+        onEdlCreated(edl.id);
+      } else {
+        router.push(`/owner/inspections/${edl.id}`);
+      }
     } catch (error: unknown) {
       toast({
         title: "Erreur",
@@ -903,40 +917,48 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
 
   const currentRoom = roomsData[currentRoomIndex];
 
+  const displaySteps = inline ? INLINE_STEPS : STEPS;
+  const stepOffset = inline ? 1 : 0; // inline skips step 0
+
   return (
-    <div className="p-4 md:p-6 w-full max-w-4xl mx-auto space-y-4 md:space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Nouvel état des lieux</h1>
-        <p className="text-sm md:text-base text-muted-foreground">
-          Créez un EDL d&apos;entrée ou de sortie en quelques étapes
-        </p>
-      </div>
+    <div className={inline ? "w-full space-y-4" : "p-4 md:p-6 w-full max-w-4xl mx-auto space-y-4 md:space-y-6"}>
+      {/* Header — masqué en mode inline (le tab fournit le contexte) */}
+      {!inline && (
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Nouvel état des lieux</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
+            Créez un EDL d&apos;entrée ou de sortie en quelques étapes
+          </p>
+        </div>
+      )}
 
       {/* Progress Steps - Responsive */}
       <div className="flex items-center justify-between mb-4 md:mb-8 overflow-x-auto pb-2">
-        {STEPS.map((s, i) => (
-          <div key={s.id} className="flex items-center flex-shrink-0">
-            <div
-              className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full border-2 transition-colors text-sm md:text-base ${
-                i < step
-                  ? "bg-primary border-primary text-primary-foreground"
-                  : i === step
-                  ? "border-primary text-primary"
-                  : "border-muted text-muted-foreground"
-              }`}
-            >
-              {i < step ? <Check className="h-4 w-4 md:h-5 md:w-5" /> : i + 1}
-            </div>
-            {i < STEPS.length - 1 && (
+        {displaySteps.map((s, displayIndex) => {
+          const actualIndex = displayIndex + stepOffset;
+          return (
+            <div key={s.id} className="flex items-center flex-shrink-0">
               <div
-                className={`w-6 sm:w-8 md:w-16 lg:w-24 h-0.5 md:h-1 mx-1 md:mx-2 rounded ${
-                  i < step ? "bg-primary" : "bg-muted"
+                className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full border-2 transition-colors text-sm md:text-base ${
+                  actualIndex < step
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : actualIndex === step
+                    ? "border-primary text-primary"
+                    : "border-muted text-muted-foreground"
                 }`}
-              />
-            )}
-          </div>
-        ))}
+              >
+                {actualIndex < step ? <Check className="h-4 w-4 md:h-5 md:w-5" /> : displayIndex + 1}
+              </div>
+              {displayIndex < displaySteps.length - 1 && (
+                <div
+                  className={`w-6 sm:w-8 md:w-16 lg:w-24 h-0.5 md:h-1 mx-1 md:mx-2 rounded ${
+                    actualIndex < step ? "bg-primary" : "bg-muted"
+                  }`}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Step Content */}
@@ -1717,7 +1739,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
         <Button
           variant="outline"
           onClick={handlePrev}
-          disabled={step === 0}
+          disabled={step <= (inline ? 1 : 0)}
           className="flex-1 sm:flex-none"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />

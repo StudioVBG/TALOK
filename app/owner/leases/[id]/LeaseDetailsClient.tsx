@@ -284,6 +284,32 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     return false;
   }, [lease, edl]);
 
+  // Données bail au format wizard EDL (pour le mode inline)
+  const wizardLease = useMemo(() => {
+    const tenantName = signers
+      ?.filter((s: any) => {
+        const role = (s.role || "").toLowerCase();
+        return role === "locataire_principal" || role === "locataire" || role === "colocataire";
+      })
+      .map((s: any) => `${s.profile?.prenom || ""} ${s.profile?.nom || ""}`.trim())
+      .filter(Boolean)
+      .join(", ") || "Locataire";
+
+    return {
+      id: leaseId,
+      type_bail: lease.type_bail,
+      statut: lease.statut,
+      date_debut: lease.date_debut,
+      property: {
+        id: property.id,
+        adresse_complete: property.adresse_complete,
+        ville: property.ville,
+        code_postal: property.code_postal,
+      },
+      tenant_name: tenantName,
+    };
+  }, [leaseId, lease, property, signers]);
+
   // ✅ SOTA 2026: Priorité aux données pré-calculées dans lease.has_paid_initial
   const hasPaidInitial = useMemo(() => {
     // 1. Utiliser la valeur pré-calculée par fetchLeaseDetails (SSOT)
@@ -935,15 +961,16 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 </div>
               </TabsContent>
 
-              {/* Contenu : EDL d'entrée */}
+              {/* Contenu : EDL d'entrée — padding réduit si wizard inline */}
               <TabsContent value="edl" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-auto p-6 h-full">
+                <div className={`bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-auto h-full ${!edl && lease.statut === "fully_signed" ? "p-2 md:p-4" : "p-6"}`}>
                   <LeaseEdlTab
                     leaseId={leaseId}
                     propertyId={property.id}
                     leaseStatus={lease.statut}
                     edl={edl}
                     hasSignedEdl={hasSignedEdl}
+                    wizardLease={wizardLease}
                   />
                 </div>
               </TabsContent>

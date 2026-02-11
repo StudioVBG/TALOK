@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -12,14 +11,11 @@ import {
   CheckCircle,
   FileText,
   ExternalLink,
-  ArrowRight,
-  Camera,
-  Key,
   Calendar,
   AlertTriangle,
   Loader2,
-  Plus,
 } from "lucide-react";
+import { CreateInspectionWizard } from "@/app/owner/inspections/new/CreateInspectionWizard";
 
 interface EdlData {
   id: string;
@@ -29,12 +25,29 @@ interface EdlData {
   completed_date?: string | null;
 }
 
+/** Données bail au format attendu par le wizard */
+interface WizardLease {
+  id: string;
+  type_bail: string;
+  statut: string;
+  date_debut: string;
+  property: {
+    id: string;
+    adresse_complete: string;
+    ville: string;
+    code_postal: string;
+  };
+  tenant_name: string;
+}
+
 interface LeaseEdlTabProps {
   leaseId: string;
   propertyId: string;
   leaseStatus: string;
   edl: EdlData | null;
   hasSignedEdl: boolean;
+  /** Données bail pour le wizard inline */
+  wizardLease?: WizardLease | null;
 }
 
 const EDL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -46,7 +59,7 @@ const EDL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: ty
   disputed: { label: "Contesté", color: "bg-red-100 text-red-700", icon: AlertTriangle },
 };
 
-export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEdl }: LeaseEdlTabProps) {
+export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEdl, wizardLease }: LeaseEdlTabProps) {
   const router = useRouter();
 
   // Bail pas encore signé : EDL non disponible
@@ -72,14 +85,31 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
     );
   }
 
-  // Bail signé mais pas d'EDL encore : proposer la création
-  if (!edl) {
+  // Bail signé mais pas d'EDL encore : WIZARD INLINE directement
+  if (!edl && wizardLease) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center justify-center py-12 px-4"
       >
+        <CreateInspectionWizard
+          leases={[wizardLease]}
+          preselectedLeaseId={leaseId}
+          preselectedType="entree"
+          inline
+          onEdlCreated={(edlId) => {
+            // Rafraîchir la page bail pour voir l'EDL créé
+            router.refresh();
+          }}
+        />
+      </motion.div>
+    );
+  }
+
+  // Pas d'EDL et pas de données wizard : fallback vers la page dédiée
+  if (!edl) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4">
         <div className="p-4 bg-indigo-100 rounded-full mb-4">
           <ClipboardCheck className="h-8 w-8 text-indigo-600" />
         </div>
@@ -87,39 +117,17 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
           Créer l&apos;état des lieux d&apos;entrée
         </h3>
         <p className="text-sm text-slate-600 text-center max-w-md mb-6">
-          Le bail est signé. L&apos;état des lieux d&apos;entrée est requis pour activer le bail
-          et remettre les clés au locataire.
+          Le bail est signé. L&apos;état des lieux d&apos;entrée est requis pour activer le bail.
         </p>
-
-        <Card className="w-full max-w-lg border-2 border-dashed border-indigo-200 bg-indigo-50/50">
-          <CardContent className="p-6">
-            <div className="space-y-3 text-sm text-slate-600 mb-6">
-              <div className="flex items-start gap-3">
-                <Camera className="h-4 w-4 mt-0.5 text-indigo-500 flex-shrink-0" />
-                <span>Inspection pièce par pièce avec photos</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <FileText className="h-4 w-4 mt-0.5 text-indigo-500 flex-shrink-0" />
-                <span>Relevé des compteurs (eau, gaz, électricité)</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <Key className="h-4 w-4 mt-0.5 text-indigo-500 flex-shrink-0" />
-                <span>Inventaire du trousseau de clés</span>
-              </div>
-            </div>
-
-            <Button
-              size="lg"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2"
-              onClick={() => router.push(`/owner/inspections/new?lease_id=${leaseId}&property_id=${propertyId}&type=entree`)}
-            >
-              <Plus className="h-4 w-4" />
-              Créer l&apos;EDL d&apos;entrée
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </CardContent>
-        </Card>
-      </motion.div>
+        <Button
+          size="lg"
+          className="bg-indigo-600 hover:bg-indigo-700 gap-2"
+          onClick={() => router.push(`/owner/inspections/new?lease_id=${leaseId}&property_id=${propertyId}&type=entree`)}
+        >
+          <ClipboardCheck className="h-4 w-4" />
+          Créer l&apos;EDL d&apos;entrée
+        </Button>
+      </div>
     );
   }
 
