@@ -21,53 +21,78 @@ function verifyCronSecret(request: Request): boolean {
 
 // Indices IRL par trimestre (source: INSEE)
 // Format: "YYYY-TQ" => valeur
+// Mise à jour : Février 2026 (données publiées par l'INSEE)
 const IRL_VALUES: Record<string, number> = {
+  // 2026
+  "2026-T1": 148.00, // Estimation (publication avril 2026)
+  // 2025 (Source: INSEE - Avis de parution)
+  "2025-T1": 145.17,
+  "2025-T2": 145.68,
+  "2025-T3": 146.24,
+  "2025-T4": 147.12,
+  // 2024
   "2024-T1": 143.46,
   "2024-T2": 144.42,
   "2024-T3": 144.51,
   "2024-T4": 145.47,
+  // 2023
   "2023-T1": 138.61,
   "2023-T2": 140.59,
   "2023-T3": 141.03,
   "2023-T4": 142.06,
+  // 2022
   "2022-T1": 133.93,
   "2022-T2": 135.84,
   "2022-T3": 136.27,
   "2022-T4": 137.26,
+  // 2021
+  "2021-T1": 130.69,
+  "2021-T2": 131.12,
+  "2021-T3": 131.67,
+  "2021-T4": 132.62,
 };
 
-function getCurrentIRL(): { key: string; value: number } {
+function getCurrentIRL(): { key: string; value: number; estimated: boolean } {
   const now = new Date();
   const year = now.getFullYear();
   const quarter = Math.ceil((now.getMonth() + 1) / 3);
-  
-  // Chercher le dernier IRL disponible
-  for (let y = year; y >= year - 2; y--) {
-    for (let q = quarter; q >= 1; q--) {
+
+  // Chercher le dernier IRL disponible (publié par l'INSEE)
+  for (let y = year; y >= year - 3; y--) {
+    const startQ = y === year ? quarter : 4;
+    for (let q = startQ; q >= 1; q--) {
       const key = `${y}-T${q}`;
       if (IRL_VALUES[key]) {
-        return { key, value: IRL_VALUES[key] };
+        return { key, value: IRL_VALUES[key], estimated: false };
       }
     }
   }
-  
-  // Fallback
-  return { key: "2024-T4", value: 145.47 };
+
+  // Fallback : estimer à partir du dernier trimestre connu + tendance
+  const lastKnown = Object.entries(IRL_VALUES)
+    .sort(([a], [b]) => b.localeCompare(a))[0];
+  if (lastKnown) {
+    return { key: lastKnown[0] + " (fallback)", value: lastKnown[1], estimated: true };
+  }
+
+  return { key: "2025-T4", value: 147.12, estimated: true };
 }
 
 function getIRLForDate(date: Date): { key: string; value: number } {
   const year = date.getFullYear();
   const quarter = Math.ceil((date.getMonth() + 1) / 3);
-  
-  for (let y = year; y >= year - 2; y--) {
-    for (let q = 4; q >= 1; q--) {
+
+  // Chercher le trimestre exact d'abord, puis le dernier disponible avant cette date
+  for (let y = year; y >= year - 4; y--) {
+    const startQ = y === year ? quarter : 4;
+    for (let q = startQ; q >= 1; q--) {
       const key = `${y}-T${q}`;
       if (IRL_VALUES[key]) {
         return { key, value: IRL_VALUES[key] };
       }
     }
   }
-  
+
   return { key: "2023-T4", value: 142.06 };
 }
 

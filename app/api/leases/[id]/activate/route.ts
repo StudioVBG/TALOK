@@ -106,7 +106,27 @@ export async function POST(
       }, { status: 400 });
     }
     
-    // 5. Vérifier l'EDL d'entrée
+    // 5. Vérifier l'assurance habitation (obligatoire Art. 7 Loi 89-462)
+    const { data: insurance } = await serviceClient
+      .from("insurance_policies")
+      .select("id, policy_number, insurer_name, coverage_type, start_date, end_date")
+      .eq("lease_id", leaseId)
+      .gte("end_date", new Date().toISOString().split("T")[0])
+      .limit(1)
+      .maybeSingle();
+
+    const { force_without_insurance = false } = await request.clone().json().catch(() => ({}));
+
+    if (!insurance && !force_without_insurance) {
+      return NextResponse.json({
+        error: "Aucune attestation d'assurance habitation valide pour ce bail",
+        hint: "Le locataire doit fournir une attestation d'assurance couvrant la date d'aujourd'hui (Art. 7 Loi 89-462). Utilisez force_without_insurance: true pour forcer.",
+        can_force: true,
+        missing: "insurance"
+      }, { status: 400 });
+    }
+
+    // 6. Vérifier l'EDL d'entrée
     const { data: edl, error: edlError } = await serviceClient
       .from("edl")
       .select("id, type, status, completed_date")
@@ -115,7 +135,7 @@ export async function POST(
       .single();
     
     // Options selon le body de la requête
-    const body = await request.json().catch(() => ({}));
+    const body = await request.clone().json().catch(() => ({}));
     const { force_without_edl = false, skip_date_check = false } = body;
     
     if (!edl && !force_without_edl) {
@@ -334,6 +354,15 @@ export async function GET(
       );
     }
     
+    // Vérifier l'assurance habitation
+    const { data: insurance } = await serviceClient
+      .from("insurance_policies")
+      .select("id, insurer_name, end_date")
+      .eq("lease_id", leaseId)
+      .gte("end_date", new Date().toISOString().split("T")[0])
+      .limit(1)
+      .maybeSingle();
+
     // Récupérer l'EDL d'entrée s'il existe
     const { data: edl } = await serviceClient
       .from("edl")
@@ -354,12 +383,14 @@ export async function GET(
       edl_existe: !!edl,
       edl_signe: edl?.status === "signed",
       date_debut_atteinte: new Date(lease.date_debut) <= new Date(),
-      toutes_signatures: signers?.every((s: any) => s.signature_status === "signed") || false
+      toutes_signatures: signers?.every((s: any) => s.signature_status === "signed") || false,
+      assurance_valide: !!insurance,
+      assurance_expiration: insurance?.end_date || null
     };
-    
-    const canActivate = conditions.bail_signe && conditions.edl_signe;
+
+    const canActivate = conditions.bail_signe && conditions.edl_signe && conditions.assurance_valide;
     const canForceActivate = conditions.bail_signe; // Force si au moins signé
-    
+
     const missingConditions: string[] = [];
     if (!conditions.bail_signe) {
       missingConditions.push("Le bail n'est pas entièrement signé");
@@ -368,6 +399,9 @@ export async function GET(
       missingConditions.push("Aucun état des lieux d'entrée n'a été créé");
     } else if (!conditions.edl_signe) {
       missingConditions.push(`L'état des lieux d'entrée n'est pas signé (statut: ${edl?.status})`);
+    }
+    if (!conditions.assurance_valide) {
+      missingConditions.push("Aucune attestation d'assurance habitation valide");
     }
     if (!conditions.date_debut_atteinte) {
       missingConditions.push(`La date de début (${lease.date_debut}) n'est pas encore atteinte`);
@@ -385,6 +419,11 @@ export async function GET(
         status: edl.status,
         scheduled_date: edl.scheduled_date,
         completed_date: edl.completed_date
+      } : null,
+      insurance: insurance ? {
+        id: insurance.id,
+        insurer: insurance.insurer_name,
+        expires: insurance.end_date
       } : null,
       signatures: signers?.map((s: any) => ({
         role: s.role,

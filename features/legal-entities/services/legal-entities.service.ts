@@ -547,6 +547,10 @@ export async function createPropertyOwnership(
 
 /**
  * Transfère un bien à une autre entité
+ *
+ * Art. 1743 Code Civil : En cas de vente du bien loué, l'acquéreur est tenu
+ * de respecter le bail en cours. Le locataire doit être informé du changement
+ * de propriétaire (nom, adresse, coordonnées).
  */
 export async function transferPropertyOwnership(
   propertyId: string,
@@ -592,6 +596,112 @@ export async function transferPropertyOwnership(
     notaire_nom: transferData.notaire_nom,
     reference_acte: transferData.reference_acte,
   });
+
+  // 3. Récupérer le nouveau propriétaire (owner de la nouvelle entité)
+  const { data: newEntity } = await supabase
+    .from("legal_entities")
+    .select("id, denomination, owner_id")
+    .eq("id", toEntityId)
+    .single();
+
+  // 4. Mettre à jour owner_id sur la propriété (SSOT)
+  if (newEntity?.owner_id) {
+    await supabase
+      .from("properties")
+      .update({
+        owner_id: newEntity.owner_id,
+        legal_entity_id: toEntityId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", propertyId);
+  }
+
+  // 5. Mettre à jour les baux actifs (Art. 1743 Code Civil)
+  const { data: activeLeases } = await supabase
+    .from("leases")
+    .select(`
+      id,
+      signers:lease_signers (
+        id,
+        role,
+        profile_id,
+        profile:profiles!lease_signers_profile_id_fkey (
+          id, user_id, prenom, nom
+        )
+      )
+    `)
+    .eq("property_id", propertyId)
+    .in("statut", ["active", "notice_given", "fully_signed", "pending_signature"]);
+
+  for (const lease of activeLeases || []) {
+    // 5a. Remplacer le signataire propriétaire sur le bail
+    if (newEntity?.owner_id) {
+      const ownerSigner = (lease.signers as any[])?.find(
+        (s) => ["proprietaire", "owner", "bailleur"].includes(s.role)
+      );
+
+      if (ownerSigner) {
+        await supabase
+          .from("lease_signers")
+          .update({
+            profile_id: newEntity.owner_id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", ownerSigner.id);
+      }
+    }
+
+    // 5b. Notifier tous les locataires (obligation Art. 1743)
+    const tenants = (lease.signers as any[])?.filter(
+      (s) => ["locataire_principal", "locataire", "tenant", "principal", "colocataire"].includes(s.role)
+    ) || [];
+
+    for (const tenant of tenants) {
+      if (tenant.profile?.user_id) {
+        await supabase.from("notifications").insert({
+          user_id: tenant.profile.user_id,
+          type: "ownership_transfer",
+          title: "Changement de propriétaire",
+          message: `Le bien que vous louez a changé de propriétaire. Le nouveau bailleur est : ${newEntity?.denomination || "Nouveau propriétaire"}. Votre bail reste inchangé (Art. 1743 Code Civil). Les coordonnées de paiement peuvent être modifiées — vous serez informé(e).`,
+          data: {
+            lease_id: lease.id,
+            property_id: propertyId,
+            new_entity_id: toEntityId,
+            new_entity_name: newEntity?.denomination,
+            transfer_date: transferData.date_cession,
+          },
+        });
+      }
+    }
+
+    // 5c. Outbox event pour traitement asynchrone (mise à jour RIB, etc.)
+    await supabase.from("outbox").insert({
+      event_type: "Lease.OwnershipTransferred",
+      aggregate_id: lease.id,
+      payload: {
+        lease_id: lease.id,
+        property_id: propertyId,
+        from_entity_id: fromEntityId,
+        to_entity_id: toEntityId,
+        new_owner_id: newEntity?.owner_id,
+        transfer_date: transferData.date_cession,
+      },
+    });
+
+    // 5d. Audit log
+    await supabase.from("audit_log").insert({
+      action: "lease_ownership_transferred",
+      entity_type: "lease",
+      entity_id: lease.id,
+      metadata: {
+        property_id: propertyId,
+        from_entity_id: fromEntityId,
+        to_entity_id: toEntityId,
+        transfer_date: transferData.date_cession,
+        tenants_notified: tenants.length,
+      },
+    });
+  }
 }
 
 // ============================================

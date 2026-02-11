@@ -73,7 +73,75 @@ export async function POST(
       );
     }
 
-    // 4. Vérifier les signataires requis (min 1 proprio + 1 locataire)
+    // 4. Vérifier les annexes obligatoires (Art. 3-3 Loi 89-462 / Loi ALUR)
+    const { data: leaseFull } = await serviceClient
+      .from("leases")
+      .select("type_bail, property_id")
+      .eq("id", leaseId)
+      .single();
+
+    const typeBail = (leaseFull as any)?.type_bail || "nu";
+
+    // Annexes obligatoires pour tous les baux résidentiels
+    const MANDATORY_ANNEXES: Record<string, { label: string; condition?: (type: string) => boolean }> = {
+      dpe: { label: "DPE (Diagnostic de Performance Énergétique)" },
+      diagnostic_electricite: { label: "Diagnostic Électricité (installation > 15 ans)" },
+      diagnostic_gaz: { label: "Diagnostic Gaz (installation > 15 ans)" },
+      diagnostic_plomb: { label: "Diagnostic Plomb / CREP (immeuble avant 1949)" },
+      erp: { label: "État des Risques et Pollutions (ERP)" },
+      inventaire: {
+        label: "Inventaire du mobilier (Décret 2015-981)",
+        condition: (t) => ["meuble", "colocation", "etudiant", "bail_mobilite"].includes(t)
+      },
+    };
+
+    // Vérifier les documents uploadés pour ce bail
+    const { data: documents } = await serviceClient
+      .from("documents")
+      .select("type")
+      .eq("lease_id", leaseId);
+
+    // Vérifier aussi les documents liés au bien
+    const { data: propertyDocs } = await serviceClient
+      .from("documents")
+      .select("type")
+      .eq("property_id", lease.property_id);
+
+    const allDocTypes = new Set([
+      ...(documents || []).map((d: any) => d.type),
+      ...(propertyDocs || []).map((d: any) => d.type),
+    ]);
+
+    const missingAnnexes: string[] = [];
+    const commercialTypes = ["commercial_3_6_9", "commercial_derogatoire", "professionnel", "location_gerance", "bail_rural", "contrat_parking"];
+    const isResidential = !commercialTypes.includes(typeBail);
+
+    if (isResidential) {
+      for (const [docType, config] of Object.entries(MANDATORY_ANNEXES)) {
+        // Si condition spécifique par type de bail
+        if (config.condition && !config.condition(typeBail)) continue;
+        if (!allDocTypes.has(docType)) {
+          missingAnnexes.push(config.label);
+        }
+      }
+    }
+
+    // Body pour options
+    const reqBody = await request.json().catch(() => ({}));
+    const { force_without_annexes = false } = reqBody;
+
+    if (missingAnnexes.length > 0 && !force_without_annexes) {
+      return NextResponse.json({
+        error: "Annexes obligatoires manquantes",
+        missing_annexes: missingAnnexes,
+        missing_count: missingAnnexes.length,
+        hint: "Uploadez les diagnostics obligatoires avant l'envoi pour signature (Art. 3-3 Loi 89-462). Utilisez force_without_annexes: true pour forcer.",
+        can_force: true,
+        conformity: "non_conforme"
+      }, { status: 400 });
+    }
+
+    // 5. Vérifier les signataires requis (min 1 proprio + 1 locataire)
     const { data: signers } = await serviceClient
       .from("lease_signers")
       .select("id, role, invited_email, profile_id")
@@ -147,6 +215,8 @@ export async function POST(
           signers_count: signers.length,
           has_owner: hasOwner,
           has_tenant: hasTenant,
+          conformity: missingAnnexes.length === 0 ? "conforme" : "forced",
+          missing_annexes: missingAnnexes,
         },
       } as any)
       .then(() => {})
