@@ -356,15 +356,15 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     
     // 3. Bail signé, EDL requis — action contextuelle selon l'état de l'EDL
     if (lease.statut === "fully_signed" && !hasSignedEdl) {
-      // 3a. Pas d'EDL → Créer
+      // 3a. Pas d'EDL → Aller à l'onglet EDL (wizard inline)
       if (!edl) {
         return {
           type: "create_edl",
           icon: ClipboardCheck,
           title: "Créer l'état des lieux",
           description: "Le bail est signé. Créez l'EDL d'entrée pour l'activer.",
-          href: `/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}&type=entree`,
-          actionLabel: "Créer l'EDL d'entrée",
+          action: () => setActiveTab("edl"),
+          actionLabel: "Commencer l'EDL d'entrée",
           color: "indigo"
         };
       }
@@ -1105,10 +1105,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                         <Button
                           size="sm"
                           className="w-full bg-indigo-600 hover:bg-indigo-700"
-                          onClick={() => router.push(`/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}&type=entree`)}
+                          onClick={() => setActiveTab("edl")}
                         >
                           <ClipboardCheck className="h-4 w-4 mr-2" />
-                          Créer l&apos;EDL d&apos;entrée
+                          Commencer l&apos;EDL d&apos;entrée
                         </Button>
                       )
                     )}
