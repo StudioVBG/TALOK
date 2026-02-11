@@ -328,13 +328,51 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       };
     }
     
-    // 3. Bail signé, EDL requis — switch vers l'onglet EDL
+    // 3. Bail signé, EDL requis — action contextuelle selon l'état de l'EDL
     if (lease.statut === "fully_signed" && !hasSignedEdl) {
+      // 3a. Pas d'EDL → Créer
+      if (!edl) {
+        return {
+          type: "create_edl",
+          icon: ClipboardCheck,
+          title: "Créer l'état des lieux",
+          description: "Le bail est signé. Créez l'EDL d'entrée pour l'activer.",
+          href: `/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}&type=entree`,
+          actionLabel: "Créer l'EDL d'entrée",
+          color: "indigo"
+        };
+      }
+      // 3b. EDL incomplet (brouillon, planifié, en cours) → Continuer
+      if (["draft", "scheduled", "in_progress"].includes(edl.status)) {
+        return {
+          type: "continue_edl",
+          icon: ClipboardCheck,
+          title: "Compléter l'état des lieux",
+          description: "Un EDL d'entrée est en cours. Complétez-le pour activer le bail.",
+          href: `/owner/inspections/${edl.id}`,
+          actionLabel: "Continuer l'EDL",
+          color: "indigo"
+        };
+      }
+      // 3c. EDL complété mais pas signé → Signer
+      if (edl.status === "completed") {
+        return {
+          type: "sign_edl",
+          icon: PenTool,
+          title: "Signer l'état des lieux",
+          description: "L'EDL est complété. Faites-le signer pour activer le bail.",
+          href: `/owner/inspections/${edl.id}`,
+          actionLabel: "Signer l'EDL",
+          color: "indigo",
+          urgent: true
+        };
+      }
+      // 3d. Autre statut (ex: disputed) → Voir l'onglet EDL
       return {
-        type: "create_edl",
+        type: "view_edl",
         icon: ClipboardCheck,
-        title: "Créer l'état des lieux",
-        description: "Le bail est signé. Créez l'EDL d'entrée pour l'activer.",
+        title: "État des lieux",
+        description: "Consultez l'état des lieux d'entrée.",
         action: () => setActiveTab("edl"),
         actionLabel: "Voir l'onglet EDL",
         color: "indigo"
@@ -381,7 +419,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     }
     
     return null;
-  }, [lease.statut, mainTenant, needsOwnerSignature, hasSignedEdl, hasPaidInitial, premierVersement, leaseId, property.id]);
+  }, [lease.statut, mainTenant, needsOwnerSignature, hasSignedEdl, hasPaidInitial, premierVersement, leaseId, property.id, edl]);
 
   // Construire bailData pour la prévisualisation (via mapper)
   const bailData = mapLeaseToTemplate(details, ownerProfile);
