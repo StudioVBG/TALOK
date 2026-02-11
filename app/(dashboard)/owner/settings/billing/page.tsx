@@ -83,6 +83,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import type { SubscriptionInvoice } from "@/lib/subscriptions/types";
+import type { PaymentMethod as PaymentMethodType } from "@/types/billing";
 
 // ============================================
 // CONSTANTS
@@ -597,6 +598,152 @@ function UsageCard() {
 }
 
 // ============================================
+// PAYMENT METHOD CARD
+// ============================================
+
+const BRAND_DISPLAY: Record<string, string> = {
+  visa: "Visa",
+  mastercard: "Mastercard",
+  amex: "Amex",
+  discover: "Discover",
+  sepa: "SEPA",
+  unknown: "Carte",
+};
+
+function PaymentMethodCard() {
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType | null>(null);
+  const [pmLoading, setPmLoading] = useState(true);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchPM = async () => {
+      try {
+        const res = await fetch("/api/subscriptions/payment-method");
+        if (res.ok) {
+          const data = await res.json();
+          setPaymentMethod(data.payment_method || null);
+        }
+      } catch {
+        // Silently fail - will show "no payment method"
+      } finally {
+        setPmLoading(false);
+      }
+    };
+    fetchPM();
+  }, []);
+
+  const openPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const res = await fetch("/api/subscriptions/payment-method", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur");
+      window.location.href = data.url;
+    } catch (error: unknown) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible d'ouvrir le portail",
+        variant: "destructive",
+      });
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  if (pmLoading) {
+    return (
+      <Card className="bg-slate-800/50 border-slate-700">
+        <CardHeader>
+          <Skeleton className="h-6 w-40 bg-slate-700/50" />
+          <Skeleton className="h-4 w-56 mt-2 bg-slate-700/50" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-16 w-full bg-slate-700/50" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-slate-800/50 border-slate-700">
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2 text-white">
+          <CreditCard className="w-5 h-5 text-violet-400" aria-hidden="true" />
+          Moyen de paiement
+        </CardTitle>
+        <CardDescription className="text-slate-400">
+          Gerez votre carte bancaire ou prelevement SEPA
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {paymentMethod ? (
+          <div className="p-4 rounded-lg bg-slate-900/50 border border-slate-700/50">
+            <div className="flex items-center gap-3">
+              <CreditCard className="w-5 h-5 text-slate-400 flex-shrink-0" aria-hidden="true" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-200">
+                  {BRAND_DISPLAY[paymentMethod.brand] || "Carte"}{" "}
+                  {paymentMethod.type === "sepa_debit"
+                    ? `**** ${paymentMethod.last4}`
+                    : `**** **** **** ${paymentMethod.last4}`}
+                </p>
+                {paymentMethod.exp_month > 0 && (
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    exp. {String(paymentMethod.exp_month).padStart(2, "0")}/{paymentMethod.exp_year}
+                  </p>
+                )}
+                {paymentMethod.type === "sepa_debit" && (
+                  <p className="text-xs text-slate-500 mt-0.5">Prelevement SEPA</p>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-slate-600 text-slate-300 hover:text-white flex-shrink-0"
+                onClick={openPortal}
+                disabled={portalLoading}
+              >
+                {portalLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Modifier"
+                )}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" aria-hidden="true" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-300">Aucun moyen de paiement</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Ajoutez une carte bancaire ou un IBAN pour activer votre abonnement.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                className="bg-violet-600 hover:bg-violet-500 flex-shrink-0"
+                onClick={openPortal}
+                disabled={portalLoading}
+              >
+                {portalLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                ) : (
+                  <CreditCard className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                )}
+                Ajouter
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================
 // MAIN PAGE
 // ============================================
 
@@ -1042,6 +1189,9 @@ export default function BillingPage() {
           {/* Usage Card */}
           <UsageCard />
         </div>
+
+        {/* Payment Method */}
+        <PaymentMethodCard />
 
         {/* Invoices */}
         <Card className="bg-slate-800/50 border-slate-700">

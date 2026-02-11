@@ -130,10 +130,12 @@ export interface InvoicesResponse {
 
 export interface PaymentMethod {
   id: string;
-  brand: "visa" | "mastercard" | "amex" | "discover" | "unknown";
+  type?: "card" | "sepa_debit" | string;
+  brand: "visa" | "mastercard" | "amex" | "discover" | "sepa" | "unknown";
   last4: string;
   exp_month: number;
   exp_year: number;
+  bank_code?: string;
 }
 
 // ============================================
