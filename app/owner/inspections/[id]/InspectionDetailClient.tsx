@@ -175,13 +175,8 @@ export function InspectionDetailClient({ data }: Props) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
 
-  // Scroll vers l'aperçu (utile sur mobile où l'aperçu est en bas)
-  const scrollToPreview = () => {
-    const el = document.getElementById("edl-preview-section");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
+  // État pour le dialogue d'aperçu plein écran
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // Données
   const { raw: edl, meterReadings, propertyMeters, ownerProfile, stats } = data;
@@ -562,12 +557,12 @@ export function InspectionDetailClient({ data }: Props) {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-            {/* Bouton Aperçu — visible sur mobile pour scroller vers l'aperçu */}
+            {/* Bouton Aperçu — ouvre un dialogue plein écran avec l'aperçu du document */}
             <Button
               variant="outline"
               size="sm"
-              onClick={scrollToPreview}
-              className="lg:hidden bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-50 shadow-sm h-8 sm:h-9 px-2 sm:px-3"
+              onClick={() => setIsPreviewOpen(true)}
+              className="bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-50 shadow-sm h-8 sm:h-9 px-2 sm:px-3"
             >
               <Eye className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Aperçu</span>
@@ -930,6 +925,27 @@ export function InspectionDetailClient({ data }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Modal Aperçu plein écran */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 gap-0">
+          <DialogHeader className="p-4 border-b bg-white flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Eye className="h-5 w-5 text-indigo-600" />
+              Aperçu — EDL {edl.type === "entree" ? "d'entrée" : "de sortie"} — {edl.lease?.property?.ville}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Aperçu complet de l&apos;état des lieux
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto min-h-0" style={{ height: "calc(95vh - 80px)" }}>
+            <EDLPreview
+              edlData={edlTemplateData}
+              edlId={edl.id}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de Signature */}
       <Dialog open={isSignModalOpen} onOpenChange={setIsSignModalOpen}>
