@@ -103,6 +103,16 @@ function UsageMeter({ metric, current, max, alertLevel }: UsageMeterProps) {
               <Progress value={percentage} className={cn("h-2", colors.bar)} />
             </div>
           )}
+          {!isUnlimited && alertLevel === "normal" && (
+            <p className="text-xs text-slate-500">
+              {Math.round(percentage)}% utilise
+            </p>
+          )}
+          {alertLevel === "warning" && (
+            <p className="text-xs text-amber-400">
+              {Math.round(percentage)}% utilise — proche de la limite
+            </p>
+          )}
           {(alertLevel === "exceeded" || alertLevel === "critical") && (
             <p className={cn("text-xs", alertLevel === "exceeded" ? "text-red-400" : "text-orange-400")}>
               {alertLevel === "exceeded"
