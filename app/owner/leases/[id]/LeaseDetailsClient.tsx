@@ -710,8 +710,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
           {/* Colonne de gauche : Onglets Contrat / EDL / Documents / Paiements */}
-          <div className="lg:col-span-8 xl:col-span-9 order-2 lg:order-1 flex flex-col h-[calc(100vh-8rem-4rem)] md:h-[calc(100vh-8rem)]">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1">
+          <div className="lg:col-span-8 xl:col-span-9 order-2 lg:order-1 flex flex-col lg:h-[calc(100vh-8rem)]">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col lg:flex-1">
               {/* Barre d'onglets */}
               <TabsList className="w-full justify-start bg-white border border-slate-200 rounded-t-xl rounded-b-none h-12 px-2 gap-1">
                 <TabsTrigger value="contrat" className="gap-2 data-[state=active]:bg-slate-100">
@@ -761,7 +761,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Contrat */}
               <TabsContent value="contrat" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-hidden flex-1 flex flex-col h-full">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-hidden flex-1 flex flex-col min-h-[50vh] lg:h-full">
                   {isSealed && signedPdfPath ? (
                     <div className="flex flex-col h-full">
                       <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-green-50">
@@ -822,7 +822,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : EDL d'entrée */}
               <TabsContent value="edl" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-auto p-6 pb-24 md:pb-6 h-full">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeaseEdlTab
                     leaseId={leaseId}
                     propertyId={property.id}
@@ -835,7 +835,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Documents */}
               <TabsContent value="documents" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-auto p-6 pb-24 md:pb-6 h-full">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeaseDocumentsTab
                     leaseId={leaseId}
                     propertyId={property.id}
@@ -847,7 +847,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Paiements */}
               <TabsContent value="paiements" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-auto p-6 pb-24 md:pb-6 h-full">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeasePaymentsTab
                     leaseId={leaseId}
                     payments={payments || []}
