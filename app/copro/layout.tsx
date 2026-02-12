@@ -26,7 +26,9 @@ const navigation = [
 ];
 
 // Rôles copropriétaires autorisés
+// Inclut le rôle DB "coproprietaire" + les sous-rôles métier éventuels
 const COPRO_ROLES = [
+  "coproprietaire",
   "coproprietaire_occupant",
   "coproprietaire_bailleur",
   "coproprietaire_nu",

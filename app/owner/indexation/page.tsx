@@ -59,7 +59,7 @@ async function IndexationContent() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/auth/signin");
   }
 
   // Récupérer le profil propriétaire
@@ -70,7 +70,7 @@ async function IndexationContent() {
     .single();
 
   if (!profile) {
-    redirect("/login");
+    redirect("/auth/signin");
   }
 
   const indexations = await fetchIndexations(profile.id);

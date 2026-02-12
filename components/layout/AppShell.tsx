@@ -141,6 +141,21 @@ const roleLabels: Record<UserRole, string> = {
   admin: "Admin",
 };
 
+// Routes profil et paramètres par rôle
+const profileRoutes: Record<UserRole, string> = {
+  owner: "/owner/profile",
+  tenant: "/tenant/settings",
+  provider: "/provider/settings",
+  admin: "/admin/dashboard",
+};
+
+const settingsRoutes: Record<UserRole, string> = {
+  owner: "/owner/profile",
+  tenant: "/tenant/settings",
+  provider: "/provider/settings",
+  admin: "/admin/dashboard",
+};
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -404,13 +419,13 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={`/${role}/settings`}>
+                  <Link href={profileRoutes[role]}>
                     <User className="mr-2 h-4 w-4" />
                     Mon profil
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href={`/${role}/settings`}>
+                  <Link href={settingsRoutes[role]}>
                     <Settings className="mr-2 h-4 w-4" />
                     Paramètres
                   </Link>

@@ -23,7 +23,7 @@ async function ReceiptsContent() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/auth/signin");
   }
 
   // Récupérer le bail du locataire
