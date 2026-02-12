@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,6 +25,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordStrength } from "@/components/ui/password-strength";
 import { cn } from "@/lib/utils";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 
@@ -130,12 +130,21 @@ export default function AccountCreationPage() {
   };
 
   // Helper pour sauvegarder en arrière-plan
+  // SECURITY: On exclut les mots de passe du brouillon pour ne jamais les persister
   const saveDraftInBackground = (nextDraft: AccountDraft) => {
     setAutosaving(true);
+    const safeDraft: AccountDraft = {
+      ...nextDraft,
+      formData: {
+        ...nextDraft.formData,
+        password: "",
+        confirmPassword: "",
+      },
+    };
     void onboardingService.saveDraft(
       "account_creation",
       {
-        accountCreation: nextDraft,
+        accountCreation: safeDraft,
         inviteToken,
         propertyCode,
       },
@@ -290,10 +299,16 @@ export default function AccountCreationPage() {
           description: "Veuillez patienter avant de réessayer.",
           variant: "destructive",
         });
+      } else if (message.includes("password") || message.includes("mot de passe")) {
+        toast({
+          title: "Mot de passe invalide",
+          description: "Le mot de passe doit contenir au moins 12 caractères, 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Erreur",
-          description: error instanceof Error ? (error as Error).message : "Impossible de créer le compte.",
+          description: "Impossible de créer le compte. Veuillez réessayer.",
           variant: "destructive",
         });
       }
@@ -386,11 +401,14 @@ export default function AccountCreationPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="FR">🇫🇷 +33</SelectItem>
-                    <SelectItem value="MQ">🇲🇶 +596</SelectItem>
                     <SelectItem value="GP">🇬🇵 +590</SelectItem>
+                    <SelectItem value="MQ">🇲🇶 +596</SelectItem>
                     <SelectItem value="GF">🇬🇫 +594</SelectItem>
                     <SelectItem value="RE">🇷🇪 +262</SelectItem>
                     <SelectItem value="YT">🇾🇹 +262</SelectItem>
+                    <SelectItem value="PM">🇵🇲 +508</SelectItem>
+                    <SelectItem value="BL">🇧🇱 +590</SelectItem>
+                    <SelectItem value="MF">🇲🇫 +590</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="relative">
@@ -406,7 +424,7 @@ export default function AccountCreationPage() {
                 </div>
               </div>
               <p className="text-xs text-slate-300">
-                Format : 0696614049 (sera converti en {draft.formData.phoneCountry === "MQ" ? "+596" : draft.formData.phoneCountry === "GP" ? "+590" : draft.formData.phoneCountry === "GF" ? "+594" : draft.formData.phoneCountry === "RE" || draft.formData.phoneCountry === "YT" ? "+262" : "+33"}696614049)
+                Format : 0696614049 (sera converti au format international E.164)
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <input
@@ -492,6 +510,7 @@ export default function AccountCreationPage() {
                       className="pl-10 text-slate-900"
                     />
                   </div>
+                  <PasswordStrength password={draft.formData.password} />
                   <p className="text-xs text-slate-300">
                     12+ caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial
                   </p>

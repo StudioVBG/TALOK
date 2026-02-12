@@ -3,6 +3,8 @@
  * Design moderne et responsive pour tous les types de notifications
  */
 
+import { escapeHtml } from "@/lib/utils/escape-html";
+
 // Couleurs du design system
 const COLORS = {
   primary: '#2563eb',
@@ -284,7 +286,7 @@ export const emailTemplates = {
     html: baseLayout(`
       <div class="content">
         <h1>Nouvelle facture disponible</h1>
-        <p>Bonjour ${data.tenantName},</p>
+        <p>Bonjour ${escapeHtml(data.tenantName)},</p>
         <p>Votre facture de loyer pour la période de <strong>${data.period}</strong> est maintenant disponible.</p>
         
         <div class="highlight-box">
@@ -300,7 +302,7 @@ export const emailTemplates = {
                 <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Logement</span>
               </td>
               <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]}; text-align: right;">
-                <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${data.propertyAddress}</span>
+                <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${escapeHtml(data.propertyAddress)}</span>
               </td>
             </tr>
             <tr>
@@ -340,7 +342,7 @@ export const emailTemplates = {
         </div>
         
         <h1 style="text-align: center;">Merci pour votre paiement !</h1>
-        <p style="text-align: center;">Bonjour ${data.tenantName}, votre paiement a été traité avec succès.</p>
+        <p style="text-align: center;">Bonjour ${escapeHtml(data.tenantName)}, votre paiement a été traité avec succès.</p>
         
         <div class="highlight-box" style="border-left-color: ${COLORS.success};">
           <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Montant payé</p>
@@ -403,7 +405,7 @@ export const emailTemplates = {
         </div>
         
         <h1>Rappel de paiement</h1>
-        <p>Bonjour ${data.tenantName},</p>
+        <p>Bonjour ${escapeHtml(data.tenantName)},</p>
         <p>${data.daysLate > 0 
           ? `Votre loyer est en retard de ${data.daysLate} jours. Nous vous invitons à régulariser votre situation dans les plus brefs délais.`
           : `Nous vous rappelons que votre loyer arrive à échéance le ${data.dueDate}.`
@@ -439,7 +441,7 @@ export const emailTemplates = {
     createdBy: string;
     ticketUrl: string;
   }) => ({
-    subject: `🔧 Nouveau ticket : ${data.ticketTitle}`,
+    subject: `🔧 Nouveau ticket : ${escapeHtml(data.ticketTitle)}`,
     html: baseLayout(`
       <div class="content">
         <div style="text-align: center; margin-bottom: 24px;">
@@ -452,11 +454,11 @@ export const emailTemplates = {
         </div>
         
         <h1>Nouveau ticket de maintenance</h1>
-        <p>Bonjour ${data.recipientName},</p>
+        <p>Bonjour ${escapeHtml(data.recipientName)},</p>
         <p>Un nouveau ticket de maintenance a été créé par ${data.createdBy}.</p>
         
         <div class="highlight-box">
-          <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">${data.ticketTitle}</p>
+          <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">${escapeHtml(data.ticketTitle)}</p>
           <p style="color: ${COLORS.gray[700]}; font-size: 14px;">${data.ticketDescription}</p>
         </div>
         
@@ -467,7 +469,7 @@ export const emailTemplates = {
                 <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Logement</span>
               </td>
               <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]}; text-align: right;">
-                <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${data.propertyAddress}</span>
+                <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${escapeHtml(data.propertyAddress)}</span>
               </td>
             </tr>
             <tr>
@@ -485,7 +487,7 @@ export const emailTemplates = {
           <a href="${data.ticketUrl}" class="button">Voir le ticket</a>
         </div>
       </div>
-    `, `Nouveau ticket de maintenance : ${data.ticketTitle}`),
+    `, `Nouveau ticket de maintenance : ${escapeHtml(data.ticketTitle)}`),
   }),
 
   /**
@@ -499,12 +501,12 @@ export const emailTemplates = {
     comment?: string;
     ticketUrl: string;
   }) => ({
-    subject: `🔔 Ticket mis à jour : ${data.ticketTitle}`,
+    subject: `🔔 Ticket mis à jour : ${escapeHtml(data.ticketTitle)}`,
     html: baseLayout(`
       <div class="content">
         <h1>Mise à jour de votre ticket</h1>
-        <p>Bonjour ${data.recipientName},</p>
-        <p>Le ticket "<strong>${data.ticketTitle}</strong>" a été mis à jour par ${data.updatedBy}.</p>
+        <p>Bonjour ${escapeHtml(data.recipientName)},</p>
+        <p>Le ticket "<strong>${escapeHtml(data.ticketTitle)}</strong>" a été mis à jour par ${data.updatedBy}.</p>
         
         <div class="highlight-box">
           <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Nouveau statut</p>
@@ -543,11 +545,11 @@ export const emailTemplates = {
         </div>
         
         <h1>Signature de bail requise</h1>
-        <p>Bonjour ${data.signerName},</p>
-        <p>${data.ownerName} vous invite à signer le bail pour le logement suivant :</p>
+        <p>Bonjour ${escapeHtml(data.signerName)},</p>
+        <p>${escapeHtml(data.ownerName)} vous invite à signer le bail pour le logement suivant :</p>
         
         <div class="highlight-box">
-          <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">${data.propertyAddress}</p>
+          <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">${escapeHtml(data.propertyAddress)}</p>
           <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin: 0;">Type de bail : ${data.leaseType}</p>
         </div>
         
@@ -562,10 +564,10 @@ export const emailTemplates = {
         </div>
         
         <p style="font-size: 14px; color: ${COLORS.gray[500]};">
-          Ce lien est valable pendant 7 jours. Si vous avez des questions, contactez directement ${data.ownerName}.
+          Ce lien est valable pendant 7 jours. Si vous avez des questions, contactez directement ${escapeHtml(data.ownerName)}.
         </p>
       </div>
-    `, `Vous êtes invité à signer un bail pour ${data.propertyAddress}`),
+    `, `Vous êtes invité à signer un bail pour ${escapeHtml(data.propertyAddress)}`),
   }),
 
   /**
@@ -580,8 +582,8 @@ export const emailTemplates = {
     leaseUrl: string;
   }) => ({
     subject: data.allSigned 
-      ? `🎉 Bail entièrement signé - ${data.propertyAddress}`
-      : `✅ Nouvelle signature - ${data.signerName}`,
+      ? `🎉 Bail entièrement signé - ${escapeHtml(data.propertyAddress)}`
+      : `✅ Nouvelle signature - ${escapeHtml(data.signerName)}`,
     html: baseLayout(`
       <div class="content">
         <div style="text-align: center; margin-bottom: 24px;">
@@ -589,10 +591,10 @@ export const emailTemplates = {
         </div>
         
         <h1>${data.allSigned ? 'Bail entièrement signé !' : 'Nouvelle signature reçue'}</h1>
-        <p>Bonjour ${data.ownerName},</p>
+        <p>Bonjour ${escapeHtml(data.ownerName)},</p>
         <p>${data.allSigned 
-          ? `Excellente nouvelle ! Toutes les parties ont signé le bail pour <strong>${data.propertyAddress}</strong>. Le bail est maintenant actif.`
-          : `<strong>${data.signerName}</strong> (${data.signerRole}) a signé le bail pour <strong>${data.propertyAddress}</strong>.`
+          ? `Excellente nouvelle ! Toutes les parties ont signé le bail pour <strong>${escapeHtml(data.propertyAddress)}</strong>. Le bail est maintenant actif.`
+          : `<strong>${escapeHtml(data.signerName)}</strong> (${escapeHtml(data.signerRole)}) a signé le bail pour <strong>${escapeHtml(data.propertyAddress)}</strong>.`
         }</p>
         
         ${data.allSigned ? `
@@ -605,7 +607,7 @@ export const emailTemplates = {
           <a href="${data.leaseUrl}" class="button ${data.allSigned ? 'button-success' : ''}">Voir le bail</a>
         </div>
       </div>
-    `, data.allSigned ? 'Votre bail est maintenant actif !' : `${data.signerName} a signé le bail.`),
+    `, data.allSigned ? 'Votre bail est maintenant actif !' : `${escapeHtml(data.signerName)} a signé le bail.`),
   }),
 
   /**
@@ -622,11 +624,11 @@ export const emailTemplates = {
     html: baseLayout(`
       <div class="content">
         <h1>Vous êtes invité !</h1>
-        <p>Bonjour ${data.tenantName},</p>
-        <p><strong>${data.ownerName}</strong> vous invite à rejoindre le logement suivant sur Talok :</p>
+        <p>Bonjour ${escapeHtml(data.tenantName)},</p>
+        <p><strong>${escapeHtml(data.ownerName)}</strong> vous invite à rejoindre le logement suivant sur Talok :</p>
         
         <div class="highlight-box">
-          <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">${data.propertyAddress}</p>
+          <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">${escapeHtml(data.propertyAddress)}</p>
           <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin: 0;">Code du logement : <strong>${data.propertyCode}</strong></p>
         </div>
         
@@ -646,7 +648,7 @@ export const emailTemplates = {
           Vous pouvez également utiliser le code <strong>${data.propertyCode}</strong> pour rejoindre le logement manuellement depuis votre espace.
         </p>
       </div>
-    `, `${data.ownerName} vous invite à rejoindre ${data.propertyAddress}`),
+    `, `${escapeHtml(data.ownerName)} vous invite à rejoindre ${escapeHtml(data.propertyAddress)}`),
   }),
 
   /**
@@ -671,7 +673,7 @@ export const emailTemplates = {
             <span style="font-size: 48px;">${roleInfo[data.role].emoji}</span>
           </div>
           
-          <h1 style="text-align: center;">Bienvenue ${data.userName} !</h1>
+          <h1 style="text-align: center;">Bienvenue ${escapeHtml(data.userName)} !</h1>
           <p style="text-align: center;">Votre compte ${roleInfo[data.role].title} a été créé avec succès.</p>
           
           <div class="divider"></div>
@@ -715,7 +717,7 @@ export const emailTemplates = {
     html: baseLayout(`
       <div class="content">
         <h1>Réinitialisation de mot de passe</h1>
-        <p>Bonjour ${data.userName},</p>
+        <p>Bonjour ${escapeHtml(data.userName)},</p>
         <p>Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe :</p>
         
         <div style="text-align: center;">
@@ -747,7 +749,7 @@ export const emailTemplates = {
     const priceIncrease = data.newPriceMonthly > data.oldPriceMonthly;
     
     return {
-      subject: `📢 Évolution de votre abonnement ${data.planName}`,
+      subject: `📢 Évolution de votre abonnement ${escapeHtml(data.planName)}`,
       html: baseLayout(`
         <div class="content">
           <div style="text-align: center; margin-bottom: 24px;">
@@ -757,8 +759,8 @@ export const emailTemplates = {
           </div>
           
           <h1>Évolution de votre abonnement</h1>
-          <p>Bonjour ${data.userName},</p>
-          <p>Conformément à l'article L121-84 du Code de la consommation, nous vous informons d'une évolution des tarifs de votre plan <strong>${data.planName}</strong>.</p>
+          <p>Bonjour ${escapeHtml(data.userName)},</p>
+          <p>Conformément à l'article L121-84 du Code de la consommation, nous vous informons d'une évolution des tarifs de votre plan <strong>${escapeHtml(data.planName)}</strong>.</p>
           
           <div class="divider"></div>
           
@@ -842,7 +844,7 @@ export const emailTemplates = {
             d'entrée en vigueur des nouvelles conditions.
           </p>
         </div>
-      `, `Évolution tarifaire de votre plan ${data.planName} - Action requise`),
+      `, `Évolution tarifaire de votre plan ${escapeHtml(data.planName)} - Action requise`),
     };
   },
 
@@ -864,7 +866,7 @@ export const emailTemplates = {
         </div>
 
         <h1>Mise à jour de nos conditions</h1>
-        <p>Bonjour ${data.userName},</p>
+        <p>Bonjour ${escapeHtml(data.userName)},</p>
         <p>Nous avons mis à jour nos Conditions Générales d'Utilisation. Ces modifications entreront en vigueur le <strong>${data.effectiveDate}</strong>.</p>
 
         <div class="highlight-box">
@@ -901,7 +903,7 @@ export const emailTemplates = {
     tenantMessage?: string;
     bookingsUrl: string;
   }) => ({
-    subject: `📅 Nouvelle demande de visite - ${data.propertyAddress}`,
+    subject: `📅 Nouvelle demande de visite - ${escapeHtml(data.propertyAddress)}`,
     html: baseLayout(`
       <div class="content">
         <div style="text-align: center; margin-bottom: 24px;">
@@ -909,13 +911,13 @@ export const emailTemplates = {
         </div>
 
         <h1>Nouvelle demande de visite</h1>
-        <p>Bonjour ${data.ownerName},</p>
-        <p><strong>${data.tenantName}</strong> souhaite visiter votre bien.</p>
+        <p>Bonjour ${escapeHtml(data.ownerName)},</p>
+        <p><strong>${escapeHtml(data.tenantName)}</strong> souhaite visiter votre bien.</p>
 
         <div class="info-grid">
           <div class="info-row">
             <span class="info-label">📍 Bien</span>
-            <span class="info-value">${data.propertyAddress}</span>
+            <span class="info-value">${escapeHtml(data.propertyAddress)}</span>
           </div>
           <div class="info-row">
             <span class="info-label">📅 Date</span>
@@ -930,7 +932,7 @@ export const emailTemplates = {
         ${data.tenantMessage ? `
         <div class="highlight-box">
           <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">💬 Message du candidat</p>
-          <p style="color: ${COLORS.gray[700]}; margin: 0;">${data.tenantMessage}</p>
+          <p style="color: ${COLORS.gray[700]}; margin: 0;">${escapeHtml(data.tenantMessage)}</p>
         </div>
         ` : ''}
 
@@ -942,7 +944,7 @@ export const emailTemplates = {
           Confirmez ou refusez cette demande depuis votre espace propriétaire.
         </p>
       </div>
-    `, `Nouvelle demande de visite de ${data.tenantName}`),
+    `, `Nouvelle demande de visite de ${escapeHtml(data.tenantName)}`),
   }),
 
   /**
@@ -957,7 +959,7 @@ export const emailTemplates = {
     ownerPhone?: string;
     bookingUrl: string;
   }) => ({
-    subject: `✅ Visite confirmée - ${data.propertyAddress}`,
+    subject: `✅ Visite confirmée - ${escapeHtml(data.propertyAddress)}`,
     html: baseLayout(`
       <div class="content">
         <div style="text-align: center; margin-bottom: 24px;">
@@ -965,7 +967,7 @@ export const emailTemplates = {
         </div>
 
         <h1>Votre visite est confirmée !</h1>
-        <p>Bonjour ${data.tenantName},</p>
+        <p>Bonjour ${escapeHtml(data.tenantName)},</p>
         <p>Bonne nouvelle ! Le propriétaire a confirmé votre demande de visite.</p>
 
         <div class="highlight-box" style="border-left-color: ${COLORS.success};">
@@ -973,7 +975,7 @@ export const emailTemplates = {
           <div class="info-grid" style="margin: 0;">
             <div class="info-row">
               <span class="info-label">📍 Adresse</span>
-              <span class="info-value">${data.propertyAddress}</span>
+              <span class="info-value">${escapeHtml(data.propertyAddress)}</span>
             </div>
             <div class="info-row">
               <span class="info-label">📅 Date</span>
@@ -1016,7 +1018,7 @@ export const emailTemplates = {
     cancelledBy: 'owner' | 'tenant';
     searchUrl: string;
   }) => ({
-    subject: `❌ Visite annulée - ${data.propertyAddress}`,
+    subject: `❌ Visite annulée - ${escapeHtml(data.propertyAddress)}`,
     html: baseLayout(`
       <div class="content">
         <div style="text-align: center; margin-bottom: 24px;">
@@ -1024,13 +1026,13 @@ export const emailTemplates = {
         </div>
 
         <h1>Votre visite a été annulée</h1>
-        <p>Bonjour ${data.tenantName},</p>
+        <p>Bonjour ${escapeHtml(data.tenantName)},</p>
         <p>Malheureusement, la visite prévue ${data.cancelledBy === 'owner' ? 'a été annulée par le propriétaire' : 'a été annulée'}.</p>
 
         <div class="info-grid">
           <div class="info-row">
             <span class="info-label">📍 Bien</span>
-            <span class="info-value">${data.propertyAddress}</span>
+            <span class="info-value">${escapeHtml(data.propertyAddress)}</span>
           </div>
           <div class="info-row">
             <span class="info-label">📅 Date prévue</span>
@@ -1051,7 +1053,7 @@ export const emailTemplates = {
           <a href="${data.searchUrl}" class="button">Rechercher un logement</a>
         </div>
       </div>
-    `, `Visite annulée - ${data.propertyAddress}`),
+    `, `Visite annulée - ${escapeHtml(data.propertyAddress)}`),
   }),
 
   /**
@@ -1068,7 +1070,7 @@ export const emailTemplates = {
     contactPhone?: string;
     bookingUrl: string;
   }) => ({
-    subject: `⏰ Rappel : Visite ${data.hoursBeforeVisit === 24 ? 'demain' : 'dans 1 heure'} - ${data.propertyAddress}`,
+    subject: `⏰ Rappel : Visite ${data.hoursBeforeVisit === 24 ? 'demain' : 'dans 1 heure'} - ${escapeHtml(data.propertyAddress)}`,
     html: baseLayout(`
       <div class="content">
         <div style="text-align: center; margin-bottom: 24px;">
@@ -1076,7 +1078,7 @@ export const emailTemplates = {
         </div>
 
         <h1>N'oubliez pas votre visite !</h1>
-        <p>Bonjour ${data.recipientName},</p>
+        <p>Bonjour ${escapeHtml(data.recipientName)},</p>
         <p>${data.hoursBeforeVisit === 24
           ? 'Votre visite est prévue pour demain.'
           : 'Votre visite commence dans environ 1 heure.'}</p>
@@ -1085,7 +1087,7 @@ export const emailTemplates = {
           <div class="info-grid" style="margin: 0;">
             <div class="info-row">
               <span class="info-label">📍 Adresse</span>
-              <span class="info-value">${data.propertyAddress}</span>
+              <span class="info-value">${escapeHtml(data.propertyAddress)}</span>
             </div>
             <div class="info-row">
               <span class="info-label">📅 Date</span>
@@ -1097,7 +1099,7 @@ export const emailTemplates = {
             </div>
             <div class="info-row">
               <span class="info-label">👤 ${data.isOwner ? 'Visiteur' : 'Propriétaire'}</span>
-              <span class="info-value">${data.contactName}${data.contactPhone ? ` - ${data.contactPhone}` : ''}</span>
+              <span class="info-value">${escapeHtml(data.contactName)}${data.contactPhone ? ` - ${data.contactPhone}` : ''}</span>
             </div>
           </div>
         </div>
@@ -1122,12 +1124,12 @@ export const emailTemplates = {
     visitDate: string;
     feedbackUrl: string;
   }) => ({
-    subject: `💬 Comment s'est passée votre visite ? - ${data.propertyAddress}`,
+    subject: `💬 Comment s'est passée votre visite ? - ${escapeHtml(data.propertyAddress)}`,
     html: baseLayout(`
       <div class="content">
         <h1>Comment s'est passée votre visite ?</h1>
-        <p>Bonjour ${data.tenantName},</p>
-        <p>Vous avez visité le bien situé au <strong>${data.propertyAddress}</strong> le ${data.visitDate}.</p>
+        <p>Bonjour ${escapeHtml(data.tenantName)},</p>
+        <p>Vous avez visité le bien situé au <strong>${escapeHtml(data.propertyAddress)}</strong> le ${data.visitDate}.</p>
         <p>Votre avis nous intéresse ! Prenez quelques secondes pour évaluer cette visite.</p>
 
         <div style="text-align: center;">
@@ -1222,7 +1224,7 @@ export const emailTemplates = {
     const config = roleConfig[data.role];
 
     return {
-      subject: `${config.emoji} Bienvenue sur Talok, ${data.userName} !`,
+      subject: `${config.emoji} Bienvenue sur Talok, ${escapeHtml(data.userName)} !`,
       html: baseLayout(`
         <div class="content">
           <div style="text-align: center; margin-bottom: 32px;">
@@ -1233,7 +1235,7 @@ export const emailTemplates = {
 
           <h1 style="text-align: center;">Bienvenue sur Talok !</h1>
           <p style="text-align: center; font-size: 18px;">
-            Bonjour ${data.userName}, votre espace ${config.title} est prêt.
+            Bonjour ${escapeHtml(data.userName)}, votre espace ${config.title} est prêt.
           </p>
 
           <div class="divider"></div>
@@ -1272,7 +1274,7 @@ export const emailTemplates = {
             ${data.supportEmail ? `Des questions ? Écrivez-nous à ${data.supportEmail}` : ''}
           </p>
         </div>
-      `, `Bienvenue ${data.userName} ! Configurez votre espace ${config.title} sur Talok.`),
+      `, `Bienvenue ${escapeHtml(data.userName)} ! Configurez votre espace ${config.title} sur Talok.`),
     };
   },
 
@@ -1286,11 +1288,11 @@ export const emailTemplates = {
     nextStepLabel: string;
     onboardingUrl: string;
   }) => ({
-    subject: `⏰ ${data.userName}, finalisez votre inscription sur Talok`,
+    subject: `⏰ ${escapeHtml(data.userName)}, finalisez votre inscription sur Talok`,
     html: baseLayout(`
       <div class="content">
         <h1>Votre profil vous attend !</h1>
-        <p>Bonjour ${data.userName},</p>
+        <p>Bonjour ${escapeHtml(data.userName)},</p>
         <p>Vous avez commencé à configurer votre espace Talok hier, mais n'avez pas encore terminé.</p>
 
         <div class="highlight-box">
@@ -1338,14 +1340,14 @@ export const emailTemplates = {
     };
 
     return {
-      subject: `📋 ${data.userName}, votre espace Talok n'est pas encore prêt`,
+      subject: `📋 ${escapeHtml(data.userName)}, votre espace Talok n'est pas encore prêt`,
       html: baseLayout(`
         <div class="content">
           <div style="text-align: center; margin-bottom: 24px;">
             <span class="badge badge-warning">PROFIL INCOMPLET</span>
           </div>
 
-          <h1 style="text-align: center;">On vous attend, ${data.userName} !</h1>
+          <h1 style="text-align: center;">On vous attend, ${escapeHtml(data.userName)} !</h1>
           <p style="text-align: center;">${roleMessages[data.role]}</p>
 
           <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
@@ -1375,10 +1377,10 @@ export const emailTemplates = {
     role: 'owner' | 'tenant' | 'provider' | 'guarantor';
     onboardingUrl: string;
   }) => ({
-    subject: `💭 ${data.userName}, nous pensons à vous`,
+    subject: `💭 ${escapeHtml(data.userName)}, nous pensons à vous`,
     html: baseLayout(`
       <div class="content">
-        <h1>Vous nous manquez, ${data.userName} !</h1>
+        <h1>Vous nous manquez, ${escapeHtml(data.userName)} !</h1>
         <p>Cela fait une semaine que vous avez créé votre compte Talok.</p>
         <p>Votre espace est toujours prêt à être configuré. Il ne vous faudra que quelques minutes pour profiter de toutes nos fonctionnalités.</p>
 
@@ -1452,7 +1454,7 @@ export const emailTemplates = {
     const config = roleConfig[data.role];
 
     return {
-      subject: `🎉 Bravo ${data.userName}, votre espace est prêt !`,
+      subject: `🎉 Bravo ${escapeHtml(data.userName)}, votre espace est prêt !`,
       html: baseLayout(`
         <div class="content">
           <div style="text-align: center; margin-bottom: 32px;">
@@ -1461,7 +1463,7 @@ export const emailTemplates = {
             </div>
           </div>
 
-          <h1 style="text-align: center;">Félicitations, ${data.userName} !</h1>
+          <h1 style="text-align: center;">Félicitations, ${escapeHtml(data.userName)} !</h1>
           <p style="text-align: center; font-size: 18px;">
             Votre espace ${config.title} est maintenant entièrement configuré.
           </p>

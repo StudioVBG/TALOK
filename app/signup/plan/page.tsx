@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 /**
  * Page de choix du forfait lors de l'inscription
@@ -43,8 +42,8 @@ const PLAN_ICONS: Record<PlanSlug, React.ReactNode> = {
   enterprise_xl: <Crown className="w-5 h-5" />,
 };
 
-// Plans disponibles pour l'inscription (sans Enterprise qui est sur devis)
-const SIGNUP_PLANS: PlanSlug[] = ["starter", "confort", "pro"];
+// Plans disponibles pour l'inscription (Gratuit + payants, sans Enterprise qui est sur devis)
+const SIGNUP_PLANS: PlanSlug[] = ["gratuit", "starter", "confort", "pro"];
 
 export default function SignupPlanPage() {
   const router = useRouter();
@@ -69,7 +68,7 @@ export default function SignupPlanPage() {
             description: "Veuillez vous reconnecter.",
             variant: "destructive",
           });
-          router.push("/auth/login");
+          router.push("/auth/signin");
           return;
         }
         
@@ -80,7 +79,7 @@ export default function SignupPlanPage() {
         }
       } catch (error) {
         console.error("Erreur vérification auth:", error);
-        router.push("/auth/login");
+        router.push("/auth/signin");
       } finally {
         setCheckingAuth(false);
       }
@@ -91,9 +90,15 @@ export default function SignupPlanPage() {
 
   const handleSelectPlan = async () => {
     if (!selectedPlan) return;
-    
+
     setLoading(true);
     try {
+      // Si plan gratuit, pas de Stripe — rediriger directement vers l'onboarding
+      if (selectedPlan === "gratuit") {
+        router.push("/owner/onboarding/profile?subscription=free");
+        return;
+      }
+
       // Créer une session Stripe Checkout
       const response = await fetch("/api/subscriptions/checkout", {
         method: "POST",

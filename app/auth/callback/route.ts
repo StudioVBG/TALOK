@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    
+
     if (error) {
       console.error("Error exchanging code for session:", error);
       return NextResponse.redirect(new URL("/auth/signin?error=invalid_code", origin));
@@ -24,43 +24,54 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/auth/verify-email", origin));
     }
 
-    // Si l'email est confirmé, rediriger directement vers le dashboard
-    // Le dashboard gérera l'affichage de la checklist si nécessaire
+    // Si l'email est confirmé, rediriger selon le rôle et le statut d'onboarding
     if (data.user && data.user.email_confirmed_at) {
-      // Récupérer le profil pour obtenir le rôle
+      // Récupérer le profil pour obtenir le rôle et le statut d'onboarding
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role")
+        .select("role, onboarding_completed_at")
         .eq("user_id", data.user.id as any)
         .maybeSingle();
 
-      // Pour les admins, rediriger directement vers le dashboard admin
       const profileData = profile as any;
-      if (profileData?.role === "admin") {
-        return NextResponse.redirect(new URL("/admin/dashboard", origin));
+
+      // Si pas de profil (ex: OAuth sans role), rediriger vers choix du rôle
+      if (!profileData?.role) {
+        return NextResponse.redirect(new URL("/signup/role", origin));
       }
 
-      // Pour les propriétaires, rediriger vers le dashboard propriétaire
-      if (profileData?.role === "owner") {
-        return NextResponse.redirect(new URL("/owner/dashboard", origin));
+      // Si onboarding non terminé, rediriger vers l'onboarding approprié
+      if (!profileData?.onboarding_completed_at) {
+        switch (profileData.role) {
+          case "owner":
+            return NextResponse.redirect(new URL("/signup/plan?role=owner", origin));
+          case "tenant":
+            return NextResponse.redirect(new URL("/tenant/onboarding/context", origin));
+          case "provider":
+            return NextResponse.redirect(new URL("/provider/onboarding/profile", origin));
+          case "guarantor":
+            return NextResponse.redirect(new URL("/guarantor/onboarding/context", origin));
+        }
       }
 
-      // Pour les locataires, rediriger vers le dashboard locataire
-      if (profileData?.role === "tenant") {
-        return NextResponse.redirect(new URL("/tenant/dashboard", origin));
+      // Onboarding terminé — rediriger vers le dashboard approprié
+      switch (profileData.role) {
+        case "admin":
+          return NextResponse.redirect(new URL("/admin/dashboard", origin));
+        case "owner":
+          return NextResponse.redirect(new URL("/owner/dashboard", origin));
+        case "tenant":
+          return NextResponse.redirect(new URL("/tenant/dashboard", origin));
+        case "provider":
+          return NextResponse.redirect(new URL("/provider/dashboard", origin));
+        case "guarantor":
+          return NextResponse.redirect(new URL("/guarantor/dashboard", origin));
+        default:
+          return NextResponse.redirect(new URL("/dashboard", origin));
       }
-
-      // Pour les prestataires, rediriger vers le dashboard prestataire
-      if (profileData?.role === "provider") {
-        return NextResponse.redirect(new URL("/provider/dashboard", origin));
-      }
-
-      // Pour les autres, rediriger vers le dashboard qui gérera la checklist
-      return NextResponse.redirect(new URL("/dashboard", origin));
     }
   }
 
   // Aucun code fourni ou échange échoué — rediriger vers la connexion
   return NextResponse.redirect(new URL("/auth/signin", origin));
 }
-
