@@ -778,6 +778,81 @@ export function InspectionDetailClient({ data }: Props) {
               </Card>
             )}
 
+            {/* Carte Photos de l'inspection */}
+            <Card className="border-none shadow-sm bg-white overflow-hidden">
+              <CardHeader className="pb-2 border-b border-slate-50">
+                <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                  <Camera className="h-3 w-3 text-indigo-500" />
+                  Photos de l&apos;inspection
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                {stats.totalPhotos > 0 ? (
+                  <div className="space-y-3">
+                    {/* Mini galerie des photos */}
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {adaptedMedia
+                        .filter((m: any) => m.type === "photo" && m.file_path)
+                        .slice(0, 6)
+                        .map((media: any, index: number) => (
+                          <div
+                            key={media.id || `photo-${index}`}
+                            className="relative aspect-square rounded-lg bg-slate-100 border border-slate-200 overflow-hidden group"
+                          >
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Image className="h-5 w-5 text-slate-300" />
+                            </div>
+                            {media.room_name && (
+                              <div className="absolute bottom-0 inset-x-0 bg-black/50 px-1 py-0.5">
+                                <p className="text-[8px] text-white truncate text-center">{media.room_name}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                    {adaptedMedia.filter((m: any) => m.type === "photo").length > 6 && (
+                      <p className="text-[10px] text-center text-muted-foreground">
+                        + {adaptedMedia.filter((m: any) => m.type === "photo").length - 6} autre(s) photo(s)
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                      <span className="text-xs font-semibold text-slate-700">
+                        {stats.totalPhotos} photo{stats.totalPhotos > 1 ? "s" : ""}
+                      </span>
+                      {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
+                        <Button variant="outline" size="sm" asChild className="h-7 text-[10px] gap-1 border-indigo-200 text-indigo-600 hover:bg-indigo-50">
+                          <Link href={`/owner/inspections/${edl.id}/edit`}>
+                            <Camera className="h-3 w-3" />
+                            Ajouter
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 space-y-3">
+                    <div className="mx-auto h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
+                      <Camera className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-700">Aucune photo</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Ajoutez des photos pour documenter l&apos;état de chaque pièce
+                      </p>
+                    </div>
+                    {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
+                      <Button variant="outline" size="sm" asChild className="gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50">
+                        <Link href={`/owner/inspections/${edl.id}/edit`}>
+                          <Camera className="h-3.5 w-3.5" />
+                          Ajouter des photos
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Détails du Logement */}
             <Card className="border-none shadow-sm bg-white overflow-hidden">
               <CardHeader className="pb-2 border-b border-slate-50">

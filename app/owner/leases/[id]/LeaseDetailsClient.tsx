@@ -51,6 +51,7 @@ import { OwnerSignatureModal } from "./OwnerSignatureModal";
 import { dpeService } from "@/features/diagnostics/services/dpe.service";
 import { useEffect } from "react";
 import { LeaseProgressTracker, type LeaseProgressStatus } from "@/components/owner/leases/LeaseProgressTracker";
+import { LeaseTimeline } from "@/components/owner/leases/LeaseTimeline";
 import { Celebration, useCelebration } from "@/components/ui/celebration";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -1083,6 +1084,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 </div>
               </CardContent>
             </Card>
+
+            {/* Chronologie des événements */}
+            <LeaseTimeline
+              lease={lease as any}
+              signers={signers || []}
+              edl={edl}
+              payments={payments}
+            />
 
             {/* Actions du bail */}
             <div className="space-y-2">

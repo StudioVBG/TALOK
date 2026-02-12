@@ -54,20 +54,19 @@ const nextConfig = {
   output: process.env.NEXT_PUBLIC_CAPACITOR === 'true' ? 'export' : undefined,
   // Server Actions are available by default in Next.js 14
   
-  // TypeScript & ESLint - Configuration SOTA 2025
-  // ⚠️ AUDIT 2025-12-05: 417 fichiers avec @ts-nocheck détectés
-  // Stratégie: Activer la vérification progressive
-  // - Phase 1: Garder ignoreBuildErrors temporairement (en cours)
-  // - Phase 2: Corriger les fichiers critiques (@ts-nocheck supprimés des layouts)
-  // - Phase 3: Désactiver ignoreBuildErrors une fois tous les fichiers corrigés
+  // TypeScript & ESLint - Configuration SOTA 2026
+  // ✅ AUDIT 2026-02-12: ignoreBuildErrors désactivé.
+  // Les fichiers avec @ts-nocheck restent protégés individuellement.
+  // Tout nouveau code DOIT passer la vérification TypeScript.
+  // Stratégie de migration progressive:
+  // - Les 417 fichiers @ts-nocheck existants compilent grâce à la directive
+  // - Chaque fichier édité doit retirer son @ts-nocheck et corriger ses types
   typescript: {
-    // TODO: Mettre à false une fois tous les @ts-nocheck supprimés
-    // Progression: ~5 fichiers corrigés sur 417
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    // TODO: Mettre à false une fois le lint propre
-    ignoreDuringBuilds: true,
+    // ESLint activé en build pour détecter les erreurs critiques
+    ignoreDuringBuilds: false,
   },
   
   // Transpiler les packages qui posent problème avec ESM

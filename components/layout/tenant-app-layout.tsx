@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SkipLinks } from "@/components/ui/skip-links";
 import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
+import { CommandPalette } from "@/components/command-palette/CommandPalette";
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
@@ -411,6 +412,9 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
       {/* SOTA 2026 - FAB Unifié (Assistant + Actions) */}
       <UnifiedFAB />
+
+      {/* SOTA 2026 - Recherche globale (Cmd+K) */}
+      <CommandPalette role="tenant" />
 
       {/* SOTA 2026 - Tour guidé d'onboarding */}
       <AutoTourPrompt />
