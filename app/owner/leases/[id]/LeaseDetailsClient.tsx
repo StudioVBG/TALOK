@@ -822,7 +822,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : EDL d'entrée */}
               <TabsContent value="edl" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 lg:pb-6 lg:h-full">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeaseEdlTab
                     leaseId={leaseId}
                     propertyId={property.id}
@@ -835,7 +835,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Documents */}
               <TabsContent value="documents" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 lg:pb-6 lg:h-full">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeaseDocumentsTab
                     leaseId={leaseId}
                     propertyId={property.id}
@@ -847,7 +847,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Paiements */}
               <TabsContent value="paiements" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 lg:pb-6 lg:h-full">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeasePaymentsTab
                     leaseId={leaseId}
                     payments={payments || []}
