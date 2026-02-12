@@ -39,6 +39,8 @@ interface EDLPreviewProps {
   onGenerated?: (result: { url: string; path: string }) => void;
   isVierge?: boolean; // Pour le mode "template vierge" (pack Gratuit/Starter)
   rooms?: string[]; // Liste des pièces pour le template vierge
+  /** HTML pré-généré côté client — si fourni, aucun appel API ne sera effectué */
+  previewHtml?: string;
 }
 
 /**
@@ -55,6 +57,7 @@ export function EDLPreview({
   onGenerated,
   isVierge = false,
   rooms = ["Entrée", "Salon / Séjour", "Cuisine", "Chambre 1", "Salle de bain", "WC"],
+  previewHtml,
 }: EDLPreviewProps) {
   const [html, setHtml] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -206,8 +209,23 @@ export function EDLPreview({
     };
   }, [edlData.pieces, isVierge]);
 
+  // === MODE PREVIEW HTML PRÉ-GÉNÉRÉ (sans appel API) ===
+  useEffect(() => {
+    if (previewHtml === undefined) return;
+    setHtml(previewHtml);
+    setLoading(false);
+    setLastGenerated(new Date());
+
+    const { errors, warnings } = validateEDLData();
+    setValidationErrors(errors);
+    setValidationWarnings(warnings);
+  }, [previewHtml, validateEDLData]);
+
   // === DEBOUNCE: Génération de l'aperçu avec délai ===
   useEffect(() => {
+    // Si le HTML est fourni en prop, ne pas appeler l'API
+    if (previewHtml !== undefined) return;
+
     if (lastHashRef.current === dataHash && html) {
       return;
     }
@@ -266,7 +284,7 @@ export function EDLPreview({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [dataHash, edlData, edlId, isVierge, rooms, validateEDLData, toast, html]);
+  }, [dataHash, edlData, edlId, isVierge, rooms, validateEDLData, toast, html, previewHtml]);
 
   // Mettre à jour l'iframe quand le HTML change
   useEffect(() => {

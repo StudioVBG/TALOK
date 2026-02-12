@@ -17,7 +17,8 @@ import {
   Users,
   Eye,
   Printer,
-  Store
+  Store,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,10 @@ import type { OwnerProfile } from "@/lib/types";
 // ✅ SOTA 2026: Import EntitySelector pour la sélection d'entité signataire
 import { EntitySelector } from "@/components/entities/EntitySelector";
 import { useEntityStore } from "@/stores/useEntityStore";
+
+// Aperçu EDL intégré dans le wizard
+import { EdlPreviewStep } from "./EdlPreviewStep";
+import type { BailWizardEdlInput } from "@/lib/mappers/bail-wizard-to-edl-preview";
 
 // Interface étendue pour inclure toutes les données nécessaires au bail
 interface Property {
@@ -124,6 +129,9 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   // État du wizard
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Onglet d'aperçu : bail ou EDL d'entrée
+  const [previewTab, setPreviewTab] = useState<"bail" | "edl">("bail");
   
   // ✅ SOTA 2026: Refs pour auto-scroll et focus
   const loyerInputRef = useRef<HTMLInputElement>(null);
@@ -430,6 +438,88 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     customClauses,
     selectedEntityId,
     entities
+  ]);
+
+  // Données pour l'aperçu EDL d'entrée (mappées depuis les données du wizard)
+  const edlPreviewData: BailWizardEdlInput = useMemo(() => {
+    const selectedEntity = selectedEntityId
+      ? entities.find((e) => e.id === selectedEntityId)
+      : null;
+
+    // Construire les informations du bailleur
+    const bailleur = selectedEntity
+      ? {
+          nom: selectedEntity.nom || undefined,
+          prenom: "",
+          email: (profile as Record<string, unknown>)?.email as string | undefined,
+          telephone: profile?.telephone || undefined,
+          type: "societe" as const,
+          raison_sociale: selectedEntity.nom,
+        }
+      : {
+          nom: profile?.nom || undefined,
+          prenom: profile?.prenom || undefined,
+          email: (profile as Record<string, unknown>)?.email as string | undefined,
+          telephone: profile?.telephone || undefined,
+          type: (ownerProfile?.type || "particulier") as string,
+        };
+
+    // Construire les locataires
+    const locataires = isColocation
+      ? invitees
+          .filter((i) => i.email)
+          .map((i) => ({
+            nom: i.name || "Non renseigné",
+            prenom: "",
+            email: i.email,
+          }))
+      : tenantName || tenantEmail
+        ? [
+            {
+              nom: tenantName || "Non renseigné",
+              prenom: "",
+              email: tenantEmail || undefined,
+            },
+          ]
+        : [];
+
+    return {
+      property: selectedProperty
+        ? {
+            adresse_complete:
+              selectedProperty.adresse_complete || selectedProperty.adresse,
+            code_postal: selectedProperty.code_postal,
+            ville: selectedProperty.ville,
+            type: selectedProperty.type,
+            surface: selectedProperty.surface,
+            surface_habitable_m2: selectedProperty.surface_habitable_m2,
+            nb_pieces: selectedProperty.nb_pieces,
+            etage: selectedProperty.etage,
+          }
+        : null,
+      bailleur,
+      locataires,
+      typeBail: selectedType || "",
+      loyer,
+      charges,
+      dateDebut,
+      dateFin,
+    };
+  }, [
+    selectedProperty,
+    selectedType,
+    loyer,
+    charges,
+    dateDebut,
+    dateFin,
+    tenantName,
+    tenantEmail,
+    isColocation,
+    invitees,
+    profile,
+    ownerProfile,
+    selectedEntityId,
+    entities,
   ]);
 
   // ✅ Mapping type de bail → types de propriétés compatibles
@@ -1272,21 +1362,50 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                   </div>
                 </div>
 
-                {/* Colonne Droite : Live Preview (Sticky) */}
+                {/* Colonne Droite : Live Preview avec onglets Bail / EDL */}
                 <div className="lg:col-span-7 bg-slate-100 rounded-xl border overflow-hidden flex flex-col h-full">
                   <div className="bg-slate-200 px-4 py-2 border-b flex justify-between items-center">
-                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2">
-                      <Eye className="h-3 w-3" />
-                      Aperçu en temps réel
-                    </span>
+                    {/* Onglets Bail / EDL */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTab("bail")}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors",
+                          previewTab === "bail"
+                            ? "bg-white text-slate-800 shadow-sm"
+                            : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                        )}
+                      >
+                        <Eye className="h-3 w-3" />
+                        Bail
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTab("edl")}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors",
+                          previewTab === "edl"
+                            ? "bg-white text-slate-800 shadow-sm"
+                            : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                        )}
+                      >
+                        <ClipboardCheck className="h-3 w-3" />
+                        EDL d&apos;entrée
+                      </button>
+                    </div>
                     <Badge variant="outline" className="bg-white">
                       {selectedType?.toUpperCase()}
                     </Badge>
                   </div>
                   <div className="flex-1 overflow-auto bg-slate-50 p-4">
-                    <div className="scale-90 origin-top-left w-[110%] h-[110%]">
-                      <LeasePreview typeBail={selectedType! as any} bailData={previewData as any} />
-                    </div>
+                    {previewTab === "bail" ? (
+                      <div className="scale-90 origin-top-left w-[110%] h-[110%]">
+                        <LeasePreview typeBail={selectedType! as any} bailData={previewData as any} />
+                      </div>
+                    ) : (
+                      <EdlPreviewStep data={edlPreviewData} />
+                    )}
                   </div>
                 </div>
               </div>
