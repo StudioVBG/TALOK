@@ -43,10 +43,7 @@ export class NotificationsService {
    * Marquer une notification comme lue
    */
   async markAsRead(notificationId: string): Promise<void> {
-    await apiClient.patch("/notifications", {
-      notification_id: notificationId,
-      read: true,
-    });
+    await apiClient.post(`/notifications/${notificationId}/read`, {});
   }
 
   /**
@@ -80,11 +77,23 @@ export class NotificationsService {
 
   /**
    * S'abonner aux nouvelles notifications (Realtime)
+   * Note: La table notifications utilise profile_id (pas user_id)
    */
   async subscribeToNotifications(callback: (notification: Notification) => void) {
     const {
       data: { user },
     } = await this.supabase.auth.getUser();
+
+    if (!user) return null;
+
+    // Récupérer le profile_id car la table notifications filtre par profile_id
+    const { data: profile } = await this.supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) return null;
 
     return this.supabase
       .channel("notifications")
@@ -94,7 +103,7 @@ export class NotificationsService {
           event: "INSERT",
           schema: "public",
           table: "notifications",
-          filter: `user_id=eq.${user?.id}`,
+          filter: `profile_id=eq.${profile.id}`,
         },
         (payload) => {
           callback(payload.new as Notification);

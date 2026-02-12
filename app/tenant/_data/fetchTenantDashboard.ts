@@ -160,10 +160,10 @@ async function fetchTenantDashboardDirect(
     leases = leasesData || [];
   }
 
-  // Récupérer les factures, tickets et EDL en parallèle
+  // Récupérer les factures, tickets, EDL et propriétés en parallèle
   const propertyIds = leases.map((l: any) => l.property_id).filter(Boolean);
 
-  const [invoicesResult, ticketsResult, edlResult] = await Promise.allSettled([
+  const [invoicesResult, ticketsResult, edlResult, propertiesResult] = await Promise.allSettled([
     leaseIds.length > 0
       ? supabase
           .from("invoices")
@@ -187,32 +187,62 @@ async function fetchTenantDashboardDirect(
           .in("property_id", propertyIds)
           .in("statut", ["scheduled", "in_progress"])
       : Promise.resolve({ data: [] }),
+    // Propriétés pour enrichir adresse/type
+    propertyIds.length > 0
+      ? supabase
+          .from("properties")
+          .select("id, type, adresse_complete")
+          .in("id", propertyIds)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const invoicesData = invoicesResult.status === "fulfilled" ? (invoicesResult.value as any).data || [] : [];
   const ticketsData = ticketsResult.status === "fulfilled" ? (ticketsResult.value as any).data || [] : [];
   const edlData = edlResult.status === "fulfilled" ? (edlResult.value as any).data || [] : [];
+  const propertiesData = propertiesResult.status === "fulfilled" ? (propertiesResult.value as any).data || [] : [];
 
-  const invoices: TenantInvoice[] = invoicesData.map((i: any) => ({
-    ...i,
-    property_type: "",
-    property_address: "",
-  }));
+  // Créer un index propriété par ID pour enrichir les données
+  const propertyMap = new Map<string, { type: string; adresse_complete: string }>();
+  propertiesData.forEach((p: any) => {
+    propertyMap.set(p.id, { type: p.type || "", adresse_complete: p.adresse_complete || "" });
+  });
 
-  const tickets: TenantTicket[] = ticketsData.map((t: any) => ({
-    ...t,
-    property_address: "",
-    property_type: "",
-  }));
+  // Créer un index lease -> property_id pour les factures
+  const leasePropertyMap = new Map<string, string>();
+  leases.forEach((l: any) => {
+    if (l.property_id) leasePropertyMap.set(l.id, l.property_id);
+  });
 
-  const pending_edls: PendingEDL[] = edlData.map((e: any) => ({
-    id: e.id,
-    type: e.type || "entree",
-    scheduled_at: e.scheduled_at || "",
-    invitation_token: e.invitation_token || "",
-    property_address: "",
-    property_type: "",
-  }));
+  const invoices: TenantInvoice[] = invoicesData.map((i: any) => {
+    const propId = leasePropertyMap.get(i.lease_id);
+    const prop = propId ? propertyMap.get(propId) : undefined;
+    return {
+      ...i,
+      property_type: prop?.type || "",
+      property_address: prop?.adresse_complete || "",
+    };
+  });
+
+  const tickets: TenantTicket[] = ticketsData.map((t: any) => {
+    const prop = t.property_id ? propertyMap.get(t.property_id) : undefined;
+    return {
+      ...t,
+      property_address: prop?.adresse_complete || "",
+      property_type: prop?.type || "",
+    };
+  });
+
+  const pending_edls: PendingEDL[] = edlData.map((e: any) => {
+    const prop = e.property_id ? propertyMap.get(e.property_id) : undefined;
+    return {
+      id: e.id,
+      type: e.type || "entree",
+      scheduled_at: e.scheduled_at || "",
+      invitation_token: e.invitation_token || "",
+      property_address: prop?.adresse_complete || "",
+      property_type: prop?.type || "",
+    };
+  });
 
   const unpaidInvoices = invoices.filter((i) => i.statut === "sent" || i.statut === "late");
 

@@ -17,11 +17,64 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    // Récupérer le profil et le rôle pour filtrer les résultats
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id as any)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
     const { searchParams } = new URL(request.url);
     const ticketId = searchParams.get("ticket_id");
     const providerId = searchParams.get("provider_id");
 
     let query = supabaseClient.from("work_orders").select("*").order("created_at", { ascending: false });
+
+    // Filtrer selon le rôle de l'utilisateur
+    const role = (profile as any).role;
+    const profileId = (profile as any).id;
+
+    if (role === "provider") {
+      // Un prestataire ne voit que ses propres interventions
+      query = query.eq("provider_id", profileId as any);
+    } else if (role === "owner") {
+      // Un propriétaire voit les work orders liés à ses propriétés (via tickets)
+      const { data: properties } = await supabaseClient
+        .from("properties")
+        .select("id")
+        .eq("owner_id", profileId as any);
+      const propertyIds = (properties || []).map((p: any) => p.id);
+      if (propertyIds.length === 0) {
+        return NextResponse.json({ workOrders: [] });
+      }
+      const { data: tickets } = await supabaseClient
+        .from("tickets")
+        .select("id")
+        .in("property_id", propertyIds as any);
+      const ticketIds = (tickets || []).map((t: any) => t.id);
+      if (ticketIds.length === 0) {
+        return NextResponse.json({ workOrders: [] });
+      }
+      query = query.in("ticket_id", ticketIds as any);
+    } else if (role === "tenant") {
+      // Un locataire voit uniquement les work orders liés à ses tickets
+      const { data: tenantTickets } = await supabaseClient
+        .from("tickets")
+        .select("id")
+        .eq("created_by_profile_id", profileId as any);
+      const tenantTicketIds = (tenantTickets || []).map((t: any) => t.id);
+      if (tenantTicketIds.length === 0) {
+        return NextResponse.json({ workOrders: [] });
+      }
+      query = query.in("ticket_id", tenantTicketIds as any);
+    } else if (role !== "admin") {
+      return NextResponse.json({ workOrders: [] });
+    }
+    // admin: pas de filtre additionnel
 
     if (ticketId) {
       query = query.eq("ticket_id", ticketId as any);
