@@ -63,9 +63,10 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 interface Props {
   leases: Lease[];
   preselectedLeaseId?: string;
+  preselectedType?: "entree" | "sortie";
 }
 
-export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
+export function CreateInspectionWizard({ leases, preselectedLeaseId, preselectedType }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const { confirm, ConfirmDialogComponent } = useConfirmDialog();
@@ -85,7 +86,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
     ? leases.find(l => l.id === preselectedLeaseId) || null 
     : null;
   const [selectedLease, setSelectedLease] = useState<Lease | null>(initialLease);
-  const [edlType, setEdlType] = useState<"entree" | "sortie">("entree");
+  const [edlType, setEdlType] = useState<"entree" | "sortie">(preselectedType || "entree");
   const [scheduledDate, setScheduledDate] = useState("");
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
   const [roomsData, setRoomsData] = useState<RoomData[]>([]);
@@ -138,12 +139,21 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId }: Props) {
   // Auto-avancer si bail présélectionné (depuis lien direct)
   useEffect(() => {
     if (preselectedLeaseId && initialLease && step === 0) {
-      // Auto-avancer vers l'étape "Type d'EDL"
-      setStep(1);
-      toast({
-        title: "Bail sélectionné",
-        description: `${initialLease.property.adresse_complete} - ${initialLease.tenant_name}`,
-      });
+      if (preselectedType) {
+        // Bail + type fournis → sauter directement à l'étape Compteurs (step 2)
+        setStep(2);
+        toast({
+          title: "EDL pré-configuré",
+          description: `${initialLease.property.adresse_complete} — ${preselectedType === "entree" ? "Entrée" : "Sortie"}`,
+        });
+      } else {
+        // Bail seul → avancer vers l'étape Type
+        setStep(1);
+        toast({
+          title: "Bail sélectionné",
+          description: `${initialLease.property.adresse_complete} - ${initialLease.tenant_name}`,
+        });
+      }
     }
   }, [preselectedLeaseId, initialLease]);
 
