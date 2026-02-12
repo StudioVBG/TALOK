@@ -26,6 +26,7 @@ import {
   ArrowLeft,
   Printer,
   Mail,
+  Eye,
 } from "lucide-react";
 import {
   Card,
@@ -173,6 +174,14 @@ export function InspectionDetailClient({ data }: Props) {
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+
+  // Scroll vers l'aperçu (utile sur mobile où l'aperçu est en bas)
+  const scrollToPreview = () => {
+    const el = document.getElementById("edl-preview-section");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   // Données
   const { raw: edl, meterReadings, propertyMeters, ownerProfile, stats } = data;
@@ -553,6 +562,17 @@ export function InspectionDetailClient({ data }: Props) {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* Bouton Aperçu — visible sur mobile pour scroller vers l'aperçu */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={scrollToPreview}
+              className="lg:hidden bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-50 shadow-sm h-8 sm:h-9 px-2 sm:px-3"
+            >
+              <Eye className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Aperçu</span>
+            </Button>
+
             {/* Bouton Valider — visible quand l'EDL est en brouillon/en cours */}
             {["draft", "in_progress", "scheduled"].includes(edl.status) && (
               <Button
@@ -615,7 +635,7 @@ export function InspectionDetailClient({ data }: Props) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
 
           {/* Colonne de GAUCHE : L'APERÇU RÉEL DU DOCUMENT */}
-          <div className="lg:col-span-8 xl:col-span-9 order-2 lg:order-1">
+          <div id="edl-preview-section" className="lg:col-span-8 xl:col-span-9 order-2 lg:order-1 scroll-mt-20">
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px] sm:min-h-[800px]">
               <EDLPreview 
                 edlData={edlTemplateData} 
