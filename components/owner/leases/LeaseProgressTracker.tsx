@@ -271,20 +271,63 @@ export function LeaseProgressTracker({
           })}
         </div>
 
-        {/* Message de félicitations si terminé */}
-        {progressPercent === 100 && !compact && (
+        {/* Résumé textuel explicite des étapes */}
+        {!compact && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-6 text-center"
+            transition={{ delay: 0.3 }}
+            className="mt-5"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-green-50 rounded-full border border-emerald-200">
-              <span className="text-lg">🎉</span>
-              <span className="text-sm font-semibold text-emerald-700">
-                Bail actif - Tout est en ordre !
-              </span>
-            </div>
+            {progressPercent === 100 ? (
+              <div className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-green-50 rounded-full border border-emerald-200">
+                <span className="text-lg">🎉</span>
+                <span className="text-sm font-semibold text-emerald-700">
+                  Bail actif - Tout est en ordre !
+                </span>
+              </div>
+            ) : (
+              <div className="bg-slate-50 rounded-lg border border-slate-100 p-3">
+                <div className="flex items-start gap-3">
+                  {/* Étape en cours */}
+                  {(() => {
+                    const currentStep = steps.find(s => s.isInProgress);
+                    const nextPendingStep = steps.find(s => !s.isDone && !s.isInProgress);
+                    const CurrentIcon = currentStep?.icon || Clock;
+
+                    if (!currentStep) return null;
+
+                    return (
+                      <>
+                        <div className="p-1.5 rounded-full bg-blue-100 flex-shrink-0 mt-0.5">
+                          <CurrentIcon className="h-3.5 w-3.5 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-800">
+                            En cours : {currentStep.label}
+                          </p>
+                          <p className="text-[11px] text-slate-600 mt-0.5">
+                            {currentStep.detailInProgress}
+                          </p>
+                          {nextPendingStep && (
+                            <p className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
+                              <span>Ensuite :</span>
+                              <span className="font-medium text-slate-500">{nextPendingStep.label}</span>
+                              <span>— {nextPendingStep.detailPending}</span>
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <span className="text-[10px] font-medium text-slate-400">
+                            {completedSteps}/{steps.length} terminées
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </div>

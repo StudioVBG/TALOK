@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useState } from "react";
 import Link from "next/link";
@@ -31,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, FileText, Plus, MoreHorizontal, Eye, Download, Trash2, Loader2, PenLine, AlertTriangle, RefreshCw } from "lucide-react";
+import { Search, FileText, Plus, MoreHorizontal, Eye, Download, Trash2, Loader2, PenLine, AlertTriangle, RefreshCw, User } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { exportLeases } from "@/lib/services/export-service";
 import { useToast } from "@/components/ui/use-toast";
@@ -151,9 +150,12 @@ export function ContractsClient() {
   }
 
   if (searchQuery) {
+    const query = searchQuery.toLowerCase();
     filteredLeases = filteredLeases.filter((lease: any) => {
       const property = properties.find((p: any) => p.id === lease.property_id);
-      return property?.adresse_complete?.toLowerCase().includes(searchQuery.toLowerCase());
+      const addressMatch = property?.adresse_complete?.toLowerCase().includes(query);
+      const tenantMatch = lease.tenant_name?.toLowerCase().includes(query);
+      return addressMatch || tenantMatch;
     });
   }
 
@@ -218,6 +220,48 @@ export function ContractsClient() {
                     {property?.adresse_complete || "Bien non trouvé"}
                 </span>
             )
+        }
+    },
+    {
+        header: "Locataire",
+        cell: (lease: any) => {
+            const tenantSigner = (lease.signers || []).find(
+                (s: any) => s.role === "locataire_principal" || s.role === "colocataire"
+            );
+            const tenantProfile = tenantSigner?.profile;
+            const name = lease.tenant_name && lease.tenant_name !== "Locataire"
+                ? lease.tenant_name
+                : null;
+
+            if (!name && !tenantProfile) {
+                return (
+                    <span className="text-xs text-muted-foreground italic">
+                        Non assigné
+                    </span>
+                );
+            }
+
+            const initials = tenantProfile
+                ? `${(tenantProfile.prenom?.[0] || "").toUpperCase()}${(tenantProfile.nom?.[0] || "").toUpperCase()}`
+                : name ? name.split(" ").map((w: string) => w[0]?.toUpperCase()).join("").slice(0, 2) : "?";
+
+            return (
+                <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-semibold text-[10px] flex-shrink-0">
+                        {initials || <User className="h-3 w-3" />}
+                    </div>
+                    <div className="min-w-0">
+                        <span className="text-sm font-medium text-foreground block truncate max-w-[140px]">
+                            {name || "Locataire"}
+                        </span>
+                        {tenantProfile?.email && (
+                            <span className="text-[10px] text-muted-foreground truncate block max-w-[140px]">
+                                {tenantProfile.email}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            );
         }
     },
     {
@@ -545,7 +589,7 @@ export function ContractsClient() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Rechercher par adresse..."
+                      placeholder="Rechercher par adresse ou locataire..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10 bg-white/80 backdrop-blur-sm"

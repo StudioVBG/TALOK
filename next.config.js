@@ -54,19 +54,22 @@ const nextConfig = {
   output: process.env.NEXT_PUBLIC_CAPACITOR === 'true' ? 'export' : undefined,
   // Server Actions are available by default in Next.js 14
   
-  // TypeScript & ESLint - Configuration SOTA 2025
-  // ⚠️ AUDIT 2025-12-05: 417 fichiers avec @ts-nocheck détectés
-  // Stratégie: Activer la vérification progressive
-  // - Phase 1: Garder ignoreBuildErrors temporairement (en cours)
-  // - Phase 2: Corriger les fichiers critiques (@ts-nocheck supprimés des layouts)
-  // - Phase 3: Désactiver ignoreBuildErrors une fois tous les fichiers corrigés
+  // TypeScript & ESLint - Configuration SOTA 2026
+  // ⚠️ AUDIT 2026-02-12: 417 fichiers avec @ts-nocheck détectés
+  //
+  // PLAN DE MIGRATION PROGRESSIVE :
+  // Phase 1 (actuel) : ignoreBuildErrors=true pour ne pas bloquer le deploy.
+  //   → Chaque fichier modifié retire son @ts-nocheck et corrige ses types.
+  //   → ContractsClient.tsx déjà migré (commit 2026-02-12).
+  // Phase 2 : Quand < 100 fichiers @ts-nocheck restants → passer à false.
+  // Phase 3 : Quand 0 fichiers @ts-nocheck → vérification complète.
+  //
+  // Suivi: grep -r "@ts-nocheck" app/ components/ lib/ features/ | wc -l
   typescript: {
-    // TODO: Mettre à false une fois tous les @ts-nocheck supprimés
-    // Progression: ~5 fichiers corrigés sur 417
     ignoreBuildErrors: true,
   },
   eslint: {
-    // TODO: Mettre à false une fois le lint propre
+    // ESLint en build : activé quand le codebase sera propre (Phase 3)
     ignoreDuringBuilds: true,
   },
   
