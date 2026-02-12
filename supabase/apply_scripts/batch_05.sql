@@ -1238,3 +1238,224 @@ WHERE p.legal_entity_id IS NOT NULL
 
 COMMIT;
 
+-- ========== 20260205000001_fix_edl_signatures_insert_rls.sql ==========
+BEGIN;
+DROP POLICY IF EXISTS "EDL signatures signer create" ON edl_signatures;
+CREATE POLICY "EDL signatures insert" ON edl_signatures FOR INSERT WITH CHECK (
+  signer_user = auth.uid()
+  OR edl_id IN (SELECT id FROM edl WHERE created_by = auth.uid())
+  OR edl_id IN (SELECT e.id FROM edl e JOIN properties p ON p.id = e.property_id JOIN profiles pr ON pr.id = p.owner_id WHERE pr.user_id = auth.uid())
+);
+DROP POLICY IF EXISTS "EDL signatures creator update" ON edl_signatures;
+CREATE POLICY "EDL signatures creator update" ON edl_signatures FOR UPDATE
+  USING (signer_user = auth.uid() OR edl_id IN (SELECT id FROM edl WHERE created_by = auth.uid()))
+  WITH CHECK (signer_user = auth.uid() OR edl_id IN (SELECT id FROM edl WHERE created_by = auth.uid()));
+COMMIT;
+
+-- ========== 20260206000000_migrate_owner_profiles_to_legal_entities.sql ==========
+BEGIN;
+INSERT INTO legal_entities (id, owner_profile_id, entity_type, nom, siret, forme_juridique, adresse_siege, numero_tva, is_active, created_at, updated_at)
+SELECT gen_random_uuid(), op.profile_id,
+  CASE WHEN op.forme_juridique = 'SCI' THEN 'sci_ir' WHEN op.forme_juridique = 'SARL' THEN 'sarl' WHEN op.forme_juridique = 'SAS' THEN 'sas' WHEN op.forme_juridique = 'SASU' THEN 'sasu' WHEN op.forme_juridique = 'EURL' THEN 'eurl' WHEN op.forme_juridique = 'EI' THEN 'eurl' WHEN op.forme_juridique = 'SA' THEN 'sa' WHEN op.forme_juridique = 'SCPI' THEN 'sci_ir' ELSE 'sarl' END,
+  op.raison_sociale, op.siret, op.forme_juridique, op.adresse_siege, op.tva, true, NOW(), NOW()
+FROM owner_profiles op
+WHERE op.type = 'societe' AND op.raison_sociale IS NOT NULL AND op.raison_sociale != ''
+  AND NOT EXISTS (SELECT 1 FROM legal_entities le WHERE le.owner_profile_id = op.profile_id AND le.is_active = true);
+UPDATE properties p SET legal_entity_id = le.id
+FROM owner_profiles op JOIN legal_entities le ON le.owner_profile_id = op.profile_id AND le.is_active = true
+WHERE p.owner_id = op.profile_id AND p.legal_entity_id IS NULL AND op.type = 'societe' AND op.raison_sociale IS NOT NULL;
+UPDATE leases l SET signatory_entity_id = p.legal_entity_id
+FROM properties p WHERE l.property_id = p.id AND l.signatory_entity_id IS NULL AND p.legal_entity_id IS NOT NULL AND l.statut IN ('active', 'pending_signature', 'draft');
+COMMIT;
+
+-- ========== 20260207100000_fix_audit_critical_issues.sql ==========
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'entity_id') THEN
+    ALTER TABLE public.edl ADD COLUMN entity_id UUID REFERENCES public.legal_entities(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS idx_edl_entity_id ON public.edl(entity_id);
+    UPDATE public.edl e SET entity_id = l.signatory_entity_id FROM public.leases l WHERE e.lease_id = l.id AND l.signatory_entity_id IS NOT NULL AND e.entity_id IS NULL;
+    UPDATE public.edl e SET entity_id = p.legal_entity_id FROM public.properties p WHERE e.property_id = p.id AND p.legal_entity_id IS NOT NULL AND e.entity_id IS NULL;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'documents' AND column_name = 'edl_id') THEN
+    ALTER TABLE public.documents ADD COLUMN edl_id UUID REFERENCES public.edl(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS idx_documents_edl_id ON public.documents(edl_id);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'furniture_inventories') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'furniture_inventories' AND constraint_type = 'FOREIGN KEY' AND constraint_name LIKE '%edl_id%') THEN
+      DECLARE fk_name TEXT;
+      BEGIN
+        SELECT constraint_name INTO fk_name FROM information_schema.table_constraints WHERE table_name = 'furniture_inventories' AND constraint_type = 'FOREIGN KEY' AND constraint_name LIKE '%edl_id%' LIMIT 1;
+        IF fk_name IS NOT NULL THEN EXECUTE format('ALTER TABLE public.furniture_inventories DROP CONSTRAINT %I', fk_name); END IF;
+      END;
+    END IF;
+    BEGIN ALTER TABLE public.furniture_inventories ADD CONSTRAINT furniture_inventories_edl_id_fkey FOREIGN KEY (edl_id) REFERENCES public.edl(id) ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vetusty_reports') THEN
+    DECLARE fk_name TEXT;
+    BEGIN
+      SELECT constraint_name INTO fk_name FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name WHERE tc.table_name = 'vetusty_reports' AND tc.constraint_type = 'FOREIGN KEY' AND kcu.column_name = 'settlement_id' LIMIT 1;
+      IF fk_name IS NOT NULL THEN EXECUTE format('ALTER TABLE public.vetusty_reports DROP CONSTRAINT %I', fk_name); END IF;
+    END;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'deposit_movements') THEN
+      BEGIN ALTER TABLE public.vetusty_reports ADD CONSTRAINT vetusty_reports_settlement_id_fkey FOREIGN KEY (settlement_id) REFERENCES public.deposit_movements(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_table THEN NULL; END;
+    END IF;
+    CREATE INDEX IF NOT EXISTS idx_vetusty_reports_edl_entry ON public.vetusty_reports(edl_entry_id);
+    CREATE INDEX IF NOT EXISTS idx_vetusty_reports_edl_exit ON public.vetusty_reports(edl_exit_id);
+    CREATE INDEX IF NOT EXISTS idx_vetusty_reports_validated_by ON public.vetusty_reports(validated_by);
+    CREATE INDEX IF NOT EXISTS idx_vetusty_reports_created_by ON public.vetusty_reports(created_by);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vetusty_reports') THEN
+    DROP POLICY IF EXISTS "vetusty_reports_owner_select" ON public.vetusty_reports;
+    DROP POLICY IF EXISTS "vetusty_reports_owner_insert" ON public.vetusty_reports;
+    DROP POLICY IF EXISTS "vetusty_reports_owner_update" ON public.vetusty_reports;
+    DROP POLICY IF EXISTS "vetusty_reports_owner_delete" ON public.vetusty_reports;
+    DROP POLICY IF EXISTS "vetusty_reports_tenant_select" ON public.vetusty_reports;
+    DROP POLICY IF EXISTS "vetusty_reports_admin_all" ON public.vetusty_reports;
+    CREATE POLICY "vetusty_reports_owner_select" ON public.vetusty_reports FOR SELECT USING (EXISTS (SELECT 1 FROM public.leases l JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE l.id = vetusty_reports.lease_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "vetusty_reports_owner_insert" ON public.vetusty_reports FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.leases l JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE l.id = vetusty_reports.lease_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "vetusty_reports_owner_update" ON public.vetusty_reports FOR UPDATE USING (EXISTS (SELECT 1 FROM public.leases l JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE l.id = vetusty_reports.lease_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "vetusty_reports_owner_delete" ON public.vetusty_reports FOR DELETE USING (EXISTS (SELECT 1 FROM public.leases l JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE l.id = vetusty_reports.lease_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "vetusty_reports_tenant_select" ON public.vetusty_reports FOR SELECT USING (EXISTS (SELECT 1 FROM public.leases l JOIN public.profiles pr ON pr.id = l.tenant_id WHERE l.id = vetusty_reports.lease_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "vetusty_reports_admin_all" ON public.vetusty_reports FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND role = 'admin'));
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vetusty_items') THEN
+    DROP POLICY IF EXISTS "vetusty_items_owner_select" ON public.vetusty_items;
+    DROP POLICY IF EXISTS "vetusty_items_owner_insert" ON public.vetusty_items;
+    DROP POLICY IF EXISTS "vetusty_items_owner_update" ON public.vetusty_items;
+    DROP POLICY IF EXISTS "vetusty_items_owner_delete" ON public.vetusty_items;
+    DROP POLICY IF EXISTS "vetusty_items_tenant_select" ON public.vetusty_items;
+    DROP POLICY IF EXISTS "vetusty_items_admin_all" ON public.vetusty_items;
+    CREATE POLICY "vetusty_items_owner_select" ON public.vetusty_items FOR SELECT USING (EXISTS (SELECT 1 FROM public.vetusty_reports vr JOIN public.leases l ON l.id = vr.lease_id JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE vr.id = vetusty_items.report_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "vetusty_items_owner_insert" ON public.vetusty_items FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.vetusty_reports vr JOIN public.leases l ON l.id = vr.lease_id JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE vr.id = vetusty_items.report_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "vetusty_items_owner_update" ON public.vetusty_items FOR UPDATE USING (EXISTS (SELECT 1 FROM public.vetusty_reports vr JOIN public.leases l ON l.id = vr.lease_id JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE vr.id = vetusty_items.report_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "vetusty_items_owner_delete" ON public.vetusty_items FOR DELETE USING (EXISTS (SELECT 1 FROM public.vetusty_reports vr JOIN public.leases l ON l.id = vr.lease_id JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE vr.id = vetusty_items.report_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "vetusty_items_tenant_select" ON public.vetusty_items FOR SELECT USING (EXISTS (SELECT 1 FROM public.vetusty_reports vr JOIN public.leases l ON l.id = vr.lease_id JOIN public.profiles pr ON pr.id = l.tenant_id WHERE vr.id = vetusty_items.report_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "vetusty_items_admin_all" ON public.vetusty_items FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND role = 'admin'));
+    BEGIN ALTER TABLE public.vetusty_items ADD CONSTRAINT vetusty_items_edl_entry_item_fkey FOREIGN KEY (edl_entry_item_id) REFERENCES public.edl_items(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_column THEN NULL; END;
+    BEGIN ALTER TABLE public.vetusty_items ADD CONSTRAINT vetusty_items_edl_exit_item_fkey FOREIGN KEY (edl_exit_item_id) REFERENCES public.edl_items(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_column THEN NULL; END;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'furniture_inventories') THEN
+    DROP POLICY IF EXISTS "furniture_inventories_owner_select" ON public.furniture_inventories;
+    DROP POLICY IF EXISTS "furniture_inventories_owner_insert" ON public.furniture_inventories;
+    DROP POLICY IF EXISTS "furniture_inventories_owner_update" ON public.furniture_inventories;
+    DROP POLICY IF EXISTS "furniture_inventories_owner_delete" ON public.furniture_inventories;
+    DROP POLICY IF EXISTS "furniture_inventories_tenant_select" ON public.furniture_inventories;
+    DROP POLICY IF EXISTS "furniture_inventories_admin_all" ON public.furniture_inventories;
+    CREATE POLICY "furniture_inventories_owner_select" ON public.furniture_inventories FOR SELECT USING (EXISTS (SELECT 1 FROM public.leases l JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE l.id = furniture_inventories.lease_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "furniture_inventories_owner_insert" ON public.furniture_inventories FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.leases l JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE l.id = furniture_inventories.lease_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "furniture_inventories_owner_update" ON public.furniture_inventories FOR UPDATE USING (EXISTS (SELECT 1 FROM public.leases l JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE l.id = furniture_inventories.lease_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "furniture_inventories_tenant_select" ON public.furniture_inventories FOR SELECT USING (EXISTS (SELECT 1 FROM public.leases l JOIN public.profiles pr ON pr.id = l.tenant_id WHERE l.id = furniture_inventories.lease_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "furniture_inventories_admin_all" ON public.furniture_inventories FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND role = 'admin'));
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'furniture_items') THEN
+    DROP POLICY IF EXISTS "furniture_items_owner_select" ON public.furniture_items;
+    DROP POLICY IF EXISTS "furniture_items_owner_insert" ON public.furniture_items;
+    DROP POLICY IF EXISTS "furniture_items_owner_update" ON public.furniture_items;
+    DROP POLICY IF EXISTS "furniture_items_owner_delete" ON public.furniture_items;
+    DROP POLICY IF EXISTS "furniture_items_tenant_select" ON public.furniture_items;
+    DROP POLICY IF EXISTS "furniture_items_admin_all" ON public.furniture_items;
+    CREATE POLICY "furniture_items_owner_select" ON public.furniture_items FOR SELECT USING (EXISTS (SELECT 1 FROM public.furniture_inventories fi JOIN public.leases l ON l.id = fi.lease_id JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE fi.id = furniture_items.inventory_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "furniture_items_owner_insert" ON public.furniture_items FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.furniture_inventories fi JOIN public.leases l ON l.id = fi.lease_id JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE fi.id = furniture_items.inventory_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "furniture_items_owner_update" ON public.furniture_items FOR UPDATE USING (EXISTS (SELECT 1 FROM public.furniture_inventories fi JOIN public.leases l ON l.id = fi.lease_id JOIN public.properties p ON p.id = l.property_id JOIN public.profiles pr ON pr.id = p.owner_id WHERE fi.id = furniture_items.inventory_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "furniture_items_tenant_select" ON public.furniture_items FOR SELECT USING (EXISTS (SELECT 1 FROM public.furniture_inventories fi JOIN public.leases l ON l.id = fi.lease_id JOIN public.profiles pr ON pr.id = l.tenant_id WHERE fi.id = furniture_items.inventory_id AND pr.user_id = auth.uid()));
+    CREATE POLICY "furniture_items_admin_all" ON public.furniture_items FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE user_id = auth.uid() AND role = 'admin'));
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_edl_signatures_signer_profile ON public.edl_signatures(signer_profile_id);
+CREATE OR REPLACE FUNCTION public.set_edl_entity_id() RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.entity_id IS NULL AND NEW.lease_id IS NOT NULL THEN SELECT signatory_entity_id INTO NEW.entity_id FROM public.leases WHERE id = NEW.lease_id; END IF;
+  IF NEW.entity_id IS NULL AND NEW.property_id IS NOT NULL THEN SELECT legal_entity_id INTO NEW.entity_id FROM public.properties WHERE id = NEW.property_id; END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+DROP TRIGGER IF EXISTS trigger_set_edl_entity_id ON public.edl;
+CREATE TRIGGER trigger_set_edl_entity_id BEFORE INSERT ON public.edl FOR EACH ROW EXECUTE FUNCTION public.set_edl_entity_id();
+
+-- ========== 20260207200000_audit_improvements_phase2.sql ==========
+DROP TRIGGER IF EXISTS trigger_activate_lease_on_edl_signed ON public.edl;
+DROP FUNCTION IF EXISTS public.activate_lease_on_edl_signed();
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'edl' AND constraint_name LIKE '%type%' AND constraint_type = 'CHECK') THEN
+    DECLARE cname TEXT;
+    BEGIN SELECT constraint_name INTO cname FROM information_schema.table_constraints WHERE table_name = 'edl' AND constraint_name LIKE '%type%' AND constraint_type = 'CHECK' LIMIT 1;
+      IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE public.edl DROP CONSTRAINT %I', cname); END IF;
+    END;
+  END IF;
+  ALTER TABLE public.edl ADD CONSTRAINT edl_type_check CHECK (type IN ('entree', 'sortie', 'intermediaire'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name WHERE tc.table_name = 'leases' AND kcu.column_name = 'tenant_id' AND tc.constraint_type = 'FOREIGN KEY') THEN
+    DECLARE fk_name TEXT;
+    BEGIN SELECT tc.constraint_name INTO fk_name FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name WHERE tc.table_name = 'leases' AND kcu.column_name = 'tenant_id' AND tc.constraint_type = 'FOREIGN KEY' LIMIT 1;
+      IF fk_name IS NOT NULL THEN EXECUTE format('ALTER TABLE public.leases DROP CONSTRAINT %I', fk_name); ALTER TABLE public.leases ADD CONSTRAINT leases_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES public.profiles(id) ON DELETE SET NULL; END IF;
+    END;
+  END IF;
+END $$;
+DO $$ BEGIN BEGIN ALTER TABLE public.documents DROP CONSTRAINT IF EXISTS documents_replaced_by_fkey; ALTER TABLE public.documents ADD CONSTRAINT documents_replaced_by_fkey FOREIGN KEY (replaced_by) REFERENCES public.documents(id) ON DELETE SET NULL; EXCEPTION WHEN undefined_column THEN NULL; END; END $$;
+DO $$ BEGIN BEGIN ALTER TABLE public.documents DROP CONSTRAINT IF EXISTS documents_verified_by_fkey; ALTER TABLE public.documents ADD CONSTRAINT documents_verified_by_fkey FOREIGN KEY (verified_by) REFERENCES public.profiles(id) ON DELETE SET NULL; EXCEPTION WHEN undefined_column THEN NULL; END; END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'furniture_inventories') THEN COMMENT ON TABLE public.furniture_inventories IS 'DEPRECATED: Use edl_furniture_inventory instead.'; END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'furniture_items') THEN COMMENT ON TABLE public.furniture_items IS 'DEPRECATED: Use edl_mandatory_furniture / edl_additional_furniture instead.'; END IF;
+END $$;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'entity_associates' AND column_name = 'piece_identite_document_id') THEN
+    BEGIN ALTER TABLE public.entity_associates ADD CONSTRAINT entity_associates_piece_identite_fkey FOREIGN KEY (piece_identite_document_id) REFERENCES public.documents(id) ON DELETE SET NULL; CREATE INDEX IF NOT EXISTS idx_entity_associates_piece_identite ON public.entity_associates(piece_identite_document_id); EXCEPTION WHEN duplicate_object THEN NULL; END;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'entity_associates' AND column_name = 'justificatif_domicile_document_id') THEN
+    BEGIN ALTER TABLE public.entity_associates ADD CONSTRAINT entity_associates_justificatif_domicile_fkey FOREIGN KEY (justificatif_domicile_document_id) REFERENCES public.documents(id) ON DELETE SET NULL; CREATE INDEX IF NOT EXISTS idx_entity_associates_justificatif_domicile ON public.entity_associates(justificatif_domicile_document_id); EXCEPTION WHEN duplicate_object THEN NULL; END;
+  END IF;
+END $$;
+
+-- ========== 20260208100000_fix_data_storage_audit.sql ==========
+ALTER TABLE roommates ALTER COLUMN user_id DROP NOT NULL;
+ALTER TABLE roommates ALTER COLUMN profile_id DROP NOT NULL;
+ALTER TABLE roommates ALTER COLUMN first_name DROP NOT NULL;
+ALTER TABLE roommates ALTER COLUMN last_name DROP NOT NULL;
+ALTER TABLE roommates ALTER COLUMN first_name SET DEFAULT '';
+ALTER TABLE roommates ALTER COLUMN last_name SET DEFAULT '';
+ALTER TABLE roommates ADD COLUMN IF NOT EXISTS room_label TEXT;
+ALTER TABLE roommates ADD COLUMN IF NOT EXISTS has_guarantor BOOLEAN DEFAULT false;
+ALTER TABLE roommates ADD COLUMN IF NOT EXISTS guarantor_email TEXT;
+ALTER TABLE roommates ADD COLUMN IF NOT EXISTS guarantor_name TEXT;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'leases' AND column_name = 'clauses_particulieres') THEN ALTER TABLE leases ADD COLUMN clauses_particulieres TEXT; END IF; END $$;
+ALTER TABLE roommates DROP CONSTRAINT IF EXISTS roommates_lease_id_user_id_key;
+CREATE UNIQUE INDEX IF NOT EXISTS roommates_lease_user_unique ON roommates (lease_id, user_id) WHERE user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS roommates_lease_email_unique ON roommates (lease_id, invited_email) WHERE invited_email IS NOT NULL;
+
+-- ========== 20260209100000_create_sms_messages_table.sql ==========
+CREATE TABLE IF NOT EXISTS sms_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  from_number TEXT NOT NULL, to_number TEXT NOT NULL, message TEXT NOT NULL,
+  segments INT DEFAULT 1, twilio_sid TEXT, twilio_status TEXT,
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'sent', 'delivered', 'undelivered', 'failed')),
+  error_code TEXT, error_message TEXT, sent_at TIMESTAMPTZ, delivered_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_sms_messages_twilio_sid ON sms_messages (twilio_sid) WHERE twilio_sid IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sms_messages_profile_id ON sms_messages (profile_id) WHERE profile_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sms_messages_created_at ON sms_messages (created_at DESC);
+CREATE OR REPLACE FUNCTION update_sms_messages_updated_at() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_sms_messages_updated_at ON sms_messages;
+CREATE TRIGGER trg_sms_messages_updated_at BEFORE UPDATE ON sms_messages FOR EACH ROW EXECUTE FUNCTION update_sms_messages_updated_at();
+ALTER TABLE sms_messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY sms_messages_admin_all ON sms_messages FOR ALL USING (EXISTS (SELECT 1 FROM profiles p WHERE p.user_id = auth.uid() AND p.role = 'admin'));
+CREATE POLICY sms_messages_owner_select ON sms_messages FOR SELECT USING (EXISTS (SELECT 1 FROM profiles p WHERE p.user_id = auth.uid() AND p.role = 'owner' AND p.id = sms_messages.profile_id));
+CREATE POLICY sms_messages_service_insert ON sms_messages FOR INSERT WITH CHECK (true);
+
