@@ -89,7 +89,7 @@ export function BillingPage() {
             <h1 className="text-2xl font-bold text-white" id="billing-content">
               Facturation & Abonnement
             </h1>
-            <p className="text-slate-400 mt-1">
+            <p className="text-slate-300 mt-1">
               Gerez votre forfait, vos factures et vos moyens de paiement
             </p>
           </div>
@@ -123,7 +123,7 @@ export function BillingPage() {
             <Clock className="w-5 h-5 text-violet-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1">
               <p className="text-violet-300 font-medium">Periode d&apos;essai en cours</p>
-              <p className="text-sm text-slate-400 mt-0.5">
+              <p className="text-sm text-slate-300 mt-0.5">
                 Il vous reste <strong>{trialDaysRemaining} jours</strong> pour profiter de toutes les
                 fonctionnalites {plan.name}. Ajoutez un moyen de paiement pour continuer.
               </p>
@@ -150,7 +150,7 @@ export function BillingPage() {
             <Pause className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1">
               <p className="text-amber-300 font-medium">Abonnement en pause</p>
-              <p className="text-sm text-slate-400 mt-0.5">
+              <p className="text-sm text-slate-300 mt-0.5">
                 Votre abonnement reprendra automatiquement le{" "}
                 <strong>{formatDateLong(pause_collection_until)}</strong>.
                 Vos donnees sont conservees.
@@ -174,7 +174,7 @@ export function BillingPage() {
             <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1">
               <p className="text-red-300 font-medium">Paiement echoue</p>
-              <p className="text-sm text-slate-400 mt-0.5">
+              <p className="text-sm text-slate-300 mt-0.5">
                 Votre dernier paiement a echoue. Mettez a jour votre moyen de paiement pour
                 eviter l&apos;interruption de votre service.
               </p>
@@ -206,7 +206,7 @@ export function BillingPage() {
             <CreditCard className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1">
               <p className="text-amber-300 font-medium">Configuration requise</p>
-              <p className="text-sm text-slate-400 mt-0.5">
+              <p className="text-sm text-slate-300 mt-0.5">
                 Finalisez la configuration de votre abonnement pour acceder a toutes les fonctionnalites.
               </p>
             </div>
@@ -273,9 +273,10 @@ export function BillingPage() {
           {/* Right column — Usage + Payment */}
           <div className="space-y-6">
             {/* Usage meters */}
-            <Card className="bg-slate-800/50 border-slate-700">
+            <Card className="bg-slate-800/60 border-slate-700">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-white">Utilisation</CardTitle>
+                <p className="text-sm text-slate-400">Suivi de votre consommation ce mois-ci</p>
               </CardHeader>
               <CardContent>
                 <UsageMeters usage={usage} />
@@ -296,7 +297,7 @@ export function BillingPage() {
             {!cancel_at_period_end && status !== "canceled" && status !== "incomplete" && (
               <Button
                 variant="ghost"
-                className="w-full text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                className="w-full text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 onClick={() => setShowCancel(true)}
               >
                 <X className="w-4 h-4 mr-2" aria-hidden="true" />

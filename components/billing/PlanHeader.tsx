@@ -92,13 +92,13 @@ export function PlanHeader({
               {statusDisplay.label}
             </Badge>
           </div>
-          <p className="text-sm text-slate-400">{plan.description}</p>
+          <p className="text-sm text-slate-300">{plan.description}</p>
 
           {/* Inline usage summary */}
           <p
             className={cn(
               "text-xs mt-2",
-              hasNearLimit ? "text-amber-400" : "text-slate-500"
+              hasNearLimit ? "text-amber-400" : "text-slate-400"
             )}
             aria-live="polite"
           >
@@ -117,11 +117,11 @@ export function PlanHeader({
             {formatPrice(price)}
             <span className="text-sm font-normal text-slate-400 ml-1">{priceLabel}</span>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-400 mt-0.5">
             soit {formatPrice(ttc)} TTC (TVA {tvaTaux}%)
           </p>
           {billingCycle === "yearly" && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               equiv. {formatPrice(Math.round(price / 12))} HT/mois
             </p>
           )}
