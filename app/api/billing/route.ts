@@ -13,15 +13,67 @@ export async function GET() {
       return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
     }
 
-    // Fetch subscription
-    const { data: subscription, error: subError } = await supabase
+    // Fetch subscription — essayer user_id d'abord, puis owner_id via profile
+    let subscription = null;
+    let subError = null;
+
+    const result1 = await supabase
       .from("subscriptions")
       .select("*")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (subError || !subscription) {
-      return NextResponse.json({ error: "Aucun abonnement trouve" }, { status: 404 });
+    if (result1.data) {
+      subscription = result1.data;
+    } else {
+      // Fallback: chercher via owner_id (schéma plus récent)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profile) {
+        const result2 = await supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("owner_id", profile.id)
+          .maybeSingle();
+
+        subscription = result2.data;
+        subError = result2.error;
+      }
+    }
+
+    if (subError && subError.code !== "PGRST116") {
+      return NextResponse.json({ error: "Erreur lors de la recherche d'abonnement" }, { status: 500 });
+    }
+
+    // Pas d'abonnement = nouveau compte ou plan gratuit
+    if (!subscription) {
+      const defaultResponse: BillingData = {
+        subscription: null as any,
+        usage: {
+          biens: { metric: "biens", current_value: 0, max_value: 1, percentage: 0, alert_level: "normal" },
+          signatures: { metric: "signatures", current_value: 0, max_value: 0, percentage: 0, alert_level: "normal" },
+          utilisateurs: { metric: "utilisateurs", current_value: 0, max_value: 1, percentage: 0, alert_level: "normal" },
+          stockage_mb: { metric: "stockage_mb", current_value: 0, max_value: 100, percentage: 0, alert_level: "normal" },
+        },
+        plan: {
+          id: "gratuit",
+          name: "Gratuit",
+          description: "Plan gratuit - 1 bien",
+          price_monthly_ht: 0,
+          price_yearly_ht: 0,
+          yearly_discount_percent: 0,
+          limits: { biens: 1, signatures: 0, utilisateurs: 1, stockage_mb: 100 },
+          features: [],
+          stripe_price_monthly: "",
+          stripe_price_yearly: "",
+        },
+        payment_method: null,
+      };
+      return NextResponse.json(defaultResponse);
     }
 
     // Fetch plan

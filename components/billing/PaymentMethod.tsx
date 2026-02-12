@@ -80,7 +80,7 @@ export function PaymentMethod({ paymentMethod }: PaymentMethodProps) {
           </p>
           <p className={cn(
             "text-xs mt-0.5",
-            expiring7 ? "text-red-400 font-medium" : expiring30 ? "text-amber-400" : "text-slate-500"
+            expiring7 ? "text-red-400 font-medium" : expiring30 ? "text-amber-400" : "text-slate-400"
           )}>
             exp. {String(paymentMethod.exp_month).padStart(2, "0")}/{paymentMethod.exp_year}
             {expiring7 && " — Expire dans moins de 7 jours !"}

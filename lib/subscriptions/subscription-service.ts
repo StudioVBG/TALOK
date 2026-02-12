@@ -197,7 +197,7 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
  */
 export async function userHasFeature(userId: string, feature: string): Promise<boolean> {
   const subscription = await getUserSubscription(userId);
-  if (!subscription || subscription.status !== 'active' && subscription.status !== 'trialing') {
+  if (!subscription || (subscription.status !== 'active' && subscription.status !== 'trialing')) {
     return false;
   }
   

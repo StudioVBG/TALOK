@@ -48,7 +48,7 @@ export function PlanFeatures({ groups }: PlanFeaturesProps) {
             >
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-200">{group.category}</span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-400">
                   {includedCount}/{totalCount}
                 </span>
               </div>

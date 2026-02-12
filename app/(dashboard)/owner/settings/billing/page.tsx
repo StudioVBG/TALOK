@@ -625,15 +625,23 @@ export default function BillingPage() {
   const isPaid = currentPlan !== "gratuit";
   const canUpgrade = getPlanLevel(currentPlan) < getPlanLevel("enterprise_xl");
 
-  // Check for success param
+  // Check for checkout redirect params
   useEffect(() => {
     const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
     if (success === "true") {
       toast({
         title: "Abonnement active !",
         description: "Merci pour votre confiance. Profitez de vos nouvelles fonctionnalites !",
       });
       refresh();
+      router.replace("/owner/settings/billing");
+    } else if (canceled === "true") {
+      toast({
+        title: "Paiement annule",
+        description: "Vous pouvez reprendre a tout moment depuis cette page.",
+        variant: "destructive",
+      });
       router.replace("/owner/settings/billing");
     }
   }, [searchParams, toast, refresh, router]);
@@ -740,8 +748,29 @@ export default function BillingPage() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
+        {/* Skip to content */}
+        <a
+          href="#billing-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-violet-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg"
+        >
+          Aller au contenu principal
+        </a>
+
+        {/* Breadcrumb */}
+        <nav aria-label="Fil d'Ariane" className="text-sm text-slate-400">
+          <ol className="flex items-center gap-1.5">
+            <li>
+              <Link href="/owner/dashboard" className="hover:text-white transition-colors">
+                Tableau de bord
+              </Link>
+            </li>
+            <li><ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></li>
+            <li aria-current="page" className="text-white font-medium">Facturation & Abonnement</li>
+          </ol>
+        </nav>
+
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div id="billing-content" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
               <Building2 className="w-7 h-7 text-violet-400" aria-hidden="true" />

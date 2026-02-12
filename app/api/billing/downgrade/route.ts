@@ -44,6 +44,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
     }
 
+    // Valider que l'usage actuel rentre dans les limites du nouveau plan
+    const usageConflicts: string[] = [];
+    const currentProps = subscription.properties_count || 0;
+    const currentLeases = subscription.leases_count || 0;
+    const currentTenants = subscription.tenants_count || 0;
+
+    if (newPlan.max_properties !== -1 && currentProps > newPlan.max_properties) {
+      usageConflicts.push(`Biens : ${currentProps} actuels > ${newPlan.max_properties} max`);
+    }
+    if (newPlan.max_leases !== -1 && currentLeases > newPlan.max_leases) {
+      usageConflicts.push(`Baux : ${currentLeases} actuels > ${newPlan.max_leases} max`);
+    }
+    if (newPlan.max_tenants !== -1 && currentTenants > newPlan.max_tenants) {
+      usageConflicts.push(`Locataires : ${currentTenants} actuels > ${newPlan.max_tenants} max`);
+    }
+
+    if (usageConflicts.length > 0) {
+      return NextResponse.json({
+        error: "Votre usage actuel depasse les limites du nouveau plan. Reduisez votre usage avant de changer.",
+        conflicts: usageConflicts,
+      }, { status: 409 });
+    }
+
     const cycle = subscription.billing_cycle || "monthly";
     const newPriceId = cycle === "yearly" ? newPlan.stripe_price_yearly : newPlan.stripe_price_monthly;
 

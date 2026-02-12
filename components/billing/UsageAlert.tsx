@@ -65,12 +65,12 @@ interface UsageAlertBannerProps {
 }
 
 export function UsageAlertBanner({ items }: UsageAlertBannerProps) {
-  const critical = items.filter((i) => i.level === "critical" || i.level === "exceeded");
-  if (critical.length === 0) return null;
+  const alertItems = items.filter((i) => i.level !== "normal");
+  if (alertItems.length === 0) return null;
 
   return (
     <div className="space-y-2" aria-live="polite">
-      {critical.map((item) => (
+      {alertItems.map((item) => (
         <UsageAlert
           key={item.metric}
           metric={item.metric}

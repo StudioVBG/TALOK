@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       .eq("owner_id", profile.id)
       .maybeSingle() : { data: null };
 
-    const planSlug = (subscription?.plan_slug || 'starter') as PlanSlug;
+    const planSlug = (subscription?.plan_slug || 'gratuit') as PlanSlug;
     const status = subscription?.status || 'active';
     const planFeatures = PLANS[planSlug].features;
 

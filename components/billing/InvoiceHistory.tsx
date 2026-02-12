@@ -35,7 +35,7 @@ export function InvoiceHistory({ subscriptionStatus, trialEnd }: InvoiceHistoryP
           <Receipt className="w-5 h-5 text-violet-400" aria-hidden="true" />
           Historique des factures
         </CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription className="text-slate-300">
           Telechargez vos factures pour votre comptabilite (CGI Art. 289)
         </CardDescription>
       </CardHeader>
@@ -50,6 +50,7 @@ export function InvoiceHistory({ subscriptionStatus, trialEnd }: InvoiceHistoryP
           <EmptyInvoices status={subscriptionStatus} trialEnd={trialEnd} />
         ) : (
           <>
+            <div className="overflow-x-auto -mx-6 px-6">
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-700">
@@ -117,6 +118,7 @@ export function InvoiceHistory({ subscriptionStatus, trialEnd }: InvoiceHistoryP
                 ))}
               </TableBody>
             </Table>
+            </div>
 
             {/* Pagination */}
             <div className="flex items-center justify-between pt-4">
@@ -162,16 +164,16 @@ function EmptyInvoices({
   const isTrial = status === "trialing";
 
   return (
-    <div className="text-center py-12">
-      <Receipt className="w-12 h-12 mx-auto mb-4 text-slate-600" aria-hidden="true" />
-      <p className="text-slate-400 mb-1">Aucune facture pour l&apos;instant</p>
-      <p className="text-sm text-slate-500">
+    <div className="text-center py-6">
+      <Receipt className="w-8 h-8 mx-auto mb-3 text-slate-500" aria-hidden="true" />
+      <p className="text-slate-300 mb-1">Aucune facture pour l&apos;instant</p>
+      <p className="text-sm text-slate-400">
         {isTrial && trialEnd
           ? `Votre premiere facture sera generee a la fin de votre essai gratuit le ${formatDateLong(trialEnd)}.`
           : "Aucune facture trouvee. Contactez le support si c'est inattendu."}
       </p>
       {!isTrial && (
-        <Button variant="outline" size="sm" className="mt-3 border-slate-700 text-slate-400" asChild>
+        <Button variant="outline" size="sm" className="mt-3 border-slate-700 text-slate-300" asChild>
           <a href="mailto:support@talok.fr">Contacter le support</a>
         </Button>
       )}

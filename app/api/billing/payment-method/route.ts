@@ -12,25 +12,52 @@ export async function POST() {
       return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
     }
 
-    const { data: subscription } = await supabase
+    // Chercher via user_id d'abord, puis owner_id via profile
+    let stripeCustomerId: string | null = null;
+
+    const { data: sub1 } = await supabase
       .from("subscriptions")
       .select("stripe_customer_id")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (!subscription?.stripe_customer_id) {
-      return NextResponse.json({ error: "Aucun client Stripe associe" }, { status: 400 });
+    if (sub1?.stripe_customer_id) {
+      stripeCustomerId = sub1.stripe_customer_id;
+    } else {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profile) {
+        const { data: sub2 } = await supabase
+          .from("subscriptions")
+          .select("stripe_customer_id")
+          .eq("owner_id", profile.id)
+          .maybeSingle();
+        stripeCustomerId = sub2?.stripe_customer_id || null;
+      }
     }
 
-    const headersList = await headers();
-    const host = headersList.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const origin = `${protocol}://${host}`;
+    if (!stripeCustomerId) {
+      return NextResponse.json(
+        { error: "Aucun client Stripe associe. Souscrivez d'abord un forfait payant.", code: "NO_STRIPE_CUSTOMER" },
+        { status: 400 }
+      );
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (() => {
+      const headersList = headers();
+      const host = (headersList as any).get?.("host") || "localhost:3000";
+      const protocol = host.includes("localhost") ? "http" : "https";
+      return `${protocol}://${host}`;
+    })();
 
     const stripe = getStripe();
     const session = await stripe.billingPortal.sessions.create({
-      customer: subscription.stripe_customer_id,
-      return_url: `${origin}/parametres/facturation`,
+      customer: stripeCustomerId,
+      return_url: `${appUrl}/owner/settings/billing`,
     });
 
     return NextResponse.json({ url: session.url });

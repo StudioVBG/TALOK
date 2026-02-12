@@ -87,18 +87,18 @@ export function PlanHeader({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h1 className="text-xl font-bold text-white">{plan.name}</h1>
+            <h2 className="text-xl font-bold text-white">{plan.name}</h2>
             <Badge className={cn("text-xs", statusDisplay.classes)} role="status">
               {statusDisplay.label}
             </Badge>
           </div>
-          <p className="text-sm text-slate-400">{plan.description}</p>
+          <p className="text-sm text-slate-300">{plan.description}</p>
 
           {/* Inline usage summary */}
           <p
             className={cn(
               "text-xs mt-2",
-              hasNearLimit ? "text-amber-400" : "text-slate-500"
+              hasNearLimit ? "text-amber-400" : "text-slate-400"
             )}
             aria-live="polite"
           >
@@ -117,11 +117,11 @@ export function PlanHeader({
             {formatPrice(price)}
             <span className="text-sm font-normal text-slate-400 ml-1">{priceLabel}</span>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-400 mt-0.5">
             soit {formatPrice(ttc)} TTC (TVA {tvaTaux}%)
           </p>
           {billingCycle === "yearly" && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               equiv. {formatPrice(Math.round(price / 12))} HT/mois
             </p>
           )}

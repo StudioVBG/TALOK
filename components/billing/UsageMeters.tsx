@@ -79,13 +79,13 @@ function UsageMeter({ metric, current, max, alertLevel }: UsageMeterProps) {
     <Tooltip>
       <TooltipTrigger asChild>
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-2 min-w-0">
               <Icon className="w-4 h-4 text-slate-400 flex-shrink-0" aria-hidden="true" />
-              <span className="text-slate-300">{config.label}</span>
-              <HelpCircle className="w-3 h-3 text-slate-500" aria-hidden="true" />
+              <span className="text-slate-300 truncate">{config.label}</span>
+              <HelpCircle className="w-3 h-3 text-slate-400 flex-shrink-0" aria-hidden="true" />
             </div>
-            <span className={colors.text}>
+            <span className={cn("flex-shrink-0 tabular-nums", colors.text)}>
               {isUnlimited
                 ? "Illimite"
                 : `${displayCurrent}${config.unit} / ${displayMax}`}
@@ -102,6 +102,16 @@ function UsageMeter({ metric, current, max, alertLevel }: UsageMeterProps) {
             >
               <Progress value={percentage} className={cn("h-2", colors.bar)} />
             </div>
+          )}
+          {!isUnlimited && alertLevel === "normal" && (
+            <p className="text-xs text-slate-500">
+              {Math.round(percentage)}% utilise
+            </p>
+          )}
+          {alertLevel === "warning" && (
+            <p className="text-xs text-amber-400">
+              {Math.round(percentage)}% utilise — proche de la limite
+            </p>
           )}
           {(alertLevel === "exceeded" || alertLevel === "critical") && (
             <p className={cn("text-xs", alertLevel === "exceeded" ? "text-red-400" : "text-orange-400")}>

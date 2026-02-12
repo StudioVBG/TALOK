@@ -18,10 +18,10 @@ interface CostLineProps {
 function CostLine({ label, amount, prefix = "", muted, bold, accent }: CostLineProps) {
   return (
     <div className="flex justify-between text-sm">
-      <span className={muted ? "text-slate-500" : bold ? "text-white font-medium" : "text-slate-300"}>
+      <span className={muted ? "text-slate-400" : bold ? "text-white font-medium" : "text-slate-300"}>
         {label}
       </span>
-      <span className={accent ? "text-emerald-400 font-semibold" : bold ? "text-white font-semibold" : muted ? "text-slate-500" : "text-slate-200"}>
+      <span className={accent ? "text-emerald-400 font-semibold" : bold ? "text-white font-semibold" : muted ? "text-slate-400" : "text-slate-200"}>
         {prefix}{formatPrice(amount)}
       </span>
     </div>
