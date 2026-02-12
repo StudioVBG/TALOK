@@ -175,9 +175,14 @@ export function RealtimeRevenueWidget() {
 }
 
 // Widget compact pour la barre latérale ou header
-export function RealtimeStatusIndicator() {
-  const { isConnected, lastUpdate, loading } = useRealtimeDashboard();
+// Accepts props instead of creating its own useRealtimeDashboard instance
+// to avoid duplicate Supabase realtime subscriptions
+interface RealtimeStatusIndicatorProps {
+  isConnected?: boolean;
+  loading?: boolean;
+}
 
+export function RealtimeStatusIndicator({ isConnected = false, loading = false }: RealtimeStatusIndicatorProps) {
   if (loading) return null;
 
   return (

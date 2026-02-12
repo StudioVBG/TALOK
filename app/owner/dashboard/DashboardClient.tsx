@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users, ShieldCheck, Zap } from "lucide-react";
+import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users, ShieldCheck } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOwnerData } from "../_data/OwnerDataProvider";
@@ -24,17 +24,10 @@ import { PushNotificationPrompt } from "@/components/notifications/push-notifica
 import { SignatureAlertBanner } from "@/components/owner/dashboard/signature-alert-banner";
 import { OwnerRecentActivity } from "@/components/owner/dashboard/recent-activity";
 import { RealtimeRevenueWidget, RealtimeStatusIndicator } from "@/components/owner/dashboard/realtime-revenue-widget";
+import { useRealtimeDashboard } from "@/lib/hooks/use-realtime-dashboard";
 import { StartTourButton } from "@/components/onboarding";
 
 // Lazy loading des composants lourds
-const OwnerTodoSection = dynamic(
-  () => import("@/components/owner/dashboard/owner-todo-section").then((mod) => ({ default: mod.OwnerTodoSection })),
-  { 
-    loading: () => <Skeleton className="h-64 w-full rounded-xl" />,
-    ssr: false 
-  }
-);
-
 const OwnerFinanceSummary = dynamic(
   () => import("@/components/owner/dashboard/owner-finance-summary").then((mod) => ({ default: mod.OwnerFinanceSummary })),
   { 
@@ -124,6 +117,8 @@ interface DashboardClientProps {
 
 export function DashboardClient({ profileCompletion }: DashboardClientProps) {
   const { dashboard, error } = useOwnerData();
+  // Single realtime hook instance shared between RealtimeRevenueWidget (via its own hook) and RealtimeStatusIndicator (via props)
+  const realtimeStatus = useRealtimeDashboard({ showToasts: false });
   const completionPercentage = profileCompletion ? calculateCompletionPercentage(profileCompletion) : 0;
 
   if (error) {
@@ -340,7 +335,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
                     <ShieldCheck className="h-3 w-3 xs:h-3.5 xs:w-3.5" />
                     <span className="hidden sm:inline">SOTA 2026</span> Secure
                   </Badge>
-                  <RealtimeStatusIndicator />
+                  <RealtimeStatusIndicator isConnected={realtimeStatus.isConnected} loading={realtimeStatus.loading} />
                 </motion.div>
               </div>
               <motion.p 
@@ -507,7 +502,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
           </div>
           
           <div className="md:col-span-2 lg:col-span-1">
-            <OwnerRecentActivity activities={((dashboard as any).recentActivity || dashboard.recentActivity || []) as any} />
+            <OwnerRecentActivity activities={(dashboard.recentActivity || []) as any} />
           </div>
         </div>
 
