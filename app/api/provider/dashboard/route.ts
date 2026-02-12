@@ -38,14 +38,59 @@ export async function GET() {
       );
     }
 
-    // Utiliser la RPC provider_dashboard
+    // Utiliser la RPC provider_dashboard avec fallback sur requêtes directes
     const { data, error } = await supabase.rpc("provider_dashboard", {
       p_user_id: user.id
     });
 
     if (error) {
-      console.error("Erreur RPC provider dashboard:", error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      console.warn("[provider/dashboard] RPC failed, using direct queries fallback:", error.message);
+
+      // Fallback: requêtes directes
+      const [workOrdersResult, reviewsResult] = await Promise.allSettled([
+        supabase
+          .from("work_orders")
+          .select("id, statut, cout_estime, date_intervention_prevue, created_at, ticket:tickets(titre, priorite), property:properties(adresse, ville)")
+          .eq("provider_id", profile.id)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("provider_reviews")
+          .select("id, rating_overall, comment, created_at, reviewer:profiles(prenom, nom)")
+          .eq("provider_id", profile.id)
+          .order("created_at", { ascending: false })
+          .limit(5),
+      ]);
+
+      const workOrders = workOrdersResult.status === "fulfilled" ? workOrdersResult.value.data || [] : [];
+      const reviews = reviewsResult.status === "fulfilled" ? reviewsResult.value.data || [] : [];
+
+      const totalInterventions = workOrders.length;
+      const completedInterventions = workOrders.filter((wo: any) => wo.statut === "completed").length;
+      const pendingInterventions = workOrders.filter((wo: any) => ["pending", "accepted", "scheduled"].includes(wo.statut)).length;
+      const totalRevenue = workOrders
+        .filter((wo: any) => wo.statut === "completed")
+        .reduce((sum: number, wo: any) => sum + (wo.cout_estime || 0), 0);
+      const ratings = reviews.map((r: any) => r.rating_overall).filter(Boolean);
+      const avgRating = ratings.length > 0 ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length : null;
+
+      const fallbackData = {
+        profile_id: profile.id,
+        stats: {
+          total_interventions: totalInterventions,
+          completed_interventions: completedInterventions,
+          pending_interventions: pendingInterventions,
+          total_revenue: totalRevenue,
+          avg_rating: avgRating,
+          total_reviews: reviews.length,
+        },
+        pending_orders: workOrders
+          .filter((wo: any) => ["pending", "accepted", "scheduled"].includes(wo.statut))
+          .slice(0, 5),
+        recent_reviews: reviews.slice(0, 5),
+      };
+
+      return NextResponse.json(fallbackData);
     }
 
     return NextResponse.json(data);

@@ -7,41 +7,30 @@ import { useTenantData } from "../_data/TenantDataProvider";
 import { useTenantRealtime } from "@/lib/hooks/use-realtime-tenant";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { PaymentCheckout } from "@/features/billing/components/payment-checkout";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Home, 
-  FileText, 
-  AlertCircle, 
-  CheckCircle2, 
-  Clock, 
+import {
+  Home,
+  FileText,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
   ArrowRight,
   Sparkles,
-  Zap,
   PenTool,
   Shield,
-  User,
   ChevronRight,
-  PartyPopper,
   Loader2,
   Building2,
-  Euro,
-  Calendar,
   CreditCard,
   MessageCircle,
   History,
   Info,
   MapPin,
   Phone,
-  ArrowUpRight,
   Wrench,
-  Gift,
-  LayoutGrid
 } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { Badge } from "@/components/ui/badge";
-import { DocumentDownloadButton } from "@/components/documents/DocumentDownloadButton";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -80,8 +69,6 @@ interface DashboardClientProps {
 
 export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps) {
   const { dashboard, profile, error } = useTenantData();
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
 
   // Gestion du logement sélectionné si multi-baux
   const [selectedLeaseIndex, setSelectedLeaseIndex] = useState(0);
@@ -161,24 +148,32 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
         raw: event
       })),
       // Factures
-      ...(dashboard.invoices || []).map(inv => ({
-        id: `inv-${inv.id}`,
-        date: new Date((inv as any).created_at || new Date()),
-        type: 'invoice',
-        title: `Loyer ${inv.periode}`,
-        amount: inv.montant_total,
-        status: inv.statut,
-        raw: inv
-      })),
+      ...(dashboard.invoices || []).map(inv => {
+        const dateStr = (inv as any).created_at;
+        const parsed = dateStr ? new Date(dateStr) : new Date();
+        return {
+          id: `inv-${inv.id}`,
+          date: isNaN(parsed.getTime()) ? new Date() : parsed,
+          type: 'invoice',
+          title: `Loyer ${inv.periode}`,
+          amount: inv.montant_total,
+          status: inv.statut,
+          raw: inv
+        };
+      }),
       // Tickets
-      ...(dashboard.tickets || []).map(t => ({
-        id: `tick-${t.id}`,
-        date: new Date(t.created_at || new Date()),
-        type: 'ticket',
-        title: t.titre,
-        status: t.statut,
-        raw: t
-      }))
+      ...(dashboard.tickets || []).map(t => {
+        const dateStr = t.created_at;
+        const parsed = dateStr ? new Date(dateStr) : new Date();
+        return {
+          id: `tick-${t.id}`,
+          date: isNaN(parsed.getTime()) ? new Date() : parsed,
+          type: 'ticket',
+          title: t.titre,
+          status: t.statut,
+          raw: t
+        };
+      })
     ];
 
     // Dédupliquer par ID (les événements realtime peuvent être des doublons)
@@ -868,20 +863,6 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
 
         </div>
 
-        {/* Dialog de paiement */}
-        <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
-          <DialogContent className="sm:max-w-md rounded-[2rem] border-none shadow-2xl overflow-hidden p-0">
-            {selectedInvoice && (
-              <PaymentCheckout 
-                invoiceId={selectedInvoice.id}
-                amount={selectedInvoice.montant_total}
-                description={`Loyer ${selectedInvoice.periode}`}
-                onSuccess={() => { setIsPaymentOpen(false); setSelectedInvoice(null); }}
-                onCancel={() => setIsPaymentOpen(false)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </PageTransition>
   );

@@ -84,6 +84,11 @@ interface OwnerDashboardRPCResponse {
       action_url: string;
     }>;
   };
+  recent_activity?: Array<{
+    type: string;
+    title: string;
+    date: string;
+  }>;
 }
 
 /**
@@ -120,8 +125,9 @@ async function fetchDashboardDirect(
     };
   }
 
-  // Requêtes parallèles pour les stats
-  const [leasesResult, invoicesResult, ticketsResult] = await Promise.allSettled([
+  // Requêtes parallèles pour les stats (incluant EDL et activité récente)
+  const leaseIds: string[] = [];
+  const [leasesResult, invoicesResult, ticketsResult, edlResult, recentInvoicesResult] = await Promise.allSettled([
     supabase
       .from("leases")
       .select("id, statut")
@@ -134,11 +140,32 @@ async function fetchDashboardDirect(
       .from("tickets")
       .select("id, statut")
       .in("property_id", propertyIds),
+    // EDL query - récupérer les états des lieux liés aux propriétés
+    supabase
+      .from("edl")
+      .select("id, statut, owner_signed")
+      .in("property_id", propertyIds),
+    // Activité récente - dernières factures et tickets pour le flux d'activité
+    supabase
+      .from("invoices")
+      .select("id, statut, periode, created_at")
+      .eq("owner_id", ownerId)
+      .order("created_at", { ascending: false })
+      .limit(5),
   ]);
 
   const leases = leasesResult.status === "fulfilled" ? leasesResult.value.data || [] : [];
   const invoices = invoicesResult.status === "fulfilled" ? invoicesResult.value.data || [] : [];
   const tickets = ticketsResult.status === "fulfilled" ? ticketsResult.value.data || [] : [];
+  const edls = edlResult.status === "fulfilled" ? edlResult.value.data || [] : [];
+  const recentInvoices = recentInvoicesResult.status === "fulfilled" ? recentInvoicesResult.value.data || [] : [];
+
+  // Construire l'activité récente à partir des factures récentes
+  const recentActivity = recentInvoices.map((inv: { id: string; statut: string; periode: string; created_at: string }) => ({
+    type: "invoice",
+    title: `Facture ${inv.periode} - ${inv.statut === "paid" ? "payée" : inv.statut === "late" ? "en retard" : "envoyée"}`,
+    date: inv.created_at,
+  }));
 
   return {
     properties: propertiesStats,
@@ -158,9 +185,14 @@ async function fetchDashboardDirect(
       open: tickets.filter((t: { statut: string }) => t.statut === "open").length,
       in_progress: tickets.filter((t: { statut: string }) => t.statut === "in_progress").length,
     },
-    edl: { total: 0, pending_owner_signature: 0 },
+    edl: {
+      total: edls.length,
+      pending_owner_signature: edls.filter((e: { statut: string; owner_signed: boolean | null }) =>
+        e.statut === "completed" && !e.owner_signed
+      ).length,
+    },
     zone3_portfolio: { compliance: [] },
-    recentActivity: [],
+    recentActivity,
   };
 }
 
@@ -212,7 +244,7 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
     tickets: dashboardData?.tickets_stats || { total: 0, open: 0, in_progress: 0 },
     edl: dashboardData?.edl_stats || { total: 0, pending_owner_signature: 0 },
     zone3_portfolio: dashboardData?.zone3_portfolio || { compliance: [] },
-    recentActivity: [],
+    recentActivity: dashboardData?.recent_activity || [],
   };
 }
 

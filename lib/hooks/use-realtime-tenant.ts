@@ -554,6 +554,71 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
         .subscribe();
       
       channelsRef.current.push(propertyChannel);
+
+      // 7. Écouter les CHANGEMENTS D'EDL (états des lieux)
+      const edlChannel = supabase
+        .channel(`tenant-edl:${profile.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "edl",
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const edl = payload.new as Record<string, any>;
+            // Vérifier que c'est pour un de nos baux
+            if (!leaseIds.includes(edl.lease_id)) return;
+
+            addEvent({
+              type: "edl",
+              action: "created",
+              title: "Nouvel état des lieux",
+              description: `EDL ${edl.type === "entree" ? "d'entrée" : "de sortie"} planifié`,
+              importance: "high",
+              data: edl,
+            });
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "edl",
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const edl = payload.new as Record<string, any>;
+            const oldEdl = payload.old as Record<string, any>;
+            if (!leaseIds.includes(edl.lease_id)) return;
+
+            // EDL complété
+            if (oldEdl.statut !== "completed" && edl.statut === "completed") {
+              addEvent({
+                type: "edl",
+                action: "updated",
+                title: "EDL terminé",
+                description: "L'état des lieux est terminé, vérifiez le résultat",
+                importance: "high",
+                data: edl,
+              });
+            }
+            // EDL signé par le propriétaire
+            if (!oldEdl.owner_signed && edl.owner_signed) {
+              addEvent({
+                type: "edl",
+                action: "updated",
+                title: "EDL validé",
+                description: "Le propriétaire a signé l'état des lieux",
+                importance: "high",
+                data: edl,
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      channelsRef.current.push(edlChannel);
     };
 
     setupRealtime();
