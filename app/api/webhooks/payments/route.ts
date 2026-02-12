@@ -9,19 +9,20 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Stripe from "stripe";
 
-// Utiliser le service role pour bypasser RLS
-const supabase = createServerClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
-
 export async function POST(request: NextRequest) {
+  // Créer le client à l'intérieur du handler (pas au niveau module)
+  // pour éviter les erreurs de build quand les env vars ne sont pas disponibles
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
   try {
     // Vérifier la signature du webhook
     const body = await request.text();

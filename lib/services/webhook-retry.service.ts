@@ -117,7 +117,14 @@ async function sendWebhook(
  * Classe du service de retry webhook
  */
 class WebhookRetryService {
-  private supabase = createServiceRoleClient();
+  private _supabase: ReturnType<typeof createServiceRoleClient> | null = null;
+
+  private get supabase() {
+    if (!this._supabase) {
+      this._supabase = createServiceRoleClient();
+    }
+    return this._supabase;
+  }
 
   /**
    * Enqueue un nouveau webhook pour envoi

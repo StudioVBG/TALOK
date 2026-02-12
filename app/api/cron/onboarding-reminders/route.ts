@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 /**
  * API Route - Cron job pour envoyer les rappels d'onboarding
  *
@@ -11,15 +14,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { emailTemplates } from "@/lib/emails/templates";
 import { Resend } from "resend";
-
-// Créer un client Supabase avec la clé service (pour contourner RLS)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-// Client Resend pour l'envoi d'emails
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Vérifier l'autorisation (clé secrète pour le cron)
 function isAuthorized(request: NextRequest): boolean {
@@ -35,6 +29,13 @@ function isAuthorized(request: NextRequest): boolean {
 }
 
 export async function GET(request: NextRequest) {
+  // Créer les clients à l'intérieur du handler (pas au niveau module)
+  // pour éviter les erreurs de build quand les env vars ne sont pas disponibles
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const resend = new Resend(process.env.RESEND_API_KEY);
   // Vérification de l'autorisation
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
         const profile = reminder.profiles as any;
         if (!profile) {
           results.skipped++;
-          await markReminderFailed(reminder.id, "Profile not found");
+          await markReminderFailed(supabase, reminder.id, "Profile not found");
           continue;
         }
 
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
         if (profileData?.onboarding_completed_at) {
           // Onboarding complété, annuler les rappels
           results.skipped++;
-          await markReminderCancelled(reminder.id, "Onboarding completed");
+          await markReminderCancelled(supabase, reminder.id, "Onboarding completed");
           continue;
         }
 
@@ -161,7 +162,7 @@ export async function GET(request: NextRequest) {
 
           default:
             results.skipped++;
-            await markReminderFailed(reminder.id, `Unknown reminder type: ${reminder.reminder_type}`);
+            await markReminderFailed(supabase, reminder.id, `Unknown reminder type: ${reminder.reminder_type}`);
             continue;
         }
 
@@ -176,15 +177,15 @@ export async function GET(request: NextRequest) {
         if (sendError) {
           results.failed++;
           results.errors.push(`Failed to send to ${email}: ${sendError.message}`);
-          await markReminderFailed(reminder.id, sendError.message);
+          await markReminderFailed(supabase, reminder.id, sendError.message);
         } else {
           results.sent++;
-          await markReminderSent(reminder.id);
+          await markReminderSent(supabase, reminder.id);
         }
       } catch (err: any) {
         results.failed++;
         results.errors.push(`Error processing reminder ${reminder.id}: ${err.message}`);
-        await markReminderFailed(reminder.id, err.message);
+        await markReminderFailed(supabase, reminder.id, err.message);
       }
     }
 
@@ -264,7 +265,8 @@ function getNextStepLabel(role: string, progressData: any[]): string {
   return "Finalisation";
 }
 
-async function markReminderSent(reminderId: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function markReminderSent(supabase: any, reminderId: string) {
   await supabase
     .from("onboarding_reminders")
     .update({
@@ -274,7 +276,8 @@ async function markReminderSent(reminderId: string) {
     .eq("id", reminderId);
 }
 
-async function markReminderFailed(reminderId: string, errorMessage: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function markReminderFailed(supabase: any, reminderId: string, errorMessage: string) {
   await supabase
     .from("onboarding_reminders")
     .update({
@@ -284,7 +287,8 @@ async function markReminderFailed(reminderId: string, errorMessage: string) {
     .eq("id", reminderId);
 }
 
-async function markReminderCancelled(reminderId: string, reason: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function markReminderCancelled(supabase: any, reminderId: string, reason: string) {
   await supabase
     .from("onboarding_reminders")
     .update({

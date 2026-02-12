@@ -4,50 +4,50 @@
 // Les pages marketing/publiques restent statiques (SSG par défaut).
 
 import type { Metadata, Viewport } from "next";
-import { Inter, Dancing_Script, Great_Vibes, Pacifico, Satisfy } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 /**
- * Configuration des polices avec next/font pour éviter le FOUC
- * Les polices sont préchargées et injectées de manière optimale
+ * Configuration des polices avec next/font/local pour éviter :
+ * 1. Le FOUC (Flash of Unstyled Content)
+ * 2. Les échecs de build quand Google Fonts est inaccessible (CI/Netlify)
+ *
+ * Les fichiers .woff2 sont dans public/fonts/ (subset latin uniquement).
  */
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: "../public/fonts/inter-latin-wght-normal.woff2",
   display: "swap",
   variable: "--font-inter",
   preload: true,
 });
 
-const dancingScript = Dancing_Script({
-  subsets: ["latin"],
+const dancingScript = localFont({
+  src: [
+    { path: "../public/fonts/dancing-script-latin-400-normal.woff2", weight: "400" },
+    { path: "../public/fonts/dancing-script-latin-500-normal.woff2", weight: "500" },
+    { path: "../public/fonts/dancing-script-latin-600-normal.woff2", weight: "600" },
+    { path: "../public/fonts/dancing-script-latin-700-normal.woff2", weight: "700" },
+  ],
   display: "swap",
   variable: "--font-dancing-script",
-  weight: ["400", "500", "600", "700"],
-  preload: false,
 });
 
-const greatVibes = Great_Vibes({
-  subsets: ["latin"],
+const greatVibes = localFont({
+  src: "../public/fonts/great-vibes-latin-400-normal.woff2",
   display: "swap",
   variable: "--font-great-vibes",
-  weight: "400",
-  preload: false,
 });
 
-const pacifico = Pacifico({
-  subsets: ["latin"],
+const pacifico = localFont({
+  src: "../public/fonts/pacifico-latin-400-normal.woff2",
   display: "swap",
   variable: "--font-pacifico",
-  weight: "400",
-  preload: false,
 });
 
-const satisfy = Satisfy({
-  subsets: ["latin"],
+const satisfy = localFont({
+  src: "../public/fonts/satisfy-latin-400-normal.woff2",
   display: "swap",
   variable: "--font-satisfy",
-  weight: "400",
-  preload: false,
 });
 
 /**
