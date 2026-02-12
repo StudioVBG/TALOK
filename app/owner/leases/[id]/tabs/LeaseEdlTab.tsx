@@ -20,6 +20,7 @@ import {
   Loader2,
   Home,
 } from "lucide-react";
+import { EDLPreview } from "@/features/edl/components/edl-preview";
 
 interface EdlData {
   id: string;
@@ -225,6 +226,14 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
           </CardContent>
         </Card>
       )}
+
+      {/* Aperçu du document EDL */}
+      <div className="min-h-[400px] sm:min-h-[600px]">
+        <EDLPreview
+          edlData={{ type: edl.type as "entree" | "sortie" }}
+          edlId={edl.id}
+        />
+      </div>
     </motion.div>
   );
 }
