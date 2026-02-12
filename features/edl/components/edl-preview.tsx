@@ -71,6 +71,7 @@ export function EDLPreview({
   // === MÉMORISATION: Hash des données clés pour éviter re-renders inutiles ===
   const dataHash = useMemo(() => {
     const hashData = JSON.stringify({
+      edlId,
       type: edlData.type,
       logement_adresse: edlData.logement?.adresse_complete,
       logement_ville: edlData.logement?.ville,
@@ -104,7 +105,7 @@ export function EDLPreview({
       hash = hash & hash;
     }
     return hash.toString(36);
-  }, [edlData, isVierge, rooms]);
+  }, [edlData, edlId, isVierge, rooms]);
 
   // Valider les données de l'EDL
   const validateEDLData = useCallback((): { errors: string[]; warnings: string[] } => {
@@ -221,10 +222,12 @@ export function EDLPreview({
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const { errors, warnings } = validateEDLData();
-        setValidationErrors(errors);
-        setValidationWarnings(warnings);
+        setValidationErrors(edlId ? [] : errors);
+        setValidationWarnings(edlId ? [] : warnings);
 
-        if (errors.length > 0 && !isVierge) {
+        // Si edlId est fourni, l'API récupère les données complètes en BDD
+        // → pas de blocage par la validation client
+        if (errors.length > 0 && !isVierge && !edlId) {
           setHtml("");
           setLoading(false);
           return;
