@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import {
+  ChevronRight,
   Clock,
   Pause,
   AlertTriangle,
@@ -81,6 +83,19 @@ export function BillingPage() {
         >
           Aller au contenu principal
         </a>
+
+        {/* Breadcrumb */}
+        <nav aria-label="Fil d'Ariane" className="text-sm text-slate-400">
+          <ol className="flex items-center gap-1.5">
+            <li>
+              <Link href="/owner/dashboard" className="hover:text-white transition-colors">
+                Tableau de bord
+              </Link>
+            </li>
+            <li><ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></li>
+            <li aria-current="page" className="text-white font-medium">Facturation & Abonnement</li>
+          </ol>
+        </nav>
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

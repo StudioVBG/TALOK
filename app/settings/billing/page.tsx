@@ -1112,17 +1112,25 @@ export default function BillingPage() {
   return (
     <TooltipProvider>
       <div className="container mx-auto py-6 sm:py-8 space-y-6 max-w-4xl px-4 sm:px-6">
+        {/* Skip to content */}
+        <a
+          href="#billing-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-lg"
+        >
+          Aller au contenu principal
+        </a>
+
         {/* Breadcrumb */}
         <nav aria-label="Fil d'Ariane" className="text-sm text-muted-foreground">
           <ol className="flex items-center gap-1.5">
-            <li><Link href="/settings" className="hover:text-foreground transition-colors">Parametres</Link></li>
+            <li><Link href="/owner/dashboard" className="hover:text-foreground transition-colors">Tableau de bord</Link></li>
             <li><ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></li>
             <li aria-current="page" className="text-foreground font-medium">Facturation & Abonnement</li>
           </ol>
         </nav>
 
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div id="billing-content" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-3">
             <Building2 className="h-7 w-7 sm:h-8 sm:w-8 text-primary" aria-hidden="true" />
             Facturation & Abonnement
@@ -1452,12 +1460,15 @@ export default function BillingPage() {
                   <Receipt className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                   Factures
                 </CardTitle>
-                {invoices.length > 0 && (
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href="/settings/invoices">
-                      Voir tout
-                      <ChevronRight className="h-4 w-4 ml-1" aria-hidden="true" />
-                    </Link>
+                {invoices.length > 0 && subscription?.stripe_customer_id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={openPortal}
+                    disabled={actionLoading === "portal"}
+                  >
+                    Voir tout sur Stripe
+                    <ExternalLink className="h-3.5 w-3.5 ml-1" aria-hidden="true" />
                   </Button>
                 )}
               </div>

@@ -47,15 +47,17 @@ export async function POST() {
       );
     }
 
-    const headersList = await headers();
-    const host = headersList.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const origin = `${protocol}://${host}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (() => {
+      const headersList = headers();
+      const host = (headersList as any).get?.("host") || "localhost:3000";
+      const protocol = host.includes("localhost") ? "http" : "https";
+      return `${protocol}://${host}`;
+    })();
 
     const stripe = getStripe();
     const session = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
-      return_url: `${origin}/parametres/facturation`,
+      return_url: `${appUrl}/owner/settings/billing`,
     });
 
     return NextResponse.json({ url: session.url });
