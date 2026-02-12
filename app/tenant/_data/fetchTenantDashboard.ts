@@ -160,21 +160,59 @@ async function fetchTenantDashboardDirect(
     leases = leasesData || [];
   }
 
-  // Récupérer les factures
-  let invoices: TenantInvoice[] = [];
-  if (leaseIds.length > 0) {
-    const { data: invoicesData } = await supabase
-      .from("invoices")
-      .select("id, lease_id, periode, montant_total, montant_loyer, montant_charges, statut, due_date")
-      .in("lease_id", leaseIds)
-      .order("periode", { ascending: false })
-      .limit(20);
-    invoices = (invoicesData || []).map((i: any) => ({
-      ...i,
-      property_type: "",
-      property_address: "",
-    })) as TenantInvoice[];
-  }
+  // Récupérer les factures, tickets et EDL en parallèle
+  const propertyIds = leases.map((l: any) => l.property_id).filter(Boolean);
+
+  const [invoicesResult, ticketsResult, edlResult] = await Promise.allSettled([
+    leaseIds.length > 0
+      ? supabase
+          .from("invoices")
+          .select("id, lease_id, periode, montant_total, montant_loyer, montant_charges, statut, due_date")
+          .in("lease_id", leaseIds)
+          .order("periode", { ascending: false })
+          .limit(20)
+      : Promise.resolve({ data: [] }),
+    // Tickets créés par ce locataire
+    supabase
+      .from("tickets")
+      .select("id, titre, description, priorite, statut, created_at, property_id")
+      .eq("created_by_profile_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    // EDL en attente pour les propriétés du locataire
+    propertyIds.length > 0
+      ? supabase
+          .from("edl")
+          .select("id, type, statut, scheduled_at, invitation_token, property_id")
+          .in("property_id", propertyIds)
+          .in("statut", ["scheduled", "in_progress"])
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const invoicesData = invoicesResult.status === "fulfilled" ? (invoicesResult.value as any).data || [] : [];
+  const ticketsData = ticketsResult.status === "fulfilled" ? (ticketsResult.value as any).data || [] : [];
+  const edlData = edlResult.status === "fulfilled" ? (edlResult.value as any).data || [] : [];
+
+  const invoices: TenantInvoice[] = invoicesData.map((i: any) => ({
+    ...i,
+    property_type: "",
+    property_address: "",
+  }));
+
+  const tickets: TenantTicket[] = ticketsData.map((t: any) => ({
+    ...t,
+    property_address: "",
+    property_type: "",
+  }));
+
+  const pending_edls: PendingEDL[] = edlData.map((e: any) => ({
+    id: e.id,
+    type: e.type || "entree",
+    scheduled_at: e.scheduled_at || "",
+    invitation_token: e.invitation_token || "",
+    property_address: "",
+    property_type: "",
+  }));
 
   const unpaidInvoices = invoices.filter((i) => i.statut === "sent" || i.statut === "late");
 
@@ -187,9 +225,9 @@ async function fetchTenantDashboardDirect(
     lease: leases.length > 0 ? leases[0] as any : null,
     property: null,
     invoices,
-    tickets: [],
+    tickets,
     notifications: [],
-    pending_edls: [],
+    pending_edls,
     insurance: { has_insurance: false },
     stats: {
       unpaid_amount: unpaidInvoices.reduce((sum, i) => sum + Number(i.montant_total || 0), 0),

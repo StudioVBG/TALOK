@@ -419,6 +419,96 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
         .subscribe();
       
       channels.push(leasesChannel);
+
+      // 6. Écouter les changements d'EDL (états des lieux)
+      const edlChannel = supabase
+        .channel(`edl:${ownerId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "edl",
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const edl = payload.new;
+            addEvent({
+              type: "edl",
+              action: "created",
+              title: "Nouvel état des lieux",
+              description: `EDL ${edl.type === "entree" ? "d'entrée" : "de sortie"} créé`,
+              data: edl,
+            });
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "edl",
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const edl = payload.new;
+            const oldEdl = payload.old as Record<string, any>;
+
+            // EDL complété et en attente de signature propriétaire
+            if (oldEdl.statut !== "completed" && edl.statut === "completed" && !edl.owner_signed) {
+              addEvent({
+                type: "edl",
+                action: "updated",
+                title: "EDL à signer",
+                description: "Un état des lieux est terminé et attend votre signature",
+                data: edl,
+              });
+            }
+            // EDL entièrement signé
+            if (!oldEdl.owner_signed && edl.owner_signed) {
+              addEvent({
+                type: "edl",
+                action: "updated",
+                title: "EDL signé",
+                description: "L'état des lieux a été signé avec succès",
+                data: edl,
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      channels.push(edlChannel);
+
+      // 7. Écouter les nouveaux documents (attestations locataire, etc.)
+      const documentsChannel = supabase
+        .channel(`documents:${ownerId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "documents",
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const doc = payload.new;
+            const docTypeLabels: Record<string, string> = {
+              attestation_assurance: "Attestation d'assurance",
+              quittance: "Quittance",
+              bail: "Contrat de bail",
+              EDL_entree: "EDL d'entrée",
+              EDL_sortie: "EDL de sortie",
+            };
+            addEvent({
+              type: "signature",
+              action: "created",
+              title: "Nouveau document",
+              description: docTypeLabels[doc.type] || `Document: ${doc.type || "ajouté"}`,
+              data: doc,
+            });
+          }
+        )
+        .subscribe();
+
+      channels.push(documentsChannel);
     };
 
     setupRealtime();

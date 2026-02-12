@@ -25,8 +25,11 @@ import {
   RefreshCw,
   Sparkles,
   FileText,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import Link from "next/link";
+import { useRealtimeProvider } from "@/lib/hooks/use-realtime-provider";
 
 interface ProviderStats {
   total_interventions: number;
@@ -108,6 +111,18 @@ export default function ProviderDashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Temps réel : nouvelles interventions, avis, changements de statut
+  const realtime = useRealtimeProvider({ showToasts: true });
+
+  // Auto-refresh quand une nouvelle intervention arrive en temps réel
+  useEffect(() => {
+    if (realtime.newOrdersCount > 0 && data) {
+      loadDashboard(true);
+      realtime.clearNewOrdersCount();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realtime.newOrdersCount]);
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -194,6 +209,20 @@ export default function ProviderDashboardPage() {
                 </h1>
                 <Badge className="bg-white/20 text-white border-white/30 text-xs">
                   Prestataire
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={`gap-1 text-xs ${
+                    realtime.isConnected
+                      ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/30"
+                      : "bg-red-500/20 text-red-200 border-red-400/30"
+                  }`}
+                >
+                  {realtime.isConnected ? (
+                    <><Wifi className="h-3 w-3" /> Live</>
+                  ) : (
+                    <><WifiOff className="h-3 w-3" /> Hors ligne</>
+                  )}
                 </Badge>
               </div>
               <p className="text-white/80 text-sm sm:text-base">
