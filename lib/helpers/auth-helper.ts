@@ -1,4 +1,5 @@
 import { createClient, createClientFromRequest } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 
 /**
@@ -149,5 +150,44 @@ export async function requireAdmin(request: Request) {
     profile: profileData,
     supabase: serviceClient as any,
   };
+}
+
+/**
+ * Fetch le profil utilisateur côté serveur avec fallback service role en cas de récursion RLS.
+ * Utilise d'abord le client authentifié (anon key + cookie), puis le service role en cas d'erreur.
+ */
+export async function getServerProfile<T extends Record<string, unknown> = Record<string, unknown>>(
+  userId: string,
+  select: string = "id, role, prenom, nom"
+): Promise<{ profile: T | null; error: string | null }> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(select)
+    .eq("user_id", userId)
+    .single();
+
+  if (!error && data) {
+    return { profile: data as T, error: null };
+  }
+
+  // Fallback: service role bypasses RLS
+  try {
+    const serviceClient = createServiceRoleClient();
+    const { data: serviceData, error: serviceError } = await serviceClient
+      .from("profiles")
+      .select(select)
+      .eq("user_id", userId)
+      .single();
+
+    if (serviceError || !serviceData) {
+      return { profile: null, error: serviceError?.message || "Profile not found" };
+    }
+    return { profile: serviceData as T, error: null };
+  } catch (e) {
+    console.error("[getServerProfile] Service role fallback failed:", e);
+    return { profile: null, error: "Failed to fetch profile" };
+  }
 }
 

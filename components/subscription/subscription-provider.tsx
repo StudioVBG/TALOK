@@ -97,11 +97,30 @@ export function SubscriptionProvider({
       }
 
       // Récupérer le profile_id d'abord
-      const { data: profile } = await supabase
+      let profile: { id: string } | null = null;
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("id")
         .eq("user_id", user.id)
         .single();
+
+      if (profileError) {
+        // Si erreur de récursion RLS, utiliser la route API en fallback
+        if (profileError.code === '42P17' || profileError.message?.includes('infinite recursion')) {
+          console.warn("[SubscriptionProvider] RLS recursion detected, using API fallback");
+          try {
+            const response = await fetch("/api/me/profile", { credentials: "include" });
+            if (response.ok) {
+              const apiProfile = await response.json();
+              profile = { id: apiProfile.id };
+            }
+          } catch (apiError) {
+            console.error("[SubscriptionProvider] API fallback error:", apiError);
+          }
+        }
+      } else {
+        profile = profileData;
+      }
 
       if (!profile) {
         // Pas de profil = pas d'abonnement

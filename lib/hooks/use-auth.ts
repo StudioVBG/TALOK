@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
@@ -56,7 +56,13 @@ export function useAuth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const fetchingRef = React.useRef(false);
+
   async function fetchProfile(userId: string) {
+    // Prevent concurrent fetches that could cause re-render loops
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -73,8 +79,8 @@ export function useAuth() {
               credentials: "include",
             });
             if (response.ok) {
-              const profile = await response.json();
-              setProfile(profile as Profile);
+              const apiProfile = await response.json();
+              setProfile(apiProfile as Profile);
               setLoading(false);
               return;
             }
@@ -90,6 +96,7 @@ export function useAuth() {
       setProfile(null);
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   }
 

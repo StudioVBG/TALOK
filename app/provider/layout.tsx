@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServerProfile } from "@/lib/helpers/auth-helper";
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -52,11 +53,11 @@ export default async function VendorLayout({
     redirect("/auth/signin");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, role, prenom, nom, avatar_url")
-    .eq("user_id", user.id)
-    .single();
+  // Récupérer le profil (avec fallback service role en cas de récursion RLS)
+  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null; avatar_url: string | null }>(
+    user.id,
+    "id, role, prenom, nom, avatar_url"
+  );
 
   if (!profile || profile.role !== "provider") {
     redirect("/dashboard");

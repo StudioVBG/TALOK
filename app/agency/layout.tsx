@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { AgencySidebar } from "./_components/AgencySidebar";
@@ -34,14 +35,13 @@ export default async function AgencyLayout({
     redirect("/auth/signin?redirect=/agency/dashboard");
   }
 
-  // 2. Récupérer le profil avec le rôle
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, role, prenom, nom")
-    .eq("user_id", user.id)
-    .single();
+  // 2. Récupérer le profil (avec fallback service role en cas de récursion RLS)
+  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null }>(
+    user.id,
+    "id, role, prenom, nom"
+  );
 
-  if (profileError || !profile) {
+  if (!profile) {
     redirect("/auth/signin");
   }
 

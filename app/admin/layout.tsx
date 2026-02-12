@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { AdminDataProvider } from "./_data/AdminDataProvider";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -24,13 +25,13 @@ export default async function AdminLayout({
     redirect("/auth/signin");
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, role")
-    .eq("user_id", user.id)
-    .single();
+  // Récupérer le profil (avec fallback service role en cas de récursion RLS)
+  const { profile } = await getServerProfile<{ id: string; role: string }>(
+    user.id,
+    "id, role"
+  );
 
-  if (profileError || !profile || profile.role !== "admin") {
+  if (!profile || profile.role !== "admin") {
     if (profile?.role === "owner") redirect("/owner/dashboard");
     if (profile?.role === "tenant") redirect("/tenant/dashboard");
     redirect("/");
