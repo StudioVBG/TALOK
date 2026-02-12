@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { fetchProperties, fetchDashboard, fetchContracts } from "./_data";
 import { OwnerDataProvider } from "./_data/OwnerDataProvider";
 import { OwnerAppLayout } from "@/components/layout/owner-app-layout";
@@ -30,14 +31,13 @@ export default async function OwnerLayout({
     redirect("/auth/signin");
   }
 
-  // Récupérer le profil
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, role, prenom, nom")
-    .eq("user_id", user.id)
-    .single();
+  // Récupérer le profil (avec fallback service role en cas de récursion RLS)
+  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null }>(
+    user.id,
+    "id, role, prenom, nom"
+  );
 
-  if (profileError || !profile) {
+  if (!profile) {
     redirect("/auth/signin");
   }
 

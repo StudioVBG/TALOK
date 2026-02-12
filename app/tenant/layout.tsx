@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { fetchTenantDashboard } from "./_data/fetchTenantDashboard";
 import { TenantDataProvider } from "./_data/TenantDataProvider";
 import { TenantAppLayout } from "@/components/layout/tenant-app-layout";
@@ -29,14 +30,13 @@ export default async function TenantLayout({
     redirect("/auth/signin");
   }
 
-  // 2. Récupérer le profil
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, role, prenom, nom, avatar_url")
-    .eq("user_id", user.id)
-    .single();
+  // 2. Récupérer le profil (avec fallback service role en cas de récursion RLS)
+  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null; avatar_url: string | null }>(
+    user.id,
+    "id, role, prenom, nom, avatar_url"
+  );
 
-  if (profileError || !profile) {
+  if (!profile) {
     redirect("/auth/signin");
   }
 
