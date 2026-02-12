@@ -28,6 +28,8 @@ interface TenantInviteProps {
   onModeChange: (mode: "invite" | "manual") => void;
 }
 
+import { Upload } from "lucide-react";
+
 export function TenantInvite({
   tenantEmail,
   tenantName,
@@ -72,8 +74,8 @@ export function TenantInvite({
             Inviter par email
           </TabsTrigger>
           <TabsTrigger value="manual" className="gap-2">
-            <PenTool className="h-4 w-4" />
-            Bail vierge / Manuscrit
+            <Upload className="h-4 w-4" />
+            Bail existant / Manuscrit
           </TabsTrigger>
         </TabsList>
 
@@ -203,21 +205,30 @@ export function TenantInvite({
               <div className="space-y-3 flex-1">
                 <div>
                   <h4 className="font-medium text-amber-900 dark:text-amber-100">
-                    Bail pré-rempli à imprimer
+                    Bail existant ou à imprimer
                   </h4>
                   <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                    Ce mode génère un PDF avec les informations du bien et du propriétaire déjà remplies. Les champs locataire seront laissés vides (ou pré-remplis si vous avez mis un nom) pour être complétés à la main.
+                    Idéal pour les propriétaires qui ont déjà un locataire en place ou qui préfèrent la signature papier.
+                    Le bail sera enregistré dans Talok pour le suivi des loyers, quittances et état des lieux.
                   </p>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
+                    <Upload className="h-4 w-4" />
+                    J'ai déjà un bail signé
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
                     <Printer className="h-4 w-4" />
-                    Idéal pour signature papier
+                    Imprimer un bail pré-rempli
                   </div>
                   <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
                     <PenTool className="h-4 w-4" />
                     Signature sur place
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
+                    <User className="h-4 w-4" />
+                    Locataire déjà en place
                   </div>
                 </div>
               </div>

@@ -19,7 +19,7 @@ function PropertyWizardWrapper() {
 
   const handleSuccess = (propertyId: string) => {
     console.log("[OwnerNewPropertyPage] Succès ! Redirection vers :", `/owner/properties/${propertyId}`);
-    router.push(`/owner/properties/${propertyId}`);
+    router.push(`/owner/properties/${propertyId}?new=true`);
   };
 
   const handleCancel = () => {

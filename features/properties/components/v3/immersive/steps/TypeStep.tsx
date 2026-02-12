@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Building2, Home, Warehouse, Car, Store, Hotel, Sofa, Building, Sparkles } from "lucide-react";
+import { Building2, Home, Warehouse, Car, Store, Hotel, Sofa, Building, Sparkles, Tractor } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,9 @@ const TYPES = [
   { id: "bureaux", label: "Bureaux", icon: Building2, group: "pro" },
   { id: "entrepot", label: "Entrepôt", icon: Warehouse, group: "pro" },
   { id: "fonds_de_commerce", label: "Fonds de commerce", icon: Store, group: "pro" },
+  // Agricole
+  { id: "terrain_agricole", label: "Terrain agricole", icon: Tractor, group: "agricole" },
+  { id: "exploitation_agricole", label: "Exploitation agricole", icon: Home, group: "agricole" },
 ] as const;
 
 export function TypeStep() {
