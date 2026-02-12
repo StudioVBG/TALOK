@@ -87,7 +87,7 @@ export function PlanHeader({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h1 className="text-xl font-bold text-white">{plan.name}</h1>
+            <h2 className="text-xl font-bold text-white">{plan.name}</h2>
             <Badge className={cn("text-xs", statusDisplay.classes)} role="status">
               {statusDisplay.label}
             </Badge>

@@ -51,11 +51,11 @@ export function ReactivationBanner({ periodEnd }: ReactivationBannerProps) {
       <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
       <div className="flex-1">
         <p className="text-red-300 font-medium">Resiliation programmee</p>
-        <p className="text-sm text-slate-400 mt-0.5">
+        <p className="text-sm text-slate-300 mt-0.5">
           Votre abonnement sera desactive le <strong>{formatDateLong(periodEnd)}</strong>.
           Vous conservez l&apos;acces a toutes les fonctionnalites jusqu&apos;a cette date.
         </p>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-slate-400 mt-1">
           Vous conserverez votre forfait actuel sans interruption en reactivant.
         </p>
       </div>

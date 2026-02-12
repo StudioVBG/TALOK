@@ -50,6 +50,7 @@ export function InvoiceHistory({ subscriptionStatus, trialEnd }: InvoiceHistoryP
           <EmptyInvoices status={subscriptionStatus} trialEnd={trialEnd} />
         ) : (
           <>
+            <div className="overflow-x-auto -mx-6 px-6">
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-700">
@@ -117,6 +118,7 @@ export function InvoiceHistory({ subscriptionStatus, trialEnd }: InvoiceHistoryP
                 ))}
               </TableBody>
             </Table>
+            </div>
 
             {/* Pagination */}
             <div className="flex items-center justify-between pt-4">

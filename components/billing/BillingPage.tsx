@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Clock,
@@ -13,7 +14,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useBilling } from "@/hooks/useBilling";
 import { useTerritory } from "@/hooks/useTerritory";
@@ -32,14 +32,13 @@ import { CancellationFlow } from "./CancellationFlow";
 import { ReactivationBanner } from "./ReactivationBanner";
 import { LegalFooter } from "./LegalFooter";
 import type { UsageMetric } from "@/types/billing";
-import Link from "next/link";
 
 export function BillingPage() {
+  const router = useRouter();
   const { data: billing, isLoading, error } = useBilling();
   const { territoire, tva_taux } = useTerritory();
   const { mutate: openPortal, isPending: portalPending } = useStripePortal();
   const [showCancel, setShowCancel] = useState(false);
-  const [showUpgrade, setShowUpgrade] = useState(false);
 
   if (isLoading) return <BillingSkeleton />;
 
@@ -48,7 +47,7 @@ export function BillingPage() {
       <div className="text-center py-20">
         <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-400" aria-hidden="true" />
         <p className="text-slate-300 font-medium mb-2">Erreur de chargement</p>
-        <p className="text-sm text-slate-500 mb-4">
+        <p className="text-sm text-slate-400 mb-4">
           {error instanceof Error ? error.message : "Impossible de charger vos informations de facturation."}
         </p>
         <Button onClick={() => window.location.reload()}>
@@ -237,7 +236,7 @@ export function BillingPage() {
                   billingCycle={billing_cycle}
                   usage={usage}
                   tvaTaux={tva_taux}
-                  onUpgrade={() => setShowUpgrade(true)}
+                  onUpgrade={() => router.push("/pricing")}
                 />
               </CardContent>
             </Card>
@@ -325,14 +324,6 @@ export function BillingPage() {
           />
         )}
 
-        {/* Upgrade — redirect to pricing for now */}
-        {showUpgrade && (
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `window.location.href = "/pricing"`,
-            }}
-          />
-        )}
       </div>
     </TooltipProvider>
   );

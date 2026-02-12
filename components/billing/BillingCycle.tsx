@@ -4,6 +4,7 @@ import { Calendar, Clock, AlertCircle, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice, formatDateLong, daysUntil, computeYearlySavings } from "@/lib/billing-utils";
 import type { BillingCycle as BillingCycleType, PlanDefinition } from "@/types/billing";
+import Link from "next/link";
 
 interface BillingCycleProps {
   cycle: BillingCycleType;
@@ -35,9 +36,12 @@ export function BillingCycle({ cycle, periodEnd, plan, tvaTaux }: BillingCyclePr
           {cycle === "yearly" ? "Annuel" : "Mensuel"}
         </p>
         {cycle === "monthly" && savingsPercent > 0 && (
-          <p className="text-xs text-emerald-400 mt-1">
-            Economisez {savingsPercent}% en annuel
-          </p>
+          <Link
+            href="/pricing"
+            className="text-xs text-emerald-400 hover:text-emerald-300 underline underline-offset-2 mt-1 inline-block transition-colors"
+          >
+            Economisez {savingsPercent}% en annuel &rarr;
+          </Link>
         )}
       </div>
 
