@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, ClipboardList, Search, CheckCircle2, Clock, Eye, FileText, Printer, Trash2, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, ClipboardList, Search, CheckCircle2, Clock, Eye, Pencil, FileText, Printer, Trash2, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -199,6 +199,15 @@ export function InspectionsClient({ inspections }: Props) {
               <span className="text-xs font-medium">Voir</span>
             </Link>
           </Button>
+
+          {edl.status !== "signed" && (
+            <Button size="sm" variant="outline" asChild className="hover:bg-amber-50 hover:border-amber-300 h-8 gap-1.5 px-2.5 text-amber-600 border-amber-200" title="Modifier l'état des lieux">
+              <Link href={`/owner/inspections/${edl.id}/edit`}>
+                <Pencil className="h-4 w-4" />
+                <span className="text-xs font-medium">Modifier</span>
+              </Link>
+            </Button>
+          )}
 
           {edl.status !== "signed" && (
             <Button 
