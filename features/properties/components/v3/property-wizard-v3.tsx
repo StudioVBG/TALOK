@@ -69,13 +69,15 @@ const stepComponents: Record<WizardStep, React.ElementType> = {
 // Types de biens qui n'ont PAS d'étape "rooms"
 // ⚠️ Aligné avec wizard-store.ts et TypeStep.tsx
 const TYPES_WITHOUT_ROOMS_STEP = [
-  "parking", 
-  "box", 
-  "local_commercial", 
-  "bureaux", 
-  "entrepot", 
+  "parking",
+  "box",
+  "local_commercial",
+  "bureaux",
+  "entrepot",
   "fonds_de_commerce",
-  "immeuble"  // SOTA 2026 - Les immeubles ont building_config au lieu de rooms
+  "immeuble",             // SOTA 2026 - Les immeubles ont building_config au lieu de rooms
+  "terrain_agricole",     // Bail rural - pas de pièces intérieures
+  "exploitation_agricole" // Bail rural - configuration spécifique
 ];
 
 // Titres des étapes selon le type de bien

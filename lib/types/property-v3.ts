@@ -37,7 +37,9 @@ export type PropertyTypeV3 =
   | "bureaux"
   | "entrepot"
   | "fonds_de_commerce"
-  | "immeuble";           // SOTA 2026 - Immeuble entier multi-lots
+  | "immeuble"            // SOTA 2026 - Immeuble entier multi-lots
+  | "terrain_agricole"    // Bail rural - terrain agricole
+  | "exploitation_agricole"; // Bail rural - exploitation agricole (ferme)
 
 // Note : "saisonnier" retiré du modèle V3 mais conservé dans la BDD pour rétrocompatibilité
 
@@ -67,6 +69,10 @@ export const PROPERTY_TYPE_GROUPS = {
     { value: "bureaux" as const, label: "Bureaux / Tertiaire", icon: "🧑‍💼" },
     { value: "entrepot" as const, label: "Entrepôt / Atelier / Logistique", icon: "🏭" },
     { value: "fonds_de_commerce" as const, label: "Fonds de commerce / Local mixte", icon: "🛍" },
+  ],
+  agricole: [
+    { value: "terrain_agricole" as const, label: "Terrain agricole", icon: "🌾" },
+    { value: "exploitation_agricole" as const, label: "Exploitation agricole / Ferme", icon: "🏚" },
   ],
 } as const;
 

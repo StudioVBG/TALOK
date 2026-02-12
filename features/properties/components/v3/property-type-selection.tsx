@@ -22,16 +22,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
-  Home, 
-  Building2, 
-  Car, 
-  Warehouse, 
-  Store, 
-  Users, 
+import {
+  Home,
+  Building2,
+  Car,
+  Warehouse,
+  Store,
+  Users,
   Check,
   Search,
-  X
+  X,
+  Tractor
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WizardStepLayout } from "@/lib/design-system/wizard-layout";
@@ -64,6 +65,8 @@ const TYPE_ICONS: Record<PropertyTypeV3, typeof Home> = {
   entrepot: Warehouse,
   fonds_de_commerce: Store,
   immeuble: Building2,
+  terrain_agricole: Tractor,
+  exploitation_agricole: Home,
 };
 
 // Groupes de filtres
@@ -72,6 +75,7 @@ const FILTER_GROUPS = [
   { id: "habitation", label: "Habitation" },
   { id: "parking", label: "Parking & Box" },
   { id: "locaux", label: "Commercial" },
+  { id: "agricole", label: "Agricole" },
 ] as const;
 
 type FilterGroup = typeof FILTER_GROUPS[number]["id"];
@@ -81,12 +85,14 @@ const ALL_TYPES = [
   ...PROPERTY_TYPE_GROUPS.habitation,
   ...PROPERTY_TYPE_GROUPS.parking,
   ...PROPERTY_TYPE_GROUPS.locaux,
+  ...PROPERTY_TYPE_GROUPS.agricole,
 ].map((item) => ({
   ...item,
   icon: TYPE_ICONS[item.value],
-  group: 
+  group:
     PROPERTY_TYPE_GROUPS.habitation.some(t => t.value === item.value) ? "habitation" :
     PROPERTY_TYPE_GROUPS.parking.some(t => t.value === item.value) ? "parking" :
+    PROPERTY_TYPE_GROUPS.agricole.some(t => t.value === item.value) ? "agricole" :
     "locaux",
 }));
 

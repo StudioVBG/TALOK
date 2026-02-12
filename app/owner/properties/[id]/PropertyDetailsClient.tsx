@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutationWithToast } from "@/lib/hooks/use-mutation-with-toast";
 import { apiClient } from "@/lib/api-client";
@@ -28,7 +28,7 @@ import {
   Video,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { formatCurrency } from "@/lib/helpers/format";
 import { useToast } from "@/components/ui/use-toast";
@@ -66,15 +66,86 @@ interface PropertyDetailsClientProps {
   propertyId: string;
 }
 
+// Mapping type de bien → label CTA bail adapté + route
+function getLeaseCtaForPropertyType(propertyType: string | undefined, propertyId: string): { label: string; href: string; description: string } {
+  switch (propertyType) {
+    case "parking":
+    case "box":
+      return {
+        label: "Créer un contrat de parking",
+        href: `/owner/leases/parking/new?propertyId=${propertyId}`,
+        description: "Contrat de location de stationnement adapté à votre emplacement.",
+      };
+    case "local_commercial":
+    case "fonds_de_commerce":
+      return {
+        label: "Créer un bail commercial",
+        href: `/owner/leases/new?propertyId=${propertyId}`,
+        description: "Bail commercial 3/6/9 ou dérogatoire pour votre local.",
+      };
+    case "bureaux":
+      return {
+        label: "Créer un bail professionnel",
+        href: `/owner/leases/new?propertyId=${propertyId}`,
+        description: "Bail professionnel ou commercial pour vos bureaux.",
+      };
+    case "entrepot":
+      return {
+        label: "Créer un bail commercial",
+        href: `/owner/leases/new?propertyId=${propertyId}`,
+        description: "Bail commercial ou professionnel pour votre entrepôt.",
+      };
+    case "immeuble":
+      return {
+        label: "Créer un bail pour un lot",
+        href: `/owner/leases/new?propertyId=${propertyId}`,
+        description: "Créez un bail pour l'un des lots de votre immeuble.",
+      };
+    case "terrain_agricole":
+    case "exploitation_agricole":
+      return {
+        label: "Créer un bail rural",
+        href: `/owner/leases/new?propertyId=${propertyId}`,
+        description: "Bail rural adapté à votre exploitation (Art. L.411-1 Code Rural).",
+      };
+    default:
+      return {
+        label: "Créer un bail",
+        href: `/owner/leases/new?propertyId=${propertyId}`,
+        description: "Bail d'habitation adapté à votre bien.",
+      };
+  }
+}
+
 export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [property, setProperty] = useState(details.property);
   const [photos, setPhotos] = useState(details.photos || []);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  
+
+  // ========== DÉTECTION NOUVELLE CRÉATION ==========
+  const isNewlyCreated = searchParams.get("new") === "true";
+  const [showNewPropertyBanner, setShowNewPropertyBanner] = useState(isNewlyCreated);
+
+  // Supprimer le param ?new=true de l'URL sans recharger
+  useEffect(() => {
+    if (isNewlyCreated) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("new");
+      window.history.replaceState({}, "", url.pathname);
+    }
+  }, [isNewlyCreated]);
+
+  // CTA bail adapté au type de bien
+  const leaseCta = useMemo(
+    () => getLeaseCtaForPropertyType(property.type, propertyId),
+    [property.type, propertyId]
+  );
+
   // ========== MODE ÉDITION GLOBAL ==========
   const [isEditing, setIsEditing] = useState(false);
   const [editedValues, setEditedValues] = useState<Record<string, any>>({});
@@ -523,6 +594,72 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
           )}
         </div>
       </div>
+
+      {/* ========== BANDEAU POST-CRÉATION : CTA vers création de bail ========== */}
+      <AnimatePresence>
+        {showNewPropertyBanner && !existingLease && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="mb-6"
+          >
+            <Card className="border-green-200 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 shadow-lg">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-green-900">
+                        Bien enregistré avec succès !
+                      </h3>
+                      <p className="text-sm text-green-700 mt-1">
+                        {leaseCta.description}{" "}
+                        <span className="font-medium">Prochaine étape : créer le contrat de location.</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-green-700 hover:text-green-900 hover:bg-green-100"
+                      onClick={() => setShowNewPropertyBanner(false)}
+                    >
+                      Plus tard
+                    </Button>
+                    <Button asChild className="bg-green-600 hover:bg-green-700 text-white shadow-md gap-2">
+                      <Link href={leaseCta.href}>
+                        <FileText className="h-4 w-4" />
+                        {leaseCta.label}
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+                {/* Mini-stepper visuel */}
+                <div className="mt-4 flex items-center gap-2 text-xs text-green-600">
+                  <span className="flex items-center gap-1 font-semibold">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Bien créé
+                  </span>
+                  <span className="w-8 h-0.5 bg-green-300 rounded" />
+                  <span className="flex items-center gap-1 font-semibold text-green-800 bg-green-100 px-2 py-0.5 rounded-full">
+                    Bail
+                  </span>
+                  <span className="w-8 h-0.5 bg-green-200 rounded" />
+                  <span className="text-green-400">État des lieux</span>
+                  <span className="w-8 h-0.5 bg-green-200 rounded" />
+                  <span className="text-green-400">Activation</span>
+                  <span className="w-8 h-0.5 bg-green-200 rounded" />
+                  <span className="text-green-400">1er loyer</span>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ========== HERO / PHOTOS SECTION ========== */}
       <div className="relative w-full mb-8">
@@ -1018,8 +1155,12 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                   <Badge variant="outline">Vacant</Badge>
                   <p className="text-sm text-muted-foreground">Aucun locataire actuellement.</p>
                   <Button asChild className="w-full" variant="default">
-                    <Link href={`/owner/leases/new?propertyId=${propertyId}`}>Créer un bail</Link>
+                    <Link href={leaseCta.href}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      {leaseCta.label}
+                    </Link>
                   </Button>
+                  <p className="text-xs text-muted-foreground">{leaseCta.description}</p>
                 </div>
               )}
             </CardContent>

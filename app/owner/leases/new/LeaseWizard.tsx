@@ -16,7 +16,8 @@ import {
   Building2,
   Users,
   Eye,
-  Printer
+  Printer,
+  Store
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,7 @@ import {
 import { numberToWords } from "@/lib/helpers/format";
 import { cn } from "@/lib/utils";
 
-import { LeaseTypeCards, LEASE_TYPE_CONFIGS, type LeaseType } from "./LeaseTypeCards";
+import { LeaseTypeCards, LEASE_TYPE_CONFIGS, getAvailableLeaseTypes, type LeaseType } from "./LeaseTypeCards";
 import { PropertySelector } from "./PropertySelector";
 import { TenantInvite } from "./TenantInvite";
 import { ColocationConfig, DEFAULT_COLOCATION_CONFIG, type ColocationConfigData } from "./ColocationConfig";
@@ -159,11 +160,29 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   // ✅ BIC Compliance: Régime fiscal meublé
   const [taxRegime, setTaxRegime] = useState<TaxRegimeData>(createInitialTaxRegime());
 
+  // ✅ Champs spécifiques baux commerciaux (Code de Commerce Art. L.145-1+)
+  const [destinationBail, setDestinationBail] = useState("");
+  const [activiteAutorisee, setActiviteAutorisee] = useState("");
+  const [indexationType, setIndexationType] = useState<"ILC" | "ILAT" | "IRL" | "">(
+    ""
+  );
+  const [sousLocationAutorisee, setSousLocationAutorisee] = useState(false);
+  const [droitPreference, setDroitPreference] = useState(true);
+
+  // ✅ Champs spécifiques location-gérance
+  const [redevanceGerance, setRedevanceGerance] = useState<number>(0);
+  const [fondsDescription, setFondsDescription] = useState("");
+
   // Vérifier si c'est un bail colocation
   const isColocation = selectedType === "colocation";
 
   // ✅ Déterminer si le bail est meublé (BIC)
   const isFurnishedLease = ["meuble", "bail_mobilite", "etudiant"].includes(selectedType || "");
+
+  // ✅ Déterminer si c'est un bail commercial/professionnel/gérance
+  const isCommercialLease = ["commercial_3_6_9", "commercial_derogatoire"].includes(selectedType || "");
+  const isProfessionalLease = selectedType === "professionnel";
+  const isLocationGerance = selectedType === "location_gerance";
 
   // ✅ P2-9: Auto-save du wizard
   const autoSaveData = useMemo(() => ({
@@ -415,14 +434,14 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
 
   // ✅ Mapping type de bail → types de propriétés compatibles
   const PROPERTY_TYPES_BY_LEASE: Record<LeaseType, string[]> = {
-    nu: ["appartement", "maison", "studio"],
-    meuble: ["appartement", "maison", "studio", "colocation"],
-    colocation: ["appartement", "maison", "colocation"],
+    nu: ["appartement", "maison", "studio", "immeuble"],
+    meuble: ["appartement", "maison", "studio", "colocation", "immeuble"],
+    colocation: ["appartement", "maison", "colocation", "immeuble"],
     saisonnier: ["appartement", "maison", "studio", "saisonnier"],
     bail_mobilite: ["appartement", "maison", "studio"],
     contrat_parking: ["parking", "box"],
-    commercial_3_6_9: ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"],
-    professionnel: ["bureaux", "local_commercial"],
+    commercial_3_6_9: ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce", "immeuble"],
+    professionnel: ["bureaux", "local_commercial", "immeuble"],
     etudiant: ["appartement", "maison", "studio"],
     bail_mixte: ["appartement", "maison", "studio"],
     commercial_derogatoire: ["local_commercial", "bureaux", "entrepot"],
@@ -504,6 +523,34 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     }
   }, [initialPropertyId, properties, loyer]);
 
+  // ✅ Auto-skip étape 1 : si le bien est pré-sélectionné et qu'un seul type de bail est compatible
+  const [autoSkipDone, setAutoSkipDone] = useState(false);
+  useEffect(() => {
+    if (autoSkipDone || !initialPropertyId || !selectedProperty || selectedType) return;
+    const availableTypes = getAvailableLeaseTypes(selectedProperty.type);
+    if (availableTypes.length === 1) {
+      // Un seul type compatible → auto-sélection et passage direct à l'étape 2
+      const onlyType = availableTypes[0];
+      setSelectedType(onlyType);
+      // Calculer le dépôt selon le type
+      if (loyer > 0) {
+        setDepot(loyer * LEASE_TYPE_CONFIGS[onlyType].maxDepositMonths);
+      }
+      if (onlyType === "bail_mobilite") {
+        setDepot(0);
+      }
+      setCurrentStep(2);
+      toast({
+        title: `${LEASE_TYPE_CONFIGS[onlyType].name} sélectionné automatiquement`,
+        description: `Seul type de bail compatible avec ce bien.`,
+        duration: 3000,
+      });
+      setAutoSkipDone(true);
+    } else {
+      setAutoSkipDone(true);
+    }
+  }, [initialPropertyId, selectedProperty, selectedType, autoSkipDone, loyer, toast]);
+
   // ✅ SOTA 2026: Gestion du changement de type de bail avec auto-advance
   const handleTypeSelect = useCallback((type: LeaseType) => {
     setSelectedType(type);
@@ -513,6 +560,17 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       setDepot(0);
     } else if (loyer > 0) {
       setDepot(loyer * LEASE_TYPE_CONFIGS[type].maxDepositMonths);
+    }
+
+    // ✅ Auto-configuration de l'indice d'indexation selon le type de bail
+    if (["commercial_3_6_9", "commercial_derogatoire"].includes(type)) {
+      setIndexationType("ILC");
+    } else if (type === "professionnel") {
+      setIndexationType("ILAT");
+    } else if (["nu", "meuble", "etudiant", "colocation", "bail_mixte"].includes(type)) {
+      setIndexationType("IRL");
+    } else {
+      setIndexationType("");
     }
 
     // ✅ SOTA 2026: Toast de confirmation + Auto-advance
@@ -649,6 +707,23 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
               is_mandatory: item.isMandatory,
             })),
             furniture_additional: furnitureInventory.additionalItems,
+          } : {}),
+          // ✅ Champs baux commerciaux / professionnels / location-gérance
+          ...((isCommercialLease || isProfessionalLease) ? {
+            destination_bail: destinationBail || undefined,
+            activite_autorisee: activiteAutorisee || undefined,
+            indice_reference: indexationType || undefined,
+            sous_location_autorisee: sousLocationAutorisee,
+            droit_preference: droitPreference,
+          } : {}),
+          ...(isLocationGerance ? {
+            destination_bail: fondsDescription || undefined,
+            redevance_gerance: redevanceGerance || undefined,
+            indice_reference: indexationType || undefined,
+          } : {}),
+          // Indexation pour tous les baux
+          ...(indexationType && !isCommercialLease && !isProfessionalLease && !isLocationGerance ? {
+            indice_reference: indexationType,
           } : {}),
           ...(isColocation ? colocData : {
             tenant_email: creationMode === "invite" ? tenantEmail : null,
@@ -953,10 +1028,158 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         </div>
                       )}
 
+                      {/* ✅ Champs spécifiques baux commerciaux (Code Commerce Art. L.145-1+) */}
+                      {isCommercialLease && (
+                        <div className="mt-6 pt-6 border-t">
+                          <h4 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-blue-600" />
+                            Clauses commerciales
+                          </h4>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Destination du bail (activité autorisée) *</Label>
+                              <Input
+                                value={destinationBail}
+                                onChange={(e) => setDestinationBail(e.target.value)}
+                                placeholder="Ex: Commerce de détail alimentaire, restauration, bureau d'études..."
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Art. L.145-47 : le locataire ne peut exercer qu'une activité conforme à la destination du bail.
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Activités autorisées complémentaires</Label>
+                              <Input
+                                value={activiteAutorisee}
+                                onChange={(e) => setActiviteAutorisee(e.target.value)}
+                                placeholder="Ex: Vente à emporter, e-commerce, stockage annexe..."
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Indice de révision du loyer</Label>
+                                <Select value={indexationType} onValueChange={(v: "ILC" | "ILAT" | "IRL") => setIndexationType(v)}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner l'indice" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="ILC">ILC (Indice des Loyers Commerciaux)</SelectItem>
+                                    <SelectItem value="ILAT">ILAT (Indice des Loyers des Activités Tertiaires)</SelectItem>
+                                    <SelectItem value="IRL">IRL (Indice de Référence des Loyers)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-3">
+                                <Label>Options</Label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    id="sous-location"
+                                    checked={sousLocationAutorisee}
+                                    onChange={(e) => setSousLocationAutorisee(e.target.checked)}
+                                    className="rounded border-gray-300"
+                                  />
+                                  <Label htmlFor="sous-location" className="text-sm font-normal cursor-pointer">
+                                    Sous-location autorisée
+                                  </Label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    id="droit-preference"
+                                    checked={droitPreference}
+                                    onChange={(e) => setDroitPreference(e.target.checked)}
+                                    className="rounded border-gray-300"
+                                  />
+                                  <Label htmlFor="droit-preference" className="text-sm font-normal cursor-pointer">
+                                    Droit de préférence du locataire (Art. L.145-46-1)
+                                  </Label>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ✅ Champs spécifiques bail professionnel */}
+                      {isProfessionalLease && (
+                        <div className="mt-6 pt-6 border-t">
+                          <h4 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-purple-600" />
+                            Bail professionnel
+                          </h4>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Activité professionnelle exercée *</Label>
+                              <Input
+                                value={destinationBail}
+                                onChange={(e) => setDestinationBail(e.target.value)}
+                                placeholder="Ex: Cabinet médical, avocat, architecte, comptable..."
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Loi du 23/12/1986 : bail de 6 ans minimum, sans propriété commerciale.
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Indice de révision</Label>
+                              <Select value={indexationType} onValueChange={(v: "ILC" | "ILAT" | "IRL") => setIndexationType(v)}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Sélectionner l'indice" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="ILAT">ILAT (Indice des Loyers des Activités Tertiaires)</SelectItem>
+                                  <SelectItem value="ILC">ILC (Indice des Loyers Commerciaux)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ✅ Champs spécifiques location-gérance */}
+                      {isLocationGerance && (
+                        <div className="mt-6 pt-6 border-t">
+                          <h4 className="text-base font-semibold mb-4 flex items-center gap-2">
+                            <Store className="h-4 w-4 text-orange-600" />
+                            Location-gérance
+                          </h4>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Description du fonds de commerce *</Label>
+                              <Input
+                                value={fondsDescription}
+                                onChange={(e) => setFondsDescription(e.target.value)}
+                                placeholder="Ex: Fonds de commerce de boulangerie-pâtisserie comprenant..."
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Art. L.144-1 Code Commerce : la location-gérance porte sur un fonds de commerce ou artisanal.
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Redevance mensuelle de gérance (€) *</Label>
+                              <Input
+                                type="number"
+                                value={redevanceGerance}
+                                onChange={(e) => setRedevanceGerance(parseFloat(e.target.value) || 0)}
+                                placeholder="Ex: 2000"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Montant fixe ou variable versé au propriétaire du fonds. Distinct du loyer des murs.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Récapitulatif */}
                       <div className="mt-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
                         <p className="text-sm font-medium text-blue-900">
                           Total mensuel : {(loyer + charges).toLocaleString("fr-FR")} €
+                          {isLocationGerance && redevanceGerance > 0 && (
+                            <span className="ml-2 text-orange-700">
+                              + redevance gérance : {redevanceGerance.toLocaleString("fr-FR")} €
+                            </span>
+                          )}
                         </p>
                         <p className="text-xs text-blue-700 mt-1">
                           {/* ✅ GAP-001 FIX: Adapter affichage 1er versement pour bail mobilité */}
@@ -966,6 +1189,11 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                             <>1er versement : {(loyer + charges + depot).toLocaleString("fr-FR")} € (loyer + charges + dépôt)</>
                           )}
                         </p>
+                        {indexationType && (
+                          <p className="text-xs text-blue-600 mt-1">
+                            Indexation : {indexationType === "ILC" ? "ILC (Loyers Commerciaux)" : indexationType === "ILAT" ? "ILAT (Activités Tertiaires)" : "IRL (Référence Loyers)"}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}

@@ -274,7 +274,7 @@ const cardHoverVariants = {
 };
 
 // Filtrer les types de baux disponibles selon le type de bien
-function getAvailableLeaseTypes(propertyType?: string): LeaseType[] {
+export function getAvailableLeaseTypes(propertyType?: string): LeaseType[] {
   if (!propertyType) return Object.keys(LEASE_TYPE_CONFIGS) as LeaseType[];
 
   const mapping: Record<string, LeaseType[]> = {
@@ -292,6 +292,8 @@ function getAvailableLeaseTypes(propertyType?: string): LeaseType[] {
     bureaux: ["professionnel", "commercial_3_6_9", "commercial_derogatoire", "bail_mixte"],
     entrepot: ["commercial_3_6_9", "professionnel", "commercial_derogatoire"],
     fonds_de_commerce: ["commercial_3_6_9", "commercial_derogatoire", "location_gerance"],
+    // Immeuble : un immeuble peut avoir des lots résidentiels ou commerciaux
+    immeuble: ["nu", "meuble", "colocation", "commercial_3_6_9", "professionnel"],
     // Agricole
     terrain_agricole: ["bail_rural"],
     exploitation_agricole: ["bail_rural"],
