@@ -76,7 +76,7 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center justify-center py-12 px-4"
+        className="flex flex-col items-center justify-center py-6 sm:py-10 px-4"
       >
         <div className="p-4 bg-indigo-100 rounded-full mb-4">
           <ClipboardCheck className="h-8 w-8 text-indigo-600" />
@@ -84,12 +84,25 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
         <h3 className="text-lg font-semibold text-slate-900 mb-2">
           Créer l&apos;état des lieux d&apos;entrée
         </h3>
-        <p className="text-sm text-slate-600 text-center max-w-md mb-6">
+        <p className="text-sm text-slate-600 text-center max-w-md mb-4">
           Le bail est signé. L&apos;état des lieux d&apos;entrée est requis pour activer le bail
           et remettre les clés au locataire.
         </p>
 
-        <Card className="w-full max-w-lg border-2 border-dashed border-indigo-200 bg-indigo-50/50">
+        {/* CTA en premier — toujours visible sans scroll */}
+        <Button
+          asChild
+          size="lg"
+          className="w-full max-w-lg h-14 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 gap-3"
+        >
+          <Link href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${propertyId}&type=entree`}>
+            <Home className="h-5 w-5" />
+            Commencer l&apos;état des lieux d&apos;entrée
+            <ArrowRight className="h-5 w-5" />
+          </Link>
+        </Button>
+
+        <Card className="w-full max-w-lg border-2 border-dashed border-indigo-200 bg-indigo-50/50 mt-6">
           <CardContent className="p-6">
             <div className="space-y-3 text-sm text-slate-600">
               <div className="flex items-start gap-3">
@@ -107,18 +120,6 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
             </div>
           </CardContent>
         </Card>
-
-        <Button
-          asChild
-          size="lg"
-          className="w-full max-w-lg h-14 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 gap-3 mt-6"
-        >
-          <Link href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${propertyId}&type=entree`}>
-            <Home className="h-5 w-5" />
-            Commencer l&apos;état des lieux d&apos;entrée
-            <ArrowRight className="h-5 w-5" />
-          </Link>
-        </Button>
       </motion.div>
     );
   }
