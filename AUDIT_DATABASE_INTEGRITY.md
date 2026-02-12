@@ -11,9 +11,10 @@
 1. [Résumé Exécutif](#1-résumé-exécutif)
 2. [Phase 1 — Cartographie des Relations](#2-phase-1--cartographie-des-relations)
 3. [Phase 2 — Détection des Orphelins](#3-phase-2--détection-des-orphelins)
-4. [Phase 3 — Détection des Doublons](#4-phase-3--détection-des-doublons)
-5. [Phase 4 — Plan de Nettoyage SAFE](#5-phase-4--plan-de-nettoyage-safe)
-6. [Recommandations Structurelles](#6-recommandations-structurelles)
+4. [Phase 3 — Détection des Doublons (avancée)](#4-phase-3--détection-des-doublons-avancée)
+5. [Phase 4 — Plan de Fusion SAFE (Merge)](#5-phase-4--plan-de-fusion-safe-merge)
+6. [Phase 5 — Prévention](#6-phase-5--prévention)
+7. [Fichiers Livrés & Commandes](#7-fichiers-livrés--commandes)
 
 ---
 
@@ -226,77 +227,148 @@ WHERE d.owner_id IS NULL
 
 ---
 
-## 4. Phase 3 — Détection des Doublons
+## 4. Phase 3 — Détection des Doublons (avancée)
 
-### Utilisation
+### Types de doublons détectés
+
+| Type | Description | Méthode |
+|------|-------------|---------|
+| **EXACT** | Mêmes valeurs sur les champs métier clés | GROUP BY normalisé |
+| **FUZZY** | Valeurs très similaires (même CP+ville+type+surface) | JOIN avec critères relaxés |
+| **TEMPORAL** | Même entité créée 2+ fois en < 5 minutes (double-clic) | Comparaison created_at |
+| **OVERLAP** | Baux actifs chevauchants sur la même propriété | Comparaison intervalles de dates |
+
+### Fonctions de détection par entité
 
 ```sql
-SELECT * FROM audit_duplicate_records() ORDER BY severity;
+-- Propriétés (exact + fuzzy + temporal)
+SELECT * FROM audit_duplicate_properties();
+
+-- Profils/Contacts (email + identité + user_id)
+SELECT * FROM audit_duplicate_profiles();
+
+-- Baux (exact + temporal + overlap)
+SELECT * FROM audit_duplicate_leases();
+
+-- Factures (même bail + même période)
+SELECT * FROM audit_duplicate_invoices();
+
+-- Paiements (même montant + même facture + ±24h)
+SELECT * FROM audit_duplicate_payments();
+
+-- Documents (même storage_path + même nom + temporal)
+SELECT * FROM audit_duplicate_documents();
+
+-- EDL (même bail + même type + temporal)
+SELECT * FROM audit_duplicate_edl();
+
+-- Résumé consolidé de TOUS les doublons
+SELECT * FROM audit_all_duplicates_summary();
 ```
 
-### 4.1 Doublons Fonctionnels Vérifiés
+### Critères de déduplication par entité
 
-| # | Table | Clé de doublon | Sévérité | Description |
-|---|-------|---------------|----------|-------------|
-| 1 | `profiles` | `user_id` | CRITICAL | Même auth.users avec 2+ profils |
-| 2 | `profiles` | `email` | HIGH | Même email pour 2+ profils |
-| 3 | `properties` | `owner_id + adresse_complete` | HIGH | Même propriétaire + même adresse |
-| 4 | `properties` | `unique_code` | CRITICAL | Violation d'unicité du code |
-| 5 | `leases` | `property_id + dates overlap` | HIGH | Baux actifs qui se chevauchent |
-| 6 | `invoices` | `lease_id + periode` | CRITICAL | Double facturation |
-| 7 | `lease_signers` | `lease_id + profile_id` | HIGH | Signataire en double |
-| 8 | `lease_signers` | `lease_id + invited_email` | MEDIUM | Invitation en double |
-| 9 | `documents` | `storage_path` | MEDIUM | Même fichier référencé 2+ fois |
-| 10 | `subscriptions` | `user_id (active)` | HIGH | Double abonnement actif |
-| 11 | `roommates` | `lease_id + profile_id` | HIGH | Colocataire en double |
-| 12 | `legal_entities` | `siret` | HIGH | SIRET en double |
-| 13 | `edl` | `lease_id + type` | MEDIUM | EDL en double par type |
-| 14 | `notifications` | `user+type+title (même minute)` | LOW | Notification envoyée en double |
-| 15 | `photos` | `property_id + storage_path` | LOW | Photo dupliquée |
-| 16 | `owner_profiles` | `profile_id` (PK) | CRITICAL | Vérifie intégrité PK |
+| Entité | Champs clés | Normalisation |
+|--------|------------|---------------|
+| **Propriétés** | `owner_id` + `adresse_complete` + `code_postal` | `LOWER(TRIM())` |
+| **Profils** | `email` OU (`nom` + `prénom` + `date_naissance`) | `LOWER(TRIM())` |
+| **Baux** | `property_id` + `date_debut` (±7 jours) + `type_bail` | Intervalle DATE |
+| **Factures** | `lease_id` + `periode` | Exact |
+| **Paiements** | `invoice_id` + `montant` + `created_at` (±24h) | EPOCH diff |
+| **Documents** | `storage_path` OU (`nom` + entité parente + ±1min) | `LOWER(TRIM())` |
+| **EDL** | `lease_id` + `type` + `created_at` (±24h) | EPOCH diff |
+
+### Format de sortie
+
+Chaque fonction retourne :
+
+```
+duplicate_key  | nb_doublons | ids (UUID[])     | match_type      | premier_cree | dernier_cree
+───────────────┼─────────────┼──────────────────┼─────────────────┼──────────────┼─────────────
+exact:owner:...|           2 | {id1, id2}       | EXACT           | 2025-01-15   | 2025-01-15
+temporal:...   |           2 | {id3, id4}       | TEMPORAL (<5min)| 2025-03-20   | 2025-03-20
+```
 
 ---
 
-## 5. Phase 4 — Plan de Nettoyage SAFE
+## 5. Phase 4 — Plan de Fusion SAFE (Merge)
 
-### 5.1 Principe : Archiver avant de supprimer
+### 5.1 Principe
 
-Chaque suppression passe par un cycle en 3 étapes :
+Chaque fusion suit un cycle strict en **5 étapes** :
 
 ```
-1. ARCHIVE → INSERT INTO _audit_cleanup_archive (original_data en JSONB)
-2. DELETE  → Suppression de l'enregistrement orphelin
-3. VERIFY  → Vérification post-nettoyage via audit_orphan_records()
+1. BACKUP   → Archive le doublon dans _audit_cleanup_archive (JSONB complet)
+2. TRANSFER → UPDATE les tables enfants pour pointer vers le master
+3. ENRICH   → COALESCE des champs du doublon vers le master (si master NULL)
+4. DELETE   → Soft-delete (deleted_at) ou hard delete selon la table
+5. AUDIT    → INSERT dans _audit_log (action=MERGE, old_id, new_id)
 ```
 
-### 5.2 Utilisation
+### 5.2 Élection du Master
+
+Le **master** est élu selon ces critères (par ordre) :
+1. Le plus complet (plus de champs non-NULL)
+2. Le plus ancien (`created_at ASC`)
+3. Le plus actif (celui avec le plus de relations enfants)
+
+### 5.3 Fonctions de fusion disponibles
 
 ```sql
--- ÉTAPE 1 : Prévisualiser (DRY RUN) — aucune modification
-SELECT * FROM safe_cleanup_orphans(true);
-
--- ÉTAPE 2 : Vérifier les résultats du dry run
--- Valider que les counts sont cohérents
-
--- ÉTAPE 3 : Exécuter le nettoyage réel
+-- Fusion de propriétés (DRY RUN par défaut)
+SELECT * FROM merge_duplicate_properties('master_id', 'duplicate_id', true);
+-- Exécution réelle :
 BEGIN;
-SELECT * FROM safe_cleanup_orphans(false);
--- Vérifier les résultats
--- Si OK :
+SELECT * FROM merge_duplicate_properties('master_id', 'duplicate_id', false);
 COMMIT;
--- Si problème :
--- ROLLBACK;
 
--- ÉTAPE 4 : Vérifier que les orphelins ont été nettoyés
-SELECT * FROM audit_orphan_records() WHERE orphan_count > 0;
+-- Fusion de factures
+SELECT * FROM merge_duplicate_invoices('master_id', 'duplicate_id', true);
 
--- EN CAS DE PROBLÈME : consulter l'archive
-SELECT * FROM _audit_cleanup_archive ORDER BY cleaned_at DESC;
+-- Fusion de documents
+SELECT * FROM merge_duplicate_documents('master_id', 'duplicate_id', true);
+
+-- Fusion d'EDL
+SELECT * FROM merge_duplicate_edl('master_id', 'duplicate_id', true);
 ```
 
-### 5.3 Ordre de Nettoyage (respecte les dépendances)
+### 5.4 Détail du transfert des relations (exemple propriétés)
 
-Le nettoyage s'exécute dans cet ordre pour éviter les violations de FK :
+```
+merge_duplicate_properties(master, duplicate) :
+  ├── 1.BACKUP   → _audit_cleanup_archive
+  ├── 2.TRANSFER → leases.property_id
+  ├── 2.TRANSFER → units.property_id
+  ├── 2.TRANSFER → charges.property_id
+  ├── 2.TRANSFER → documents.property_id
+  ├── 2.TRANSFER → tickets.property_id
+  ├── 2.TRANSFER → photos.property_id
+  ├── 2.TRANSFER → visit_slots.property_id
+  ├── 2.TRANSFER → property_ownership.property_id
+  ├── 2.TRANSFER → conversations.property_id
+  ├── 3.ENRICH   → COALESCE champs manquants
+  ├── 4.DELETE    → soft-delete (deleted_at = NOW())
+  └── 5.AUDIT    → _audit_log
+```
+
+### 5.5 Nettoyage des orphelins (cycle complet)
+
+```sql
+-- ÉTAPE 1 : DRY RUN (voir ce qui serait nettoyé)
+SELECT * FROM safe_cleanup_orphans(true);
+
+-- ÉTAPE 2 : Exécuter dans une transaction
+BEGIN;
+SELECT * FROM safe_cleanup_orphans(false);
+-- Vérifier les résultats, puis :
+COMMIT;
+-- ou ROLLBACK; si problème
+
+-- ÉTAPE 3 : Vérifier que c'est propre
+SELECT * FROM audit_orphan_records() WHERE orphan_count > 0;
+```
+
+### 5.6 Ordre de nettoyage (respecte les dépendances FK)
 
 ```
 Niveau 1 (feuilles) :
@@ -307,146 +379,201 @@ Niveau 1 (feuilles) :
   └── renovation_quotes (renovation_item_id → renovation_items)
 
 Niveau 2 (intermédiaires) :
-  ├── invoices (lease_id → leases)
-  ├── meters (lease_id → leases)
-  ├── edl (lease_id → leases)
-  ├── roommates (lease_id → leases)
-  ├── lease_signers (lease_id → leases)
-  ├── deposit_movements (lease_id → leases)
-  ├── lease_end_processes (lease_id → leases)
-  └── renovation_items (lease_end_process_id → lease_end_processes)
+  ├── invoices (lease_id → leases)         → DELETE avec archive
+  ├── meters (lease_id → leases)           → DELETE avec archive
+  ├── edl (lease_id → leases)              → DELETE avec archive
+  ├── roommates (lease_id → leases)        → DELETE avec archive
+  ├── lease_signers (lease_id → leases)    → DELETE avec archive
+  ├── deposit_movements (lease_id → leases)→ DELETE avec archive
+  └── lease_end_processes                  → DELETE avec archive
 
 Niveau 3 (nœuds principaux) :
-  ├── documents (lease_id → leases, property_id → properties) [SET NULL]
-  ├── tickets (lease_id → leases) [SET NULL]
-  └── notifications (> 90 jours, lues)
+  ├── documents (lease_id/property_id)     → SET NULL (conserver)
+  ├── tickets (lease_id)                   → SET NULL (conserver)
+  └── notifications (lues > 90j)           → DELETE (TTL)
 ```
 
-### 5.4 Actions par Type
+### 5.7 Rollback
 
-| Action | Tables concernées | Méthode |
-|--------|-------------------|---------|
-| **DELETE** | `lease_signers`, `invoices`, `payments`, `edl` (+enfants), `roommates`, `deposit_movements`, `meters` (+readings) | Suppression avec archivage préalable |
-| **SET NULL** | `documents.lease_id`, `documents.property_id`, `tickets.lease_id` | Mise à NULL de la FK cassée (l'enregistrement est conservé) |
-| **DELETE (TTL)** | `notifications` (lues > 90j), `otp_codes` (expirés) | Suppression des données obsolètes |
+```sql
+-- Lister les batches de nettoyage exécutés
+SELECT cleanup_batch_id, COUNT(*), MIN(cleaned_at)
+FROM _audit_cleanup_archive
+GROUP BY cleanup_batch_id ORDER BY MIN(cleaned_at) DESC;
+
+-- Rollback complet d'un batch
+SELECT * FROM rollback_full_batch('<batch_id>');
+
+-- Rollback par table
+SELECT rollback_lease_signers('<batch_id>');
+SELECT rollback_invoices('<batch_id>');
+SELECT rollback_payments('<batch_id>');
+-- etc.
+
+-- Rollback d'une fusion
+SELECT * FROM rollback_merge_property('<duplicate_id>');
+```
 
 ---
 
-## 6. Recommandations Structurelles
+## 6. Phase 5 — Prévention
 
-### 6.1 FK Formelles à Ajouter (priorité haute)
+### 6.1 FK Formelles ajoutées (8 contraintes)
 
-```sql
--- À exécuter APRÈS vérification que les données sont propres
+La migration `20260212100000` ajoute automatiquement ces FK manquantes :
 
--- leases.tenant_id → profiles.id
-ALTER TABLE leases
-  ADD CONSTRAINT fk_leases_tenant_id
-  FOREIGN KEY (tenant_id) REFERENCES profiles(id) ON DELETE SET NULL;
+| Table | Colonne | Cible | ON DELETE | Nettoyage pré-ajout |
+|-------|---------|-------|-----------|---------------------|
+| `leases` | `tenant_id` | `profiles.id` | SET NULL | Orphelins → NULL |
+| `leases` | `owner_id` | `profiles.id` | SET NULL | Orphelins → NULL |
+| `tickets` | `assigned_provider_id` | `profiles.id` | SET NULL | Orphelins → NULL |
+| `tickets` | `owner_id` | `profiles.id` | SET NULL | Orphelins → NULL |
+| `documents` | `profile_id` | `profiles.id` | SET NULL | Orphelins → NULL |
+| `building_units` | `current_lease_id` | `leases.id` | SET NULL | Orphelins → NULL |
+| `work_orders` | `quote_id` | `quotes.id` | SET NULL | Orphelins → NULL |
+| `work_orders` | `property_id` | `properties.id` | SET NULL | Orphelins → NULL |
 
--- leases.owner_id → profiles.id
-ALTER TABLE leases
-  ADD CONSTRAINT fk_leases_owner_id
-  FOREIGN KEY (owner_id) REFERENCES profiles(id) ON DELETE SET NULL;
+### 6.2 Contraintes UNIQUE ajoutées (5 index)
 
--- tickets.assigned_provider_id → profiles.id
-ALTER TABLE tickets
-  ADD CONSTRAINT fk_tickets_assigned_provider_id
-  FOREIGN KEY (assigned_provider_id) REFERENCES profiles(id) ON DELETE SET NULL;
+| Table | Index | Condition | Nettoyage pré-ajout |
+|-------|-------|-----------|---------------------|
+| `invoices` | `(lease_id, periode)` | — | Doublons supprimés (on garde la payée/la plus ancienne) |
+| `lease_signers` | `(lease_id, profile_id)` | `WHERE profile_id IS NOT NULL` | Doublons supprimés |
+| `edl` | `(lease_id, type)` | `WHERE status NOT IN ('cancelled', 'disputed')` | — |
+| `roommates` | `(lease_id, profile_id)` | — | Doublons supprimés |
+| `subscriptions` | `(user_id)` | `WHERE status IN ('active', 'trialing')` | — |
 
--- tickets.owner_id → profiles.id
-ALTER TABLE tickets
-  ADD CONSTRAINT fk_tickets_owner_id
-  FOREIGN KEY (owner_id) REFERENCES profiles(id) ON DELETE SET NULL;
+### 6.3 Triggers anti-doublon (2 triggers)
 
--- documents.profile_id → profiles.id
-ALTER TABLE documents
-  ADD CONSTRAINT fk_documents_profile_id
-  FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE SET NULL;
+| Trigger | Table | Comportement |
+|---------|-------|-------------|
+| `trg_prevent_duplicate_property` | `properties` | **BLOQUE** l'INSERT si même owner + même adresse + même CP existe déjà |
+| `trg_prevent_duplicate_payment` | `payments` | **AVERTIT** (RAISE WARNING) si même invoice + même montant < 24h (ne bloque pas) |
 
--- building_units.current_lease_id → leases.id
-ALTER TABLE building_units
-  ADD CONSTRAINT fk_building_units_current_lease_id
-  FOREIGN KEY (current_lease_id) REFERENCES leases(id) ON DELETE SET NULL;
+### 6.4 Validations côté application (recommandations Zod)
 
--- work_orders.quote_id → quotes.id
-ALTER TABLE work_orders
-  ADD CONSTRAINT fk_work_orders_quote_id
-  FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL;
+```typescript
+// Avant INSERT propriété
+const PropertyInsertSchema = z.object({
+  owner_id: z.string().uuid(),
+  adresse_complete: z.string().min(5).transform(s => s.trim()),
+  code_postal: z.string().regex(/^\d{5}$/),
+  ville: z.string().min(2).transform(s => s.trim()),
+  // Vérifier en amont via RPC si le doublon existe
+});
 
--- work_orders.property_id → properties.id
-ALTER TABLE work_orders
-  ADD CONSTRAINT fk_work_orders_property_id
-  FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL;
+// Avant INSERT facture
+const InvoiceInsertSchema = z.object({
+  lease_id: z.string().uuid(),
+  periode: z.string().regex(/^\d{4}-\d{2}$/),
+  // Vérifier UNIQUE(lease_id, periode) côté client avant INSERT
+});
+
+// Avant INSERT paiement — anti double-clic
+const PaymentInsertSchema = z.object({
+  invoice_id: z.string().uuid(),
+  montant: z.number().positive(),
+  // Implémenter un debounce côté UI + idempotency key
+});
 ```
 
-### 6.2 Contraintes d'Unicité Manquantes
+### 6.5 Cron Job recommandé
 
 ```sql
--- Éviter les doublons de factures
--- (devrait déjà exister via UNIQUE(lease_id, periode), vérifier)
-ALTER TABLE invoices
-  ADD CONSTRAINT uq_invoices_lease_periode
-  UNIQUE (lease_id, periode);
-
--- Éviter les doublons de signataires
-ALTER TABLE lease_signers
-  ADD CONSTRAINT uq_lease_signers_lease_profile
-  UNIQUE (lease_id, profile_id) WHERE profile_id IS NOT NULL;
-
--- Éviter les doublons d'EDL
-ALTER TABLE edl
-  ADD CONSTRAINT uq_edl_lease_type
-  UNIQUE (lease_id, type) WHERE status != 'cancelled';
-```
-
-### 6.3 Cron Job Recommandé
-
-```sql
--- Via pg_cron ou Supabase Edge Functions (cron), exécuter mensuellement :
+-- Mensuel : nettoyage automatique des orphelins + TTL
 SELECT * FROM safe_cleanup_orphans(false, 'ALL');
 ```
 
-### 6.4 Monitoring Continu
-
-La vue `audit_integrity_dashboard` peut être consultée depuis le dashboard admin :
+### 6.6 Monitoring continu
 
 ```sql
--- Alerter si des orphelins critiques apparaissent
-SELECT COUNT(*) AS critical_orphans
+-- Tableau de bord d'intégrité (à intégrer dans /admin)
+SELECT * FROM audit_integrity_dashboard;
+
+-- Alerte si orphelins CRITICAL
+SELECT COUNT(*) AS critical_issues
 FROM audit_orphan_records()
 WHERE orphan_count > 0 AND severity = 'CRITICAL';
+
+-- Alerte si doublons CRITICAL
+SELECT COUNT(*) AS critical_duplicates
+FROM audit_all_duplicates_summary()
+WHERE severity = 'CRITICAL' AND duplicate_groups > 0;
 ```
 
 ---
 
-## Fichiers Livrés
+## 7. Fichiers Livrés & Commandes
 
-| Fichier | Description |
-|---------|-------------|
-| `supabase/migrations/20260212000000_audit_database_integrity.sql` | Migration SQL avec toutes les fonctions d'audit et de nettoyage |
-| `AUDIT_DATABASE_INTEGRITY.md` | Ce rapport |
+### Fichiers
 
-## Commandes Rapides
+| # | Fichier | Description |
+|---|---------|-------------|
+| 1 | `supabase/migrations/20260212000000_audit_database_integrity.sql` | Phase 1-2 : Détection orphelins + doublons basiques + nettoyage SAFE |
+| 2 | `supabase/migrations/20260212100000_audit_v2_merge_and_prevention.sql` | Phase 3-5 : Doublons avancés + fusion + FK/UNIQUE + triggers |
+| 3 | `scripts/audit-dry-run.sql` | Script DRY RUN complet (100% lecture seule) |
+| 4 | `scripts/audit-rollback.sql` | Fonctions de rollback par table + rollback batch complet |
+| 5 | `AUDIT_DATABASE_INTEGRITY.md` | Ce rapport |
+
+### Commandes rapides
 
 ```sql
--- 1. Audit complet des orphelins
+-- ═══ DIAGNOSTIC ═══
+
+-- 1. Orphelins (65 vérifications)
 SELECT * FROM audit_orphan_records() WHERE orphan_count > 0;
 
--- 2. Audit complet des doublons
-SELECT * FROM audit_duplicate_records();
+-- 2. Doublons avancés par entité
+SELECT * FROM audit_duplicate_properties();
+SELECT * FROM audit_duplicate_profiles();
+SELECT * FROM audit_duplicate_leases();
+SELECT * FROM audit_duplicate_invoices();
+SELECT * FROM audit_duplicate_payments();
+SELECT * FROM audit_duplicate_documents();
+SELECT * FROM audit_duplicate_edl();
 
--- 3. FK implicites manquantes
+-- 3. Résumé consolidé de tous les doublons
+SELECT * FROM audit_all_duplicates_summary();
+
+-- 4. FK implicites manquantes
 SELECT * FROM audit_missing_fk_constraints() WHERE NOT has_fk;
 
--- 4. Dashboard consolidé
+-- 5. Dashboard consolidé (orphelins + doublons basiques)
 SELECT * FROM audit_integrity_dashboard;
 
--- 5. Nettoyage en dry run
+-- ═══ NETTOYAGE ═══
+
+-- 6. DRY RUN orphelins
 SELECT * FROM safe_cleanup_orphans(true);
 
--- 6. Nettoyage réel (dans une transaction)
+-- 7. Exécution réelle
 BEGIN;
 SELECT * FROM safe_cleanup_orphans(false);
 COMMIT;
+
+-- ═══ FUSION ═══
+
+-- 8. Fusion propriétés (dry run)
+SELECT * FROM merge_duplicate_properties('master_id', 'dup_id', true);
+
+-- 9. Fusion réelle
+BEGIN;
+SELECT * FROM merge_duplicate_properties('master_id', 'dup_id', false);
+COMMIT;
+
+-- ═══ ROLLBACK ═══
+
+-- 10. Rollback complet
+SELECT * FROM rollback_full_batch('<batch_id>');
+
+-- 11. Rollback merge
+SELECT * FROM rollback_merge_property('<duplicate_id>');
+
+-- ═══ AUDIT LOG ═══
+
+-- 12. Historique des opérations
+SELECT * FROM _audit_log ORDER BY created_at DESC LIMIT 50;
+
+-- 13. Archives de nettoyage
+SELECT * FROM _audit_cleanup_archive ORDER BY cleaned_at DESC LIMIT 50;
 ```
