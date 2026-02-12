@@ -9,7 +9,8 @@
  * @module bail-wizard-to-edl-preview
  */
 
-import type { EDLComplet } from "@/lib/templates/edl/types";
+import type { EDLComplet, EDLMeterReading } from "@/lib/templates/edl/types";
+import { isDROM } from "@/lib/helpers/address-utils";
 
 // ---------------------------------------------------------------------------
 // Types d'entrée
@@ -120,6 +121,30 @@ export function generateDefaultRooms(
   return rooms;
 }
 
+/**
+ * Génère les compteurs par défaut pour un logement.
+ * Les relevés seront remplis lors de l'état des lieux réel.
+ *
+ * @param codePostal - Code postal du bien (pour détecter les spécificités DOM-TOM)
+ * @returns Liste de compteurs avec relevés "Non relevé"
+ */
+export function generateDefaultMeters(codePostal?: string): EDLMeterReading[] {
+  const meters: EDLMeterReading[] = [
+    { type: "electricity", reading: "Non relevé", unit: "kWh" },
+    { type: "water", reading: "Non relevé", unit: "m³" },
+  ];
+
+  // DOM-TOM : pas de gaz de ville dans la plupart des territoires ultramarins
+  // En métropole, on ajoute le gaz par défaut
+  if (!codePostal || !isDROM(codePostal)) {
+    meters.push({ type: "gas", reading: "Non relevé", unit: "m³" });
+  }
+
+  meters.push({ type: "water_hot", reading: "Non relevé", unit: "m³" });
+
+  return meters;
+}
+
 // ---------------------------------------------------------------------------
 // Fonction de mapping principale
 // ---------------------------------------------------------------------------
@@ -221,12 +246,16 @@ export function mapBailWizardToEdlPreview(
       charges: data.charges || 0,
     },
 
+    // Compteurs par défaut (adaptés DOM-TOM : pas de gaz en outre-mer)
+    compteurs: generateDefaultMeters(data.property?.code_postal),
+
     // Sections vides — seront remplies lors de l'état des lieux réel
-    compteurs: [],
     pieces: [],
     signatures: [],
     cles_remises: [],
-    observations_generales: undefined,
+    observations_generales: isDROM(data.property?.code_postal)
+      ? "Bien situé en DOM-TOM — vérifier les diagnostics termites et risques naturels spécifiques."
+      : undefined,
     is_complete: false,
     is_signed: false,
     status: "draft",

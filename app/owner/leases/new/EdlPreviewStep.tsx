@@ -14,13 +14,14 @@
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardCheck, AlertCircle, FileText } from "lucide-react";
+import { ClipboardCheck, AlertCircle, FileText, Info } from "lucide-react";
 import {
   mapBailWizardToEdlPreview,
   generateDefaultRooms,
   type BailWizardEdlInput,
 } from "@/lib/mappers/bail-wizard-to-edl-preview";
 import { generateEDLViergeHTML } from "@/lib/templates/edl";
+import { isDROM } from "@/lib/helpers/address-utils";
 
 /** Lazy load EDLPreview pour ne pas alourdir le bundle du wizard */
 const EDLPreview = dynamic(
@@ -70,6 +71,21 @@ export function EdlPreviewStep({ data }: EdlPreviewStepProps) {
     [data.property?.nb_pieces, data.property?.type]
   );
 
+  /** Indicateurs de complétude des données pour l'EDL */
+  const completeness = useMemo(() => {
+    const items: Array<{ label: string; filled: boolean }> = [
+      { label: "Adresse du bien", filled: !!data.property?.adresse_complete || !!data.property?.adresse },
+      { label: "Bailleur", filled: !!data.bailleur.nom || !!data.bailleur.raison_sociale },
+      { label: "Locataire(s)", filled: data.locataires.length > 0 },
+      { label: "Type de bail", filled: !!data.typeBail },
+      { label: "Loyer & charges", filled: data.loyer > 0 },
+      { label: "Date de début", filled: !!data.dateDebut },
+    ];
+    const filledCount = items.filter((i) => i.filled).length;
+    const isDomTom = isDROM(data.property?.code_postal);
+    return { items, filledCount, total: items.length, isDomTom };
+  }, [data]);
+
   /** HTML pré-généré côté client (pas d'appel API) */
   const generatedHtml = useMemo(() => {
     if (!data.property) return "";
@@ -112,6 +128,34 @@ export function EdlPreviewStep({ data }: EdlPreviewStepProps) {
           Ce document sera complété lors de l&apos;état des lieux d&apos;entrée
         </span>
       </div>
+
+      {/* Indicateur de complétude */}
+      {completeness.filledCount < completeness.total && (
+        <div className="flex items-start gap-2 mb-3 p-2 bg-amber-50 border border-amber-200 rounded-md flex-shrink-0">
+          <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="text-xs text-amber-700">
+            <span className="font-medium">
+              {completeness.filledCount}/{completeness.total} sections renseignées
+            </span>
+            <span className="text-amber-600"> — </span>
+            {completeness.items
+              .filter((i) => !i.filled)
+              .map((i) => i.label)
+              .join(", ")}
+          </div>
+        </div>
+      )}
+
+      {/* Alerte DOM-TOM */}
+      {completeness.isDomTom && (
+        <div className="flex items-start gap-2 mb-3 p-2 bg-blue-50 border border-blue-200 rounded-md flex-shrink-0">
+          <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-blue-700">
+            Bien situé en <strong>DOM-TOM</strong> — les diagnostics termites et risques naturels
+            spécifiques seront requis lors de l&apos;état des lieux.
+          </p>
+        </div>
+      )}
 
       {/* Composant EDLPreview réutilisé avec HTML pré-généré */}
       <div className="flex-1 min-h-0">

@@ -723,6 +723,8 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
 
   const goBack = () => {
     if (currentStep > 1) {
+      // Réinitialiser l'onglet d'aperçu quand on quitte l'étape 3
+      if (currentStep === 3) setPreviewTab("bail");
       setCurrentStep((prev) => prev - 1);
     }
   };
