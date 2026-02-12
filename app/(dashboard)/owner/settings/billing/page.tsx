@@ -625,15 +625,23 @@ export default function BillingPage() {
   const isPaid = currentPlan !== "gratuit";
   const canUpgrade = getPlanLevel(currentPlan) < getPlanLevel("enterprise_xl");
 
-  // Check for success param
+  // Check for checkout redirect params
   useEffect(() => {
     const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
     if (success === "true") {
       toast({
         title: "Abonnement active !",
         description: "Merci pour votre confiance. Profitez de vos nouvelles fonctionnalites !",
       });
       refresh();
+      router.replace("/owner/settings/billing");
+    } else if (canceled === "true") {
+      toast({
+        title: "Paiement annule",
+        description: "Vous pouvez reprendre a tout moment depuis cette page.",
+        variant: "destructive",
+      });
       router.replace("/owner/settings/billing");
     }
   }, [searchParams, toast, refresh, router]);

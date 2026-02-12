@@ -1,10 +1,9 @@
-import { BillingPage } from "@/components/billing";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Facturation & Abonnement | Talok",
-  description: "Gerez votre forfait, vos factures et vos moyens de paiement",
-};
-
+/**
+ * /parametres/facturation — redirige vers la route canonique
+ * La page billing est désormais à /owner/settings/billing
+ */
 export default function FacturationPage() {
-  return <BillingPage />;
+  redirect("/owner/settings/billing");
 }
