@@ -4,7 +4,9 @@ export const dynamic = "force-dynamic";
 // @ts-nocheck
 import { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { GuarantorSignOutButton } from "./_components/GuarantorSignOutButton";
 
 /**
  * Layout Guarantor - Server Component
@@ -34,6 +36,20 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
     redirect("/auth/signin");
   }
 
+  // Vérifier que c'est bien un garant
+  if (profile.role !== "guarantor") {
+    const roleRedirects: Record<string, string> = {
+      owner: "/owner/dashboard",
+      tenant: "/tenant/dashboard",
+      provider: "/provider/dashboard",
+      admin: "/admin/dashboard",
+      agency: "/agency/dashboard",
+      syndic: "/syndic/dashboard",
+      coproprietaire: "/copro/dashboard",
+    };
+    redirect(roleRedirects[profile.role] || "/dashboard");
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header simplifié */}
@@ -51,18 +67,13 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
             </div>
           </div>
           <nav className="flex items-center gap-4">
-            <a 
-              href="/guarantor/dashboard" 
+            <Link
+              href="/guarantor/dashboard"
               className="text-sm font-medium text-slate-600 hover:text-slate-900"
             >
               Tableau de bord
-            </a>
-            <a 
-              href="/auth/signout" 
-              className="text-sm font-medium text-slate-600 hover:text-slate-900"
-            >
-              Déconnexion
-            </a>
+            </Link>
+            <GuarantorSignOutButton />
           </nav>
         </div>
       </header>
