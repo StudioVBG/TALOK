@@ -123,6 +123,59 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; description?
   },
 };
 
+// ✅ SOTA 2026: Bannière d'action prioritaire — composant extrait pour fiabilité
+const NEXT_ACTION_COLORS: Record<string, { border: string; bg: string; iconBg: string; iconText: string; title: string; desc: string; btn: string; btnHover: string }> = {
+  amber:  { border: "border-amber-200",   bg: "bg-amber-50/50",   iconBg: "bg-amber-100",   iconText: "text-amber-600",   title: "text-amber-900",   desc: "text-amber-700",   btn: "bg-amber-600",   btnHover: "hover:bg-amber-700" },
+  blue:   { border: "border-blue-200",    bg: "bg-blue-50/50",    iconBg: "bg-blue-100",    iconText: "text-blue-600",    title: "text-blue-900",    desc: "text-blue-700",    btn: "bg-blue-600",    btnHover: "hover:bg-blue-700" },
+  indigo: { border: "border-indigo-200",  bg: "bg-indigo-50/50",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  title: "text-indigo-900",  desc: "text-indigo-700",  btn: "bg-indigo-600",  btnHover: "hover:bg-indigo-700" },
+  green:  { border: "border-emerald-200", bg: "bg-emerald-50/50", iconBg: "bg-emerald-100", iconText: "text-emerald-600", title: "text-emerald-900", desc: "text-emerald-700", btn: "bg-emerald-600", btnHover: "hover:bg-emerald-700" },
+};
+
+function NextActionBanner({ nextAction }: { nextAction: any }) {
+  if (!nextAction) return null;
+
+  const c = NEXT_ACTION_COLORS[nextAction.color] || NEXT_ACTION_COLORS.indigo;
+  const ActionIcon = nextAction.icon;
+  const hasButton = !!nextAction.actionLabel;
+
+  return (
+    <Card className={`border-2 ${c.border} ${c.bg} overflow-hidden`}>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <div className={`p-2 rounded-full flex-shrink-0 ${c.iconBg}`}>
+            <ActionIcon className={`h-4 w-4 ${c.iconText}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-semibold ${c.title}`}>
+              {nextAction.title}
+            </p>
+            <p className={`text-xs ${c.desc} mt-0.5`}>
+              {nextAction.description}
+            </p>
+            {hasButton && (
+              <div className="mt-3">
+                {nextAction.href ? (
+                  <Button asChild size="sm" className={`w-full gap-2 ${c.btn} ${c.btnHover} text-white`}>
+                    <Link href={nextAction.href}>
+                      {nextAction.actionLabel}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                ) : nextAction.action ? (
+                  <Button size="sm" onClick={nextAction.action} className={`w-full gap-2 ${c.btn} ${c.btnHover} text-white`}>
+                    {nextAction.actionLabel}
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDetailsClientProps) {
   const { lease, property, signers, payments, invoices, documents, edl } = details;
   const router = useRouter();
@@ -292,7 +345,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   // ✅ SOTA 2026: Déterminer l'action prioritaire
   const nextAction = useMemo(() => {
     // 1. En attente de signature locataire
-    if (["draft", "sent", "pending_signature"].includes(lease.statut) && mainTenant?.signature_status !== "signed") {
+    if (["draft", "sent", "pending_signature", "partially_signed"].includes(lease.statut) && mainTenant?.signature_status !== "signed") {
       return {
         type: "waiting_tenant",
         icon: Clock,
@@ -862,51 +915,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
           {/* Colonne de droite : Contexte & Actions */}
           <div className="lg:col-span-4 xl:col-span-3 order-1 lg:order-2 space-y-6">
 
-            {/* ✅ Bannière action prioritaire */}
-            {nextAction && nextAction.actionLabel && (() => {
-              const colorMap: Record<string, { border: string; bg: string; iconBg: string; iconText: string; title: string; desc: string; btn: string; btnHover: string }> = {
-                amber:  { border: "border-amber-200",   bg: "bg-amber-50/50",   iconBg: "bg-amber-100",   iconText: "text-amber-600",   title: "text-amber-900",   desc: "text-amber-700",   btn: "bg-amber-600",   btnHover: "hover:bg-amber-700" },
-                blue:   { border: "border-blue-200",    bg: "bg-blue-50/50",    iconBg: "bg-blue-100",    iconText: "text-blue-600",    title: "text-blue-900",    desc: "text-blue-700",    btn: "bg-blue-600",    btnHover: "hover:bg-blue-700" },
-                indigo: { border: "border-indigo-200",  bg: "bg-indigo-50/50",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  title: "text-indigo-900",  desc: "text-indigo-700",  btn: "bg-indigo-600",  btnHover: "hover:bg-indigo-700" },
-                green:  { border: "border-emerald-200", bg: "bg-emerald-50/50", iconBg: "bg-emerald-100", iconText: "text-emerald-600", title: "text-emerald-900", desc: "text-emerald-700", btn: "bg-emerald-600", btnHover: "hover:bg-emerald-700" },
-              };
-              const c = colorMap[nextAction.color] || colorMap.indigo;
-              const ActionIcon = nextAction.icon;
-              return (
-                <Card className={`border-2 ${c.border} ${c.bg} overflow-hidden`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-full flex-shrink-0 ${c.iconBg}`}>
-                        <ActionIcon className={`h-4 w-4 ${c.iconText}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold ${c.title}`}>
-                          {nextAction.title}
-                        </p>
-                        <p className={`text-xs ${c.desc} mt-0.5`}>
-                          {nextAction.description}
-                        </p>
-                        <div className="mt-3">
-                          {nextAction.href ? (
-                            <Button asChild size="sm" className={`w-full gap-2 ${c.btn} ${c.btnHover} text-white`}>
-                              <Link href={nextAction.href}>
-                                {nextAction.actionLabel}
-                                <ArrowRight className="h-3.5 w-3.5" />
-                              </Link>
-                            </Button>
-                          ) : nextAction.action ? (
-                            <Button size="sm" onClick={nextAction.action} className={`w-full gap-2 ${c.btn} ${c.btnHover} text-white`}>
-                              {nextAction.actionLabel}
-                              <ArrowRight className="h-3.5 w-3.5" />
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
+            {/* ✅ Bannière action prioritaire — toujours visible */}
+            <NextActionBanner nextAction={nextAction} />
 
             {/* ✅ Checklist d'activation — fusion Conformité + Prérequis */}
             <Card className="border-none shadow-sm bg-white overflow-hidden">
