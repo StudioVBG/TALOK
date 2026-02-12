@@ -91,15 +91,23 @@ export async function POST(request: Request) {
 
     // Créer le customer Stripe si nécessaire
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: `${profile.prenom} ${profile.nom}`,
-        metadata: {
-          profile_id: profile.id,
-          user_id: user.id,
-        },
-      });
-      customerId = customer.id;
+      try {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: `${profile.prenom} ${profile.nom}`,
+          metadata: {
+            profile_id: profile.id,
+            user_id: user.id,
+          },
+        });
+        customerId = customer.id;
+      } catch (stripeErr) {
+        console.error("[checkout] Erreur création customer Stripe:", stripeErr);
+        return NextResponse.json(
+          { error: "Impossible de créer votre compte de paiement. Veuillez réessayer.", code: "STRIPE_CUSTOMER_ERROR" },
+          { status: 502 }
+        );
+      }
     }
 
     // Déterminer le prix
@@ -164,13 +172,25 @@ export async function POST(request: Request) {
     } as any);
 
     // Mettre à jour le customer_id si nouveau
-    if (!existingSub?.stripe_customer_id) {
+    if (!existingSub?.stripe_customer_id && customerId) {
       const serviceClient = createServiceRoleClient();
       if (existingSub) {
+        // Compte existant sans Stripe customer → sauvegarder l'ID
         await serviceClient
           .from("subscriptions")
           .update({ stripe_customer_id: customerId })
           .eq("id", existingSub.id);
+      } else {
+        // Nouveau compte sans subscription → créer le record de base
+        // Le webhook checkout.session.completed finalisera le plan/status
+        await serviceClient
+          .from("subscriptions")
+          .upsert({
+            owner_id: profile.id,
+            stripe_customer_id: customerId,
+            status: "incomplete",
+            billing_cycle: billing_cycle,
+          }, { onConflict: "owner_id" });
       }
     }
 
