@@ -204,6 +204,57 @@ export function useAutoSave<T>({
 }
 
 /**
+ * Bannière de restauration d'un brouillon sauvegardé
+ */
+export function DraftBanner({
+  hasDraft,
+  lastSavedAt,
+  onRestore,
+  onDismiss,
+}: {
+  hasDraft: boolean;
+  lastSavedAt?: Date | string | null;
+  onRestore: () => void;
+  onDismiss: () => void;
+}) {
+  if (!hasDraft) return null;
+
+  const formattedDate = lastSavedAt
+    ? new Date(lastSavedAt).toLocaleString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
+  return (
+    <div className="mb-4 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
+      <p className="text-sm text-blue-800 dark:text-blue-200">
+        Un brouillon a été sauvegardé{formattedDate ? ` le ${formattedDate}` : ""}.
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onRestore}
+          className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+        >
+          Restaurer
+        </button>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="rounded-md border border-blue-300 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900"
+        >
+          Ignorer
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Composant d'indicateur de sauvegarde automatique
  */
 export function AutoSaveIndicator({

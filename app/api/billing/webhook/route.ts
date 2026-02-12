@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, getWebhookSecret } from "@/lib/stripe-client";
-import { createServiceClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type Stripe from "stripe";
 
 /**
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Signature invalide" }, { status: 400 });
   }
 
-  const supabase = createServiceClient();
+  const supabase = createServiceRoleClient();
 
   try {
     switch (event.type) {
