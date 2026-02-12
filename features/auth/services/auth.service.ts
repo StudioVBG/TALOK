@@ -50,7 +50,6 @@ export class AuthService {
   async signIn(data: SignInData) {
     try {
       const normalizedEmail = data.email.trim().toLowerCase();
-      console.log("[AuthService] Tentative de connexion avec email normalisé:", normalizedEmail);
       
       const { data: authData, error } = await this.supabase.auth.signInWithPassword({
         email: normalizedEmail,
@@ -62,7 +61,6 @@ export class AuthService {
           message: (error as Error).message,
           status: (error as any).status,
           code: (error as any).code,
-          email_used: normalizedEmail,
         });
         
         // Améliorer les messages d'erreur
@@ -81,7 +79,6 @@ export class AuthService {
         throw error;
       }
 
-      console.log("[AuthService] Connexion réussie pour:", normalizedEmail);
       return authData;
     } catch (error: unknown) {
       // Logger toutes les erreurs pour le debug (sauf les 400 normales)
@@ -104,7 +101,6 @@ export class AuthService {
    */
   async signOut(): Promise<void> {
     try {
-      console.log("[AuthService] Déconnexion en cours...");
 
       // 1. Déconnecter de Supabase
       const { error } = await this.supabase.auth.signOut();
@@ -129,13 +125,11 @@ export class AuthService {
           );
           sessionKeys.forEach((key) => sessionStorage.removeItem(key));
 
-          console.log("[AuthService] Cache local nettoyé");
         } catch (storageError) {
           console.warn("[AuthService] Erreur nettoyage storage:", storageError);
         }
       }
 
-      console.log("[AuthService] Déconnexion réussie");
     } catch (error: unknown) {
       console.error("[AuthService] Erreur lors de la déconnexion:", error);
       // On ne throw pas, on veut quand même permettre la redirection
@@ -223,7 +217,6 @@ export class AuthService {
         return null;
       }
 
-      console.log("[AuthService] Récupération profil pour user_id:", user.id);
 
       // Essayer d'abord avec .single()
       const { data: profile, error } = await this.supabase
@@ -243,7 +236,6 @@ export class AuthService {
             });
             if (response.ok) {
               const apiProfile = await response.json();
-              console.log("[AuthService] Profil récupéré via API:", apiProfile?.role);
               return apiProfile;
             }
           } catch (apiError) {
@@ -257,7 +249,6 @@ export class AuthService {
         throw error;
       }
 
-      console.log("[AuthService] Profil récupéré:", profile?.role);
       return profile;
     } catch (error: unknown) {
       console.error("[AuthService] Erreur dans getProfile:", error);
@@ -270,7 +261,6 @@ export class AuthService {
    */
   async signInWithGoogle() {
     const redirectUrl = getAuthCallbackUrl();
-    console.log("[AuthService] Démarrage OAuth Google, redirect:", redirectUrl);
     
     const { data, error } = await this.supabase.auth.signInWithOAuth({
       provider: "google",
@@ -296,7 +286,6 @@ export class AuthService {
    */
   async signInWithGitHub() {
     const redirectUrl = getAuthCallbackUrl();
-    console.log("[AuthService] Démarrage OAuth GitHub, redirect:", redirectUrl);
     
     const { data, error } = await this.supabase.auth.signInWithOAuth({
       provider: "github",
@@ -318,7 +307,6 @@ export class AuthService {
    */
   async signInWithApple() {
     const redirectUrl = getAuthCallbackUrl();
-    console.log("[AuthService] Démarrage OAuth Apple, redirect:", redirectUrl);
     
     const { data, error } = await this.supabase.auth.signInWithOAuth({
       provider: "apple",
@@ -342,7 +330,6 @@ export class AuthService {
    */
   async signInWithOAuth(provider: "google" | "github" | "azure" | "apple") {
     const redirectUrl = getAuthCallbackUrl();
-    console.log(`[AuthService] Démarrage OAuth ${provider}, redirect:`, redirectUrl);
     
     const { data, error } = await this.supabase.auth.signInWithOAuth({
       provider,

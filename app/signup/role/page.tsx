@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -321,7 +320,7 @@ export default function RoleChoicePage() {
                 support@talok.fr
                 <ArrowRight className="h-4 w-4" />
               </a>
-              <a href="https://calendly.com/" target="_blank" className="flex items-center justify-between hover:underline">
+              <a href="https://calendly.com/talok-onboarding" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between hover:underline">
                 Planifier un appel onboarding
                 <ArrowRight className="h-4 w-4" />
               </a>

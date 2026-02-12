@@ -57,8 +57,8 @@ export const consentsSchema = z.object({
 // Étape 5 : Profil minimal
 export const minimalProfileSchema = z
   .object({
-    prenom: z.string().min(1, "Le prénom est requis"),
-    nom: z.string().min(1, "Le nom est requis"),
+    prenom: z.string().min(1, "Le prénom est requis").max(80, "Maximum 80 caractères").regex(/^[\p{L}\s'\-]+$/u, "Caractères non autorisés dans le prénom"),
+    nom: z.string().min(1, "Le nom est requis").max(80, "Maximum 80 caractères").regex(/^[\p{L}\s'\-]+$/u, "Caractères non autorisés dans le nom"),
     country_code: z.enum(["FR", "GP", "MQ", "GF", "RE", "YT", "PM", "BL", "MF"]),
     telephone: z.string().optional().nullable(),
   })

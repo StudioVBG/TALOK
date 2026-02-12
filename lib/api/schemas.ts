@@ -10,10 +10,16 @@ import { z } from "zod";
 
 export const RegisterSchema = z.object({
   email: z.string().email("Email invalide"),
-  password: z.string().min(8, "Mot de passe: 8 caractères minimum"),
-  role: z.enum(["owner", "tenant", "provider"]),
-  prenom: z.string().min(1, "Prénom requis").optional(),
-  nom: z.string().min(1, "Nom requis").optional(),
+  password: z
+    .string()
+    .min(12, "Mot de passe: 12 caractères minimum")
+    .regex(/[A-Z]/, "Le mot de passe doit contenir au moins une majuscule")
+    .regex(/[a-z]/, "Le mot de passe doit contenir au moins une minuscule")
+    .regex(/[0-9]/, "Le mot de passe doit contenir au moins un chiffre")
+    .regex(/[^A-Za-z0-9]/, "Le mot de passe doit contenir au moins un caractère spécial"),
+  role: z.enum(["owner", "tenant", "provider", "guarantor"]),
+  prenom: z.string().min(1, "Prénom requis").max(80).regex(/^[\p{L}\s'\-]+$/u, "Caractères non autorisés dans le prénom"),
+  nom: z.string().min(1, "Nom requis").max(80).regex(/^[\p{L}\s'\-]+$/u, "Caractères non autorisés dans le nom"),
 });
 
 export const LoginSchema = z.object({

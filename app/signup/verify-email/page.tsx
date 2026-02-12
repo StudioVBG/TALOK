@@ -1,7 +1,6 @@
 "use client";
-// @ts-nocheck
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -57,22 +56,18 @@ export default function VerifyEmailOnboardingPage() {
     }
 
     setLoading(true);
-    console.log("[VerifyEmail] Tentative de renvoi pour:", email);
     
     try {
       // Essayer d'envoyer l'email via le service
       try {
         await authService.resendConfirmationEmail(email);
-        console.log("[VerifyEmail] Email renvoyé avec succès via authService");
       } catch (serviceError: any) {
-        console.log("[VerifyEmail] Erreur authService:", serviceError.message);
         
         // Si erreur de session, essayer directement avec Supabase
         if (
           serviceError.message?.includes("session") ||
           serviceError.message?.includes("Auth session missing")
         ) {
-          console.log("[VerifyEmail] Retry direct avec Supabase client");
           const supabase = (await import("@/lib/supabase/client")).createClient();
           const { getAuthCallbackUrl } = await import("@/lib/utils/redirect-url");
           const redirectUrl = getAuthCallbackUrl();
@@ -89,7 +84,6 @@ export default function VerifyEmailOnboardingPage() {
             console.error("[VerifyEmail] Erreur Supabase resend:", resendError);
             throw resendError;
           }
-          console.log("[VerifyEmail] Email renvoyé avec succès via Supabase direct");
         } else {
           throw serviceError;
         }
@@ -101,7 +95,6 @@ export default function VerifyEmailOnboardingPage() {
         description: "Un nouvel email de confirmation a été envoyé. Vérifiez aussi vos spams !",
       });
     } catch (error: unknown) {
-      console.error("[VerifyEmail] Erreur finale:", error);
       
       // Messages d'erreur plus explicites
       let errorMessage = error instanceof Error ? (error as Error).message : "Impossible d'envoyer l'email.";
@@ -188,6 +181,34 @@ export default function VerifyEmailOnboardingPage() {
         router.push("/dashboard");
     }
   };
+
+  // Polling automatique toutes les 5 secondes pour détecter la confirmation
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (verified) return;
+
+    pollingRef.current = setInterval(async () => {
+      try {
+        const user = await authService.getUser();
+        if (user?.email_confirmed_at) {
+          setVerified(true);
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          toast({
+            title: "Email confirmé",
+            description: "Votre email a été confirmé avec succès !",
+          });
+          setTimeout(() => goToNextStep(), 1500);
+        }
+      } catch {
+        // Silencieux — pas de session active
+      }
+    }, 5000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [verified]);
 
   const handleContinue = () => {
     goToNextStep();
