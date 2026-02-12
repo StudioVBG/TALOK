@@ -18,7 +18,7 @@ import {
   Calendar,
   AlertTriangle,
   Loader2,
-  Plus,
+  Home,
 } from "lucide-react";
 
 interface EdlData {
@@ -91,7 +91,7 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
 
         <Card className="w-full max-w-lg border-2 border-dashed border-indigo-200 bg-indigo-50/50">
           <CardContent className="p-6">
-            <div className="space-y-3 text-sm text-slate-600 mb-6">
+            <div className="space-y-3 text-sm text-slate-600">
               <div className="flex items-start gap-3">
                 <Camera className="h-4 w-4 mt-0.5 text-indigo-500 flex-shrink-0" />
                 <span>Inspection pièce par pièce avec photos</span>
@@ -105,16 +105,20 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
                 <span>Inventaire du trousseau de clés</span>
               </div>
             </div>
-
-            <Button asChild size="lg" className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2">
-              <Link href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${propertyId}&type=entree`}>
-                <Plus className="h-4 w-4" />
-                Créer l&apos;EDL d&apos;entrée
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
           </CardContent>
         </Card>
+
+        <Button
+          asChild
+          size="lg"
+          className="w-full max-w-lg h-14 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 gap-3 mt-6"
+        >
+          <Link href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${propertyId}&type=entree`}>
+            <Home className="h-5 w-5" />
+            Commencer l&apos;état des lieux d&apos;entrée
+            <ArrowRight className="h-5 w-5" />
+          </Link>
+        </Button>
       </motion.div>
     );
   }

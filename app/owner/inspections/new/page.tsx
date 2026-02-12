@@ -74,15 +74,15 @@ function WizardSkeleton() {
   );
 }
 
-async function WizardContent({ profileId, preselectedLeaseId }: { profileId: string; preselectedLeaseId?: string }) {
+async function WizardContent({ profileId, preselectedLeaseId, preselectedType }: { profileId: string; preselectedLeaseId?: string; preselectedType?: string }) {
   const leases = await fetchLeases(profileId);
-  return <CreateInspectionWizard leases={leases} preselectedLeaseId={preselectedLeaseId} />;
+  return <CreateInspectionWizard leases={leases} preselectedLeaseId={preselectedLeaseId} preselectedType={preselectedType as "entree" | "sortie" | undefined} />;
 }
 
 export default async function NewInspectionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ lease_id?: string; property_id?: string }>;
+  searchParams: Promise<{ lease_id?: string; property_id?: string; type?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
@@ -99,10 +99,11 @@ export default async function NewInspectionPage({
   if (!profile || profile.role !== "owner") redirect("/dashboard");
 
   const preselectedLeaseId = resolvedSearchParams?.lease_id;
+  const preselectedType = resolvedSearchParams?.type;
 
   return (
     <Suspense fallback={<WizardSkeleton />}>
-      <WizardContent profileId={profile.id} preselectedLeaseId={preselectedLeaseId} />
+      <WizardContent profileId={profile.id} preselectedLeaseId={preselectedLeaseId} preselectedType={preselectedType} />
     </Suspense>
   );
 }
