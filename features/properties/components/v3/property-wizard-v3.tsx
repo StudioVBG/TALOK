@@ -32,6 +32,18 @@ const PhotosStep = dynamic(() => import("./immersive/steps/PhotosStep").then((mo
   loading: () => <StepSkeleton />,
   ssr: false,
 });
+const LoyerChargesStep = dynamic(() => import("./immersive/steps/LoyerChargesStep").then((mod) => ({ default: mod.LoyerChargesStep })), {
+  loading: () => <StepSkeleton />,
+  ssr: false,
+});
+const EquipmentsMetersStep = dynamic(() => import("./immersive/steps/EquipmentsMetersStep").then((mod) => ({ default: mod.EquipmentsMetersStep })), {
+  loading: () => <StepSkeleton />,
+  ssr: false,
+});
+const DiagnosticsStep = dynamic(() => import("./immersive/steps/DiagnosticsStep").then((mod) => ({ default: mod.DiagnosticsStep })), {
+  loading: () => <StepSkeleton />,
+  ssr: false,
+});
 const FeaturesStep = dynamic(() => import("./immersive/steps/FeaturesStep").then((mod) => ({ default: mod.FeaturesStep })), {
   loading: () => <StepSkeleton />,
   ssr: false,
@@ -58,43 +70,53 @@ const stepComponents: Record<WizardStep, React.ElementType> = {
   type_bien: TypeStep,
   address: AddressStep,
   details: DetailsStep,
+  loyer_charges: LoyerChargesStep,
   rooms: RoomsStep,
+  equipments_meters: EquipmentsMetersStep,
   photos: PhotosStep,
+  diagnostics: DiagnosticsStep,
   features: FeaturesStep,
   publish: PublishStep,
   recap: RecapStep,
-  building_config: BuildingConfigStep,  // SOTA 2026
+  building_config: BuildingConfigStep,
 };
 
 // Types de biens qui n'ont PAS d'étape "rooms"
-// ⚠️ Aligné avec wizard-store.ts et TypeStep.tsx
+// Aligned with wizard-store.ts
 const TYPES_WITHOUT_ROOMS_STEP = [
   "parking",
   "box",
+  "cave_cellier",
   "local_commercial",
   "bureaux",
   "entrepot",
   "fonds_de_commerce",
-  "immeuble",             // SOTA 2026 - Les immeubles ont building_config au lieu de rooms
-  "terrain_agricole",     // Bail rural - pas de pièces intérieures
-  "exploitation_agricole" // Bail rural - configuration spécifique
+  "immeuble",
+  "terrain_nu",
+  "terrain_agricole",
+  "exploitation_agricole",
 ];
 
 // Titres des étapes selon le type de bien
 function getStepTitle(step: WizardStep, propertyType: string): string {
   const titles: Record<WizardStep, string> = {
     type_bien: "Quel type de bien souhaitez-vous ajouter ?",
-    address: propertyType === "immeuble" 
+    address: propertyType === "immeuble"
       ? "Où se situe votre immeuble ?"
       : "Où se situe votre bien ?",
-    building_config: "Configurez votre immeuble",  // SOTA 2026
-    details: propertyType === "parking" 
-      ? "Quelques détails sur le parking" 
+    building_config: "Configurez votre immeuble",
+    details: propertyType === "parking"
+      ? "Quelques détails sur le parking"
       : propertyType === "commercial" || propertyType === "bureau"
         ? "Quelques détails sur le local"
-        : "Quelques détails sur le logement",
+        : ["terrain_nu", "terrain_agricole", "exploitation_agricole"].includes(propertyType)
+          ? "Informations sur le terrain"
+          : "Quelques détails sur le logement",
+    loyer_charges: "Loyer, charges et fiscalité",
     rooms: "Organisez les pièces",
+    equipments_meters: "Équipements & compteurs",
     photos: "Ajoutez les photos de votre bien",
+    diagnostics: "Diagnostics obligatoires",
     features: "Équipements & caractéristiques",
     publish: "Disponibilité & visibilité",
     recap: "Récapitulatif et publication",
@@ -108,16 +130,19 @@ function getStepDescription(step: WizardStep, propertyType: string): string {
     address: propertyType === "immeuble"
       ? "L'adresse de votre immeuble est essentielle."
       : "L'adresse est essentielle pour les futurs locataires.",
-    building_config: "Définissez les étages et ajoutez vos lots en quelques clics.",  // SOTA 2026
+    building_config: "Définissez les étages et ajoutez vos lots en quelques clics.",
     details: propertyType === "parking"
       ? "Surface et type de stationnement."
       : propertyType === "commercial" || propertyType === "bureau"
         ? "Surface et caractéristiques du local."
         : "Ces informations nous aident à mieux présenter votre bien.",
+    loyer_charges: "Définissez le loyer, les charges, le dépôt de garantie et le régime fiscal.",
     rooms: "Décrivez l'agencement intérieur de votre logement.",
+    equipments_meters: "Listez les équipements et relevez les compteurs.",
     photos: propertyType === "immeuble"
       ? "Ajoutez des photos de la façade et des parties communes."
       : "Mettez en valeur votre bien avec de belles images.",
+    diagnostics: "Vérifiez et renseignez les diagnostics obligatoires.",
     features: "Quels sont les atouts et équipements de votre bien ?",
     publish: "Définissez quand et comment votre annonce sera visible.",
     recap: "Vérifiez tout avant de publier votre annonce.",
@@ -137,9 +162,13 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  // Mapping interne des étapes pour calculs (doit correspondre à wizard-store.ts)
-  const STEPS_ORDER: WizardStep[] = ['type_bien', 'address', 'details', 'rooms', 'photos', 'features', 'publish', 'recap'];
-  const FAST_STEPS: WizardStep[] = ['type_bien', 'address', 'photos', 'recap'];
+  // Mapping interne des étapes pour calculs (must match wizard-store.ts)
+  const STEPS_ORDER: WizardStep[] = [
+    'type_bien', 'address', 'details', 'loyer_charges',
+    'rooms', 'equipments_meters', 'photos', 'diagnostics',
+    'features', 'publish', 'recap'
+  ];
+  const FAST_STEPS: WizardStep[] = ['type_bien', 'address', 'details', 'loyer_charges', 'photos', 'recap'];
 
   const { 
     currentStep, 
@@ -453,9 +482,13 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
         }
 
         return hasSurface && hasLoyer && hasChauffage && hasChauffageEnergie && hasEauChaude;
-      case 'building_config': return true; // SOTA 2026: Étape immeuble
+      case 'loyer_charges':
+        return (formData.loyer_hc || 0) > 0;
+      case 'building_config': return true;
       case 'rooms': return true;
+      case 'equipments_meters': return true;
       case 'photos': return true;
+      case 'diagnostics': return true;
       case 'features': return true;
       case 'publish': return true;
       case 'recap': return true;

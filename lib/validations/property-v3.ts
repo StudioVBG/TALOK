@@ -33,15 +33,24 @@ const propertyTypeV3Enum = z.enum([
   "appartement",
   "maison",
   "studio",
+  "villa",
+  "chambre",
   "colocation",
-  "saisonnier",        // SOTA 2026: Location saisonnière
+  "saisonnier",
   "parking",
   "box",
+  "cave_cellier",
   "local_commercial",
   "bureaux",
   "entrepot",
   "fonds_de_commerce",
-  "immeuble",          // SOTA 2026: Immeuble entier multi-lots
+  "immeuble",
+  "terrain_nu",
+  "terrain_agricole",
+  "exploitation_agricole",
+  "case_creole",
+  "bungalow",
+  "logement_social",
 ]);
 
 const parkingTypeEnum = z.enum([
@@ -182,7 +191,7 @@ const zoneEncadrementEnum = z.enum([
 ]).optional().nullable();
 
 export const habitationSchemaV3Base = basePropertySchemaV3.extend({
-  type_bien: z.enum(["appartement", "maison", "studio", "colocation", "saisonnier"]),
+  type_bien: z.enum(["appartement", "maison", "studio", "villa", "chambre", "colocation", "saisonnier", "case_creole", "bungalow", "logement_social"]),
   surface_habitable_m2: z.number().positive("La surface habitable doit être strictement positive"),
   // SOTA 2026: Surface Carrez pour copropriete (doit etre <= surface_habitable_m2)
   surface_carrez: z.number().positive().optional().nullable(),
@@ -413,7 +422,7 @@ export const propertySchemaV3Base = z.discriminatedUnion("type_bien", [
 // Version avec validations avancées pour habitation (wrapper autour de la base)
 export const propertySchemaV3 = propertySchemaV3Base.superRefine((data, ctx) => {
   // Appliquer les validations conditionnelles pour habitation
-  if (data.type_bien === "appartement" || data.type_bien === "maison" || data.type_bien === "studio" || data.type_bien === "colocation" || data.type_bien === "saisonnier") {
+  if (["appartement", "maison", "studio", "villa", "chambre", "colocation", "saisonnier", "case_creole", "bungalow", "logement_social"].includes(data.type_bien)) {
     const habitation = data as z.infer<typeof habitationSchemaV3Base>;
     // Validation chauffage_energie
     if (habitation.chauffage_type !== "aucun" && !habitation.chauffage_energie) {
@@ -499,7 +508,7 @@ export const propertySchemaV3 = propertySchemaV3Base.superRefine((data, ctx) => 
 // Décision : Schémas partiels pour chaque type
 
 export const habitationUpdateSchemaV3 = habitationSchemaV3Base.partial().extend({
-  type_bien: z.enum(["appartement", "maison", "studio", "colocation", "saisonnier"]).optional(),
+  type_bien: z.enum(["appartement", "maison", "studio", "villa", "chambre", "colocation", "saisonnier", "case_creole", "bungalow", "logement_social"]).optional(),
 });
 
 export const parkingUpdateSchemaV3 = parkingSchemaV3.partial().extend({
@@ -549,6 +558,187 @@ export const photoSchemaV3 = z.object({
 });
 
 // ============================================
+// SCHÉMA TERRAIN (terrain nu, agricole)
+// ============================================
+
+export const terrainSchemaV3 = basePropertySchemaV3.extend({
+  type_bien: z.enum(["terrain_nu", "terrain_agricole", "exploitation_agricole"]),
+  surface_terrain: z.number().positive("La surface du terrain doit être strictement positive"),
+  is_constructible: z.boolean().optional(),
+  usage_autorise: z.string().optional().nullable(),
+});
+
+// ============================================
+// SCHÉMA CAVE / CELLIER
+// ============================================
+
+export const caveCellierSchemaV3 = basePropertySchemaV3.extend({
+  type_bien: z.literal("cave_cellier"),
+  surface_m2: z.number().positive("La surface doit être strictement positive"),
+  parking_niveau: z.string().max(20).optional().nullable(),
+});
+
+// ============================================
+// SCHÉMAS METERS, DIAGNOSTICS, EQUIPMENT
+// ============================================
+
+export const meterSchemaV3 = z.object({
+  id: z.string().uuid().optional(),
+  property_id: z.string().uuid(),
+  meter_type: z.enum(["electricity", "gas", "water", "hot_water", "heating"]),
+  meter_number: z.string().max(50).optional().nullable(),
+  location: z.string().max(200).optional().nullable(),
+  is_individual: z.boolean().default(true),
+  provider: z.string().max(100).optional().nullable(),
+  last_reading_value: z.number().min(0).optional().nullable(),
+  last_reading_date: z.string().optional().nullable(),
+  notes: z.string().max(500).optional().nullable(),
+});
+
+export const diagnosticSchemaV3 = z.object({
+  id: z.string().uuid().optional(),
+  property_id: z.string().uuid(),
+  diagnostic_type: z.enum([
+    "dpe", "amiante", "plomb", "termites", "electricite", "gaz",
+    "erp", "bruit", "assainissement", "merule", "radon",
+    "surface_carrez", "risques_naturels",
+  ]),
+  date_performed: z.string().optional().nullable(),
+  expiry_date: z.string().optional().nullable(),
+  result: z.record(z.unknown()).optional().default({}),
+  document_url: z.string().url().optional().nullable(),
+  provider_name: z.string().max(200).optional().nullable(),
+  provider_certification: z.string().max(200).optional().nullable(),
+  notes: z.string().max(500).optional().nullable(),
+});
+
+export const equipmentSchemaV3 = z.object({
+  id: z.string().uuid().optional(),
+  property_id: z.string().uuid(),
+  category: z.enum([
+    "kitchen", "bathroom", "heating", "security", "outdoor",
+    "furniture", "appliance", "connectivity", "accessibility",
+    "storage", "laundry", "comfort", "other",
+  ]),
+  name: z.string().min(1, "Le nom de l'équipement est requis").max(200),
+  brand: z.string().max(100).optional().nullable(),
+  model: z.string().max(100).optional().nullable(),
+  serial_number: z.string().max(100).optional().nullable(),
+  condition: z.enum(["new", "good", "fair", "poor", "broken"]).default("good"),
+  installation_date: z.string().optional().nullable(),
+  warranty_end: z.string().optional().nullable(),
+  is_included_in_lease: z.boolean().default(true),
+  notes: z.string().max(500).optional().nullable(),
+});
+
+// ============================================
+// DOM-TOM VALIDATION HELPERS
+// ============================================
+
+export const DOM_TOM_POSTAL_PREFIXES = ["971", "972", "973", "974", "976"] as const;
+
+export function isDomTomPostalCode(postalCode: string): boolean {
+  return DOM_TOM_POSTAL_PREFIXES.some(prefix => postalCode.startsWith(prefix));
+}
+
+export function getDomTomTerritory(postalCode: string): string | null {
+  if (postalCode.startsWith("971")) return "guadeloupe";
+  if (postalCode.startsWith("972")) return "martinique";
+  if (postalCode.startsWith("973")) return "guyane";
+  if (postalCode.startsWith("974")) return "reunion";
+  if (postalCode.startsWith("976")) return "mayotte";
+  return null;
+}
+
+/**
+ * Returns the list of required diagnostic types based on property characteristics
+ */
+export function getRequiredDiagnostics(opts: {
+  propertyType: string;
+  isDomTom: boolean;
+  constructionYear?: number | null;
+  isFurnished?: boolean;
+  hasGas?: boolean;
+}): string[] {
+  const required: string[] = ["dpe", "erp"];
+
+  const habitationTypes = [
+    "appartement", "maison", "studio", "villa", "chambre",
+    "colocation", "saisonnier", "case_creole", "bungalow", "logement_social",
+  ];
+
+  if (habitationTypes.includes(opts.propertyType)) {
+    required.push("electricite");
+
+    if (opts.constructionYear && opts.constructionYear < 1949) {
+      required.push("plomb");
+    }
+    if (opts.constructionYear && opts.constructionYear < 1997) {
+      required.push("amiante");
+    }
+    if (opts.hasGas) {
+      required.push("gaz");
+    }
+  }
+
+  // DOM-TOM: termites + risques naturels always required
+  if (opts.isDomTom) {
+    required.push("termites", "risques_naturels");
+  }
+
+  return [...new Set(required)];
+}
+
+// ============================================
+// LOYER & CHARGES VALIDATION
+// ============================================
+
+export const loyerChargesSchemaV3 = z.object({
+  loyer_hc: z.number().positive("Le loyer hors charges doit être strictement positif"),
+  charges_mensuelles: z.number().min(0, "Les charges ne peuvent pas être négatives"),
+  charges_type: z.enum(["provision", "forfait"]).default("provision"),
+  depot_garantie: z.number().min(0, "Le dépôt de garantie ne peut pas être négatif"),
+  tax_regime: z.enum(["micro_foncier", "reel", "micro_bic", "lmnp", "lmp", "sci_ir", "sci_is"]).optional().nullable(),
+  // Rent control
+  is_rent_controlled: z.boolean().default(false),
+  rent_control_zone: z.string().optional().nullable(),
+  loyer_reference: z.number().min(0).optional().nullable(),
+  loyer_reference_majore: z.number().min(0).optional().nullable(),
+  complement_loyer: z.number().min(0).optional().nullable(),
+  complement_loyer_justification: z.string().optional().nullable(),
+}).superRefine((data, ctx) => {
+  // Complement de loyer requires justification
+  if (data.complement_loyer && data.complement_loyer > 0 && !data.complement_loyer_justification) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["complement_loyer_justification"],
+      message: "Une justification est requise pour le complément de loyer",
+    });
+  }
+
+  // Rent control zone requires reference rent
+  if (data.is_rent_controlled && !data.loyer_reference) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["loyer_reference"],
+      message: "Le loyer de référence est obligatoire en zone d'encadrement des loyers",
+    });
+  }
+
+  // Loyer must not exceed loyer_reference_majore in controlled zone
+  if (data.is_rent_controlled && data.loyer_reference_majore && data.loyer_hc > data.loyer_reference_majore) {
+    const maxWithComplement = data.loyer_reference_majore + (data.complement_loyer || 0);
+    if (data.loyer_hc > maxWithComplement) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["loyer_hc"],
+        message: `Le loyer (${data.loyer_hc}€) dépasse le loyer de référence majoré (${data.loyer_reference_majore}€) + complément (${data.complement_loyer || 0}€)`,
+      });
+    }
+  }
+});
+
+// ============================================
 // TYPE INFERENCE (pour TypeScript)
 // ============================================
 // Permet d'inférer les types TypeScript depuis les schémas Zod
@@ -566,4 +756,10 @@ export type HabitationV3UpdateInput = z.infer<typeof habitationUpdateSchemaV3>;
 export type ParkingV3UpdateInput = z.infer<typeof parkingUpdateSchemaV3>;
 export type LocalProV3UpdateInput = z.infer<typeof localProUpdateSchemaV3>;
 export type ImmeubleV3UpdateInput = z.infer<typeof immeubleUpdateSchemaV3>;
+export type MeterV3Input = z.infer<typeof meterSchemaV3>;
+export type DiagnosticV3Input = z.infer<typeof diagnosticSchemaV3>;
+export type EquipmentDetailV3Input = z.infer<typeof equipmentSchemaV3>;
+export type LoyerChargesV3Input = z.infer<typeof loyerChargesSchemaV3>;
+export type TerrainV3Input = z.infer<typeof terrainSchemaV3>;
+export type CaveCellierV3Input = z.infer<typeof caveCellierSchemaV3>;
 

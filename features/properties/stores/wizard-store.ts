@@ -23,8 +23,11 @@ export type WizardStep =
   | 'type_bien'
   | 'address'
   | 'details'
+  | 'loyer_charges'
   | 'rooms'
+  | 'equipments_meters'
   | 'photos'
+  | 'diagnostics'
   | 'features'
   | 'publish'
   | 'recap'
@@ -109,6 +112,32 @@ export interface WizardFormData {
   // Usage
   usage_principal?: 'habitation' | 'habitation_secondaire' | 'mixte';
 
+  // Loyer & Charges
+  charges_type?: 'provision' | 'forfait';
+  tax_regime?: string;
+  is_rent_controlled?: boolean;
+  rent_control_zone?: string;
+  loyer_reference?: number;
+  loyer_reference_majore?: number;
+  complement_loyer?: number;
+  complement_loyer_justification?: string;
+
+  // Construction
+  construction_year?: number;
+  total_floors?: number;
+  nb_bathrooms?: number;
+
+  // DOM-TOM
+  is_dom_tom?: boolean;
+  dom_tom_territory?: string;
+
+  // Label / Description
+  label?: string;
+
+  // Terrain
+  surface_terrain?: number;
+  is_constructible?: boolean;
+
   // SOTA 2026 - Champs spécifiques immeuble
   building_floors?: number;
   building_units?: BuildingUnit[];
@@ -175,26 +204,39 @@ interface WizardState {
   clearHistory: () => void;
 }
 
-// Mapping des étapes (ordre logique)
-const STEPS_ORDER: WizardStep[] = ['type_bien', 'address', 'details', 'rooms', 'photos', 'features', 'publish', 'recap'];
+// Mapping des étapes (ordre logique) — full wizard flow
+const STEPS_ORDER: WizardStep[] = [
+  'type_bien', 'address', 'details', 'loyer_charges',
+  'rooms', 'equipments_meters', 'photos', 'diagnostics',
+  'features', 'publish', 'recap'
+];
 
 // Étapes pour le mode FAST
-const FAST_STEPS: WizardStep[] = ['type_bien', 'address', 'photos', 'recap'];
+const FAST_STEPS: WizardStep[] = ['type_bien', 'address', 'details', 'loyer_charges', 'photos', 'recap'];
 
 // SOTA 2026 - Étapes spécifiques pour les immeubles
 const BUILDING_STEPS: WizardStep[] = ['type_bien', 'address', 'building_config', 'photos', 'recap'];
 
+// Étapes pour terrains (pas de rooms, pas d'équipements intérieurs)
+const TERRAIN_STEPS: WizardStep[] = ['type_bien', 'address', 'details', 'loyer_charges', 'photos', 'diagnostics', 'recap'];
+
 // Types de biens qui n'ont PAS d'étape "rooms" (pas de pièces à configurer)
-// ⚠️ Aligné avec TypeStep.tsx : utiliser les vrais IDs (local_commercial, bureaux, etc.)
 const TYPES_WITHOUT_ROOMS_STEP = [
-  "parking", 
-  "box", 
-  "local_commercial", 
-  "bureaux", 
-  "entrepot", 
+  "parking",
+  "box",
+  "cave_cellier",
+  "local_commercial",
+  "bureaux",
+  "entrepot",
   "fonds_de_commerce",
-  "immeuble"  // SOTA 2026 - Les immeubles ont leur propre étape building_config
+  "immeuble",
+  "terrain_nu",
+  "terrain_agricole",
+  "exploitation_agricole",
 ];
+
+// Types de terrains (pas de rooms, pas d'équipements intérieurs)
+const TERRAIN_TYPES = ["terrain_nu", "terrain_agricole", "exploitation_agricole"];
 
 // Fonction pour obtenir les étapes applicables selon le type de bien et le mode
 function getApplicableSteps(propertyType: string | undefined, mode: WizardMode): WizardStep[] {
@@ -202,11 +244,16 @@ function getApplicableSteps(propertyType: string | undefined, mode: WizardMode):
   if (propertyType === 'immeuble') {
     return BUILDING_STEPS;
   }
-  
+
+  // Terrains: pas de rooms, pas d'équipements intérieurs
+  if (propertyType && TERRAIN_TYPES.includes(propertyType)) {
+    return mode === 'fast' ? FAST_STEPS : TERRAIN_STEPS;
+  }
+
   let steps = mode === 'fast' ? FAST_STEPS : STEPS_ORDER;
-  
+
   if (propertyType && TYPES_WITHOUT_ROOMS_STEP.includes(propertyType)) {
-    return steps.filter(step => step !== 'rooms');
+    steps = steps.filter(step => step !== 'rooms');
   }
   return steps;
 }

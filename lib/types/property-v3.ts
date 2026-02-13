@@ -29,17 +29,25 @@ export type PropertyTypeV3 =
   | "appartement"
   | "maison"
   | "studio"              // Nouveau (modèle V3)
+  | "villa"               // Villa / maison de luxe
+  | "chambre"             // Chambre (colocation, chez l'habitant)
   | "colocation"
-  | "saisonnier"          // Rétrocompatibilité
+  | "saisonnier"          // Location saisonnière / meublé de tourisme
   | "parking"
   | "box"                 // Nouveau (modèle V3) - distinct de parking
+  | "cave_cellier"        // Cave / cellier indépendant
   | "local_commercial"
   | "bureaux"
   | "entrepot"
   | "fonds_de_commerce"
   | "immeuble"            // SOTA 2026 - Immeuble entier multi-lots
+  | "terrain_nu"          // Terrain nu constructible ou non
   | "terrain_agricole"    // Bail rural - terrain agricole
-  | "exploitation_agricole"; // Bail rural - exploitation agricole (ferme)
+  | "exploitation_agricole" // Bail rural - exploitation agricole (ferme)
+  // DOM-TOM spécifiques
+  | "case_creole"         // Case créole / maison traditionnelle DOM-TOM
+  | "bungalow"            // Bungalow (DOM-TOM)
+  | "logement_social";    // Logement social (LLS, LLTS, PLS)
 
 // Note : "saisonnier" retiré du modèle V3 mais conservé dans la BDD pour rétrocompatibilité
 
@@ -57,12 +65,21 @@ export const PROPERTY_TYPE_GROUPS = {
   habitation: [
     { value: "appartement" as const, label: "Appartement", icon: "📦" },
     { value: "maison" as const, label: "Maison", icon: "🏡" },
+    { value: "villa" as const, label: "Villa", icon: "🏖" },
     { value: "studio" as const, label: "Studio", icon: "🔑" },
+    { value: "chambre" as const, label: "Chambre", icon: "🛏" },
     { value: "colocation" as const, label: "Colocation", icon: "🧑‍🤝‍🧑" },
+    { value: "saisonnier" as const, label: "Saisonnier / Tourisme", icon: "🏖" },
+    { value: "logement_social" as const, label: "Logement social", icon: "🏘" },
+  ],
+  dom_tom: [
+    { value: "case_creole" as const, label: "Case créole", icon: "🌴" },
+    { value: "bungalow" as const, label: "Bungalow", icon: "🏕" },
   ],
   parking: [
     { value: "parking" as const, label: "Place de parking", icon: "🚗" },
-    { value: "box" as const, label: "Box fermé", icon: "🚙" },
+    { value: "box" as const, label: "Box / Garage", icon: "🚙" },
+    { value: "cave_cellier" as const, label: "Cave / Cellier", icon: "🧱" },
   ],
   locaux: [
     { value: "local_commercial" as const, label: "Local commercial / Boutique", icon: "🏬" },
@@ -70,7 +87,8 @@ export const PROPERTY_TYPE_GROUPS = {
     { value: "entrepot" as const, label: "Entrepôt / Atelier / Logistique", icon: "🏭" },
     { value: "fonds_de_commerce" as const, label: "Fonds de commerce / Local mixte", icon: "🛍" },
   ],
-  agricole: [
+  terrain: [
+    { value: "terrain_nu" as const, label: "Terrain nu", icon: "🏗" },
     { value: "terrain_agricole" as const, label: "Terrain agricole", icon: "🌾" },
     { value: "exploitation_agricole" as const, label: "Exploitation agricole / Ferme", icon: "🏚" },
   ],
@@ -456,4 +474,180 @@ export interface PhotoV3 {
   created_at?: string;
   updated_at?: string;
 }
+
+// ============================================
+// 12. METER TYPES (Compteurs)
+// ============================================
+
+export type MeterTypeV3 = "electricity" | "gas" | "water" | "hot_water" | "heating";
+
+export interface PropertyMeterV3 {
+  id: string;
+  property_id: string;
+  meter_type: MeterTypeV3;
+  meter_number: string | null;
+  location: string | null;
+  is_individual: boolean;
+  provider: string | null;
+  last_reading_value: number | null;
+  last_reading_date: string | null;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const METER_TYPES: { value: MeterTypeV3; label: string; icon: string }[] = [
+  { value: "electricity", label: "Électricité", icon: "⚡" },
+  { value: "gas", label: "Gaz", icon: "🔥" },
+  { value: "water", label: "Eau froide", icon: "💧" },
+  { value: "hot_water", label: "Eau chaude", icon: "♨️" },
+  { value: "heating", label: "Chauffage", icon: "🌡️" },
+];
+
+// ============================================
+// 13. DIAGNOSTIC TYPES
+// ============================================
+
+export type DiagnosticTypeV3 =
+  | "dpe"
+  | "amiante"
+  | "plomb"
+  | "termites"
+  | "electricite"
+  | "gaz"
+  | "erp"
+  | "bruit"
+  | "assainissement"
+  | "merule"
+  | "radon"
+  | "surface_carrez"
+  | "risques_naturels";
+
+export interface PropertyDiagnosticV3 {
+  id: string;
+  property_id: string;
+  diagnostic_type: DiagnosticTypeV3;
+  date_performed: string | null;
+  expiry_date: string | null;
+  result: Record<string, unknown>;
+  document_url: string | null;
+  document_id: string | null;
+  provider_name: string | null;
+  provider_certification: string | null;
+  is_valid: boolean;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const DIAGNOSTIC_TYPES: { value: DiagnosticTypeV3; label: string; validity_years: number | null; description: string }[] = [
+  { value: "dpe", label: "DPE (Diagnostic de Performance Énergétique)", validity_years: 10, description: "Obligatoire pour toute location" },
+  { value: "electricite", label: "Diagnostic électricité", validity_years: 6, description: "Obligatoire si installation > 15 ans" },
+  { value: "gaz", label: "Diagnostic gaz", validity_years: 6, description: "Obligatoire si installation > 15 ans" },
+  { value: "plomb", label: "CREP (Constat de Risque d'Exposition au Plomb)", validity_years: 6, description: "Obligatoire si construit avant 1949" },
+  { value: "amiante", label: "Diagnostic amiante", validity_years: null, description: "Obligatoire si permis avant juillet 1997" },
+  { value: "termites", label: "État relatif aux termites", validity_years: 0.5, description: "Obligatoire en zone à risque et DOM-TOM" },
+  { value: "erp", label: "ERP (État des Risques et Pollutions)", validity_years: 0.5, description: "Obligatoire pour toute location" },
+  { value: "bruit", label: "Diagnostic bruit", validity_years: null, description: "Obligatoire si zone d'exposition au bruit aérien" },
+  { value: "assainissement", label: "Diagnostic assainissement", validity_years: 3, description: "Obligatoire si assainissement non collectif" },
+  { value: "merule", label: "État relatif à la mérule", validity_years: 0.5, description: "Obligatoire en zone à risque" },
+  { value: "radon", label: "Information radon", validity_years: null, description: "Zones à potentiel radon significatif" },
+  { value: "surface_carrez", label: "Mesurage loi Carrez", validity_years: null, description: "Obligatoire en copropriété" },
+  { value: "risques_naturels", label: "Risques naturels (cyclone, séisme, volcan)", validity_years: 0.5, description: "Obligatoire en DOM-TOM" },
+];
+
+// ============================================
+// 14. EQUIPMENT TYPES (Detailed)
+// ============================================
+
+export type EquipmentCategoryV3 =
+  | "kitchen"
+  | "bathroom"
+  | "heating"
+  | "security"
+  | "outdoor"
+  | "furniture"
+  | "appliance"
+  | "connectivity"
+  | "accessibility"
+  | "storage"
+  | "laundry"
+  | "comfort"
+  | "other";
+
+export type EquipmentConditionV3 = "new" | "good" | "fair" | "poor" | "broken";
+
+export interface PropertyEquipmentV3 {
+  id: string;
+  property_id: string;
+  category: EquipmentCategoryV3;
+  name: string;
+  brand: string | null;
+  model: string | null;
+  serial_number: string | null;
+  condition: EquipmentConditionV3;
+  installation_date: string | null;
+  warranty_end: string | null;
+  is_included_in_lease: boolean;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const EQUIPMENT_CATEGORIES: { value: EquipmentCategoryV3; label: string }[] = [
+  { value: "kitchen", label: "Cuisine" },
+  { value: "bathroom", label: "Salle de bain" },
+  { value: "heating", label: "Chauffage / Climatisation" },
+  { value: "security", label: "Sécurité" },
+  { value: "outdoor", label: "Extérieur" },
+  { value: "furniture", label: "Mobilier" },
+  { value: "appliance", label: "Électroménager" },
+  { value: "connectivity", label: "Connectivité" },
+  { value: "accessibility", label: "Accessibilité" },
+  { value: "storage", label: "Rangement" },
+  { value: "laundry", label: "Buanderie" },
+  { value: "comfort", label: "Confort" },
+  { value: "other", label: "Autre" },
+];
+
+// ============================================
+// 15. FURNISHED EQUIPMENT (Décret n°2015-981)
+// ============================================
+// Liste minimale des équipements obligatoires pour un meublé
+
+export const FURNISHED_MANDATORY_EQUIPMENT = [
+  { name: "Literie avec couette ou couverture", category: "furniture" as const },
+  { name: "Volets ou rideaux occultants dans les chambres", category: "furniture" as const },
+  { name: "Plaques de cuisson", category: "kitchen" as const },
+  { name: "Four ou four à micro-ondes", category: "kitchen" as const },
+  { name: "Réfrigérateur avec compartiment congélation ou congélateur", category: "kitchen" as const },
+  { name: "Vaisselle et ustensiles de cuisine", category: "kitchen" as const },
+  { name: "Table et sièges", category: "furniture" as const },
+  { name: "Étagères de rangement", category: "storage" as const },
+  { name: "Luminaires", category: "comfort" as const },
+  { name: "Matériel d'entretien ménager", category: "other" as const },
+] as const;
+
+// ============================================
+// 16. TAX REGIME TYPES
+// ============================================
+
+export type TaxRegimeV3 =
+  | "micro_foncier"   // Revenus fonciers < 15 000€
+  | "reel"            // Régime réel (revenus fonciers)
+  | "micro_bic"       // Micro-BIC (meublé < 77 700€)
+  | "lmnp"            // LMNP (Loueur Meublé Non Professionnel)
+  | "lmp"             // LMP (Loueur Meublé Professionnel)
+  | "sci_ir"          // SCI à l'IR
+  | "sci_is";         // SCI à l'IS
+
+export const TAX_REGIMES: { value: TaxRegimeV3; label: string; description: string }[] = [
+  { value: "micro_foncier", label: "Micro-foncier", description: "Revenus fonciers < 15 000€/an, abattement 30%" },
+  { value: "reel", label: "Régime réel", description: "Déduction des charges réelles (travaux, intérêts...)" },
+  { value: "micro_bic", label: "Micro-BIC", description: "Meublé < 77 700€/an, abattement 50%" },
+  { value: "lmnp", label: "LMNP", description: "Loueur Meublé Non Professionnel, amortissement possible" },
+  { value: "lmp", label: "LMP", description: "Loueur Meublé Professionnel, revenus > 23 000€/an" },
+  { value: "sci_ir", label: "SCI à l'IR", description: "Société Civile Immobilière à l'Impôt sur le Revenu" },
+  { value: "sci_is", label: "SCI à l'IS", description: "Société Civile Immobilière à l'Impôt sur les Sociétés" },
+];
 

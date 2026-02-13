@@ -2,7 +2,10 @@
 
 import React, { useCallback, useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Building2, Home, Warehouse, Car, Store, Hotel, Sofa, Building, Sparkles, Tractor } from "lucide-react";
+import {
+  Building2, Home, Warehouse, Car, Store, Hotel, Sofa, Building, Sparkles,
+  Tractor, Palmtree, BedDouble, Mountain, Landmark, TreePine, Boxes
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
 import { cn } from "@/lib/utils";
@@ -21,20 +24,28 @@ const TYPES = [
   // Habitation
   { id: "appartement", label: "Appartement", icon: Building2, group: "habitation" },
   { id: "maison", label: "Maison", icon: Home, group: "habitation" },
+  { id: "villa", label: "Villa", icon: Mountain, group: "habitation" },
   { id: "studio", label: "Studio", icon: Sofa, group: "habitation" },
+  { id: "chambre", label: "Chambre", icon: BedDouble, group: "habitation" },
   { id: "colocation", label: "Colocation", icon: Home, group: "habitation" },
   { id: "saisonnier", label: "Saisonnier", icon: Hotel, group: "habitation" },
-  // Parking
+  { id: "logement_social", label: "Logement social", icon: Landmark, group: "habitation" },
+  // DOM-TOM
+  { id: "case_creole", label: "Case créole", icon: Palmtree, group: "dom_tom" },
+  { id: "bungalow", label: "Bungalow", icon: TreePine, group: "dom_tom" },
+  // Parking / Stockage
   { id: "parking", label: "Parking", icon: Car, group: "parking" },
   { id: "box", label: "Box / Garage", icon: Warehouse, group: "parking" },
+  { id: "cave_cellier", label: "Cave / Cellier", icon: Boxes, group: "parking" },
   // Pro
   { id: "local_commercial", label: "Local Commercial", icon: Store, group: "pro" },
   { id: "bureaux", label: "Bureaux", icon: Building2, group: "pro" },
   { id: "entrepot", label: "Entrepôt", icon: Warehouse, group: "pro" },
   { id: "fonds_de_commerce", label: "Fonds de commerce", icon: Store, group: "pro" },
-  // Agricole
-  { id: "terrain_agricole", label: "Terrain agricole", icon: Tractor, group: "agricole" },
-  { id: "exploitation_agricole", label: "Exploitation agricole", icon: Home, group: "agricole" },
+  // Terrain
+  { id: "terrain_nu", label: "Terrain nu", icon: Mountain, group: "terrain" },
+  { id: "terrain_agricole", label: "Terrain agricole", icon: Tractor, group: "terrain" },
+  { id: "exploitation_agricole", label: "Exploitation agricole", icon: Home, group: "terrain" },
 ] as const;
 
 export function TypeStep() {

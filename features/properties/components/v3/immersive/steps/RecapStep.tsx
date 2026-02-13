@@ -16,12 +16,20 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { isDPEObligatoire, getDPEErrorMessage, isDROM } from "@/lib/helpers/address-utils";
 
-const TYPES_WITHOUT_ROOMS = ["parking", "box", "local_commercial", "bureaux", "entrepot", "fonds_de_commerce", "immeuble"];
+const TYPES_WITHOUT_ROOMS = [
+  "parking", "box", "cave_cellier", "local_commercial", "bureaux",
+  "entrepot", "fonds_de_commerce", "immeuble",
+  "terrain_nu", "terrain_agricole", "exploitation_agricole",
+];
 
-// SOTA 2026: Types de biens habitation (nécessitent DPE, chauffage, etc.)
-const HABITATION_TYPES = ["appartement", "maison", "studio", "colocation", "saisonnier"];
-const PARKING_TYPES = ["parking", "box"];
+// Types requiring different validation
+const HABITATION_TYPES = [
+  "appartement", "maison", "studio", "villa", "chambre",
+  "colocation", "saisonnier", "case_creole", "bungalow", "logement_social",
+];
+const PARKING_TYPES = ["parking", "box", "cave_cellier"];
 const PRO_TYPES = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"];
+const TERRAIN_TYPES = ["terrain_nu", "terrain_agricole", "exploitation_agricole"];
 
 // SOTA 2026: Liste des champs requis pour la publication
 interface ValidationField {
@@ -121,6 +129,30 @@ const VALIDATION_FIELDS: ValidationField[] = [
     category: "immeuble"
   },
 
+  // === Financier ===
+  {
+    key: "depot_garantie",
+    label: "Dépôt de garantie",
+    check: (f) => (f.depot_garantie ?? 0) >= 0,
+    required: (f) => !["immeuble"].includes(f.type || f.type_bien || ""),
+    category: "habitation"
+  },
+  {
+    key: "diagnostics",
+    label: "Diagnostics obligatoires",
+    check: (f) => {
+      const diagnostics = (f as any)._diagnostics || [];
+      // Basic check: at least DPE should be present for habitation
+      if (HABITATION_TYPES.includes(f.type || f.type_bien || "")) {
+        return diagnostics.some((d: any) => d.diagnostic_type === "dpe" && d.date_performed);
+      }
+      return true;
+    },
+    required: (f) => HABITATION_TYPES.includes(f.type || f.type_bien || ""),
+    category: "habitation",
+    errorMessage: () => "Le DPE est obligatoire pour les logements d'habitation"
+  },
+
   // === Médias ===
   {
     key: "photos",
@@ -188,7 +220,7 @@ export function RecapStep() {
   const availableFrom = formData.available_from ? new Date(formData.available_from) : null;
   const visibility = (formData as any).visibility || "private";
 
-  const Section = ({ title, step, children, icon: Icon, className }: { title: string; step: 'type_bien' | 'address' | 'details' | 'rooms' | 'photos' | 'features' | 'publish' | 'building_config'; children: React.ReactNode; icon: any; className?: string }) => (
+  const Section = ({ title, step, children, icon: Icon, className }: { title: string; step: 'type_bien' | 'address' | 'details' | 'loyer_charges' | 'rooms' | 'equipments_meters' | 'photos' | 'diagnostics' | 'features' | 'publish' | 'building_config'; children: React.ReactNode; icon: any; className?: string }) => (
     <Card 
       className={cn("group hover:border-primary/50 transition-colors cursor-pointer overflow-hidden relative", className)}
       onClick={() => setStep(step)}
@@ -317,6 +349,32 @@ export function RecapStep() {
           ) : (
             <Section title="Type de stationnement" step="details" icon={Car} className="md:col-span-2">
               <p className="font-medium text-lg">{formData.parking_type || "Standard"}</p>
+            </Section>
+          )}
+
+          {/* Loyer & Charges */}
+          {propertyType !== "immeuble" && (
+            <Section title="Loyer & Charges" step="loyer_charges" icon={Euro}>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1 text-primary font-medium">
+                  <Euro className="h-4 w-4" />
+                  <span className="text-lg">{formData.loyer_hc || 0} €</span>
+                  <span className="text-xs text-muted-foreground">HC/mois</span>
+                </div>
+                {(formData.charges_mensuelles ?? 0) > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    + {formData.charges_mensuelles} € charges ({(formData as any).charges_type === 'forfait' ? 'forfait' : 'provisions'})
+                  </p>
+                )}
+                {(formData.depot_garantie ?? 0) > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Dépôt : {formData.depot_garantie} €
+                  </p>
+                )}
+                {formData.is_rent_controlled && (
+                  <Badge variant="secondary" className="text-[10px] w-fit mt-1">Zone encadrée</Badge>
+                )}
+              </div>
             </Section>
           )}
 
