@@ -158,6 +158,9 @@ GRANT EXECUTE ON FUNCTION public.get_my_profile_id() TO anon;
 GRANT EXECUTE ON FUNCTION public.user_profile_id() TO anon;
 GRANT EXECUTE ON FUNCTION public.user_role() TO anon;
 
--- 7. Permettre au service_role de bypass RLS (déjà le cas par défaut mais
--- explicite pour la documentation)
-ALTER TABLE profiles FORCE ROW LEVEL SECURITY;
+-- 7. S'assurer que RLS est activé (SANS FORCE pour que SECURITY DEFINER fonctionne)
+-- IMPORTANT: Ne PAS utiliser FORCE ROW LEVEL SECURITY car cela forcerait
+-- les politiques RLS même pour le propriétaire de la table (postgres),
+-- ce qui casserait les fonctions SECURITY DEFINER et causerait la récursion.
+-- Le service_role bypass RLS par défaut dans Supabase.
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;

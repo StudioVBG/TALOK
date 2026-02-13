@@ -22,17 +22,8 @@ export async function GET(request: Request) {
     }
 
     // Utiliser le service role pour éviter les problèmes RLS
-    const { createClient } = await import("@supabase/supabase-js");
-    const serviceClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+    const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
+    const serviceClient = supabaseAdmin();
 
     const { data: profile, error: profileError } = await serviceClient
       .from("profiles")

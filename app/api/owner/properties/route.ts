@@ -26,13 +26,30 @@ export async function GET(request: Request) {
     }
 
     // ✅ PERMISSIONS: Vérifier que l'utilisateur est un propriétaire
-    const { data: profile, error: profileError } = await supabase
+    // Avec fallback service role si RLS recursion détectée
+    let profile: { id: string; role: string } | null = null;
+    const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
       .single();
 
-    if (profileError || !profile) {
+    if (profileError && (profileError.code === '42P17' || profileError.message?.includes('infinite recursion'))) {
+      const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
+      const adminClient = supabaseAdmin();
+      const { data: adminProfile } = await adminClient
+        .from("profiles")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .single();
+      profile = adminProfile;
+    } else if (profileError) {
+      throw new ApiError(404, "Profil non trouvé");
+    } else {
+      profile = profileData;
+    }
+
+    if (!profile) {
       throw new ApiError(404, "Profil non trouvé");
     }
 
