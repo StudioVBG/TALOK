@@ -20,12 +20,27 @@ export async function GET() {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Récupérer le profil (avec fallback service role si RLS recursion)
+    let profile: { id: string; role: string } | null = null;
+    const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
       .single();
+
+    if (profileError && (profileError.code === '42P17' || profileError.message?.includes('infinite recursion'))) {
+      // Fallback: utiliser le service role pour bypasser les RLS
+      const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
+      const adminClient = supabaseAdmin();
+      const { data: adminProfile } = await adminClient
+        .from("profiles")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .single();
+      profile = adminProfile;
+    } else {
+      profile = profileData;
+    }
 
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
