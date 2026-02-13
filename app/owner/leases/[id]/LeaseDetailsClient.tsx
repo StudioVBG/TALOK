@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -154,6 +154,16 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     return "contrat";
   }, [lease.statut]);
   const [activeTab, setActiveTab] = useState(defaultTab);
+
+  // ✅ Fix: Forcer un refresh au montage pour contrer le Router Cache Next.js 14 (30s stale)
+  // Sans cela, après suppression d'un EDL depuis /inspections, la page bail affiche des données périmées
+  const hasRefreshed = useRef(false);
+  useEffect(() => {
+    if (!hasRefreshed.current) {
+      hasRefreshed.current = true;
+      router.refresh();
+    }
+  }, [router]);
 
   // Charger le statut DPE au chargement
   useEffect(() => {

@@ -3,11 +3,12 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { 
-  verifyEDLAccess, 
-  createServiceClient, 
+import { revalidatePath } from "next/cache";
+import {
+  verifyEDLAccess,
+  createServiceClient,
   getUserProfile,
-  canEditEDL 
+  canEditEDL
 } from "@/lib/helpers/edl-auth";
 
 /**
@@ -339,6 +340,9 @@ export async function DELETE(
       );
     }
 
+    // Récupérer le lease_id avant suppression pour invalider le cache
+    const leaseId = accessResult.edl.lease_id;
+
     // Supprimer l'EDL
     const { error: deleteError } = await serviceClient
       .from("edl")
@@ -353,10 +357,15 @@ export async function DELETE(
       action: "edl_deleted",
       entity_type: "edl",
       entity_id: edlId,
-      metadata: { status: accessResult.edl.status },
+      metadata: { status: accessResult.edl.status, lease_id: leaseId },
     } as any);
 
-    return NextResponse.json({ success: true });
+    // Invalider le cache des pages liées
+    revalidatePath(`/owner/leases/${leaseId}`);
+    revalidatePath("/owner/leases");
+    revalidatePath("/owner/inspections");
+
+    return NextResponse.json({ success: true, lease_id: leaseId });
   } catch (error: unknown) {
     console.error("[DELETE /api/edl/[id]] Error:", error);
     return NextResponse.json(
