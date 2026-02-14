@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 
@@ -269,6 +270,14 @@ export async function POST(
       }
     });
     
+    // ✅ SOTA 2026: Invalider le cache ISR pour refléter le statut "Loué" sur la page propriété
+    const activatedPropertyId = property?.id;
+    if (activatedPropertyId) {
+      revalidatePath(`/owner/properties/${activatedPropertyId}`);
+      revalidatePath("/owner/properties");
+    }
+    revalidatePath("/owner/leases");
+
     return NextResponse.json({
       success: true,
       message: "Bail activé avec succès",

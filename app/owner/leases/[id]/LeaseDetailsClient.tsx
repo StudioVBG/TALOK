@@ -476,7 +476,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         title: "✅ Bail supprimé",
         description: "Le bail et toutes ses données ont été supprimés.",
       });
-      router.push("/owner/leases");
+      // ✅ SOTA 2026: Rediriger vers la page du bien pour que le CTA "Créer un bail" soit visible
+      // Le revalidatePath côté API a déjà invalidé le cache ISR
+      const propertyId = property?.id || result.propertyId;
+      if (propertyId) {
+        router.push(`/owner/properties/${propertyId}`);
+      } else {
+        router.push("/owner/leases");
+      }
       router.refresh();
     } catch (error: unknown) {
       console.error("Erreur suppression:", error);

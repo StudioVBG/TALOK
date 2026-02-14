@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
@@ -282,6 +283,14 @@ export async function POST(
       // Ne pas bloquer la signature si les notifications échouent
       console.error("[Sign-Lease] Erreur émission événements:", notifError);
     }
+
+    // ✅ SOTA 2026: Invalider le cache ISR pour refléter le changement de statut du bail sur la page propriété
+    const signedPropertyId = (lease as any)?.property_id || (lease as any)?.property?.id;
+    if (signedPropertyId) {
+      revalidatePath(`/owner/properties/${signedPropertyId}`);
+      revalidatePath("/owner/properties");
+    }
+    revalidatePath("/owner/leases");
 
     return NextResponse.json({
       success: true,

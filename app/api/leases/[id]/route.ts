@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { LeaseUpdateSchema, getMaxDepotLegal, getMaxDepotMois } from "@/lib/validations/lease-financial";
 import { SIGNER_ROLES, isTenantRole, isOwnerRole } from "@/lib/constants/roles";
 
@@ -364,6 +365,14 @@ export async function PUT(request: Request, { params }: RouteParams) {
       );
     }
 
+    // ✅ SOTA 2026: Invalider le cache ISR pour refléter les changements du bail sur la page propriété
+    const propertyIdForRevalidation = property?.id;
+    if (propertyIdForRevalidation) {
+      revalidatePath(`/owner/properties/${propertyIdForRevalidation}`);
+      revalidatePath("/owner/properties");
+    }
+    revalidatePath("/owner/leases");
+
     return NextResponse.json({
       success: true,
       lease: updatedLease,
@@ -616,9 +625,18 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       );
     }
 
+    // ✅ SOTA 2026: Invalider le cache ISR pour que le CTA "Créer un bail" réapparaisse
+    const propertyId = property?.id;
+    if (propertyId) {
+      revalidatePath(`/owner/properties/${propertyId}`);
+      revalidatePath("/owner/properties");
+    }
+    revalidatePath("/owner/leases");
+
     return NextResponse.json({
       success: true,
       message: "Bail supprimé avec succès",
+      propertyId: propertyId || null,
       notifiedTenants: (lease as any).signers?.filter((s: any) => isTenantRole(s.role)).length || 0,
     });
 

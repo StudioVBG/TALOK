@@ -90,6 +90,8 @@ export function useCreateLease() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leases"] });
+      // ✅ SOTA 2026: Invalider le cache property-details pour que le CTA bail se mette à jour
+      queryClient.invalidateQueries({ queryKey: ["property-details"] });
     },
   });
 }
@@ -107,6 +109,8 @@ export function useUpdateLease() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["leases"] });
       queryClient.invalidateQueries({ queryKey: ["lease", variables.id] });
+      // ✅ SOTA 2026: Invalider le cache property-details pour refléter les changements de bail
+      queryClient.invalidateQueries({ queryKey: ["property-details"] });
     },
   });
 }
@@ -131,6 +135,8 @@ export function useDeleteLease() {
       // Invalider aussi le dashboard car il peut afficher des stats de baux
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["owner-dashboard"] });
+      // ✅ SOTA 2026: Invalider le cache property-details pour que le CTA "Créer un bail" réapparaisse
+      queryClient.invalidateQueries({ queryKey: ["property-details"] });
     },
   });
 }

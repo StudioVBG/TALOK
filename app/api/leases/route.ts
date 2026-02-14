@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { LeaseCreateSchema, getMaxDepotLegal } from "@/lib/validations/lease-financial";
@@ -538,6 +539,11 @@ export async function POST(request: Request) {
     }
 
     console.log("[POST /api/leases] Bail créé avec signataires:", leaseResult.id);
+
+    // ✅ SOTA 2026: Invalider le cache ISR de la page propriété pour que le CTA se mette à jour
+    revalidatePath(`/owner/properties/${validatedData.property_id}`);
+    revalidatePath("/owner/properties");
+    revalidatePath("/owner/leases");
 
     const response: Record<string, unknown> = { ...lease as Record<string, unknown> };
     if (existingDraftWarning) {

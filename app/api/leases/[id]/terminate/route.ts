@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 /**
  * POST /api/leases/[id]/terminate - Terminer un bail (P1-2)
@@ -102,6 +103,14 @@ export async function POST(
       entity_id: id,
       metadata: { termination_date, reason },
     } as any);
+
+    // ✅ SOTA 2026: Invalider le cache ISR — le bien redevient "Vacant" après terminaison
+    const terminatedPropertyId = (updated as any)?.property_id;
+    if (terminatedPropertyId) {
+      revalidatePath(`/owner/properties/${terminatedPropertyId}`);
+      revalidatePath("/owner/properties");
+    }
+    revalidatePath("/owner/leases");
 
     return NextResponse.json({ lease: updated });
   } catch (error: unknown) {
