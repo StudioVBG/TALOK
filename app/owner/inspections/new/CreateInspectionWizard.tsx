@@ -115,10 +115,18 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
     keys,
   }), [step, selectedLease, edlType, scheduledDate, selectedRooms, roomsData, currentRoomIndex, generalNotes, meterReadings, keys]);
 
+  // Désactiver la restauration auto-save quand on arrive depuis un bail avec des paramètres URL
+  // (l'utilisateur veut un EDL pour CE bail, pas reprendre un ancien brouillon)
+  const hasUrlPreselection = !!preselectedLeaseId;
+
   const { clearSaved: clearAutoSave } = useAutoSave({
     key: "edl-wizard",
     data: autoSaveData,
+    enabled: true,
     onRestore: useCallback((saved: typeof autoSaveData) => {
+      // Si on arrive depuis un lien bail (URL avec lease_id), ignorer le brouillon
+      if (hasUrlPreselection) return;
+
       if (saved.step) setStep(saved.step);
       if (saved.selectedLeaseId) {
         const lease = leases.find(l => l.id === saved.selectedLeaseId);
@@ -133,7 +141,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
       if (saved.meterReadings?.length) setMeterReadings(saved.meterReadings);
       if (saved.keys?.length) setKeys(saved.keys);
       toast({ title: "Brouillon restauré", description: "Votre saisie précédente a été récupérée.", duration: 3000 });
-    }, [leases, toast]),
+    }, [leases, toast, hasUrlPreselection]),
   });
 
   // Auto-avancer si bail présélectionné (depuis lien direct)
