@@ -379,8 +379,6 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         })
       );
 
-      console.log('[PropertyDetailsClient] Payload nettoyé:', cleanPayload);
-
       const response = await apiClient.patch<{ property: typeof property }>(
         `/properties/${propertyId}`,
         cleanPayload
@@ -417,8 +415,8 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       try {
         const photosResponse = await apiClient.get<{ photos: any[] }>(`/properties/${propertyId}/photos`);
         setPhotos(photosResponse.photos || []);
-      } catch (e) {
-        console.log("Pas de photos à recharger");
+      } catch {
+        // Photos non rechargées - non critique
       }
 
       // 5. Cleanup et quitter le mode édition

@@ -1,5 +1,5 @@
 "use client";
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";

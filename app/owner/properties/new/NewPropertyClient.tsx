@@ -1,5 +1,5 @@
 "use client";
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -13,12 +13,10 @@ function PropertyWizardWrapper() {
 
   // Reset wizard on mount to ensure clean state
   useEffect(() => {
-    console.log("[OwnerNewPropertyPage] Reset du wizard pour nouvelle création");
     reset();
   }, [reset]);
 
   const handleSuccess = (propertyId: string) => {
-    console.log("[OwnerNewPropertyPage] Succès ! Redirection vers :", `/owner/properties/${propertyId}`);
     router.push(`/owner/properties/${propertyId}?new=true`);
   };
 
@@ -48,10 +46,6 @@ function LoadingFallback() {
 }
 
 export function NewPropertyClient() {
-  useEffect(() => {
-    console.log("[OwnerNewPropertyPage] Page montée");
-  }, []);
-
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
       <Suspense fallback={<LoadingFallback />}>

@@ -1051,7 +1051,7 @@ export function getRequiredPlanForFeature(feature: string): PlanSlug {
   const planOrder: PlanSlug[] = ['gratuit', 'starter', 'confort', 'pro', 'enterprise_s', 'enterprise_m', 'enterprise_l', 'enterprise_xl'];
   for (const slug of planOrder) {
     const planFeatures = PLANS[slug].features;
-    if (planFeatures[feature] === true || (typeof planFeatures[feature] === 'string' && planFeatures[feature] !== 'none' && planFeatures[feature] !== 'basic')) {
+    if (planFeatures[feature] === true || (typeof planFeatures[feature] === 'string' && planFeatures[feature] !== 'none')) {
       return slug;
     }
   }

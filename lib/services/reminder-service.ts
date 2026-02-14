@@ -244,8 +244,17 @@ export async function createReminder(
   }
   
   // Récupérer l'email depuis auth.users
-  const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
-  const email = authUser?.user?.email;
+  let email: string | undefined;
+  try {
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(profile.user_id);
+    if (authError) {
+      console.warn(`Impossible de récupérer l'email pour ${recipientId}:`, authError.message);
+    }
+    email = authUser?.user?.email ?? undefined;
+  } catch (err) {
+    console.warn(`auth.admin.getUserById non disponible pour ${recipientId}:`, err);
+    email = undefined;
+  }
   
   const channel = options?.channel || template.channels[0];
   const scheduledAt = options?.scheduledAt || new Date();
@@ -276,10 +285,18 @@ export async function createReminder(
  */
 async function sendEmailReminder(reminder: Reminder): Promise<boolean> {
   // TODO: Intégrer avec un service d'email (Resend, SendGrid, etc.)
-  console.log(`[Email] Envoi à ${reminder.recipientEmail}:`, reminder.subject);
-  
-  // Simulation d'envoi
-  return true;
+  try {
+    if (!reminder.recipientEmail) {
+      console.warn("[Email] Pas d'email pour le destinataire:", reminder.recipientId);
+      return false;
+    }
+    // Simulation d'envoi — à remplacer par Resend/SendGrid
+    console.warn(`[Email] Envoi simulé à ${reminder.recipientEmail}: ${reminder.subject}`);
+    return true;
+  } catch (error) {
+    console.error("[Email] Erreur envoi:", error);
+    return false;
+  }
 }
 
 /**
@@ -287,13 +304,18 @@ async function sendEmailReminder(reminder: Reminder): Promise<boolean> {
  */
 async function sendSmsReminder(reminder: Reminder): Promise<boolean> {
   // TODO: Intégrer avec un service SMS (Twilio, etc.)
-  if (!reminder.recipientPhone) {
-    console.warn("Pas de numéro de téléphone pour le SMS");
+  try {
+    if (!reminder.recipientPhone) {
+      console.warn("[SMS] Pas de numéro de téléphone pour le destinataire:", reminder.recipientId);
+      return false;
+    }
+    // Simulation d'envoi — à remplacer par Twilio
+    console.warn(`[SMS] Envoi simulé à ${reminder.recipientPhone}: ${reminder.subject}`);
+    return true;
+  } catch (error) {
+    console.error("[SMS] Erreur envoi:", error);
     return false;
   }
-  
-  console.log(`[SMS] Envoi à ${reminder.recipientPhone}:`, reminder.subject);
-  return true;
 }
 
 /**

@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { Suspense } from "react";
@@ -211,10 +211,21 @@ async function fetchAnalyticsData(ownerId: string): Promise<AnalyticsData> {
     monthlyData,
     tenantsStats: {
       total: activeLeases,
-      onTime: Math.round(activeLeases * 0.85),
-      late: Math.round(activeLeases * 0.15),
-      avgScore: 4.2,
-      avgLeaseDuration: 2.4,
+      // Calculer depuis les factures réelles : locataires avec 100% de factures payées
+      onTime: (() => {
+        const paidInvoices = invoicesData.filter(i => i.statut === "paid").length;
+        const totalInvoices = invoicesData.filter(i => ["paid", "sent", "late"].includes(i.statut)).length;
+        const rate = totalInvoices > 0 ? paidInvoices / totalInvoices : 1;
+        return Math.round(activeLeases * rate);
+      })(),
+      late: (() => {
+        const lateInvoices = invoicesData.filter(i => i.statut === "late").length;
+        const totalInvoices = invoicesData.filter(i => ["paid", "sent", "late"].includes(i.statut)).length;
+        const rate = totalInvoices > 0 ? lateInvoices / totalInvoices : 0;
+        return Math.round(activeLeases * rate);
+      })(),
+      avgScore: collectionRate >= 90 ? 4.5 : collectionRate >= 70 ? 3.5 : 2.5,
+      avgLeaseDuration: 0, // Non calculable sans dates historiques
     },
   };
 }

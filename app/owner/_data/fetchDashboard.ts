@@ -138,7 +138,7 @@ async function fetchDashboardDirect(
       .eq("owner_id", ownerId),
     supabase
       .from("tickets")
-      .select("id, statut")
+      .select("id, statut, created_at")
       .in("property_id", propertyIds),
     // EDL query - récupérer les états des lieux liés aux propriétés
     supabase
@@ -160,12 +160,26 @@ async function fetchDashboardDirect(
   const edls = edlResult.status === "fulfilled" ? edlResult.value.data || [] : [];
   const recentInvoices = recentInvoicesResult.status === "fulfilled" ? recentInvoicesResult.value.data || [] : [];
 
-  // Construire l'activité récente à partir des factures récentes
-  const recentActivity = recentInvoices.map((inv: { id: string; statut: string; periode: string; created_at: string }) => ({
-    type: "invoice",
-    title: `Facture ${inv.periode} - ${inv.statut === "paid" ? "payée" : inv.statut === "late" ? "en retard" : "envoyée"}`,
-    date: inv.created_at,
-  }));
+  // Construire l'activité récente à partir des factures ET tickets récents
+  const recentActivity = [
+    ...recentInvoices.map((inv: { id: string; statut: string; periode: string; created_at: string }) => ({
+      type: "invoice" as const,
+      title: `Facture ${inv.periode} - ${inv.statut === "paid" ? "payée" : inv.statut === "late" ? "en retard" : "envoyée"}`,
+      date: inv.created_at,
+    })),
+    // Ajouter les tickets récents (triés par date)
+    ...(tickets || [])
+      .filter((t: any) => t.created_at)
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 3)
+      .map((t: any) => ({
+        type: "ticket" as const,
+        title: `Ticket ${t.statut === "open" ? "ouvert" : t.statut === "in_progress" ? "en cours" : "résolu"}`,
+        date: t.created_at,
+      })),
+  ]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 8);
 
   return {
     properties: propertiesStats,

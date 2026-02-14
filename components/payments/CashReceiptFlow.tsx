@@ -118,7 +118,7 @@ export function CashReceiptFlow({
           });
         },
         (error) => {
-          console.log("Géolocalisation non disponible:", error);
+          console.warn("Géolocalisation non disponible:", error);
           setGeoError("Position non disponible");
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }

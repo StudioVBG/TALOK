@@ -125,12 +125,12 @@ export default function ProviderDetailPage() {
         const data = await response.json();
         setProvider(data.provider);
       } else {
-        // Données de démonstration
-        setProvider(getDemoProvider());
+        console.warn("[provider detail] API non disponible");
+        setProvider(null);
       }
     } catch (error) {
       console.error('Erreur chargement prestataire:', error);
-      setProvider(getDemoProvider());
+      setProvider(null);
     } finally {
       setLoading(false);
     }
@@ -709,92 +709,4 @@ function ProviderDetailSkeleton() {
   );
 }
 
-// Données de démonstration
-function getDemoProvider(): ProviderDetail {
-  return {
-    id: '1',
-    name: 'Jean Dupont',
-    avatar_url: undefined,
-    bio: 'Plombier chauffagiste depuis 15 ans, je mets mon expertise au service des particuliers et professionnels. Formé aux dernières normes et certifié RGE, j\'interviens pour tous vos travaux de plomberie et chauffage.',
-    services: ['plomberie', 'chauffage_clim'],
-    rating: 4.8,
-    review_count: 67,
-    intervention_count: 120,
-    location: 'Paris 11e',
-    address: '42 Rue de la République, 75011 Paris',
-    phone: '06 12 34 56 78',
-    email: 'jean.dupont@email.com',
-    hourly_rate_min: 45,
-    hourly_rate_max: 65,
-    is_urgent_available: true,
-    response_time_hours: 1.5,
-    kyc_status: 'verified',
-    has_certifications: true,
-    certifications: ['RGE QualiPAC', 'Qualibat'],
-    created_at: '2022-03-15',
-    portfolio: [
-      {
-        id: '1',
-        title: 'Rénovation salle de bain complète',
-        description: 'Remplacement complet de la plomberie et installation d\'une douche à l\'italienne',
-        service_type: 'plomberie',
-        before_photo_url: 'https://placehold.co/400x300/e2e8f0/64748b?text=Avant',
-        after_photo_url: 'https://placehold.co/400x300/dcfce7/16a34a?text=Après',
-        completed_at: '2024-01-15',
-        is_featured: true,
-      },
-      {
-        id: '2',
-        title: 'Installation chaudière gaz',
-        description: 'Remplacement ancienne chaudière par modèle à condensation',
-        service_type: 'chauffage_clim',
-        after_photo_url: 'https://placehold.co/400x300/dbeafe/3b82f6?text=Chaudière',
-        completed_at: '2024-02-20',
-        is_featured: true,
-      },
-      {
-        id: '3',
-        title: 'Réparation fuite sous évier',
-        service_type: 'plomberie',
-        before_photo_url: 'https://placehold.co/400x300/fee2e2/ef4444?text=Fuite',
-        after_photo_url: 'https://placehold.co/400x300/dcfce7/16a34a?text=Réparé',
-        completed_at: '2024-03-05',
-        is_featured: false,
-      },
-    ],
-    reviews: [
-      {
-        id: '1',
-        author_name: 'Marie L.',
-        rating: 5,
-        comment: 'Excellent travail ! Jean est intervenu rapidement pour réparer une fuite urgente. Très professionnel et propre.',
-        created_at: '2024-03-01',
-        service_type: 'plomberie',
-      },
-      {
-        id: '2',
-        author_name: 'Pierre M.',
-        rating: 5,
-        comment: 'Installation de ma nouvelle chaudière réalisée dans les règles de l\'art. Explications claires et prix raisonnable.',
-        created_at: '2024-02-25',
-        service_type: 'chauffage_clim',
-        provider_response: 'Merci Pierre pour votre confiance ! N\'hésitez pas à me recontacter pour l\'entretien annuel.',
-      },
-      {
-        id: '3',
-        author_name: 'Sophie D.',
-        rating: 4,
-        comment: 'Bon travail, intervention rapide. Juste un peu de retard à l\'arrivée mais travail soigné.',
-        created_at: '2024-02-10',
-        service_type: 'plomberie',
-      },
-    ],
-    stats: {
-      completed_interventions: 120,
-      on_time_rate: 94,
-      satisfaction_rate: 97,
-      recommendation_rate: 95,
-    },
-  };
-}
 

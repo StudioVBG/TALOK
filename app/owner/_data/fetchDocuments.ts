@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Data fetching pour les documents (Owner)
  * Server-side uniquement
@@ -7,6 +6,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import type { DocumentRow, PropertyRow, ProfileRow } from "@/lib/supabase/database.types";
 
 // Client service role pour bypass les RLS (évite la récursion infinie)
 function getServiceClient() {
@@ -88,7 +88,8 @@ export async function fetchDocuments(
     .eq("user_id", user.id)
     .single();
 
-  if (!profile || (profile as any).role !== "owner" || (profile as any).id !== options.ownerId) {
+  const profileData = profile as ProfileRow | null;
+  if (!profileData || profileData.role !== "owner" || profileData.id !== options.ownerId) {
     throw new Error("Accès non autorisé");
   }
 
@@ -126,8 +127,8 @@ export async function fetchDocuments(
   }
 
   // Si des documents ont des property_id, récupérer les adresses séparément
-  const docs = (documents as any[]) || [];
-  const propertyIds = [...new Set(docs.filter(d => d.property_id).map(d => d.property_id))];
+  const docs = (documents || []) as DocumentRow[];
+  const propertyIds = [...new Set(docs.filter(d => d.property_id).map(d => d.property_id).filter(Boolean))];
   
   let propertiesMap: Record<string, string> = {};
   
@@ -138,7 +139,8 @@ export async function fetchDocuments(
       .in("id", propertyIds);
     
     if (properties) {
-      propertiesMap = properties.reduce((acc: Record<string, string>, p: any) => {
+      const propertyRows = properties as PropertyRow[];
+      propertiesMap = propertyRows.reduce((acc: Record<string, string>, p) => {
         acc[p.id] = p.adresse_complete;
         return acc;
       }, {});
@@ -148,7 +150,7 @@ export async function fetchDocuments(
   // Enrichir les documents avec l'adresse de la propriété
   const enrichedDocuments = docs.map(doc => ({
     ...doc,
-    property: doc.property_id ? { adresse_complete: propertiesMap[doc.property_id] || "" } : null,
+    property: doc.property_id ? { adresse_complete: propertiesMap[doc.property_id] || "" } : undefined,
   }));
 
   return {
@@ -186,10 +188,14 @@ export async function fetchDocument(
     .eq("user_id", user.id)
     .single();
 
-  if (!profile || (profile as any).role !== "owner" || (profile as any).id !== ownerId) {
+  const profileData = profile as ProfileRow | null;
+  if (!profileData || profileData.role !== "owner" || profileData.id !== ownerId) {
     throw new Error("Accès non autorisé");
   }
 
+  type DocumentWithProperty = DocumentRow & {
+    property: { adresse_complete: string } | null;
+  };
   const { data: document, error } = await serviceClient
     .from("documents")
     .select(`
@@ -209,5 +215,5 @@ export async function fetchDocument(
     throw new Error(`Erreur lors de la récupération du document: ${error.message}`);
   }
 
-  return document as any;
+  return document as DocumentRow | null;
 }

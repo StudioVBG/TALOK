@@ -1,5 +1,5 @@
 "use client";
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -147,8 +147,15 @@ export default function InvoiceDetailPage() {
       if (!startResponse.ok) throw new Error("Erreur initialisation export");
       const { jobId } = await startResponse.json();
 
-      // Poll
+      // Poll with max retries to prevent infinite loop
+      let retries = 0;
+      const MAX_RETRIES = 30; // Max 30 secondes de polling
       const poll = async () => {
+        if (retries >= MAX_RETRIES) {
+          toast({ title: "Timeout", description: "L'export prend trop de temps. Veuillez réessayer.", variant: "destructive" });
+          return;
+        }
+        retries++;
         const statusResponse = await fetch(`/api/exports/${jobId}`);
         const job = await statusResponse.json();
 

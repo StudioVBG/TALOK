@@ -118,14 +118,15 @@ export default function ProvidersMarketplacePage() {
         setProviders(data.providers || []);
         setTotalCount(data.total || 0);
       } else {
-        // Données de démonstration en cas d'erreur API
-        setProviders(getDemoProviders());
-        setTotalCount(getDemoProviders().length);
+        // Aucun prestataire disponible - API non accessible
+        console.warn("[providers] API non disponible, aucun prestataire chargé");
+        setProviders([]);
+        setTotalCount(0);
       }
     } catch (error) {
       console.error('Erreur chargement prestataires:', error);
-      setProviders(getDemoProviders());
-      setTotalCount(getDemoProviders().length);
+      setProviders([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -456,116 +457,4 @@ export default function ProvidersMarketplacePage() {
   );
 }
 
-// Données de démonstration
-function getDemoProviders(): ProviderCardData[] {
-  return [
-    {
-      id: '1',
-      name: 'Jean Dupont',
-      services: ['plomberie', 'chauffage_clim'],
-      rating: 4.8,
-      review_count: 67,
-      intervention_count: 120,
-      location: 'Paris 11e',
-      distance_km: 2.3,
-      hourly_rate_min: 45,
-      hourly_rate_max: 65,
-      is_urgent_available: true,
-      response_time_hours: 1.5,
-      kyc_status: 'verified',
-      has_certifications: true,
-      portfolio_count: 12,
-      featured_portfolio: {
-        before_url: 'https://placehold.co/400x300/e2e8f0/64748b?text=Avant',
-        after_url: 'https://placehold.co/400x300/dcfce7/16a34a?text=Après',
-        title: 'Rénovation salle de bain complète',
-      },
-    },
-    {
-      id: '2',
-      name: 'Marie Martin',
-      services: ['electricite', 'domotique'],
-      rating: 4.9,
-      review_count: 103,
-      intervention_count: 180,
-      location: 'Paris 12e',
-      distance_km: 3.1,
-      hourly_rate_min: 50,
-      hourly_rate_max: 70,
-      is_urgent_available: true,
-      response_time_hours: 0.8,
-      kyc_status: 'verified',
-      has_certifications: true,
-      portfolio_count: 24,
-    },
-    {
-      id: '3',
-      name: 'Pierre Bernard',
-      services: ['peinture', 'menuiserie'],
-      rating: 4.6,
-      review_count: 45,
-      intervention_count: 78,
-      location: 'Paris 20e',
-      distance_km: 4.5,
-      hourly_rate_min: 35,
-      hourly_rate_max: 50,
-      is_urgent_available: false,
-      response_time_hours: 3,
-      kyc_status: 'verified',
-      has_certifications: false,
-      portfolio_count: 8,
-    },
-    {
-      id: '4',
-      name: 'Sophie Durand',
-      services: ['nettoyage'],
-      rating: 4.7,
-      review_count: 32,
-      intervention_count: 55,
-      location: 'Paris 19e',
-      distance_km: 5.2,
-      hourly_rate_min: 25,
-      hourly_rate_max: 35,
-      is_urgent_available: true,
-      response_time_hours: 2,
-      kyc_status: 'verified',
-      has_certifications: false,
-      portfolio_count: 5,
-    },
-    {
-      id: '5',
-      name: 'Lucas Petit',
-      services: ['serrurerie'],
-      rating: 4.4,
-      review_count: 18,
-      intervention_count: 30,
-      location: 'Paris 10e',
-      distance_km: 1.8,
-      hourly_rate_min: 55,
-      hourly_rate_max: 80,
-      is_urgent_available: true,
-      response_time_hours: 0.5,
-      kyc_status: 'pending_review',
-      has_certifications: false,
-      portfolio_count: 0,
-    },
-    {
-      id: '6',
-      name: 'Emma Leroy',
-      services: ['jardinage'],
-      rating: 4.5,
-      review_count: 3,
-      intervention_count: 4,
-      location: 'Paris 16e',
-      distance_km: 6.7,
-      hourly_rate_min: 30,
-      hourly_rate_max: 40,
-      is_urgent_available: false,
-      response_time_hours: 24,
-      kyc_status: 'verified',
-      has_certifications: false,
-      portfolio_count: 2,
-    },
-  ];
-}
 

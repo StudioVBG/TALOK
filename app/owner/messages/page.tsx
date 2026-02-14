@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +17,7 @@ export default function OwnerMessagesPage() {
   const [currentProfileId, setCurrentProfileId] = useState<string>("");
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
@@ -31,7 +33,10 @@ export default function OwnerMessagesPage() {
     async function init() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          router.replace("/auth/signin");
+          return;
+        }
 
         const { data: profile } = await supabase
           .from("profiles")

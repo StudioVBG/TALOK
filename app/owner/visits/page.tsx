@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { CalendarDays, Clock, Users, CheckCircle } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -13,7 +15,33 @@ import { OwnerAvailabilitySection } from "./availability-section";
 
 export const dynamic = "force-dynamic";
 
+async function getVisitStats(ownerId: string) {
+  const supabase = await createClient();
+  const currentMonth = new Date().toISOString().slice(0, 7);
+
+  const [pendingRes, confirmedRes, thisMonthRes, totalRes] = await Promise.allSettled([
+    supabase.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId).eq("status", "pending"),
+    supabase.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId).eq("status", "confirmed"),
+    supabase.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId).gte("created_at", `${currentMonth}-01`),
+    supabase.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId),
+  ]);
+
+  return {
+    pending: pendingRes.status === "fulfilled" ? (pendingRes.value.count ?? 0) : 0,
+    confirmed: confirmedRes.status === "fulfilled" ? (confirmedRes.value.count ?? 0) : 0,
+    thisMonth: thisMonthRes.status === "fulfilled" ? (thisMonthRes.value.count ?? 0) : 0,
+    total: totalRes.status === "fulfilled" ? (totalRes.value.count ?? 0) : 0,
+  };
+}
+
 export default async function OwnerVisitsPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/signin");
+
+  const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+  const stats = profile ? await getVisitStats(profile.id) : { pending: 0, confirmed: 0, thisMonth: 0, total: 0 };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
       {/* Header */}
@@ -37,7 +65,7 @@ export default async function OwnerVisitsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">En attente</p>
-              <p className="text-2xl font-bold text-yellow-600">-</p>
+              <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
             </div>
           </div>
         </div>
@@ -48,7 +76,7 @@ export default async function OwnerVisitsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Confirmées</p>
-              <p className="text-2xl font-bold text-green-600">-</p>
+              <p className="text-2xl font-bold text-green-600">{stats.confirmed}</p>
             </div>
           </div>
         </div>
@@ -59,7 +87,7 @@ export default async function OwnerVisitsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Ce mois</p>
-              <p className="text-2xl font-bold text-blue-600">-</p>
+              <p className="text-2xl font-bold text-blue-600">{stats.thisMonth}</p>
             </div>
           </div>
         </div>
@@ -70,7 +98,7 @@ export default async function OwnerVisitsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total</p>
-              <p className="text-2xl font-bold text-purple-600">-</p>
+              <p className="text-2xl font-bold text-purple-600">{stats.total}</p>
             </div>
           </div>
         </div>

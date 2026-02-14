@@ -10,6 +10,7 @@ import { StepSkeleton } from "./step-skeleton";
 import { Confetti } from "@/components/ui/confetti";
 import { ImportStep } from "./immersive/steps/ImportStep";
 import type { Property } from "@/lib/types";
+import { propertySchemaV3 } from "@/lib/validations/property-v3";
 
 // Dynamically import steps for code splitting
 const TypeStep = dynamic(() => import("./immersive/steps/TypeStep").then((mod) => ({ default: mod.TypeStep })), {
@@ -197,7 +198,7 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
   // 🆕 Import automatique des photos quand le propertyId devient disponible
   useEffect(() => {
     if (storePropertyId && pendingPhotoUrls.length > 0 && photoImportStatus === 'idle') {
-      console.log(`[Wizard] PropertyId disponible, lancement de l'import de ${pendingPhotoUrls.length} photos...`);
+      console.info(`[Wizard] PropertyId disponible, lancement de l'import de ${pendingPhotoUrls.length} photos...`);
       importPendingPhotos();
     }
   }, [storePropertyId, pendingPhotoUrls.length, photoImportStatus, importPendingPhotos]);
@@ -277,7 +278,7 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
         // 🏠 Visite virtuelle (Matterport, Nodalview, etc.)
         if (data.visite_virtuelle_url) {
             formUpdate.visite_virtuelle_url = data.visite_virtuelle_url;
-            console.log(`[Wizard] Visite virtuelle détectée: ${data.visite_virtuelle_url}`);
+            console.info(`[Wizard] Visite virtuelle détectée: ${data.visite_virtuelle_url}`);
         }
         
         // ✅ Chauffage : mapper vers les bons champs du schéma
@@ -317,7 +318,7 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
         // 🆕 IMPORTANT: Créer le draft AVANT de mettre à jour les données
         // Sinon le propertyId n'existe pas et les pièces/photos ne peuvent pas être sauvegardées
         const detectedType = (formUpdate.type || "appartement") as any;
-        console.log(`[Wizard] Création du draft avec type: ${detectedType}`);
+        console.info(`[Wizard] Création du draft avec type: ${detectedType}`);
         await initializeDraft(detectedType);
         
         // Maintenant on peut mettre à jour les données
@@ -326,7 +327,7 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
         // 🆕 Stocker les URLs des photos pour import en arrière-plan
         if (data.photos && data.photos.length > 0) {
             usePropertyWizardStore.getState().setPendingPhotoUrls(data.photos);
-            console.log(`[Wizard] ${data.photos.length} photos en attente d'import`);
+            console.info(`[Wizard] ${data.photos.length} photos en attente d'import`);
         }
         
         // Passer à l'étape suivante (Address pour corriger/compléter l'adresse)
@@ -394,6 +395,19 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
       toast({
         title: "Erreur",
         description: "Impossible de publier : le bien n'a pas été initialisé.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validation Zod finale avant publication
+    const validation = propertySchemaV3.safeParse(formData);
+    if (!validation.success) {
+      const firstErrors = validation.error.errors.slice(0, 3);
+      const errorMessages = firstErrors.map((e) => e.message).join(", ");
+      toast({
+        title: "Données incomplètes",
+        description: errorMessages || "Veuillez vérifier les champs obligatoires.",
         variant: "destructive",
       });
       return;

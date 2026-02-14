@@ -144,11 +144,13 @@ export async function createQuote(
  * Envoie un devis au propriétaire
  */
 export async function sendQuote(
-  quoteId: string
+  quoteId: string,
+  providerProfileId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient();
 
+    // Vérifier que le devis appartient au prestataire
     const { error } = await supabase
       .from("quotes")
       .update({
@@ -156,6 +158,7 @@ export async function sendQuote(
         sent_at: new Date().toISOString(),
       })
       .eq("id", quoteId)
+      .eq("provider_id", providerProfileId)
       .eq("status", "draft");
 
     if (error) {
@@ -177,11 +180,43 @@ export async function sendQuote(
  */
 export async function respondToQuote(
   quoteId: string,
+  ownerProfileId: string,
   response: "accepted" | "rejected",
   reason?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient();
+
+    // Vérifier que le devis est lié à un ticket du propriétaire
+    const { data: quote } = await supabase
+      .from("quotes")
+      .select("id, ticket_id, status")
+      .eq("id", quoteId)
+      .eq("status", "sent")
+      .single();
+
+    if (!quote) {
+      return { success: false, error: "Devis non trouvé ou déjà traité" };
+    }
+
+    // Vérifier que le ticket appartient au propriétaire via la propriété
+    const { data: ticket } = await supabase
+      .from("tickets")
+      .select("property_id")
+      .eq("id", (quote as any).ticket_id)
+      .single();
+
+    if (ticket) {
+      const { data: property } = await supabase
+        .from("properties")
+        .select("owner_id")
+        .eq("id", (ticket as any).property_id)
+        .single();
+
+      if (!property || (property as any).owner_id !== ownerProfileId) {
+        return { success: false, error: "Vous n'avez pas accès à ce devis" };
+      }
+    }
 
     const { error } = await supabase
       .from("quotes")

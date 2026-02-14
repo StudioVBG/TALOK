@@ -1,5 +1,5 @@
 "use client";
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState } from "react";
 import Link from "next/link";
@@ -56,7 +56,8 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
   const leaseIdFilter = searchParams.get("lease_id");
 
   // ✅ React Query : données réactives avec mise à jour automatique
-  const { data: documents = [], isLoading } = useDocuments({
+  // initialDocuments est utilisé comme fallback initial pour un rendu immédiat
+  const { data: documents = initialDocuments || [], isLoading } = useDocuments({
     propertyId: propertyIdFilter,
     leaseId: leaseIdFilter,
   });

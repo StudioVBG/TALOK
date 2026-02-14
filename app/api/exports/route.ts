@@ -43,6 +43,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
+    // Vérifier que le rôle est autorisé à exporter
+    const profileAny = profile as any;
+    if (!["owner", "admin"].includes(profileAny.role)) {
+      return NextResponse.json({ error: "Rôle non autorisé pour les exports" }, { status: 403 });
+    }
+
     let dataToExport: any[] = [];
     let columns: string[] = [];
 

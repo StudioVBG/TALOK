@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Metadata } from "next";
 import { ConnectedAccountsList } from "@/features/finance/components/connected-accounts-list";
 import { BankConnectButton } from "@/features/finance/components/bank-connect-button";

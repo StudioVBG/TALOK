@@ -1,8 +1,39 @@
-// @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import type { LeaseRow, PropertyRow, ProfileRow, LeaseSignerRow, DocumentRow } from "@/lib/supabase/database.types";
 
-export async function fetchTenantLease(userId: string) {
+type LeaseSignerWithProfile = LeaseSignerRow & {
+  profiles: Pick<ProfileRow, "id" | "prenom" | "nom" | "email" | "telephone" | "avatar_url"> | null;
+};
+
+type LeaseWithRelations = LeaseRow & {
+  property: (PropertyRow & {
+    owner: Pick<ProfileRow, "id" | "prenom" | "nom" | "email" | "telephone" | "avatar_url"> | null;
+  }) | null;
+  documents: DocumentRow[];
+  lease_signers: LeaseSignerWithProfile[] | null;
+};
+
+type LeaseSignerWithUrl = LeaseSignerWithProfile & {
+  signature_image: string | null;
+};
+
+type MappedLease = Omit<LeaseWithRelations, "lease_signers" | "property"> & {
+  property: (PropertyRow & {
+    ville: string;
+    code_postal: string;
+    adresse_complete: string;
+    owner: Pick<ProfileRow, "id" | "prenom" | "nom" | "email" | "telephone" | "avatar_url"> & {
+      name: string;
+    } | null;
+  }) | null;
+  owner: (Pick<ProfileRow, "id" | "prenom" | "nom" | "email" | "telephone" | "avatar_url"> & {
+    name: string;
+  }) | null;
+  lease_signers: LeaseSignerWithUrl[];
+};
+
+export async function fetchTenantLease(userId: string): Promise<MappedLease | null> {
   const supabase = await createClient();
   // UTILISER SERVICE CLIENT POUR BYPASS RLS
   const serviceClient = getServiceClient();
@@ -10,13 +41,13 @@ export async function fetchTenantLease(userId: string) {
   console.log("[fetchTenantLease] 🔍 Recherche pour user_id:", userId);
 
   // Récupérer le profil tenant par user_id avec SERVICE CLIENT
-  let profile: { id: string; email?: string } | null = null;
+  let profile: Pick<ProfileRow, "id" | "email" | "user_id"> | null = null;
   
   const { data: profileByUserId, error: profileError } = await serviceClient
     .from("profiles")
     .select("id, email")
     .eq("user_id", userId)
-    .single();
+    .single() as { data: Pick<ProfileRow, "id" | "email"> | null; error: Error | null };
 
   if (!profileError && profileByUserId) {
     profile = profileByUserId;
@@ -33,7 +64,7 @@ export async function fetchTenantLease(userId: string) {
         .from("profiles")
         .select("id, email, user_id")
         .eq("email", user.email)
-        .maybeSingle();
+        .maybeSingle() as { data: Pick<ProfileRow, "id" | "email" | "user_id"> | null; error: Error | null };
       
       if (emailError) {
         console.log("[fetchTenantLease] Erreur recherche email:", emailError.message);
@@ -72,7 +103,7 @@ export async function fetchTenantLease(userId: string) {
     .from("lease_signers")
     .select("lease_id")
     .eq("profile_id", profile.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }) as { data: Pick<LeaseSignerRow, "lease_id">[] | null; error: Error | null };
 
   if (signerError) {
     console.log("[fetchTenantLease] ❌ Erreur lease_signers:", signerError.message);
@@ -122,7 +153,7 @@ export async function fetchTenantLease(userId: string) {
         )
       )
     `)
-    .in("id", leaseIds);
+    .in("id", leaseIds) as { data: LeaseWithRelations[] | null; error: Error | null };
 
   if (leaseError || !leases) {
     console.error("[fetchTenantLease] ❌ Baux introuvables:", leaseError?.message);
@@ -130,9 +161,9 @@ export async function fetchTenantLease(userId: string) {
   }
 
   // ✅ SOTA 2026: Générer des URLs signées pour les images de signature (bucket privé)
-  const mappedLeases = await Promise.all(leases.map(async (l) => {
+  const mappedLeases = await Promise.all(leases.map(async (l): Promise<MappedLease> => {
     // Générer les URLs signées pour chaque signataire
-    const signersWithUrls = await Promise.all((l.lease_signers || []).map(async (s: any) => {
+    const signersWithUrls = await Promise.all((l.lease_signers || []).map(async (s: LeaseSignerWithProfile): Promise<LeaseSignerWithUrl> => {
       let signatureImageUrl: string | null = null;
       
       // Si signature_image est déjà une data URL ou URL HTTP

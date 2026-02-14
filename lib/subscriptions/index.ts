@@ -33,9 +33,25 @@ export {
 } from './subscription-service';
 
 // Stubs for planned but not yet implemented functions
-export async function getUserUsage(_userId: string) { return null; }
-export async function updateUserUsage(_userId: string, _resource: string, _count: number) { return; }
-export async function incrementSignatureUsage(_userId: string) { return; }
-export async function usePromoCode(_code: string, _userId: string) { return null; }
-export async function upsertSubscription(_data: Record<string, unknown>) { return null; }
+// WARNING: These are no-ops. Callers should check for null returns.
+export async function getUserUsage(_userId: string) {
+  console.warn("[subscriptions] getUserUsage is not yet implemented — returning null");
+  return null;
+}
+export async function updateUserUsage(_userId: string, _resource: string, _count: number) {
+  console.warn("[subscriptions] updateUserUsage is not yet implemented — no-op");
+  return;
+}
+export async function incrementSignatureUsage(_userId: string) {
+  console.warn("[subscriptions] incrementSignatureUsage is not yet implemented — no-op");
+  return;
+}
+export async function usePromoCode(_code: string, _userId: string) {
+  console.warn("[subscriptions] usePromoCode is not yet implemented — returning null");
+  return null;
+}
+export async function upsertSubscription(_data: Record<string, unknown>) {
+  console.warn("[subscriptions] upsertSubscription is not yet implemented — returning null");
+  return null;
+}
 

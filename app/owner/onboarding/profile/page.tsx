@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -37,7 +36,6 @@ export default function OwnerProfileOnboardingPage() {
 
   // Cette fonction est appelée par Tom à chaque fois qu'il extrait des infos
   const handleTomUpdate = (data: UpdateOwnerProfileArgs) => {
-    console.log("Tom update:", data);
     setFormData(prev => ({ ...prev, ...data }));
   };
 

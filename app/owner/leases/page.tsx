@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Page Contracts Owner - Server Component
  * Utilise les données déjà chargées dans le layout via Context

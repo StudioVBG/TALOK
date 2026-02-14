@@ -26,6 +26,17 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    // Vérifier le profil et le rôle de l'utilisateur
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
     const { data: invoice, error } = await supabase
       .from("invoices")
       .select("*")
@@ -35,6 +46,19 @@ export async function GET(
     if (error) throw error;
     if (!invoice) {
       return NextResponse.json({ error: "Facture non trouvée" }, { status: 404 });
+    }
+
+    // Vérifier que l'utilisateur a le droit d'accéder à cette facture
+    const invoiceAny = invoice as any;
+    const isOwner = invoiceAny.owner_id === profile.id;
+    const isTenant = invoiceAny.tenant_id === profile.id;
+    const isAdmin = profile.role === "admin";
+
+    if (!isOwner && !isTenant && !isAdmin) {
+      return NextResponse.json(
+        { error: "Vous n'avez pas accès à cette facture" },
+        { status: 403 }
+      );
     }
 
     return NextResponse.json({ invoice });

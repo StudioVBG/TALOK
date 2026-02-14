@@ -1,7 +1,7 @@
 "use client";
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -209,6 +209,28 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
   const [period, setPeriod] = useState("12m");
   const [activeTab, setActiveTab] = useState("overview");
 
+  // Filtrer les données mensuelles en fonction de la période sélectionnée
+  const filteredMonthlyData = useMemo(() => {
+    if (!data.monthlyData || data.monthlyData.length === 0) return [];
+    
+    const now = new Date();
+    let monthsToShow = 12;
+    
+    switch (period) {
+      case "3m": monthsToShow = 3; break;
+      case "6m": monthsToShow = 6; break;
+      case "12m": monthsToShow = 12; break;
+      case "ytd": {
+        // Depuis le début de l'année en cours
+        const yearStart = `${now.getFullYear()}-01`;
+        return data.monthlyData.filter(d => d.month >= yearStart);
+      }
+      default: monthsToShow = 12;
+    }
+    
+    return data.monthlyData.slice(-monthsToShow);
+  }, [data.monthlyData, period]);
+
   // Données pour le pie chart
   const occupancyPieData = [
     { name: "Loués", value: data.totalLeases, color: "#10b981" },
@@ -268,8 +290,15 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
             value={formatCurrency(data.totalMonthlyRent)}
             subtitle={`${formatCurrency(data.totalAnnualRevenue)}/an`}
             icon={Euro}
-            trend="up"
-            trendValue="+3.2%"
+            trend={filteredMonthlyData.length >= 2 && filteredMonthlyData[filteredMonthlyData.length - 1].revenue >= filteredMonthlyData[filteredMonthlyData.length - 2].revenue ? "up" : "down"}
+            trendValue={(() => {
+              if (filteredMonthlyData.length < 2) return "N/A";
+              const current = filteredMonthlyData[filteredMonthlyData.length - 1].revenue;
+              const previous = filteredMonthlyData[filteredMonthlyData.length - 2].revenue;
+              if (previous === 0) return current > 0 ? "+100%" : "0%";
+              const pct = ((current - previous) / previous * 100).toFixed(1);
+              return `${Number(pct) >= 0 ? "+" : ""}${pct}%`;
+            })()}
             color="green"
           />
           <KPICard
@@ -335,7 +364,7 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
                 <CardContent>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={data.monthlyData}>
+                      <AreaChart data={filteredMonthlyData}>
                         <defs>
                           <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />

@@ -58,6 +58,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
+    // Vérifier que le rôle est autorisé à uploader
+    const profileAny = profile as any;
+    if (!["owner", "tenant", "admin"].includes(profileAny.role)) {
+      return NextResponse.json({ error: "Rôle non autorisé" }, { status: 403 });
+    }
+
+    // Vérifier que la propriété appartient bien à l'utilisateur (si property_id fourni)
+    if (propertyId && profileAny.role === "owner") {
+      const { data: property } = await serviceClient
+        .from("properties")
+        .select("id, owner_id")
+        .eq("id", propertyId)
+        .single();
+
+      if (!property || (property as any).owner_id !== profileAny.id) {
+        return NextResponse.json(
+          { error: "Ce bien ne vous appartient pas" },
+          { status: 403 }
+        );
+      }
+    }
+
     // Créer un nom de fichier unique
     const fileExt = file.name.split(".").pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -89,7 +111,9 @@ export async function POST(request: Request) {
         lease_id: leaseId || null,
         type: type || "autre",
         storage_path: filePath,
-        created_by_profile_id: profile.id,
+        created_by_profile_id: profileAny.id,
+        owner_id: profileAny.role === "owner" ? profileAny.id : null,
+        tenant_id: profileAny.role === "tenant" ? profileAny.id : null,
       })
       .select()
       .single();

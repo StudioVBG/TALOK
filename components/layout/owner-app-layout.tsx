@@ -83,7 +83,7 @@ const navigationGroups: NavGroup[] = [
     label: "Finances",
     items: [
       { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
-      { name: "Facturation", href: "/settings/billing", icon: CreditCard },
+      { name: "Facturation", href: "/owner/settings/billing", icon: CreditCard },
     ],
   },
   {
@@ -493,7 +493,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
               { href: "/owner/entities", label: "Entités", icon: Briefcase },
               { href: "/owner/legal-protocols", label: "Protocoles juridiques", icon: Shield },
-              { href: "/settings/billing", label: "Facturation", icon: CreditCard },
+              { href: "/owner/settings/billing", label: "Facturation", icon: CreditCard },
               { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
             ]}
             hideAbove="md"

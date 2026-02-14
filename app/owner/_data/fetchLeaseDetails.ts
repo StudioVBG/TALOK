@@ -1,6 +1,6 @@
-// @ts-nocheck
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import type { PropertyRow, LeaseRow, LeaseSignerRow, PaymentRow, InvoiceRow, DocumentRow, EDLRow, ProfileRow } from "@/lib/supabase/database.types";
 
 // ✅ SOTA 2026: Types stricts pour l'intégrité des données
 
@@ -99,7 +99,9 @@ export interface Lease {
   // ✅ SSOT 2026: Données pré-calculées
   has_signed_edl: boolean;
   has_paid_initial: boolean;
-  [key: string]: any; // Permettre des champs supplémentaires
+  property_id?: string | null;
+  unit_id?: string | null;
+  properties?: PropertyRow | null;
 }
 
 /** Structure de la propriété */
@@ -115,7 +117,6 @@ export interface Property {
   cover_url: string | null;
   loyer_hc?: number;
   charges_mensuelles?: number;
-  [key: string]: any;
 }
 
 /** Structure d'un document */
@@ -126,7 +127,6 @@ export interface Document {
   created_at: string;
   title?: string;
   name?: string;
-  [key: string]: any;
 }
 
 /** Interface principale des détails du bail - TYPAGE STRICT */
@@ -142,8 +142,6 @@ export interface LeaseDetails {
 }
 
 export async function fetchLeaseDetails(leaseId: string, ownerId: string): Promise<LeaseDetails | null> {
-  console.log("[fetchLeaseDetails] Starting for leaseId:", leaseId, "ownerId:", ownerId);
-  
   // Utiliser directement le fallback (plus fiable que la RPC)
   // La RPC a des problèmes avec les baux liés à des unités
   return fetchLeaseDetailsFallback(leaseId, ownerId);
@@ -156,11 +154,6 @@ async function fetchLeaseDetailsFallback(
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  console.log("[fetchLeaseDetailsFallback] Config check:", {
-    hasUrl: !!supabaseUrl,
-    hasServiceKey: !!serviceRoleKey,
-  });
-
   let supabase: ReturnType<typeof createServiceClient> | Awaited<ReturnType<typeof createClient>>;
 
   if (supabaseUrl && serviceRoleKey) {
@@ -171,7 +164,6 @@ async function fetchLeaseDetailsFallback(
         persistSession: false,
       },
     });
-    console.log("[fetchLeaseDetailsFallback] Using service role client");
   } else {
     console.warn(
       "[fetchLeaseDetailsFallback] SUPABASE_SERVICE_ROLE_KEY manquant, utilisation du client standard (RLS actif)"
@@ -180,8 +172,9 @@ async function fetchLeaseDetailsFallback(
   }
 
   // 1. Récupérer le bail avec la propriété en une seule requête
-  console.log("[fetchLeaseDetailsFallback] Fetching lease:", leaseId);
-  
+  type LeaseWithProperty = LeaseRow & {
+    properties: PropertyRow | null;
+  };
   const { data: lease, error: leaseError } = await supabase
     .from("leases")
     .select(`
@@ -201,26 +194,20 @@ async function fetchLeaseDetailsFallback(
     return null;
   }
 
-  console.log("[fetchLeaseDetailsFallback] Lease found:", {
-    id: lease.id,
-    property_id: lease.property_id,
-    unit_id: lease.unit_id,
-    has_property_join: !!lease.properties,
-  });
+  const leaseData = lease as LeaseWithProperty;
 
   // 2. Récupérer la propriété associée (directement ou via unit)
-  let propertyRow: any | null = null;
+  let propertyRow: PropertyRow | null = null;
 
   // Si la propriété est déjà jointe
-  if (lease.properties) {
-    propertyRow = lease.properties;
-    console.log("[fetchLeaseDetailsFallback] Property from join:", propertyRow?.id);
-  } else if (lease.property_id) {
+  if (leaseData.properties) {
+    propertyRow = leaseData.properties;
+  } else if (leaseData.property_id) {
     // Fallback: requête séparée
     const { data, error } = await supabase
       .from("properties")
       .select("*")
-      .eq("id", lease.property_id)
+      .eq("id", leaseData.property_id)
       .single();
 
     if (error || !data) {
@@ -228,13 +215,11 @@ async function fetchLeaseDetailsFallback(
       return null;
     }
     propertyRow = data;
-    console.log("[fetchLeaseDetailsFallback] Property from separate query:", propertyRow?.id);
-  } else if (lease.unit_id) {
-    console.log("[fetchLeaseDetailsFallback] Fetching unit:", lease.unit_id);
+  } else if (leaseData.unit_id) {
     const { data: unit, error: unitError } = await supabase
       .from("units")
       .select("id, property_id")
-      .eq("id", lease.unit_id)
+      .eq("id", leaseData.unit_id)
       .single();
 
     if (unitError || !unit) {
@@ -253,7 +238,6 @@ async function fetchLeaseDetailsFallback(
       return null;
     }
     propertyRow = data;
-    console.log("[fetchLeaseDetailsFallback] Property from unit:", propertyRow?.id);
   } else {
     console.warn("[fetchLeaseDetailsFallback] Lease without property or unit", {
       leaseId,
@@ -262,11 +246,6 @@ async function fetchLeaseDetailsFallback(
   }
 
   // Vérifier l'accès propriétaire
-  console.log("[fetchLeaseDetailsFallback] Checking owner access:", {
-    expected: ownerId,
-    actual: propertyRow?.owner_id,
-  });
-  
   if (propertyRow.owner_id !== ownerId) {
     console.warn("[fetchLeaseDetailsFallback] Access denied: owner mismatch", {
       expected: ownerId,
@@ -275,8 +254,6 @@ async function fetchLeaseDetailsFallback(
     return null;
   }
   
-  console.log("[fetchLeaseDetailsFallback] Owner access verified ✓");
-
   // 2. Récupérer les signataires
   // ✅ SOTA 2026: Récupérer TOUS les champs de signature (image ET path)
   const { data: signers } = await supabase
@@ -367,24 +344,39 @@ async function fetchLeaseDetailsFallback(
     .maybeSingle();
 
   // Construire le résultat
-  const property = {
-    ...propertyRow,
+  const property: Property = {
+    id: propertyRow.id,
+    owner_id: propertyRow.owner_id,
+    adresse_complete: propertyRow.adresse_complete,
+    numero_rue: (propertyRow as PropertyRow & { numero_rue?: string }).numero_rue,
+    nom_rue: (propertyRow as PropertyRow & { nom_rue?: string }).nom_rue,
+    ville: propertyRow.ville,
+    code_postal: propertyRow.code_postal,
+    type: propertyRow.type,
     cover_url: mainPhoto?.url || null,
+    loyer_hc: (propertyRow as PropertyRow & { loyer_hc?: number }).loyer_hc,
+    charges_mensuelles: (propertyRow as PropertyRow & { charges_mensuelles?: number }).charges_mensuelles,
   };
 
   // SSOT 2026 : Consolider les données financières
-  const cleanLease = {
-    ...lease,
-    loyer: propertyRow.loyer_hc ?? lease.loyer ?? 0,
-    charges_forfaitaires: propertyRow.charges_mensuelles ?? lease.charges_forfaitaires ?? 0,
+  const cleanLease: Lease = {
+    ...leaseData,
+    loyer: property.loyer_hc ?? leaseData.loyer ?? 0,
+    charges_forfaitaires: property.charges_mensuelles ?? leaseData.charges_forfaitaires ?? 0,
     has_signed_edl: edl?.status === "signed",
     has_paid_initial: initialInvoice?.statut === "paid",
+    property_id: leaseData.property_id,
+    unit_id: leaseData.unit_id,
+    properties: propertyRow,
   };
 
   // ✅ SOTA 2026: Générer des URLs signées pour les images de signature (bucket privé)
   // Durée de validité: 1 heure
+  type SignerWithProfile = LeaseSignerRow & {
+    profiles: ProfileRow | null;
+  };
   const signersWithSignedUrls = await Promise.all(
-    (signers || []).map(async (s: any) => {
+    (signers || []).map(async (s: SignerWithProfile) => {
       let signatureImageUrl: string | null = null;
       
       // 1. Si signature_image est déjà une data URL ou URL HTTP, l'utiliser
@@ -403,7 +395,6 @@ async function fetchLeaseDetailsFallback(
           
           if (signedUrlData?.signedUrl) {
             signatureImageUrl = signedUrlData.signedUrl;
-            console.log("[fetchLeaseDetails] ✅ Generated signed URL for signature:", s.role);
           }
         } catch (err) {
           console.error("[fetchLeaseDetails] Error generating signed URL:", err);
@@ -441,15 +432,18 @@ async function fetchLeaseDetailsFallback(
   const formattedSigners = signersWithSignedUrls;
 
   // Transformer les paiements
-  const formattedPayments = (payments || []).map((p: any) => ({
+  type PaymentWithInvoice = PaymentRow & {
+    invoices: { periode: string } | null;
+  };
+  const formattedPayments = (payments || []).map((p: PaymentWithInvoice) => ({
     id: p.id,
     date_paiement: p.date_paiement,
     montant: p.montant,
     statut: p.statut,
-    periode: p.invoices?.periode,
+    periode: p.invoices?.periode ?? null,
   }));
 
-  const formattedInvoices = (invoices || []).map((inv: any) => ({
+  const formattedInvoices = (invoices || []).map((inv: InvoiceRow) => ({
     id: inv.id,
     periode: inv.periode,
     montant_total: inv.montant_total,
@@ -457,27 +451,18 @@ async function fetchLeaseDetailsFallback(
     montant_charges: inv.montant_charges,
     statut: inv.statut,
     created_at: inv.created_at,
-    metadata: inv.metadata,
+    metadata: inv.metadata ?? null,
   }));
 
-  const result = {
+  const result: LeaseDetails = {
     lease: cleanLease,
     property,
     signers: formattedSigners,
     payments: formattedPayments,
     invoices: formattedInvoices,
-    documents: documents || [],
+    documents: (documents || []) as Document[],
     edl: edl || null,
   };
-
-  console.log("[fetchLeaseDetailsFallback] Success! Returning lease details:", {
-    leaseId: result.lease?.id,
-    propertyId: result.property?.id,
-    signersCount: result.signers?.length,
-    paymentsCount: result.payments?.length,
-    invoicesCount: result.invoices?.length,
-    documentsCount: result.documents?.length,
-  });
 
   return result;
 }

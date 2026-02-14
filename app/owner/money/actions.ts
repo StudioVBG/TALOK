@@ -122,11 +122,17 @@ export async function sendPaymentReminder(
   }
 
   // TODO: Intégrer avec un service d'email (Resend, SendGrid, etc.)
-  // Pour l'instant, on simule l'envoi
-  console.log(`[REMINDER] Sending payment reminder for invoice ${invoiceId}`);
-
-  // Enregistrer le rappel dans l'historique
-  // await supabase.from("invoice_reminders").insert({ ... });
+  // Pour l'instant, enregistrer la demande de rappel
+  try {
+    await supabase.from("invoice_reminders").insert({
+      invoice_id: invoiceId,
+      sent_at: new Date().toISOString(),
+      method: "email",
+    });
+  } catch {
+    // Table invoice_reminders peut ne pas exister encore — non bloquant
+    console.warn(`[REMINDER] invoice_reminders table not available for invoice ${invoiceId}`);
+  }
 
   return { success: true };
 }

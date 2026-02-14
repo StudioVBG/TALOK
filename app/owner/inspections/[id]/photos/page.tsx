@@ -153,7 +153,7 @@ export default function EDLPhotosPage() {
             }));
           }
         } catch (e) {
-          console.log("Pas d'EDL d'entrée trouvé");
+          console.info("Pas d'EDL d'entrée trouvé");
         }
       }
 

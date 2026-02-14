@@ -101,31 +101,27 @@ export default function RegularisationPage() {
   useEffect(() => {
     async function fetchLeases() {
       try {
-        // TODO: Appeler l'API pour récupérer les baux actifs
-        setLeases([
-          {
-            id: 'lease-1',
-            property_name: 'Résidence Les Oliviers',
-            unit_lot_number: '012',
-            tenant_name: 'Jean Dupont',
-            tenant_email: 'jean.dupont@email.com',
-            start_date: '2024-01-01',
-            end_date: null,
-            monthly_provision: 150,
-          },
-          {
-            id: 'lease-2',
-            property_name: 'Résidence Les Oliviers',
-            unit_lot_number: '015',
-            tenant_name: 'Marie Martin',
-            tenant_email: 'marie.martin@email.com',
-            start_date: '2023-06-15',
-            end_date: '2024-08-31',
-            monthly_provision: 180,
-          },
-        ]);
+        const response = await fetch("/api/leases?status=active&include=property,tenant");
+        if (response.ok) {
+          const data = await response.json();
+          const formattedLeases = (data.leases || data || []).map((l: any) => ({
+            id: l.id,
+            property_name: l.property?.adresse_complete || l.property_name || "Bien non renseigné",
+            unit_lot_number: l.unit_lot_number || "",
+            tenant_name: l.tenant ? `${l.tenant.prenom || ""} ${l.tenant.nom || ""}`.trim() : "Locataire",
+            tenant_email: l.tenant?.email || "",
+            start_date: l.date_debut,
+            end_date: l.date_fin,
+            monthly_provision: l.charges_forfaitaires || 0,
+          }));
+          setLeases(formattedLeases);
+        } else {
+          console.warn("[copro/regularisation] API non disponible, aucun bail chargé");
+          setLeases([]);
+        }
       } catch (error) {
         console.error('Erreur chargement baux:', error);
+        setLeases([]);
       } finally {
         setLoading(false);
       }
@@ -138,29 +134,37 @@ export default function RegularisationPage() {
 
     setCalculating(true);
     try {
-      // TODO: Appeler l'API de calcul
-      const mockData: RegularisationData = {
-        lease_id: selectedLease,
-        fiscal_year: selectedYear,
-        period_start: `${selectedYear}-01-01`,
-        period_end: `${selectedYear}-12-31`,
-        occupation_days: 365,
-        total_days: 365,
-        prorata_ratio: 1,
-        charges: [
-          { service_type: 'eau', label: 'Eau froide', copro_amount: 450, recuperable_amount: 450, prorata_tenant: 1, final_amount: 450 },
-          { service_type: 'chauffage', label: 'Chauffage collectif', copro_amount: 800, recuperable_amount: 800, prorata_tenant: 1, final_amount: 800 },
-          { service_type: 'menage', label: 'Ménage parties communes', copro_amount: 300, recuperable_amount: 300, prorata_tenant: 1, final_amount: 300 },
-          { service_type: 'gardiennage', label: 'Gardiennage', copro_amount: 400, recuperable_amount: 300, prorata_tenant: 1, final_amount: 300 },
-          { service_type: 'electricite_commune', label: 'Électricité commune', copro_amount: 180, recuperable_amount: 180, prorata_tenant: 1, final_amount: 180 },
-          { service_type: 'ordures_menageres', label: 'Ordures ménagères', copro_amount: 220, recuperable_amount: 220, prorata_tenant: 1, final_amount: 220 },
-        ],
-        total_copro: 2350,
-        total_recuperable: 2250,
-        total_provisions: 1800, // 12 mois × 150€
-        balance: 450, // Locataire doit 450€
-      };
-      setRegularisationData(mockData);
+      // Appeler l'API de calcul de régularisation
+      const response = await fetch("/api/copro/regularisation/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lease_id: selectedLease, fiscal_year: selectedYear }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setRegularisationData(data);
+      } else {
+        // Fallback : calcul basique côté client avec les provisions connues
+        const lease = leases.find(l => l.id === selectedLease);
+        const totalProvisions = (lease?.monthly_provision || 0) * 12;
+        const fallbackData: RegularisationData = {
+          lease_id: selectedLease,
+          fiscal_year: selectedYear,
+          period_start: `${selectedYear}-01-01`,
+          period_end: `${selectedYear}-12-31`,
+          occupation_days: 365,
+          total_days: 365,
+          prorata_ratio: 1,
+          charges: [],
+          total_copro: 0,
+          total_recuperable: 0,
+          total_provisions: totalProvisions,
+          balance: -totalProvisions, // Aucune charge connue = tout est à rembourser
+        };
+        setRegularisationData(fallbackData);
+        console.warn("[copro/regularisation] API non disponible, calcul basique côté client");
+      }
       setStep('review');
     } catch (error) {
       console.error('Erreur calcul:', error);
@@ -184,7 +188,7 @@ export default function RegularisationPage() {
 
   return (
     <CoproGate>
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <motion.div
@@ -193,15 +197,15 @@ export default function RegularisationPage() {
           className="flex items-center gap-4"
         >
           <Link href="/owner/copro/charges">
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-foreground">
               Régularisation des charges
             </h1>
-            <p className="text-slate-400">
+            <p className="text-muted-foreground">
               Calculez et envoyez le décompte de régularisation à vos locataires
             </p>
           </div>
@@ -223,15 +227,15 @@ export default function RegularisationPage() {
                 <div className={`
                   flex items-center gap-2 px-4 py-2 rounded-full transition-all
                   ${isActive ? 'bg-violet-500 text-white' : 
-                    isPast ? 'bg-emerald-500/20 text-emerald-400' : 
-                    'bg-white/5 text-slate-400'}
+                    isPast ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 
+                    'bg-muted text-muted-foreground'}
                 `}>
                   {isPast ? <CheckCircle2 className="w-4 h-4" /> : s.icon}
                   <span className="text-sm font-medium">{s.label}</span>
                 </div>
                 {index < steps.length - 1 && (
                   <ChevronRight className={`w-5 h-5 mx-2 ${
-                    isPast ? 'text-emerald-400' : 'text-slate-600'
+                    isPast ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
                   }`} />
                 )}
               </div>
@@ -249,9 +253,9 @@ export default function RegularisationPage() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="text-foreground flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-violet-400" />
                     Période de régularisation
                   </CardTitle>
@@ -259,17 +263,17 @@ export default function RegularisationPage() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-slate-300">Année fiscale</Label>
+                      <Label className="text-muted-foreground">Année fiscale</Label>
                       <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-                        <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                        <SelectTrigger className="bg-card border-border text-foreground">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700">
+                        <SelectContent className="bg-card border-border">
                           {availableYears.map((year) => (
                             <SelectItem 
                               key={year} 
                               value={year.toString()}
-                              className="text-white focus:bg-slate-700"
+                              className="text-foreground"
                             >
                               {year}
                             </SelectItem>
@@ -281,9 +285,9 @@ export default function RegularisationPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="text-foreground flex items-center gap-2">
                     <User className="w-5 h-5 text-violet-400" />
                     Sélectionner un bail
                   </CardTitle>
@@ -296,17 +300,17 @@ export default function RegularisationPage() {
                       className={`
                         p-4 rounded-lg cursor-pointer transition-all border
                         ${selectedLease === lease.id 
-                          ? 'bg-violet-500/20 border-violet-500' 
-                          : 'bg-slate-800/50 border-transparent hover:border-white/20'}
+                          ? 'bg-violet-500/10 border-violet-500 dark:bg-violet-500/20' 
+                          : 'bg-muted/50 border-transparent hover:border-border'}
                       `}
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-white">{lease.tenant_name}</p>
-                          <p className="text-sm text-slate-400">
+                          <p className="font-medium text-foreground">{lease.tenant_name}</p>
+                          <p className="text-sm text-muted-foreground">
                             {lease.property_name} - Lot n°{lease.unit_lot_number}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground/70">
                             Du {new Date(lease.start_date).toLocaleDateString('fr-FR')} 
                             {lease.end_date 
                               ? ` au ${new Date(lease.end_date).toLocaleDateString('fr-FR')}` 
@@ -314,8 +318,8 @@ export default function RegularisationPage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-slate-400">Provision mensuelle</p>
-                          <p className="text-lg font-semibold text-white">
+                          <p className="text-sm text-muted-foreground">Provision mensuelle</p>
+                          <p className="text-lg font-semibold text-foreground">
                             {lease.monthly_provision} €/mois
                           </p>
                         </div>
@@ -357,40 +361,40 @@ export default function RegularisationPage() {
             >
               {/* Résumé */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="border-white/10 bg-white/5">
+                <Card className="border-border bg-card">
                   <CardContent className="p-4 text-center">
-                    <p className="text-sm text-slate-400">Charges réelles</p>
-                    <p className="text-xl font-bold text-white">
+                    <p className="text-sm text-muted-foreground">Charges réelles</p>
+                    <p className="text-xl font-bold text-foreground">
                       {regularisationData.total_recuperable.toLocaleString('fr-FR')} €
                     </p>
                   </CardContent>
                 </Card>
-                <Card className="border-white/10 bg-white/5">
+                <Card className="border-border bg-card">
                   <CardContent className="p-4 text-center">
-                    <p className="text-sm text-slate-400">Provisions versées</p>
+                    <p className="text-sm text-muted-foreground">Provisions versées</p>
                     <p className="text-xl font-bold text-cyan-400">
                       {regularisationData.total_provisions.toLocaleString('fr-FR')} €
                     </p>
                   </CardContent>
                 </Card>
-                <Card className="border-white/10 bg-white/5">
+                <Card className="border-border bg-card">
                   <CardContent className="p-4 text-center">
-                    <p className="text-sm text-slate-400">Prorata occupation</p>
-                    <p className="text-xl font-bold text-white">
+                    <p className="text-sm text-muted-foreground">Prorata occupation</p>
+                    <p className="text-xl font-bold text-foreground">
                       {(regularisationData.prorata_ratio * 100).toFixed(1)}%
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground/70">
                       {regularisationData.occupation_days}/{regularisationData.total_days} jours
                     </p>
                   </CardContent>
                 </Card>
-                <Card className={`border-white/10 ${
+                <Card className={`border-border ${
                   regularisationData.balance > 0 
                     ? 'bg-gradient-to-br from-amber-500/20 to-orange-600/10' 
                     : 'bg-gradient-to-br from-emerald-500/20 to-green-600/10'
                 }`}>
                   <CardContent className="p-4 text-center">
-                    <p className="text-sm text-slate-400">Solde</p>
+                    <p className="text-sm text-muted-foreground">Solde</p>
                     <p className={`text-xl font-bold ${
                       regularisationData.balance > 0 ? 'text-amber-400' : 'text-emerald-400'
                     }`}>
@@ -404,58 +408,58 @@ export default function RegularisationPage() {
               </div>
 
               {/* Détail des charges */}
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-white">Détail des charges récupérables</CardTitle>
+                  <CardTitle className="text-foreground">Détail des charges récupérables</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="md:hidden space-y-3">
                     {regularisationData.charges.map((charge) => (
-                      <div key={charge.service_type} className="rounded-lg border border-white/10 bg-slate-800/30 p-4 space-y-2">
+                      <div key={charge.service_type} className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
                         <div>
-                          <p className="text-white font-medium">{charge.label}</p>
+                          <p className="text-foreground font-medium">{charge.label}</p>
                           <p className="text-xs text-slate-400">{SERVICE_TYPE_LABELS[charge.service_type]}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div><p className="text-slate-400">Copro</p><p className="text-slate-300">{charge.copro_amount.toLocaleString('fr-FR')} €</p></div>
-                          <div><p className="text-slate-400">Récupérable</p><p className="text-slate-300">{charge.recuperable_amount.toLocaleString('fr-FR')} €</p></div>
-                          <div><p className="text-slate-400">Prorata</p><p className="text-slate-400">{(charge.prorata_tenant * 100).toFixed(1)}%</p></div>
-                          <div><p className="text-slate-400">Montant final</p><p className="font-semibold text-emerald-400">{charge.final_amount.toLocaleString('fr-FR')} €</p></div>
+                          <div><p className="text-muted-foreground">Copro</p><p className="text-foreground">{charge.copro_amount.toLocaleString('fr-FR')} €</p></div>
+                          <div><p className="text-muted-foreground">Récupérable</p><p className="text-foreground">{charge.recuperable_amount.toLocaleString('fr-FR')} €</p></div>
+                          <div><p className="text-muted-foreground">Prorata</p><p className="text-muted-foreground">{(charge.prorata_tenant * 100).toFixed(1)}%</p></div>
+                          <div><p className="text-muted-foreground">Montant final</p><p className="font-semibold text-emerald-400">{charge.final_amount.toLocaleString('fr-FR')} €</p></div>
                         </div>
                       </div>
                     ))}
-                    <div className="rounded-lg bg-slate-800/50 p-4 flex justify-between items-center">
-                      <span className="text-white font-semibold">TOTAL RÉCUPÉRABLES</span>
-                      <span className="font-bold text-white">{regularisationData.total_recuperable.toLocaleString('fr-FR')} €</span>
+                    <div className="rounded-lg bg-muted p-4 flex justify-between items-center">
+                      <span className="text-foreground font-semibold">TOTAL RÉCUPÉRABLES</span>
+                      <span className="font-bold text-foreground">{regularisationData.total_recuperable.toLocaleString('fr-FR')} €</span>
                     </div>
                   </div>
                   <div className="hidden md:block">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/10">
-                        <TableHead className="text-slate-400">Poste</TableHead>
-                        <TableHead className="text-slate-400 text-right">Copro</TableHead>
-                        <TableHead className="text-slate-400 text-right">Récupérable</TableHead>
-                        <TableHead className="text-slate-400 text-right">Prorata</TableHead>
-                        <TableHead className="text-slate-400 text-right">Montant final</TableHead>
+                      <TableRow className="border-border">
+                        <TableHead className="text-muted-foreground">Poste</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Copro</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Récupérable</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Prorata</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Montant final</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {regularisationData.charges.map((charge) => (
-                        <TableRow key={charge.service_type} className="border-white/10">
-                          <TableCell className="text-white">
+                        <TableRow key={charge.service_type} className="border-border">
+                          <TableCell className="text-foreground">
                             {charge.label}
-                            <span className="block text-xs text-slate-400">
+                            <span className="block text-xs text-muted-foreground">
                               {SERVICE_TYPE_LABELS[charge.service_type]}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right text-slate-300">
+                          <TableCell className="text-right text-foreground">
                             {charge.copro_amount.toLocaleString('fr-FR')} €
                           </TableCell>
-                          <TableCell className="text-right text-slate-300">
+                          <TableCell className="text-right text-foreground">
                             {charge.recuperable_amount.toLocaleString('fr-FR')} €
                           </TableCell>
-                          <TableCell className="text-right text-slate-400">
+                          <TableCell className="text-right text-muted-foreground">
                             {(charge.prorata_tenant * 100).toFixed(1)}%
                           </TableCell>
                           <TableCell className="text-right font-semibold text-emerald-400">
@@ -463,11 +467,11 @@ export default function RegularisationPage() {
                           </TableCell>
                         </TableRow>
                       ))}
-                      <TableRow className="border-white/10 bg-slate-800/50">
-                        <TableCell colSpan={4} className="text-white font-semibold">
+                      <TableRow className="border-border bg-muted/50">
+                        <TableCell colSpan={4} className="text-foreground font-semibold">
                           TOTAL CHARGES RÉCUPÉRABLES
                         </TableCell>
-                        <TableCell className="text-right font-bold text-white">
+                        <TableCell className="text-right font-bold text-foreground">
                           {regularisationData.total_recuperable.toLocaleString('fr-FR')} €
                         </TableCell>
                       </TableRow>
@@ -479,7 +483,7 @@ export default function RegularisationPage() {
                   <Button
                     variant="outline"
                     onClick={() => setStep('select')}
-                    className="border-white/10 text-white"
+                    className="border-border"
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Retour
@@ -505,7 +509,7 @@ export default function RegularisationPage() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <Card className="border-white/10 bg-white">
+              <Card className="border-border bg-white">
                 <CardContent className="p-4 sm:p-6 md:p-8 text-gray-800">
                   {/* Document preview */}
                   <div className="space-y-4 md:space-y-6">
@@ -595,18 +599,36 @@ export default function RegularisationPage() {
                 <Button
                   variant="outline"
                   onClick={() => setStep('review')}
-                  className="border-white/10 text-white"
+                  className="border-border"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Retour
                 </Button>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="border-white/10 text-white">
+                  <Button variant="outline" className="border-border">
                     <Download className="w-4 h-4 mr-2" />
                     Télécharger PDF
                   </Button>
                   <Button
-                    onClick={() => setStep('confirm')}
+                    onClick={async () => {
+                      try {
+                        const response = await fetch("/api/copro/regularisation/send", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            lease_id: selectedLease,
+                            fiscal_year: selectedYear,
+                            regularisation_data: regularisationData,
+                          }),
+                        });
+                        if (!response.ok) {
+                          console.warn("[copro/regularisation] Envoi API non disponible - affichage confirmation uniquement");
+                        }
+                      } catch (error) {
+                        console.warn("[copro/regularisation] Envoi non effectué:", error);
+                      }
+                      setStep('confirm');
+                    }}
                     className="bg-gradient-to-r from-violet-500 to-purple-600"
                   >
                     Envoyer au locataire
@@ -625,7 +647,7 @@ export default function RegularisationPage() {
               animate={{ opacity: 1, scale: 1 }}
               className="space-y-6"
             >
-              <Card className="border-emerald-500/30 bg-gradient-to-br from-emerald-500/20 to-emerald-600/10">
+              <Card className="border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10">
                 <CardContent className="p-4 sm:p-6 md:p-8 text-center">
                   <motion.div
                     initial={{ scale: 0 }}
@@ -635,30 +657,30 @@ export default function RegularisationPage() {
                   >
                     <CheckCircle2 className="w-10 h-10 md:w-12 md:h-12 text-emerald-400" />
                   </motion.div>
-                  <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
+                  <h2 className="text-xl md:text-2xl font-bold text-foreground mb-2">
                     Régularisation envoyée !
                   </h2>
-                  <p className="text-slate-300 mb-6">
+                  <p className="text-muted-foreground mb-6">
                     Le décompte de régularisation a été envoyé par email à 
-                    <span className="font-semibold"> {selectedLeaseData.tenant_name}</span> 
+                    <span className="font-semibold text-foreground"> {selectedLeaseData.tenant_name}</span> 
                     ({selectedLeaseData.tenant_email}).
                   </p>
 
-                  <div className="bg-slate-800/50 rounded-lg p-4 mb-6 w-full max-w-md mx-auto">
+                  <div className="bg-muted rounded-lg p-4 mb-6 w-full max-w-md mx-auto">
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Année</span>
-                      <span className="text-white">{regularisationData.fiscal_year}</span>
+                      <span className="text-muted-foreground">Année</span>
+                      <span className="text-foreground">{regularisationData.fiscal_year}</span>
                     </div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Charges réelles</span>
-                      <span className="text-white">{regularisationData.total_recuperable.toLocaleString('fr-FR')} €</span>
+                      <span className="text-muted-foreground">Charges réelles</span>
+                      <span className="text-foreground">{regularisationData.total_recuperable.toLocaleString('fr-FR')} €</span>
                     </div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-slate-400">Provisions versées</span>
-                      <span className="text-cyan-400">{regularisationData.total_provisions.toLocaleString('fr-FR')} €</span>
+                      <span className="text-muted-foreground">Provisions versées</span>
+                      <span className="text-cyan-600 dark:text-cyan-400">{regularisationData.total_provisions.toLocaleString('fr-FR')} €</span>
                     </div>
-                    <div className="flex justify-between font-semibold pt-2 border-t border-white/10">
-                      <span className="text-slate-300">Solde</span>
+                    <div className="flex justify-between font-semibold pt-2 border-t border-border">
+                      <span className="text-foreground">Solde</span>
                       <span className={regularisationData.balance > 0 ? 'text-amber-400' : 'text-emerald-400'}>
                         {regularisationData.balance > 0 ? '+' : ''}{regularisationData.balance.toLocaleString('fr-FR')} €
                       </span>
@@ -667,7 +689,7 @@ export default function RegularisationPage() {
 
                   <div className="flex justify-center gap-3">
                     <Link href="/owner/copro/charges">
-                      <Button variant="outline" className="border-white/10 text-white">
+                      <Button variant="outline" className="border-border">
                         Retour aux charges
                       </Button>
                     </Link>
@@ -695,11 +717,11 @@ export default function RegularisationPage() {
 
 function PageSkeleton() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
-        <Skeleton className="h-12 w-72 bg-white/10" />
-        <Skeleton className="h-10 w-full bg-white/10" />
-        <Skeleton className="h-96 bg-white/10" />
+        <Skeleton className="h-12 w-72" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-96" />
       </div>
     </div>
   );

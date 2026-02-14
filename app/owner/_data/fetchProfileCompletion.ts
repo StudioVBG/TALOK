@@ -25,42 +25,55 @@ export async function fetchProfileCompletion(
     }
   );
 
-  // Récupérer le profil de base
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, prenom, nom, telephone, avatar_url, date_naissance")
-    .eq("id", ownerId)
-    .single();
+  // ✅ OPTIMISÉ: Toutes les requêtes en parallèle (6 → 1 batch)
+  const [
+    profileResult,
+    ownerProfileResult,
+    entitiesResult,
+    propertiesResult,
+    identityDocsResult,
+  ] = await Promise.all([
+    // Profil de base
+    supabase
+      .from("profiles")
+      .select("id, prenom, nom, telephone, avatar_url, date_naissance")
+      .eq("id", ownerId)
+      .single(),
+    // Profil propriétaire
+    supabase
+      .from("owner_profiles")
+      .select("type, iban, adresse_facturation")
+      .eq("profile_id", ownerId)
+      .single(),
+    // Entités juridiques actives
+    supabase
+      .from("legal_entities")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_profile_id", ownerId)
+      .eq("is_active", true),
+    // Propriétés avec un flag bail actif
+    supabase
+      .from("properties")
+      .select("id, leases!inner(id)", { count: "exact" })
+      .eq("owner_id", ownerId),
+    // Documents d'identité
+    supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", ownerId)
+      .in("type", ["piece_identite", "identite", "cni", "passeport"]),
+  ]);
 
-  // Récupérer le profil propriétaire
-  const { data: ownerProfile } = await supabase
-    .from("owner_profiles")
-    .select("type, iban, adresse_facturation")
-    .eq("profile_id", ownerId)
-    .single();
+  const profile = profileResult.data;
+  const ownerProfile = ownerProfileResult.data;
+  const entitiesCount = entitiesResult.count;
+  const propertiesCount = propertiesResult.count ?? (propertiesResult.data?.length || 0);
+  const identityDocsCount = identityDocsResult.count;
 
-  // Vérifier si le propriétaire a au moins une entité juridique configurée
-  const { count: entitiesCount } = await supabase
-    .from("legal_entities")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_profile_id", ownerId)
-    .eq("is_active", true);
-
-  // Compter les propriétés
-  const { count: propertiesCount } = await supabase
-    .from("properties")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", ownerId);
-
-  // Compter les baux (en vérifiant via les propriétés du propriétaire)
-  const { data: properties } = await supabase
-    .from("properties")
-    .select("id")
-    .eq("owner_id", ownerId);
-
+  // Vérifier s'il y a au moins un bail actif (via les propriétés déjà chargées)
   let leasesCount = 0;
-  if (properties && properties.length > 0) {
-    const propertyIds = properties.map((p) => p.id);
+  const propertyIds = (propertiesResult.data || []).map((p: any) => p.id);
+  if (propertyIds.length > 0) {
     const { count } = await supabase
       .from("leases")
       .select("id", { count: "exact", head: true })
@@ -68,13 +81,6 @@ export async function fetchProfileCompletion(
       .neq("statut", "terminated");
     leasesCount = count || 0;
   }
-
-  // Vérifier si un document d'identité existe
-  const { count: identityDocsCount } = await supabase
-    .from("documents")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", ownerId)
-    .in("type", ["piece_identite", "identite", "cni", "passeport"]);
 
   return {
     // Profile de base

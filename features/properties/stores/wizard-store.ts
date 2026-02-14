@@ -297,7 +297,7 @@ export const usePropertyWizardStore = create<WizardState>()(
 
   // Réinitialise complètement le wizard pour une nouvelle création
   reset: () => {
-    console.log('[WizardStore] Reset du wizard');
+    console.info('[WizardStore] Reset du wizard');
     // Clear tous les debounce timers
     const { propertyId } = get();
     if (propertyId) {
@@ -318,7 +318,7 @@ export const usePropertyWizardStore = create<WizardState>()(
 
     // Si un propertyId existe déjà, ne pas recréer
     if (propertyId) {
-      console.log('[WizardStore] PropertyId existant, mise à jour du type uniquement');
+      console.info('[WizardStore] PropertyId existant, mise à jour du type uniquement');
       set((state) => ({
         formData: { ...state.formData, type_bien: type, type }
       }));
@@ -342,7 +342,7 @@ export const usePropertyWizardStore = create<WizardState>()(
         isInitializing: false
       });
 
-      console.log(`[WizardStore] Draft créé avec succès: ${newPropertyId}`);
+      console.info(`[WizardStore] Draft créé avec succès: ${newPropertyId}`);
     } catch (error: unknown) {
       console.error('[WizardStore] Erreur création draft:', error);
       const errorMessage = error instanceof Error ? error.message : "Erreur lors de la création du brouillon";
@@ -572,11 +572,11 @@ export const usePropertyWizardStore = create<WizardState>()(
     const { propertyId, pendingPhotoUrls, photos } = get();
     
     if (!propertyId || pendingPhotoUrls.length === 0) {
-      console.log('[WizardStore] Pas de photos à importer');
+      console.info('[WizardStore] Pas de photos à importer');
       return;
     }
     
-    console.log(`[WizardStore] Import de ${pendingPhotoUrls.length} photos...`);
+    console.info(`[WizardStore] Import de ${pendingPhotoUrls.length} photos...`);
     set({ photoImportStatus: 'importing' });
     
     try {
@@ -592,7 +592,7 @@ export const usePropertyWizardStore = create<WizardState>()(
         throw new Error(result.error || 'Erreur import photos');
       }
       
-      console.log(`[WizardStore] ✅ ${result.imported}/${result.total} photos importées`);
+      console.info(`[WizardStore] ✅ ${result.imported}/${result.total} photos importées`);
       
       // Recharger les photos depuis le serveur
       const photosResponse = await fetch(`/api/properties/${propertyId}/photos`);
@@ -646,7 +646,7 @@ export const usePropertyWizardStore = create<WizardState>()(
     const { history, historyIndex, formData } = get();
 
     if (historyIndex < 0) {
-      console.log('[WizardStore] Undo: rien à annuler');
+      console.info('[WizardStore] Undo: rien à annuler');
       return;
     }
 
@@ -657,7 +657,7 @@ export const usePropertyWizardStore = create<WizardState>()(
 
     // Restaurer l'état précédent
     const previousState = history[historyIndex];
-    console.log('[WizardStore] Undo: restauration de l\'état', historyIndex);
+    console.info('[WizardStore] Undo: restauration de l\'état', historyIndex);
 
     set({
       formData: { ...previousState },
@@ -670,13 +670,13 @@ export const usePropertyWizardStore = create<WizardState>()(
     const { history, historyIndex } = get();
 
     if (historyIndex >= history.length - 1) {
-      console.log('[WizardStore] Redo: rien à refaire');
+      console.info('[WizardStore] Redo: rien à refaire');
       return;
     }
 
     // Restaurer l'état suivant
     const nextState = history[historyIndex + 1];
-    console.log('[WizardStore] Redo: restauration de l\'état', historyIndex + 1);
+    console.info('[WizardStore] Redo: restauration de l\'état', historyIndex + 1);
 
     set({
       formData: { ...nextState },
@@ -695,7 +695,7 @@ export const usePropertyWizardStore = create<WizardState>()(
   },
 
   clearHistory: () => {
-    console.log('[WizardStore] Effacement de l\'historique');
+    console.info('[WizardStore] Effacement de l\'historique');
     set({ history: [], historyIndex: -1 });
   }
     }),

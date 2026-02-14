@@ -1,5 +1,5 @@
 "use client";
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
  * Page de création d'un nouveau bail de parking
@@ -18,16 +18,27 @@ export default function NewParkingLeasePage() {
 
   const handleComplete = async (lease: Partial<ParkingLease>) => {
     try {
-      // TODO: Sauvegarder le bail en base de données
-      console.log("Bail parking créé:", lease);
+      // Sauvegarder le bail parking via l'API
+      const response = await fetch("/api/leases/parking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(lease),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || "Erreur lors de la création du bail parking");
+      }
+      
+      const result = await response.json();
       
       toast({
-        title: "Contrat créé ! 🎉",
+        title: "Contrat créé !",
         description: "Votre contrat de location de parking a été généré avec succès.",
       });
       
-      // Rediriger vers la liste des baux
-      router.push("/owner/leases");
+      // Rediriger vers le détail du bail créé ou la liste
+      router.push(result.id ? `/owner/leases/${result.id}` : "/owner/leases");
     } catch (error) {
       console.error("Erreur création bail:", error);
       toast({

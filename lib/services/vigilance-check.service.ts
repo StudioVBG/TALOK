@@ -192,18 +192,32 @@ async function calculateYearlyTotal(
   const startOfYear = `${currentYear}-01-01`;
   
   // Récupérer les work_orders payés de l'année
+  // 1. Récupérer les propriétés du propriétaire
+  const { data: ownerProperties } = await supabase
+    .from('properties')
+    .select('id')
+    .eq('owner_id', ownerId);
+
+  if (!ownerProperties || ownerProperties.length === 0) return 0;
+
+  const propertyIds = ownerProperties.map(p => p.id);
+
+  // 2. Récupérer les tickets de ces propriétés
+  const { data: ownerTickets } = await supabase
+    .from('tickets')
+    .select('id')
+    .in('property_id', propertyIds);
+
+  if (!ownerTickets || ownerTickets.length === 0) return 0;
+
+  const ticketIds = ownerTickets.map(t => t.id);
+
+  // 3. Récupérer les work orders du prestataire liées à ces tickets
   const { data: workOrders, error } = await supabase
     .from('work_orders')
-    .select(`
-      cout_final,
-      tickets!inner (
-        properties!inner (
-          owner_id
-        )
-      )
-    `)
+    .select('cout_final')
     .eq('provider_id', providerId)
-    .eq('tickets.properties.owner_id', ownerId)
+    .in('ticket_id', ticketIds)
     .gte('created_at', startOfYear)
     .in('statut', ['fully_paid', 'closed']);
   
@@ -212,7 +226,7 @@ async function calculateYearlyTotal(
     return 0;
   }
   
-  return workOrders.reduce((sum, wo) => sum + (wo.cout_final || 0), 0);
+  return workOrders.reduce((sum, wo: any) => sum + (wo.cout_final || 0), 0);
 }
 
 /**

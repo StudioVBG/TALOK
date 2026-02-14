@@ -1,10 +1,11 @@
 "use client";
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { ticketSchema } from "@/lib/validations";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,13 +117,40 @@ export default function NewOwnerTicketPage() {
     fetchProperties();
   }, []);
 
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationErrors({});
     
-    if (!form.titre || !form.description || !form.property_id || !form.categorie) {
+    // Validation Zod
+    const result = ticketSchema.safeParse({
+      property_id: form.property_id,
+      titre: form.titre,
+      description: form.description,
+      priorite: form.priorite,
+    });
+
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) errors[String(err.path[0])] = err.message;
+      });
+      setValidationErrors(errors);
+      
+      const firstError = result.error.errors[0]?.message || "Veuillez corriger les erreurs";
+      toast({
+        title: "Validation",
+        description: firstError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!form.categorie) {
       toast({
         title: "Champs requis",
-        description: "Veuillez remplir tous les champs obligatoires (bien, titre, catégorie, description).",
+        description: "Veuillez sélectionner une catégorie.",
         variant: "destructive",
       });
       return;

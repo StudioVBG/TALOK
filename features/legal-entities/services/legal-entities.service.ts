@@ -181,19 +181,26 @@ export async function createLegalEntity(
  */
 export async function updateLegalEntity(
   entityId: string,
-  data: UpdateLegalEntityDTO
+  data: UpdateLegalEntityDTO,
+  ownerProfileId?: string
 ): Promise<LegalEntity> {
   const supabase = await createClient();
 
-  const { data: entity, error } = await supabase
+  // Construire la requête avec filtre ownership si fourni
+  let query = supabase
     .from("legal_entities")
     .update({
       ...data,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", entityId)
-    .select()
-    .single();
+    .eq("id", entityId);
+
+  // Sécurité : filtrer par owner_profile_id si fourni
+  if (ownerProfileId) {
+    query = query.eq("owner_profile_id", ownerProfileId);
+  }
+
+  const { data: entity, error } = await query.select().single();
 
   if (error) {
     console.error("Error updating legal entity:", error);
@@ -231,7 +238,7 @@ export async function deactivateLegalEntity(
  * Supprime définitivement une entité juridique
  * (uniquement si pas de biens associés)
  */
-export async function deleteLegalEntity(entityId: string): Promise<void> {
+export async function deleteLegalEntity(entityId: string, ownerProfileId?: string): Promise<void> {
   const supabase = await createClient();
 
   // Vérifier qu'il n'y a pas de biens associés
@@ -246,10 +253,17 @@ export async function deleteLegalEntity(entityId: string): Promise<void> {
     );
   }
 
-  const { error } = await supabase
+  let query = supabase
     .from("legal_entities")
     .delete()
     .eq("id", entityId);
+
+  // Sécurité : filtrer par owner_profile_id si fourni
+  if (ownerProfileId) {
+    query = query.eq("owner_profile_id", ownerProfileId);
+  }
+
+  const { error } = await query;
 
   if (error) {
     throw new Error(`Erreur lors de la suppression: ${error.message}`);

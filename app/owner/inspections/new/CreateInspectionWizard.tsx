@@ -587,7 +587,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
               setUploadDetails(prev => `${prev} (tentative ${attempt + 1}/${maxRetries + 1})`);
 
               // Log structuré pour monitoring
-              console.log(JSON.stringify({
+              console.info(JSON.stringify({
                 event: "edl_wizard_retry",
                 url: url.replace(/\/api\//, ""),
                 attempt: attempt + 1,
@@ -634,7 +634,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
 
             // Log succès après retry
             if (attempt > 0) {
-              console.log(JSON.stringify({
+              console.info(JSON.stringify({
                 event: "edl_wizard_retry_success",
                 url: url.replace(/\/api\//, ""),
                 attempts: attempt + 1,
@@ -846,7 +846,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
               maxSizeBytes: 4 * 1024 * 1024, // 4 Mo max pour laisser une marge sous la limite de 5 Mo
             });
             if (wasCompressed) {
-              console.log(`Photo compressée: ${photo.name} (${(photo.size / 1024 / 1024).toFixed(2)} Mo → ${(file.size / 1024 / 1024).toFixed(2)} Mo)`);
+              console.info(`Photo compressée: ${photo.name} (${(photo.size / 1024 / 1024).toFixed(2)} Mo → ${(file.size / 1024 / 1024).toFixed(2)} Mo)`);
             }
             return file;
           } catch (e) {

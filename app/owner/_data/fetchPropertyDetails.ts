@@ -12,8 +12,6 @@ export interface PropertyDetails {
 }
 
 export async function fetchPropertyDetails(propertyId: string, ownerId: string): Promise<PropertyDetails | null> {
-  console.log(`[fetchPropertyDetails] Chargement: Property=${propertyId}, Owner=${ownerId}`);
-
   // Utiliser supabaseAdmin pour contourner RLS, MAIS on filtre par owner_id à la source
   // C'est plus sécurisé que de vérifier après le fetch
   const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
@@ -39,8 +37,6 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
     console.warn(`[fetchPropertyDetails] Property not found or access denied: id=${propertyId}`);
     return null;
   }
-
-  console.log(`[fetchPropertyDetails] ✅ Property found with owner verification`)
 
   // 2. Récupérer les données liées en parallèle
   const [

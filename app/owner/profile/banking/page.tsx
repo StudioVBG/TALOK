@@ -1,5 +1,5 @@
 "use client";
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect } from "react";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, CreditCard, Building2, Shield, CheckCircle2, ArrowLeft } from "lucide-react";
 import { ownerProfilesService } from "@/features/profiles/services/owner-profiles.service";
+import { ownerProfileSchema } from "@/lib/validations";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -53,14 +54,48 @@ export default function OwnerBankingPage() {
     }
   };
 
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationErrors({});
     setSaving(true);
 
     try {
+      // Nettoyer l'IBAN (retirer les espaces du formatage)
+      const cleanIban = formData.iban.replace(/\s/g, "");
+      const cleanBic = formData.bic.replace(/\s/g, "").toUpperCase();
+
+      // Validation Zod avant envoi
+      const bankingSchema = ownerProfileSchema.pick({
+        iban: true,
+        bic: true,
+        titulaire_compte: true,
+        nom_banque: true,
+      });
+
+      const result = bankingSchema.safeParse({
+        iban: cleanIban || null,
+        bic: cleanBic || null,
+        titulaire_compte: formData.titulaire_compte || null,
+        nom_banque: formData.nom_banque || null,
+      });
+
+      if (!result.success) {
+        const errors: Record<string, string> = {};
+        result.error.errors.forEach((err) => {
+          if (err.path[0]) {
+            errors[String(err.path[0])] = err.message;
+          }
+        });
+        setValidationErrors(errors);
+        setSaving(false);
+        return;
+      }
+
       await ownerProfilesService.updateMyOwnerProfile({
-        iban: formData.iban || null,
-        bic: formData.bic || null,
+        iban: cleanIban || null,
+        bic: cleanBic || null,
         titulaire_compte: formData.titulaire_compte || null,
         nom_banque: formData.nom_banque || null,
       } as any);
@@ -169,9 +204,13 @@ export default function OwnerBankingPage() {
                     <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Format : FR76 XXXX XXXX XXXX XXXX XXXX XXX
-                </p>
+                {validationErrors.iban ? (
+                  <p className="text-xs text-red-500 font-medium">{validationErrors.iban}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Format : FR76 XXXX XXXX XXXX XXXX XXXX XXX
+                  </p>
+                )}
               </div>
 
               {/* BIC */}
@@ -184,12 +223,16 @@ export default function OwnerBankingPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, bic: e.target.value.toUpperCase() })
                   }
-                  className="font-mono"
+                  className={`font-mono ${validationErrors.bic ? "border-red-500" : ""}`}
                   maxLength={11}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Code d'identification de votre banque (8 ou 11 caractères)
-                </p>
+                {validationErrors.bic ? (
+                  <p className="text-xs text-red-500 font-medium">{validationErrors.bic}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Code d'identification de votre banque (8 ou 11 caractères)
+                  </p>
+                )}
               </div>
 
               {/* Titulaire */}

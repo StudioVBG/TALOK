@@ -324,12 +324,42 @@ export default function OwnerTaxesPage() {
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     toast({
       title: "Export en cours",
-      description: "Le récapitulatif fiscal va être téléchargé",
+      description: "Génération du récapitulatif fiscal...",
     });
-    // Ici, implémenter la génération PDF
+    try {
+      const response = await fetch("/api/exports/tax-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          year: selectedYear,
+          properties: properties.map(p => ({
+            name: p.name,
+            address: p.address,
+            regime: p.regime,
+            rental_income: p.rental_income,
+            total_charges: p.interest_charges + p.insurance + p.management_fees + p.works + p.property_tax + p.other_charges,
+          })),
+          summary,
+        }),
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `recapitulatif-fiscal-${selectedYear}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: "Export terminé", description: "Le fichier a été téléchargé." });
+      } else {
+        toast({ title: "Export non disponible", description: "La génération PDF sera disponible prochainement.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Export non disponible", description: "La génération PDF sera disponible prochainement.", variant: "destructive" });
+    }
   };
 
   const summary = calculateSummary();

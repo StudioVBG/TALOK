@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Data fetching pour les tickets (Owner)
  * Server-side uniquement
@@ -6,6 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import type { TicketRow, PropertyRow, ProfileRow } from "@/lib/supabase/database.types";
 
 export interface TicketRow {
   id: string;
@@ -62,7 +62,8 @@ export async function fetchTickets(
     .eq("user_id", user.id)
     .single();
 
-  if (!profile || profile.role !== "owner" || profile.id !== options.ownerId) {
+  const profileData = profile as ProfileRow | null;
+  if (!profileData || profileData.role !== "owner" || profileData.id !== options.ownerId) {
     throw new Error("Accès non autorisé");
   }
 
@@ -122,7 +123,7 @@ export async function fetchTickets(
   }
 
   return {
-    tickets: (tickets as TicketRow[]) || [],
+    tickets: (tickets || []) as TicketRow[],
     total: count || 0,
     page: Math.floor(offset / limit) + 1,
     limit,
@@ -155,11 +156,15 @@ export async function fetchTicket(
     .eq("user_id", user.id)
     .single();
 
-  if (!profile || profile.role !== "owner" || profile.id !== ownerId) {
+  const profileData = profile as ProfileRow | null;
+  if (!profileData || profileData.role !== "owner" || profileData.id !== ownerId) {
     throw new Error("Accès non autorisé");
   }
 
   // Vérifier que le ticket appartient à une propriété du propriétaire
+  type TicketWithProperty = TicketRow & {
+    properties: PropertyRow;
+  };
   const { data: ticket, error: ticketError } = await supabase
     .from("tickets")
     .select("*, properties!inner(owner_id)")
@@ -173,14 +178,16 @@ export async function fetchTicket(
     throw new Error(`Erreur lors de la récupération du ticket: ${ticketError.message}`);
   }
 
+  const ticketData = ticket as TicketWithProperty;
+
   // Vérifier que la propriété appartient au propriétaire
-  const property = (ticket as any).properties;
+  const property = ticketData.properties;
   if (!property || property.owner_id !== ownerId) {
     throw new Error("Accès non autorisé");
   }
 
   // Retourner le ticket sans la relation
-  const { properties, ...ticketData } = ticket as any;
-  return ticketData as TicketRow;
+  const { properties: _, ...ticketWithoutProperty } = ticketData;
+  return ticketWithoutProperty as TicketRow;
 }
 

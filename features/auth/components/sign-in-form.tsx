@@ -92,19 +92,14 @@ export function SignInForm() {
     setLoading(true);
 
     try {
-      console.log("[SignIn] Tentative de connexion pour:", formData.email);
-      
       const result = await authService.signIn(formData);
       
       if (!result || !result.user) {
         throw new Error("Aucune donnée utilisateur retournée");
       }
-
-      console.log("[SignIn] Connexion réussie, utilisateur:", result.user.id);
       
       // Vérifier si l'email est confirmé
       if (result.user && !result.user.email_confirmed_at) {
-        console.log("[SignIn] Email non confirmé");
         toast({
           title: "Email non confirmé",
           description: "Veuillez confirmer votre email avant de vous connecter.",
@@ -117,11 +112,8 @@ export function SignInForm() {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Récupérer le profil pour rediriger selon le rôle
-      console.log("[SignIn] Récupération du profil...");
       const profile = await authService.getProfile();
       const profileData = profile as any;
-      
-      console.log("[SignIn] Profil récupéré:", profileData?.role);
       
       if (!profileData) {
         console.warn("[SignIn] Aucun profil trouvé, redirection vers /dashboard");
@@ -150,7 +142,6 @@ export function SignInForm() {
       };
 
       const targetRoute = roleRoutes[profileData?.role] || "/dashboard";
-      console.log(`[SignIn] Redirection vers ${targetRoute} (rôle: ${profileData?.role})`);
       router.push(targetRoute);
       
       router.refresh();

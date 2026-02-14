@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { leaseSchema } from "@/lib/validations";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -745,6 +746,29 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         toast({ title: "Email manquant", description: "Veuillez renseigner l'email du locataire pour l'invitation", variant: "destructive" });
         return;
       }
+    }
+
+    // Validation Zod des données financières et du bail
+    const leaseValidation = leaseSchema.safeParse({
+      property_id: selectedPropertyId,
+      type_bail: selectedType,
+      loyer: Number(loyer),
+      charges_forfaitaires: Number(charges),
+      depot_de_garantie: Number(depot),
+      date_debut: dateDebut,
+      date_fin: dateFin || null,
+      indice_reference: indexationType || null,
+    });
+
+    if (!leaseValidation.success) {
+      const firstErrors = leaseValidation.error.errors.slice(0, 3);
+      const errorMessages = firstErrors.map((e) => `${e.path.join(".")}: ${e.message}`).join("\n");
+      toast({
+        title: "Données invalides",
+        description: errorMessages || "Veuillez vérifier les champs du bail.",
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsSubmitting(true);

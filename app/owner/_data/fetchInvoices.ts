@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Data fetching pour les factures (Owner)
  * Server-side uniquement
@@ -6,6 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import type { InvoiceRow, LeaseRow, PropertyRow, ProfileRow } from "@/lib/supabase/database.types";
 
 export interface InvoiceRow {
   id: string;
@@ -74,7 +74,8 @@ export async function fetchInvoices(
     .eq("user_id", user.id)
     .single();
 
-  if (!profile || profile.role !== "owner" || profile.id !== options.ownerId) {
+  const profileData = profile as ProfileRow | null;
+  if (!profileData || profileData.role !== "owner" || profileData.id !== options.ownerId) {
     throw new Error("Accès non autorisé");
   }
 
@@ -128,7 +129,8 @@ export async function fetchInvoices(
   }
 
   // Récupérer les informations des propriétés séparément pour éviter la récursion RLS
-  const leaseIds = [...new Set((invoices || []).map((inv: any) => inv.lease_id).filter(Boolean))];
+  const invoiceRows = (invoices || []) as InvoiceRow[];
+  const leaseIds = [...new Set(invoiceRows.map((inv) => inv.lease_id).filter(Boolean))];
   
   let propertyMap: Record<string, { adresse_complete: string; ville: string }> = {};
   
@@ -139,7 +141,8 @@ export async function fetchInvoices(
       .in("id", leaseIds);
 
     if (leasesData && leasesData.length > 0) {
-      const propertyIds = [...new Set(leasesData.map((l: any) => l.property_id).filter(Boolean))];
+      const leaseRows = leasesData as LeaseRow[];
+      const propertyIds = [...new Set(leaseRows.map((l) => l.property_id).filter(Boolean))];
       
       const { data: propertiesData } = await supabase
         .from("properties")
@@ -147,17 +150,18 @@ export async function fetchInvoices(
         .in("id", propertyIds);
 
       if (propertiesData) {
+        const propertyRows = propertiesData as PropertyRow[];
         // Créer un map lease_id -> property info
-        const propById = Object.fromEntries(propertiesData.map((p: any) => [p.id, p]));
+        const propById = Object.fromEntries(propertyRows.map((p) => [p.id, p]));
         const leaseToProperty = Object.fromEntries(
-          leasesData.map((l: any) => [l.id, propById[l.property_id]])
+          leaseRows.map((l) => [l.id, propById[l.property_id ?? ""]])
         );
         
         // Enrichir les factures avec les infos de propriété
-        (invoices as any[]).forEach((inv: any) => {
+        invoiceRows.forEach((inv) => {
           const prop = leaseToProperty[inv.lease_id];
           if (prop) {
-            inv.lease = {
+            (inv as InvoiceRow & { lease?: { property?: { adresse_complete: string; ville: string; code_postal: string } } }).lease = {
               property: {
                 adresse_complete: prop.adresse_complete,
                 ville: prop.ville,
@@ -202,7 +206,7 @@ export async function fetchInvoices(
   }
 
   return {
-    invoices: (invoices as any[]) || [],
+    invoices: invoiceRows,
     total: count || 0,
     page: Math.floor(offset / limit) + 1,
     limit,
@@ -238,7 +242,8 @@ export async function fetchInvoice(
     .eq("user_id", user.id)
     .single();
 
-  if (!profile || profile.role !== "owner" || profile.id !== ownerId) {
+  const profileData = profile as ProfileRow | null;
+  if (!profileData || profileData.role !== "owner" || profileData.id !== ownerId) {
     throw new Error("Accès non autorisé");
   }
 
@@ -270,12 +275,12 @@ export async function fetchInvoice(
         .single();
 
       if (propertyData) {
-        (invoice as any).lease = {
+        (invoice as InvoiceRow & { lease?: { property?: PropertyRow } }).lease = {
           property: propertyData
         };
       }
     }
   }
 
-  return invoice as any;
+  return invoice as InvoiceRow | null;
 }

@@ -173,11 +173,29 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
       limit: limits.max_leases,
       percentage: getUsagePercentage(used.leases, limits.max_leases),
     },
-    users: {
-      used: 1, // TODO: compter les vrais utilisateurs via team_members
-      limit: plan.limits.max_users,
-      percentage: getUsagePercentage(1, plan.limits.max_users),
-    },
+    users: await (async () => {
+      // Compter les vrais utilisateurs via team_members
+      let userCount = 1; // Le propriétaire compte toujours comme 1
+      if (profileId) {
+        try {
+          const { createClient } = await import("@/lib/supabase/server");
+          const supabase = await createClient();
+          const { count } = await supabase
+            .from("team_members")
+            .select("id", { count: "exact", head: true })
+            .eq("owner_id", profileId)
+            .eq("status", "active");
+          userCount = 1 + (count || 0); // propriétaire + membres actifs
+        } catch {
+          // Fallback silencieux à 1 si la requête échoue
+        }
+      }
+      return {
+        used: userCount,
+        limit: plan.limits.max_users,
+        percentage: getUsagePercentage(userCount, plan.limits.max_users),
+      };
+    })(),
     signatures: signatureUsage,
     storage: {
       used: Math.round(used.storage),
@@ -206,8 +224,9 @@ export async function userHasFeature(userId: string, feature: string): Promise<b
   const featureValue = features[feature];
   
   // Une feature est activée si elle est true ou a une valeur non nulle/non-"none"
+  // Note: 'basic' IS considered enabled (it's a limited but active tier)
   if (featureValue === true) return true;
-  if (typeof featureValue === 'string' && featureValue !== 'none' && featureValue !== 'basic') return true;
+  if (typeof featureValue === 'string' && featureValue !== 'none') return true;
   if (typeof featureValue === 'number' && featureValue > 0) return true;
   
   return false;
