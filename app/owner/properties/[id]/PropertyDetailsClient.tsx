@@ -1154,12 +1154,13 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                 <div className="text-center space-y-4">
                   <Badge variant="outline">Vacant</Badge>
                   <p className="text-sm text-muted-foreground">Aucun locataire actuellement.</p>
-                  <Button asChild className="w-full" variant="default">
-                    <Link href={leaseCta.href}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      {leaseCta.label}
-                    </Link>
-                  </Button>
+                  <Link 
+                    href={leaseCta.href}
+                    className="inline-flex items-center justify-center w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    {leaseCta.label}
+                  </Link>
                   <p className="text-xs text-muted-foreground">{leaseCta.description}</p>
                 </div>
               )}
