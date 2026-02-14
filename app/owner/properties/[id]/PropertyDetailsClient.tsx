@@ -6,7 +6,8 @@ import { useMutationWithToast } from "@/lib/hooks/use-mutation-with-toast";
 import { apiClient } from "@/lib/api-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -546,12 +547,10 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
       {/* Bouton retour */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <Button asChild variant="ghost" className="pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-900 w-fit">
-          <Link href="/owner/properties">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour à la liste
-          </Link>
-        </Button>
+        <Link href="/owner/properties" className={cn(buttonVariants({ variant: "ghost" }), "pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-900 w-fit")}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Retour à la liste
+        </Link>
 
         {/* Boutons d'action */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -631,12 +630,10 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     >
                       Plus tard
                     </Button>
-                    <Button asChild className="bg-green-600 hover:bg-green-700 text-white shadow-md gap-2">
-                      <Link href={leaseCta.href}>
-                        <FileText className="h-4 w-4" />
-                        {leaseCta.label}
-                      </Link>
-                    </Button>
+                    <Link href={leaseCta.href} className={cn(buttonVariants({ variant: "default" }), "bg-green-600 hover:bg-green-700 text-white shadow-md gap-2")}>
+                      <FileText className="h-4 w-4" />
+                      {leaseCta.label}
+                    </Link>
                   </div>
                 </div>
                 {/* Mini-stepper visuel */}
@@ -1097,19 +1094,15 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                           Activer le bail maintenant
                         </Button>
                       ) : edlDraft ? (
-                        <Button asChild variant="default" size="sm" className="mt-2 w-full bg-indigo-600 hover:bg-indigo-700">
-                          <Link href={`/owner/inspections/${edlDraft.id}`}>
-                            <FileText className="h-4 w-4 mr-2" />
-                            Continuer l'état des lieux
-                          </Link>
-                        </Button>
+                        <Link href={`/owner/inspections/${edlDraft.id}`} className={cn(buttonVariants({ variant: "default", size: "sm" }), "mt-2 w-full bg-indigo-600 hover:bg-indigo-700")}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Continuer l'état des lieux
+                        </Link>
                       ) : (
-                        <Button asChild variant="default" size="sm" className="mt-2 w-full bg-blue-600 hover:bg-blue-700">
-                          <Link href={`/owner/inspections/new?propertyId=${propertyId}&leaseId=${existingLease.id}`}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Créer l'EDL d'entrée
-                          </Link>
-                        </Button>
+                        <Link href={`/owner/inspections/new?propertyId=${propertyId}&leaseId=${existingLease.id}`} className={cn(buttonVariants({ variant: "default", size: "sm" }), "mt-2 w-full bg-blue-600 hover:bg-blue-700")}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Créer l'EDL d'entrée
+                        </Link>
                       )}
                     </div>
                   )}
@@ -1118,11 +1111,9 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                       <p className="text-sm text-muted-foreground">
                         Signature en cours - En attente des autres parties
                       </p>
-                      <Button asChild variant="outline" size="sm" className="mt-2 w-full">
-                        <Link href={`/owner/leases/${existingLease.id}?tab=preview`}>
-                          Voir les signatures
-                        </Link>
-                      </Button>
+                      <Link href={`/owner/leases/${existingLease.id}?tab=preview`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-2 w-full")}>
+                        Voir les signatures
+                      </Link>
                     </div>
                   )}
                   {isLeasePending && (
@@ -1130,11 +1121,9 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                       <p className="text-sm text-muted-foreground">
                         En attente de signature des parties
                       </p>
-                      <Button asChild variant="outline" size="sm" className="mt-2 w-full">
-                        <Link href={`/owner/leases/${existingLease.id}?tab=preview`}>
-                          Aperçu du bail
-                        </Link>
-                      </Button>
+                      <Link href={`/owner/leases/${existingLease.id}?tab=preview`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-2 w-full")}>
+                        Aperçu du bail
+                      </Link>
                     </div>
                   )}
                   {existingLease.statut === "draft" && (
@@ -1142,11 +1131,9 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                       <p className="text-sm text-muted-foreground">
                         Bail en cours de création
                       </p>
-                      <Button asChild variant="outline" size="sm" className="mt-2 w-full">
-                        <Link href={`/owner/leases/${existingLease.id}`}>
-                          Continuer la création
-                        </Link>
-                      </Button>
+                      <Link href={`/owner/leases/${existingLease.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-2 w-full")}>
+                        Continuer la création
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -1154,10 +1141,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                 <div className="text-center space-y-4">
                   <Badge variant="outline">Vacant</Badge>
                   <p className="text-sm text-muted-foreground">Aucun locataire actuellement.</p>
-                  <Link 
-                    href={leaseCta.href}
-                    className="inline-flex items-center justify-center w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
-                  >
+                  <Link href={leaseCta.href} className={cn(buttonVariants({ variant: "default" }), "w-full")}>
                     <FileText className="h-4 w-4 mr-2" />
                     {leaseCta.label}
                   </Link>
@@ -1222,18 +1206,14 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
               <CardTitle className="text-base">Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button asChild variant="outline" className="w-full justify-start border-blue-200 text-blue-700 hover:bg-blue-50">
-                <Link href={`/owner/properties/${propertyId}/diagnostics`}>
-                  <Shield className="mr-2 h-4 w-4" />
-                  Diagnostics (DDT)
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full justify-start">
-                <Link href={`/owner/documents?property_id=${propertyId}`}>
-                  <FolderOpen className="mr-2 h-4 w-4" />
-                  Gérer les documents
-                </Link>
-              </Button>
+              <Link href={`/owner/properties/${propertyId}/diagnostics`} className={cn(buttonVariants({ variant: "outline" }), "w-full justify-start border-blue-200 text-blue-700 hover:bg-blue-50")}>
+                <Shield className="mr-2 h-4 w-4" />
+                Diagnostics (DDT)
+              </Link>
+              <Link href={`/owner/documents?property_id=${propertyId}`} className={cn(buttonVariants({ variant: "outline" }), "w-full justify-start")}>
+                <FolderOpen className="mr-2 h-4 w-4" />
+                Gérer les documents
+              </Link>
               <Button 
                 variant="outline" 
                 className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
