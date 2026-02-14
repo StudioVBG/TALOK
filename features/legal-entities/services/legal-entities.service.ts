@@ -680,7 +680,7 @@ export async function getEntityFiscalSummary(
     entity,
     totalRent,
     totalCharges,
-    netIncome: totalRent + totalCharges,
+    netIncome: totalRent - totalCharges,
     propertiesCount: propertiesCount ?? 0,
   };
 }

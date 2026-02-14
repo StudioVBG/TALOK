@@ -171,9 +171,11 @@ export default function EditEntityPage() {
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
+      // Utiliser le server action avec validation Zod et vérification ownership
+      const { updateEntity } = await import("../../actions");
 
       const entityPayload = {
+        id: entityId,
         entity_type: formData.entityType || "sci_ir",
         nom: formData.nom,
         forme_juridique: formData.formeJuridique || null,
@@ -190,12 +192,9 @@ export default function EditEntityPage() {
         banque_nom: formData.banqueNom || null,
       };
 
-      const { error } = await supabase
-        .from("legal_entities")
-        .update(entityPayload)
-        .eq("id", entityId);
+      const result = await updateEntity(entityPayload);
 
-      if (error) throw new Error(error.message);
+      if (!result.success) throw new Error(result.error || "Erreur lors de la mise à jour");
 
       // Update store
       updateStoreEntity(entityId, {

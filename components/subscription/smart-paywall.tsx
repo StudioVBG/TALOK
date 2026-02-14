@@ -411,16 +411,16 @@ export function SmartPaywall({
                 {customDescription || `Débloquez ${visual.benefit.toLowerCase()} et bien plus encore avec nos forfaits premium.`}
               </p>
 
-              {/* Prix */}
+              {/* Prix — utilise le plan Starter comme référence */}
               <div className="py-6">
                 <div className="flex items-baseline justify-center gap-1">
                   <span className="text-5xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                    {((PLANS as any).solo.price_monthly / 100).toFixed(0)}€
+                    {(PLANS.starter.price_monthly / 100).toFixed(0)}€
                   </span>
                   <span className="text-slate-500">/mois</span>
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
-                  ou {((PLANS as any).solo.price_yearly / 100).toFixed(0)}€/an (-17%)
+                  ou {(PLANS.starter.price_yearly / 100).toFixed(0)}€/an
                 </p>
               </div>
 
@@ -459,7 +459,7 @@ export function UpgradeTrigger({ className, variant = "prominent" }: UpgradeTrig
   const { currentPlan, usage, loading } = useSubscription();
   const [showUpgrade, setShowUpgrade] = useState(false);
 
-  if (loading || currentPlan === "enterprise") {
+  if (loading || currentPlan.startsWith("enterprise")) {
     return null;
   }
 

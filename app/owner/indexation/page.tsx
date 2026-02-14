@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, CheckCircle, Clock, AlertTriangle } from "lucide-react";
@@ -18,10 +17,11 @@ export const metadata = {
 };
 
 async function fetchIndexations(ownerId: string) {
-  const serviceClient = getServiceClient();
+  // Utiliser le client authentifié (RLS s'applique) au lieu du service client
+  const supabase = await createClient();
 
   // Récupérer toutes les indexations des baux du propriétaire
-  const { data: indexations, error } = await serviceClient
+  const { data: indexations, error } = await supabase
     .from("lease_indexations")
     .select(`
       *,
@@ -46,7 +46,7 @@ async function fetchIndexations(ownerId: string) {
     return [];
   }
 
-  // Filtrer par propriétaire
+  // Filtrer par propriétaire (double sécurité avec RLS)
   return (indexations || []).filter(
     (idx: any) => idx.lease?.property?.owner_id === ownerId
   );

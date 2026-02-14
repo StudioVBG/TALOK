@@ -566,8 +566,8 @@ export async function getSubscriptionStats(): Promise<SubscriptionStats | null> 
   if (error || !subs) return null;
 
   const total_users = subs.length;
-  const paying_users = subs.filter(s => s.plan?.slug !== 'starter' && s.status === 'active').length;
-  const free_users = subs.filter(s => s.plan?.slug === 'starter').length;
+  const paying_users = subs.filter(s => s.plan?.slug !== 'gratuit' && s.status === 'active').length;
+  const free_users = subs.filter(s => s.plan?.slug === 'gratuit').length;
   const trialing_users = subs.filter(s => s.status === 'trialing').length;
   const canceled_users = subs.filter(s => s.status === 'canceled').length;
   

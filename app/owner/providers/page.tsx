@@ -428,7 +428,15 @@ export default function ProvidersMarketplacePage() {
               key={provider.id}
               provider={provider}
               onRequestQuote={handleRequestQuote}
-              onToggleFavorite={(id) => console.log('Toggle favorite:', id)}
+              onToggleFavorite={async (id) => {
+                try {
+                  await fetch(`/api/providers/${id}/favorite`, { method: "POST" });
+                  // Refresh providers list
+                  setProviders(prev => prev.map(p => p.id === id ? { ...p, is_favorite: !p.is_favorite } : p));
+                } catch (error) {
+                  console.error("Erreur toggle favorite:", error);
+                }
+              }}
             />
           ))}
         </div>

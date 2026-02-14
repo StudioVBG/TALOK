@@ -317,9 +317,14 @@ export default function EndOfLeasePage() {
                 <div className="flex gap-3 pt-4 border-t">
                   <Button
                     onClick={async () => {
-                      await endOfLeaseService.acceptDepartureNotice(notice.id);
-                      setNotice({ ...notice, status: "accepted" });
-                      toast({ title: "Préavis accepté" });
+                      try {
+                        await endOfLeaseService.acceptDepartureNotice(notice.id);
+                        setNotice({ ...notice, status: "accepted" });
+                        toast({ title: "Préavis accepté" });
+                      } catch (error) {
+                        console.error("Erreur acceptation préavis:", error);
+                        toast({ title: "Erreur", description: "Impossible d'accepter le préavis. Réessayez.", variant: "destructive" });
+                      }
                     }}
                   >
                     <CheckCircle2 className="h-4 w-4 mr-2" />

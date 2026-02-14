@@ -56,16 +56,16 @@ export function SharedBottomNav({
   const [moreOpen, setMoreOpen] = useState(false);
 
   // Masquer sur certains paths (wizards, formulaires)
-  const defaultHiddenPaths = [
-    '/new',
-    '/edit',
-    '/onboarding',
-    '/wizard',
-  ];
+  // On vérifie que le segment entier correspond (évite de cacher /newsletters qui contient /new)
+  const defaultHiddenSegments = ['/new', '/edit', '/onboarding', '/wizard'];
+  const allHiddenPaths = [...hiddenOnPaths];
 
-  const allHiddenPaths = [...defaultHiddenPaths, ...hiddenOnPaths];
+  const shouldHide = allHiddenPaths.some(path => pathname?.includes(path)) ||
+    defaultHiddenSegments.some(segment => 
+      pathname?.endsWith(segment) || pathname?.includes(segment + '/')  || pathname?.includes(segment + '?')
+    );
 
-  if (allHiddenPaths.some(path => pathname?.includes(path))) {
+  if (shouldHide) {
     return null;
   }
 

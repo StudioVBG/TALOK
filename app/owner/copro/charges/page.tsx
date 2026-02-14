@@ -164,7 +164,7 @@ export default function BailleurChargesPage() {
   }, [units, selectedUnit]);
 
   const currentUnit = units.find(u => u.unit_id === selectedUnit);
-  const recuperablePercentage = currentUnit
+  const recuperablePercentage = currentUnit && currentUnit.current_year_summary.total_copro > 0
     ? (currentUnit.current_year_summary.total_recuperable / currentUnit.current_year_summary.total_copro) * 100
     : 0;
 

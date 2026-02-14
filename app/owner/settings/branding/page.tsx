@@ -55,11 +55,20 @@ export default function OwnerBrandingPage() {
         return;
       }
 
+      // Récupérer le profile_id pour la requête subscription
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      const profileId = profileData?.id || user.id;
+
       // Récupérer l'abonnement pour déterminer le niveau
       const { data: subscription } = await supabase
         .from("subscriptions")
         .select("plan_id, subscription_plans(slug)")
-        .eq("owner_id", user.id)
+        .eq("owner_id", profileId)
         .eq("status", "active")
         .single();
 
@@ -89,13 +98,13 @@ export default function OwnerBrandingPage() {
         setBranding(org.branding || {});
       } else {
         // Créer automatiquement une organisation si l'utilisateur a le droit
-        const { data: profile } = await supabase
+        const { data: profileForName } = await supabase
           .from("profiles")
-          .select("full_name")
+          .select("prenom, nom")
           .eq("user_id", user.id)
           .single();
 
-        const orgName = profile?.full_name || "Mon Entreprise";
+        const orgName = profileForName ? `${profileForName.prenom || ""} ${profileForName.nom || ""}`.trim() || "Mon Entreprise" : "Mon Entreprise";
         const slug = orgName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
         const { data: newOrg, error: createError } = await supabase

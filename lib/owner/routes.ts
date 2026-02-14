@@ -30,8 +30,8 @@ export const ownerPropertyRoutes = {
 export const ownerContractRoutes = {
   list: () => OWNER_ROUTES.contracts.path,
   detail: (id: string) => `${OWNER_ROUTES.contracts.path}/${id}`,
-  new: () => `/leases/new`,
-  newWithProperty: (propertyId: string) => `/leases/new?propertyId=${propertyId}`,
+  new: () => `${OWNER_ROUTES.contracts.path}/new`,
+  newWithProperty: (propertyId: string) => `${OWNER_ROUTES.contracts.path}/new?propertyId=${propertyId}`,
   withFilter: (filters: { property_id?: string; status?: string; search?: string }) => {
     const params = new URLSearchParams();
     if (filters.property_id) params.append("property_id", filters.property_id);
@@ -57,7 +57,7 @@ export const ownerMoneyRoutes = {
     const queryString = params.toString();
     return `${OWNER_ROUTES.money.path}${queryString ? `?${queryString}` : ""}`;
   },
-  invoiceDetail: (id: string) => `/invoices/${id}`,
+  invoiceDetail: (id: string) => `/owner/invoices/${id}`,
 };
 
 /**

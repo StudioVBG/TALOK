@@ -62,7 +62,7 @@ export function CancelModal({ open, onClose, onSuccess }: CancelModalProps) {
 
   const currentPlanConfig = PLANS[currentPlan];
   const reason = CANCEL_REASONS.find((r) => r.id === selectedReason);
-  const lostFeatures = getDowngradeFeatures(currentPlan, "starter");
+  const lostFeatures = getDowngradeFeatures(currentPlan, "gratuit");
 
   const resetAndClose = () => {
     setStep("reason");

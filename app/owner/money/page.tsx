@@ -34,11 +34,14 @@ export default async function OwnerMoneyPage() {
         <div className="p-6 rounded-2xl bg-card border border-border shadow-sm">
           <p className="text-sm font-medium text-muted-foreground">Revenus ce mois</p>
           <p className="text-3xl font-bold text-foreground mt-2">
-            {/* Calcul rapide pour la démo - devrait être fait côté serveur */}
-            {invoices
-              .filter(i => i.statut === 'paid')
-              .reduce((acc, curr) => acc + curr.montant_total, 0)
-              .toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+            {(() => {
+              const now = new Date();
+              const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+              return invoices
+                .filter(i => i.statut === 'paid' && (i.periode?.startsWith(currentMonth) || i.date_paiement?.startsWith(currentMonth)))
+                .reduce((acc, curr) => acc + (curr.montant_total || 0), 0)
+                .toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+            })()}
           </p>
         </div>
         {/* ... Autres KPIs ... */}

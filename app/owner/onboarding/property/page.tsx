@@ -81,7 +81,7 @@ export default function FirstPropertyPage() {
 
       // Créer la propriété (owner_id est récupéré automatiquement par le service)
       const property = await propertiesService.createProperty({
-        type: validated.type === "immeuble" ? "appartement" : validated.type,
+        type: validated.type,
         adresse_complete: validated.adresse_complete,
         code_postal: validated.code_postal,
         ville: validated.ville,

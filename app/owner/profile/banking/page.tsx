@@ -60,6 +60,9 @@ export default function OwnerBankingPage() {
     try {
       await ownerProfilesService.updateMyOwnerProfile({
         iban: formData.iban || null,
+        bic: formData.bic || null,
+        titulaire_compte: formData.titulaire_compte || null,
+        nom_banque: formData.nom_banque || null,
       } as any);
 
       toast({

@@ -43,7 +43,7 @@ export function UsageLimitBanner({
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   const label = RESOURCE_LABELS[resource];
-  const limitKey = resource === "signatures" ? "max_signatures_monthly" : `max_${resource}`;
+  const limitKey = resource === "signatures" ? "signatures_monthly_quota" : `max_${resource}`;
   const limit = (PLANS[currentPlan].limits as unknown as Record<string, number>)[limitKey] as number;
 
   // Ne pas afficher si en dessous du seuil ou si illimité
@@ -261,7 +261,7 @@ export function UsageMeter({
   const { currentPlan } = useSubscription();
   const { remaining, percentage, isAtLimit } = useUsageLimit(resource);
   const label = RESOURCE_LABELS[resource];
-  const limitKey = resource === "signatures" ? "max_signatures_monthly" : `max_${resource}`;
+  const limitKey = resource === "signatures" ? "signatures_monthly_quota" : `max_${resource}`;
   const limit = (PLANS[currentPlan].limits as unknown as Record<string, number>)[limitKey] as number;
 
   if (limit === -1) {

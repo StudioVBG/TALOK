@@ -283,16 +283,45 @@ export default function OwnerTaxesPage() {
     };
   };
 
-  const handleUpdateProperty = (updatedProperty: PropertyTaxData) => {
+  const handleUpdateProperty = async (updatedProperty: PropertyTaxData) => {
+    // Mettre à jour l'état local immédiatement pour l'UX
     setProperties(properties.map(p => 
       p.id === updatedProperty.id ? updatedProperty : p
     ));
     setDialogOpen(false);
     setEditingProperty(null);
-    toast({
-      title: "Données mises à jour",
-      description: "Les informations fiscales ont été enregistrées",
-    });
+
+    try {
+      // Sauvegarder le régime fiscal sur le bail actif en base de données
+      const { data: leases } = await supabase
+        .from("leases")
+        .select("id")
+        .eq("property_id", updatedProperty.id)
+        .eq("statut", "active")
+        .limit(1);
+
+      if (leases && leases.length > 0) {
+        await supabase
+          .from("leases")
+          .update({
+            tax_regime: updatedProperty.regime,
+            lmnp_status: updatedProperty.is_furnished ? updatedProperty.lmnp_status : null,
+          })
+          .eq("id", leases[0].id);
+      }
+
+      toast({
+        title: "Données mises à jour",
+        description: "Les informations fiscales ont été enregistrées en base de données.",
+      });
+    } catch (error) {
+      console.error("Erreur sauvegarde fiscale:", error);
+      toast({
+        title: "Erreur",
+        description: "Les données ont été mises à jour localement mais la sauvegarde en base a échoué.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleExportPDF = () => {
@@ -611,7 +640,10 @@ export default function OwnerTaxesPage() {
                           <p className="text-sm text-muted-foreground">{property.address}</p>
                         </div>
                         <Badge variant="outline">
-                          {property.regime === "micro_foncier" ? "Micro-foncier" : "Réel"}
+                          {property.regime === "micro_foncier" ? "Micro-foncier" 
+                            : property.regime === "micro_bic" ? "Micro-BIC"
+                            : property.regime === "reel_bic" ? "Réel BIC"
+                            : "Réel"}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-sm">
@@ -663,7 +695,10 @@ export default function OwnerTaxesPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {property.regime === "micro_foncier" ? "Micro-foncier" : "Réel"}
+                            {property.regime === "micro_foncier" ? "Micro-foncier" 
+                              : property.regime === "micro_bic" ? "Micro-BIC"
+                              : property.regime === "reel_bic" ? "Réel BIC"
+                              : "Réel"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">

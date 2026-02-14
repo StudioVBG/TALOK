@@ -83,11 +83,17 @@ async function fetchAnalyticsData(ownerId: string): Promise<AnalyticsData> {
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
   
-  const { data: invoices } = await supabase
-    .from("invoices")
-    .select("id, montant_total, statut, periode, date_paiement, created_at, lease_id")
-    .gte("created_at", oneYearAgo.toISOString())
-    .order("created_at", { ascending: true });
+  // Récupérer les IDs des baux de ce propriétaire pour filtrer les factures
+  const propertyIds = (properties || []).map((p: any) => p.id);
+  
+  const { data: invoices } = propertyIds.length > 0
+    ? await supabase
+        .from("invoices")
+        .select("id, montant_total, statut, periode, date_paiement, created_at, lease_id")
+        .eq("owner_id", ownerId)
+        .gte("created_at", oneYearAgo.toISOString())
+        .order("created_at", { ascending: true })
+    : { data: [] };
 
   // Calculs
   const propertiesData = properties || [];

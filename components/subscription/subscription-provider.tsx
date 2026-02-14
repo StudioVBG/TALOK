@@ -238,7 +238,9 @@ export function SubscriptionProvider({
       if (subscription?.status && !["active", "trialing"].includes(subscription.status)) {
         return false;
       }
-      return planConfig.features[feature] === true;
+      const featureValue = planConfig.features[feature];
+      // Feature is enabled if true, or if it has a non-"none" string value (e.g. 'basic', 'advanced')
+      return featureValue === true || (typeof featureValue === "string" && featureValue !== "none");
     },
     [subscription, planConfig]
   );
@@ -249,7 +251,7 @@ export function SubscriptionProvider({
 
   const getLimitForResource = useCallback(
     (resource: "properties" | "leases" | "users" | "signatures"): number => {
-      const limitKey = resource === "signatures" ? "max_signatures_monthly" : `max_${resource}`;
+      const limitKey = resource === "signatures" ? "signatures_monthly_quota" : `max_${resource}`;
       return (planConfig.limits as unknown as Record<string, number>)[limitKey] ?? 0;
     },
     [planConfig]
@@ -327,7 +329,7 @@ export function SubscriptionProvider({
   );
 
   const isSuspended = useMemo(
-    () => subscription?.status === ("suspended" as any),
+    () => subscription?.status === "paused" || subscription?.status === ("suspended" as any),
     [subscription]
   );
 

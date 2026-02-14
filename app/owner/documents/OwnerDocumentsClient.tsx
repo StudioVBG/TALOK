@@ -228,6 +228,11 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
     });
   }
 
+  // Filtre par statut
+  if (statusFilter && statusFilter !== "all") {
+    filteredDocuments = filteredDocuments.filter((doc: any) => doc.statut === statusFilter || doc.status === statusFilter);
+  }
+
   if (searchQuery) {
     filteredDocuments = filteredDocuments.filter((doc: any) =>
       (doc.type?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||

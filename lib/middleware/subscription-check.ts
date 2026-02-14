@@ -99,11 +99,12 @@ export async function withSubscriptionLimit(
         max = plan.max_documents_gb ?? 0.1; // 100 Mo pour gratuit
         break;
       case "signatures":
-        // Compter les signatures du mois en cours
+        // Compter les signatures du mois en cours pour CE propriétaire
         const currentMonth = new Date().toISOString().slice(0, 7);
         const { count: sigCount } = await serviceClient
           .from("signature_requests")
           .select("*", { count: "exact", head: true })
+          .eq("owner_id", ownerId)
           .gte("created_at", `${currentMonth}-01`)
           .neq("status", "cancelled");
         current = sigCount || 0;

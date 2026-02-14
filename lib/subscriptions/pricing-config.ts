@@ -319,7 +319,7 @@ export const PLAN_LIMITS = {
     max_properties: 50,
     max_leases: -1, // Illimité
     max_tenants: -1,
-    max_documents_gb: 20,
+    max_documents_gb: 30, // Aligné avec plans.ts (30 Go)
     max_users: 5,
   },
   // Tiers Enterprise

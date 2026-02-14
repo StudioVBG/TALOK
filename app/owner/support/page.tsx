@@ -49,7 +49,38 @@ const SERVICES = [
 
 export default function OwnerSupportPage() {
   const [selectedService, setSelectedService] = useState<string | null>(null);
-  const [requestHistory] = useState<any[]>([]);
+  const [requestHistory, setRequestHistory] = useState<any[]>([]);
+  const [subject, setSubject] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmitRequest = async () => {
+    if (!selectedService || !subject.trim()) return;
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/support/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          service: selectedService,
+          subject: subject.trim(),
+          description: description.trim(),
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setRequestHistory((prev) => [data.request || { id: Date.now(), subject, description, status: "open", created_at: new Date().toISOString() }, ...prev]);
+        setSelectedService(null);
+        setSubject("");
+        setDescription("");
+        // Toast de succès géré via le composant
+      }
+    } catch (error) {
+      console.error("Erreur envoi demande support:", error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
@@ -135,17 +166,28 @@ export default function OwnerSupportPage() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">Sujet</label>
-                  <Input placeholder="Sujet de votre demande" />
+                  <Input 
+                    placeholder="Sujet de votre demande" 
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-2 block">Description</label>
                   <Textarea
                     placeholder="Décrivez votre besoin en détail..."
                     rows={5}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button>Envoyer la demande</Button>
+                  <Button 
+                    onClick={handleSubmitRequest} 
+                    disabled={submitting || !subject.trim()}
+                  >
+                    {submitting ? "Envoi en cours..." : "Envoyer la demande"}
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => setSelectedService(null)}
