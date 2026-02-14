@@ -25,12 +25,15 @@ export default function RoleChoicePage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
-  const [propertyCode, setPropertyCode] = useState("");
   const [selectedRole, setSelectedRole] = useState<"owner" | "tenant" | "provider" | "guarantor" | null>(null);
 
   // Vérifier si on a un token d'invitation (rôle verrouillé)
   const inviteToken = searchParams.get("invite");
   const lockedRole = searchParams.get("role");
+
+  // Pré-remplir le code logement si transmis depuis /rejoindre-logement
+  const codeFromUrl = searchParams.get("code");
+  const [propertyCode, setPropertyCode] = useState(codeFromUrl || "");
 
   useEffect(() => {
     // Si on a un token d'invitation, on peut sauter cette étape

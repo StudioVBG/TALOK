@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -43,10 +42,16 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (password.length < 8) {
+    // Mêmes règles que l'inscription : 12 chars min + complexité
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
+
+    if (password.length < 12 || !hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
       toast({
-        title: "Mot de passe trop court",
-        description: "Utilisez au moins 8 caractères.",
+        title: "Mot de passe trop faible",
+        description: "12 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial.",
         variant: "destructive",
       });
       return;

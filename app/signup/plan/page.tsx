@@ -74,7 +74,7 @@ export default function SignupPlanPage() {
         
         // Seuls les propriétaires choisissent un forfait
         if (role !== "owner") {
-          router.push(`/app/${role}/onboarding/profile`);
+          router.push(`/${role}/onboarding/profile`);
           return;
         }
       } catch (error) {

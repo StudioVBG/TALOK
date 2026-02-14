@@ -8,6 +8,8 @@ export const runtime = 'nodejs';
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServerProfile } from "@/lib/helpers/auth-helper";
+import { getRoleDashboardUrl, COPRO_ROLES } from "@/lib/helpers/role-redirects";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import Link from "next/link";
@@ -25,20 +27,7 @@ const navigation = [
   { name: "Signalements", href: "/copro/tickets", icon: MessageSquare },
 ];
 
-// Rôles copropriétaires autorisés
-// Inclut le rôle DB "coproprietaire" + les sous-rôles métier éventuels
-const COPRO_ROLES = [
-  "coproprietaire",
-  "coproprietaire_occupant",
-  "coproprietaire_bailleur",
-  "coproprietaire_nu",
-  "usufruitier",
-  "president_cs",
-  "conseil_syndical",
-  "syndic",
-  "admin",
-  "platform_admin",
-];
+// COPRO_ROLES importé depuis lib/helpers/role-redirects.ts
 
 /**
  * Layout Copropriétaire - Server Component
@@ -62,43 +51,36 @@ export default async function CoproLayout({
     redirect("/auth/signin?redirect=/copro/dashboard");
   }
 
-  // 2. Récupérer le profil avec le rôle
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, role, prenom, nom")
-    .eq("user_id", user.id)
-    .single();
+  // 2. Récupérer le profil (avec fallback service role en cas de récursion RLS)
+  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null }>(
+    user.id,
+    "id, role, prenom, nom"
+  );
 
-  if (profileError || !profile) {
+  if (!profile) {
     redirect("/auth/signin");
   }
 
   // 3. Vérifier le rôle copropriétaire
-  if (!COPRO_ROLES.includes(profile.role)) {
-    // Rediriger vers le bon dashboard selon le rôle
-    const roleRedirects: Record<string, string> = {
-      owner: "/owner/dashboard",
-      tenant: "/tenant/dashboard",
-      provider: "/provider/dashboard",
-    };
-    redirect(roleRedirects[profile.role] || "/dashboard");
+  if (!COPRO_ROLES.includes(profile.role as typeof COPRO_ROLES[number])) {
+    redirect(getRoleDashboardUrl(profile.role));
   }
 
   // 4. Rendre le layout avec la sidebar
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="min-h-screen bg-gradient-to-br from-background via-violet-50/10 to-background dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
         {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />
 
         <div className="flex">
           {/* Sidebar Desktop */}
           <aside
-            className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0"
+            className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0"
             role="navigation"
             aria-label="Navigation principale copropriétaire"
           >
-            <div className="flex flex-col flex-grow pt-5 overflow-y-auto bg-slate-900/80 backdrop-blur-xl border-r border-white/10">
+            <div className="flex flex-col flex-grow pt-5 overflow-y-auto bg-card/80 backdrop-blur-xl border-r border-border/50">
               {/* Logo / Titre */}
               <div className="flex items-center flex-shrink-0 px-4 mb-6">
                 <div className="flex items-center gap-3">
@@ -109,10 +91,10 @@ export default async function CoproLayout({
                     <Building2 className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-lg font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
+                    <h1 className="text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                       Mon Espace
                     </h1>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       Copropriétaire
                     </p>
                   </div>
@@ -125,11 +107,11 @@ export default async function CoproLayout({
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-slate-300 hover:bg-white/5 hover:text-white"
+                    className="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                     aria-label={item.name}
                   >
                     <item.icon
-                      className="mr-3 h-5 w-5 flex-shrink-0 text-slate-400 group-hover:text-violet-400 transition-colors"
+                      className="mr-3 h-5 w-5 flex-shrink-0 text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors"
                       aria-hidden="true"
                     />
                     {item.name}
@@ -156,7 +138,7 @@ export default async function CoproLayout({
               )}
 
               {/* Footer avec profil */}
-              <div className="flex-shrink-0 p-4 border-t border-white/10">
+              <div className="flex-shrink-0 p-4 border-t border-border/50">
                 <div className="flex items-center gap-3">
                   <div
                     className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white text-sm font-semibold"
@@ -166,10 +148,10 @@ export default async function CoproLayout({
                     {(profile.nom?.[0] || '').toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {profile.prenom} {profile.nom}
                     </p>
-                    <p className="text-xs text-slate-400 truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       Copropriétaire
                     </p>
                   </div>
@@ -179,7 +161,7 @@ export default async function CoproLayout({
           </aside>
 
           {/* Mobile Header */}
-          <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-white/10 px-4 py-3">
+          <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border/50 px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div
@@ -188,11 +170,11 @@ export default async function CoproLayout({
                 >
                   <Building2 className="w-4 h-4 text-white" />
                 </div>
-                <span className="font-semibold text-white">Mon espace</span>
+                <span className="font-semibold text-foreground">Mon espace</span>
               </div>
               <button
                 type="button"
-                className="p-2 text-slate-400 hover:text-white"
+                className="p-2 text-muted-foreground hover:text-foreground"
                 aria-label="Notifications"
               >
                 <Bell className="w-5 h-5" aria-hidden="true" />
@@ -202,7 +184,7 @@ export default async function CoproLayout({
 
           {/* Main content */}
           <main
-            className="md:pl-64 flex-1 pt-16 md:pt-0"
+            className="lg:pl-64 flex-1 pt-16 lg:pt-0"
             role="main"
             aria-label="Contenu principal"
           >
@@ -211,24 +193,28 @@ export default async function CoproLayout({
 
           {/* Mobile Bottom Navigation */}
           <nav
-            className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-t border-white/10"
+            className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50"
             role="navigation"
             aria-label="Navigation mobile"
           >
-            <div className="flex justify-around py-2">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-violet-400 transition-colors"
-                  aria-label={item.name}
-                >
-                  <item.icon className="w-5 h-5" aria-hidden="true" />
-                  <span className="text-xs">{item.name.slice(0, 8)}</span>
-                </Link>
-              ))}
+            <div className="pb-safe">
+              <div className="grid grid-cols-5 h-14">
+                {navigation.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                    aria-label={item.name}
+                  >
+                    <item.icon className="w-5 h-5" aria-hidden="true" />
+                    <span className="text-[10px] font-medium truncate max-w-[56px]">{item.name.slice(0, 8)}</span>
+                  </Link>
+                ))}
+              </div>
             </div>
           </nav>
+          {/* Spacer pour bottom nav mobile */}
+          <div className="h-14 lg:hidden" aria-hidden="true" />
         </div>
       </div>
     </ErrorBoundary>

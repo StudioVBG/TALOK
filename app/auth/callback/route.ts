@@ -19,9 +19,18 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/auth/signin?error=invalid_code", origin));
     }
 
-    // Vérifier si l'email est confirmé
+    // Vérifier si l'email est confirmé → rediriger vers le parcours onboarding
     if (data.user && !data.user.email_confirmed_at) {
-      return NextResponse.redirect(new URL("/auth/verify-email", origin));
+      // Récupérer le rôle pour garder le contexte d'onboarding
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("user_id", data.user.id as any)
+        .maybeSingle();
+      const roleParam = (p as any)?.role ? `&role=${(p as any).role}` : "";
+      return NextResponse.redirect(
+        new URL(`/signup/verify-email?email=${encodeURIComponent(data.user.email || "")}${roleParam}`, origin)
+      );
     }
 
     // Si l'email est confirmé, rediriger selon le rôle et le statut d'onboarding
@@ -55,20 +64,26 @@ export async function GET(request: Request) {
       }
 
       // Onboarding terminé — rediriger vers le dashboard approprié
-      switch (profileData.role) {
-        case "admin":
-          return NextResponse.redirect(new URL("/admin/dashboard", origin));
-        case "owner":
-          return NextResponse.redirect(new URL("/owner/dashboard", origin));
-        case "tenant":
-          return NextResponse.redirect(new URL("/tenant/dashboard", origin));
-        case "provider":
-          return NextResponse.redirect(new URL("/provider/dashboard", origin));
-        case "guarantor":
-          return NextResponse.redirect(new URL("/guarantor/dashboard", origin));
-        default:
-          return NextResponse.redirect(new URL("/dashboard", origin));
-      }
+      // Utilise un mapping complet pour tous les rôles incluant copro, syndic, agency, platform_admin
+      const roleDashboards: Record<string, string> = {
+        admin: "/admin/dashboard",
+        platform_admin: "/admin/dashboard",
+        owner: "/owner/dashboard",
+        tenant: "/tenant/dashboard",
+        provider: "/provider/dashboard",
+        guarantor: "/guarantor/dashboard",
+        agency: "/agency/dashboard",
+        syndic: "/syndic/dashboard",
+        coproprietaire: "/copro/dashboard",
+        coproprietaire_occupant: "/copro/dashboard",
+        coproprietaire_bailleur: "/copro/dashboard",
+        coproprietaire_nu: "/copro/dashboard",
+        usufruitier: "/copro/dashboard",
+        president_cs: "/copro/dashboard",
+        conseil_syndical: "/copro/dashboard",
+      };
+      const dashUrl = roleDashboards[profileData.role] || "/dashboard";
+      return NextResponse.redirect(new URL(dashUrl, origin));
     }
   }
 

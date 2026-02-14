@@ -23,8 +23,8 @@ const navigation = [
   { name: "Dashboard", href: "/syndic/dashboard", icon: LayoutDashboard },
   { name: "Copropriétés", href: "/syndic/sites", icon: Building2 },
   { name: "Assemblées", href: "/syndic/assemblies", icon: Calendar },
-  { name: "Appels de fonds", href: "/syndic/calls/new", icon: Euro },
-  { name: "Dépenses", href: "/syndic/expenses/new", icon: FileText },
+  { name: "Appels de fonds", href: "/syndic/calls/new", icon: Euro }, // TODO: remplacer par liste quand la page existe
+  { name: "Dépenses", href: "/syndic/expenses/new", icon: FileText }, // TODO: remplacer par liste quand la page existe
   { name: "Invitations", href: "/syndic/invites", icon: UserPlus },
 ];
 
