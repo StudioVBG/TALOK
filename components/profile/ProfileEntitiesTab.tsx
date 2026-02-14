@@ -4,8 +4,10 @@
  * ProfileEntitiesTab — Onglet Entités du profil
  *
  * Affiche les entités juridiques du propriétaire avec liens vers les fiches détaillées.
+ * Auto-déclenche le fetch si les données ne sont pas encore chargées.
  */
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -14,11 +16,11 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useEntityStore } from "@/stores/useEntityStore";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
   particulier: "Personnel",
@@ -38,9 +40,22 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
 };
 
 export function ProfileEntitiesTab() {
-  const { entities, isLoading } = useEntityStore();
+  const { entities, isLoading, fetchEntities, lastFetchedAt } = useEntityStore();
+  const { profile, loading: authLoading } = useAuth();
+  const hasFetched = useRef(false);
 
-  if (isLoading) {
+  // Auto-fetch entities when tab is shown, if not already loaded
+  useEffect(() => {
+    if (authLoading || !profile?.id || hasFetched.current) return;
+
+    const isStale = !lastFetchedAt || Date.now() - lastFetchedAt > 5 * 60 * 1000;
+    if (entities.length === 0 || isStale) {
+      hasFetched.current = true;
+      fetchEntities(profile.id);
+    }
+  }, [authLoading, profile?.id, entities.length, lastFetchedAt, fetchEntities]);
+
+  if (authLoading || isLoading) {
     return (
       <Card>
         <CardContent className="py-8">

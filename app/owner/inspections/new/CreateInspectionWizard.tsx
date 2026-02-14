@@ -137,18 +137,18 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
   });
 
   // Auto-avancer si bail présélectionné (depuis lien direct)
+  // IMPORTANT: ne jamais sauter l'étape 1 (type + date) car scheduledDate est obligatoire
   useEffect(() => {
     if (preselectedLeaseId && initialLease && step === 0) {
+      // Bail + type fournis → avancer vers étape Type/Date (step 1)
+      // On NE saute PAS l'étape date sinon l'API renvoie 400 "Date de planification requise"
+      setStep(1);
       if (preselectedType) {
-        // Bail + type fournis → sauter directement à l'étape Compteurs (step 2)
-        setStep(2);
         toast({
           title: "EDL pré-configuré",
-          description: `${initialLease.property.adresse_complete} — ${preselectedType === "entree" ? "Entrée" : "Sortie"}`,
+          description: `${initialLease.property.adresse_complete} — ${preselectedType === "entree" ? "Entrée" : "Sortie"}. Choisissez la date.`,
         });
       } else {
-        // Bail seul → avancer vers l'étape Type
-        setStep(1);
         toast({
           title: "Bail sélectionné",
           description: `${initialLease.property.adresse_complete} - ${initialLease.tenant_name}`,
@@ -535,6 +535,17 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
 
   const handleSubmit = async () => {
     if (!selectedLease) return;
+
+    // Validation côté client — filet de sécurité avant envoi API
+    if (!scheduledDate) {
+      toast({
+        title: "Date manquante",
+        description: "Veuillez indiquer la date prévue de l'état des lieux.",
+        variant: "destructive",
+      });
+      setStep(1); // Renvoyer vers l'étape date
+      return;
+    }
 
     // Calculer le nombre total d'opérations pour la progression
     const validMeterReadings = meterReadings.filter(m => m.reading.trim() !== "");
