@@ -339,7 +339,10 @@ export function InspectionDetailClient({ data }: Props) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ signature: signatureData.data }),
+        body: JSON.stringify({
+          signature: signatureData.data,
+          metadata: signatureData.metadata,
+        }),
       });
 
       if (!response.ok) {

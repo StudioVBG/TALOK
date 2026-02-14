@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -39,11 +39,7 @@ export async function POST(
     }
 
     // Client Admin pour contourner RLS
-    const supabaseAdmin = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+    const serviceClient = getServiceClient();
 
     const body = await request.json();
     const { signer_profile_id, invited_email } = body;
@@ -51,7 +47,7 @@ export async function POST(
     // ===============================
     // 1. RÉCUPÉRER L'EDL AVEC LE BAIL ET SES SIGNATAIRES
     // ===============================
-    const { data: edl, error: edlError } = await supabaseAdmin
+    const { data: edl, error: edlError } = await serviceClient
       .from("edl")
       .select(`
         *,
@@ -86,7 +82,7 @@ export async function POST(
 
     // Étape 1: Si on a un profile_id explicite, l'utiliser
     if (signer_profile_id) {
-      const { data: profile } = await supabaseAdmin
+      const { data: profile } = await serviceClient
           .from("profiles")
         .select("id, email, prenom, nom, user_id")
           .eq("id", signer_profile_id)
@@ -155,7 +151,7 @@ export async function POST(
     // ===============================
     
     // Chercher une signature EDL existante pour le locataire
-      let { data: existingSig } = await supabaseAdmin
+      let { data: existingSig } = await serviceClient
         .from("edl_signatures")
         .select("*")
         .eq("edl_id", edlId)
@@ -166,7 +162,7 @@ export async function POST(
 
       if (!existingSig) {
       // Créer une nouvelle signature EDL
-        const { data: newSig, error: insertError } = await supabaseAdmin
+        const { data: newSig, error: insertError } = await serviceClient
           .from("edl_signatures")
           .insert({
             edl_id: edlId,
@@ -199,7 +195,7 @@ export async function POST(
         console.log("[EDL Invite] Mise à jour du profile_id manquant:", targetProfileId);
       }
     
-    await supabaseAdmin
+    await serviceClient
       .from("edl_signatures")
         .update(updates)
         .eq("id", existingSig.id);
@@ -210,7 +206,7 @@ export async function POST(
     // ===============================
     // 5. ENVOYER L'EMAIL VIA OUTBOX (service client, non-blocking)
     // ===============================
-    await supabaseAdmin.from("outbox").insert({
+    await serviceClient.from("outbox").insert({
       event_type: "EDL.InvitationSent",
       payload: {
         edl_id: edlId,
@@ -226,7 +222,7 @@ export async function POST(
     // ===============================
     // 6. JOURNALISER (service client, non-blocking)
     // ===============================
-    await supabaseAdmin.from("audit_log").insert({
+    await serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "edl_invitation_sent",
       entity_type: "edl",

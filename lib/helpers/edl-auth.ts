@@ -249,14 +249,20 @@ export async function getUserProfile(
   serviceClient: SupabaseClient,
   userId: string
 ): Promise<{ id: string; role: string } | null> {
+  // FIX: .maybeSingle() au lieu de .single() pour éviter les erreurs quand le profil n'existe pas
   const { data: profile, error } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
 
-  if (error || !profile) {
-    console.error("[getUserProfile] Error:", error);
+  if (error) {
+    console.error("[getUserProfile] Erreur requête profil:", error.message, error.code);
+    return null;
+  }
+
+  if (!profile) {
+    console.warn("[getUserProfile] Pas de profil trouvé pour user_id:", userId.slice(0, 8) + "...");
     return null;
   }
 

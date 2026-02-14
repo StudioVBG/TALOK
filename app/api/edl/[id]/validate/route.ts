@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import {
   verifyEDLAccess,
-  createServiceClient,
   getUserProfile,
 } from "@/lib/helpers/edl-auth";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
@@ -37,7 +37,7 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const serviceClient = createServiceClient();
+    const serviceClient = getServiceClient();
 
     // Récupérer le profil
     const profile = await getUserProfile(serviceClient, user.id);

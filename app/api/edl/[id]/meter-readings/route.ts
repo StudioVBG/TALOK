@@ -19,10 +19,10 @@ import { createEDLMeterReadingSchema, validateMeterPhotoFile } from "@/lib/valid
 import type { MeterType, EDLMeterReading, MeterInfo } from "@/lib/types/edl-meters";
 import {
   verifyEDLAccess,
-  createServiceClient,
   getUserProfile,
   canEditEDL
 } from "@/lib/helpers/edl-auth";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 // ============================================
 // GET - Liste les relevés de compteurs d'un EDL
@@ -59,7 +59,7 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const serviceClient = createServiceClient();
+    const serviceClient = getServiceClient();
 
     // Récupérer le profil
     const profile = await getUserProfile(serviceClient, user.id);
@@ -203,7 +203,7 @@ export async function POST(
       );
     }
 
-    const serviceClient = createServiceClient();
+    const serviceClient = getServiceClient();
 
     // Récupérer le profil
     const profile = await getUserProfile(serviceClient, user.id);

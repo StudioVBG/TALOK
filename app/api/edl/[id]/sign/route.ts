@@ -6,14 +6,20 @@ import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
-import { 
-  verifyEDLAccess, 
-  createServiceClient
-} from "@/lib/helpers/edl-auth";
+import { verifyEDLAccess } from "@/lib/helpers/edl-auth";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 /**
  * POST /api/edl/[id]/sign - Signer un EDL avec Audit Trail
- * SOTA 2026: Utilise le helper centralisé pour la vérification des permissions
+ * SOTA 2026 v3: Résolution de profil robuste, séparée du join tenant_profiles
+ * 
+ * Corrections appliquées :
+ * - Séparation de la résolution de profil et du join tenant_profiles
+ *   (le join ne peut plus faire échouer la résolution)
+ * - .single() → .maybeSingle() pour éviter les crashes
+ * - Service client singleton (getServiceClient) au lieu de createServiceClient
+ * - Gestion d'erreurs exhaustive à chaque étape
+ * - Metadata envoyée par les deux flux (owner + tenant)
  */
 export async function POST(
   request: Request,
@@ -60,10 +66,15 @@ export async function POST(
       );
     }
 
-    const serviceClient = createServiceClient();
+    // Utiliser le service client singleton (plus efficace, cohérent avec le reste du projet)
+    const serviceClient = getServiceClient();
 
     // ===============================
-    // STRATÉGIE DE RÉSOLUTION DU PROFIL (SOTA 2026 - v2)
+    // STRATÉGIE DE RÉSOLUTION DU PROFIL (SOTA 2026 - v3)
+    // ===============================
+    // IMPORTANT: On ne join PAS tenant_profiles ici.
+    // Le join causait des échecs silencieux pour les propriétaires.
+    // On récupère tenant_profiles SÉPARÉMENT après résolution, uniquement si nécessaire.
     // ===============================
     // 1. Chercher par user_id (cas standard)
     // 2. Chercher par email et lier/mettre à jour si nécessaire
@@ -78,25 +89,22 @@ export async function POST(
       prenom: string;
       nom: string;
       role: string;
-      tenant_profile?: { cni_number: string | null }[];
     } | null = null;
 
     // Étape 1: Chercher par user_id (cas le plus courant)
     const { data: profileByUserId, error: step1Error } = await serviceClient
       .from("profiles")
-      .select(`
-        id,
-        prenom,
-        nom,
-        role,
-        tenant_profile:tenant_profiles(cni_number)
-      `)
+      .select("id, prenom, nom, role")
       .eq("user_id", user.id)
       .maybeSingle();
 
+    if (step1Error) {
+      console.warn("[sign-edl] ⚠️ Étape 1: Erreur requête:", step1Error.message, step1Error.code);
+    }
+
     if (profileByUserId) {
       profile = profileByUserId;
-      console.log("[sign-edl] ✅ Étape 1: Profil trouvé par user_id:", profile.id);
+      console.log("[sign-edl] ✅ Étape 1: Profil trouvé par user_id:", profile.id, "role:", profile.role);
     } else {
       console.log("[sign-edl] ℹ️ Étape 1: Pas de profil avec user_id", step1Error?.message || "");
     }
@@ -107,35 +115,36 @@ export async function POST(
 
       const { data: profileByEmail, error: step2Error } = await serviceClient
         .from("profiles")
-        .select(`
-          id,
-          prenom,
-          nom,
-          role,
-          user_id,
-          tenant_profile:tenant_profiles(cni_number)
-        `)
+        .select("id, prenom, nom, role, user_id")
         .eq("email", user.email)
         .maybeSingle();
+
+      if (step2Error) {
+        console.warn("[sign-edl] ⚠️ Étape 2: Erreur requête:", step2Error.message, step2Error.code);
+      }
 
       if (profileByEmail) {
         // Cas A: Le profil n'a pas encore de user_id → on le lie
         if (!profileByEmail.user_id) {
           console.log("[sign-edl] 🔗 Étape 2: Liaison du profil au compte auth");
-          await serviceClient
+          const { error: linkError } = await serviceClient
             .from("profiles")
             .update({ user_id: user.id })
             .eq("id", profileByEmail.id);
+          if (linkError) {
+            console.warn("[sign-edl] ⚠️ Étape 2: Erreur liaison user_id:", linkError.message);
+          }
         }
         // Cas B: Le profil a un user_id différent → conflit d'identité
         else if (profileByEmail.user_id !== user.id) {
           console.warn("[sign-edl] ⚠️ Étape 2: Conflit - profil email a un autre user_id:", profileByEmail.user_id);
-          // On met à jour le user_id pour correspondre au compte auth actuel
-          // (l'utilisateur s'est peut-être reconnecté avec un nouveau compte)
-          await serviceClient
+          const { error: updateError } = await serviceClient
             .from("profiles")
             .update({ user_id: user.id })
             .eq("id", profileByEmail.id);
+          if (updateError) {
+            console.warn("[sign-edl] ⚠️ Étape 2: Erreur mise à jour user_id:", updateError.message);
+          }
         }
 
         profile = {
@@ -143,9 +152,8 @@ export async function POST(
           prenom: profileByEmail.prenom,
           nom: profileByEmail.nom,
           role: profileByEmail.role,
-          tenant_profile: profileByEmail.tenant_profile
         };
-        console.log("[sign-edl] ✅ Étape 2: Profil trouvé par email:", profile.id);
+        console.log("[sign-edl] ✅ Étape 2: Profil trouvé par email:", profile.id, "role:", profile.role);
       } else {
         console.log("[sign-edl] ℹ️ Étape 2: Pas de profil avec email", step2Error?.message || "");
       }
@@ -155,45 +163,45 @@ export async function POST(
     if (!profile) {
       console.log("[sign-edl] 🔍 Étape 3: Recherche dans edl_signatures pour EDL:", edlId);
 
-      // D'abord, chercher l'entrée edl_signatures par signer_user OU signer_email
       const { data: edlSignature, error: step3Error } = await serviceClient
         .from("edl_signatures")
-        .select(`
-          id,
-          signer_profile_id,
-          signer_email,
-          signer_user
-        `)
+        .select("id, signer_profile_id, signer_email, signer_user")
         .eq("edl_id", edlId)
         .or(`signer_user.eq.${user.id}${user.email ? `,signer_email.ilike.${user.email}` : ""}`)
         .maybeSingle();
+
+      if (step3Error) {
+        console.warn("[sign-edl] ⚠️ Étape 3: Erreur requête edl_signatures:", step3Error.message);
+      }
 
       if (edlSignature) {
         console.log("[sign-edl] ℹ️ Étape 3: Entrée edl_signatures trouvée:", edlSignature.id);
 
         // Si on a un signer_profile_id, récupérer le profil
         if (edlSignature.signer_profile_id) {
-          const { data: sigProfile } = await serviceClient
+          // FIX: .maybeSingle() au lieu de .single() pour ne pas crasher
+          const { data: sigProfile, error: sigProfileError } = await serviceClient
             .from("profiles")
-            .select(`
-              id,
-              prenom,
-              nom,
-              role,
-              user_id,
-              tenant_profile:tenant_profiles(cni_number)
-            `)
+            .select("id, prenom, nom, role, user_id")
             .eq("id", edlSignature.signer_profile_id)
-            .single();
+            .maybeSingle();
+
+          if (sigProfileError) {
+            console.warn("[sign-edl] ⚠️ Étape 3: Erreur récup profil signer:", sigProfileError.message);
+          }
 
           if (sigProfile) {
             // Lier le profil au compte si pas déjà fait
             if (!sigProfile.user_id || sigProfile.user_id !== user.id) {
-              await serviceClient
+              const { error: linkErr } = await serviceClient
                 .from("profiles")
                 .update({ user_id: user.id })
                 .eq("id", sigProfile.id);
-              console.log("[sign-edl] 🔗 Étape 3: Profil lié au compte via edl_signatures");
+              if (linkErr) {
+                console.warn("[sign-edl] ⚠️ Étape 3: Erreur liaison:", linkErr.message);
+              } else {
+                console.log("[sign-edl] 🔗 Étape 3: Profil lié au compte via edl_signatures");
+              }
             }
 
             profile = {
@@ -201,15 +209,16 @@ export async function POST(
               prenom: sigProfile.prenom,
               nom: sigProfile.nom,
               role: sigProfile.role,
-              tenant_profile: sigProfile.tenant_profile
             };
             console.log("[sign-edl] ✅ Étape 3: Profil trouvé via signer_profile_id:", profile.id);
+          } else {
+            console.log("[sign-edl] ℹ️ Étape 3: signer_profile_id existe mais profil introuvable");
           }
         }
 
         // Si pas de signer_profile_id mais on a l'entrée, on va créer/lier un profil à l'étape 4
         if (!profile) {
-          console.log("[sign-edl] ℹ️ Étape 3: edl_signatures trouvé sans signer_profile_id, passage à l'étape 4");
+          console.log("[sign-edl] ℹ️ Étape 3: edl_signatures trouvé sans profil valide, passage à l'étape 4");
         }
       } else {
         console.log("[sign-edl] ℹ️ Étape 3: Pas d'entrée edl_signatures correspondante", step3Error?.message || "");
@@ -220,7 +229,6 @@ export async function POST(
     if (!profile && user.email) {
       console.log("[sign-edl] ⚠️ Étape 4: Création d'un profil minimal pour:", user.email);
 
-      // Utiliser upsert avec on_conflict sur user_id pour éviter les doublons
       const { data: newProfile, error: createError } = await serviceClient
         .from("profiles")
         .upsert({
@@ -233,38 +241,59 @@ export async function POST(
           onConflict: "user_id",
           ignoreDuplicates: false
         })
-        .select(`
-          id,
-          prenom,
-          nom,
-          role,
-          tenant_profile:tenant_profiles(cni_number)
-        `)
-        .single();
+        .select("id, prenom, nom, role")
+        .maybeSingle();
 
-      if (!createError && newProfile) {
+      if (createError) {
+        console.error("[sign-edl] ❌ Étape 4: Erreur upsert profil:", createError.message, createError.details, createError.code);
+      }
+
+      if (newProfile) {
         profile = newProfile;
         console.log("[sign-edl] ✅ Étape 4: Profil créé/mis à jour:", profile.id);
       } else {
-        console.error("[sign-edl] ❌ Étape 4: Erreur création profil:", createError?.message, createError?.details);
-
         // Dernier essai: peut-être que le profil existe maintenant (race condition)
-        const { data: retryProfile } = await serviceClient
+        const { data: retryProfile, error: retryError } = await serviceClient
           .from("profiles")
-          .select(`
-            id,
-            prenom,
-            nom,
-            role,
-            tenant_profile:tenant_profiles(cni_number)
-          `)
+          .select("id, prenom, nom, role")
           .eq("user_id", user.id)
           .maybeSingle();
+
+        if (retryError) {
+          console.error("[sign-edl] ❌ Étape 4 (retry): Erreur:", retryError.message);
+        }
 
         if (retryProfile) {
           profile = retryProfile;
           console.log("[sign-edl] ✅ Étape 4 (retry): Profil trouvé après erreur:", profile.id);
         }
+      }
+    }
+
+    // Étape 4b: Si user.email est null, essayer quand même de créer avec l'ID
+    if (!profile && !user.email) {
+      console.warn("[sign-edl] ⚠️ Étape 4b: user.email est null, tentative de création sans email");
+      const { data: fallbackProfile, error: fallbackError } = await serviceClient
+        .from("profiles")
+        .upsert({
+          user_id: user.id,
+          email: `user-${user.id.slice(0, 8)}@unknown.local`,
+          role: "tenant",
+          prenom: user.user_metadata?.prenom || "Utilisateur",
+          nom: user.user_metadata?.nom || "",
+        }, {
+          onConflict: "user_id",
+          ignoreDuplicates: false
+        })
+        .select("id, prenom, nom, role")
+        .maybeSingle();
+
+      if (fallbackError) {
+        console.error("[sign-edl] ❌ Étape 4b: Erreur:", fallbackError.message);
+      }
+      if (fallbackProfile) {
+        profile = fallbackProfile;
+        console.log("[sign-edl] ✅ Étape 4b: Profil créé sans email:", profile.id);
       }
     }
 
@@ -279,7 +308,7 @@ export async function POST(
       }, { status: 404 });
     }
 
-    console.log("[sign-edl] ✅ Profil résolu:", profile.id, profile.prenom, profile.nom);
+    console.log("[sign-edl] ✅ Profil résolu:", profile.id, profile.prenom, profile.nom, "role:", profile.role);
 
     // Vérifier les permissions avec le helper SOTA
     const accessResult = await verifyEDLAccess({
@@ -300,9 +329,28 @@ export async function POST(
 
     const isOwner = profile.role === "owner";
     const signerRole = isOwner ? "owner" : "tenant";
-    const cniNumber = (profile as any).tenant_profile?.[0]?.cni_number || null;
 
-    // 3. Vérifier l'identité pour les locataires (CNI obligatoire)
+    // ===============================
+    // RÉCUPÉRATION SÉPARÉE DE tenant_profiles (uniquement pour les locataires)
+    // ===============================
+    let cniNumber: string | null = null;
+
+    if (!isOwner) {
+      const { data: tenantProfile, error: tpError } = await serviceClient
+        .from("tenant_profiles")
+        .select("cni_number")
+        .eq("profile_id", profile.id)
+        .maybeSingle();
+
+      if (tpError) {
+        console.warn("[sign-edl] ⚠️ Erreur récupération tenant_profile:", tpError.message);
+      }
+
+      cniNumber = tenantProfile?.cni_number || null;
+      console.log("[sign-edl] ℹ️ CNI locataire:", cniNumber ? "présent" : "absent");
+    }
+
+    // Vérifier l'identité pour les locataires (CNI obligatoire)
     if (!isOwner && !cniNumber) {
       return NextResponse.json(
         { error: "Votre identité (CNI) doit être vérifiée avant de signer" },

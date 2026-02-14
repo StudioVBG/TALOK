@@ -5,10 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { 
   verifyEDLAccess, 
-  createServiceClient, 
   getUserProfile,
   canEditEDL 
 } from "@/lib/helpers/edl-auth";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 /**
  * GET /api/edl/[id] - Récupérer les détails d'un EDL
@@ -28,7 +28,7 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-    const serviceClient = createServiceClient();
+    const serviceClient = getServiceClient();
 
     // Récupérer le profil
     const profile = await getUserProfile(serviceClient, user.id);
@@ -135,7 +135,7 @@ export async function PUT(
     const body = await request.json();
     const { observations_generales, keys, sections } = body;
 
-    const serviceClient = createServiceClient();
+    const serviceClient = getServiceClient();
 
     // Récupérer le profil
     const profile = await getUserProfile(serviceClient, user.id);
@@ -300,7 +300,7 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-    const serviceClient = createServiceClient();
+    const serviceClient = getServiceClient();
 
     // Récupérer le profil
     const profile = await getUserProfile(serviceClient, user.id);
