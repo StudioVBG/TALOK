@@ -130,23 +130,28 @@ export function SignInForm() {
         return;
       }
       
-      // Rediriger selon le rôle - Routes existantes fonctionnelles
-      if (profileData?.role === "admin") {
-        console.log("[SignIn] Redirection vers /admin/dashboard");
-        router.push("/admin/dashboard");
-      } else if (profileData?.role === "owner") {
-        console.log("[SignIn] Redirection vers /owner/dashboard");
-        router.push("/owner/dashboard");
-      } else if (profileData?.role === "tenant") {
-        console.log("[SignIn] Redirection vers /tenant/dashboard");
-        router.push("/tenant/dashboard");
-      } else if (profileData?.role === "provider") {
-        console.log("[SignIn] Redirection vers /provider/dashboard");
-        router.push("/provider/dashboard");
-      } else {
-        console.log("[SignIn] Redirection vers /dashboard");
-        router.push("/dashboard");
-      }
+      // Rediriger selon le rôle - Tous les rôles gérés
+      const roleRoutes: Record<string, string> = {
+        admin: "/admin/dashboard",
+        platform_admin: "/admin/dashboard",
+        owner: "/owner/dashboard",
+        tenant: "/tenant/dashboard",
+        provider: "/provider/dashboard",
+        guarantor: "/guarantor/dashboard",
+        agency: "/agency/dashboard",
+        syndic: "/syndic/dashboard",
+        coproprietaire: "/copro/dashboard",
+        coproprietaire_occupant: "/copro/dashboard",
+        coproprietaire_bailleur: "/copro/dashboard",
+        coproprietaire_nu: "/copro/dashboard",
+        usufruitier: "/copro/dashboard",
+        president_cs: "/copro/dashboard",
+        conseil_syndical: "/copro/dashboard",
+      };
+
+      const targetRoute = roleRoutes[profileData?.role] || "/dashboard";
+      console.log(`[SignIn] Redirection vers ${targetRoute} (rôle: ${profileData?.role})`);
+      router.push(targetRoute);
       
       router.refresh();
     } catch (error: unknown) {

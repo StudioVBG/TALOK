@@ -31,10 +31,14 @@ export default async function AdminLayout({
     "id, role"
   );
 
-  if (!profile || profile.role !== "admin") {
+  if (!profile || (profile.role !== "admin" && profile.role !== "platform_admin")) {
     if (profile?.role === "owner") redirect("/owner/dashboard");
     if (profile?.role === "tenant") redirect("/tenant/dashboard");
-    redirect("/");
+    if (profile?.role === "provider") redirect("/provider/dashboard");
+    if (profile?.role === "agency") redirect("/agency/dashboard");
+    if (profile?.role === "syndic") redirect("/syndic/dashboard");
+    if (profile?.role === "guarantor") redirect("/guarantor/dashboard");
+    redirect("/dashboard");
   }
 
   // On ne charge plus les stats ici pour éviter de bloquer la navigation globale.

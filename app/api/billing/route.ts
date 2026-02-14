@@ -13,36 +13,25 @@ export async function GET() {
       return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
     }
 
-    // Fetch subscription — essayer user_id d'abord, puis owner_id via profile
+    // Fetch subscription via owner_id (schéma unifié)
     let subscription = null;
     let subError = null;
 
-    const result1 = await supabase
-      .from("subscriptions")
-      .select("*")
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
       .eq("user_id", user.id)
-      .maybeSingle();
+      .single();
 
-    if (result1.data) {
-      subscription = result1.data;
-    } else {
-      // Fallback: chercher via owner_id (schéma plus récent)
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
+    if (profile) {
+      const result = await supabase
+        .from("subscriptions")
+        .select("*")
+        .eq("owner_id", profile.id)
+        .maybeSingle();
 
-      if (profile) {
-        const result2 = await supabase
-          .from("subscriptions")
-          .select("*")
-          .eq("owner_id", profile.id)
-          .maybeSingle();
-
-        subscription = result2.data;
-        subError = result2.error;
-      }
+      subscription = result.data;
+      subError = result.error;
     }
 
     if (subError && subError.code !== "PGRST116") {
@@ -76,9 +65,9 @@ export async function GET() {
       return NextResponse.json(defaultResponse);
     }
 
-    // Fetch plan
+    // Fetch plan (table subscription_plans — schéma unifié)
     const { data: planData } = await supabase
-      .from("plans")
+      .from("subscription_plans")
       .select("*")
       .eq("id", subscription.plan_id)
       .single();
