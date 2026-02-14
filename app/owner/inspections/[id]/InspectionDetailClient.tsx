@@ -35,7 +35,8 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
@@ -537,12 +538,13 @@ export function InspectionDetailClient({ data }: Props) {
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <Button asChild variant="ghost" size="sm" className="-ml-1 sm:-ml-2 text-muted-foreground hover:text-foreground flex-shrink-0">
-              <Link href="/owner/inspections">
-                <ArrowLeft className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Retour</span>
-              </Link>
-            </Button>
+            <Link
+              href="/owner/inspections"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "-ml-1 sm:-ml-2 text-muted-foreground hover:text-foreground flex-shrink-0")}
+            >
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Retour</span>
+            </Link>
             <div className="h-6 w-px bg-slate-200 hidden sm:block flex-shrink-0" />
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <h1 className="text-sm sm:text-lg font-bold text-slate-900 hidden md:block truncate">
@@ -603,12 +605,13 @@ export function InspectionDetailClient({ data }: Props) {
             </Button>
 
             {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
-              <Button variant="outline" size="sm" asChild className="bg-white border-slate-200 shadow-sm hover:bg-slate-50 h-8 sm:h-9 px-2 sm:px-3">
-                <Link href={`/owner/inspections/${edl.id}/edit`}>
-                  <Edit className="h-4 w-4 sm:mr-2 text-indigo-600" />
-                  <span className="hidden sm:inline">Modifier</span>
-                </Link>
-              </Button>
+              <Link
+                href={`/owner/inspections/${edl.id}/edit`}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-white border-slate-200 shadow-sm hover:bg-slate-50 h-8 sm:h-9 px-2 sm:px-3")}
+              >
+                <Edit className="h-4 w-4 sm:mr-2 text-indigo-600" />
+                <span className="hidden sm:inline">Modifier</span>
+              </Link>
             )}
           </div>
         </div>
@@ -771,12 +774,13 @@ export function InspectionDetailClient({ data }: Props) {
                       L&apos;état des lieux est signé par les deux parties. Vous pouvez maintenant activer le bail.
                     </p>
                   </div>
-                  <Button asChild className="w-full bg-green-600 hover:bg-green-700 shadow-lg">
-                    <Link href={`/owner/leases/${edl.lease?.id}`}>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Voir et activer le bail
-                    </Link>
-                  </Button>
+                  <Link
+                    href={`/owner/leases/${edl.lease?.id}`}
+                    className={cn(buttonVariants({ variant: "default" }), "w-full bg-green-600 hover:bg-green-700 shadow-lg")}
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Voir et activer le bail
+                  </Link>
                 </CardContent>
               </Card>
             )}
@@ -823,12 +827,13 @@ export function InspectionDetailClient({ data }: Props) {
                         {stats.totalPhotos} photo{stats.totalPhotos > 1 ? "s" : ""}
                       </span>
                       {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
-                        <Button variant="outline" size="sm" asChild className="h-7 text-[10px] gap-1 border-indigo-200 text-indigo-600 hover:bg-indigo-50">
-                          <Link href={`/owner/inspections/${edl.id}/edit`}>
-                            <Camera className="h-3 w-3" />
-                            Ajouter
-                          </Link>
-                        </Button>
+                        <Link
+                          href={`/owner/inspections/${edl.id}/edit`}
+                          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7 text-[10px] gap-1 border-indigo-200 text-indigo-600 hover:bg-indigo-50")}
+                        >
+                          <Camera className="h-3 w-3" />
+                          Ajouter
+                        </Link>
                       )}
                     </div>
                   </div>
@@ -844,12 +849,13 @@ export function InspectionDetailClient({ data }: Props) {
                       </p>
                     </div>
                     {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
-                      <Button variant="outline" size="sm" asChild className="gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50">
-                        <Link href={`/owner/inspections/${edl.id}/edit`}>
-                          <Camera className="h-3.5 w-3.5" />
-                          Ajouter des photos
-                        </Link>
-                      </Button>
+                      <Link
+                        href={`/owner/inspections/${edl.id}/edit`}
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50")}
+                      >
+                        <Camera className="h-3.5 w-3.5" />
+                        Ajouter des photos
+                      </Link>
                     )}
                   </div>
                 )}

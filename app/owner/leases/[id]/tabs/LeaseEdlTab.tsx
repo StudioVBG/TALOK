@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
   ClipboardCheck,
@@ -91,17 +92,17 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
         </p>
 
         {/* CTA en premier — toujours visible sans scroll */}
-        <Button
-          asChild
-          size="lg"
-          className="w-full max-w-lg h-14 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 gap-3"
+        <Link
+          href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${propertyId}&type=entree`}
+          className={cn(
+            buttonVariants({ size: "lg" }),
+            "w-full max-w-lg h-14 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 gap-3"
+          )}
         >
-          <Link href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${propertyId}&type=entree`}>
-            <Home className="h-5 w-5" />
-            Commencer l&apos;état des lieux d&apos;entrée
-            <ArrowRight className="h-5 w-5" />
-          </Link>
-        </Button>
+          <Home className="h-5 w-5" />
+          Commencer l&apos;état des lieux d&apos;entrée
+          <ArrowRight className="h-5 w-5" />
+        </Link>
 
         <Card className="w-full max-w-lg border-2 border-dashed border-indigo-200 bg-indigo-50/50 mt-6">
           <CardContent className="p-6">
@@ -181,30 +182,33 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
           {/* Boutons d'action selon le statut */}
           <div className="flex flex-wrap gap-2 pt-2">
             {["draft", "scheduled", "in_progress"].includes(edl.status) && (
-              <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
-                <Link href={`/owner/inspections/${edl.id}`}>
-                  <ClipboardCheck className="h-4 w-4 mr-2" />
-                  Continuer l&apos;EDL
-                </Link>
-              </Button>
+              <Link
+                href={`/owner/inspections/${edl.id}`}
+                className={cn(buttonVariants({ variant: "default" }), "bg-indigo-600 hover:bg-indigo-700")}
+              >
+                <ClipboardCheck className="h-4 w-4 mr-2" />
+                Continuer l&apos;EDL
+              </Link>
             )}
 
             {edl.status === "completed" && (
-              <Button asChild className="bg-blue-600 hover:bg-blue-700">
-                <Link href={`/owner/inspections/${edl.id}`}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Signer l&apos;EDL
-                </Link>
-              </Button>
+              <Link
+                href={`/owner/inspections/${edl.id}`}
+                className={cn(buttonVariants({ variant: "default" }), "bg-blue-600 hover:bg-blue-700")}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Signer l&apos;EDL
+              </Link>
             )}
 
             {hasSignedEdl && (
-              <Button asChild variant="outline" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-                <Link href={`/owner/inspections/${edl.id}`}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Voir l&apos;EDL signé
-                </Link>
-              </Button>
+              <Link
+                href={`/owner/inspections/${edl.id}`}
+                className={cn(buttonVariants({ variant: "outline" }), "border-emerald-200 text-emerald-700 hover:bg-emerald-50")}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Voir l&apos;EDL signé
+              </Link>
             )}
           </div>
         </CardContent>

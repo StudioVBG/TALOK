@@ -3,7 +3,8 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -614,12 +615,13 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground hover:text-foreground">
-              <Link href="/owner/leases">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour
-              </Link>
-            </Button>
+            <Link
+              href="/owner/leases"
+              className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "-ml-2 text-muted-foreground hover:text-foreground")}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Retour
+            </Link>
             <div className="h-6 w-px bg-slate-200 hidden sm:block" />
             <div className="flex items-center gap-3">
               <h1 className="text-lg font-bold text-slate-900 hidden sm:block">
@@ -672,29 +674,24 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             
             {/* Bouton Modifier ou Imprimer/PDF selon l'état */}
             {!isSealed ? (
-              <Button variant="outline" size="sm" asChild className="bg-white hover:bg-slate-50 border-slate-200">
-                <Link href={`/owner/leases/${leaseId}/edit`}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Modifier</span>
-                </Link>
-              </Button>
+              <Link
+                href={`/owner/leases/${leaseId}/edit`}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-white hover:bg-slate-50 border-slate-200")}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Modifier</span>
+              </Link>
             ) : (
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                  asChild
+                <a 
+                  href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_Complet_${property.ville || 'Logement'}.pdf`}
+                  download
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100")}
                 >
-                  <a 
-                    href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_Complet_${property.ville || 'Logement'}.pdf`}
-                    download
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Imprimer / PDF</span>
-                    <span className="sm:hidden text-[10px]">PDF</span>
-                  </a>
-              </Button>
+                  <Download className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Imprimer / PDF</span>
+                  <span className="sm:hidden text-[10px]">PDF</span>
+                </a>
                 <div className="hidden md:flex items-center gap-1 text-[10px] text-slate-400 font-medium uppercase tracking-wider px-2 py-1 bg-slate-50 rounded border border-slate-100">
                   <Lock className="h-3 w-3" />
                   Scellé
@@ -785,18 +782,23 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" asChild className="text-emerald-700 border-emerald-200 hover:bg-emerald-50">
-                            <a href={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-4 w-4 mr-1.5" />
-                              Ouvrir
-                            </a>
-                          </Button>
-                          <Button size="sm" asChild className="bg-emerald-600 hover:bg-emerald-700">
-                            <a href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_${leaseId.substring(0, 8).toUpperCase()}.html`} download>
-                              <Download className="h-4 w-4 mr-1.5" />
-                              Télécharger
-                            </a>
-                          </Button>
+                          <a
+                            href={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-emerald-700 border-emerald-200 hover:bg-emerald-50")}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1.5" />
+                            Ouvrir
+                          </a>
+                          <a
+                            href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_${leaseId.substring(0, 8).toUpperCase()}.html`}
+                            download
+                            className={cn(buttonVariants({ size: "sm" }), "bg-emerald-600 hover:bg-emerald-700")}
+                          >
+                            <Download className="h-4 w-4 mr-1.5" />
+                            Télécharger
+                          </a>
                         </div>
                       </div>
                       <iframe
@@ -896,12 +898,13 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                         </p>
                         <div className="mt-3">
                           {nextAction.href ? (
-                            <Button asChild size="sm" className={`w-full gap-2 ${c.btn} ${c.btnHover} text-white`}>
-                              <Link href={nextAction.href}>
-                                {nextAction.actionLabel}
-                                <ArrowRight className="h-3.5 w-3.5" />
-                              </Link>
-                            </Button>
+                            <Link
+                              href={nextAction.href}
+                              className={cn(buttonVariants({ size: "sm" }), `w-full gap-2 ${c.btn} ${c.btnHover} text-white`)}
+                            >
+                              {nextAction.actionLabel}
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
                           ) : nextAction.action ? (
                             <Button size="sm" onClick={nextAction.action} className={`w-full gap-2 ${c.btn} ${c.btnHover} text-white`}>
                               {nextAction.actionLabel}
@@ -960,11 +963,12 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                       </span>
                     </div>
                     {dpeStatus?.status !== "VALID" && (
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50" asChild>
-                        <Link href={`/owner/properties/${property.id}/diagnostics`}>
-                          Régulariser
-                        </Link>
-                      </Button>
+                      <Link
+                        href={`/owner/properties/${property.id}/diagnostics`}
+                        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50")}
+                      >
+                        Régulariser
+                      </Link>
                     )}
                   </div>
 
@@ -1002,17 +1006,19 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     </div>
                     {canActivate && !hasSignedEdl && (
                       edl ? (
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" asChild>
-                          <Link href={`/owner/inspections/${edl.id}`}>
-                            {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer" : "Voir"}
-                          </Link>
-                        </Button>
+                        <Link
+                          href={`/owner/inspections/${edl.id}`}
+                          className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 px-2 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50")}
+                        >
+                          {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer" : "Voir"}
+                        </Link>
                       ) : (
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" asChild>
-                          <Link href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}&type=entree`}>
-                            Créer
-                          </Link>
-                        </Button>
+                        <Link
+                          href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}&type=entree`}
+                          className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 px-2 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50")}
+                        >
+                          Créer
+                        </Link>
                       )
                     )}
                   </div>
@@ -1080,12 +1086,13 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   ) : (
                     <div className="flex flex-col gap-3">
                       <p className="text-sm italic text-muted-foreground">En attente d&apos;invitation</p>
-                      <Button variant="outline" size="sm" asChild className="w-full border-dashed">
-                        <Link href={`/owner/leases/${leaseId}/signers`}>
-                           <Users className="h-4 w-4 mr-2" />
-                           Inviter un locataire
-                        </Link>
-                      </Button>
+                      <Link
+                        href={`/owner/leases/${leaseId}/signers`}
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full border-dashed")}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Inviter un locataire
+                      </Link>
                     </div>
                   )}
                 </div>
