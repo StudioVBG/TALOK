@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -542,16 +543,18 @@ export function SignersClient({
 
         {/* Actions */}
         <div className="mt-8 flex flex-wrap gap-3">
-          <Button variant="outline" asChild>
-            <Link href={`/owner/leases/${leaseId}`}>
-              Voir le bail complet
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href={`/owner/leases/${leaseId}/edit`}>
-              Modifier le bail
-            </Link>
-          </Button>
+          <Link
+            href={`/owner/leases/${leaseId}`}
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            Voir le bail complet
+          </Link>
+          <Link
+            href={`/owner/leases/${leaseId}/edit`}
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            Modifier le bail
+          </Link>
         </div>
       </div>
 

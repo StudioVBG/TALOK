@@ -13,7 +13,8 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function SignatureSuccessPage() {
   const searchParams = useSearchParams();
@@ -136,13 +137,14 @@ export default function SignatureSuccessPage() {
 
             {/* Actions */}
             <div className="space-y-3 pt-4 border-t">
-              <Button className="w-full gap-2 bg-gradient-to-r from-green-600 to-emerald-600" asChild>
-                <Link href="/auth/signup?role=tenant">
-                  <Home className="h-4 w-4" />
-                  Créer mon espace locataire
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
+              <Link
+                href="/auth/signup?role=tenant"
+                className={cn(buttonVariants({ variant: "default" }), "w-full gap-2 bg-gradient-to-r from-green-600 to-emerald-600")}
+              >
+                <Home className="h-4 w-4" />
+                Créer mon espace locataire
+                <ArrowRight className="h-4 w-4" />
+              </Link>
 
               <Button variant="outline" className="w-full gap-2">
                 <Download className="h-4 w-4" />

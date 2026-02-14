@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { FileSignature, ArrowRight, CheckCircle2, AlertCircle, ShieldCheck, Loader2, UserCheck, ShieldAlert } from "lucide-react";
@@ -202,12 +202,13 @@ export default function TenantSignLeasePage() {
                   <AlertCircle className="h-5 w-5 shrink-0" />
                   <p>Votre statut actuel est : <strong>{kycStatus === 'processing' ? 'En cours de validation' : 'Non vérifié'}</strong></p>
                 </div>
-                <Button asChild className="w-full h-12 rounded-xl bg-indigo-600 text-lg font-bold">
-                  <Link href="/tenant/onboarding/identity">
-                    Vérifier mon identité maintenant
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Link>
-                </Button>
+                <Link
+                  href="/tenant/onboarding/identity"
+                  className={cn(buttonVariants({ variant: "default" }), "w-full h-12 rounded-xl bg-indigo-600 text-lg font-bold")}
+                >
+                  Vérifier mon identité maintenant
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
               </CardContent>
             </Card>
           ) : leaseId ? (

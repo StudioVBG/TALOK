@@ -5,7 +5,8 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -174,14 +175,14 @@ function RenewCNIContent() {
   if (error && step !== "error") return (
     <div className="container mx-auto px-4 py-6 max-w-lg">
       <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Erreur</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>
-      <Button asChild className="mt-4"><Link href="/tenant/identity"><ArrowLeft className="mr-2 h-4 w-4" />Retour</Link></Button>
+      <Link href="/tenant/identity" className={cn(buttonVariants({ variant: "default" }), "mt-4")}><ArrowLeft className="mr-2 h-4 w-4" />Retour</Link>
     </div>
   );
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-lg">
       <div className="mb-6">
-        <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2"><Link href="/tenant/identity"><ArrowLeft className="mr-1 h-4 w-4" />Retour</Link></Button>
+        <Link href="/tenant/identity" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "mb-3 -ml-2")}><ArrowLeft className="mr-1 h-4 w-4" />Retour</Link>
         <div className="flex items-center gap-3">
           <div className="p-3 bg-blue-100 rounded-xl"><RefreshCw className="h-6 w-6 text-blue-600" /></div>
           <div><h1 className="text-2xl font-bold">Renouveler ma CNI</h1><p className="text-muted-foreground text-sm">{lease?.properties?.adresse_complete}</p></div>
@@ -252,7 +253,7 @@ function RenewCNIContent() {
               <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4"><CheckCircle className="h-8 w-8 text-green-600" /></div>
               <h3 className="text-xl font-semibold mb-2">CNI renouvelée !</h3>
               {extractedData?.date_expiration && <p className="text-muted-foreground mb-4">Expire le: {extractedData.date_expiration}</p>}
-              <Button asChild><Link href="/tenant/identity">Retour</Link></Button>
+              <Link href="/tenant/identity" className={cn(buttonVariants({ variant: "default" }))}>Retour</Link>
             </CardContent></Card>
           </motion.div>
         )}
@@ -262,7 +263,7 @@ function RenewCNIContent() {
             <Card><CardContent className="py-12 text-center">
               <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4"><AlertTriangle className="h-8 w-8 text-red-600" /></div>
               <h3 className="text-xl font-semibold mb-2">Erreur</h3><p className="text-muted-foreground mb-6">{error}</p>
-              <div className="flex gap-2 justify-center"><Button variant="outline" asChild><Link href="/tenant/identity">Annuler</Link></Button><Button onClick={() => setStep("intro")}>Réessayer</Button></div>
+              <div className="flex gap-2 justify-center"><Link href="/tenant/identity" className={cn(buttonVariants({ variant: "outline" }))}>Annuler</Link><Button onClick={() => setStep("intro")}>Réessayer</Button></div>
             </CardContent></Card>
           </motion.div>
         )}

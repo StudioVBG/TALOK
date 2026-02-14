@@ -22,7 +22,8 @@ import {
 import { formatDateShort } from "@/lib/helpers/format";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { DocumentDownloadButton } from "@/components/documents/DocumentDownloadButton";
 import Link from "next/link";
 
@@ -126,9 +127,12 @@ export default function TenantSignaturesPage() {
                       </p>
                     </div>
                     {mySignature?.signature_status !== "signed" && (
-                      <Button className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20" asChild>
-                        <Link href="/tenant/onboarding/sign">Signer <ArrowRight className="ml-2 h-4 w-4" /></Link>
-                      </Button>
+                      <Link
+                        href="/tenant/onboarding/sign"
+                        className={cn(buttonVariants({ variant: "default" }), "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20")}
+                      >
+                        Signer <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
                     )}
                   </div>
                 </div>

@@ -4,7 +4,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -193,12 +194,13 @@ export default function TenantIdentityPage() {
     <div className="container mx-auto px-4 py-6 max-w-4xl">
       {/* Header */}
       <div className="mb-6">
-        <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2 text-muted-foreground">
-          <Link href="/tenant/dashboard">
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Retour au tableau de bord
-          </Link>
-        </Button>
+        <Link
+          href="/tenant/dashboard"
+          className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "mb-3 -ml-2 text-muted-foreground")}
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Retour au tableau de bord
+        </Link>
         
         <div className="flex items-center gap-3">
           <div className="p-3 bg-blue-100 rounded-xl">
@@ -331,12 +333,13 @@ export default function TenantIdentityPage() {
                     <div className="flex flex-wrap gap-2 pt-2">
                       {/* Bouton renouvellement si expiré ou expire bientôt */}
                       {(status === "expired" || (daysLeft !== null && daysLeft <= 30)) && (
-                        <Button asChild className="gap-2">
-                          <Link href={`/tenant/identity/renew?lease_id=${lease.id}`}>
-                            <RefreshCw className="h-4 w-4" />
-                            Renouveler ma CNI
-                          </Link>
-                        </Button>
+                        <Link
+                          href={`/tenant/identity/renew?lease_id=${lease.id}`}
+                          className={cn(buttonVariants({ variant: "default" }), "gap-2")}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Renouveler ma CNI
+                        </Link>
                       )}
 
                       {/* Voir le document */}
