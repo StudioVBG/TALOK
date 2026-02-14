@@ -79,9 +79,28 @@ interface Property {
   annee_construction?: number | null; // À vérifier si dispo
 }
 
+/** Map property wizard type_bail (conditions-step) to LeaseType (LeaseTypeCards) */
+function mapTypeBailToLeaseType(typeBail: string): LeaseType | null {
+  const map: Record<string, LeaseType> = {
+    vide: "nu",
+    meuble: "meuble",
+    colocation: "colocation",
+    parking_seul: "contrat_parking",
+    accessoire_logement: "contrat_parking",
+    "3_6_9": "commercial_3_6_9",
+    derogatoire: "commercial_derogatoire",
+    professionnel: "professionnel",
+    precaire: "commercial_derogatoire",
+  };
+  const mapped = map[typeBail];
+  return mapped && LEASE_TYPE_CONFIGS[mapped] ? mapped : null;
+}
+
 interface LeaseWizardProps {
   properties: Property[];
   initialPropertyId?: string;
+  /** Pre-fill lease type from URL (e.g. from property detail "Créer un bail") */
+  initialTypeBail?: string;
 }
 
 // Étapes du wizard
@@ -100,7 +119,7 @@ function calculateEndDate(startDate: string, durationMonths: number): string {
   return end.toISOString().split("T")[0];
 }
 
-export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps) {
+export function LeaseWizard({ properties, initialPropertyId, initialTypeBail }: LeaseWizardProps) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -120,8 +139,10 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   const loyerInputRef = useRef<HTMLInputElement>(null);
   const financialSectionRef = useRef<HTMLDivElement>(null);
 
-  // Données du formulaire
-  const [selectedType, setSelectedType] = useState<LeaseType | null>(null);
+  // Données du formulaire (pre-fill type from URL when coming from property detail)
+  const [selectedType, setSelectedType] = useState<LeaseType | null>(() =>
+    initialTypeBail ? mapTypeBailToLeaseType(initialTypeBail) : null
+  );
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(initialPropertyId || null);
   const [tenantEmail, setTenantEmail] = useState("");
   const [tenantName, setTenantName] = useState("");

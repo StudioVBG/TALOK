@@ -235,6 +235,7 @@ export function PropertyDetailsView({
               propertyId={property.id}
               lease={lease}
               allowActions={canCreateLease || viewerRole === "owner"}
+              typeBail={(property as { type_bail?: string }).type_bail}
               createLeaseHref={createLeaseHref}
               viewLeaseHref={viewLeaseHref}
             />

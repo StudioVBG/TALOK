@@ -44,6 +44,7 @@ import dynamic from "next/dynamic";
 import type { OwnerProperty, PropertyPhoto, LeaseInfo, TenantInfo, EdlInfo } from "@/lib/types/owner-property";
 import { PropertyCharacteristicsBadges } from "./components/PropertyCharacteristicsBadges";
 import { PropertyEditForm } from "./components/PropertyEditForm";
+import { PropertyLifecycleChecklist } from "./components/PropertyLifecycleChecklist";
 
 // Import dynamique de la carte pour éviter les erreurs SSR
 const PropertyMap = dynamic(
@@ -65,6 +66,20 @@ interface PropertyDetailsClientProps {
   details: PropertyDetails;
   propertyId: string;
 }
+
+// Labels pour le type de bail (alignés sur conditions-step et mode-location-modal)
+const TYPE_BAIL_LABELS: Record<string, string> = {
+  vide: "Bail d'habitation vide",
+  meuble: "Bail meublé",
+  colocation: "Bail de colocation",
+  parking_seul: "Bail de parking seul",
+  accessoire_logement: "Accessoire à un logement",
+  "3_6_9": "Bail commercial 3-6-9",
+  derogatoire: "Bail dérogatoire",
+  precaire: "Bail précaire",
+  professionnel: "Bail professionnel",
+  autre: "Autre",
+};
 
 export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsClientProps) {
   const router = useRouter();
@@ -1017,13 +1032,40 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                 <div className="text-center space-y-4">
                   <Badge variant="outline">Vacant</Badge>
                   <p className="text-sm text-muted-foreground">Aucun locataire actuellement.</p>
+                  {(property as any).type_bail && (
+                    <p className="text-sm font-medium text-foreground">
+                      {TYPE_BAIL_LABELS[(property as any).type_bail] ?? (property as any).type_bail}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Bail d&apos;habitation adapté à votre bien.
+                  </p>
                   <Button asChild className="w-full" variant="default">
-                    <Link href={`/owner/leases/new?propertyId=${propertyId}`}>Créer un bail</Link>
+                    <Link
+                      href={
+                        (property as any).type_bail
+                          ? `/owner/leases/new?propertyId=${propertyId}&type_bail=${encodeURIComponent((property as any).type_bail)}`
+                          : `/owner/leases/new?propertyId=${propertyId}`
+                      }
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Créer un bail
+                    </Link>
                   </Button>
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* ========== PROCHAINES ÉTAPES ========== */}
+          <PropertyLifecycleChecklist
+            propertyId={propertyId}
+            existingLease={existingLease ? { id: existingLease.id, statut: existingLease.statut } : null}
+            isLeaseActive={!!isLeaseActive}
+            isLeaseSigned={!!isLeaseSigned}
+            edlIsSigned={!!edlIsSigned}
+            edlDraft={edlDraft ? { id: edlDraft.id } : null}
+          />
 
           {/* ========== VISITE VIRTUELLE (si renseignée) ========== */}
           {property.visite_virtuelle_url && !isEditing && (

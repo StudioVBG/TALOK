@@ -184,7 +184,11 @@ export function PropertyDetailsWrapper({
         backHref="/owner/properties"
         backLabel="Retour à la liste"
         editHref={`/owner/properties/${propertyId}/edit`}
-        createLeaseHref={`/owner/leases/new?propertyId=${propertyId}`}
+        createLeaseHref={
+          (property as { type_bail?: string }).type_bail
+            ? `/owner/leases/new?propertyId=${propertyId}&type_bail=${encodeURIComponent((property as { type_bail?: string }).type_bail)}`
+            : `/owner/leases/new?propertyId=${propertyId}`
+        }
         viewLeaseHref={(leaseId) => `/owner/leases/${leaseId}`}
         
         // Slot owner - Actions personnalisées

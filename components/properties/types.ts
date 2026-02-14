@@ -177,6 +177,8 @@ export interface PropertyOccupationProps {
   lease?: PropertyLease | null;
   tenants?: PropertyTenant[];
   className?: string;
+  /** Type de bail recommandé (ex: vide, meuble) - affiché en état vacant */
+  typeBail?: string;
   /** Permettre les actions (créer bail, voir bail) */
   allowActions?: boolean;
   /** Lien personnalisé pour "Créer un bail" */

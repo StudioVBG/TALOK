@@ -42,6 +42,19 @@ const LEASE_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   },
 };
 
+const TYPE_BAIL_LABELS: Record<string, string> = {
+  vide: "Bail d'habitation vide",
+  meuble: "Bail meublé",
+  colocation: "Bail de colocation",
+  parking_seul: "Bail de parking seul",
+  accessoire_logement: "Accessoire à un logement",
+  "3_6_9": "Bail commercial 3-6-9",
+  derogatoire: "Bail dérogatoire",
+  precaire: "Bail précaire",
+  professionnel: "Bail professionnel",
+  autre: "Autre",
+};
+
 // ============================================
 // SOUS-COMPOSANTS
 // ============================================
@@ -49,18 +62,31 @@ const LEASE_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 function VacantState({ 
   propertyId, 
   createLeaseHref, 
-  allowActions 
+  allowActions,
+  typeBail,
 }: { 
   propertyId: string; 
   createLeaseHref?: string;
   allowActions?: boolean;
+  typeBail?: string;
 }) {
-  const href = createLeaseHref || `/owner/leases/new?propertyId=${propertyId}`;
+  const baseHref = `/owner/leases/new?propertyId=${propertyId}`;
+  const href = createLeaseHref ?? (typeBail ? `${baseHref}&type_bail=${encodeURIComponent(typeBail)}` : baseHref);
   
   return (
     <div className="text-center space-y-4">
       <Badge variant="outline" className="text-muted-foreground">Vacant</Badge>
       <p className="text-sm text-muted-foreground">Aucun locataire actuellement.</p>
+      {typeBail && (
+        <>
+          <p className="text-sm font-medium text-foreground">
+            {TYPE_BAIL_LABELS[typeBail] ?? typeBail}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Bail d&apos;habitation adapté à votre bien.
+          </p>
+        </>
+      )}
       {allowActions && (
         <Button asChild className="w-full" variant="default">
           <Link href={href}>
@@ -203,6 +229,7 @@ export function PropertyOccupation({
   tenants,
   className,
   allowActions = true,
+  typeBail,
   createLeaseHref,
   viewLeaseHref,
 }: PropertyOccupationProps) {
@@ -225,6 +252,7 @@ export function PropertyOccupation({
             propertyId={propertyId}
             createLeaseHref={createLeaseHref}
             allowActions={allowActions}
+            typeBail={typeBail}
           />
         )}
       </CardContent>
