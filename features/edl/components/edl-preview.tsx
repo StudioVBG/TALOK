@@ -239,11 +239,18 @@ export function EDLPreview({
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const { errors, warnings } = validateEDLData();
-        setValidationErrors(errors);
-        setValidationWarnings(warnings);
 
-        // 🔧 FIX: Quand un edlId est fourni, l'API charge les données complètes
-        // depuis la BDD → ne pas bloquer sur les erreurs de validation locales
+        // 🔧 FIX P0: Quand un edlId est fourni, l'API charge les données complètes
+        // depuis la BDD → les erreurs de validation locales ne sont pas pertinentes
+        // et créent une contradiction visuelle (erreurs en rouge + document complet en-dessous)
+        if (edlId) {
+          setValidationErrors([]);
+          setValidationWarnings([]);
+        } else {
+          setValidationErrors(errors);
+          setValidationWarnings(warnings);
+        }
+
         if (errors.length > 0 && !isVierge && !edlId) {
           setHtml("");
           setLoading(false);

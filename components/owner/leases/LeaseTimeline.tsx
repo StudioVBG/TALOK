@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   FileText,
   PenTool,
@@ -8,9 +8,8 @@ import {
   Euro,
   Key,
   CalendarOff,
-  CheckCircle2,
   Clock,
-  AlertCircle,
+  ChevronDown,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -239,23 +238,44 @@ export function LeaseTimeline({ lease, signers, edl, payments }: LeaseTimelinePr
   }, [lease.statut, signers, edl]);
 
   const allEvents = [...events, ...futureSteps];
+  const [isExpanded, setIsExpanded] = useState(false);
 
   if (allEvents.length === 0) return null;
+
+  // Montrer le dernier événement complété + les futures quand replié
+  const lastCompleted = events[events.length - 1];
+  const previewEvents = isExpanded ? allEvents : [lastCompleted, ...futureSteps.slice(0, 1)].filter(Boolean);
 
   return (
     <Card className="border-none shadow-sm bg-white overflow-hidden">
       <CardHeader className="pb-2 border-b border-slate-50">
-        <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <Clock className="h-3 w-3 text-blue-500" />
-          Chronologie
-        </CardTitle>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center justify-between group"
+          aria-expanded={isExpanded}
+          aria-label="Afficher/masquer la chronologie"
+        >
+          <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+            <Clock className="h-3 w-3 text-blue-500" />
+            Chronologie
+          </CardTitle>
+          <div className="flex items-center gap-1.5">
+            {!isExpanded && allEvents.length > 2 && (
+              <span className="text-[10px] text-muted-foreground">{events.length} événements</span>
+            )}
+            <ChevronDown className={cn(
+              "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+              isExpanded && "rotate-180"
+            )} />
+          </div>
+        </button>
       </CardHeader>
       <CardContent className="p-4">
         <div className="relative">
-          {allEvents.map((event, index) => {
+          {previewEvents.map((event, index) => {
             const colors = colorClasses[event.color] || colorClasses.slate;
             const Icon = event.icon;
-            const isLast = index === allEvents.length - 1;
+            const isLast = index === previewEvents.length - 1;
 
             return (
               <div key={event.id} className="relative flex gap-3 pb-4 last:pb-0">
@@ -299,6 +319,15 @@ export function LeaseTimeline({ lease, signers, edl, payments }: LeaseTimelinePr
             );
           })}
         </div>
+        {/* Lien pour déplier quand replié avec plus de 2 événements */}
+        {!isExpanded && allEvents.length > 2 && (
+          <button
+            onClick={() => setIsExpanded(true)}
+            className="w-full text-center pt-2 mt-2 border-t border-slate-50 text-[10px] text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Voir tout l&apos;historique ({allEvents.length} étapes)
+          </button>
+        )}
       </CardContent>
     </Card>
   );

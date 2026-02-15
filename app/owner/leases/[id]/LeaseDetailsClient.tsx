@@ -41,6 +41,7 @@ import {
   Euro,
   Clock,
   ArrowRight,
+  MoreHorizontal,
 } from "lucide-react";
 import { LeaseRenewalWizard } from "@/features/leases/components/lease-renewal-wizard";
 import { useToast } from "@/components/ui/use-toast";
@@ -56,6 +57,13 @@ import { LeaseTimeline } from "@/components/owner/leases/LeaseTimeline";
 import { Celebration, useCelebration } from "@/components/ui/celebration";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { LeaseEdlTab } from "./tabs/LeaseEdlTab";
 import { LeaseDocumentsTab } from "./tabs/LeaseDocumentsTab";
 import { LeasePaymentsTab } from "./tabs/LeasePaymentsTab";
@@ -1111,99 +1119,90 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               payments={payments}
             />
 
-            {/* Actions du bail */}
-            <div className="space-y-2">
-              {/* Cycle de vie */}
-              {(canRenew || canTerminate) && (
-                <div className="space-y-2">
-                  {canRenew && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-                      onClick={() => setShowRenewalWizard(true)}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Renouveler le bail
-                    </Button>
-                  )}
+            {/* Actions du bail — menu contextuel compact */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full justify-center gap-2 text-xs text-muted-foreground border-dashed">
+                  <MoreHorizontal className="h-4 w-4" />
+                  Plus d&apos;actions
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {canRenew && (
+                  <DropdownMenuItem onClick={() => setShowRenewalWizard(true)} className="text-blue-600 focus:text-blue-700">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Renouveler le bail
+                  </DropdownMenuItem>
+                )}
+                {canTerminate && (
+                  <DropdownMenuItem onClick={() => setShowTerminateDialog(true)} className="text-amber-600 focus:text-amber-700">
+                    <CalendarOff className="h-4 w-4 mr-2" />
+                    Résilier le bail
+                  </DropdownMenuItem>
+                )}
+                {(canRenew || canTerminate) && <DropdownMenuSeparator />}
+                <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-500 focus:text-red-700 focus:bg-red-50">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer ce bail
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-                  {canTerminate && (
-                    <AlertDialog open={showTerminateDialog} onOpenChange={setShowTerminateDialog}>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
-                        >
-                          <CalendarOff className="h-4 w-4 mr-2" />
-                          Résilier le bail
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="text-amber-600 flex items-center gap-2">
-                            <CalendarOff className="h-5 w-5" />
-                            Résilier ce bail ?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Cette action mettra fin au bail. Le locataire sera notifié et
-                            le processus de fin de bail (EDL, restitution dépôt) sera initié.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel disabled={isTerminating}>Annuler</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleTerminate}
-                            disabled={isTerminating}
-                            className="bg-amber-600 hover:bg-amber-700"
-                          >
-                            {isTerminating ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Résiliation...
-                              </>
-                            ) : (
-                              "Confirmer la résiliation"
-                            )}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
-              )}
+            {/* Dialogs de confirmation (restent au même niveau pour le portail) */}
+            <AlertDialog open={showTerminateDialog} onOpenChange={setShowTerminateDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-amber-600 flex items-center gap-2">
+                    <CalendarOff className="h-5 w-5" />
+                    Résilier ce bail ?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action mettra fin au bail. Le locataire sera notifié et
+                    le processus de fin de bail (EDL, restitution dépôt) sera initié.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isTerminating}>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleTerminate}
+                    disabled={isTerminating}
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    {isTerminating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Résiliation...
+                      </>
+                    ) : (
+                      "Confirmer la résiliation"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
-              {/* Supprimer */}
-              <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-start text-red-500 hover:text-red-700 hover:bg-red-50">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Supprimer ce bail
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="text-red-600">
-                      Supprimer définitivement ?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Cette action effacera le bail, l&apos;historique des paiements et tous les documents associés.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      {isDeleting ? "Suppression..." : "Supprimer"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-red-600">
+                    Supprimer définitivement ?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action effacera le bail, l&apos;historique des paiements et tous les documents associés.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {isDeleting ? "Suppression..." : "Supprimer"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
           </div>
         </div>

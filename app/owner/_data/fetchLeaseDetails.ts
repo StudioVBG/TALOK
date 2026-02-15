@@ -17,6 +17,11 @@ export interface EDLEntry {
   type: EDLType;
   scheduled_at?: string | null;
   completed_date?: string | null;
+  /** Stats de progression (pré-calculées côté serveur) */
+  total_items?: number;
+  completed_items?: number;
+  total_photos?: number;
+  signatures_count?: number;
 }
 
 /**
@@ -325,7 +330,7 @@ async function fetchLeaseDetailsFallback(
     .limit(1)
     .maybeSingle();
 
-  // 7. Récupérer l'EDL le plus récent pour ce bail
+  // 7. Récupérer l'EDL le plus récent pour ce bail + stats de progression
   const { data: edl } = await supabase
     .from("edl")
     .select("id, status, type, scheduled_at, completed_date")
@@ -334,6 +339,34 @@ async function fetchLeaseDetailsFallback(
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  // 7b. Si un EDL existe, récupérer les stats de progression (items inspectés, photos, signatures)
+  let edlStats: { total_items: number; completed_items: number; total_photos: number; signatures_count: number } | null = null;
+  if (edl?.id) {
+    const [itemsResult, photosResult, sigsResult] = await Promise.all([
+      supabase
+        .from("edl_items")
+        .select("condition", { count: "exact" })
+        .eq("edl_id", edl.id),
+      supabase
+        .from("edl_media")
+        .select("id", { count: "exact", head: true })
+        .eq("edl_id", edl.id),
+      supabase
+        .from("edl_signatures")
+        .select("id", { count: "exact", head: true })
+        .eq("edl_id", edl.id)
+        .not("signed_at", "is", null),
+    ]);
+
+    const allItems = itemsResult.data || [];
+    edlStats = {
+      total_items: itemsResult.count || allItems.length,
+      completed_items: allItems.filter((i: any) => i.condition && i.condition !== "null").length,
+      total_photos: photosResult.count || 0,
+      signatures_count: sigsResult.count || 0,
+    };
+  }
 
   // 8. Vérifier si la première facture est payée (SSOT 2026)
   const { data: initialInvoice } = await supabase
@@ -461,7 +494,7 @@ async function fetchLeaseDetailsFallback(
     payments: formattedPayments,
     invoices: formattedInvoices,
     documents: (documents || []) as Document[],
-    edl: edl || null,
+    edl: edl ? { ...edl, ...edlStats } : null,
   };
 
   return result;
