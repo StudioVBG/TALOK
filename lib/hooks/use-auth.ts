@@ -12,13 +12,18 @@ import type { ProfileRow } from "@/lib/supabase/typed-client";
 // ======================================================================
 let _globalProfilePromise: Promise<Profile | null> | null = null;
 let _globalFetchedUserId: string | null = null;
+// Garde anti-retry : empêche les tentatives de création infinies
+let _globalCreateAttempted = false;
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<(Profile | ProfileRow) | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const supabase = createClient();
 
+  // Ref pour stocker le user_id actuel (évite re-renders sur objet User)
+  const currentUserIdRef = useRef<string | null>(null);
   // Ref locale pour le lock de concurrence intra-instance
   const fetchingRef = useRef(false);
 
@@ -29,6 +34,9 @@ export function useAuth() {
       try {
         const cachedProfile = await _globalProfilePromise;
         setProfile(cachedProfile);
+        if (!cachedProfile && _globalCreateAttempted) {
+          setProfileError("Profil introuvable et création automatique échouée");
+        }
       } catch {
         setProfile(null);
       } finally {
@@ -40,6 +48,9 @@ export function useAuth() {
     // Empêcher les appels concurrents au sein de cette instance
     if (fetchingRef.current) return;
     fetchingRef.current = true;
+
+    // Reset l'erreur au début d'un vrai fetch
+    setProfileError(null);
 
     // Créer la promesse globale pour dédupliquer entre les instances
     _globalProfilePromise = (async (): Promise<Profile | null> => {
@@ -72,8 +83,14 @@ export function useAuth() {
 
         if (!data) {
           // Profil introuvable — le trigger handle_new_user n'a pas fonctionné.
-          // Tenter de créer le profil via la route API (service role)
-          console.warn("[useAuth] Profil introuvable pour user_id:", userId, "— tentative de création automatique");
+          // Tenter de créer le profil UNE SEULE FOIS via la route API (service role)
+          if (_globalCreateAttempted) {
+            console.warn("[useAuth] Création profil déjà tentée, abandon pour user_id:", userId);
+            return null;
+          }
+          _globalCreateAttempted = true;
+
+          console.warn("[useAuth] Profil introuvable pour user_id:", userId, "— tentative de création automatique (unique)");
           try {
             const response = await fetch("/api/me/profile", {
               method: "POST",
@@ -82,7 +99,9 @@ export function useAuth() {
               body: JSON.stringify({ user_id: userId }),
             });
             if (response.ok) {
-              return (await response.json()) as Profile;
+              const created = (await response.json()) as Profile;
+              console.log("[useAuth] Profil auto-créé avec succès pour user_id:", userId);
+              return created;
             }
             console.error("[useAuth] Échec création profil automatique, status:", response.status);
           } catch (apiError) {
@@ -104,8 +123,12 @@ export function useAuth() {
     try {
       const result = await _globalProfilePromise;
       setProfile(result);
+      if (!result) {
+        setProfileError("Profil introuvable et création automatique échouée");
+      }
     } catch {
       setProfile(null);
+      setProfileError("Erreur lors du chargement du profil");
     } finally {
       setLoading(false);
       fetchingRef.current = false;
@@ -132,10 +155,16 @@ export function useAuth() {
         return;
       }
 
-      setUser(currentUser);
       if (currentUser) {
+        // Ne mettre à jour user que si le user_id change (évite re-renders inutiles)
+        if (currentUserIdRef.current !== currentUser.id) {
+          currentUserIdRef.current = currentUser.id;
+          setUser(currentUser);
+        }
         fetchProfile(currentUser.id);
       } else {
+        currentUserIdRef.current = null;
+        setUser(null);
         setLoading(false);
       }
     });
@@ -145,7 +174,14 @@ export function useAuth() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       const newUser = session?.user ?? null;
-      setUser(newUser);
+      const newUserId = newUser?.id ?? null;
+
+      // Ne mettre à jour le state `user` que si le user_id change réellement
+      // (évite les re-renders causés par les nouveaux objets User sur TOKEN_REFRESHED)
+      if (newUserId !== currentUserIdRef.current) {
+        currentUserIdRef.current = newUserId;
+        setUser(newUser);
+      }
 
       if (newUser) {
         // Ne re-fetch que si c'est un nouvel utilisateur (SIGNED_IN)
@@ -154,12 +190,15 @@ export function useAuth() {
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           fetchProfile(newUser.id);
         }
-      } else {
-        // Déconnexion
+      } else if (event === 'SIGNED_OUT') {
+        // Déconnexion — nettoyer tout
         setProfile(null);
+        setProfileError(null);
         setLoading(false);
+        currentUserIdRef.current = null;
         _globalFetchedUserId = null;
         _globalProfilePromise = null;
+        _globalCreateAttempted = false;
       }
     });
 
@@ -178,8 +217,11 @@ export function useAuth() {
       // Nettoyer l'état local et les guards globaux immédiatement
       setUser(null);
       setProfile(null);
+      setProfileError(null);
+      currentUserIdRef.current = null;
       _globalFetchedUserId = null;
       _globalProfilePromise = null;
+      _globalCreateAttempted = false;
 
       // Déconnecter de Supabase
       await supabase.auth.signOut();
@@ -203,9 +245,11 @@ export function useAuth() {
 
   const refreshProfile = async () => {
     if (user?.id) {
-      // Réinitialiser le guard global pour forcer un nouveau fetch
+      // Réinitialiser les guards globaux pour forcer un nouveau fetch
       _globalFetchedUserId = null;
       _globalProfilePromise = null;
+      _globalCreateAttempted = false;
+      setProfileError(null);
       await fetchProfile(user.id, true);
     }
   };
@@ -214,6 +258,7 @@ export function useAuth() {
     user,
     profile,
     loading,
+    profileError,
     signOut,
     isAuthenticated: !!user,
     refreshProfile,
