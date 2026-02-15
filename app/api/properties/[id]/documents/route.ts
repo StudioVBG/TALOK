@@ -73,9 +73,24 @@ export async function GET(
 
     const profileData = profile as any;
     const isAdmin = profileData.role === "admin";
-    const isOwner = property.owner_id === profileData.id;
+    const isOwner = (property as any).owner_id === profileData.id;
 
-    if (!isAdmin && !isOwner) {
+    // ✅ Vérifier si le locataire est lié à cette propriété via un bail (lease_signers)
+    let isTenantLinked = false;
+    if (!isAdmin && !isOwner && profileData.role === "tenant") {
+      const { data: tenantSigners } = await serviceClient
+        .from("lease_signers")
+        .select("id, lease:leases!inner(property_id)")
+        .eq("profile_id", profileData.id);
+
+      if (tenantSigners && tenantSigners.length > 0) {
+        isTenantLinked = tenantSigners.some(
+          (s: any) => s.lease?.property_id === propertyId
+        );
+      }
+    }
+
+    if (!isAdmin && !isOwner && !isTenantLinked) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }

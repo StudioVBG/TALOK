@@ -110,6 +110,47 @@ export async function POST(request: Request) {
     }
 
     console.log("[POST /api/me/profile] Profil auto-créé pour user_id:", user.id, "role:", role);
+
+    // ✅ AUTO-LINK: Lier les lease_signers orphelins (invited_email match, profile_id NULL)
+    // Couvre le cas où le locataire a été invité avant de créer son compte
+    if (user.email && newProfile) {
+      try {
+        const { data: orphanSigners, error: orphanError } = await serviceClient
+          .from("lease_signers")
+          .select("id, lease_id")
+          .ilike("invited_email", user.email)
+          .is("profile_id", null);
+
+        if (!orphanError && orphanSigners && orphanSigners.length > 0) {
+          const { error: linkError } = await serviceClient
+            .from("lease_signers")
+            .update({ profile_id: (newProfile as any).id } as Record<string, unknown>)
+            .ilike("invited_email", user.email)
+            .is("profile_id", null);
+
+          if (linkError) {
+            console.error("[POST /api/me/profile] Erreur auto-link lease_signers:", linkError);
+          } else {
+            console.log(`[POST /api/me/profile] ✅ ${orphanSigners.length} lease_signers auto-liés au profil ${(newProfile as any).id}`);
+          }
+        }
+
+        // Aussi lier les invitations non-utilisées
+        const { error: invLinkError } = await serviceClient
+          .from("invitations")
+          .update({ used_by: (newProfile as any).id, used_at: new Date().toISOString() } as Record<string, unknown>)
+          .ilike("email", user.email)
+          .is("used_at", null);
+
+        if (invLinkError) {
+          console.error("[POST /api/me/profile] Erreur auto-link invitations:", invLinkError);
+        }
+      } catch (autoLinkErr) {
+        // Ne jamais bloquer la création du profil pour le auto-link
+        console.error("[POST /api/me/profile] Erreur auto-link (non-bloquante):", autoLinkErr);
+      }
+    }
+
     return NextResponse.json(newProfile, { status: 201 });
   } catch (error: unknown) {
     console.error("Error in POST /api/me/profile:", error);

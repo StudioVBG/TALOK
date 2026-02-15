@@ -99,12 +99,13 @@ export class InvitationsService {
 
   /**
    * Marquer une invitation comme utilisée ET lier le profile_id au lease_signers
+   * Avec retry (2 tentatives max) et auto-link global par email
    */
   async markInvitationAsUsed(token: string, userId: string): Promise<void> {
     // 1. Récupérer le profil de l'utilisateur
     const { data: profile, error: profileError } = await this.supabase
       .from("profiles")
-      .select("id")
+      .select("id, user_id")
       .eq("user_id", userId)
       .single();
 
@@ -114,7 +115,7 @@ export class InvitationsService {
     // 2. Récupérer l'invitation pour avoir le lease_id et l'email
     const { data: invitation, error: invError } = await this.supabase
       .from("invitations")
-      .select("id, lease_id, email")
+      .select("id, lease_id, email, property_id")
       .eq("token", token)
       .single();
 
@@ -133,18 +134,58 @@ export class InvitationsService {
     if (error) throw error;
 
     // 4. ✅ CRITIQUE : Lier le profile_id au lease_signers si un bail existe
+    //    Avec retry en cas d'erreur transitoire
     if (invitationData.lease_id) {
-      const { error: signerError } = await this.supabase
-        .from("lease_signers")
-        .update({ profile_id: profileData.id } as any)
-        .eq("lease_id", invitationData.lease_id)
-        .eq("invited_email", invitationData.email)
-        .is("profile_id", null);
+      let linked = false;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const { data: updated, error: signerError } = await this.supabase
+          .from("lease_signers")
+          .update({ profile_id: profileData.id } as any)
+          .eq("lease_id", invitationData.lease_id)
+          .eq("invited_email", invitationData.email)
+          .is("profile_id", null)
+          .select("id");
 
-      if (signerError) {
-        console.error("[markInvitationAsUsed] Erreur liaison lease_signers:", signerError);
-      } else {
-        console.log(`[markInvitationAsUsed] ✅ Profile ${profileData.id} lié au lease_signers pour bail ${invitationData.lease_id}`);
+        if (signerError) {
+          console.error(`[markInvitationAsUsed] Tentative ${attempt}/2 - Erreur liaison lease_signers:`, signerError);
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, 500)); // attente avant retry
+          }
+        } else {
+          const updatedCount = (updated || []).length;
+          console.log(`[markInvitationAsUsed] ✅ ${updatedCount} lease_signers liés au profil ${profileData.id} pour bail ${invitationData.lease_id}`);
+          linked = true;
+          break;
+        }
+      }
+
+      if (!linked) {
+        console.error("[markInvitationAsUsed] ⚠️ Échec liaison après 2 tentatives — sera rattrapé par auto-link dans le layout");
+      }
+    }
+
+    // 5. ✅ AUTO-LINK GLOBAL : Lier TOUS les lease_signers orphelins avec le même email
+    //    Couvre le cas où le locataire a plusieurs invitations (colocation, changement de bail)
+    if (invitationData.email) {
+      try {
+        const { data: otherOrphans } = await this.supabase
+          .from("lease_signers")
+          .select("id")
+          .ilike("invited_email", invitationData.email)
+          .is("profile_id", null)
+          .neq("lease_id", invitationData.lease_id || "");
+
+        if (otherOrphans && otherOrphans.length > 0) {
+          await this.supabase
+            .from("lease_signers")
+            .update({ profile_id: profileData.id } as any)
+            .ilike("invited_email", invitationData.email)
+            .is("profile_id", null);
+
+          console.log(`[markInvitationAsUsed] ✅ ${otherOrphans.length} lease_signers orphelins supplémentaires liés`);
+        }
+      } catch (globalLinkErr) {
+        console.warn("[markInvitationAsUsed] Erreur auto-link global (non-bloquante):", globalLinkErr);
       }
     }
   }

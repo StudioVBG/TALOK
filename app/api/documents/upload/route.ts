@@ -81,12 +81,16 @@ export const POST = withSecurity(async function POST(request: Request) {
       return NextResponse.json({ error: "Rôle non autorisé" }, { status: 403 });
     }
 
+    // Variables mutables pour résolution automatique
+    let resolvedPropertyId = propertyId;
+    let resolvedLeaseId = leaseId;
+
     // Vérifier que la propriété appartient bien à l'utilisateur (si property_id fourni)
-    if (propertyId && profileAny.role === "owner") {
+    if (resolvedPropertyId && profileAny.role === "owner") {
       const { data: property } = await serviceClient
         .from("properties")
         .select("id, owner_id")
-        .eq("id", propertyId)
+        .eq("id", resolvedPropertyId)
         .single();
 
       if (!property || (property as any).owner_id !== profileAny.id) {
@@ -97,11 +101,34 @@ export const POST = withSecurity(async function POST(request: Request) {
       }
     }
 
+    // ✅ AUTO-RESOLVE: Pour les locataires, résoudre property_id et lease_id
+    // depuis leurs baux si non fournis dans le formulaire
+    if (profileAny.role === "tenant" && (!resolvedPropertyId || !resolvedLeaseId)) {
+      try {
+        const { data: signers } = await serviceClient
+          .from("lease_signers")
+          .select("lease_id, lease:leases(id, property_id, statut)")
+          .eq("profile_id", profileAny.id);
+
+        if (signers && signers.length > 0) {
+          // Privilégier le bail actif
+          const activeSigner = signers.find((s: any) => s.lease?.statut === "active") || signers[0];
+          const signerLease = (activeSigner as any)?.lease;
+          if (signerLease) {
+            if (!resolvedLeaseId) resolvedLeaseId = signerLease.id;
+            if (!resolvedPropertyId) resolvedPropertyId = signerLease.property_id;
+          }
+        }
+      } catch (resolveErr) {
+        console.warn("[POST /api/documents/upload] Auto-resolve lease/property échoué:", resolveErr);
+      }
+    }
+
     // Créer un nom de fichier unique
     const fileExt = file.name.split(".").pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = propertyId 
-      ? `properties/${propertyId}/${fileName}`
+    const filePath = resolvedPropertyId 
+      ? `properties/${resolvedPropertyId}/${fileName}`
       : `documents/${fileName}`;
 
     // Upload vers Supabase Storage
@@ -120,16 +147,30 @@ export const POST = withSecurity(async function POST(request: Request) {
       );
     }
 
+    // ✅ Résoudre le owner_id quand c'est un locataire qui upload
+    // (nécessaire pour que le propriétaire voie le document)
+    let resolvedOwnerId: string | null = profileAny.role === "owner" ? profileAny.id : null;
+    if (profileAny.role === "tenant" && resolvedPropertyId && !resolvedOwnerId) {
+      try {
+        const { data: prop } = await serviceClient
+          .from("properties")
+          .select("owner_id")
+          .eq("id", resolvedPropertyId)
+          .single();
+        if (prop) resolvedOwnerId = (prop as any).owner_id;
+      } catch { /* non-bloquant */ }
+    }
+
     // Créer l'entrée dans la table documents
     const { data: document, error: docError } = await serviceClient
       .from("documents")
       .insert({
-        property_id: propertyId || null,
-        lease_id: leaseId || null,
+        property_id: resolvedPropertyId || null,
+        lease_id: resolvedLeaseId || null,
         type: type || "autre",
         storage_path: filePath,
         created_by_profile_id: profileAny.id,
-        owner_id: profileAny.role === "owner" ? profileAny.id : null,
+        owner_id: resolvedOwnerId,
         tenant_id: profileAny.role === "tenant" ? profileAny.id : null,
       })
       .select()

@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -61,6 +62,31 @@ export async function GET(request: Request) {
             return NextResponse.redirect(new URL("/provider/onboarding/profile", origin));
           case "guarantor":
             return NextResponse.redirect(new URL("/guarantor/onboarding/context", origin));
+        }
+      }
+
+      // ✅ AUTO-LINK: À chaque connexion, lier les lease_signers orphelins
+      // Couvre le cas où un locataire existant est invité sur un nouveau bail
+      if (data.user.email && profileData.id) {
+        try {
+          const serviceClient = getServiceClient();
+          const { data: orphanSigners } = await serviceClient
+            .from("lease_signers")
+            .select("id")
+            .ilike("invited_email", data.user.email)
+            .is("profile_id", null);
+
+          if (orphanSigners && orphanSigners.length > 0) {
+            await serviceClient
+              .from("lease_signers")
+              .update({ profile_id: profileData.id } as Record<string, unknown>)
+              .ilike("invited_email", data.user.email)
+              .is("profile_id", null);
+            console.log(`[auth/callback] ✅ ${orphanSigners.length} lease_signers auto-liés pour ${data.user.email}`);
+          }
+        } catch (autoLinkErr) {
+          // Non-bloquant : ne jamais empêcher la connexion
+          console.error("[auth/callback] Erreur auto-link (non-bloquante):", autoLinkErr);
         }
       }
 

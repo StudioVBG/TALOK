@@ -312,8 +312,24 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
 
   if (!dashboard) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center min-h-[50vh] p-4">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="mx-auto p-3 bg-amber-100 dark:bg-amber-900/30 rounded-full w-fit">
+            <Info className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Tableau de bord en cours de chargement</h2>
+          <p className="text-muted-foreground">
+            Vos données ne sont pas encore disponibles. Cela peut arriver si votre profil vient d&apos;être créé ou si aucun bail n&apos;est encore lié à votre compte.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center mt-4">
+            <Button onClick={() => window.location.reload()} variant="default">
+              Rafraîchir la page
+            </Button>
+            <Button onClick={() => window.location.href = "/tenant/settings"} variant="outline">
+              Compléter mon profil
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
