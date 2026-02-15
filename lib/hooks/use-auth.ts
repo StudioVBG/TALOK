@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
@@ -12,54 +12,15 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
-  useEffect(() => {
-    // Récupère l'utilisateur actuel
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
-      // Si erreur de refresh token, nettoyer et rediriger
-      if (error && (
-        error.message?.includes('refresh_token') ||
-        error.message?.includes('Invalid Refresh Token') ||
-        error.message?.includes('Refresh Token Not Found')
-      )) {
-        console.error('[useAuth] Refresh token invalide, nettoyage de la session');
-        supabase.auth.signOut().finally(() => {
-          if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth')) {
-            window.location.href = '/auth/signin?error=session_expired';
-          }
-        });
-        setLoading(false);
-        return;
-      }
+  // Guards anti-boucle infinie
+  const fetchingRef = useRef(false);
+  // Mémorise le user_id pour lequel on a déjà fetch (évite les re-fetch sur TOKEN_REFRESHED)
+  const fetchedUserIdRef = useRef<string | null>(null);
 
-      setUser(user);
-      if (user) {
-        fetchProfile(user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Écoute les changements d'authentification
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchingRef = React.useRef(false);
-
-  async function fetchProfile(userId: string) {
-    // Prevent concurrent fetches that could cause re-render loops
+  const fetchProfile = useCallback(async (userId: string, force = false) => {
+    // Ne pas re-fetch si on a déjà fetch pour ce user (sauf si force=true)
+    if (!force && fetchedUserIdRef.current === userId) return;
+    // Empêcher les appels concurrents
     if (fetchingRef.current) return;
     fetchingRef.current = true;
 
@@ -83,7 +44,7 @@ export function useAuth() {
             if (response.ok) {
               const apiProfile = await response.json();
               setProfile(apiProfile as Profile);
-              setLoading(false);
+              fetchedUserIdRef.current = userId;
               return;
             }
           } catch (apiError) {
@@ -107,7 +68,7 @@ export function useAuth() {
           if (response.ok) {
             const createdProfile = await response.json();
             setProfile(createdProfile as Profile);
-            setLoading(false);
+            fetchedUserIdRef.current = userId;
             return;
           }
           console.error("[useAuth] Échec création profil automatique, status:", response.status);
@@ -118,14 +79,112 @@ export function useAuth() {
       } else {
         setProfile(data as Profile);
       }
+
+      // Marquer comme déjà fetch pour ce user (succès OU échec — ne pas re-tenter en boucle)
+      fetchedUserIdRef.current = userId;
     } catch (error) {
       console.error("Error fetching profile:", error);
       setProfile(null);
+      // Marquer quand même pour éviter la boucle infinie
+      fetchedUserIdRef.current = userId;
     } finally {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Récupère l'utilisateur actuel
+    supabase.auth.getUser().then(({ data: { user: currentUser }, error }) => {
+      // Si erreur de refresh token, nettoyer et rediriger
+      if (error && (
+        error.message?.includes('refresh_token') ||
+        error.message?.includes('Invalid Refresh Token') ||
+        error.message?.includes('Refresh Token Not Found')
+      )) {
+        console.error('[useAuth] Refresh token invalide, nettoyage de la session');
+        supabase.auth.signOut().finally(() => {
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth')) {
+            window.location.href = '/auth/signin?error=session_expired';
+          }
+        });
+        setLoading(false);
+        return;
+      }
+
+      setUser(currentUser);
+      if (currentUser) {
+        fetchProfile(currentUser.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Écoute les changements d'authentification
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      const newUser = session?.user ?? null;
+      setUser(newUser);
+
+      if (newUser) {
+        // Ne re-fetch que si c'est un nouvel utilisateur (SIGNED_IN)
+        // ou le premier chargement (INITIAL_SESSION).
+        // Ignorer TOKEN_REFRESHED pour éviter la boucle infinie.
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          fetchProfile(newUser.id);
+        }
+      } else {
+        // Déconnexion
+        setProfile(null);
+        setLoading(false);
+        fetchedUserIdRef.current = null;
+      }
+    });
+
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fonction publique pour forcer un refresh du profil (ex: après mise à jour)
+  const fetchProfileForUser = useCallback(async (userId: string) => {
+    // Empêcher les appels concurrents
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === '42P17' || error.message?.includes('infinite recursion')) {
+          try {
+            const response = await fetch("/api/me/profile", { credentials: "include" });
+            if (response.ok) {
+              const apiProfile = await response.json();
+              setProfile(apiProfile as Profile);
+              return;
+            }
+          } catch (apiError) {
+            console.error("Error fetching profile from API:", apiError);
+          }
+        }
+        throw error;
+      }
+
+      setProfile(data as Profile);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    } finally {
+      setLoading(false);
+      fetchingRef.current = false;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * Déconnexion SOTA 2026
@@ -159,7 +218,7 @@ export function useAuth() {
 
   const refreshProfile = async () => {
     if (user?.id) {
-      await fetchProfile(user.id);
+      await fetchProfileForUser(user.id);
     }
   };
 
