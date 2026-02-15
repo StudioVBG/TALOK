@@ -256,19 +256,23 @@ export async function POST(
     const meterData = meter as any;
 
     // Journaliser (non-blocking, use service client to bypass RLS)
-    serviceClient.from("audit_log").insert({
-      user_id: user.id,
-      action: "meter_added",
-      entity_type: "meter",
-      entity_id: meterData.id,
-      metadata: {
-        type: normalizedType,
-        meter_number: meterNumberValue,
-        provider,
-        property_id: id,
-        lease_id: activeLease,
-      },
-    } as any).then(() => {}).catch((e: any) => console.error("[meters] Audit log error:", e));
+    try {
+      await serviceClient.from("audit_log").insert({
+        user_id: user.id,
+        action: "meter_added",
+        entity_type: "meter",
+        entity_id: meterData.id,
+        metadata: {
+          type: normalizedType,
+          meter_number: meterNumberValue,
+          provider,
+          property_id: id,
+          lease_id: activeLease,
+        },
+      } as any);
+    } catch (e) {
+      console.error("[meters] Audit log error:", e);
+    }
 
     return NextResponse.json({ meter: meterData });
   } catch (error: unknown) {

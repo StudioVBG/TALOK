@@ -119,21 +119,29 @@ export async function POST(
     if (error) throw error;
 
     // Émettre un événement (non-blocking)
-    await serviceClient.from("outbox").insert({
-      event_type: "Inspection.Closed",
-      payload: {
-        edl_id: iid,
-        closed_at: (updated as any)?.closed_at,
-      },
-    } as any).catch((e: any) => console.error(`[Close ${iid}] Outbox error:`, e));
+    try {
+      await serviceClient.from("outbox").insert({
+        event_type: "Inspection.Closed",
+        payload: {
+          edl_id: iid,
+          closed_at: (updated as any)?.closed_at,
+        },
+      } as any);
+    } catch (e) {
+      console.error(`[Close ${iid}] Outbox error:`, e);
+    }
 
     // Journaliser (non-blocking)
-    await serviceClient.from("audit_log").insert({
-      user_id: user.id,
-      action: "edl_closed",
-      entity_type: "edl",
-      entity_id: iid,
-    } as any).catch((e: any) => console.error(`[Close ${iid}] Audit log error:`, e));
+    try {
+      await serviceClient.from("audit_log").insert({
+        user_id: user.id,
+        action: "edl_closed",
+        entity_type: "edl",
+        entity_id: iid,
+      } as any);
+    } catch (e) {
+      console.error(`[Close ${iid}] Audit log error:`, e);
+    }
 
     return NextResponse.json({ edl: updated });
   } catch (error: unknown) {

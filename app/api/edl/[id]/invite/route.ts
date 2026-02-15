@@ -206,32 +206,40 @@ export async function POST(
     // ===============================
     // 5. ENVOYER L'EMAIL VIA OUTBOX (service client, non-blocking)
     // ===============================
-    await serviceClient.from("outbox").insert({
-      event_type: "EDL.InvitationSent",
-      payload: {
-        edl_id: edlId,
-        signer_id: existingSig?.id,
-        signer_profile_id: targetProfileId,
-        email: targetEmail,
-        name: targetName,
-        token: invitationToken,
-        type: (edl as any).type
-      },
-    } as any).catch((e: any) => console.error(`[EDL Invite ${edlId}] Outbox error:`, e));
+    try {
+      await serviceClient.from("outbox").insert({
+        event_type: "EDL.InvitationSent",
+        payload: {
+          edl_id: edlId,
+          signer_id: existingSig?.id,
+          signer_profile_id: targetProfileId,
+          email: targetEmail,
+          name: targetName,
+          token: invitationToken,
+          type: (edl as any).type
+        },
+      } as any);
+    } catch (e) {
+      console.error(`[EDL Invite ${edlId}] Outbox error:`, e);
+    }
 
     // ===============================
     // 6. JOURNALISER (service client, non-blocking)
     // ===============================
-    await serviceClient.from("audit_log").insert({
-      user_id: user.id,
-      action: "edl_invitation_sent",
-      entity_type: "edl",
-      entity_id: edlId,
-      metadata: {
-        recipient: targetEmail,
-        has_profile: !!targetProfileId
-      },
-    } as any).catch((e: any) => console.error(`[EDL Invite ${edlId}] Audit log error:`, e));
+    try {
+      await serviceClient.from("audit_log").insert({
+        user_id: user.id,
+        action: "edl_invitation_sent",
+        entity_type: "edl",
+        entity_id: edlId,
+        metadata: {
+          recipient: targetEmail,
+          has_profile: !!targetProfileId
+        },
+      } as any);
+    } catch (e) {
+      console.error(`[EDL Invite ${edlId}] Audit log error:`, e);
+    }
 
     return NextResponse.json({ 
       success: true, 
