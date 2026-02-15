@@ -7,6 +7,7 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { documentSchema } from "@/lib/validations";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
+import { validateFile } from "@/lib/security/file-validation";
 
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -64,6 +65,15 @@ export async function POST(request: Request) {
           {
             error: `Le fichier ${file.name} dépasse la taille maximale autorisée (10 Mo).`,
           },
+          { status: 400 }
+        );
+      }
+
+      // Validation MIME type et extension
+      const fileValidation = validateFile(file, { maxSize: MAX_FILE_SIZE });
+      if (!fileValidation.valid) {
+        return NextResponse.json(
+          { error: `Fichier "${file.name}" : ${fileValidation.error}`, code: fileValidation.code },
           { status: 400 }
         );
       }
@@ -231,9 +241,14 @@ export async function POST(request: Request) {
         );
       }
 
-      const {
-        data: { publicUrl },
-      } = serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).getPublicUrl(filePath);
+      // Générer une URL signée au lieu d'une URL publique pour les documents privés
+      let previewUrl: string | null = null;
+      if (isImage(file.type)) {
+        const { data: signedUrlData } = await serviceClient.storage
+          .from(STORAGE_BUCKETS.DOCUMENTS)
+          .createSignedUrl(filePath, 3600); // 1h
+        previewUrl = signedUrlData?.signedUrl ?? null;
+      }
 
       const record: Record<string, unknown> = {
         type,
@@ -243,7 +258,7 @@ export async function POST(request: Request) {
         tenant_id: role === "tenant" ? profileId : null,
         storage_path: filePath,
         metadata,
-        preview_url: isImage(file.type) ? publicUrl : null,
+        preview_url: previewUrl,
         title: file.name,
         notes: null,
       };

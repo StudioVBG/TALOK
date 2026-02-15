@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { createClient } from "@supabase/supabase-js";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
+import { validateFile, ALLOWED_MIME_TYPES } from "@/lib/security/file-validation";
 
 /**
  * POST /api/documents/upload - Upload un document
@@ -26,6 +27,21 @@ export async function POST(request: Request) {
 
     if (!file) {
       return NextResponse.json({ error: "Aucun fichier fourni" }, { status: 400 });
+    }
+
+    // Validation MIME type et taille du fichier
+    const fileValidation = validateFile(file, {
+      allowedMimeTypes: [
+        ...ALLOWED_MIME_TYPES.documents,
+        ...ALLOWED_MIME_TYPES.images,
+        ...ALLOWED_MIME_TYPES.spreadsheets,
+      ],
+    });
+    if (!fileValidation.valid) {
+      return NextResponse.json(
+        { error: fileValidation.error, code: fileValidation.code },
+        { status: 400 }
+      );
     }
 
     // Rediriger vers la route upload-batch pour le traitement

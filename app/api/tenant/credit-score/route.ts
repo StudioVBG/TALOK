@@ -33,14 +33,23 @@ export async function GET() {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil
+    // Récupérer le profil (maybeSingle pour éviter 406 si profil absent)
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (!profile || profile.role !== "tenant") {
+    if (!profile) {
+      // Profil pas encore créé — retourner score vide plutôt qu'une erreur
+      return NextResponse.json({
+        score: 0, level: "poor", change: 0,
+        factors: { paymentHistory: 0, leaseHistory: 0, documents: 0, incidents: 0 },
+        hasData: false,
+      } as CreditScoreResponse);
+    }
+
+    if (profile.role !== "tenant") {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 

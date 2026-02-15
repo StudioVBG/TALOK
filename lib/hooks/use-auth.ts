@@ -6,87 +6,106 @@ import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
 import type { ProfileRow } from "@/lib/supabase/typed-client";
 
+// ======================================================================
+// Guards GLOBAUX (au niveau module) — partagés entre toutes les instances
+// de useAuth() pour éviter les doubles appels (layout + page).
+// ======================================================================
+let _globalProfilePromise: Promise<Profile | null> | null = null;
+let _globalFetchedUserId: string | null = null;
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<(Profile | ProfileRow) | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
-  // Guards anti-boucle infinie
+  // Ref locale pour le lock de concurrence intra-instance
   const fetchingRef = useRef(false);
-  // Mémorise le user_id pour lequel on a déjà fetch (évite les re-fetch sur TOKEN_REFRESHED)
-  const fetchedUserIdRef = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async (userId: string, force = false) => {
-    // Ne pas re-fetch si on a déjà fetch pour ce user (sauf si force=true)
-    if (!force && fetchedUserIdRef.current === userId) return;
-    // Empêcher les appels concurrents
+    // Si une autre instance a déjà fetch ou est en train de fetch ce user,
+    // réutiliser la même promesse globale
+    if (!force && _globalFetchedUserId === userId && _globalProfilePromise) {
+      try {
+        const cachedProfile = await _globalProfilePromise;
+        setProfile(cachedProfile);
+      } catch {
+        setProfile(null);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Empêcher les appels concurrents au sein de cette instance
     if (fetchingRef.current) return;
     fetchingRef.current = true;
 
-    try {
-      // Utiliser maybeSingle() au lieu de single() pour éviter l'erreur 406
-      // quand le profil n'existe pas encore (trigger handle_new_user non exécuté)
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
+    // Créer la promesse globale pour dédupliquer entre les instances
+    _globalProfilePromise = (async (): Promise<Profile | null> => {
+      try {
+        // Utiliser maybeSingle() au lieu de single() pour éviter l'erreur 406
+        // quand le profil n'existe pas encore (trigger handle_new_user non exécuté)
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
 
-      if (error) {
-        // Si erreur de récursion RLS, utiliser la route API en fallback
-        if (error.code === '42P17' || error.message?.includes('infinite recursion')) {
-          console.warn("RLS recursion detected, using API fallback");
+        if (error) {
+          // Si erreur de récursion RLS, utiliser la route API en fallback
+          if (error.code === '42P17' || error.message?.includes('infinite recursion')) {
+            console.warn("RLS recursion detected, using API fallback");
+            try {
+              const response = await fetch("/api/me/profile", {
+                credentials: "include",
+              });
+              if (response.ok) {
+                return (await response.json()) as Profile;
+              }
+            } catch (apiError) {
+              console.error("Error fetching profile from API:", apiError);
+            }
+          }
+          throw error;
+        }
+
+        if (!data) {
+          // Profil introuvable — le trigger handle_new_user n'a pas fonctionné.
+          // Tenter de créer le profil via la route API (service role)
+          console.warn("[useAuth] Profil introuvable pour user_id:", userId, "— tentative de création automatique");
           try {
             const response = await fetch("/api/me/profile", {
+              method: "POST",
               credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ user_id: userId }),
             });
             if (response.ok) {
-              const apiProfile = await response.json();
-              setProfile(apiProfile as Profile);
-              fetchedUserIdRef.current = userId;
-              return;
+              return (await response.json()) as Profile;
             }
+            console.error("[useAuth] Échec création profil automatique, status:", response.status);
           } catch (apiError) {
-            console.error("Error fetching profile from API:", apiError);
+            console.error("[useAuth] Erreur création profil automatique:", apiError);
           }
+          return null;
         }
-        throw error;
-      }
 
-      if (!data) {
-        // Profil introuvable — le trigger handle_new_user n'a pas fonctionné.
-        // Tenter de créer le profil via la route API (service role)
-        console.warn("[useAuth] Profil introuvable pour user_id:", userId, "— tentative de création automatique");
-        try {
-          const response = await fetch("/api/me/profile", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id: userId }),
-          });
-          if (response.ok) {
-            const createdProfile = await response.json();
-            setProfile(createdProfile as Profile);
-            fetchedUserIdRef.current = userId;
-            return;
-          }
-          console.error("[useAuth] Échec création profil automatique, status:", response.status);
-        } catch (apiError) {
-          console.error("[useAuth] Erreur création profil automatique:", apiError);
-        }
-        setProfile(null);
-      } else {
-        setProfile(data as Profile);
+        return data as Profile;
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+        return null;
       }
+    })();
 
-      // Marquer comme déjà fetch pour ce user (succès OU échec — ne pas re-tenter en boucle)
-      fetchedUserIdRef.current = userId;
-    } catch (error) {
-      console.error("Error fetching profile:", error);
+    // Marquer le user_id immédiatement pour bloquer les autres instances
+    _globalFetchedUserId = userId;
+
+    try {
+      const result = await _globalProfilePromise;
+      setProfile(result);
+    } catch {
       setProfile(null);
-      // Marquer quand même pour éviter la boucle infinie
-      fetchedUserIdRef.current = userId;
     } finally {
       setLoading(false);
       fetchingRef.current = false;
@@ -139,7 +158,8 @@ export function useAuth() {
         // Déconnexion
         setProfile(null);
         setLoading(false);
-        fetchedUserIdRef.current = null;
+        _globalFetchedUserId = null;
+        _globalProfilePromise = null;
       }
     });
 
@@ -148,43 +168,6 @@ export function useAuth() {
   }, []);
 
   // Fonction publique pour forcer un refresh du profil (ex: après mise à jour)
-  const fetchProfileForUser = useCallback(async (userId: string) => {
-    // Empêcher les appels concurrents
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (error) {
-        if (error.code === '42P17' || error.message?.includes('infinite recursion')) {
-          try {
-            const response = await fetch("/api/me/profile", { credentials: "include" });
-            if (response.ok) {
-              const apiProfile = await response.json();
-              setProfile(apiProfile as Profile);
-              return;
-            }
-          } catch (apiError) {
-            console.error("Error fetching profile from API:", apiError);
-          }
-        }
-        throw error;
-      }
-
-      setProfile(data as Profile);
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-    } finally {
-      setLoading(false);
-      fetchingRef.current = false;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /**
    * Déconnexion SOTA 2026
@@ -192,9 +175,11 @@ export function useAuth() {
    */
   const signOut = async () => {
     try {
-      // Nettoyer l'état local immédiatement
+      // Nettoyer l'état local et les guards globaux immédiatement
       setUser(null);
       setProfile(null);
+      _globalFetchedUserId = null;
+      _globalProfilePromise = null;
 
       // Déconnecter de Supabase
       await supabase.auth.signOut();
@@ -218,7 +203,10 @@ export function useAuth() {
 
   const refreshProfile = async () => {
     if (user?.id) {
-      await fetchProfileForUser(user.id);
+      // Réinitialiser le guard global pour forcer un nouveau fetch
+      _globalFetchedUserId = null;
+      _globalProfilePromise = null;
+      await fetchProfile(user.id, true);
     }
   };
 

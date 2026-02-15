@@ -22,15 +22,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer le profil
+    // Récupérer le profil (maybeSingle pour éviter 406 si profil absent)
     const { data: profile } = await supabase
       .from('profiles')
       .select('id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
-      return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
+      // Profil pas encore créé — retourner des notifications vides plutôt qu'une erreur
+      return NextResponse.json({ notifications: [], unread_count: 0 });
     }
 
     // Paramètres
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile || profile.role !== 'admin') {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });

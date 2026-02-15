@@ -35,14 +35,22 @@ export async function GET() {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil
+    // Récupérer le profil (maybeSingle pour éviter 406 si profil absent)
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (!profile || profile.role !== "tenant") {
+    if (!profile) {
+      // Profil pas encore créé — retourner données vides plutôt qu'une erreur
+      return NextResponse.json({
+        data: [], current: { electricity: 0, water: 0, gas: 0 },
+        hasData: false, lastUpdate: null,
+      } as ConsumptionResponse);
+    }
+
+    if (profile.role !== "tenant") {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 
