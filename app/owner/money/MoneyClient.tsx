@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import React, { useState, useTransition, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,9 +62,10 @@ export function MoneyClient({ data }: MoneyClientProps) {
     const uniqueDromPrefixes = new Set<string>();
     
     invoices.forEach(inv => {
-      const zip = (inv.lease?.property as any)?.code_postal;
-      if (zip && dromPrefixes.includes(zip.substring(0, 3))) {
-        uniqueDromPrefixes.add(zip.substring(0, 3));
+      const zip = inv.lease?.property?.code_postal;
+      const zipStr = zip != null ? String(zip) : "";
+      if (zipStr && dromPrefixes.includes(zipStr.substring(0, 3))) {
+        uniqueDromPrefixes.add(zipStr.substring(0, 3));
       }
     });
     
@@ -92,7 +93,7 @@ export function MoneyClient({ data }: MoneyClientProps) {
     }
     
     // Remplir avec les données réelles
-    invoices.forEach((inv: any) => {
+    invoices.forEach((inv: InvoiceRow) => {
       if (!inv.periode) return;
       const period = inv.periode.substring(0, 7); // Format YYYY-MM
       if (monthlyData[period]) {
@@ -170,15 +171,20 @@ export function MoneyClient({ data }: MoneyClientProps) {
   };
 
   // Définition des colonnes pour ResponsiveTable
-  const columns = [
+  const columns: Array<{
+    header: string;
+    accessorKey?: keyof InvoiceRow;
+    cell?: (invoice: InvoiceRow) => React.ReactNode;
+    className?: string;
+  }> = [
     {
       header: "Période",
-      accessorKey: "periode" as const, // Cast to avoid type error
+      accessorKey: "periode",
       className: "font-medium",
     },
     {
       header: "Bien",
-      cell: (invoice: any) => (
+      cell: (invoice: InvoiceRow) => (
         <span className="text-muted-foreground">
           {invoice.lease?.property?.adresse_complete || "Adresse non dispo"}
         </span>
@@ -187,14 +193,14 @@ export function MoneyClient({ data }: MoneyClientProps) {
     {
       header: "Montant",
       className: "text-right",
-      cell: (invoice: any) => (
+      cell: (invoice: InvoiceRow) => (
         <span className="font-bold">{formatCurrency(invoice.montant_total)}</span>
       ),
     },
     {
       header: "Statut",
       className: "text-right",
-      cell: (invoice: any) => (
+      cell: (invoice: InvoiceRow) => (
         <div className="flex justify-end">
            <StatusBadge 
             status={invoice.statut === "paid" ? "Payé" : invoice.statut === "sent" ? "Envoyé" : invoice.statut === "late" ? "En retard" : "Brouillon"} 
@@ -206,7 +212,7 @@ export function MoneyClient({ data }: MoneyClientProps) {
     {
       header: "Actions",
       className: "text-right",
-      cell: (invoice: any) => (
+      cell: (invoice: InvoiceRow) => (
         <div className="flex items-center justify-end gap-2">
             {invoice.statut !== "paid" && (
               <>
@@ -258,8 +264,8 @@ export function MoneyClient({ data }: MoneyClientProps) {
                 </Button>
               </>
             )}
-            <Button size="sm" variant="ghost" asChild onClick={(e) => e.stopPropagation()}>
-              <Link href={`/owner/invoices/${invoice.id}`}>Détails</Link>
+            <Button size="sm" variant="ghost" asChild>
+              <Link href={`/owner/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()}>Détails</Link>
             </Button>
         </div>
       ),
@@ -287,7 +293,7 @@ export function MoneyClient({ data }: MoneyClientProps) {
                 className="gap-2 bg-white/50 backdrop-blur-sm"
                 onClick={() => exportInvoices(filteredInvoices.map(inv => ({
                   ...inv,
-                  tenant_name: (inv.lease as any)?.signers?.[0]?.profile?.prenom + ' ' + (inv.lease as any)?.signers?.[0]?.profile?.nom || 'N/A',
+                  tenant_name: inv.lease?.signers?.[0]?.profile ? `${inv.lease.signers[0].profile.prenom ?? ''} ${inv.lease.signers[0].profile.nom ?? ''}`.trim() || 'N/A' : 'N/A',
                   property_address: inv.lease?.property?.adresse_complete || 'N/A',
                 })), "csv")}
                 disabled={filteredInvoices.length === 0}
@@ -489,19 +495,19 @@ export function MoneyClient({ data }: MoneyClientProps) {
                       </div>
                       <div className="text-center p-4 bg-blue-50 rounded-lg">
                         <p className="text-2xl font-bold text-blue-600">
-                          {invoices.filter((i: any) => i.statut === "paid").length}
+                          {invoices.filter((i: InvoiceRow) => i.statut === "paid").length}
                         </p>
                         <p className="text-sm text-muted-foreground">Factures payées</p>
                       </div>
                       <div className="text-center p-4 bg-amber-50 rounded-lg">
                         <p className="text-2xl font-bold text-amber-600">
-                          {invoices.filter((i: any) => i.statut === "sent" || i.statut === "draft").length}
+                          {invoices.filter((i: InvoiceRow) => i.statut === "sent" || i.statut === "draft").length}
                         </p>
                         <p className="text-sm text-muted-foreground">En attente</p>
                       </div>
                       <div className="text-center p-4 bg-red-50 rounded-lg">
                         <p className="text-2xl font-bold text-red-600">
-                          {invoices.filter((i: any) => i.statut === "late").length}
+                          {invoices.filter((i: InvoiceRow) => i.statut === "late").length}
                         </p>
                         <p className="text-sm text-muted-foreground">En retard</p>
                       </div>
@@ -520,15 +526,15 @@ export function MoneyClient({ data }: MoneyClientProps) {
           open={paymentDialogOpen}
           onOpenChange={setPaymentDialogOpen}
           invoiceId={selectedInvoiceForPayment.id}
-          invoiceReference={(selectedInvoiceForPayment as any).reference || ""}
+          invoiceReference={String((selectedInvoiceForPayment as InvoiceRow & { reference?: string }).reference ?? selectedInvoiceForPayment.periode ?? "")}
           amount={Number(selectedInvoiceForPayment.montant_total) || 0}
           tenantName={
-            (selectedInvoiceForPayment.lease as any)?.signers?.[0]?.profile
-              ? `${(selectedInvoiceForPayment.lease as any)?.signers?.[0]?.profile?.prenom || ""} ${(selectedInvoiceForPayment.lease as any)?.signers?.[0]?.profile?.nom || ""}`.trim()
+            selectedInvoiceForPayment.lease?.signers?.[0]?.profile
+              ? `${selectedInvoiceForPayment.lease.signers[0].profile.prenom ?? ""} ${selectedInvoiceForPayment.lease.signers[0].profile.nom ?? ""}`.trim()
               : "Locataire"
           }
           ownerName="Propriétaire"
-          propertyAddress={selectedInvoiceForPayment.lease?.property?.adresse_complete || ""}
+          propertyAddress={selectedInvoiceForPayment.lease?.property?.adresse_complete ?? ""}
           periode={selectedInvoiceForPayment.periode || ""}
           onPaymentComplete={handlePaymentComplete}
         />

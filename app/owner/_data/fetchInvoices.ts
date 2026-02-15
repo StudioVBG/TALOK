@@ -5,9 +5,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import type { InvoiceRow, LeaseRow, PropertyRow, ProfileRow } from "@/lib/supabase/database.types";
+import type { InvoiceRow as InvoiceRowBase, LeaseRow, PropertyRow, ProfileRow } from "@/lib/supabase/database.types";
 
-export interface InvoiceRow {
+export interface InvoiceRow extends Omit<InvoiceRowBase, "statut"> {
   id: string;
   lease_id: string;
   owner_id: string;
@@ -24,8 +24,12 @@ export interface InvoiceRow {
     property?: {
       adresse_complete: string;
       ville: string;
-    }
-  }
+      code_postal?: string;
+    };
+    signers?: Array<{
+      profile?: { prenom?: string; nom?: string };
+    }>;
+  };
 }
 
 export interface FetchInvoicesOptions {
@@ -142,7 +146,7 @@ export async function fetchInvoices(
 
     if (leasesData && leasesData.length > 0) {
       const leaseRows = leasesData as LeaseRow[];
-      const propertyIds = [...new Set(leaseRows.map((l) => l.property_id).filter(Boolean))];
+      const propertyIds = [...new Set(leaseRows.map((l) => l.property_id).filter(Boolean))] as string[];
       
       const { data: propertiesData } = await supabase
         .from("properties")
@@ -275,7 +279,7 @@ export async function fetchInvoice(
         .single();
 
       if (propertyData) {
-        (invoice as InvoiceRow & { lease?: { property?: PropertyRow } }).lease = {
+        (invoice as InvoiceRow & { lease?: { property?: any } }).lease = {
           property: propertyData
         };
       }

@@ -144,7 +144,7 @@ export function mapLeaseToTemplate(
 
   return {
     reference: lease.id ? lease.id.slice(0, 8).toUpperCase() : "DRAFT",
-    date_signature: lease.created_at, // Ou signed_at si dispo
+    date_signature: (lease as any).created_at, // Ou signed_at si dispo
     lieu_signature: property.ville || "...",
     
     bailleur: {

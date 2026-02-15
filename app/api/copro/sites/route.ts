@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         role_code: 'syndic',
         site_id: site.id,
-      });
+      } as any);
     
     return NextResponse.json(site, { status: 201 });
   } catch (error: unknown) {

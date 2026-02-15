@@ -2,26 +2,17 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, verifyWebhookSignature, formatAmountFromStripe, type PaymentMetadata } from "@/lib/stripe";
-import { createClient as createServerClient } from "@supabase/supabase-js";
-import { sendPaymentConfirmation, sendPaymentReminder } from "@/lib/emails";
+import { verifyWebhookSignature, formatAmountFromStripe, type PaymentMetadata } from "@/lib/stripe";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { sendPaymentConfirmation } from "@/lib/emails";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Stripe from "stripe";
 
+type SupabaseClient = ReturnType<typeof createServiceRoleClient>;
+
 export async function POST(request: NextRequest) {
-  // Créer le client à l'intérieur du handler (pas au niveau module)
-  // pour éviter les erreurs de build quand les env vars ne sont pas disponibles
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = createServiceRoleClient();
 
   try {
     // Vérifier la signature du webhook
@@ -36,8 +27,8 @@ export async function POST(request: NextRequest) {
     let event: Stripe.Event;
     try {
       event = verifyWebhookSignature(body, signature);
-    } catch (err: any) {
-      console.error("[webhook/payments] Signature invalide:", err.message);
+    } catch (err: unknown) {
+      console.error("[webhook/payments] Signature invalide:", err instanceof Error ? err.message : err);
       return NextResponse.json({ error: "Signature invalide" }, { status: 400 });
     }
 
@@ -46,15 +37,15 @@ export async function POST(request: NextRequest) {
     // Traiter les événements
     switch (event.type) {
       case "payment_intent.succeeded":
-        await handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
+        await handlePaymentSucceeded(supabase, event.data.object as Stripe.PaymentIntent);
         break;
 
       case "payment_intent.payment_failed":
-        await handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
+        await handlePaymentFailed(supabase, event.data.object as Stripe.PaymentIntent);
         break;
 
       case "payment_intent.canceled":
-        await handlePaymentCanceled(event.data.object as Stripe.PaymentIntent);
+        await handlePaymentCanceled(supabase, event.data.object as Stripe.PaymentIntent);
         break;
 
       default:
@@ -68,11 +59,22 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+async function handlePaymentSucceeded(
+  supabase: SupabaseClient,
+  paymentIntent: Stripe.PaymentIntent
+) {
   const metadata = paymentIntent.metadata as unknown as PaymentMetadata;
-  const { invoiceId, profileId } = metadata;
+  const invoiceId = metadata?.invoiceId;
+  const profileId = metadata?.profileId;
+
+  if (!invoiceId || !profileId) {
+    console.error("[webhook/payments] Metadata incomplète: invoiceId ou profileId manquant");
+    return;
+  }
 
   console.log(`[webhook/payments] Paiement réussi: ${paymentIntent.id}`);
+
+  const amountCents = paymentIntent.amount ?? 0;
 
   // 1. Mettre à jour le paiement
   const { data: payment, error: paymentError } = await supabase
@@ -90,10 +92,15 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
     throw paymentError;
   }
 
+  if (!payment) {
+    console.error("[webhook/payments] Paiement non trouvé après mise à jour");
+    return;
+  }
+
   // 2. Vérifier si la facture est entièrement payée
   const { data: invoice } = await supabase
     .from("invoices")
-    .select("id, montant_total")
+    .select("id, montant_total, periode")
     .eq("id", invoiceId)
     .single();
 
@@ -105,7 +112,10 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
       .eq("invoice_id", invoiceId)
       .eq("statut", "succeeded");
 
-    const totalPaid = (payments || []).reduce((sum, p: any) => sum + Number(p.montant), 0);
+    const totalPaid = (payments || []).reduce(
+      (sum: number, p: { montant: number }) => sum + Number(p.montant),
+      0
+    );
 
     // Si entièrement payé, mettre à jour le statut de la facture
     if (totalPaid >= invoice.montant_total) {
@@ -117,7 +127,7 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
       console.log(`[webhook/payments] Facture ${invoiceId} marquée comme payée`);
 
       // 3. Générer la quittance
-      await generateReceipt(invoiceId, payment.id);
+      await generateReceipt(supabase, invoiceId, payment.id);
     }
   }
 
@@ -130,11 +140,13 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
       .single();
 
     if (property) {
+      const msg = `Un paiement de ${formatAmountFromStripe(amountCents)}€ a été reçu.`;
       await supabase.from("notifications").insert({
         profile_id: property.owner_id,
         type: "payment_received",
         title: "Paiement reçu",
-        message: `Un paiement de ${formatAmountFromStripe(paymentIntent.amount)}€ a été reçu.`,
+        body: msg,
+        message: msg,
         data: { invoiceId, paymentId: payment.id },
       });
     }
@@ -156,10 +168,10 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
         await sendPaymentConfirmation({
           tenantEmail: authUser.user.email,
           tenantName: `${tenantProfile.prenom || ""} ${tenantProfile.nom || ""}`.trim() || "Locataire",
-          amount: formatAmountFromStripe(paymentIntent.amount),
+          amount: formatAmountFromStripe(amountCents),
           paymentDate: format(new Date(), "d MMMM yyyy", { locale: fr }),
           paymentMethod: "Carte bancaire",
-          period: (invoice as any)?.periode || "N/A",
+          period: invoice?.periode ?? "N/A",
           paymentId: payment.id,
         });
         console.log(`[webhook/payments] Email de confirmation envoyé à ${authUser.user.email}`);
@@ -171,7 +183,10 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
   }
 }
 
-async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
+async function handlePaymentFailed(
+  supabase: SupabaseClient,
+  paymentIntent: Stripe.PaymentIntent
+) {
   console.log(`[webhook/payments] Paiement échoué: ${paymentIntent.id}`);
 
   // Mettre à jour le statut du paiement
@@ -187,18 +202,23 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
 
   // Notifier le locataire
   const metadata = paymentIntent.metadata as unknown as PaymentMetadata;
-  if (metadata.profileId) {
+  const profileId = metadata?.profileId;
+  if (profileId) {
     await supabase.from("notifications").insert({
-      profile_id: metadata.profileId,
+      profile_id: profileId,
       type: "payment_failed",
       title: "Paiement échoué",
+      body: "Votre paiement n'a pas pu être traité. Veuillez réessayer.",
       message: "Votre paiement n'a pas pu être traité. Veuillez réessayer.",
-      data: { invoiceId: metadata.invoiceId },
+      data: { invoiceId: metadata?.invoiceId },
     });
   }
 }
 
-async function handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent) {
+async function handlePaymentCanceled(
+  supabase: SupabaseClient,
+  paymentIntent: Stripe.PaymentIntent
+) {
   console.log(`[webhook/payments] Paiement annulé: ${paymentIntent.id}`);
 
   // Supprimer ou annuler le paiement en attente
@@ -209,7 +229,11 @@ async function handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent) {
     .eq("statut", "pending");
 }
 
-async function generateReceipt(invoiceId: string, paymentId: string) {
+async function generateReceipt(
+  supabase: SupabaseClient,
+  invoiceId: string,
+  paymentId: string
+) {
   console.log(`[webhook/payments] Génération quittance pour facture ${invoiceId}`);
 
   // Récupérer les infos nécessaires
@@ -229,13 +253,19 @@ async function generateReceipt(invoiceId: string, paymentId: string) {
   if (!invoice) return;
 
   // Créer un document quittance
+  const leaseData = invoice.leases as { property_id?: string } | null | undefined;
+  const propertyId = leaseData?.property_id;
+
+  const storagePath = `quittances/${invoice.tenant_id}/${invoiceId}.pdf`;
+  const quittanceTitle = `Quittance ${invoice.periode}`;
   const { error } = await supabase.from("documents").insert({
     type: "quittance",
     owner_id: invoice.owner_id,
     tenant_id: invoice.tenant_id,
-    property_id: (invoice.leases as any)?.property_id,
+    property_id: propertyId ?? undefined,
     lease_id: invoice.lease_id,
-    title: `Quittance ${invoice.periode}`,
+    nom: quittanceTitle,
+    url: storagePath,
     metadata: {
       invoiceId,
       paymentId,
@@ -243,7 +273,7 @@ async function generateReceipt(invoiceId: string, paymentId: string) {
       montant: invoice.montant_total,
       generated_at: new Date().toISOString(),
     },
-    storage_path: `quittances/${invoice.tenant_id}/${invoiceId}.pdf`,
+    storage_path: storagePath,
   });
 
   if (error) {

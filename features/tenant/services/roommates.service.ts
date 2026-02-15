@@ -59,7 +59,7 @@ export class RoommatesService {
       if (error.code === "PGRST116") return null;
       throw error;
     }
-    return data;
+    return data as Roommate;
   }
 
   /**
@@ -76,7 +76,7 @@ export class RoommatesService {
       .single();
 
     if (error) throw error;
-    return roommate;
+    return roommate as Roommate;
   }
 
   /**
@@ -94,7 +94,7 @@ export class RoommatesService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as Roommate;
   }
 
   /**

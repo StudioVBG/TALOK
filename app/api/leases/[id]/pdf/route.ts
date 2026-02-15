@@ -215,7 +215,6 @@ export async function GET(request: Request, { params }: RouteParams) {
         type: isOwnerSociete ? "societe" as const : "particulier" as const,
         siret: ownerIdentity.siret ?? undefined,
         raison_sociale: ownerIdentity.companyName || "",
-        forme_juridique: ownerIdentity.legalForm || "",
         representant_nom: ownerIdentity.representative
           ? `${ownerIdentity.representative.firstName} ${ownerIdentity.representative.lastName}`.trim()
           : undefined,

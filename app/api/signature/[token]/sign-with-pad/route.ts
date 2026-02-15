@@ -8,11 +8,42 @@ import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { verifyTokenCompat } from "@/lib/utils/secure-token";
 import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { createSignatureLogger } from "@/lib/utils/signature-logger";
-import { isOwnerRole, LEASE_STATUS } from "@/lib/constants/roles";
+import { LEASE_STATUS } from "@/lib/constants/roles";
 import { verifyOTP } from "@/lib/services/otp-store";
 
 interface PageProps {
   params: Promise<{ token: string }>;
+}
+
+/** Lease row with joined properties (from select) */
+interface LeaseWithProperty {
+  id: string;
+  property_id: string | null;
+  statut: string;
+  type_bail: string;
+  loyer: number;
+  signatory_entity_id?: string | null;
+  properties: {
+    adresse_complete?: string;
+    ville?: string;
+    owner_id?: string;
+  } | null;
+}
+
+/** Signer from lease_signers select */
+interface LeaseSignerSelect {
+  id: string;
+  profile_id: string | null;
+  role: string;
+  signature_status: string;
+}
+
+/** Legal entity from legal_entities select */
+interface LegalEntitySelect {
+  nom?: string;
+  siret?: string | null;
+  entity_type?: string;
+  gerant_nom?: string | null;
 }
 
 /**
@@ -79,20 +110,24 @@ export async function POST(request: Request, { params }: PageProps) {
       return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
     }
 
+    const typedLease = lease as unknown as LeaseWithProperty;
+
     // Récupérer l'entité juridique si applicable
     let entityInfo: { nom: string; siret: string | null; type: string; representant: string | null } | null = null;
-    if ((lease as any).signatory_entity_id) {
+    const signatoryEntityId = typedLease.signatory_entity_id;
+    if (signatoryEntityId) {
       const { data: entity } = await serviceClient
         .from("legal_entities")
         .select("nom, siret, entity_type, gerant_nom")
-        .eq("id", (lease as any).signatory_entity_id)
+        .eq("id", signatoryEntityId)
         .single();
-      if (entity) {
+      const typedEntity = entity as LegalEntitySelect | null;
+      if (typedEntity) {
         entityInfo = {
-          nom: (entity as any).nom,
-          siret: (entity as any).siret,
-          type: (entity as any).entity_type,
-          representant: (entity as any).gerant_nom,
+          nom: typedEntity.nom ?? "",
+          siret: typedEntity.siret ?? null,
+          type: typedEntity.entity_type ?? "",
+          representant: typedEntity.gerant_nom ?? null,
         };
       }
     }
@@ -139,7 +174,7 @@ export async function POST(request: Request, { params }: PageProps) {
     if (!validation.valid) {
       log.warn("Image de signature invalide", { errors: validation.errors });
       return NextResponse.json(
-        { error: validation.errors[0], validation_errors: validation.errors },
+        { error: validation.errors[0] ?? "Données de signature invalides", validation_errors: validation.errors },
         { status: 400 }
       );
     }
@@ -148,10 +183,10 @@ export async function POST(request: Request, { params }: PageProps) {
 
     // Contenu pour le hash du document
     const documentContent = JSON.stringify({
-      leaseId: lease.id,
-      type: lease.type_bail,
-      loyer: lease.loyer,
-      property: lease.properties,
+      leaseId: typedLease.id,
+      type: typedLease.type_bail,
+      loyer: typedLease.loyer,
+      property: typedLease.properties,
       signerEmail: tokenData.email,
       entity: entityInfo,
       timestamp: Date.now(),
@@ -160,14 +195,14 @@ export async function POST(request: Request, { params }: PageProps) {
     // FIX: identityVerified et identityMethod ne viennent plus du body client
     const proof = await generateSignatureProof({
       documentType: "bail",
-      documentId: lease.id,
+      documentId: typedLease.id,
       documentContent,
       signerName,
       signerEmail: tokenData.email,
       signerProfileId,
       identityVerified: true, // OTP vérifié en amont (alignement avec /sign)
       identityMethod: "otp_verified_pad",
-      signatureType: signatureType || "draw",
+      signatureType: signatureType === "text" ? "text" : "draw",
       signatureImage,
       userAgent: userAgent || request.headers.get("user-agent") || "unknown",
       screenSize: screenSize || "unknown",
@@ -179,21 +214,22 @@ export async function POST(request: Request, { params }: PageProps) {
 
     // Recherche du signataire — Priorité 1: Par email
     const normalizedEmail = tokenData.email.toLowerCase().trim();
-    let tenantSigner = null;
+    let tenantSigner: LeaseSignerSelect | null = null;
     
     const { data: signerByEmail } = await serviceClient
       .from("lease_signers")
       .select("id, profile_id, role, signature_status")
-      .eq("lease_id", lease.id)
+      .eq("lease_id", typedLease.id)
       .eq("invited_email", normalizedEmail)
       .maybeSingle();
     
-    if (signerByEmail) {
-      if (signerByEmail.signature_status === "signed") {
+    const typedSignerByEmail = signerByEmail as LeaseSignerSelect | null;
+    if (typedSignerByEmail) {
+      if (typedSignerByEmail.signature_status === "signed") {
         return NextResponse.json({ error: "Vous avez déjà signé ce bail" }, { status: 400 });
       }
-      tenantSigner = signerByEmail;
-      log.info("Signataire trouvé par email", { signerId: signerByEmail.id, role: signerByEmail.role });
+      tenantSigner = typedSignerByEmail;
+      log.info("Signataire trouvé par email", { signerId: typedSignerByEmail.id, role: typedSignerByEmail.role });
     }
 
     // Priorité 2: Par profile via email dans profiles
@@ -204,35 +240,37 @@ export async function POST(request: Request, { params }: PageProps) {
         .eq("email", normalizedEmail)
         .maybeSingle();
       
-      if (profileByEmail) {
+      const profileId = profileByEmail?.id;
+      if (profileId) {
         const { data: signerByProfile } = await serviceClient
           .from("lease_signers")
           .select("id, profile_id, role, signature_status")
-          .eq("lease_id", lease.id)
-          .eq("profile_id", profileByEmail.id)
+          .eq("lease_id", typedLease.id)
+          .eq("profile_id", profileId)
           .maybeSingle();
         
-        if (signerByProfile?.signature_status === "signed") {
+        const typedSignerByProfile = signerByProfile as LeaseSignerSelect | null;
+        if (typedSignerByProfile?.signature_status === "signed") {
           return NextResponse.json({ error: "Vous avez déjà signé ce bail" }, { status: 400 });
         }
-        tenantSigner = signerByProfile;
+        tenantSigner = typedSignerByProfile ?? null;
       }
     }
 
     // FIX P0-5: PAS de fallback "par rôle" — risque de mauvais signataire
 
     if (!tenantSigner) {
-      log.error("Aucun signataire trouvé", { email: normalizedEmail, leaseId: lease.id });
+      log.error("Aucun signataire trouvé", { email: normalizedEmail, leaseId: typedLease.id });
       return NextResponse.json(
         { error: "Vous n'êtes pas signataire de ce bail" },
         { status: 403 }
       );
     }
 
-    const tenantProfileId = signerProfileId || tenantSigner.profile_id || null;
+    const tenantProfileId = signerProfileId ?? tenantSigner.profile_id ?? null;
 
     // Upload image de signature dans Storage
-    const signaturePath = `signatures/${lease.id}/${tenantSigner.id}_${Date.now()}.png`;
+    const signaturePath = `signatures/${typedLease.id}/${tenantSigner.id}_${Date.now()}.png`;
     let uploadSuccess = false;
     
     try {
@@ -249,7 +287,7 @@ export async function POST(request: Request, { params }: PageProps) {
         uploadSuccess = true;
         log.info("Image uploadée", { path: signaturePath });
       } else {
-        log.warn("Erreur upload image", { error: uploadError.message });
+        log.warn("Erreur upload image", { error: uploadError?.message ?? String(uploadError) });
       }
     } catch (uploadError) {
       log.warn("Exception upload image", { error: String(uploadError) });
@@ -264,14 +302,14 @@ export async function POST(request: Request, { params }: PageProps) {
       },
     };
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       signature_status: "signed",
       signed_at: proof.timestamp.iso,
       // FIX P1-3: Ne plus écrire signature_image (base64) — utiliser uniquement signature_image_path
-      ip_inet: proof.metadata.ipAddress as any,
+      ip_inet: proof.metadata.ipAddress ?? null,
       user_agent: proof.metadata.userAgent,
       proof_id: proof.proofId,
-      proof_metadata: proofForDB as any,
+      proof_metadata: proofForDB as Record<string, unknown>,
       document_hash: proof.document.hash,
     };
     
@@ -281,21 +319,22 @@ export async function POST(request: Request, { params }: PageProps) {
     
     const { error: signerUpdateError } = await serviceClient
       .from("lease_signers")
-      .update(updateData as any)
+      .update(updateData)
       .eq("id", tenantSigner.id);
     
     if (signerUpdateError) {
-      log.error("Erreur mise à jour signataire", { error: signerUpdateError.message });
+      log.error("Erreur mise à jour signataire", { error: signerUpdateError?.message ?? String(signerUpdateError) });
     }
 
     // Déterminer le nouveau statut — FIX P0-4: Utiliser UNIQUEMENT LEASE_STATUS
     const { data: allSigners } = await serviceClient
       .from("lease_signers")
       .select("id, role, signature_status")
-      .eq("lease_id", lease.id);
+      .eq("lease_id", typedLease.id);
     
-    const totalSigners = allSigners?.length || 0;
-    const signedCount = allSigners?.filter(s => s.signature_status === "signed").length || 0;
+    const signersList = allSigners ?? [];
+    const totalSigners = signersList.length;
+    const signedCount = signersList.filter((s: { signature_status?: string }) => s.signature_status === "signed").length;
     const allSigned = totalSigners >= 2 && signedCount === totalSigners;
     
     let newStatus: string;
@@ -304,26 +343,26 @@ export async function POST(request: Request, { params }: PageProps) {
     } else if (signedCount > 0) {
       newStatus = LEASE_STATUS.PENDING_SIGNATURE;
     } else {
-      newStatus = lease.statut || LEASE_STATUS.PENDING_SIGNATURE;
+      newStatus = typedLease.statut ?? LEASE_STATUS.PENDING_SIGNATURE;
     }
 
     // Mettre à jour le statut du bail
-    if (newStatus !== lease.statut) {
+    if (newStatus !== typedLease.statut) {
       const { error: updateError } = await serviceClient
         .from("leases")
         .update({ statut: newStatus })
-        .eq("id", lease.id);
+        .eq("id", typedLease.id);
 
       if (updateError) {
-        if (updateError.code === "23514") {
+        if (String(updateError.code) === "23514") {
           log.warn("Statut non autorisé, fallback", { attempted: newStatus });
           await serviceClient
             .from("leases")
             .update({ statut: LEASE_STATUS.PENDING_SIGNATURE })
-            .eq("id", lease.id);
+            .eq("id", typedLease.id);
           newStatus = LEASE_STATUS.PENDING_SIGNATURE;
         } else {
-          log.error("Erreur mise à jour bail", { error: updateError.message });
+          log.error("Erreur mise à jour bail", { error: updateError?.message ?? String(updateError) });
         }
       }
     }
@@ -333,9 +372,9 @@ export async function POST(request: Request, { params }: PageProps) {
       .from("documents")
       .insert({
         type: "bail_signe_locataire",
-        owner_id: (lease.properties as any)?.owner_id,
-        property_id: lease.property_id,
-        lease_id: lease.id,
+        owner_id: typedLease.properties?.owner_id ?? null,
+        property_id: typedLease.property_id,
+        lease_id: typedLease.id,
         tenant_id: tenantProfileId,
         metadata: {
           proof_id: proof.proofId,
@@ -352,10 +391,10 @@ export async function POST(request: Request, { params }: PageProps) {
 
     // FIX P1-8: Audit log
     await serviceClient.from("audit_log").insert({
-      user_id: tenantProfileId || null,
+      user_id: tenantProfileId ?? null,
       action: "lease_signed_via_pad",
       entity_type: "lease",
-      entity_id: lease.id,
+      entity_id: typedLease.id,
       metadata: {
         role: tenantSigner.role,
         proof_id: proof.proofId,
@@ -363,7 +402,7 @@ export async function POST(request: Request, { params }: PageProps) {
         signer_email: normalizedEmail,
         correlation_id: log.getCorrelationId(),
       },
-    } as any);
+    });
 
     log.complete(true, { allSigned, newStatus, proofId: proof.proofId });
 
@@ -373,7 +412,7 @@ export async function POST(request: Request, { params }: PageProps) {
         ? "Bail entièrement signé ! En attente de l'état des lieux d'entrée." 
         : "Signature enregistrée avec succès !",
       proof_id: proof.proofId,
-      lease_id: lease.id,
+      lease_id: typedLease.id,
       tenant_profile_id: tenantProfileId,
       all_signed: allSigned,
       new_status: newStatus,

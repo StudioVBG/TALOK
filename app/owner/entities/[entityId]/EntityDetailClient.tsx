@@ -442,17 +442,17 @@ function AssociatesTab({
               </div>
               <div className="flex-1">
                 <p className="font-medium text-sm">
-                  {[a.prenom, a.nom].filter(Boolean).join(" ") ||
+                  {[String(a.prenom ?? ""), String(a.nom ?? "")].filter(Boolean).join(" ") ||
                     "Associé"}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  {a.is_gerant && (
+                  {Boolean(a.is_gerant) && (
                     <Badge variant="secondary" className="text-xs">
                       <Star className="h-3 w-3 mr-1" />
                       Gérant
                     </Badge>
                   )}
-                  {a.pourcentage_capital && (
+                  {a.pourcentage_capital != null && (
                     <span className="text-xs text-muted-foreground">
                       {Number(a.pourcentage_capital)}% du capital
                     </span>

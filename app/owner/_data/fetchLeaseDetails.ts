@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
-import type { PropertyRow, LeaseRow, LeaseSignerRow, PaymentRow, InvoiceRow, DocumentRow, EDLRow, ProfileRow } from "@/lib/supabase/database.types";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Database, PropertyRow, LeaseRow, LeaseSignerRow, PaymentRow, InvoiceRow, DocumentRow, EDLItemRow, ProfileRow } from "@/lib/supabase/database.types";
 
 // ✅ SOTA 2026: Types stricts pour l'intégrité des données
 
@@ -159,11 +159,10 @@ async function fetchLeaseDetailsFallback(
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  let supabase: ReturnType<typeof createServiceClient> | Awaited<ReturnType<typeof createClient>>;
-
+  type SupabaseClientType = ReturnType<typeof createSupabaseClient<Database>>;
+  let supabase: SupabaseClientType;
   if (supabaseUrl && serviceRoleKey) {
-    // Utiliser le service role pour contourner les RLS
-    supabase = createServiceClient(supabaseUrl, serviceRoleKey, {
+    supabase = createSupabaseClient<Database>(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
@@ -173,7 +172,7 @@ async function fetchLeaseDetailsFallback(
     console.warn(
       "[fetchLeaseDetailsFallback] SUPABASE_SERVICE_ROLE_KEY manquant, utilisation du client standard (RLS actif)"
     );
-    supabase = await createClient();
+    supabase = (await createClient()) as SupabaseClientType;
   }
 
   // 1. Récupérer le bail avec la propriété en une seule requête
@@ -221,17 +220,18 @@ async function fetchLeaseDetailsFallback(
     }
     propertyRow = data;
   } else if (leaseData.unit_id) {
-    const { data: unit, error: unitError } = await supabase
+    const { data: unitData, error: unitError } = await supabase
       .from("units")
       .select("id, property_id")
       .eq("id", leaseData.unit_id)
       .single();
 
-    if (unitError || !unit) {
+    if (unitError || !unitData) {
       console.error("[fetchLeaseDetailsFallback] Unit error:", unitError);
       return null;
     }
 
+    const unit = unitData as { id: string; property_id: string };
     const { data, error } = await supabase
       .from("properties")
       .select("*")
@@ -310,7 +310,7 @@ async function fetchLeaseDetailsFallback(
   // 4. Récupérer les factures du bail (SSOT 2026)
   const { data: invoices } = await supabase
     .from("invoices")
-    .select("id, periode, montant_total, montant_loyer, montant_charges, statut, created_at, metadata")
+    .select("id, periode, montant_total, montant_loyer, montant_charges, statut, created_at")
     .eq("lease_id", leaseId)
     .order("periode", { ascending: false })
     .limit(24);
@@ -331,7 +331,7 @@ async function fetchLeaseDetailsFallback(
     .maybeSingle();
 
   // 7. Récupérer l'EDL le plus récent pour ce bail + stats de progression
-  const { data: edl } = await supabase
+  const { data: edlRaw } = await supabase
     .from("edl")
     .select("id, status, type, scheduled_at, completed_date")
     .eq("lease_id", leaseId)
@@ -339,6 +339,9 @@ async function fetchLeaseDetailsFallback(
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  type EDLQueryResult = { id: string; status: string; type: string; scheduled_at?: string | null; completed_date?: string | null };
+  const edl = edlRaw as EDLQueryResult | null;
 
   // 7b. Si un EDL existe, récupérer les stats de progression (items inspectés, photos, signatures)
   let edlStats: { total_items: number; completed_items: number; total_photos: number; signatures_count: number } | null = null;
@@ -359,12 +362,12 @@ async function fetchLeaseDetailsFallback(
         .not("signed_at", "is", null),
     ]);
 
-    const allItems = itemsResult.data || [];
+    const allItems = (itemsResult.data ?? []) as EDLItemRow[];
     edlStats = {
-      total_items: itemsResult.count || allItems.length,
-      completed_items: allItems.filter((i: any) => i.condition && i.condition !== "null").length,
-      total_photos: photosResult.count || 0,
-      signatures_count: sigsResult.count || 0,
+      total_items: itemsResult.count ?? allItems.length,
+      completed_items: allItems.filter((i) => i.condition != null && String(i.condition) !== "null").length,
+      total_photos: photosResult.count ?? 0,
+      signatures_count: sigsResult.count ?? 0,
     };
   }
 
@@ -377,27 +380,33 @@ async function fetchLeaseDetailsFallback(
     .maybeSingle();
 
   // Construire le résultat
+  type PropertyRowExtended = PropertyRow & { numero_rue?: string; nom_rue?: string };
+  const prop = propertyRow as PropertyRowExtended;
   const property: Property = {
     id: propertyRow.id,
     owner_id: propertyRow.owner_id,
     adresse_complete: propertyRow.adresse_complete,
-    numero_rue: (propertyRow as PropertyRow & { numero_rue?: string }).numero_rue,
-    nom_rue: (propertyRow as PropertyRow & { nom_rue?: string }).nom_rue,
+    numero_rue: prop.numero_rue,
+    nom_rue: prop.nom_rue,
     ville: propertyRow.ville,
     code_postal: propertyRow.code_postal,
     type: propertyRow.type,
-    cover_url: mainPhoto?.url || null,
-    loyer_hc: (propertyRow as PropertyRow & { loyer_hc?: number }).loyer_hc,
-    charges_mensuelles: (propertyRow as PropertyRow & { charges_mensuelles?: number }).charges_mensuelles,
+    cover_url: (mainPhoto as { url?: string } | null)?.url ?? null,
+    loyer_hc: propertyRow.loyer_hc ?? undefined,
+    charges_mensuelles: propertyRow.charges_mensuelles ?? undefined,
   };
 
   // SSOT 2026 : Consolider les données financières
+  const initialInvoiceTyped = initialInvoice as { statut?: string } | null;
   const cleanLease: Lease = {
     ...leaseData,
+    statut: leaseData.statut as LeaseStatus,
+    sealed_at: leaseData.sealed_at ?? null,
+    signed_pdf_path: leaseData.signed_pdf_path ?? null,
     loyer: property.loyer_hc ?? leaseData.loyer ?? 0,
     charges_forfaitaires: property.charges_mensuelles ?? leaseData.charges_forfaitaires ?? 0,
     has_signed_edl: edl?.status === "signed",
-    has_paid_initial: initialInvoice?.statut === "paid",
+    has_paid_initial: initialInvoiceTyped?.statut === "paid",
     property_id: leaseData.property_id,
     unit_id: leaseData.unit_id,
     properties: propertyRow,
@@ -406,10 +415,11 @@ async function fetchLeaseDetailsFallback(
   // ✅ SOTA 2026: Générer des URLs signées pour les images de signature (bucket privé)
   // Durée de validité: 1 heure
   type SignerWithProfile = LeaseSignerRow & {
-    profiles: ProfileRow | null;
+    profiles?: ProfileRow | ProfileRow[] | null;
   };
+  const signersArray = (signers ?? []) as SignerWithProfile[];
   const signersWithSignedUrls = await Promise.all(
-    (signers || []).map(async (s: SignerWithProfile) => {
+    signersArray.map(async (s) => {
       let signatureImageUrl: string | null = null;
       
       // 1. Si signature_image est déjà une data URL ou URL HTTP, l'utiliser
@@ -437,54 +447,59 @@ async function fetchLeaseDetailsFallback(
       return {
         id: s.id,
         role: s.role,
-        signature_status: s.signature_status,
+        signature_status: s.signature_status as SignatureStatus,
         signed_at: s.signed_at,
         signature_image: signatureImageUrl,
-        signature_image_path: s.signature_image_path,
-        proof_id: s.proof_id,
-        ip_inet: s.ip_inet,
+        signature_image_path: s.signature_image_path ?? null,
+        proof_id: s.proof_id ?? null,
+        ip_inet: s.ip_inet ?? null,
         invited_email: s.invited_email,
         invited_name: s.invited_name,
         invited_at: s.invited_at,
-        profile: s.profiles ? {
-          id: s.profiles.id,
-          prenom: s.profiles.prenom,
-          nom: s.profiles.nom,
-          email: s.profiles.email,
-          telephone: s.profiles.telephone,
-          avatar_url: s.profiles.avatar_url,
-          date_naissance: s.profiles.date_naissance,
-          lieu_naissance: s.profiles.lieu_naissance,
-          nationalite: s.profiles.nationalite,
-          adresse: s.profiles.adresse,
-        } : null,
+        profile: (() => {
+          const p = Array.isArray(s.profiles) ? s.profiles[0] : s.profiles;
+          return p ? {
+            id: p.id,
+            prenom: p.prenom,
+            nom: p.nom,
+            email: p.email ?? null,
+            telephone: p.telephone,
+            avatar_url: p.avatar_url,
+            date_naissance: p.date_naissance,
+            lieu_naissance: p.lieu_naissance ?? null,
+            nationalite: p.nationalite ?? null,
+            adresse: p.adresse ?? null,
+          } : null;
+        })(),
       };
     })
   );
 
-  const formattedSigners = signersWithSignedUrls;
+  const formattedSigners: Signer[] = signersWithSignedUrls;
 
   // Transformer les paiements
   type PaymentWithInvoice = PaymentRow & {
-    invoices: { periode: string } | null;
+    invoices: { periode: string; lease_id: string };
   };
-  const formattedPayments = (payments || []).map((p: PaymentWithInvoice) => ({
+  const paymentsArray = (payments ?? []) as PaymentWithInvoice[];
+  const formattedPayments: Payment[] = paymentsArray.map((p) => ({
     id: p.id,
-    date_paiement: p.date_paiement,
+    date_paiement: p.date_paiement ?? null,
     montant: p.montant,
-    statut: p.statut,
+    statut: p.statut as Payment["statut"],
     periode: p.invoices?.periode ?? null,
   }));
 
-  const formattedInvoices = (invoices || []).map((inv: InvoiceRow) => ({
+  const invoicesArray = (invoices ?? []) as InvoiceRow[];
+  const formattedInvoices: Invoice[] = invoicesArray.map((inv) => ({
     id: inv.id,
     periode: inv.periode,
     montant_total: inv.montant_total,
     montant_loyer: inv.montant_loyer,
     montant_charges: inv.montant_charges,
-    statut: inv.statut,
+    statut: inv.statut as Invoice["statut"],
     created_at: inv.created_at,
-    metadata: inv.metadata ?? null,
+    metadata: null,
   }));
 
   const result: LeaseDetails = {
@@ -493,8 +508,15 @@ async function fetchLeaseDetailsFallback(
     signers: formattedSigners,
     payments: formattedPayments,
     invoices: formattedInvoices,
-    documents: (documents || []) as Document[],
-    edl: edl ? { ...edl, ...edlStats } : null,
+    documents: (documents ?? []).map((doc: DocumentRow) => ({
+      id: doc.id,
+      type: doc.type,
+      storage_path: doc.storage_path ?? doc.url ?? "",
+      created_at: doc.created_at,
+      title: doc.nom ?? undefined,
+      name: doc.nom_fichier ?? undefined,
+    })),
+    edl: edl ? ({ ...edl, ...edlStats } as EDLEntry) : null,
   };
 
   return result;

@@ -35,8 +35,8 @@ async function loadHtml2Pdf() {
   if (html2pdfModule) return html2pdfModule;
   
   // Import dynamique pour ne charger que quand nécessaire
-  const module = await import('html2pdf.js');
-  html2pdfModule = module.default;
+  const html2pdfImport = await import('html2pdf.js');
+  html2pdfModule = html2pdfImport.default;
   return html2pdfModule;
 }
 

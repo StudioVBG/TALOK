@@ -699,6 +699,8 @@ export const propertyWizardConfigV3: WizardConfigV3 = {
     entrepot: localProFields,
     fonds_de_commerce: localProFields,
     immeuble: [],
+    terrain_agricole: [],
+    exploitation_agricole: [],
   },
 };
 

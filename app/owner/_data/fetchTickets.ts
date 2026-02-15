@@ -5,7 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import type { TicketRow, PropertyRow, ProfileRow } from "@/lib/supabase/database.types";
+import type { TicketRow as _TicketRowBase, PropertyRow, ProfileRow } from "@/lib/supabase/database.types";
 
 export interface TicketRow {
   id: string;

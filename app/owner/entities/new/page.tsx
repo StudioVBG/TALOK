@@ -339,6 +339,7 @@ export default function NewEntityPage() {
         adresse_siege: formData.adresseSiege || undefined,
         code_postal_siege: formData.codePostalSiege || undefined,
         ville_siege: formData.villeSiege || undefined,
+        pays_siege: "France",
         iban: formData.iban.replace(/\s/g, "") || undefined,
         bic: formData.bic || undefined,
         banque_nom: formData.banqueNom || undefined,

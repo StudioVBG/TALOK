@@ -162,31 +162,33 @@ export async function createEDL(
   }
 
   // 7. Outbox event (non-blocking)
-  await serviceClient
-    .from("outbox")
-    .insert({
-      event_type: "Inspection.Scheduled",
-      payload: {
-        edl_id: edlData.id,
-        property_id: propertyId,
-        lease_id: leaseId,
-        type,
-        scheduled_at: scheduledAt,
-      },
-    } as Record<string, unknown>)
-    .catch(() => {});
+  void Promise.resolve(
+    serviceClient
+      .from("outbox")
+      .insert({
+        event_type: "Inspection.Scheduled",
+        payload: {
+          edl_id: edlData.id,
+          property_id: propertyId,
+          lease_id: leaseId,
+          type,
+          scheduled_at: scheduledAt,
+        },
+      } as Record<string, unknown>)
+  ).catch(() => {});
 
   // 8. Audit log (non-blocking)
-  await serviceClient
-    .from("audit_log")
-    .insert({
-      user_id: userId,
-      action: "edl_created",
-      entity_type: "edl",
-      entity_id: edlData.id,
-      metadata: { type, lease_id: leaseId },
-    } as Record<string, unknown>)
-    .catch(() => {});
+  void Promise.resolve(
+    serviceClient
+      .from("audit_log")
+      .insert({
+        user_id: userId,
+        action: "edl_created",
+        entity_type: "edl",
+        entity_id: edlData.id,
+        metadata: { type, lease_id: leaseId },
+      } as Record<string, unknown>)
+  ).catch(() => {});
 
   // 9. Invalidate Next.js cache
   revalidatePath("/owner/inspections");

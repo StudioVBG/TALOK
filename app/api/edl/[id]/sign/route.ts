@@ -118,7 +118,12 @@ export async function POST(
     }
 
     if (profileByUserId) {
-      profile = profileByUserId;
+      profile = {
+        id: profileByUserId.id,
+        prenom: profileByUserId.prenom ?? "",
+        nom: profileByUserId.nom ?? "",
+        role: profileByUserId.role,
+      };
       console.log("[sign-edl] ✅ Étape 1: Profil trouvé par user_id:", profile.id, "role:", profile.role);
     } else {
       console.log("[sign-edl] ℹ️ Étape 1: Pas de profil avec user_id", step1Error?.message || "");
@@ -164,8 +169,8 @@ export async function POST(
 
         profile = {
           id: profileByEmail.id,
-          prenom: profileByEmail.prenom,
-          nom: profileByEmail.nom,
+          prenom: profileByEmail.prenom ?? "",
+          nom: profileByEmail.nom ?? "",
           role: profileByEmail.role,
         };
         console.log("[sign-edl] ✅ Étape 2: Profil trouvé par email:", profile.id, "role:", profile.role);
@@ -178,7 +183,7 @@ export async function POST(
     if (!profile) {
       console.log("[sign-edl] 🔍 Étape 3: Recherche dans edl_signatures pour EDL:", edlId);
 
-      const { data: edlSignature, error: step3Error } = await serviceClient
+      const { data: edlSignatureData, error: step3Error } = await serviceClient
         .from("edl_signatures")
         .select("id, signer_profile_id, signer_email, signer_user")
         .eq("edl_id", edlId)
@@ -189,6 +194,7 @@ export async function POST(
         console.warn("[sign-edl] ⚠️ Étape 3: Erreur requête edl_signatures:", step3Error.message);
       }
 
+      const edlSignature = edlSignatureData as { id: string; signer_profile_id?: string | null; signer_email?: string | null; signer_user?: string } | null;
       if (edlSignature) {
         console.log("[sign-edl] ℹ️ Étape 3: Entrée edl_signatures trouvée:", edlSignature.id);
 
@@ -221,8 +227,8 @@ export async function POST(
 
             profile = {
               id: sigProfile.id,
-              prenom: sigProfile.prenom,
-              nom: sigProfile.nom,
+              prenom: sigProfile.prenom ?? "",
+              nom: sigProfile.nom ?? "",
               role: sigProfile.role,
             };
             console.log("[sign-edl] ✅ Étape 3: Profil trouvé via signer_profile_id:", profile.id);
@@ -264,7 +270,12 @@ export async function POST(
       }
 
       if (newProfile) {
-        profile = newProfile;
+        profile = {
+          id: newProfile.id,
+          prenom: newProfile.prenom ?? "",
+          nom: newProfile.nom ?? "",
+          role: newProfile.role,
+        };
         console.log("[sign-edl] ✅ Étape 4: Profil créé/mis à jour:", profile.id);
       } else {
         // Dernier essai: peut-être que le profil existe maintenant (race condition)
@@ -279,7 +290,12 @@ export async function POST(
         }
 
         if (retryProfile) {
-          profile = retryProfile;
+          profile = {
+            id: retryProfile.id,
+            prenom: retryProfile.prenom ?? "",
+            nom: retryProfile.nom ?? "",
+            role: retryProfile.role,
+          };
           console.log("[sign-edl] ✅ Étape 4 (retry): Profil trouvé après erreur:", profile.id);
         }
       }
@@ -307,7 +323,12 @@ export async function POST(
         console.error("[sign-edl] ❌ Étape 4b: Erreur:", fallbackError.message);
       }
       if (fallbackProfile) {
-        profile = fallbackProfile;
+        profile = {
+          id: fallbackProfile.id,
+          prenom: fallbackProfile.prenom ?? "",
+          nom: fallbackProfile.nom ?? "",
+          role: fallbackProfile.role,
+        };
         console.log("[sign-edl] ✅ Étape 4b: Profil créé sans email:", profile.id);
       }
     }
@@ -341,6 +362,9 @@ export async function POST(
     }
 
     const edl = accessResult.edl;
+    if (!edl) {
+      return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
+    }
 
     const isOwner = profile.role === "owner";
     const signerRole = isOwner ? "owner" : "tenant";
@@ -361,7 +385,7 @@ export async function POST(
         console.warn("[sign-edl] ⚠️ Erreur récupération tenant_profile:", tpError.message);
       }
 
-      cniNumber = tenantProfile?.cni_number || null;
+      cniNumber = (tenantProfile as { cni_number?: string | null } | null)?.cni_number ?? null;
       console.log("[sign-edl] ℹ️ CNI locataire:", cniNumber ? "présent" : "absent");
     }
 
@@ -395,10 +419,10 @@ export async function POST(
       documentId: edlId,
       documentContent: JSON.stringify(edl), // Hash du contenu actuel de l'EDL
       signerName: `${profile.prenom} ${profile.nom}`,
-      signerEmail: user.email!,
+      signerEmail: user.email ?? `user-${user.id.slice(0, 8)}@unknown.local`,
       signerProfileId: profile.id,
       identityVerified: isOwner || !!cniNumber,
-      identityMethod: isOwner ? "Compte Propriétaire Authentifié" : `CNI n°${cniNumber}`,
+      identityMethod: isOwner ? "Compte Propriétaire Authentifié" : `CNI n°${cniNumber ?? ""}`,
       signatureType: "draw",
       signatureImage: signatureBase64,
       userAgent: request.headers.get("user-agent") || "Inconnu",
@@ -429,7 +453,7 @@ export async function POST(
         signer_email: user.email || null,
         signed_at: new Date().toISOString(),
         signature_image_path: fileName,
-        ip_inet: proof.metadata.ipAddress as any,
+        ip_inet: proof.metadata.ipAddress ?? null,
         proof_id: proof.proofId,
         proof_metadata: proofMetadataForDB as any,
         document_hash: proof.document.hash,
@@ -483,7 +507,7 @@ export async function POST(
       metadata: {
         signer_role: signerRole,
         proof_id: proof.proofId,
-        ip: proof.metadata.ipAddress
+        ip: proof.metadata.ipAddress ?? undefined,
       },
     } as any);
 

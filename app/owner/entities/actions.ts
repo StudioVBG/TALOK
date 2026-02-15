@@ -168,7 +168,7 @@ export async function createEntity(
         entity_type: data.entity_type,
         nom: data.nom,
         forme_juridique: data.forme_juridique || null,
-        regime_fiscal: data.regime_fiscal || null,
+        regime_fiscal: data.regime_fiscal || undefined,
         siret: data.siret?.replace(/\s/g, "") || null,
         capital_social: data.capital_social || null,
         date_creation: data.date_creation || null,

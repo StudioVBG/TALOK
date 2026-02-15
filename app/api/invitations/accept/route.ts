@@ -55,6 +55,13 @@ export async function POST(request: Request) {
         { status: 404 }
       );
     }
+    const profileId = profile.id;
+    if (!profileId) {
+      return NextResponse.json(
+        { error: "Profil invalide" },
+        { status: 404 }
+      );
+    }
 
     // 4. Récupérer l'invitation par token
     const { data: invitation, error: invError } = await serviceClient
@@ -71,7 +78,7 @@ export async function POST(request: Request) {
     }
 
     // 5. Vérifier que l'invitation n'est pas expirée
-    if (new Date(invitation.expires_at) < new Date()) {
+    if (new Date(invitation.expires_at as string) < new Date()) {
       return NextResponse.json(
         { error: "Cette invitation a expiré. Demandez un nouveau lien à votre propriétaire." },
         { status: 410 }
@@ -88,7 +95,7 @@ export async function POST(request: Request) {
 
     // 7. FIX P0-E4 CRITIQUE: Vérifier que l'email de l'utilisateur correspond
     const userEmail = (user.email || "").toLowerCase().trim();
-    const invitationEmail = (invitation.email || "").toLowerCase().trim();
+    const invitationEmail = String(invitation.email ?? "").toLowerCase().trim();
 
     if (userEmail !== invitationEmail) {
       console.warn(
@@ -108,9 +115,9 @@ export async function POST(request: Request) {
       .from("invitations")
       .update({
         used_at: new Date().toISOString(),
-        used_by: profile.id,
+        used_by: profileId,
       })
-      .eq("id", invitation.id)
+      .eq("id", invitation.id ?? "")
       .is("used_at", null); // Double protection contre race condition
 
     if (updateError) {
@@ -126,8 +133,8 @@ export async function POST(request: Request) {
     if (invitation.lease_id) {
       const { data: updatedSigners, error: signerError } = await serviceClient
         .from("lease_signers")
-        .update({ profile_id: profile.id })
-        .eq("lease_id", invitation.lease_id)
+        .update({ profile_id: profileId })
+        .eq("lease_id", String(invitation.lease_id ?? ""))
         .ilike("invited_email", invitationEmail)
         .is("profile_id", null)
         .select("id");
@@ -151,8 +158,8 @@ export async function POST(request: Request) {
           user_id: user.id,
           invitation_status: "accepted",
         })
-        .eq("lease_id", invitation.lease_id)
-        .ilike("invited_email", invitationEmail)
+        .eq("lease_id", String(invitation.lease_id ?? ""))
+        .ilike("invited_email", String(invitationEmail))
         .is("user_id", null);
 
       if (roommateError) {
@@ -163,17 +170,17 @@ export async function POST(request: Request) {
     // 11. Audit log
     try {
       await serviceClient.from("audit_log").insert({
-        user_id: profile.id,
+        user_id: profileId,
         action: "invitation_accepted",
         entity_type: "invitation",
-        entity_id: invitation.id,
+        entity_id: invitation.id ?? "",
         metadata: {
           lease_id: invitation.lease_id,
           invitation_role: invitation.role,
           lease_linked: leaseLinked,
           email: invitationEmail,
-        },
-      } as any);
+        } as Record<string, unknown>,
+      });
     } catch {
       // Audit log non bloquant
     }

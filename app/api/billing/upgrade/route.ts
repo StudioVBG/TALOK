@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     await stripe.subscriptions.update(subscription.stripe_subscription_id, {
-      items: [{ id: itemId, price: newPriceId }],
+      items: [{ id: itemId, price: newPriceId as string }],
       proration_behavior: "create_prorations",
     });
 

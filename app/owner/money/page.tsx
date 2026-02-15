@@ -38,7 +38,7 @@ export default async function OwnerMoneyPage() {
               const now = new Date();
               const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
               return invoices
-                .filter(i => i.statut === 'paid' && (i.periode?.startsWith(currentMonth) || i.date_paiement?.startsWith(currentMonth)))
+                .filter(i => i.statut === 'paid' && (i.periode?.startsWith(currentMonth) || (i as any).date_paiement?.startsWith(currentMonth)))
                 .reduce((acc, curr) => acc + (curr.montant_total || 0), 0)
                 .toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
             })()}

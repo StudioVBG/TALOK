@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
-import { APP_CONFIG, roleStyles, type UserRole } from "@/lib/design-system/tokens";
+import { APP_CONFIG, roleStyles } from "@/lib/design-system/tokens";
 import { getInitials } from "@/lib/design-system/utils";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 
@@ -127,14 +127,17 @@ const providerNavigation: NavSection[] = [
   },
 ];
 
-const navigationByRole: Record<UserRole, NavSection[]> = {
+// Rôles utilisés par AppShell (owner, tenant, provider, admin)
+type AppShellRole = "owner" | "tenant" | "provider" | "admin";
+
+const navigationByRole: Record<AppShellRole, NavSection[]> = {
   owner: ownerNavigation,
   tenant: tenantNavigation,
   provider: providerNavigation,
   admin: [], // Admin uses a different layout
 };
 
-const roleLabels: Record<UserRole, string> = {
+const roleLabels: Record<AppShellRole, string> = {
   owner: "Propriétaire",
   tenant: "Locataire",
   provider: "Prestataire",
@@ -142,14 +145,14 @@ const roleLabels: Record<UserRole, string> = {
 };
 
 // Routes profil et paramètres par rôle
-const profileRoutes: Record<UserRole, string> = {
+const profileRoutes: Record<AppShellRole, string> = {
   owner: "/owner/profile",
   tenant: "/tenant/settings",
   provider: "/provider/settings",
   admin: "/admin/dashboard",
 };
 
-const settingsRoutes: Record<UserRole, string> = {
+const settingsRoutes: Record<AppShellRole, string> = {
   owner: "/owner/profile",
   tenant: "/tenant/settings",
   provider: "/provider/settings",
@@ -162,7 +165,7 @@ const settingsRoutes: Record<UserRole, string> = {
 
 interface AppShellProps {
   children: React.ReactNode;
-  role: UserRole;
+  role: AppShellRole;
   profile: {
     id: string;
     prenom?: string | null;
@@ -367,7 +370,7 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={() => setTheme(theme === "dark" ? "light" : theme === "light" ? "dark" : "dark")}
                 aria-label={theme === "dark" ? "Passer au mode clair" : "Passer au mode sombre"}
               >
                 {theme === "dark" ? (
@@ -403,7 +406,7 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
                     </AvatarFallback>
                   </Avatar>
                   <span className="hidden lg:block text-sm font-medium">
-                    {profile.prenom || roleLabels[role]}
+                    {profile.prenom ?? roleLabels[role]}
                   </span>
                   <ChevronDown className="h-4 w-4 text-muted-foreground hidden lg:block" />
                 </Button>
@@ -411,7 +414,7 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
-                    <span>{profile.prenom} {profile.nom}</span>
+                    <span>{profile.prenom ?? ""} {profile.nom ?? ""}</span>
                     <span className="text-xs text-muted-foreground font-normal">
                       {roleLabels[role]}
                     </span>
@@ -470,7 +473,7 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
 // ============================================================================
 
 interface MobileBottomNavProps {
-  role: UserRole;
+  role: AppShellRole;
   navigation: NavSection[];
   isCurrent: (href: string) => boolean;
 }

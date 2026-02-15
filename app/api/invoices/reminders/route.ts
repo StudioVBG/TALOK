@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       .select("id")
       .eq("owner_id", profile.id);
 
-    const propertyIds = (properties || []).map((p: any) => p.id);
+    const propertyIds = (properties || []).map((p: { id: string }) => p.id);
     if (propertyIds.length === 0) {
       return NextResponse.json({ late_invoices: [], total: 0 });
     }
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       .in("property_id", propertyIds)
       .in("statut", ["active", "fully_signed"]);
 
-    const leaseIds = (leases || []).map((l: any) => l.id);
+    const leaseIds = (leases || []).map((l: { id: string }) => l.id);
     if (leaseIds.length === 0) {
       return NextResponse.json({ late_invoices: [], total: 0 });
     }
@@ -80,15 +80,17 @@ export async function GET(request: Request) {
       .in("lease_id", leaseIds);
 
     // Grouper par lease_id
-    const signersMap: Record<string, any[]> = {};
-    for (const s of signers || []) {
+    type SignerWithProfile = { lease_id: string; role: string; profile?: { prenom?: string; nom?: string; email?: string } | null };
+    const signersMap: Record<string, SignerWithProfile[]> = {};
+    for (const s of (signers || []) as SignerWithProfile[]) {
       if (!signersMap[s.lease_id]) signersMap[s.lease_id] = [];
       signersMap[s.lease_id].push(s);
     }
 
+    const normalizedLeases = (leases || []).map(l => ({ id: l.id, type_bail: l.type_bail, property: Array.isArray(l.property) ? l.property[0] : l.property }));
     const lateInvoices = detectLateInvoices(
       invoices || [],
-      leases || [],
+      normalizedLeases,
       signersMap
     );
 
@@ -158,7 +160,7 @@ export async function POST(request: Request) {
     if (!invoice) throw new ApiError(404, "Facture non trouvée");
 
     // Vérifier que le propriétaire est bien le propriétaire du bien
-    const leaseData = invoice.lease as any;
+    const leaseData = invoice.lease as { property?: { owner_id?: string; adresse_complete?: string }; type_bail?: string } | null;
     if (profile.role !== "admin" && leaseData?.property?.owner_id !== profile.id) {
       throw new ApiError(403, "Vous n'êtes pas propriétaire de ce bien");
     }
@@ -170,13 +172,17 @@ export async function POST(request: Request) {
       .eq("lease_id", invoice.lease_id)
       .in("role", ["locataire_principal", "colocataire"]);
 
-    const tenant = (signers || []).find((s: any) => s.profile?.email);
-    if (!tenant?.profile?.email) {
+    type SignerRow = { role: string; profile?: { prenom?: string; nom?: string; email?: string } | { prenom?: string; nom?: string; email?: string }[] | null };
+    const tenant = (signers || []).find((s: SignerRow) => { const p = Array.isArray(s.profile) ? s.profile[0] : s.profile; return p?.email; });
+    const tenantProfile = tenant ? (Array.isArray(tenant.profile) ? tenant.profile[0] : tenant.profile) : null;
+    if (!tenantProfile?.email) {
       throw new ApiError(422, "Email du locataire non disponible");
     }
 
     // Calculer le niveau de relance
-    const dueDate = new Date(invoice.due_date);
+    const dueDateRaw = invoice.due_date;
+    if (!dueDateRaw) throw new ApiError(400, "Date d'échéance manquante");
+    const dueDate = new Date(dueDateRaw);
     const daysLate = Math.floor((Date.now() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
     const reminderLevel = level || (daysLate >= 30 ? "mise_en_demeure" : daysLate >= 15 ? "formelle" : "amiable");
 
@@ -184,11 +190,11 @@ export async function POST(request: Request) {
       id: invoice.id,
       lease_id: invoice.lease_id,
       montant: invoice.montant,
-      due_date: invoice.due_date,
+      due_date: dueDateRaw,
       days_late: daysLate,
       reminder_level: reminderLevel,
-      tenant_name: `${tenant.profile.prenom || ""} ${tenant.profile.nom || ""}`.trim(),
-      tenant_email: tenant.profile.email,
+      tenant_name: `${tenantProfile.prenom || ""} ${tenantProfile.nom || ""}`.trim(),
+      tenant_email: tenantProfile.email,
       property_address: leaseData?.property?.adresse_complete || "",
       lease_type: leaseData?.type_bail || "nu",
     };
@@ -205,7 +211,7 @@ export async function POST(request: Request) {
     try {
       const { sendEmail } = await import("@/lib/services/email-service");
       await sendEmail({
-        to: tenant.profile.email,
+        to: tenantProfile.email,
         subject: emailContent.subject,
         text: emailContent.body,
       });
@@ -218,8 +224,8 @@ export async function POST(request: Request) {
           .update({ statut: "late" })
           .eq("id", invoice_id);
       }
-    } catch (emailErr: any) {
-      result.error = emailErr.message || "Erreur lors de l'envoi";
+    } catch (emailErr: unknown) {
+      result.error = emailErr instanceof Error ? emailErr.message : "Erreur lors de l'envoi";
     }
 
     return NextResponse.json(result);

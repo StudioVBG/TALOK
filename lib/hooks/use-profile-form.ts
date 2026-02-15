@@ -69,7 +69,7 @@ function mapToFormData(
     nom: profile?.nom ?? "",
     telephone: profile?.telephone ?? "",
     date_naissance: profile?.date_naissance ?? "",
-    lieu_naissance: (profile as Record<string, unknown>)?.lieu_naissance as string ?? "",
+    lieu_naissance: (profile as unknown as Record<string, unknown>)?.lieu_naissance as string ?? "",
     owner_type: ownerProfile?.type ?? "particulier",
     iban: ownerProfile?.iban ?? "",
     adresse_facturation: ownerProfile?.adresse_facturation ?? "",

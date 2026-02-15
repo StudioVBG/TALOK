@@ -175,8 +175,8 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
   ]);
 
   const edl_items: EDLItem[] = (itemsResult.data || []) as EDLItem[];
-  const edl_media: EDLMedia[] = (mediaResult.data || []) as EDLMedia[];
-  let edl_signatures: EDLSignature[] = (signaturesResult.data || []) as EDLSignature[];
+  const edl_media: EDLMedia[] = (mediaResult.data || []) as unknown as EDLMedia[];
+  let edl_signatures: EDLSignature[] = (signaturesResult.data || []) as unknown as EDLSignature[];
 
   // 3. Attach profiles to signatures
   if (edl_signatures.length > 0) {
@@ -228,7 +228,7 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
 
     const { data: inserted, error: insertError } = await serviceClient
       .from("edl_signatures")
-      .insert(newSignatures)
+      .insert(newSignatures as unknown as Record<string, unknown>[])
       .select("*");
 
     if (insertError) {
@@ -242,12 +242,12 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
           .from("profiles")
           .select("*")
           .in("id", newProfileIds);
-        edl_signatures = (inserted as EDLSignature[]).map(sig => ({
+        edl_signatures = (inserted as unknown as EDLSignature[]).map(sig => ({
           ...sig,
           profile: (profiles as EDLProfile[] | null)?.find(p => p.id === sig.signer_profile_id) || null,
         }));
       } else {
-        edl_signatures = inserted as EDLSignature[];
+        edl_signatures = inserted as unknown as EDLSignature[];
       }
     }
   }
@@ -286,7 +286,7 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
     const { data: leaseData } = await serviceClient
       .from("leases")
       .select(`*, property:properties(*), signers:lease_signers(*, profile:profiles(*))`)
-      .eq("id", (edl as Record<string, unknown>).lease_id)
+      .eq("id", String((edl as Record<string, unknown>).lease_id ?? ""))
       .single();
 
     if ((leaseData as Record<string, unknown>)?.property) {
@@ -368,10 +368,10 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
     ]);
 
     if (!readingsResult.error) {
-      meterReadings = (readingsResult.data || []) as MeterReading[];
+      meterReadings = (readingsResult.data || []) as unknown as MeterReading[];
     }
     if (!metersResult.error) {
-      propertyMeters = ((metersResult.data || []) as PropertyMeter[]).filter(m => m.is_active !== false);
+      propertyMeters = ((metersResult.data || []) as unknown as PropertyMeter[]).filter(m => m?.is_active !== false);
     }
   } catch {
     // Non-blocking: meter data fetch failure shouldn't break the page
@@ -405,6 +405,7 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
   return {
     raw: {
       ...edl,
+      scheduled_at: (edl as Record<string, unknown>).scheduled_at ?? null,
       lease: lease ? { ...lease, property } : null,
       edl_items,
       edl_media,
@@ -420,7 +421,7 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
       totalPhotos: edl_media.length,
       signaturesCount: edl_signatures.filter(s => s.signature_image_path && s.signed_at).length,
     },
-  };
+  } as Parameters<typeof InspectionDetailClient>[0]["data"];
 }
 
 // ─── Components ─────────────────────────────────────────────────────────────

@@ -45,12 +45,12 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
   
   const { data: profileByUserId, error: profileError } = await serviceClient
     .from("profiles")
-    .select("id, email")
+    .select("id, email, user_id")
     .eq("user_id", userId)
-    .single() as { data: Pick<ProfileRow, "id" | "email"> | null; error: Error | null };
+    .single() as { data: Pick<ProfileRow, "id" | "email" | "user_id"> | null; error: Error | null };
 
   if (!profileError && profileByUserId) {
-    profile = profileByUserId;
+    profile = { ...profileByUserId, user_id: profileByUserId.user_id ?? userId };
     console.log("[fetchTenantLease] ✅ Profil trouvé par user_id:", profile.id);
   } else {
     console.log("[fetchTenantLease] ⚠️ Profil non trouvé par user_id, recherche par email...");
@@ -79,7 +79,7 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
           const { error: updateError } = await serviceClient
             .from("profiles")
             .update({ user_id: userId })
-            .eq("id", profile.id);
+            .eq("id", profileByEmail.id);
           
           if (updateError) {
             console.error("[fetchTenantLease] ❌ Erreur liaison user_id:", updateError.message);
@@ -191,18 +191,21 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
       return { ...s, signature_image: signatureImageUrl };
     }));
     
+    const ownerWithName = l.property?.owner
+      ? { ...l.property.owner, name: `${l.property.owner.prenom || ""} ${l.property.owner.nom || ""}`.trim() || "Propriétaire" }
+      : null;
     return {
       ...l,
-      property: l.property ? {
-        ...l.property,
-        ville: l.property.ville || "Ville inconnue",
-        code_postal: l.property.code_postal || "00000",
-        adresse_complete: l.property.adresse_complete || "Adresse non renseignée"
-      } : null,
-      owner: l.property?.owner ? {
-        ...l.property.owner,
-        name: `${l.property.owner.prenom || ""} ${l.property.owner.nom || ""}`.trim() || "Propriétaire"
-      } : null,
+      property: l.property
+        ? {
+            ...l.property,
+            ville: l.property.ville || "Ville inconnue",
+            code_postal: l.property.code_postal || "00000",
+            adresse_complete: l.property.adresse_complete || "Adresse non renseignée",
+            owner: ownerWithName,
+          }
+        : null,
+      owner: ownerWithName,
       lease_signers: signersWithUrls
     };
   }));

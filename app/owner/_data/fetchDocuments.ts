@@ -6,7 +6,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
-import type { DocumentRow, PropertyRow, ProfileRow } from "@/lib/supabase/database.types";
+import type { DocumentRow as _DocumentRowBase, PropertyRow, ProfileRow } from "@/lib/supabase/database.types";
 
 // Client service role pour bypass les RLS (évite la récursion infinie)
 function getServiceClient() {

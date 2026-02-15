@@ -8,6 +8,7 @@ import { handleApiError } from "@/lib/helpers/api-error";
 import { createClient } from "@supabase/supabase-js";
 import type { ProfileRow, TicketRow } from "@/lib/supabase/typed-client";
 import { ticketsQuerySchema, validateQueryParams } from "@/lib/validations/params";
+import { withSecurity } from "@/lib/api/with-security";
 
 /**
  * GET /api/tickets - Récupérer les tickets de l'utilisateur
@@ -183,8 +184,9 @@ import { maintenanceAiService } from "@/features/tickets/services/maintenance-ai
 
 /**
  * POST /api/tickets - Créer un nouveau ticket
+ * FIX AUDIT: Wrappé avec withSecurity (CSRF + error handling centralisé)
  */
-export async function POST(request: Request) {
+export const POST = withSecurity(async function POST(request: Request) {
   try {
     const { user, error: authError } = await getAuthenticatedUser(request);
 
@@ -273,5 +275,5 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, { routeName: "POST /api/tickets", csrf: true });
 

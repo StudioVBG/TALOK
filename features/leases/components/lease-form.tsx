@@ -43,14 +43,16 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
   useEffect(() => {
     if (lease) {
       setFormData({
-        property_id: lease.property_id,
-        unit_id: lease.unit_id,
+        property_id: lease.property_id ?? null,
+        unit_id: lease.unit_id ?? null,
         type_bail: lease.type_bail,
         loyer: lease.loyer,
         charges_forfaitaires: lease.charges_forfaitaires,
         depot_de_garantie: lease.depot_de_garantie,
-        date_debut: lease.date_debut,
-        date_fin: lease.date_fin,
+        date_debut: typeof lease.date_debut === "string" ? lease.date_debut : String(lease.date_debut ?? ""),
+        date_fin: lease.date_fin != null ? String(lease.date_fin) : null,
+        tenant_email: "",
+        tenant_name: "",
       });
     }
 
@@ -66,7 +68,7 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
   // ✅ CALCUL AUTOMATIQUE du dépôt de garantie quand loyer ou type change
   useEffect(() => {
     if (formData.loyer > 0) {
-      const depotAuto = getMaxDepotLegal(formData.type_bail, formData.loyer);
+      const depotAuto = getMaxDepotLegal(formData.type_bail as string, formData.loyer);
       setFormData(prev => ({
         ...prev,
         depot_de_garantie: depotAuto
@@ -79,25 +81,32 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
 
   // ✅ AUTO-SAVE: Sauvegarde automatique du brouillon
   const autoSaveKey = lease ? `lease-edit-${lease.id}` : `lease-new-${propertyId || "default"}`;
-  const { hasDraft, lastSavedAt, restore, clear } = useAutoSave(formData, {
+  const { restoredData, clearSavedData, hasSavedData, lastSaved } = useAutoSave({
+    data: formData,
     storageKey: autoSaveKey,
     debounceMs: 1500,
-    ttlMs: 7 * 24 * 60 * 60 * 1000, // 7 jours
-    onRestore: (data) => setFormData(data),
+    enabled: true,
   });
+
+  // Restaurer le brouillon au montage
+  useEffect(() => {
+    const draft = restoredData();
+    if (draft) setFormData(draft);
+  }, [restoredData]);
+
+  const hasDraft = hasSavedData();
+  const lastSavedAt = lastSaved ?? undefined;
 
   // ✅ Restaurer le brouillon
   const handleRestore = useCallback(() => {
-    const draft = restore();
-    if (draft) {
-      setFormData(draft);
-    }
-  }, [restore]);
+    const draft = restoredData();
+    if (draft) setFormData(draft);
+  }, [restoredData]);
 
   // ✅ Ignorer le brouillon
   const handleDismiss = useCallback(() => {
-    clear();
-  }, [clear]);
+    clearSavedData();
+  }, [clearSavedData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +127,7 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
         });
       }
       // ✅ Supprimer le brouillon après succès
-      clear();
+      clearSavedData();
       onSuccess?.();
     } catch (error: unknown) {
       toast({
@@ -249,7 +258,7 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
                 disabled={loading}
               />
               <p className="text-xs text-muted-foreground">
-                {formData.type_bail === ("mobilite" as any)
+                {formData.type_bail === "bail_mobilite"
                   ? "⚠️ Interdit pour bail mobilité (Loi ELAN)"
                   : `✅ Calculé automatiquement : ${depotMois} × loyer`
                 }

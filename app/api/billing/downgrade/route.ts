@@ -7,6 +7,14 @@ const DowngradeSchema = z.object({
   new_plan_id: z.enum(["gratuit", "starter", "confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"]),
 });
 
+type PlanRow = {
+  max_properties?: number;
+  max_leases?: number;
+  max_tenants?: number;
+  stripe_price_yearly?: string | null;
+  stripe_price_monthly?: string | null;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerClient();
@@ -44,20 +52,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
     }
 
+    const plan = newPlan as PlanRow;
+
     // Valider que l'usage actuel rentre dans les limites du nouveau plan
     const usageConflicts: string[] = [];
     const currentProps = subscription.properties_count || 0;
     const currentLeases = subscription.leases_count || 0;
-    const currentTenants = subscription.tenants_count || 0;
+    const currentTenants = (subscription as { tenants_count?: number }).tenants_count || 0;
 
-    if (newPlan.max_properties !== -1 && currentProps > newPlan.max_properties) {
-      usageConflicts.push(`Biens : ${currentProps} actuels > ${newPlan.max_properties} max`);
+    if (plan.max_properties !== undefined && plan.max_properties !== -1 && currentProps > plan.max_properties) {
+      usageConflicts.push(`Biens : ${currentProps} actuels > ${plan.max_properties} max`);
     }
-    if (newPlan.max_leases !== -1 && currentLeases > newPlan.max_leases) {
-      usageConflicts.push(`Baux : ${currentLeases} actuels > ${newPlan.max_leases} max`);
+    if (plan.max_leases !== undefined && plan.max_leases !== -1 && currentLeases > plan.max_leases) {
+      usageConflicts.push(`Baux : ${currentLeases} actuels > ${plan.max_leases} max`);
     }
-    if (newPlan.max_tenants !== -1 && currentTenants > newPlan.max_tenants) {
-      usageConflicts.push(`Locataires : ${currentTenants} actuels > ${newPlan.max_tenants} max`);
+    if (plan.max_tenants !== undefined && plan.max_tenants !== -1 && currentTenants > plan.max_tenants) {
+      usageConflicts.push(`Locataires : ${currentTenants} actuels > ${plan.max_tenants} max`);
     }
 
     if (usageConflicts.length > 0) {
@@ -68,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cycle = subscription.billing_cycle || "monthly";
-    const newPriceId = cycle === "yearly" ? newPlan.stripe_price_yearly : newPlan.stripe_price_monthly;
+    const newPriceId = (cycle === "yearly" ? plan.stripe_price_yearly : plan.stripe_price_monthly) ?? null;
 
     if (!newPriceId) {
       return NextResponse.json({ error: "Prix Stripe non configure pour ce plan" }, { status: 400 });
@@ -84,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     // Downgrade: applies at next renewal
     await stripe.subscriptions.update(subscription.stripe_subscription_id, {
-      items: [{ id: itemId, price: newPriceId }],
+      items: [{ id: itemId, price: String(newPriceId) }],
       proration_behavior: "create_prorations",
     });
 

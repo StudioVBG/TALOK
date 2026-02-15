@@ -169,7 +169,7 @@ export async function getServerProfile<T extends Record<string, unknown> = Recor
     .single();
 
   if (!error && data) {
-    return { profile: data as T, error: null };
+    return { profile: data as unknown as T, error: null };
   }
 
   // Fallback: service role bypasses RLS
@@ -184,7 +184,7 @@ export async function getServerProfile<T extends Record<string, unknown> = Recor
     if (serviceError || !serviceData) {
       return { profile: null, error: serviceError?.message || "Profile not found" };
     }
-    return { profile: serviceData as T, error: null };
+    return { profile: serviceData as unknown as T, error: null };
   } catch (e) {
     console.error("[getServerProfile] Service role fallback failed:", e);
     return { profile: null, error: "Failed to fetch profile" };

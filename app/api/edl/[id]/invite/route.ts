@@ -90,8 +90,8 @@ export async function POST(
 
       if (profile) {
         targetProfileId = profile.id;
-        targetUserId = profile.user_id;
-        targetEmail = profile.email;
+        targetUserId = profile.user_id ?? null;
+        targetEmail = profile.email ?? null;
         targetName = `${profile.prenom || ''} ${profile.nom || ''}`.trim();
         console.log("[EDL Invite] Utilisation du profile_id fourni:", targetProfileId);
         }
@@ -158,7 +158,7 @@ export async function POST(
         .eq("signer_role", "tenant")
         .maybeSingle();
 
-    const invitationToken = existingSig?.invitation_token || crypto.randomUUID();
+    const invitationToken = (existingSig as { invitation_token?: string } | null)?.invitation_token || crypto.randomUUID();
 
       if (!existingSig) {
       // Créer une nouvelle signature EDL
@@ -166,12 +166,12 @@ export async function POST(
           .from("edl_signatures")
           .insert({
             edl_id: edlId,
-          signer_profile_id: targetProfileId,
-          signer_user: targetUserId,
+            signer_profile_id: targetProfileId,
+            signer_user: targetUserId ?? undefined,
             signer_role: 'tenant',
-          invitation_token: invitationToken,
+            invitation_token: invitationToken,
             invitation_sent_at: new Date().toISOString(),
-          })
+          } as Record<string, unknown>)
         .select()
           .single();
 
@@ -189,7 +189,7 @@ export async function POST(
       };
       
       // Mettre à jour le profile_id si on l'a trouvé et qu'il manquait
-      if (targetProfileId && !existingSig.signer_profile_id) {
+      if (targetProfileId && !(existingSig as { signer_profile_id?: string }).signer_profile_id) {
         updates.signer_profile_id = targetProfileId;
         updates.signer_user = targetUserId;
         console.log("[EDL Invite] Mise à jour du profile_id manquant:", targetProfileId);

@@ -415,12 +415,12 @@ export function SmartPaywall({
               <div className="py-6">
                 <div className="flex items-baseline justify-center gap-1">
                   <span className="text-5xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                    {(PLANS.starter.price_monthly / 100).toFixed(0)}€
+                    {((PLANS.starter.price_monthly ?? 0) / 100).toFixed(0)}€
                   </span>
                   <span className="text-slate-500">/mois</span>
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
-                  ou {(PLANS.starter.price_yearly / 100).toFixed(0)}€/an
+                  ou {((PLANS.starter.price_yearly ?? 0) / 100).toFixed(0)}€/an
                 </p>
               </div>
 

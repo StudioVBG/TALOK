@@ -1114,9 +1114,17 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             {/* Chronologie des événements */}
             <LeaseTimeline
               lease={lease as any}
-              signers={signers || []}
+              signers={(signers || []).map((s: any) => ({
+                role: s.role,
+                signed_at: s.signed_at,
+                profile: s.profile ? { prenom: s.profile.prenom, nom: s.profile.nom } : null,
+              }))}
               edl={edl}
-              payments={payments}
+              payments={(payments || []).map((p: any) => ({
+                created_at: p.created_at,
+                statut: p.statut,
+                montant: p.montant,
+              }))}
             />
 
             {/* Actions du bail — menu contextuel compact */}

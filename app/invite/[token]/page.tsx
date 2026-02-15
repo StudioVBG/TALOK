@@ -56,7 +56,7 @@ export default function InvitePage() {
 
   const handleAcceptInvitation = () => {
     // Rediriger vers l'inscription avec le token et le rôle
-    router.push(`/signup/role?invite=${token}&role=${invitation.role}`);
+    router.push(`/signup/role?invite=${token}&role=${invitation!.role}`);
   };
 
   const handleResendInvitation = async () => {

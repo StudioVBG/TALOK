@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { LeaseUpdateSchema, getMaxDepotLegal, getMaxDepotMois } from "@/lib/validations/lease-financial";
 import { SIGNER_ROLES, isTenantRole, isOwnerRole } from "@/lib/constants/roles";
+import { withSecurity } from "@/lib/api/with-security";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -184,8 +185,9 @@ export async function GET(request: Request, { params }: RouteParams) {
 /**
  * PUT /api/leases/[id]
  * Modifier un bail
+ * FIX AUDIT: Wrappé avec withSecurity (CSRF + error handling centralisé)
  */
-export async function PUT(request: Request, { params }: RouteParams) {
+export const PUT = withSecurity(async function PUT(request: Request, { params }: RouteParams) {
   try {
     const { id: leaseId } = await params;
     const body = await request.json();
@@ -376,7 +378,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+}, { routeName: "PUT /api/leases/[id]", csrf: true });
 
 /**
  * DELETE /api/leases/[id]
@@ -384,8 +386,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
  * 
  * ✅ SOTA 2026: Seuls les baux en brouillon ou en attente de signature peuvent être supprimés.
  * Les baux actifs/terminés/archivés doivent être conservés pour l'historique légal.
+ * FIX AUDIT: Wrappé avec withSecurity (CSRF + error handling centralisé)
  */
-export async function DELETE(request: Request, { params }: RouteParams) {
+export const DELETE = withSecurity(async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id: leaseId } = await params;
     
@@ -638,4 +641,4 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+}, { routeName: "DELETE /api/leases/[id]", csrf: true });

@@ -229,7 +229,7 @@ export default function TenantDocumentsPage() {
   const keyDocuments = useMemo(() => {
     if (!documents.length) return { bail: null, quittance: null, edl: null, assurance: null };
 
-    const sorted = [...documents].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const sorted = [...documents].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
 
     let bail: any = null;
     let quittance: any = null;
@@ -252,7 +252,7 @@ export default function TenantDocumentsPage() {
   const filteredDocuments = useMemo(() => {
     // 1. Dédoublonnage
     const map = new Map();
-    const sortedDocs = [...documents].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const sortedDocs = [...documents].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
 
     for (const doc of sortedDocs) {
       const type = detectType(doc);
@@ -270,9 +270,10 @@ export default function TenantDocumentsPage() {
       const q = searchQuery.toLowerCase();
       result = result.filter((doc: any) => {
         const type = detectType(doc);
+        const config = DOCUMENT_CONFIG[type] ?? DOCUMENT_CONFIG.autre;
         return (doc.title || "").toLowerCase().includes(q) ||
-          DOCUMENT_CONFIG[type]?.label.toLowerCase().includes(q) ||
-          getDocumentTitle(doc, DOCUMENT_CONFIG[type] || DOCUMENT_CONFIG.autre).toLowerCase().includes(q);
+          config.label.toLowerCase().includes(q) ||
+          getDocumentTitle(doc, config).toLowerCase().includes(q);
       });
     }
 
@@ -311,7 +312,7 @@ export default function TenantDocumentsPage() {
   // ── Preview inline (H-04) ──
   const handlePreview = useCallback((doc: DocumentCardDoc) => {
     setPreviewUrl(`/api/documents/${doc.id}/download`);
-    setPreviewTitle(getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] || DOCUMENT_CONFIG.autre));
+    setPreviewTitle(getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] ?? DOCUMENT_CONFIG.autre));
     setPreviewType(doc.metadata?.mime_type);
     setPreviewOpen(true);
   }, []);
@@ -319,7 +320,7 @@ export default function TenantDocumentsPage() {
   const handleDownload = useCallback((doc: DocumentCardDoc) => {
     const link = document.createElement("a");
     link.href = `/api/documents/${doc.id}/download`;
-    link.download = getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] || DOCUMENT_CONFIG.autre);
+    link.download = getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] ?? DOCUMENT_CONFIG.autre);
     link.target = "_blank";
     document.body.appendChild(link);
     link.click();

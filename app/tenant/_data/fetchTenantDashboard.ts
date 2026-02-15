@@ -137,11 +137,14 @@ async function fetchTenantDashboardDirect(
   userId: string
 ): Promise<TenantDashboardData | null> {
   // Récupérer le profil
-  const { data: profile } = await supabase
+  const { data: profileRaw } = await supabase
     .from("profiles")
     .select("id, prenom, nom, kyc_status")
     .eq("user_id", userId)
     .single();
+
+  // Cast nécessaire car kyc_status n'existe pas dans les types générés Supabase
+  const profile = profileRaw as { id: string; prenom: string | null; nom: string | null; kyc_status?: string | null } | null;
 
   if (!profile) return null;
 
@@ -207,20 +210,38 @@ async function fetchTenantDashboardDirect(
       : Promise.resolve({ data: [] }),
   ]);
 
-  const propertiesData = propertiesResult.status === "fulfilled" ? (propertiesResult.value as any).data || [] : [];
-  const ownersData = ownersResult.status === "fulfilled" ? (ownersResult.value as any).data || [] : [];
-  const invoicesData = invoicesResult.status === "fulfilled" ? (invoicesResult.value as any).data || [] : [];
-  const ticketsData = ticketsResult.status === "fulfilled" ? (ticketsResult.value as any).data || [] : [];
-  const edlData = edlResult.status === "fulfilled" ? (edlResult.value as any).data || [] : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getData = <T>(result: PromiseSettledResult<any>): T[] =>
+    result.status === "fulfilled" && result.value?.data ? (result.value.data as T[]) : [];
+
+  interface PropertyRecord {
+    id: string;
+    adresse_complete?: string;
+    code_postal?: string;
+    ville?: string;
+    type?: string;
+    [key: string]: unknown;
+  }
+  interface OwnerRecord {
+    id: string;
+    owner?: { id: string; prenom?: string; nom?: string; email?: string; telephone?: string; avatar_url?: string };
+    [key: string]: unknown;
+  }
+
+  const propertiesData = getData<PropertyRecord>(propertiesResult);
+  const ownersData = getData<OwnerRecord>(ownersResult);
+  const invoicesData = getData<Record<string, unknown>>(invoicesResult);
+  const ticketsData = getData<Record<string, unknown>>(ticketsResult);
+  const edlData = getData<Record<string, unknown>>(edlResult);
 
   // Créer un index rapide des propriétés par ID
-  const propertyMap = new Map<string, any>();
+  const propertyMap = new Map<string, PropertyRecord>();
   for (const p of propertiesData) {
     propertyMap.set(p.id, p);
   }
 
   // Créer un index des propriétaires par property_id
-  const ownerMap = new Map<string, any>();
+  const ownerMap = new Map<string, OwnerRecord["owner"]>();
   for (const o of ownersData) {
     if (o.owner) {
       ownerMap.set(o.id, o.owner);
@@ -284,10 +305,12 @@ async function fetchTenantDashboardDirect(
 
   const unpaidInvoices = invoices.filter((i) => i.statut === "sent" || i.statut === "late");
 
+  const profileKyc = "kyc_status" in profile ? (profile as { kyc_status?: string }).kyc_status : undefined;
+
   return {
     profile_id: profile.id,
-    kyc_status: (profile as any).kyc_status || "pending",
-    tenant: { prenom: profile.prenom, nom: profile.nom },
+    kyc_status: (profileKyc as TenantDashboardData["kyc_status"]) || "pending",
+    tenant: { prenom: profile.prenom ?? "", nom: profile.nom ?? "" },
     leases: enrichedLeases as any[],
     properties: propertiesData,
     lease: enrichedLeases.length > 0 ? enrichedLeases[0] as any : null,
@@ -335,8 +358,8 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
     .single();
 
   // Nettoyage des données pour éviter les "undefined" et assurer la cohérence
-  const cleanData = data as any;
-  cleanData.tenant = profile;
+  const cleanData = data as TenantDashboardData;
+  cleanData.tenant = profile ? { prenom: profile.prenom ?? "", nom: profile.nom ?? "" } : undefined;
   
   if (cleanData.leases) {
     cleanData.leases = cleanData.leases.map((l: any) => ({

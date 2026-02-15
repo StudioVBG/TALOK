@@ -178,21 +178,21 @@ export default function EditEntityPage() {
         id: entityId,
         entity_type: formData.entityType || "sci_ir",
         nom: formData.nom,
-        forme_juridique: formData.formeJuridique || null,
+        forme_juridique: formData.formeJuridique || undefined,
         regime_fiscal: formData.regimeFiscal || "ir",
-        siret: formData.siret.replace(/\s/g, "") || null,
-        capital_social: formData.capitalSocial ? parseFloat(formData.capitalSocial) : null,
-        date_creation: formData.dateCreation || null,
-        numero_tva: formData.numeroTva || null,
-        adresse_siege: formData.adresseSiege || null,
-        code_postal_siege: formData.codePostalSiege || null,
-        ville_siege: formData.villeSiege || null,
-        iban: formData.iban.replace(/\s/g, "") || null,
-        bic: formData.bic || null,
-        banque_nom: formData.banqueNom || null,
+        siret: formData.siret.replace(/\s/g, "") || undefined,
+        capital_social: formData.capitalSocial ? parseFloat(formData.capitalSocial) : undefined,
+        date_creation: formData.dateCreation || undefined,
+        numero_tva: formData.numeroTva || undefined,
+        adresse_siege: formData.adresseSiege || undefined,
+        code_postal_siege: formData.codePostalSiege || undefined,
+        ville_siege: formData.villeSiege || undefined,
+        iban: formData.iban.replace(/\s/g, "") || undefined,
+        bic: formData.bic || undefined,
+        banque_nom: formData.banqueNom || undefined,
       };
 
-      const result = await updateEntity(entityPayload);
+      const result = await updateEntity(entityPayload as any);
 
       if (!result.success) throw new Error(result.error || "Erreur lors de la mise à jour");
 

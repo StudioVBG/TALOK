@@ -54,10 +54,14 @@ export async function POST(
     }
 
     // 3. Vérifier que l'utilisateur est le propriétaire du bien
+    const propertyId = lease.property_id;
+    if (!propertyId) {
+      return NextResponse.json({ error: "Bail sans propriété associée" }, { status: 400 });
+    }
     const { data: property } = await serviceClient
       .from("properties")
       .select("owner_id")
-      .eq("id", lease.property_id)
+      .eq("id", propertyId)
       .single();
 
     const { data: profile } = await supabase
@@ -136,7 +140,7 @@ export async function POST(
     }
 
     // 6. Journaliser l'action
-    await serviceClient
+    void serviceClient
       .from("audit_log")
       .insert({
         user_id: user.id,
@@ -149,13 +153,13 @@ export async function POST(
           has_tenant: hasTenant,
         },
       } as any)
-      .then(() => {})
-      .catch((err: any) =>
-        console.warn("[initiate-signature] Audit log error:", err)
+      .then(
+        () => {},
+        (err: unknown) => console.warn("[initiate-signature] Audit log error:", err)
       );
 
     // 7. Émettre un événement outbox pour notifications (si la table existe)
-    await serviceClient
+    void serviceClient
       .from("outbox")
       .insert({
         event_type: "Lease.SentForSignature",
@@ -169,9 +173,9 @@ export async function POST(
           })),
         },
       } as any)
-      .then(() => {})
-      .catch((err: any) =>
-        console.warn("[initiate-signature] Outbox error:", err)
+      .then(
+        () => {},
+        (err: unknown) => console.warn("[initiate-signature] Outbox error:", err)
       );
 
     return NextResponse.json({

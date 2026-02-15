@@ -83,6 +83,9 @@ export async function GET(
     }
 
     const edlData = accessResult.edl;
+    if (!edlData) {
+      return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
+    }
     const leaseData = Array.isArray(edlData.lease) ? edlData.lease[0] : edlData.lease;
 
     // Récupérer les relevés existants
@@ -111,7 +114,7 @@ export async function GET(
        if (fallbackLease) propertyId = fallbackLease.property_id;
     }
 
-    let allMeters = [];
+    let allMeters: Array<{ id: string; is_active?: boolean }> = [];
     if (propertyId) {
       const { data: meters, error: metersError } = await serviceClient
         .from("meters")
@@ -121,12 +124,14 @@ export async function GET(
       if (metersError) {
         console.error(`[GET /api/edl/${edlId}/meter-readings] Meters Error:`, metersError);
       } else {
-        allMeters = meters?.filter(m => m.is_active !== false) || [];
+        allMeters = meters?.filter(m => (m as { is_active?: boolean }).is_active !== false) || [];
       }
     }
 
-    const recordedMeterIds = new Set((readings || []).map((r: any) => r.meter_id));
-    const missingMeters = allMeters.filter((m: any) => !recordedMeterIds.has(m.id));
+    type ReadingRow = { meter_id: string };
+    type MeterRow = { id: string; is_active?: boolean };
+    const recordedMeterIds = new Set((readings || []).map((r: { meter_id?: string | null }) => r.meter_id ?? ""));
+    const missingMeters = allMeters.filter((m: MeterRow) => !recordedMeterIds.has(m.id));
 
     return NextResponse.json({
       readings: readings || [],
@@ -233,6 +238,9 @@ export async function POST(
     }
 
     const edlDataPost = accessResult.edl;
+    if (!edlDataPost) {
+      return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
+    }
     const leaseData = Array.isArray(edlDataPost.lease) ? edlDataPost.lease[0] : edlDataPost.lease;
 
     let meterId, photo, photoPath, manualValue, readingUnit, comment, meterNumber, location, meterTypeFromBody;
@@ -299,7 +307,7 @@ export async function POST(
           .eq("property_id", edlPropertyId)
           .eq("meter_number", meterNumber);
         
-        existingMeter = meters?.find(m => m.is_active !== false) || meters?.[0] || null;
+        existingMeter = meters?.find(m => (m as { is_active?: boolean }).is_active !== false) || meters?.[0] || null;
       }
       
       if (!existingMeter && !meterNumber) {
@@ -309,7 +317,7 @@ export async function POST(
           .eq("property_id", edlPropertyId)
           .eq("type", meterType);
         
-        const activeMeters = meters?.filter(m => m.is_active !== false) || [];
+        const activeMeters = meters?.filter(m => (m as { is_active?: boolean }).is_active !== false) || [];
         
         if (activeMeters.length === 1) {
           existingMeter = activeMeters[0];
@@ -419,6 +427,9 @@ export async function POST(
     let finalPhotoPath = photoPath;
     
     if (photo && !finalPhotoPath) {
+      if (!actualMeterData) {
+        return NextResponse.json({ error: "Données du compteur manquantes" }, { status: 400 });
+      }
       console.log(`[POST /api/edl/${edlId}/meter-readings] Uploading photo...`);
       const photoBuffer = Buffer.from(await photo.arrayBuffer());
       const timestamp = Date.now();
@@ -505,7 +516,7 @@ export async function POST(
       edl_id: edlId,
       meter_id: finalMeterId,
       reading_value: finalValue,
-      reading_unit: readingUnit || actualMeterData.unit || "kWh",
+      reading_unit: readingUnit || actualMeterData?.unit || "kWh",
       recorded_by: user.id,
       recorded_by_role: recorderRole,
     };
@@ -524,7 +535,7 @@ export async function POST(
 
       const updatePayload: any = {
         reading_value: finalValue,
-        reading_unit: readingUnit || actualMeterData.unit || "kWh",
+        reading_unit: readingUnit || actualMeterData?.unit || "kWh",
         is_validated: isValidated,
         validated_by: isValidated ? user.id : null,
         validated_at: isValidated ? new Date().toISOString() : null,

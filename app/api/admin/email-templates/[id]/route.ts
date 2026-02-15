@@ -100,8 +100,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Aucun champ à mettre à jour" }, { status: 400 });
     }
 
-    const { data: template, error } = await supabase
-      .from("email_templates")
+    const { data: template, error } = await (supabase
+      .from("email_templates") as any)
       .update(updates)
       .eq("id", id)
       .select()

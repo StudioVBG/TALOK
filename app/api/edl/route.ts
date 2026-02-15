@@ -229,9 +229,9 @@ export async function POST(request: Request) {
       profileRole: (profile as Record<string, unknown>).role as string,
       leaseId: lease_id,
       type,
-      scheduledAt: scheduled_at,
-      generalNotes: general_notes,
-      keys,
+      scheduledAt: scheduled_at ?? undefined,
+      generalNotes: general_notes ?? undefined,
+      keys: keys ?? undefined,
     });
 
     if (!result.success) {

@@ -62,7 +62,7 @@ export async function POST(
     }
 
     // Rendre le template avec les données d'exemple
-    const rendered = renderEmailTemplate(template, variables);
+    const rendered = renderEmailTemplate(template as any, variables);
 
     // Envoyer via le service email existant
     const { sendEmail } = await import("@/lib/email/send-email");

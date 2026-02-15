@@ -454,17 +454,18 @@ async function resolveFromLease(
 
   if (!lease) return null;
 
+  const propertyData = lease.property as unknown as Record<string, unknown> | Record<string, unknown>[] | null;
+  const prop = Array.isArray(propertyData) ? propertyData[0] : propertyData;
   const entityId =
     (lease.signatory_entity_id as string) ||
-    ((lease.property as Record<string, unknown>)?.legal_entity_id as string);
+    (prop?.legal_entity_id as string);
 
   if (entityId) {
     return resolveFromEntity(supabase, entityId);
   }
 
   // Fallback vers owner_profiles
-  const ownerId = (lease.property as Record<string, unknown>)
-    ?.owner_id as string;
+  const ownerId = prop?.owner_id as string;
   if (ownerId) {
     return resolveFromOwnerProfile(supabase, ownerId);
   }

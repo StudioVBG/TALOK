@@ -41,9 +41,9 @@ export async function GET(request: NextRequest) {
       number: inv.number || `TALOK-${inv.id.slice(-8).toUpperCase()}`,
       status: (inv.status || "draft") as Invoice["status"],
       amount_ht: inv.subtotal || 0,
-      amount_tva: inv.tax || 0,
+      amount_tva: (inv as any).tax || 0,
       amount_ttc: inv.total || 0,
-      tva_taux: inv.tax_percent || 20,
+      tva_taux: (inv as any).tax_percent || 20,
       period_start: inv.period_start
         ? new Date(inv.period_start * 1000).toISOString()
         : new Date().toISOString(),

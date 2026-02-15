@@ -96,7 +96,7 @@ export async function POST(
       // Body optionnel
     }
 
-    const targetType = body.type || "sortie";
+    const targetType = (body.type === "entree" || body.type === "sortie" ? body.type : "sortie") as "entree" | "sortie";
 
     // Vérifier qu'il n'existe pas déjà un EDL de sortie en cours
     const { data: existingEdl } = await serviceClient
@@ -104,7 +104,7 @@ export async function POST(
       .select("id, status")
       .eq("lease_id", sourceEdl.lease_id)
       .eq("type", targetType)
-      .in("status", ["draft", "scheduled", "in_progress"])
+      .in("status", ["draft", "scheduled", "in_progress"] as any)
       .maybeSingle();
 
     if (existingEdl) {
@@ -129,18 +129,19 @@ export async function POST(
       ? new Date(body.scheduled_at).toISOString().split("T")[0]
       : null;
 
+    const insertPayload = {
+      lease_id: sourceEdl.lease_id,
+      property_id: propertyId,
+      type: targetType,
+      status: body.scheduled_at ? "scheduled" : "draft",
+      scheduled_at: body.scheduled_at || null,
+      scheduled_date: scheduledDate,
+      created_by: user.id,
+      keys: sourceEdl.keys || [],
+    };
     const { data: newEdl, error: createError } = await serviceClient
       .from("edl")
-      .insert({
-        lease_id: sourceEdl.lease_id,
-        property_id: propertyId,
-        type: targetType,
-        status: body.scheduled_at ? "scheduled" : "draft",
-        scheduled_at: body.scheduled_at || null,
-        scheduled_date: scheduledDate,
-        created_by: user.id,
-        keys: sourceEdl.keys || [],
-      } as any)
+      .insert(insertPayload as any)
       .select()
       .single();
 
@@ -189,7 +190,7 @@ export async function POST(
     if (leaseSigners && leaseSigners.length > 0) {
       const edlSignatures = leaseSigners.map((ls: any) => ({
         edl_id: newEdlData.id,
-        signer_user: null,
+        signer_user: "",
         signer_profile_id: ls.profile_id,
         signer_role:
           ls.role === "proprietaire" || ls.role === "owner"
@@ -198,7 +199,7 @@ export async function POST(
         invitation_token: crypto.randomUUID(),
       }));
 
-      await serviceClient.from("edl_signatures").insert(edlSignatures);
+      await serviceClient.from("edl_signatures").insert(edlSignatures as any);
     }
 
     // 4. Journaliser

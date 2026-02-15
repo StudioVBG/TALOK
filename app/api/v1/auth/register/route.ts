@@ -59,25 +59,27 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (profile) {
-      // Create specialized profile based on role
+      // Create specialized profile based on role (upsert to avoid duplicate key errors)
       if (data.role === "owner") {
-        await supabase.from("owner_profiles").insert({
-          profile_id: profile.id,
-          type: "particulier",
-        }).onConflict("profile_id").ignore();
+        await supabase.from("owner_profiles").upsert(
+          { profile_id: profile.id, type: "particulier" },
+          { onConflict: "profile_id", ignoreDuplicates: true }
+        );
       } else if (data.role === "tenant") {
-        await supabase.from("tenant_profiles").insert({
-          profile_id: profile.id,
-        }).onConflict("profile_id").ignore();
+        await supabase.from("tenant_profiles").upsert(
+          { profile_id: profile.id },
+          { onConflict: "profile_id", ignoreDuplicates: true }
+        );
       } else if (data.role === "provider") {
-        await supabase.from("provider_profiles").insert({
-          profile_id: profile.id,
-          type_services: [],
-        }).onConflict("profile_id").ignore();
+        await supabase.from("provider_profiles").upsert(
+          { profile_id: profile.id, type_services: [] },
+          { onConflict: "profile_id", ignoreDuplicates: true }
+        );
       } else if (data.role === "guarantor") {
-        await supabase.from("guarantor_profiles").insert({
-          profile_id: profile.id,
-        }).onConflict("profile_id").ignore();
+        await supabase.from("guarantor_profiles").upsert(
+          { profile_id: profile.id },
+          { onConflict: "profile_id", ignoreDuplicates: true }
+        );
       }
 
       // Audit log

@@ -14,7 +14,7 @@ export function getStripe(): Stripe {
       throw new Error("STRIPE_SECRET_KEY non definie");
     }
     stripeInstance = new Stripe(key, {
-      apiVersion: "2024-12-18.acacia",
+      apiVersion: "2025-11-17.clover",
       typescript: true,
     });
   }

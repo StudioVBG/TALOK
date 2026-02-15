@@ -108,8 +108,8 @@ async function fetchDashboardDirect(
 
   const propertiesStats = {
     total: properties?.length || 0,
-    active: (properties || []).filter((p: { etat: string }) => p.etat === "published").length,
-    draft: (properties || []).filter((p: { etat: string }) => p.etat === "draft").length,
+    active: (properties || []).filter((p: { etat?: string }) => p.etat === "published").length,
+    draft: (properties || []).filter((p: { etat?: string }) => p.etat === "draft").length,
   };
 
   // Si aucune propriété, retourner des données vides
@@ -207,7 +207,7 @@ async function fetchDashboardDirect(
     },
     edl: {
       total: edls.length,
-      pending_owner_signature: edls.filter((e: { statut: string; owner_signed: boolean | null }) =>
+      pending_owner_signature: (edls as Array<{ statut?: string; owner_signed?: boolean | null }>).filter((e) =>
         e.statut === "completed" && !e.owner_signed
       ).length,
     },

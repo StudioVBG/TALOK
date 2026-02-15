@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -64,25 +65,8 @@ export async function GET(request: Request) {
       }
 
       // Onboarding terminé — rediriger vers le dashboard approprié
-      // Utilise un mapping complet pour tous les rôles incluant copro, syndic, agency, platform_admin
-      const roleDashboards: Record<string, string> = {
-        admin: "/admin/dashboard",
-        platform_admin: "/admin/dashboard",
-        owner: "/owner/dashboard",
-        tenant: "/tenant/dashboard",
-        provider: "/provider/dashboard",
-        guarantor: "/guarantor/dashboard",
-        agency: "/agency/dashboard",
-        syndic: "/syndic/dashboard",
-        coproprietaire: "/copro/dashboard",
-        coproprietaire_occupant: "/copro/dashboard",
-        coproprietaire_bailleur: "/copro/dashboard",
-        coproprietaire_nu: "/copro/dashboard",
-        usufruitier: "/copro/dashboard",
-        president_cs: "/copro/dashboard",
-        conseil_syndical: "/copro/dashboard",
-      };
-      const dashUrl = roleDashboards[profileData.role] || "/dashboard";
+      // FIX AUDIT: Source de vérité unique via getRoleDashboardUrl()
+      const dashUrl = getRoleDashboardUrl(profileData.role);
       return NextResponse.redirect(new URL(dashUrl, origin));
     }
   }

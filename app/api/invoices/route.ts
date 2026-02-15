@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { invoiceSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { invoicesQuerySchema, validateQueryParams } from "@/lib/validations/params";
+import { withSecurity } from "@/lib/api/with-security";
 
 /**
  * GET /api/invoices - Récupérer les factures de l'utilisateur
@@ -141,8 +142,9 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/invoices - Créer une nouvelle facture
+ * FIX AUDIT: Wrappé avec withSecurity (CSRF + error handling centralisé)
  */
-export async function POST(request: Request) {
+export const POST = withSecurity(async function POST(request: Request) {
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
@@ -281,5 +283,5 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+}, { routeName: "POST /api/invoices", csrf: true });
 

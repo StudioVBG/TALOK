@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
         break;
       }
       case "price.updated": {
-        await logAuditEvent(supabase, "system", "update", "price", event.data.object.id, {
+        const priceObj = event.data.object as { id?: string };
+        await logAuditEvent(supabase, "system", "update", "price", priceObj?.id ?? event.id, {
           event_type: event.type,
         });
         break;
@@ -90,8 +91,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erreur webhook";
-    await logAuditEvent(supabase, "system", "create", "webhook_error", event.id, {
-      type: event.type,
+    const eventId = event?.id ?? "unknown";
+    const eventType = event?.type ?? "unknown";
+    await logAuditEvent(supabase, "system", "create", "webhook_error", eventId, {
+      type: eventType,
       error: message,
     });
     return NextResponse.json({ error: message }, { status: 500 });
@@ -104,14 +107,15 @@ type SupabaseClient = any;
 async function handleSubscriptionCreated(supabase: SupabaseClient, sub: Stripe.Subscription) {
   const userId = sub.metadata?.user_id;
   if (!userId) return;
+  const stripeSub = sub as unknown as { current_period_start: number; current_period_end: number };
 
   await supabase.from("subscriptions").upsert({
     user_id: userId,
     stripe_subscription_id: sub.id,
     stripe_customer_id: typeof sub.customer === "string" ? sub.customer : sub.customer.id,
     status: sub.status,
-    current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-    current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+    current_period_start: new Date(stripeSub.current_period_start * 1000).toISOString(),
+    current_period_end: new Date(stripeSub.current_period_end * 1000).toISOString(),
     cancel_at_period_end: sub.cancel_at_period_end,
     trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
     updated_at: new Date().toISOString(),
@@ -127,8 +131,8 @@ async function handleSubscriptionUpdated(supabase: SupabaseClient, sub: Stripe.S
     .from("subscriptions")
     .update({
       status: sub.status,
-      current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+      current_period_start: new Date((sub as unknown as { current_period_start: number }).current_period_start * 1000).toISOString(),
+      current_period_end: new Date((sub as unknown as { current_period_end: number }).current_period_end * 1000).toISOString(),
       cancel_at_period_end: sub.cancel_at_period_end,
       updated_at: new Date().toISOString(),
     })
@@ -198,7 +202,7 @@ async function handleInvoiceCreated(supabase: SupabaseClient, invoice: Stripe.In
     .eq("stripe_customer_id", customerId)
     .single();
 
-  if (!subscription) return;
+  if (!subscription?.user_id) return;
 
   await supabase.from("subscription_invoices").upsert({
     id: invoice.id,
@@ -206,7 +210,7 @@ async function handleInvoiceCreated(supabase: SupabaseClient, invoice: Stripe.In
     stripe_invoice_id: invoice.id,
     invoice_number: invoice.number,
     subtotal: invoice.subtotal || 0,
-    tax: invoice.tax || 0,
+    tax: (invoice as { tax?: number }).tax ?? 0,
     total: invoice.total || 0,
     status: invoice.status || "draft",
     invoice_pdf_url: invoice.invoice_pdf || null,

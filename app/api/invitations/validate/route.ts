@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Vérifier l'expiration
-    if (new Date(invitation.expires_at) < new Date()) {
+    if (new Date(invitation.expires_at as string) < new Date()) {
       return NextResponse.json({
         valid: false,
         error: "Cette invitation a expiré. Demandez un nouveau lien à votre propriétaire.",

@@ -87,7 +87,7 @@ export async function getTenantInvoices() {
     .from("lease_signers")
     .select("lease_id")
     .eq("profile_id", profile.id)
-    .in("role", ["colocataire", "locataire_principal", "locataire"]);
+    .in("role", ["colocataire", "locataire_principal"]);
 
   const leaseIds = (myLeaseIds || []).map((ls) => ls.lease_id).filter(Boolean);
   const directInvoiceIds = new Set((directInvoices || []).map((inv) => inv.id));

@@ -128,7 +128,7 @@ export function ColocBoard({ leaseId, month }: ColocBoardProps) {
         <div className="space-y-4">
           {roommates.map((roommate) => {
             const paymentStatus = paymentStatuses[roommate.id];
-            const initials = `${roommate.first_name[0]}${roommate.last_name[0]}`.toUpperCase();
+            const initials = `${roommate.first_name?.[0] ?? ""}${roommate.last_name?.[0] ?? ""}`.toUpperCase() || "?";
 
             return (
               <div

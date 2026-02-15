@@ -306,7 +306,7 @@ export default function OwnerTaxesPage() {
           .update({
             tax_regime: updatedProperty.regime,
             lmnp_status: updatedProperty.is_furnished ? updatedProperty.lmnp_status : null,
-          })
+          } as any)
           .eq("id", leases[0].id);
       }
 

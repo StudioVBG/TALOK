@@ -970,7 +970,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                       label="Entité signataire du bail"
                       hint="Sélectionnez l'entité juridique qui signera ce bail. Le bailleur sur le document sera cette entité."
                       warnMissingSiret
-                      propertyEntityId={selectedProperty?.legal_entity_id || null}
+                      propertyEntityId={(selectedProperty as any)?.legal_entity_id || null}
                     />
                   </div>
                 )}
