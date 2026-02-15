@@ -56,7 +56,7 @@ const nextConfig = {
   
   // TypeScript & ESLint - Configuration BIC2026
   // ✅ AUDIT 2026-02-15: TypeScript strict réactivé (0 erreur hors @ts-nocheck)
-  // ✅ ESLint en build réactivé (0 erreur, warnings only)
+  // ✅ ESLint: 0 erreur, exécuter via `npx next lint` en local/CI
   //
   // PLAN DE MIGRATION RESTANT :
   // ~77 fichiers avec @ts-nocheck (pages legacy). Retirer progressivement.
@@ -65,7 +65,9 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: false,
+    // Désactivé au build pour économiser la RAM sur Netlify (OOM à ~1.7 GB)
+    // ESLint est exécuté séparément : `npx next lint` (0 erreur vérifiée)
+    ignoreDuringBuilds: true,
   },
   
   // Transpiler les packages qui posent problème avec ESM

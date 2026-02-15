@@ -16,6 +16,8 @@
   NODE_VERSION = "22"
   NPM_VERSION = "10"
   NETLIFY = "true"  # Désactive PWA sur Netlify
+  # Fix OOM: augmenter le heap Node pour le build Next.js (défaut ~1.7 GB)
+  NODE_OPTIONS = "--max_old_space_size=4096"
 
 # ==============================================================================
 # VARIABLES D'ENVIRONNEMENT À CONFIGURER DANS L'UI NETLIFY
