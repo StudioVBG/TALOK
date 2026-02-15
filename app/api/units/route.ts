@@ -7,6 +7,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { z } from "zod";
+
+/** Schéma Zod pour la création d'un lot */
+const createUnitSchema = z.object({
+  property_id: z.string().uuid("property_id doit être un UUID valide"),
+  nom: z.string().max(200).optional().nullable(),
+  numero: z.string().max(50).optional().nullable(),
+  etage: z.number().int().min(-5).max(200).optional().nullable(),
+  surface: z.number().min(0).max(100000).optional().nullable(),
+  capacite_max: z.number().int().min(1).max(50).optional().default(1),
+  type_lot: z.string().max(50).optional().default("appartement"),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -141,13 +153,17 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { property_id, nom, numero, etage, surface, capacite_max, type_lot } =
-      body;
 
-    // Validation
-    if (!property_id) {
-      throw new ApiError(400, "property_id est requis");
+    // Validation Zod
+    const parsed = createUnitSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new ApiError(
+        400,
+        parsed.error.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", ")
+      );
     }
+
+    const { property_id, nom, numero, etage, surface, capacite_max, type_lot } = parsed.data;
 
     // Vérifier que l'utilisateur a accès à la propriété
     const { data: property } = await supabase

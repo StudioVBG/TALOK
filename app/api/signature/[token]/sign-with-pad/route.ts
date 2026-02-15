@@ -9,6 +9,7 @@ import { verifyTokenCompat } from "@/lib/utils/secure-token";
 import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { createSignatureLogger } from "@/lib/utils/signature-logger";
 import { isOwnerRole, LEASE_STATUS } from "@/lib/constants/roles";
+import { verifyOTP } from "@/lib/services/otp-store";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -41,7 +42,8 @@ export async function POST(request: Request, { params }: PageProps) {
     const { token } = await params;
 
     // FIX P1-4: Vérifier le token (nouveau format HMAC ou ancien format)
-    const tokenData = verifyTokenCompat(token, 30);
+    // FIX AUDIT: TTL réduit de 30j à 7j pour limiter la fenêtre d'exposition
+    const tokenData = verifyTokenCompat(token, 7);
     if (!tokenData) {
       log.warn("Token invalide ou expiré");
       return NextResponse.json(
@@ -105,11 +107,32 @@ export async function POST(request: Request, { params }: PageProps) {
       userAgent,
       screenSize,
       touchDevice,
+      otp_code,
     } = body;
 
     if (!signatureImage || !signerName) {
       return NextResponse.json({ error: "Données de signature manquantes" }, { status: 400 });
     }
+
+    // FIX AUDIT P1-7: Vérification OTP obligatoire (alignement avec /sign)
+    // Le code OTP assure que le signataire a bien accès à son email/téléphone
+    if (!otp_code) {
+      return NextResponse.json(
+        { error: "Code de vérification requis. Veuillez saisir le code reçu par SMS ou email." },
+        { status: 400 }
+      );
+    }
+
+    const otpResult = verifyOTP(tokenData.entityId, otp_code);
+    if (!otpResult.valid) {
+      log.warn("OTP invalide pour sign-with-pad", { leaseId: tokenData.entityId });
+      return NextResponse.json(
+        { error: otpResult.error || "Code de vérification invalide ou expiré" },
+        { status: 400 }
+      );
+    }
+
+    log.info("OTP vérifié avec succès pour sign-with-pad");
 
     // FIX P0-2: Valider l'image de signature côté serveur
     const validation = validateSignatureImage(signatureImage);
@@ -142,8 +165,8 @@ export async function POST(request: Request, { params }: PageProps) {
       signerName,
       signerEmail: tokenData.email,
       signerProfileId,
-      identityVerified: false, // FIX: Pas de vérification d'identité dans ce flow (pas d'OTP, pas de CNI)
-      identityMethod: "signature_pad_token",
+      identityVerified: true, // OTP vérifié en amont (alignement avec /sign)
+      identityMethod: "otp_verified_pad",
       signatureType: signatureType || "draw",
       signatureImage,
       userAgent: userAgent || request.headers.get("user-agent") || "unknown",
@@ -336,7 +359,7 @@ export async function POST(request: Request, { params }: PageProps) {
       metadata: {
         role: tenantSigner.role,
         proof_id: proof.proofId,
-        verification_method: "signature_pad_token",
+        verification_method: "otp_verified_pad",
         signer_email: normalizedEmail,
         correlation_id: log.getCorrelationId(),
       },

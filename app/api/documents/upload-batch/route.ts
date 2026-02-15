@@ -8,6 +8,7 @@ import { documentSchema } from "@/lib/validations";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { validateFile } from "@/lib/security/file-validation";
+import { withSecurity } from "@/lib/api/with-security";
 
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -18,7 +19,7 @@ function isImage(mimeType: string) {
 
 import { documentAiService } from "@/features/documents/services/document-ai.service";
 
-export async function POST(request: Request) {
+export const POST = withSecurity(async function POST(request: Request) {
   try {
     const { user, error } = await getAuthenticatedUser(request);
 
@@ -306,12 +307,14 @@ export async function POST(request: Request) {
 
         // We await here to ensure execution in serverless environment, 
         // though ideally this would be offloaded to a background job
-        await documentAiService.analyzeDocument(
-          (document as any).id,
-          publicUrlForAnalysis,
-          type,
-          tenantName
-        );
+        if (publicUrlForAnalysis) {
+          await documentAiService.analyzeDocument(
+            (document as any).id,
+            publicUrlForAnalysis,
+            type,
+            tenantName
+          );
+        }
       } catch (aiError) {
         console.error("AI Analysis failed for doc", (document as any).id, aiError);
         // Do not block upload success if AI fails
@@ -358,7 +361,7 @@ export async function POST(request: Request) {
       { status: statusCode || 500 }
     );
   }
-}
+}, { routeName: "POST /api/documents/upload-batch", csrf: true });
 
 
 

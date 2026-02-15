@@ -8,6 +8,7 @@ import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { LeaseCreateSchema, getMaxDepotLegal } from "@/lib/validations/lease-financial";
 import { SIGNER_ROLES } from "@/lib/constants/roles";
 import { withSubscriptionLimit } from "@/lib/middleware/subscription-check";
+import { withSecurity } from "@/lib/api/with-security";
 
 /**
  * Configuration Vercel: maxDuration: 10s
@@ -295,7 +296,7 @@ interface LeaseResult {
 /**
  * POST /api/leases - Créer un nouveau bail
  */
-export async function POST(request: Request) {
+export const POST = withSecurity(async function POST(request: Request) {
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
@@ -554,5 +555,5 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     return handleApiError(error);
   }
-}
+}, { routeName: "POST /api/leases", csrf: true });
 

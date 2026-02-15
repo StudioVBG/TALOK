@@ -9,6 +9,8 @@ export const runtime = 'nodejs';
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
+import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import Link from "next/link";
@@ -63,20 +65,13 @@ export default async function SyndicLayout({
   // 3. Vérifier le rôle syndic ou admin
   const allowedRoles = ["syndic", "admin", "platform_admin"];
   if (!allowedRoles.includes(profile.role)) {
-    // Rediriger vers le bon dashboard selon le rôle
-    const roleRedirects: Record<string, string> = {
-      owner: "/owner/dashboard",
-      tenant: "/tenant/dashboard",
-      provider: "/provider/dashboard",
-      coproprietaire_occupant: "/copro/dashboard",
-      coproprietaire_bailleur: "/copro/dashboard",
-    };
-    redirect(roleRedirects[profile.role] || "/dashboard");
+    redirect(getRoleDashboardUrl(profile.role));
   }
 
   // 4. Rendre le layout - SOTA 2026: Thème light unifié + breakpoint lg
   return (
     <ErrorBoundary>
+      <CsrfTokenInjector />
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-cyan-950/30">
         {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />

@@ -42,7 +42,8 @@ export async function POST(request: Request, { params }: PageProps) {
     const { token } = await params;
 
     // FIX P1-4: Vérifier le token (nouveau format HMAC ou ancien format)
-    const tokenData = verifyTokenCompat(token, 30); // 30 jours d'expiration
+    // FIX AUDIT: TTL réduit de 30j à 7j pour limiter la fenêtre d'exposition
+    const tokenData = verifyTokenCompat(token, 7);
     if (!tokenData) {
       log.warn("Token invalide ou expiré");
       return NextResponse.json(

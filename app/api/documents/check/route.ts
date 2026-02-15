@@ -64,6 +64,86 @@ export async function POST(request: NextRequest) {
 
     const serviceClient = getServiceClient();
 
+    // SÉCURITÉ: Vérifier que l'utilisateur a accès aux ressources demandées
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
+    const profileAny = profile as any;
+    const isAdmin = profileAny.role === "admin";
+
+    // Vérification ownership sur property_id
+    if (property_id && !isAdmin) {
+      const { data: property } = await serviceClient
+        .from("properties")
+        .select("id, owner_id")
+        .eq("id", property_id)
+        .single();
+
+      if (!property) {
+        return NextResponse.json({ exists: false });
+      }
+
+      const propAny = property as any;
+      const isOwner = propAny.owner_id === profileAny.id;
+      
+      // Vérifier si le user est locataire lié à cette propriété
+      const { data: leaseLink } = await serviceClient
+        .from("lease_signers")
+        .select("id")
+        .eq("profile_id", profileAny.id)
+        .limit(1);
+
+      const isTenantLinked = leaseLink && leaseLink.length > 0;
+
+      if (!isOwner && !isTenantLinked) {
+        return NextResponse.json({ exists: false });
+      }
+    }
+
+    // Vérification ownership sur lease_id
+    if (lease_id && !isAdmin) {
+      const { data: lease } = await serviceClient
+        .from("leases")
+        .select("id, property_id")
+        .eq("id", lease_id)
+        .single();
+
+      if (!lease) {
+        return NextResponse.json({ exists: false });
+      }
+
+      const leaseAny = lease as any;
+      // Vérifier si owner de la propriété liée au bail
+      const { data: property } = await serviceClient
+        .from("properties")
+        .select("owner_id")
+        .eq("id", leaseAny.property_id)
+        .single();
+
+      const isOwner = property && (property as any).owner_id === profileAny.id;
+
+      // Vérifier si signataire du bail
+      const { data: signer } = await serviceClient
+        .from("lease_signers")
+        .select("id")
+        .eq("lease_id", lease_id)
+        .eq("profile_id", profileAny.id)
+        .limit(1);
+
+      const isSigner = signer && signer.length > 0;
+
+      if (!isOwner && !isSigner) {
+        return NextResponse.json({ exists: false });
+      }
+    }
+
     // Construire la requête de recherche
     let query = serviceClient
       .from("documents")
@@ -196,6 +276,55 @@ export async function GET(request: NextRequest) {
     }
 
     const serviceClient = getServiceClient();
+
+    // SÉCURITÉ: Vérifier ownership avant de retourner l'existence d'un document
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ exists: false });
+    }
+
+    const profileAny = profile as any;
+    const isAdmin = profileAny.role === "admin";
+
+    if (lease_id && !isAdmin) {
+      const { data: lease } = await serviceClient
+        .from("leases")
+        .select("id, property_id")
+        .eq("id", lease_id)
+        .single();
+
+      if (!lease) {
+        return NextResponse.json({ exists: false });
+      }
+
+      // Vérifier si owner
+      const { data: property } = await serviceClient
+        .from("properties")
+        .select("owner_id")
+        .eq("id", (lease as any).property_id)
+        .single();
+
+      const isOwner = property && (property as any).owner_id === profileAny.id;
+
+      // Vérifier si signataire
+      const { data: signer } = await serviceClient
+        .from("lease_signers")
+        .select("id")
+        .eq("lease_id", lease_id)
+        .eq("profile_id", profileAny.id)
+        .limit(1);
+
+      const isSigner = signer && signer.length > 0;
+
+      if (!isOwner && !isSigner) {
+        return NextResponse.json({ exists: false });
+      }
+    }
 
     let query = serviceClient
       .from("documents")

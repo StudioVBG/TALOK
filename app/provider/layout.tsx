@@ -4,6 +4,8 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
+import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import {
   LayoutDashboard,
   Briefcase,
@@ -64,13 +66,7 @@ export default async function VendorLayout({
   }>(user.id, "id, role, prenom, nom, avatar_url");
 
   if (!profile || profile.role !== "provider") {
-    // Redirections complètes par rôle
-    if (profile?.role === "owner") redirect("/owner/dashboard");
-    if (profile?.role === "tenant") redirect("/tenant/dashboard");
-    if (profile?.role === "admin" || profile?.role === "platform_admin") redirect("/admin/dashboard");
-    if (profile?.role === "agency") redirect("/agency/dashboard");
-    if (profile?.role === "syndic") redirect("/syndic/dashboard");
-    redirect("/dashboard");
+    redirect(getRoleDashboardUrl(profile?.role));
   }
 
   const initials =
@@ -81,6 +77,7 @@ export default async function VendorLayout({
 
   return (
     <ErrorBoundary>
+      <CsrfTokenInjector />
       <div className="min-h-screen bg-gradient-to-br from-background via-orange-50/10 to-background dark:from-background dark:via-background dark:to-background">
         {/* Offline indicator */}
         <OfflineIndicator />

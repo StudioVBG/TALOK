@@ -4,11 +4,13 @@ export const runtime = 'nodejs';
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
+import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { fetchTenantDashboard } from "./_data/fetchTenantDashboard";
 import { TenantDataProvider } from "./_data/TenantDataProvider";
 import { TenantAppLayout } from "@/components/layout/tenant-app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
+import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 
 /**
  * Auto-link les lease_signers orphelins pour un locataire existant.
@@ -77,11 +79,7 @@ export default async function TenantLayout({
 
   // 3. Vérifier le rôle
   if (profile.role !== "tenant") {
-    if (profile.role === "owner") {
-      redirect("/owner/dashboard");
-    } else {
-      redirect("/");
-    }
+    redirect(getRoleDashboardUrl(profile.role));
   }
 
   // 3b. Auto-link : rattacher les lease_signers orphelins (email match, profile_id NULL)
@@ -102,6 +100,7 @@ export default async function TenantLayout({
 
   return (
     <ErrorBoundary>
+      <CsrfTokenInjector />
       <TenantDataProvider dashboard={dashboardData} profile={profile} error={dataError}>
         <TenantAppLayout profile={profile}>{children}</TenantAppLayout>
       </TenantDataProvider>

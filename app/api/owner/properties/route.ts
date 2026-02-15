@@ -57,17 +57,20 @@ export async function GET(request: Request) {
       throw new ApiError(403, "Accès réservé aux propriétaires");
     }
 
-    // ✅ FILTRAGE PAR ENTITÉ (optionnel)
+    // ✅ FILTRAGE PAR ENTITÉ (optionnel) + PAGINATION
     const { searchParams } = new URL(request.url);
     const entityId = searchParams.get("entityId");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50", 10)));
+    const offset = (page - 1) * limit;
 
-    // ✅ RÉCUPÉRATION: Récupérer les propriétés du propriétaire
-    // Utiliser SELECT * pour récupérer toutes les colonnes disponibles (évite les erreurs si certaines colonnes n'existent pas)
+    // ✅ RÉCUPÉRATION: Récupérer les propriétés du propriétaire avec pagination côté DB
     let propertiesQuery = supabase
       .from("properties")
       .select("*, legal_entity:legal_entities(id, nom, entity_type, couleur)", { count: "exact" })
       .eq("owner_id", profile.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (entityId === "personal") {
       // Biens en nom propre : legal_entity_id est null
@@ -89,8 +92,8 @@ export async function GET(request: Request) {
       return NextResponse.json<OwnerPropertiesResponse>({
         properties: [],
         pagination: {
-          page: 1,
-          limit: 100,
+          page,
+          limit,
           total: 0,
         },
       });
@@ -142,8 +145,8 @@ export async function GET(request: Request) {
     return NextResponse.json<OwnerPropertiesResponse>({
       properties: enrichedProperties,
       pagination: {
-        page: 1,
-        limit: 100,
+        page,
+        limit,
         total: count ?? enrichedProperties.length,
       },
     });

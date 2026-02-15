@@ -56,16 +56,47 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Utiliser le service client pour bypass RLS
     const serviceClient = getServiceClient();
 
-    // ✅ SOTA 2026: Récupérer le bail avec LEFT JOIN (pas !inner)
-    // Permet d'accéder aux baux même si la propriété est soft-deleted
-    const { data: lease, error: leaseError } = await serviceClient
-      .from("leases")
-      .select(`
-        *,
-        property:properties(*)
-      `)
-      .eq("id", leaseId)
-      .single();
+    // ✅ SOTA 2026: Récupérer le bail avec jointures (property + signers en une requête)
+    // FIX AUDIT: Réduit les requêtes de 5 séquentielles → 2 parallèles
+    const [leaseResult, auxiliaryResult] = await Promise.all([
+      // Requête 1: Bail + Propriété + Signataires (tout en une jointure)
+      serviceClient
+        .from("leases")
+        .select(`
+          *,
+          property:properties(*),
+          lease_signers(
+            id,
+            role,
+            signature_status,
+            signed_at,
+            profile_id,
+            profile:profiles(id, prenom, nom)
+          )
+        `)
+        .eq("id", leaseId)
+        .single(),
+      // Requête 2: EDL + première facture en parallèle
+      Promise.all([
+        serviceClient
+          .from("edl")
+          .select("status")
+          .eq("lease_id", leaseId)
+          .eq("type", "entree")
+          .maybeSingle(),
+        serviceClient
+          .from("invoices")
+          .select("statut")
+          .eq("lease_id", leaseId)
+          .eq("metadata->>type", "initial_invoice")
+          .maybeSingle(),
+      ]),
+    ]);
+
+    const { data: lease, error: leaseError } = leaseResult;
+    const [edlResult, firstInvoiceResult] = auxiliaryResult;
+    const edl = edlResult.data;
+    const firstInvoice = firstInvoiceResult.data;
 
     if (leaseError || !lease) {
       console.error("[GET /api/leases] Erreur:", leaseError?.message);
@@ -75,13 +106,14 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
+    // Extraire les signataires de la jointure
+    const allSignersFromJoin = (lease as any).lease_signers || [];
+
     // Vérifier si la propriété existe et n'est pas supprimée
     const property = lease.property as any;
     const isPropertyDeleted = !property || property.etat === "deleted" || property.deleted_at;
     
     if (isPropertyDeleted && profile.role !== "admin") {
-      // Pour les non-admins, indiquer que le logement a été supprimé
-      // mais permettre l'accès aux données du bail pour l'historique
       console.log(`[GET /api/leases] Propriété supprimée pour bail ${leaseId}`);
     }
 
@@ -90,20 +122,9 @@ export async function GET(request: Request, { params }: RouteParams) {
     const isAdmin = profile.role === "admin";
 
     // Vérifier si l'utilisateur est signataire du bail (locataire, colocataire, garant)
-    let isSigner = false;
-    let signerRole: string | null = null;
-    
-    const { data: signer } = await serviceClient
-      .from("lease_signers")
-      .select("id, role")
-      .eq("lease_id", leaseId)
-      .eq("profile_id", profile.id)
-      .maybeSingle();
-    
-    if (signer) {
-      isSigner = true;
-      signerRole = signer.role;
-    }
+    const userSigner = allSignersFromJoin.find((s: any) => s.profile_id === profile.id);
+    const isSigner = !!userSigner;
+    const signerRole: string | null = userSigner?.role || null;
 
     if (!isOwner && !isAdmin && !isSigner) {
       return NextResponse.json(
@@ -112,43 +133,13 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Si c'est un signataire (locataire), récupérer les infos des autres signataires
-    let signers = null;
-    if (isSigner || isOwner || isAdmin) {
-      const { data: allSigners } = await serviceClient
-        .from("lease_signers")
-        .select(`
-          id,
-          role,
-          signature_status,
-          signed_at,
-          profile:profiles(id, prenom, nom)
-        `)
-        .eq("lease_id", leaseId);
-      signers = allSigners;
-    }
+    // Les signataires sont déjà chargés via la jointure
+    const signers = (isSigner || isOwner || isAdmin) ? allSignersFromJoin : null;
 
     // ✅ SSOT 2026 : Priorité aux données du BAIL (source unique)
-    // Le bail est la source de vérité, pas la propriété
     const loyer = lease.loyer ?? property.loyer_hc ?? property.loyer_base ?? 0;
     const charges = lease.charges_forfaitaires ?? property.charges_mensuelles ?? 0;
     const maxDepot = lease.depot_de_garantie ?? getMaxDepotLegal(lease.type_bail, loyer);
-
-    // Vérifier si un EDL d'entrée est signé
-    const { data: edl } = await serviceClient
-      .from("edl")
-      .select("status")
-      .eq("lease_id", leaseId)
-      .eq("type", "entree")
-      .maybeSingle();
-
-    // Vérifier si la première facture est payée
-    const { data: firstInvoice } = await serviceClient
-      .from("invoices")
-      .select("statut")
-      .eq("lease_id", leaseId)
-      .eq("metadata->>type", "initial_invoice")
-      .maybeSingle();
 
     return NextResponse.json({
       lease: {

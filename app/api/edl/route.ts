@@ -6,6 +6,20 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { createEDL } from "@/lib/services/edl-creation.service";
+import { z } from "zod";
+
+/** Schéma Zod pour la création d'un EDL */
+const createEdlSchema = z.object({
+  lease_id: z.string().uuid("lease_id doit être un UUID valide"),
+  type: z.enum(["entree", "sortie"], { required_error: "Le type est requis (entree ou sortie)" }),
+  scheduled_at: z.string().datetime().optional().nullable(),
+  general_notes: z.string().max(5000, "Notes trop longues (max 5000 caractères)").optional().nullable(),
+  keys: z.array(z.object({
+    type: z.string().min(1),
+    quantite: z.number().int().min(0).max(100),
+    notes: z.string().max(500).optional(),
+  })).optional().nullable(),
+});
 
 /**
  * GET /api/edl - Liste tous les EDL accessibles par l'utilisateur
@@ -181,14 +195,20 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { lease_id, type, scheduled_at, general_notes, keys } = body;
 
-    if (!lease_id) {
+    // Validation Zod
+    const parsed = createEdlSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Le bail (lease_id) est requis" },
+        {
+          error: "Données invalides",
+          details: parsed.error.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", "),
+        },
         { status: 400 }
       );
     }
+
+    const { lease_id, type, scheduled_at, general_notes, keys } = parsed.data;
 
     const serviceClient = getServiceClient();
 

@@ -6,12 +6,13 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { createClient } from "@supabase/supabase-js";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { validateFile, ALLOWED_MIME_TYPES } from "@/lib/security/file-validation";
+import { withSecurity } from "@/lib/api/with-security";
 
 /**
  * POST /api/documents/upload - Upload un document
  * Route de compatibilité pour les anciens appels
  */
-export async function POST(request: Request) {
+export const POST = withSecurity(async function POST(request: Request) {
   try {
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
@@ -152,5 +153,5 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+}, { routeName: "POST /api/documents/upload", csrf: true });
 

@@ -4,11 +4,13 @@ export const runtime = 'nodejs';
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
+import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import { fetchProperties, fetchDashboard, fetchContracts } from "./_data";
 import { OwnerDataProvider } from "./_data/OwnerDataProvider";
 import { OwnerAppLayout } from "@/components/layout/owner-app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { EntityProvider } from "@/providers/EntityProvider";
+import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 
 /**
  * Layout Owner - Server Component
@@ -43,11 +45,7 @@ export default async function OwnerLayout({
 
   // Vérifier que c'est bien un propriétaire
   if (profile.role !== "owner") {
-    if (profile.role === "tenant") {
-      redirect("/tenant");
-    } else {
-      redirect("/dashboard");
-    }
+    redirect(getRoleDashboardUrl(profile.role));
   }
 
   // Charger toutes les données en parallèle
@@ -83,6 +81,8 @@ export default async function OwnerLayout({
 
   return (
     <ErrorBoundary>
+      {/* Injection du token CSRF pour les mutations sécurisées */}
+      <CsrfTokenInjector />
       <OwnerDataProvider
         properties={properties}
         dashboard={dashboard}

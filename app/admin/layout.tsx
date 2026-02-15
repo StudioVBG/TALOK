@@ -3,6 +3,8 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
+import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { AdminDataProvider } from "./_data/AdminDataProvider";
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -32,13 +34,7 @@ export default async function AdminLayout({
   );
 
   if (!profile || (profile.role !== "admin" && profile.role !== "platform_admin")) {
-    if (profile?.role === "owner") redirect("/owner/dashboard");
-    if (profile?.role === "tenant") redirect("/tenant/dashboard");
-    if (profile?.role === "provider") redirect("/provider/dashboard");
-    if (profile?.role === "agency") redirect("/agency/dashboard");
-    if (profile?.role === "syndic") redirect("/syndic/dashboard");
-    if (profile?.role === "guarantor") redirect("/guarantor/dashboard");
-    redirect("/dashboard");
+    redirect(getRoleDashboardUrl(profile?.role));
   }
 
   // On ne charge plus les stats ici pour éviter de bloquer la navigation globale.
@@ -46,6 +42,7 @@ export default async function AdminLayout({
 
   return (
     <ErrorBoundary>
+      <CsrfTokenInjector />
       <AdminDataProvider stats={null}>
         {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />
