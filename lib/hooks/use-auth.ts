@@ -64,11 +64,13 @@ export function useAuth() {
     fetchingRef.current = true;
 
     try {
+      // Utiliser maybeSingle() au lieu de single() pour éviter l'erreur 406
+      // quand le profil n'existe pas encore (trigger handle_new_user non exécuté)
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         // Si erreur de récursion RLS, utiliser la route API en fallback
@@ -90,7 +92,32 @@ export function useAuth() {
         }
         throw error;
       }
-      setProfile(data as Profile);
+
+      if (!data) {
+        // Profil introuvable — le trigger handle_new_user n'a pas fonctionné.
+        // Tenter de créer le profil via la route API (service role)
+        console.warn("[useAuth] Profil introuvable pour user_id:", userId, "— tentative de création automatique");
+        try {
+          const response = await fetch("/api/me/profile", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId }),
+          });
+          if (response.ok) {
+            const createdProfile = await response.json();
+            setProfile(createdProfile as Profile);
+            setLoading(false);
+            return;
+          }
+          console.error("[useAuth] Échec création profil automatique, status:", response.status);
+        } catch (apiError) {
+          console.error("[useAuth] Erreur création profil automatique:", apiError);
+        }
+        setProfile(null);
+      } else {
+        setProfile(data as Profile);
+      }
     } catch (error) {
       console.error("Error fetching profile:", error);
       setProfile(null);

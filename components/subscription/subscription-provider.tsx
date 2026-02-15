@@ -96,13 +96,13 @@ export function SubscriptionProvider({
         return;
       }
 
-      // Récupérer le profile_id d'abord
+      // Récupérer le profile_id d'abord (maybeSingle pour éviter 406 si profil absent)
       let profile: { id: string } | null = null;
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("id")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
         // Si erreur de récursion RLS, utiliser la route API en fallback

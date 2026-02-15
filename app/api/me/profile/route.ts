@@ -47,6 +47,77 @@ export async function GET(request: Request) {
 }
 
 /**
+ * POST /api/me/profile - Auto-créer un profil manquant (quand le trigger handle_new_user n'a pas fonctionné)
+ * Sécurisé : seul l'utilisateur authentifié peut créer son propre profil.
+ */
+export async function POST(request: Request) {
+  try {
+    const { user, error } = await getAuthenticatedUser(request);
+
+    if (error || !user) {
+      return NextResponse.json(
+        { error: "Non authentifié" },
+        { status: 401 }
+      );
+    }
+
+    const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
+    const serviceClient = supabaseAdmin();
+
+    // Vérifier que le profil n'existe pas déjà (double sécurité)
+    const { data: existing } = await serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existing) {
+      // Le profil existe déjà — retourner le profil complet
+      const { data: fullProfile } = await serviceClient
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      return NextResponse.json(fullProfile);
+    }
+
+    // Lire le rôle et les metadata de l'utilisateur
+    const metadata = user.user_metadata || {};
+    const role = metadata.role && ["admin", "owner", "tenant", "provider"].includes(metadata.role)
+      ? metadata.role
+      : "tenant";
+
+    // Créer le profil manquant via service role (bypass RLS)
+    const { data: newProfile, error: insertError } = await serviceClient
+      .from("profiles")
+      .insert({
+        user_id: user.id,
+        role,
+        email: user.email,
+        prenom: metadata.prenom || null,
+        nom: metadata.nom || null,
+        telephone: metadata.telephone || null,
+      })
+      .select("*")
+      .single();
+
+    if (insertError) {
+      console.error("[POST /api/me/profile] Erreur création profil:", insertError);
+      return NextResponse.json(
+        { error: "Impossible de créer le profil: " + insertError.message },
+        { status: 500 }
+      );
+    }
+
+    console.log("[POST /api/me/profile] Profil auto-créé pour user_id:", user.id, "role:", role);
+    return NextResponse.json(newProfile, { status: 201 });
+  } catch (error: unknown) {
+    console.error("Error in POST /api/me/profile:", error);
+    return handleApiError(error);
+  }
+}
+
+/**
  * PATCH /api/me/profile - Mettre à jour les informations du profil utilisateur
  */
 export async function PATCH(request: Request) {
