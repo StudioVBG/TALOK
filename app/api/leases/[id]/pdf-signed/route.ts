@@ -127,10 +127,13 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Récupérer les images de signature depuis le storage
+    // Récupérer les images de signature depuis lease_signers.signature_image_path
+    // FIX P0-1: Utiliser le path stocké dans lease_signers au lieu de lister le bucket
+    // (l'ancien code cherchait dans "leases/{id}/signatures" alors que les fichiers
+    //  sont uploadés dans "signatures/{id}/...")
     const signatureImages: Record<string, string> = {};
     
-    // Chercher les documents de signature
+    // Chercher les documents de signature (pour les preuves)
     const signedDocs = (lease.documents as any[])?.filter(d => 
       d.type === "bail_signe_locataire" || d.type === "bail_signe_proprietaire"
     );
@@ -148,46 +151,29 @@ export async function GET(request: Request, { params }: RouteParams) {
       .eq("profile_id", property.owner_id)
       .single();
 
-    // Récupérer l'image de signature du locataire
-    const tenantSignatureFile = `leases/${leaseId}/signatures`;
-    try {
-      const { data: signatureFiles } = await serviceClient.storage
-        .from("documents")
-        .list(tenantSignatureFile);
-      
-      if (signatureFiles && signatureFiles.length > 0) {
-        // Prendre la dernière signature
-        const latestSignature = signatureFiles
-          .filter(f => f.name.includes("tenant"))
-          .sort((a, b) => b.name.localeCompare(a.name))[0];
-        
-        if (latestSignature) {
+    // FIX P0-1: Récupérer les URLs signées directement depuis les signers
+    const signers = lease.signers as any[] || [];
+    for (const signer of signers) {
+      if (signer.signature_image_path && signer.signature_status === "signed") {
+        try {
           const { data: signedUrl } = await serviceClient.storage
             .from("documents")
-            .createSignedUrl(`${tenantSignatureFile}/${latestSignature.name}`, 3600);
-          
-          if (signedUrl?.signedUrl) {
-            signatureImages.tenant = signedUrl.signedUrl;
-          }
-        }
+            .createSignedUrl(signer.signature_image_path, 3600);
 
-        // Signature propriétaire
-        const ownerSignature = signatureFiles
-          .filter(f => f.name.includes("owner"))
-          .sort((a, b) => b.name.localeCompare(a.name))[0];
-        
-        if (ownerSignature) {
-          const { data: signedUrl } = await serviceClient.storage
-            .from("documents")
-            .createSignedUrl(`${tenantSignatureFile}/${ownerSignature.name}`, 3600);
-          
           if (signedUrl?.signedUrl) {
-            signatureImages.owner = signedUrl.signedUrl;
+            // Déterminer si c'est le proprio ou le locataire
+            const role = (signer.role || "").toLowerCase();
+            if (["proprietaire", "owner", "bailleur"].includes(role)) {
+              signatureImages.owner = signedUrl.signedUrl;
+            } else {
+              // locataire_principal, locataire, tenant, colocataire, garant
+              signatureImages.tenant = signedUrl.signedUrl;
+            }
           }
+        } catch (e) {
+          console.warn(`[pdf-signed] Impossible de générer l'URL signée pour ${signer.signature_image_path}:`, e);
         }
       }
-    } catch (e) {
-      console.log("Signatures non trouvées dans storage");
     }
 
     // Préparer les données pour le template
