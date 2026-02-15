@@ -1315,19 +1315,19 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
               </div>
             )}
 
-            {/* Étape 3 : SOTA Split View (Form + Preview) */}
+            {/* Étape 3 : SOTA Split View (Form + Preview) — Responsive */}
             {currentStep === 3 && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-200px)]">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:h-[calc(100vh-200px)] pb-20 lg:pb-0">
                 {/* Colonne Gauche : Formulaire (Scrollable) */}
-                <div className="lg:col-span-5 overflow-y-auto pr-2">
-                  <div className="bg-white rounded-xl border shadow-sm p-6 space-y-6">
+                <div className="lg:col-span-5 lg:overflow-y-auto lg:pr-2">
+                  <div className="bg-white rounded-xl border shadow-sm p-4 sm:p-6 space-y-5 sm:space-y-6">
                     <div>
-                      <h3 className="text-lg font-bold mb-1">Finalisation</h3>
-                      <p className="text-sm text-muted-foreground">Complétez les informations du locataire</p>
+                      <h3 className="text-base sm:text-lg font-bold mb-1">Finalisation</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Complétez les informations du locataire</p>
                     </div>
 
                     {isColocation ? (
-                      <div className="space-y-8">
+                      <div className="space-y-6 sm:space-y-8">
                         <ColocationConfig property={selectedProperty || null} config={colocConfig} onConfigChange={setColocConfig} />
                         <MultiTenantInvite config={colocConfig} invitees={invitees} onInviteesChange={setInvitees} totalRent={loyer + charges} />
                       </div>
@@ -1343,8 +1343,8 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                     )}
 
                     {/* Section Garant */}
-                    <div className="pt-6 border-t">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase mb-4">Garantie</h4>
+                    <div className="pt-5 sm:pt-6 border-t">
+                      <h4 className="font-medium text-xs sm:text-sm text-muted-foreground uppercase mb-3 sm:mb-4">Garantie</h4>
                       <GarantForm
                         garant={garant}
                         onGarantChange={setGarant}
@@ -1353,30 +1353,30 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                       />
                     </div>
 
-                    {/* Rappel des conditions financières (éditable ici aussi pour le live preview) */}
-                    <div className="pt-6 border-t">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-medium text-sm text-muted-foreground uppercase">Ajustements rapides</h4>
+                    {/* Rappel des conditions financières */}
+                    <div className="pt-5 sm:pt-6 border-t">
+                      <div className="flex items-center justify-between mb-3 sm:mb-4">
+                        <h4 className="font-medium text-xs sm:text-sm text-muted-foreground uppercase">Ajustements rapides</h4>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div className="space-y-1">
                           <Label className="text-xs">Loyer</Label>
-                          <Input type="number" className="h-8" value={loyer} onChange={(e) => setLoyer(parseFloat(e.target.value) || 0)} />
+                          <Input type="number" className="h-10 sm:h-8" value={loyer} onChange={(e) => setLoyer(parseFloat(e.target.value) || 0)} />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Charges</Label>
-                          <Input type="number" className="h-8" value={charges} onChange={(e) => setCharges(parseFloat(e.target.value) || 0)} />
+                          <Input type="number" className="h-10 sm:h-8" value={charges} onChange={(e) => setCharges(parseFloat(e.target.value) || 0)} />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Date début</Label>
-                          <Input type="date" className="h-8" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
+                          <Input type="date" className="h-10 sm:h-8" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
                         </div>
                       </div>
                     </div>
 
-                    {/* P2-6: Clauses personnalisables */}
-                    <div className="pt-6 border-t">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase mb-4">Clauses additionnelles</h4>
+                    {/* Clauses personnalisables */}
+                    <div className="pt-5 sm:pt-6 border-t">
+                      <h4 className="font-medium text-xs sm:text-sm text-muted-foreground uppercase mb-3 sm:mb-4">Clauses additionnelles</h4>
                       <CustomClauses
                         typeBail={selectedType || ""}
                         value={customClauses}
@@ -1387,19 +1387,20 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                 </div>
 
                 {/* Colonne Droite : Live Preview avec onglets Bail / EDL */}
-                <div className="lg:col-span-7 bg-slate-100 rounded-xl border overflow-hidden flex flex-col h-full">
-                  <div className="bg-slate-200 px-4 py-2 border-b flex justify-between items-center">
-                    {/* Onglets Bail / EDL */}
+                <div className="lg:col-span-7 bg-slate-100 rounded-xl border overflow-hidden flex flex-col min-h-[400px] sm:min-h-[500px] lg:h-full">
+                  <div className="bg-slate-200 px-3 sm:px-4 py-2 border-b flex justify-between items-center">
+                    {/* Onglets Bail / EDL — touch-friendly */}
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => setPreviewTab("bail")}
                         className={cn(
-                          "flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors",
+                          "flex items-center gap-1 sm:gap-1.5 px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors min-h-[36px]",
                           previewTab === "bail"
                             ? "bg-white text-slate-800 shadow-sm"
                             : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
                         )}
+                        aria-label="Aperçu du bail"
                       >
                         <Eye className="h-3 w-3" />
                         Bail
@@ -1408,23 +1409,25 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         type="button"
                         onClick={() => setPreviewTab("edl")}
                         className={cn(
-                          "flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors",
+                          "flex items-center gap-1 sm:gap-1.5 px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors min-h-[36px]",
                           previewTab === "edl"
                             ? "bg-white text-slate-800 shadow-sm"
                             : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
                         )}
+                        aria-label="Aperçu de l'état des lieux d'entrée"
                       >
                         <ClipboardCheck className="h-3 w-3" />
-                        EDL d&apos;entrée
+                        <span className="hidden sm:inline">EDL d&apos;entrée</span>
+                        <span className="sm:hidden">EDL</span>
                       </button>
                     </div>
-                    <Badge variant="outline" className="bg-white">
+                    <Badge variant="outline" className="bg-white text-[10px] sm:text-xs">
                       {selectedType?.toUpperCase()}
                     </Badge>
                   </div>
-                  <div className="flex-1 overflow-auto bg-slate-50 p-4">
+                  <div className="flex-1 overflow-auto bg-slate-50 p-2 sm:p-4">
                     {previewTab === "bail" ? (
-                      <div className="scale-90 origin-top-left w-[110%] h-[110%]">
+                      <div className="lg:scale-90 lg:origin-top-left lg:w-[111%] lg:h-[111%]">
                         <LeasePreview typeBail={selectedType! as any} bailData={previewData as any} />
                       </div>
                     ) : (
@@ -1437,12 +1440,13 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
           </motion.div>
         </AnimatePresence>
 
-        {/* Navigation Bar (Fixed Bottom) */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 z-50">
-          <div className="container mx-auto max-w-5xl flex justify-between items-center">
-            <Button variant="outline" onClick={goBack} disabled={currentStep === 1} className="gap-2">
+        {/* Navigation Bar (Fixed Bottom) — responsive avec safe area */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t p-3 sm:p-4 z-50 safe-area-bottom">
+          <div className="container mx-auto max-w-5xl flex justify-between items-center gap-3">
+            <Button variant="outline" onClick={goBack} disabled={currentStep === 1} className="gap-1.5 sm:gap-2 h-10 sm:h-9 text-xs sm:text-sm">
               <ArrowLeft className="h-4 w-4" />
-              Précédent
+              <span className="hidden sm:inline">Précédent</span>
+              <span className="sm:hidden">Retour</span>
             </Button>
 
             {currentStep < 3 ? (
@@ -1454,7 +1458,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                   onClick={goNext} 
                   disabled={!canProceed} 
                   className={cn(
-                    "gap-2 transition-all duration-300",
+                    "gap-1.5 sm:gap-2 h-10 sm:h-9 text-xs sm:text-sm transition-all duration-300",
                     canProceed 
                       ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30" 
                       : "bg-slate-300"
@@ -1467,10 +1471,10 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
               <Button
                 onClick={handleSubmit}
                 disabled={!canProceed || isSubmitting}
-                className={cn("gap-2 min-w-[200px]", creationMode === "invite" ? "bg-green-600 hover:bg-green-700" : "bg-amber-600 hover:bg-amber-700")}
+                className={cn("gap-1.5 sm:gap-2 min-w-[140px] sm:min-w-[200px] h-10 sm:h-9 text-xs sm:text-sm", creationMode === "invite" ? "bg-green-600 hover:bg-green-700" : "bg-amber-600 hover:bg-amber-700")}
               >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                  creationMode === "invite" ? <><Send className="h-4 w-4" /> Finaliser et Envoyer</> : <><Printer className="h-4 w-4" /> Créer et Imprimer</>
+                  creationMode === "invite" ? <><Send className="h-4 w-4" /> <span className="hidden sm:inline">Finaliser et Envoyer</span><span className="sm:hidden">Envoyer</span></> : <><Printer className="h-4 w-4" /> <span className="hidden sm:inline">Créer et Imprimer</span><span className="sm:hidden">Créer</span></>
                 )}
               </Button>
             )}

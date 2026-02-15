@@ -39,6 +39,7 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 interface TenantEDLDetailClientProps {
   data: {
@@ -168,8 +169,16 @@ export default function TenantEDLDetailClient({
 
   return (
     <PageTransition>
-      <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
-        
+      <div className="container mx-auto px-4 py-4 sm:py-8 max-w-7xl space-y-4 sm:space-y-6">
+        {/* Breadcrumb */}
+        <Breadcrumb
+          items={[
+            { label: "États des lieux", href: "/tenant/inspections" },
+            { label: `EDL ${edl.type === "entree" ? "Entrée" : "Sortie"}` }
+          ]}
+          homeHref="/tenant/dashboard"
+        />
+
         {/* Header SOTA */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
@@ -214,7 +223,7 @@ export default function TenantEDLDetailClient({
                 <Badge variant="outline" className="bg-card/50 border-border">{stats.completedItems} éléments vérifiés</Badge>
               </div>
               <GlassCard className="p-0 border-border shadow-2xl overflow-hidden bg-card">
-                <div className="h-[75vh] overflow-y-auto custom-scrollbar">
+                <div className="h-[60vh] sm:h-[70vh] lg:h-[75vh] overflow-y-auto custom-scrollbar">
                   <EDLPreview edlData={edlTemplateData} edlId={edl.id} />
                 </div>
               </GlassCard>

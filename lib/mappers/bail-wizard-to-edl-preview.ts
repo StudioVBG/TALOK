@@ -9,7 +9,7 @@
  * @module bail-wizard-to-edl-preview
  */
 
-import type { EDLComplet } from "@/lib/templates/edl/types";
+import type { EDLComplet, ItemCondition } from "@/lib/templates/edl/types";
 
 // ---------------------------------------------------------------------------
 // Types d'entrée
@@ -72,6 +72,42 @@ export interface BailWizardEdlInput {
 }
 
 // ---------------------------------------------------------------------------
+// Items par défaut par type de pièce
+// ---------------------------------------------------------------------------
+
+/** Items de base présents dans la plupart des pièces */
+const BASE_ITEMS = [
+  "Sol", "Murs", "Plafond", "Fenêtre(s)", "Porte", "Éclairage",
+  "Prises électriques", "Radiateur/Chauffage",
+];
+
+/** Configuration des pièces avec leurs items par défaut */
+const ROOM_ITEMS_CONFIG: Record<string, string[]> = {
+  "Entrée": ["Porte d'entrée", "Serrure", "Sonnette/Interphone", ...BASE_ITEMS, "Placard"],
+  "Salon / Séjour": [...BASE_ITEMS, "Volets/Stores", "Placard"],
+  "Pièce principale": [...BASE_ITEMS, "Volets/Stores"],
+  "Cuisine": [...BASE_ITEMS, "Évier", "Robinetterie", "Plan de travail", "Plaques de cuisson", "Four", "Hotte", "Placards"],
+  "Cuisine / Kitchenette": [...BASE_ITEMS, "Évier", "Robinetterie", "Plan de travail", "Plaques de cuisson", "Placards"],
+  "Chambre": [...BASE_ITEMS, "Volets/Stores", "Placard"],
+  "Salle de bain": [...BASE_ITEMS, "Baignoire/Douche", "Lavabo", "Robinetterie", "Miroir", "Ventilation"],
+  "Salle de bain / WC": [...BASE_ITEMS, "Baignoire/Douche", "Lavabo", "Robinetterie", "Miroir", "Ventilation", "Cuvette", "Chasse d'eau"],
+  "WC": ["Sol", "Murs", "Plafond", "Porte", "Cuvette", "Chasse d'eau", "Lave-mains", "Ventilation", "Éclairage"],
+  "Garage / Cellier": ["Porte/Accès", ...BASE_ITEMS],
+  "Garage / Parking": ["Porte/Accès", ...BASE_ITEMS],
+  "Cave / Cellier": ["Porte/Accès", ...BASE_ITEMS],
+  "Extérieur / Jardin": ["Portail/Clôture", "Allées", "Pelouse", "Terrasse", "Éclairage extérieur"],
+};
+
+/** Items supplémentaires pour bail meublé (inventaire mobilier requis par la loi) */
+const MEUBLE_ITEMS_BY_ROOM: Record<string, string[]> = {
+  "Salon / Séjour": ["Canapé", "Table", "Chaise(s)", "Luminaire", "Rideaux/Stores"],
+  "Pièce principale": ["Canapé", "Table", "Chaise(s)", "Luminaire", "Rideaux/Stores"],
+  "Chambre": ["Lit", "Matelas", "Couette/Couverture", "Table de chevet", "Armoire/Penderie", "Luminaire"],
+  "Cuisine": ["Réfrigérateur", "Micro-ondes", "Vaisselle", "Ustensiles de cuisine"],
+  "Cuisine / Kitchenette": ["Réfrigérateur", "Micro-ondes", "Vaisselle", "Ustensiles de cuisine"],
+};
+
+// ---------------------------------------------------------------------------
 // Fonctions utilitaires
 // ---------------------------------------------------------------------------
 
@@ -120,6 +156,89 @@ export function generateDefaultRooms(
   return rooms;
 }
 
+/**
+ * Retourne les items par défaut pour une pièce donnée.
+ * Si le nom de pièce contient un numéro (ex: "Chambre 2"),
+ * on utilise le template de base (ex: "Chambre").
+ */
+function getItemsForRoom(roomName: string, typeBail?: string): string[] {
+  // Recherche exacte
+  let items = ROOM_ITEMS_CONFIG[roomName];
+
+  // Si pas trouvé, chercher un match partiel (ex: "Chambre 2" → "Chambre")
+  if (!items) {
+    const baseRoomName = Object.keys(ROOM_ITEMS_CONFIG).find(key =>
+      roomName.startsWith(key)
+    );
+    items = baseRoomName ? ROOM_ITEMS_CONFIG[baseRoomName] : BASE_ITEMS;
+  }
+
+  // Pour les baux meublés, ajouter les items de mobilier
+  if (typeBail === "meuble" || typeBail === "colocation" || typeBail === "etudiant") {
+    const meubleItems = MEUBLE_ITEMS_BY_ROOM[roomName]
+      || MEUBLE_ITEMS_BY_ROOM[Object.keys(MEUBLE_ITEMS_BY_ROOM).find(key => roomName.startsWith(key)) || ""]
+      || [];
+    if (meubleItems.length > 0) {
+      items = [...items, ...meubleItems];
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Génère les pièces pré-remplies avec items vierges (condition: null)
+ * pour l'aperçu dans le wizard de bail.
+ */
+export function generatePreviewPieces(
+  rooms: string[],
+  typeBail?: string
+): Array<{
+  nom: string;
+  items: Array<{
+    room_name: string;
+    item_name: string;
+    condition: ItemCondition | null;
+    notes?: string;
+  }>;
+}> {
+  return rooms.map(roomName => ({
+    nom: roomName,
+    items: getItemsForRoom(roomName, typeBail).map(itemName => ({
+      room_name: roomName,
+      item_name: itemName,
+      condition: null as ItemCondition | null,
+      notes: undefined,
+    })),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Compteurs par défaut
+// ---------------------------------------------------------------------------
+
+/** Compteurs standards pour le preview */
+function generateDefaultCompteurs(): Array<{
+  type: "electricity" | "gas" | "water" | "water_hot";
+  meter_number: string;
+  reading: string;
+  unit: string;
+}> {
+  return [
+    { type: "electricity", meter_number: "", reading: "—", unit: "kWh" },
+    { type: "water", meter_number: "", reading: "—", unit: "m³" },
+  ];
+}
+
+/** Clés par défaut pour le preview */
+function generateDefaultKeys(): Array<{ type: string; quantite: number; notes: string }> {
+  return [
+    { type: "Clé Porte d'entrée", quantite: 0, notes: "" },
+    { type: "Badge Immeuble", quantite: 0, notes: "" },
+    { type: "Clé Boîte aux lettres", quantite: 0, notes: "" },
+  ];
+}
+
 // ---------------------------------------------------------------------------
 // Fonction de mapping principale
 // ---------------------------------------------------------------------------
@@ -133,19 +252,6 @@ export function generateDefaultRooms(
  *
  * @param data - Données collectées dans le wizard de bail
  * @returns Objet partiel EDLComplet prêt pour la prévisualisation
- *
- * @example
- * ```ts
- * const edlData = mapBailWizardToEdlPreview({
- *   property: selectedProperty,
- *   bailleur: { nom: "Dupont", prenom: "Jean" },
- *   locataires: [{ nom: "Martin", email: "a@b.com" }],
- *   typeBail: "meuble",
- *   loyer: 850,
- *   charges: 50,
- *   dateDebut: "2026-03-01",
- * });
- * ```
  */
 export function mapBailWizardToEdlPreview(
   data: BailWizardEdlInput
@@ -178,6 +284,10 @@ export function mapBailWizardToEdlPreview(
           };
         })
       : [];
+
+  // Générer les pièces par défaut avec items pré-remplis
+  const rooms = generateDefaultRooms(data.property?.nb_pieces, data.property?.type);
+  const pieces = generatePreviewPieces(rooms, data.typeBail);
 
   return {
     type: "entree",
@@ -221,11 +331,11 @@ export function mapBailWizardToEdlPreview(
       charges: data.charges || 0,
     },
 
-    // Sections vides — seront remplies lors de l'état des lieux réel
-    compteurs: [],
-    pieces: [],
+    // Pièces pré-remplies avec items standards (condition non évaluée)
+    compteurs: generateDefaultCompteurs(),
+    pieces,
     signatures: [],
-    cles_remises: [],
+    cles_remises: generateDefaultKeys(),
     observations_generales: undefined,
     is_complete: false,
     is_signed: false,

@@ -552,7 +552,7 @@ export function InspectionDetailClient({ data }: Props) {
               </h1>
               <Badge className={`${status.color} flex-shrink-0`} variant="outline">
                 <StatusIcon className="h-3 w-3 mr-1" />
-                <span className="hidden xs:inline">{status.label}</span>
+                <span className="hidden sm:inline">{status.label}</span>
               </Badge>
             </div>
           </div>
@@ -564,7 +564,8 @@ export function InspectionDetailClient({ data }: Props) {
                 size="sm"
                 onClick={() => handleValidate(false)}
                 disabled={isValidating}
-                className="bg-amber-600 hover:bg-amber-700 shadow-sm h-8 sm:h-9 px-2 sm:px-3"
+                className="bg-amber-600 hover:bg-amber-700 shadow-sm h-9 sm:h-10 px-2.5 sm:px-3"
+                aria-label="Valider l'état des lieux"
               >
                 {isValidating ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <CheckCircle2 className="h-4 w-4 sm:mr-2" />}
                 <span className="hidden sm:inline">Valider</span>
@@ -576,7 +577,8 @@ export function InspectionDetailClient({ data }: Props) {
                 size="sm"
                 onClick={() => setIsSignModalOpen(true)}
                 disabled={isSigning}
-                className="bg-blue-600 hover:bg-blue-700 shadow-sm h-8 sm:h-9 px-2 sm:px-3"
+                className="bg-blue-600 hover:bg-blue-700 shadow-sm h-9 sm:h-10 px-2.5 sm:px-3"
+                aria-label="Signer l'état des lieux"
               >
                 {isSigning ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <FileSignature className="h-4 w-4 sm:mr-2" />}
                 <span className="hidden sm:inline">Signer</span>
@@ -589,7 +591,8 @@ export function InspectionDetailClient({ data }: Props) {
               size="sm"
               onClick={handleDownloadPDF}
               disabled={isDownloading}
-              className="h-8 sm:h-9 px-2 sm:px-3"
+              className="h-9 sm:h-10 px-2.5 sm:px-3"
+              aria-label="Télécharger le PDF"
             >
               {isDownloading ? (
                 <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
@@ -599,7 +602,7 @@ export function InspectionDetailClient({ data }: Props) {
               <span className="hidden sm:inline">Télécharger</span>
             </Button>
 
-            <Button variant="outline" size="sm" onClick={() => window.print()} className="hidden md:flex h-8 sm:h-9 px-2 sm:px-3">
+            <Button variant="outline" size="sm" onClick={() => window.print()} className="hidden md:flex h-9 sm:h-10 px-2.5 sm:px-3" aria-label="Imprimer">
               <Printer className="h-4 w-4 mr-2" />
               Imprimer
             </Button>
@@ -607,7 +610,8 @@ export function InspectionDetailClient({ data }: Props) {
             {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
               <Link
                 href={`/owner/inspections/${edl.id}/edit`}
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-white border-slate-200 shadow-sm hover:bg-slate-50 h-8 sm:h-9 px-2 sm:px-3")}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-white border-slate-200 shadow-sm hover:bg-slate-50 h-9 sm:h-10 px-2.5 sm:px-3")}
+                aria-label="Modifier l'état des lieux"
               >
                 <Edit className="h-4 w-4 sm:mr-2 text-indigo-600" />
                 <span className="hidden sm:inline">Modifier</span>
@@ -620,9 +624,9 @@ export function InspectionDetailClient({ data }: Props) {
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
 
-          {/* Colonne de GAUCHE : L'APERÇU RÉEL DU DOCUMENT */}
-          <div className="lg:col-span-8 xl:col-span-9 order-2 lg:order-1">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px] sm:min-h-[800px]">
+          {/* Colonne de GAUCHE : L'APERÇU RÉEL DU DOCUMENT — Affiché en premier sur mobile */}
+          <div className="lg:col-span-8 xl:col-span-9 order-1 lg:order-1">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[300px] sm:min-h-[500px] lg:min-h-[800px]">
               <EDLPreview 
                 edlData={edlTemplateData} 
                 edlId={edl.id} 
@@ -630,8 +634,8 @@ export function InspectionDetailClient({ data }: Props) {
             </div>
           </div>
 
-          {/* Colonne de DROITE : Contexte & Signatures */}
-          <div className="lg:col-span-4 xl:col-span-3 order-1 lg:order-2 space-y-6">
+          {/* Colonne de DROITE : Contexte & Signatures — Après le contenu sur mobile */}
+          <div className="lg:col-span-4 xl:col-span-3 order-2 lg:order-2 space-y-4 sm:space-y-6">
             
             {/* Carte de Progression */}
             <Card className="border-none shadow-sm bg-white overflow-hidden">

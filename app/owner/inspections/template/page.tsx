@@ -33,6 +33,7 @@ import { EDLPreview } from "@/features/edl";
 import { useProfile } from "@/lib/hooks/use-profile";
 import type { EDLComplet } from "@/lib/templates/edl/types";
 import Link from "next/link";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { propertiesService } from "@/features/properties/services/properties.service";
 
 /**
@@ -271,6 +272,13 @@ export default function EDLTemplatePage() {
         animate={{ opacity: 1, y: 0 }}
         className="p-6 max-w-7xl mx-auto space-y-6"
       >
+        <Breadcrumb
+          items={[
+            { label: "États des lieux", href: "/owner/inspections" },
+            { label: "Template" }
+          ]}
+          homeHref="/owner/dashboard"
+        />
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>

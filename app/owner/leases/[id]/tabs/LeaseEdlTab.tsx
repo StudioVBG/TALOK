@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   Loader2,
   Home,
+  Pencil,
+  Eye,
 } from "lucide-react";
 import { EDLPreview } from "@/features/edl/components/edl-preview";
 
@@ -37,6 +39,11 @@ interface LeaseEdlTabProps {
   leaseStatus: string;
   edl: EdlData | null;
   hasSignedEdl: boolean;
+  /** Données optionnelles du bail pour enrichir le preview EDL */
+  propertyAddress?: string;
+  propertyCity?: string;
+  propertyType?: string;
+  typeBail?: string;
 }
 
 const EDL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -48,13 +55,25 @@ const EDL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: ty
   disputed: { label: "Contesté", color: "bg-red-100 text-red-700", icon: AlertTriangle },
 };
 
-export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEdl }: LeaseEdlTabProps) {
+export function LeaseEdlTab({
+  leaseId,
+  propertyId,
+  leaseStatus,
+  edl,
+  hasSignedEdl,
+  propertyAddress,
+  propertyCity,
+  propertyType,
+  typeBail,
+}: LeaseEdlTabProps) {
+  const [previewLoaded, setPreviewLoaded] = useState(false);
+
   // Bail pas encore signé : EDL non disponible
   const bailNotReady = !["fully_signed", "active", "notice_given", "terminated", "archived"].includes(leaseStatus);
 
   if (bailNotReady) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
+      <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4">
         <div className="p-4 bg-slate-100 rounded-full mb-4">
           <ClipboardCheck className="h-8 w-8 text-slate-400" />
         </div>
@@ -105,7 +124,7 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
         </Link>
 
         <Card className="w-full max-w-lg border-2 border-dashed border-indigo-200 bg-indigo-50/50 mt-6">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="space-y-3 text-sm text-slate-600">
               <div className="flex items-start gap-3">
                 <Camera className="h-4 w-4 mt-0.5 text-indigo-500 flex-shrink-0" />
@@ -134,12 +153,12 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6 py-4"
+      className="space-y-4 sm:space-y-6 py-4"
     >
       {/* Statut actuel de l'EDL */}
       <Card className={`overflow-hidden ${hasSignedEdl ? "border-emerald-200" : "border-indigo-200"}`}>
         <CardHeader className={`pb-3 ${hasSignedEdl ? "bg-gradient-to-r from-emerald-50 to-green-50" : "bg-gradient-to-r from-indigo-50 to-blue-50"}`}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <ClipboardCheck className={`h-5 w-5 ${hasSignedEdl ? "text-emerald-600" : "text-indigo-600"}`} />
               État des lieux d&apos;entrée
@@ -152,7 +171,7 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
         </CardHeader>
         <CardContent className="p-4 space-y-4">
           {/* Infos date */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {edl.scheduled_at && (
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Date planifiée</p>
@@ -179,22 +198,34 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
             )}
           </div>
 
-          {/* Boutons d'action selon le statut */}
+          {/* Boutons d'action selon le statut — touch-friendly (min h-11) */}
           <div className="flex flex-wrap gap-2 pt-2">
             {["draft", "scheduled", "in_progress"].includes(edl.status) && (
-              <Link
-                href={`/owner/inspections/${edl.id}`}
-                className={cn(buttonVariants({ variant: "default" }), "bg-indigo-600 hover:bg-indigo-700")}
-              >
-                <ClipboardCheck className="h-4 w-4 mr-2" />
-                Continuer l&apos;EDL
-              </Link>
+              <>
+                <Link
+                  href={`/owner/inspections/${edl.id}/edit`}
+                  className={cn(buttonVariants({ variant: "default" }), "h-11 px-4 bg-indigo-600 hover:bg-indigo-700")}
+                  aria-label="Continuer l'état des lieux"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Continuer l&apos;EDL
+                </Link>
+                <Link
+                  href={`/owner/inspections/${edl.id}`}
+                  className={cn(buttonVariants({ variant: "outline" }), "h-11 px-4")}
+                  aria-label="Voir les détails de l'état des lieux"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Voir les détails
+                </Link>
+              </>
             )}
 
             {edl.status === "completed" && (
               <Link
                 href={`/owner/inspections/${edl.id}`}
-                className={cn(buttonVariants({ variant: "default" }), "bg-blue-600 hover:bg-blue-700")}
+                className={cn(buttonVariants({ variant: "default" }), "h-11 px-4 bg-blue-600 hover:bg-blue-700")}
+                aria-label="Signer l'état des lieux"
               >
                 <FileText className="h-4 w-4 mr-2" />
                 Signer l&apos;EDL
@@ -204,7 +235,8 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
             {hasSignedEdl && (
               <Link
                 href={`/owner/inspections/${edl.id}`}
-                className={cn(buttonVariants({ variant: "outline" }), "border-emerald-200 text-emerald-700 hover:bg-emerald-50")}
+                className={cn(buttonVariants({ variant: "outline" }), "h-11 px-4 border-emerald-200 text-emerald-700 hover:bg-emerald-50")}
+                aria-label="Voir l'état des lieux signé"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Voir l&apos;EDL signé
@@ -231,10 +263,18 @@ export function LeaseEdlTab({ leaseId, propertyId, leaseStatus, edl, hasSignedEd
         </Card>
       )}
 
-      {/* Aperçu du document EDL */}
-      <div className="min-h-[400px] sm:min-h-[600px]">
+      {/* Aperçu du document EDL — responsive avec hauteur adaptative */}
+      <div className="min-h-[300px] sm:min-h-[400px] md:min-h-[500px]">
         <EDLPreview
-          edlData={{ type: edl.type as "entree" | "sortie" }}
+          edlData={{
+            type: edl.type as "entree" | "sortie",
+            logement: propertyAddress ? {
+              adresse_complete: propertyAddress,
+              ville: propertyCity || "",
+              code_postal: "",
+              type_bien: propertyType || "",
+            } : undefined,
+          }}
           edlId={edl.id}
         />
       </div>

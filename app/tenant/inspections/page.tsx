@@ -25,6 +25,7 @@ import Link from "next/link";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 export default function TenantInspectionsPage() {
   const [edlList, setEdlList] = useState<any[]>([]);
@@ -83,8 +84,15 @@ export default function TenantInspectionsPage() {
 
   return (
     <PageTransition>
-      <div className="container mx-auto px-4 py-8 max-w-5xl space-y-8">
-        
+      <div className="container mx-auto px-4 py-4 sm:py-8 max-w-5xl space-y-4 sm:space-y-6">
+        {/* Breadcrumb */}
+        <Breadcrumb
+          items={[
+            { label: "États des lieux" }
+          ]}
+          homeHref="/tenant/dashboard"
+        />
+
         {/* Header SOTA */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>

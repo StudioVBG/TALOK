@@ -3,6 +3,12 @@
  * Extracted from CreateInspectionWizard.tsx
  */
 
+export interface ExistingEdlInfo {
+  id: string;
+  status: string;
+  scheduled_at?: string | null;
+}
+
 export interface Lease {
   id: string;
   type_bail: string;
@@ -15,6 +21,10 @@ export interface Lease {
     code_postal: string;
   };
   tenant_name: string;
+  /** EDL d'entrée existant pour ce bail (null si aucun) */
+  existing_edl_entree?: ExistingEdlInfo | null;
+  /** EDL de sortie existant pour ce bail (null si aucun) */
+  existing_edl_sortie?: ExistingEdlInfo | null;
 }
 
 export interface RoomTemplate {

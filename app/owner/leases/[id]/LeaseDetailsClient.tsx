@@ -839,6 +839,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     leaseStatus={lease.statut}
                     edl={edl}
                     hasSignedEdl={hasSignedEdl}
+                    propertyAddress={property.adresse_complete}
+                    propertyCity={property.ville}
+                    propertyType={property.type}
+                    typeBail={lease.type_bail}
                   />
                 </div>
               </TabsContent>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { apiClient } from "@/lib/api-client";
 import { EDLConductor, type EDLData, type EDLRoom, type EDLPhoto } from "@/features/end-of-lease/components/edl-conductor";
 
@@ -346,7 +347,17 @@ export default function EDLPhotosPage() {
   }
 
   return (
-    <EDLConductor
+    <div className="space-y-4">
+      <div className="container mx-auto px-4 pt-4">
+        <Breadcrumb
+          items={[
+            { label: "États des lieux", href: "/owner/inspections" },
+            { label: "Photos" }
+          ]}
+          homeHref="/owner/dashboard"
+        />
+      </div>
+      <EDLConductor
       edlData={edlData}
       onPhotosUpload={handlePhotosUpload}
       onPhotoDelete={handlePhotoDelete}
@@ -355,8 +366,9 @@ export default function EDLPhotosPage() {
       onSave={handleSave}
       onFinalize={handleFinalize}
       onBack={handleBack}
-      className="h-screen"
+      className="min-h-[calc(100vh-4rem)]"
     />
+    </div>
   );
 }
 

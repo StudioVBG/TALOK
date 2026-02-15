@@ -35,6 +35,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PlanGate } from "@/components/subscription";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 interface Inspection {
   id: string;
@@ -232,7 +233,15 @@ export function InspectionsClient({ inspections }: Props) {
 
   return (
     <PageTransition>
-      <div className="space-y-6 sm:space-y-8 container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-7xl">
+      <div className="space-y-4 sm:space-y-6 container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-7xl">
+        {/* Breadcrumb */}
+        <Breadcrumb
+          items={[
+            { label: "États des lieux" }
+          ]}
+          homeHref="/owner/dashboard"
+        />
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-700">
           <div>

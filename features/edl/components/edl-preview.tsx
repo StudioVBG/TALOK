@@ -242,7 +242,9 @@ export function EDLPreview({
         setValidationErrors(errors);
         setValidationWarnings(warnings);
 
-        if (errors.length > 0 && !isVierge) {
+        // 🔧 FIX: Quand un edlId est fourni, l'API charge les données complètes
+        // depuis la BDD → ne pas bloquer sur les erreurs de validation locales
+        if (errors.length > 0 && !isVierge && !edlId) {
           setHtml("");
           setLoading(false);
           return;

@@ -45,6 +45,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 // Import extracted types and constants from ./config/
 import type { Lease, RoomData, MeterReading, KeyItem } from "./config/types";
@@ -933,6 +935,15 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
 
   return (
     <div className="p-4 md:p-6 w-full max-w-4xl mx-auto space-y-4 md:space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb
+        items={[
+          { label: "États des lieux", href: "/owner/inspections" },
+          { label: "Nouveau" }
+        ]}
+        homeHref="/owner/dashboard"
+      />
+
       {/* Header */}
       <div>
         <h1 className="text-xl md:text-2xl font-bold tracking-tight">Nouvel état des lieux</h1>
@@ -990,50 +1001,148 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
               </CardHeader>
               <CardContent>
                 {leases.length > 0 ? (
-                  <div className="grid gap-4">
-                    {leases.map((lease) => (
-                      <motion.div
-                        key={lease.id}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        onClick={() => setSelectedLease(lease)}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                          selectedLease?.id === lease.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-lg bg-muted">
-                            <Home className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold">{lease.property.adresse_complete}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {lease.property.code_postal} {lease.property.ville}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Users className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm text-muted-foreground">
-                                {lease.tenant_name}
-                              </span>
+                  <div className="grid gap-3 sm:gap-4">
+                    {leases.map((lease) => {
+                      const existingEntree = lease.existing_edl_entree;
+                      const existingSortie = lease.existing_edl_sortie;
+                      const hasExistingEdl = !!existingEntree || !!existingSortie;
+
+                      const EDL_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+                        draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700" },
+                        scheduled: { label: "Planifié", color: "bg-blue-100 text-blue-700" },
+                        in_progress: { label: "En cours", color: "bg-amber-100 text-amber-700" },
+                        completed: { label: "Complété", color: "bg-indigo-100 text-indigo-700" },
+                        signed: { label: "Signé", color: "bg-emerald-100 text-emerald-700" },
+                      };
+
+                      return (
+                        <motion.div
+                          key={lease.id}
+                          whileHover={{ scale: 1.005 }}
+                          whileTap={{ scale: 0.995 }}
+                          onClick={() => setSelectedLease(lease)}
+                          className={`p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                            selectedLease?.id === lease.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 sm:gap-4">
+                            <div className="p-2.5 sm:p-3 rounded-lg bg-muted flex-shrink-0">
+                              <Home className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                             </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm sm:text-base truncate">{lease.property.adresse_complete}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground">
+                                {lease.property.code_postal} {lease.property.ville}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Users className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                <span className="text-xs sm:text-sm text-muted-foreground truncate">
+                                  {lease.tenant_name}
+                                </span>
+                              </div>
+
+                              {/* Indicateur EDL existant */}
+                              {hasExistingEdl && (
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {existingEntree && (
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] sm:text-xs ${EDL_STATUS_LABELS[existingEntree.status]?.color || "bg-slate-100 text-slate-700"}`}
+                                    >
+                                      <ClipboardList className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
+                                      EDL Entrée : {EDL_STATUS_LABELS[existingEntree.status]?.label || existingEntree.status}
+                                    </Badge>
+                                  )}
+                                  {existingSortie && (
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] sm:text-xs ${EDL_STATUS_LABELS[existingSortie.status]?.color || "bg-slate-100 text-slate-700"}`}
+                                    >
+                                      <ClipboardList className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
+                                      EDL Sortie : {EDL_STATUS_LABELS[existingSortie.status]?.label || existingSortie.status}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            {selectedLease?.id === lease.id && (
+                              <Check className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                            )}
                           </div>
-                          {selectedLease?.id === lease.id && (
-                            <Check className="h-5 w-5 text-primary" />
+
+                          {/* Actions rapides pour EDL existant — visible quand le bail est sélectionné */}
+                          {selectedLease?.id === lease.id && hasExistingEdl && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              className="mt-3 pt-3 border-t border-dashed border-primary/20"
+                            >
+                              <p className="text-xs text-muted-foreground mb-2">
+                                Un EDL existe déjà pour ce bail. Vous pouvez le continuer ou en créer un nouveau.
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {existingEntree && existingEntree.status !== "signed" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-9 text-xs bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(`/owner/inspections/${existingEntree.id}`);
+                                    }}
+                                    aria-label="Continuer l'EDL d'entrée existant"
+                                  >
+                                    <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+                                    Continuer l&apos;EDL d&apos;entrée
+                                  </Button>
+                                )}
+                                {existingEntree && existingEntree.status === "signed" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-9 text-xs bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(`/owner/inspections/${existingEntree.id}`);
+                                    }}
+                                    aria-label="Voir l'EDL d'entrée signé"
+                                  >
+                                    <Check className="h-3.5 w-3.5 mr-1.5" />
+                                    Voir l&apos;EDL signé
+                                  </Button>
+                                )}
+                                {existingSortie && existingSortie.status !== "signed" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-9 text-xs bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(`/owner/inspections/${existingSortie.id}`);
+                                    }}
+                                    aria-label="Continuer l'EDL de sortie existant"
+                                  >
+                                    <DoorOpen className="h-3.5 w-3.5 mr-1.5" />
+                                    Continuer l&apos;EDL de sortie
+                                  </Button>
+                                )}
+                              </div>
+                            </motion.div>
                           )}
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="font-semibold">Aucun bail éligible</h3>
-                    <p className="text-muted-foreground">
+                  <div className="text-center py-8 sm:py-12">
+                    <Home className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="font-semibold text-sm sm:text-base">Aucun bail éligible</h3>
+                    <p className="text-sm text-muted-foreground">
                       Pour créer un EDL, vous devez avoir un bail :
                     </p>
-                    <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                    <ul className="text-xs sm:text-sm text-muted-foreground mt-2 space-y-1">
                       <li>• <strong>Signé par toutes les parties</strong> (EDL d&apos;entrée)</li>
                       <li>• <strong>Actif</strong> (EDL de sortie)</li>
                     </ul>
@@ -1649,16 +1758,47 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
             </Card>
           )}
 
-          {/* Step 7: Summary */}
+          {/* Step 7: Summary — Récapitulatif complet */}
           {step === 6 && (
             <Card>
               <CardHeader>
-                <CardTitle>Résumé de l&apos;état des lieux</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-base sm:text-lg">Résumé de l&apos;état des lieux</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Vérifiez les informations avant de créer l&apos;EDL
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 md:space-y-6">
+                {/* Statistiques globales */}
+                {(() => {
+                  const totalItems = roomsData.reduce((sum, r) => sum + r.items.length, 0);
+                  const evaluatedItems = roomsData.reduce((sum, r) => sum + r.items.filter(i => i.condition).length, 0);
+                  const totalPhotos = roomsData.reduce((sum, r) => sum + r.items.reduce((s, i) => s + i.photos.length, 0) + (r.globalPhotos?.length || 0), 0);
+                  const validMeters = meterReadings.filter(m => m.reading.trim() !== "").length;
+                  const validKeys = keys.filter(k => k.type.trim() !== "").length;
+                  const completionPercent = totalItems > 0 ? Math.round((evaluatedItems / totalItems) * 100) : 0;
+
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                      <div className="p-3 rounded-lg bg-blue-50 text-center">
+                        <p className="text-lg sm:text-2xl font-bold text-blue-700">{roomsData.length}</p>
+                        <p className="text-[10px] sm:text-xs text-blue-600">Pièces</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-green-50 text-center">
+                        <p className="text-lg sm:text-2xl font-bold text-green-700">{completionPercent}%</p>
+                        <p className="text-[10px] sm:text-xs text-green-600">{evaluatedItems}/{totalItems} évalués</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-purple-50 text-center">
+                        <p className="text-lg sm:text-2xl font-bold text-purple-700">{totalPhotos}</p>
+                        <p className="text-[10px] sm:text-xs text-purple-600">Photos</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-amber-50 text-center">
+                        <p className="text-lg sm:text-2xl font-bold text-amber-700">{validMeters}</p>
+                        <p className="text-[10px] sm:text-xs text-amber-600">Compteurs</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Lease Info */}
                 <div className="p-3 md:p-4 rounded-lg bg-muted/30 space-y-1 md:space-y-2">
                   <p className="text-xs md:text-sm text-muted-foreground">Logement</p>
@@ -1687,22 +1827,55 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                   </div>
                 </div>
 
+                {/* Meter Readings Summary */}
+                {meterReadings.filter(m => m.reading.trim() !== "").length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">
+                      Relevés de compteurs ({meterReadings.filter(m => m.reading.trim() !== "").length})
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {meterReadings.filter(m => m.reading.trim() !== "").map((m, i) => (
+                        <div key={i} className="p-2.5 rounded-lg bg-slate-50 border flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{
+                              m.type === "electricity" ? "⚡" :
+                              m.type === "gas" ? "🔥" :
+                              m.type === "water_hot" ? "🚿" : "💧"
+                            }</span>
+                            <span className="text-xs sm:text-sm font-medium">
+                              {m.type === "electricity" ? "Électricité" :
+                               m.type === "gas" ? "Gaz" :
+                               m.type === "water_hot" ? "Eau chaude" : "Eau froide"}
+                            </span>
+                          </div>
+                          <span className="text-xs sm:text-sm font-mono font-semibold">{m.reading} {m.unit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Rooms Summary */}
                 <div>
                   <p className="text-sm font-medium mb-2">
                     Pièces inspectées ({roomsData.length})
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {roomsData.map((room, i) => {
                       const completed = room.items.every((item) => item.condition);
+                      const photoCount = room.items.reduce((s, item) => s + item.photos.length, 0) + (room.globalPhotos?.length || 0);
                       return (
                         <Badge
                           key={i}
                           variant={completed ? "default" : "outline"}
-                          className={completed ? "bg-green-100 text-green-800" : ""}
+                          className={cn(
+                            "text-[10px] sm:text-xs",
+                            completed ? "bg-green-100 text-green-800" : ""
+                          )}
                         >
                           {room.name}
-                          {completed && <Check className="ml-1 h-3 w-3" />}
+                          {photoCount > 0 && <Camera className="ml-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />}
+                          {completed && <Check className="ml-0.5 h-2.5 w-2.5 sm:h-3 sm:w-3" />}
                         </Badge>
                       );
                     })}
@@ -1711,24 +1884,25 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
 
                 {/* General Notes */}
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Observations générales</Label>
+                  <Label htmlFor="notes" className="text-sm">Observations générales</Label>
                   <Textarea
                     id="notes"
                     placeholder="Ajoutez des notes générales sur l'état du logement..."
                     value={generalNotes}
                     onChange={(e) => setGeneralNotes(e.target.value)}
-                    className="h-24"
+                    className="h-20 sm:h-24 text-sm"
                   />
                 </div>
 
                 {/* Keys Summary */}
                 <div>
                   <p className="text-sm font-medium mb-2">
-                    Trousseau de clés ({keys.length})
+                    Trousseau de clés ({keys.filter(k => k.type.trim() !== "").length})
                   </p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {keys.filter(k => k.type.trim() !== "").map((k, i) => (
-                      <Badge key={i} variant="secondary">
+                      <Badge key={i} variant="secondary" className="text-[10px] sm:text-xs">
+                        <Key className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
                         {k.type} (x{k.count})
                       </Badge>
                     ))}

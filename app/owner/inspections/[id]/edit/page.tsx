@@ -30,6 +30,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 interface Section {
   id: string;
@@ -332,6 +333,13 @@ export default function EditInspectionPage() {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-slate-50 min-h-screen pb-20">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <Breadcrumb
+          items={[
+            { label: "États des lieux", href: "/owner/inspections" },
+            { label: "Modifier" }
+          ]}
+          homeHref="/owner/dashboard"
+        />
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
