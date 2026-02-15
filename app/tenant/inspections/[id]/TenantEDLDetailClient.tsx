@@ -179,77 +179,75 @@ export default function TenantEDLDetailClient({
           homeHref="/tenant/dashboard"
         />
 
-        {/* Header SOTA */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-200">
-                <FileText className="h-6 w-6 text-white" />
+        {/* Header SOTA — responsive */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 sm:gap-6">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="min-w-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 mb-1.5 sm:mb-2">
+              <div className="p-1.5 sm:p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-200 flex-shrink-0">
+                <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground capitalize">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground capitalize">
                 EDL {edl.type === 'entree' ? "d'entrée" : "de sortie"}
               </h1>
             </div>
-            <p className="text-muted-foreground text-lg flex items-center gap-2">
-              <Home className="h-4 w-4" /> {property?.adresse_complete || property?.adresse}
+            <p className="text-muted-foreground text-sm sm:text-base md:text-lg flex items-center gap-2 truncate">
+              <Home className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">{property?.adresse_complete || property?.adresse}</span>
             </p>
           </motion.div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
             {!hasSigned && edl.status !== "draft" && (
               <Button 
                 onClick={() => setIsSignModalOpen(true)} 
                 disabled={isSigning}
-                className="h-11 px-6 bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-lg shadow-amber-100 rounded-xl"
+                className="h-10 sm:h-11 px-4 sm:px-6 bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-lg shadow-amber-100 rounded-xl flex-1 sm:flex-none"
               >
                 <FileSignature className="h-4 w-4 mr-2" />
                 {isSigning ? "Signature..." : "Signer l'EDL"}
               </Button>
             )}
-            {/* ✅ Note: Le bouton Télécharger est géré à l'intérieur du composant EDLPreview pour éviter les doublons */}
           </div>
         </div>
 
-        {/* État de Signature SOTA */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* État de Signature SOTA — responsive */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8">
           
-          <div className="lg:col-span-8 space-y-6">
-            {/* Note: La bannière de signature a été supprimée car redondante avec le bouton du header */}
-
+          <div className="lg:col-span-8 space-y-4 sm:space-y-6">
             {/* Aperçu Document Premium */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-2">
-                <h3 className="text-xl font-bold text-foreground">Inspection détaillée</h3>
-                <Badge variant="outline" className="bg-card/50 border-border">{stats.completedItems} éléments vérifiés</Badge>
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-center justify-between px-1 sm:px-2 gap-2">
+                <h3 className="text-base sm:text-lg md:text-xl font-bold text-foreground">Inspection détaillée</h3>
+                <Badge variant="outline" className="bg-card/50 border-border text-[10px] sm:text-xs flex-shrink-0">{stats.completedItems} éléments</Badge>
               </div>
               <GlassCard className="p-0 border-border shadow-2xl overflow-hidden bg-card">
-                <div className="h-[60vh] sm:h-[70vh] lg:h-[75vh] overflow-y-auto custom-scrollbar">
+                <div className="h-[55vh] sm:h-[65vh] lg:h-[75vh] overflow-y-auto custom-scrollbar">
                   <EDLPreview edlData={edlTemplateData} edlId={edl.id} />
                 </div>
               </GlassCard>
             </div>
           </div>
 
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-4 space-y-4 sm:space-y-6">
             {/* 1. Signataires Timeline */}
-            <GlassCard className="p-6 border-border bg-card shadow-lg space-y-6">
-              <h4 className="font-bold text-foreground flex items-center gap-2 border-b pb-4">
-                <ShieldCheck className="h-5 w-5 text-indigo-600" /> Validation
+            <GlassCard className="p-4 sm:p-6 border-border bg-card shadow-lg space-y-4 sm:space-y-6">
+              <h4 className="font-bold text-foreground flex items-center gap-2 border-b pb-3 sm:pb-4 text-sm sm:text-base">
+                <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" /> Validation
               </h4>
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {(edl.edl_signatures || []).map((sig: any) => {
                   const isSigned = !!sig.signed_at;
                   const isOwner = sig.signer_role === "owner" || sig.signer_role === "proprietaire";
                   return (
-                    <div key={sig.id} className="flex items-start gap-4">
+                    <div key={sig.id} className="flex items-start gap-3 sm:gap-4">
                       <div className={cn(
-                        "h-10 w-10 rounded-xl flex items-center justify-center shadow-sm",
+                        "h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0",
                         isSigned ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-muted text-muted-foreground/30 border border-border"
                       )}>
-                        {isSigned ? <CheckCircle2 className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
+                        {isSigned ? <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" /> : <Clock className="h-4 w-4 sm:h-5 sm:w-5" />}
                       </div>
-                      <div>
-                        <p className="font-bold text-foreground text-sm">
+                      <div className="min-w-0">
+                        <p className="font-bold text-foreground text-xs sm:text-sm truncate">
                           {sig.profile?.prenom} {sig.profile?.nom || (isOwner ? "Propriétaire" : "Locataire")}
                         </p>
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
@@ -263,9 +261,9 @@ export default function TenantEDLDetailClient({
             </GlassCard>
 
             {/* 2. Données Techniques (Compteurs & Clés) - Visibilité Totale */}
-            <GlassCard className="p-6 border-border bg-card shadow-lg space-y-4">
-              <h4 className="font-bold text-foreground flex items-center gap-2 border-b pb-3">
-                <Maximize className="h-5 w-5 text-indigo-600" /> Données techniques
+            <GlassCard className="p-4 sm:p-6 border-border bg-card shadow-lg space-y-4">
+              <h4 className="font-bold text-foreground flex items-center gap-2 border-b pb-3 text-sm sm:text-base">
+                <Maximize className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" /> Données techniques
               </h4>
               
               {/* Compteurs */}
@@ -325,28 +323,28 @@ export default function TenantEDLDetailClient({
               )}
             </GlassCard>
 
-            {/* 3. Recapitulatif (Ancien bloc 3 devenu 4) */}
-            <GlassCard className="p-6 border-border bg-muted/50 space-y-4">
+            {/* 3. Recapitulatif */}
+            <GlassCard className="p-4 sm:p-6 border-border bg-muted/50 space-y-3 sm:space-y-4">
               <h4 className="font-bold text-foreground flex items-center gap-2 uppercase text-[10px] tracking-[0.2em]">Récapitulatif</h4>
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-xs sm:text-sm">
                 <div className="flex justify-between py-1">
-                    <span className="text-muted-foreground">Pièces</span>
+                  <span className="text-muted-foreground">Pièces</span>
                   <span className="font-bold">{rooms.length}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                    <span className="text-muted-foreground">Points vérifiés</span>
+                  <span className="text-muted-foreground">Points vérifiés</span>
                   <span className="font-bold">{stats.completedItems}/{stats.totalItems}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                    <span className="text-muted-foreground">Photos preuves</span>
+                  <span className="text-muted-foreground">Photos preuves</span>
                   <span className="font-bold">{stats.totalPhotos}</span>
                 </div>
               </div>
-              <div className="pt-4 border-t border-border">
+              <div className="pt-3 sm:pt-4 border-t border-border">
                 <div className="flex items-start gap-2">
                   <Info className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    Ce document est une copie numérique de l'original signé. La valeur juridique est identique à un document papier.
+                    Ce document est une copie numérique de l&apos;original signé. La valeur juridique est identique à un document papier.
                   </p>
                 </div>
               </div>
@@ -357,14 +355,14 @@ export default function TenantEDLDetailClient({
       </div>
 
       <Dialog open={isSignModalOpen} onOpenChange={setIsSignModalOpen}>
-        <DialogContent className="max-w-lg rounded-[2rem] border-none shadow-2xl p-8">
+        <DialogContent className="max-w-[95vw] sm:max-w-lg rounded-2xl sm:rounded-[2rem] border-none shadow-2xl p-4 sm:p-6 md:p-8">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black text-foreground">Signer l'état des lieux</DialogTitle>
-            <DialogDescription className="font-medium text-muted-foreground">
-              Veuillez apposer votre signature manuscrite pour confirmer les observations notées dans l'EDL.
+            <DialogTitle className="text-lg sm:text-xl md:text-2xl font-black text-foreground">Signer l&apos;état des lieux</DialogTitle>
+            <DialogDescription className="font-medium text-muted-foreground text-xs sm:text-sm">
+              Veuillez apposer votre signature manuscrite pour confirmer les observations notées dans l&apos;EDL.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-6">
+          <div className="py-3 sm:py-4 md:py-6">
             <SignaturePad
               signerName={`${mySignature?.profile?.prenom || ""} ${mySignature?.profile?.nom || "Locataire"}`.trim()}
               onSignatureComplete={handleSignatureSubmit}

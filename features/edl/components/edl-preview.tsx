@@ -375,21 +375,22 @@ export function EDLPreview({
 
   return (
     <Card className="h-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">
-              {isVierge ? "Template EDL à imprimer" : "Aperçu de l'état des lieux"}
+      <CardHeader className="pb-3 px-3 sm:px-6">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <ClipboardCheck className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+            <CardTitle className="text-sm sm:text-lg truncate">
+              {isVierge ? "Template EDL" : "Aperçu état des lieux"}
             </CardTitle>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleRefresh}
               disabled={loading}
-              className="h-8 w-8 p-0"
+              className="h-9 w-9 p-0"
+              aria-label="Actualiser l'aperçu"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
@@ -398,7 +399,8 @@ export function EDLPreview({
               size="sm"
               onClick={handlePrint}
               disabled={!html || loading}
-              className="h-8 w-8 p-0"
+              className="h-9 w-9 p-0 hidden sm:flex"
+              aria-label="Imprimer"
             >
               <Printer className="h-4 w-4" />
             </Button>
@@ -407,7 +409,8 @@ export function EDLPreview({
               size="sm"
               onClick={handleDownload}
               disabled={!html || downloading || loading}
-              className="h-8 w-8 p-0"
+              className="h-9 w-9 p-0"
+              aria-label="Télécharger le PDF"
             >
               {downloading ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />
@@ -417,18 +420,18 @@ export function EDLPreview({
             </Button>
             <Dialog open={fullscreen} onOpenChange={setFullscreen}>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!html}>
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0" disabled={!html} aria-label="Plein écran">
                   <Maximize2 className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
-                <DialogHeader className="p-4 border-b">
-                  <DialogTitle className="flex items-center gap-2">
-                    <ClipboardCheck className="h-5 w-5" />
+              <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[95vh] sm:max-h-[90vh] p-0">
+                <DialogHeader className="p-3 sm:p-4 border-b">
+                  <DialogTitle className="flex items-center gap-2 text-sm sm:text-base">
+                    <ClipboardCheck className="h-4 w-4 sm:h-5 sm:w-5" />
                     État des lieux {edlData.type === "sortie" ? "de sortie" : "d'entrée"}
                   </DialogTitle>
                 </DialogHeader>
-                <div className="h-[80vh] overflow-hidden">
+                <div className="h-[85vh] sm:h-[80vh] overflow-hidden">
                   <iframe
                     srcDoc={html}
                     className="w-full h-full border-0"
@@ -440,52 +443,52 @@ export function EDLPreview({
           </div>
         </div>
 
-        {/* Badge type EDL */}
-        <div className="flex items-center gap-2 mt-2">
-          <Badge variant={edlData.type === "sortie" ? "destructive" : "default"}>
+        {/* Badge type EDL — responsive */}
+        <div className="flex items-center gap-1.5 sm:gap-2 mt-2 flex-wrap">
+          <Badge variant={edlData.type === "sortie" ? "destructive" : "default"} className="text-[10px] sm:text-xs">
             EDL {edlData.type === "sortie" ? "de sortie" : "d'entrée"}
           </Badge>
           {isVierge && (
-            <Badge variant="secondary">Template vierge</Badge>
+            <Badge variant="secondary" className="text-[10px] sm:text-xs">Template vierge</Badge>
           )}
           {lastGenerated && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-[10px] sm:text-xs text-muted-foreground">
               Généré à {lastGenerated.toLocaleTimeString("fr-FR")}
             </span>
           )}
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Statistiques si EDL numérique */}
+      <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6">
+        {/* Statistiques si EDL numérique — responsive grid */}
         {stats && !isVierge && (
-          <div className="grid grid-cols-4 gap-2 p-3 bg-muted/30 rounded-lg">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 sm:p-3 bg-muted/30 rounded-lg">
             <div className="text-center">
-              <div className="text-lg font-bold text-green-600">{stats.nbBon}</div>
-              <div className="text-xs text-muted-foreground">Bon</div>
+              <div className="text-base sm:text-lg font-bold text-green-600">{stats.nbBon}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Bon</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-yellow-600">{stats.nbMoyen}</div>
-              <div className="text-xs text-muted-foreground">Moyen</div>
+              <div className="text-base sm:text-lg font-bold text-yellow-600">{stats.nbMoyen}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Moyen</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-orange-600">{stats.nbMauvais}</div>
-              <div className="text-xs text-muted-foreground">Mauvais</div>
+              <div className="text-base sm:text-lg font-bold text-orange-600">{stats.nbMauvais}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Mauvais</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-red-600">{stats.nbTresMauvais}</div>
-              <div className="text-xs text-muted-foreground">Très mauvais</div>
+              <div className="text-base sm:text-lg font-bold text-red-600">{stats.nbTresMauvais}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground">Très mauvais</div>
             </div>
           </div>
         )}
 
         {stats && !isVierge && (
           <div className="space-y-1">
-            <div className="flex justify-between text-xs">
+            <div className="flex justify-between text-[10px] sm:text-xs">
               <span>État général</span>
               <span className="font-medium">{stats.pourcentageBon}% en bon état</span>
             </div>
-            <Progress value={stats.pourcentageBon} className="h-2" />
+            <Progress value={stats.pourcentageBon} className="h-1.5 sm:h-2" />
           </div>
         )}
 
@@ -496,17 +499,17 @@ export function EDLPreview({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="p-3 bg-red-50 border border-red-200 rounded-lg"
+              className="p-2.5 sm:p-3 bg-red-50 border border-red-200 rounded-lg"
             >
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-medium text-red-800 text-sm">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1 min-w-0">
+                  <p className="font-medium text-red-800 text-xs sm:text-sm">
                     Données manquantes ({validationErrors.length})
                   </p>
-                  <ul className="text-sm text-red-600 space-y-0.5">
+                  <ul className="text-xs sm:text-sm text-red-600 space-y-0.5">
                     {validationErrors.map((error, i) => (
-                      <li key={i}>• {error}</li>
+                      <li key={i} className="break-words">• {error}</li>
                     ))}
                   </ul>
                 </div>
@@ -522,17 +525,17 @@ export function EDLPreview({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="p-3 bg-amber-50 border border-amber-200 rounded-lg"
+              className="p-2.5 sm:p-3 bg-amber-50 border border-amber-200 rounded-lg"
             >
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-medium text-amber-800 text-sm">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1 min-w-0">
+                  <p className="font-medium text-amber-800 text-xs sm:text-sm">
                     Recommandations ({validationWarnings.length})
                   </p>
-                  <ul className="text-sm text-amber-600 space-y-0.5">
+                  <ul className="text-xs sm:text-sm text-amber-600 space-y-0.5">
                     {validationWarnings.slice(0, 3).map((warning, i) => (
-                      <li key={i}>• {warning}</li>
+                      <li key={i} className="break-words">• {warning}</li>
                     ))}
                     {validationWarnings.length > 3 && (
                       <li className="text-amber-500">
@@ -546,32 +549,32 @@ export function EDLPreview({
           )}
         </AnimatePresence>
 
-        {/* Aperçu iframe - Responsive */}
-        <div className="relative bg-white border rounded-lg overflow-hidden shadow-inner min-h-[300px] sm:min-h-[400px]">
+        {/* Aperçu iframe — hauteur responsive adaptative */}
+        <div className="relative bg-white border rounded-lg overflow-hidden shadow-inner min-h-[250px] sm:min-h-[350px]">
           {loading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 px-4">
               <RefreshCw className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary mb-3" />
-              <p className="text-xs sm:text-sm text-muted-foreground text-center">Génération de l'aperçu...</p>
+              <p className="text-xs sm:text-sm text-muted-foreground text-center">Génération de l&apos;aperçu...</p>
             </div>
-          ) : validationErrors.length > 0 && !isVierge ? (
+          ) : validationErrors.length > 0 && !isVierge && !edlId ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 px-4">
-              <FileText className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground/50 mb-3" />
+              <FileText className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground/50 mb-3" />
               <p className="text-xs sm:text-sm text-muted-foreground text-center">
-                Complétez les informations requises pour voir l'aperçu
+                Complétez les informations requises pour voir l&apos;aperçu
               </p>
             </div>
           ) : (
             <iframe
               ref={iframeRef}
-              className="w-full h-[50vh] sm:h-[60vh] md:h-[500px] border-0"
+              className="w-full h-[45vh] sm:h-[55vh] md:h-[500px] lg:h-[600px] border-0"
               title="Aperçu de l'état des lieux"
             />
           )}
         </div>
 
-        {/* Actions - ✅ Nettoyage: Bouton masqué car déjà présent dans le header de l'aperçu */}
+        {/* Footer informatif */}
         <div className="flex items-center justify-between pt-2 border-t">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[10px] sm:text-xs text-muted-foreground">
             {isVierge
               ? "Téléchargez ce template à imprimer et remplir sur place"
               : "L'aperçu se met à jour automatiquement"}

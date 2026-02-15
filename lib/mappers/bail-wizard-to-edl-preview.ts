@@ -173,8 +173,9 @@ function getItemsForRoom(roomName: string, typeBail?: string): string[] {
     items = baseRoomName ? ROOM_ITEMS_CONFIG[baseRoomName] : BASE_ITEMS;
   }
 
-  // Pour les baux meublés, ajouter les items de mobilier
-  if (typeBail === "meuble" || typeBail === "colocation" || typeBail === "etudiant") {
+  // Pour les baux meublés (meublé, colocation, saisonnier, étudiant), ajouter les items de mobilier
+  // Le bail saisonnier est par nature toujours meublé (art. L324-1 Code du tourisme)
+  if (typeBail === "meuble" || typeBail === "colocation" || typeBail === "etudiant" || typeBail === "saisonnier") {
     const meubleItems = MEUBLE_ITEMS_BY_ROOM[roomName]
       || MEUBLE_ITEMS_BY_ROOM[Object.keys(MEUBLE_ITEMS_BY_ROOM).find(key => roomName.startsWith(key)) || ""]
       || [];

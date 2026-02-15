@@ -393,6 +393,16 @@ export async function POST(
     });
 
     // 6. Enregistrer la signature et la preuve en base (serviceClient pour bypass RLS)
+    // 🔧 FIX: Exclure l'image base64 du proof_metadata pour réduire la taille
+    // et ne PAS insérer de colonne `user_agent` (n'existe que dans lease_signers)
+    const proofMetadataForDB = {
+      ...proof,
+      signature: {
+        ...proof.signature,
+        imageData: `[STORED:${fileName}]`, // Remplacer par le path stocké
+      },
+    };
+
     const { data: signature, error: sigError } = await serviceClient
       .from("edl_signatures")
       .upsert({
@@ -400,12 +410,13 @@ export async function POST(
         signer_user: user.id,
         signer_role: signerRole,
         signer_profile_id: profile.id,
+        signer_name: `${profile.prenom || ""} ${profile.nom || ""}`.trim() || user.email || "Signataire",
+        signer_email: user.email || null,
         signed_at: new Date().toISOString(),
         signature_image_path: fileName,
         ip_inet: proof.metadata.ipAddress as any,
-        user_agent: proof.metadata.userAgent,
         proof_id: proof.proofId,
-        proof_metadata: proof as any,
+        proof_metadata: proofMetadataForDB as any,
         document_hash: proof.document.hash,
       } as any, {
         onConflict: "edl_id, signer_profile_id"

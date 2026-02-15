@@ -1352,7 +1352,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                   </div>
                 ) : propertyRooms.length > 0 ? (
                   /* Afficher les pièces réelles du logement */
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                     {propertyRooms.map((room) => {
                       const isSelected = selectedRooms.includes(room.id);
                       // MAPPING: label_affiche -> name, type_piece -> type
@@ -1371,32 +1371,32 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleRoomToggle(room.id)}
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          className={`p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all min-h-[48px] ${
                             isSelected
                               ? "border-primary bg-primary/5"
                               : "border-border hover:border-primary/50"
                           }`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2.5 sm:gap-3">
                             <div
-                              className={`p-2 rounded-lg ${
+                              className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 ${
                                 isSelected ? "bg-primary/10" : "bg-muted"
                               }`}
                             >
                               <Icon
-                                className={`h-5 w-5 ${
+                                className={`h-4 w-4 sm:h-5 sm:w-5 ${
                                   isSelected ? "text-primary" : "text-muted-foreground"
                                 }`}
                               />
                             </div>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{roomName || "Pièce sans nom"}</span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-medium text-sm sm:text-base truncate">{roomName || "Pièce sans nom"}</span>
                               {(room.surface_m2 || room.surface) && (
-                                <span className="text-xs text-muted-foreground">{room.surface_m2 || room.surface} m²</span>
+                                <span className="text-[10px] sm:text-xs text-muted-foreground">{room.surface_m2 || room.surface} m²</span>
                               )}
                             </div>
                             {isSelected && (
-                              <Check className="h-4 w-4 text-primary ml-auto" />
+                              <Check className="h-4 w-4 text-primary ml-auto flex-shrink-0" />
                             )}
                           </div>
                         </motion.div>
@@ -1405,7 +1405,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                   </div>
                 ) : (
                   /* Afficher les templates par défaut si pas de pièces configurées */
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                     {ROOM_TEMPLATES.map((room) => {
                       const Icon = room.icon;
                       const isSelected = selectedRooms.includes(room.id);
@@ -1415,27 +1415,27 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleRoomToggle(room.id)}
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          className={`p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all min-h-[48px] ${
                             isSelected
                               ? "border-primary bg-primary/5"
                               : "border-border hover:border-primary/50"
                           }`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2.5 sm:gap-3">
                             <div
-                              className={`p-2 rounded-lg ${
+                              className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 ${
                                 isSelected ? "bg-primary/10" : "bg-muted"
                               }`}
                             >
                               <Icon
-                                className={`h-5 w-5 ${
+                                className={`h-4 w-4 sm:h-5 sm:w-5 ${
                                   isSelected ? "text-primary" : "text-muted-foreground"
                                 }`}
                               />
                             </div>
-                            <span className="font-medium">{room.name}</span>
+                            <span className="font-medium text-sm sm:text-base">{room.name}</span>
                             {isSelected && (
-                              <Check className="h-4 w-4 text-primary ml-auto" />
+                              <Check className="h-4 w-4 text-primary ml-auto flex-shrink-0" />
                             )}
                           </div>
                         </motion.div>
@@ -1453,8 +1453,8 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
           {/* Step 5: Room-by-Room Inspection */}
           {step === 4 && currentRoom && (
             <div className="space-y-4">
-              {/* Room Navigation */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2">
+              {/* Room Navigation — scroll horizontal sur mobile */}
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
                 {roomsData.map((room, i) => {
                   const photoCount = getTotalRoomPhotos(room);
                   return (
@@ -1463,18 +1463,18 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                       variant={i === currentRoomIndex ? "default" : "outline"}
                       size="sm"
                       onClick={() => setCurrentRoomIndex(i)}
-                      className="shrink-0 relative"
+                      className="shrink-0 relative h-9 px-2.5 sm:px-3 text-xs sm:text-sm"
                     >
-                      {room.name}
+                      <span className="max-w-[80px] sm:max-w-none truncate">{room.name}</span>
                       {room.items.every((item) => item.condition) && (
-                        <Check className="ml-1 h-3 w-3" />
+                        <Check className="ml-1 h-3 w-3 flex-shrink-0" />
                       )}
                       {photoCount > 0 && (
                         <Badge 
                           variant="secondary" 
-                          className="ml-2 bg-blue-100 text-blue-700 hover:bg-blue-100 h-5 px-1.5"
+                          className="ml-1 sm:ml-2 bg-blue-100 text-blue-700 hover:bg-blue-100 h-4 sm:h-5 px-1 sm:px-1.5 text-[10px] sm:text-xs"
                         >
-                          <Camera className="h-3 w-3 mr-1" />
+                          <Camera className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5" />
                           {photoCount}
                         </Badge>
                       )}
@@ -1546,10 +1546,10 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                   <div className="space-y-4">
                     <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">Éléments détaillés</h4>
                     {currentRoom.items.map((item, itemIndex) => (
-                    <div key={itemIndex} className="p-4 rounded-lg border space-y-4 shadow-sm bg-white">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-slate-800">{item.name}</h4>
-                        <div className="flex gap-2">
+                    <div key={itemIndex} className="p-3 sm:p-4 rounded-lg border space-y-3 sm:space-y-4 shadow-sm bg-white">
+                      <div className="flex items-start sm:items-center justify-between gap-2">
+                        <h4 className="font-medium text-slate-800 text-sm sm:text-base">{item.name}</h4>
+                        <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
                           <Input
                             type="file"
                             id={`photo-${currentRoomIndex}-${itemIndex}`}
@@ -1562,17 +1562,26 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                             variant={item.photos.length > 0 ? "outline" : "secondary"} 
                             size="sm"
                             onClick={() => document.getElementById(`photo-${currentRoomIndex}-${itemIndex}`)?.click()}
-                            className={item.photos.length === 0 ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100" : ""}
+                            className={cn(
+                              "h-9 px-2.5 sm:px-3 text-xs sm:text-sm",
+                              item.photos.length === 0 ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100" : ""
+                            )}
+                            aria-label={`Prendre une photo de ${item.name}`}
                           >
-                            <Camera className={`h-4 w-4 mr-1 ${item.photos.length === 0 ? "animate-pulse" : ""}`} />
-                            {item.photos.length > 0 ? `Photos (${item.photos.length})` : "Prendre photo"}
+                            <Camera className={`h-4 w-4 sm:mr-1 ${item.photos.length === 0 ? "animate-pulse" : ""}`} />
+                            <span className="hidden sm:inline">
+                              {item.photos.length > 0 ? `Photos (${item.photos.length})` : "Photo"}
+                            </span>
+                            {item.photos.length > 0 && (
+                              <span className="sm:hidden text-[10px] ml-0.5">{item.photos.length}</span>
+                            )}
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => removeItemFromRoom(currentRoomIndex, itemIndex)}
-                            className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
-                            title="Supprimer cet élément"
+                            className="text-muted-foreground hover:text-red-500 hover:bg-red-50 h-9 w-9 p-0"
+                            aria-label={`Supprimer ${item.name}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1600,7 +1609,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                           </div>
                         )}
 
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
                           {CONDITION_OPTIONS.map((option) => (
                             <button
                               key={option.value}
@@ -1611,11 +1620,12 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                                   option.value as any
                                 )
                               }
-                              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                              className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium border transition-all min-h-[36px] ${
                                 item.condition === option.value
-                                  ? option.color + " ring-2 ring-offset-2 ring-current"
+                                  ? option.color + " ring-2 ring-offset-1 sm:ring-offset-2 ring-current"
                                   : "bg-muted/50 text-muted-foreground hover:bg-muted"
                               }`}
+                              aria-label={`État: ${option.label}`}
                             >
                               {option.label}
                             </button>
