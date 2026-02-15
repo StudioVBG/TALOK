@@ -104,7 +104,7 @@ export async function GET(request: Request) {
           property:properties(
             id,
             nom,
-            adresse_ligne1,
+            adresse_complete,
             ville,
             owner_id
           ),
@@ -114,7 +114,7 @@ export async function GET(request: Request) {
             property:properties(
               id,
               nom,
-              adresse_ligne1,
+              adresse_complete,
               ville,
               owner_id
             )
@@ -149,7 +149,10 @@ export async function GET(request: Request) {
     if (status === "active") {
       query = query.eq("lease.statut", "active");
     } else if (status === "past") {
-      query = query.eq("lease.statut", "terminated");
+      query = query.in("lease.statut", ["terminated", "archived"]);
+    } else if (status !== "all") {
+      // Par défaut, exclure les brouillons et annulés pour ne pas montrer des "locataires fantômes"
+      query = query.not("lease.statut", "in", '("draft","cancelled")');
     }
 
     // Pagination et ordre
@@ -185,7 +188,7 @@ export async function GET(request: Request) {
           ? {
               id: property.id,
               nom: property.nom,
-              adresse: property.adresse_ligne1,
+              adresse: property.adresse_complete,
               ville: property.ville,
             }
           : null,

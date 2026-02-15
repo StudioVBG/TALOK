@@ -237,13 +237,21 @@ export async function POST(request: Request, { params }: PageProps) {
     const signedCount = allSigners?.filter(s => s.signature_status === "signed").length || 0;
     const allSigned = totalSigners >= 2 && signedCount === totalSigners;
     const ownerSigned = allSigners?.some(s => isOwnerRole(s.role) && s.signature_status === "signed") ?? false;
+    const allTenantsAndGuarantorsSigned = allSigners
+      ?.filter(s => !isOwnerRole(s.role))
+      .every(s => s.signature_status === "signed") ?? false;
 
-    // FIX P0-4: Utiliser UNIQUEMENT les constantes LEASE_STATUS
+    // Déterminer le nouveau statut selon les signatures collectées
     let newStatus = lease.statut;
     if (allSigned) {
+      // Tout le monde a signé → fully_signed
       newStatus = LEASE_STATUS.FULLY_SIGNED;
+    } else if (allTenantsAndGuarantorsSigned && !ownerSigned) {
+      // Tous les locataires/garants ont signé, il manque le propriétaire
+      newStatus = LEASE_STATUS.PENDING_OWNER_SIGNATURE;
     } else if (signedCount > 0) {
-      newStatus = LEASE_STATUS.PENDING_SIGNATURE;
+      // Au moins une signature mais pas encore tout le monde
+      newStatus = LEASE_STATUS.PARTIALLY_SIGNED;
     }
 
     if (newStatus !== lease.statut) {

@@ -185,8 +185,14 @@ async function fetchDashboardDirect(
     properties: propertiesStats,
     leases: {
       total: leases.length,
-      active: leases.filter((l: { statut: string }) => l.statut === "active").length,
-      pending: leases.filter((l: { statut: string }) => l.statut === "pending_signature").length,
+      // "Actifs" = baux en vigueur (active + notice_given + amended)
+      active: leases.filter((l: { statut: string }) =>
+        ["active", "notice_given", "amended"].includes(l.statut)
+      ).length,
+      // "En attente" = tout le pipeline de signature
+      pending: leases.filter((l: { statut: string }) =>
+        ["sent", "pending_signature", "partially_signed", "pending_owner_signature", "fully_signed"].includes(l.statut)
+      ).length,
     },
     invoices: {
       total: invoices.length,

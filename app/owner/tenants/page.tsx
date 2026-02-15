@@ -74,7 +74,15 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
       )
     `)
     .eq("property.owner_id", ownerId)
-    .in("statut", ["active", "pending_signature", "pending_owner_signature"]);
+    .in("statut", [
+      "active",
+      "pending_signature",
+      "partially_signed",
+      "pending_owner_signature",
+      "fully_signed",
+      "notice_given",
+      "sent",
+    ]);
 
   if (error) {
     console.error("[fetchOwnerTenants] Error:", error);

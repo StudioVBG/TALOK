@@ -130,14 +130,31 @@ export default function TenantContextPage() {
       await onboardingService.saveDraft("tenant_context", validated, "tenant");
       await onboardingService.markStepCompleted("tenant_context", "tenant");
 
-      // Si on a un token d'invitation, le marquer comme utilisé
+      // FIX P0-E4: Accepter l'invitation via route API server (au lieu de client-side)
+      // Vérifie l'email, utilise service_role, et lie le profile_id au lease_signers
       if (validated.invite_token) {
-        const supabase = (await import("@/lib/supabase/client")).createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          await invitationsService.markInvitationAsUsed(validated.invite_token, user.id);
+        try {
+          const acceptRes = await fetch("/api/invitations/accept", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ token: validated.invite_token }),
+          });
+
+          if (!acceptRes.ok) {
+            const acceptError = await acceptRes.json();
+            console.error("[onboarding/context] Erreur acceptation invitation:", acceptError);
+            // Ne pas bloquer l'onboarding — log l'erreur mais continuer
+            if (acceptRes.status === 403) {
+              toast({
+                title: "Attention",
+                description: acceptError.details || acceptError.error || "L'invitation n'a pas pu être liée à votre compte.",
+                variant: "destructive",
+              });
+            }
+          }
+        } catch (err) {
+          console.error("[onboarding/context] Erreur appel accept invitation:", err);
         }
       }
 

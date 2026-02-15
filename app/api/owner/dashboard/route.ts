@@ -98,7 +98,7 @@ export async function GET(request: Request) {
           properties!inner(id, adresse_complete, type)
         `)
         .in("property_id", propertyIds)
-        .in("statut", ["active", "pending_signature"]),
+        .not("statut", "in", '("draft","cancelled","archived")'),
       // Récupérer les factures des 6 derniers mois
       supabase
         .from("invoices")
@@ -292,7 +292,7 @@ export async function GET(request: Request) {
         0
       );
       const activeCount = habitationLeases.filter(
-        (l: any) => l.statut === "active"
+        (l: any) => ["active", "notice_given", "amended"].includes(l.statut)
       ).length;
       const occupancyRate = habitationLeases.length > 0
         ? Math.round((activeCount / habitationLeases.length) * 100)
@@ -333,7 +333,7 @@ export async function GET(request: Request) {
         module: "lcd",
         label: "Location Courte Durée",
         stats: {
-          active_leases: lcdLeases.filter((l: any) => l.statut === "active").length,
+          active_leases: lcdLeases.filter((l: any) => ["active", "notice_given", "amended"].includes(l.statut)).length,
           monthly_revenue: totalRevenue,
           properties_count: lcdProperties.length,
           nights_sold: 0, // TODO: Calculer depuis les réservations si table existe
@@ -365,7 +365,7 @@ export async function GET(request: Request) {
         module: "pro",
         label: "Pro & commerces",
         stats: {
-          active_leases: proLeases.filter((l: any) => l.statut === "active").length,
+          active_leases: proLeases.filter((l: any) => ["active", "notice_given", "amended"].includes(l.statut)).length,
           monthly_revenue: totalRent,
           properties_count: proProperties.length,
         },
@@ -392,7 +392,7 @@ export async function GET(request: Request) {
         module: "parking",
         label: "Parking",
         stats: {
-          active_leases: parkingLeases.filter((l: any) => l.statut === "active").length,
+          active_leases: parkingLeases.filter((l: any) => ["active", "notice_given", "amended"].includes(l.statut)).length,
           monthly_revenue: totalRent,
           properties_count: parkingProperties.length,
         },

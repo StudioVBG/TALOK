@@ -12,6 +12,17 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
+  // FIX P1-E2b: Vérifier que l'utilisateur est bien un locataire
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!profile || profile.role !== "tenant") {
+    return NextResponse.json({ error: "Accès réservé aux locataires" }, { status: 403 });
+  }
+
   // Utiliser la RPC dashboard pour récupérer les infos de bail de manière cohérente
   const { data, error } = await supabase.rpc("tenant_dashboard", {
     p_tenant_user_id: user.id,

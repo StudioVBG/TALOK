@@ -86,7 +86,7 @@ export async function GET(request: Request, context: Context) {
           property:properties(
             id,
             nom,
-            adresse_ligne1,
+            adresse_complete,
             ville,
             code_postal,
             owner_id,
@@ -102,7 +102,7 @@ export async function GET(request: Request, context: Context) {
             property:properties(
               id,
               nom,
-              adresse_ligne1,
+              adresse_complete,
               ville,
               code_postal,
               owner_id,
@@ -179,7 +179,7 @@ export async function GET(request: Request, context: Context) {
           ? {
               id: property.id,
               nom: property.nom,
-              adresse: property.adresse_ligne1,
+              adresse: property.adresse_complete,
               ville: property.ville,
               code_postal: property.code_postal,
             }

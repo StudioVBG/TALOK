@@ -189,17 +189,24 @@ export type SignatureStatus = typeof SIGNATURE_STATUS[keyof typeof SIGNATURE_STA
 
 /**
  * SSOT 2026 — Statuts de bail alignés avec la contrainte CHECK en base.
- * Migration de référence : 20260108400000_lease_lifecycle_sota2026.sql
+ * Migration de référence : 20260215200001_add_notice_given_lease_status.sql (harmonisée)
  *
- * Flux normal : draft → pending_signature → fully_signed → active → terminated → archived
+ * Flux normal : draft → sent → pending_signature → partially_signed
+ *               → pending_owner_signature → fully_signed → active
+ *               → notice_given → terminated → archived
  * Annulation : draft|pending_signature → cancelled
+ * Avenant    : active → amended → active
  */
 export const LEASE_STATUS = {
   DRAFT: "draft",
+  SENT: "sent",
   PENDING_SIGNATURE: "pending_signature",
   PARTIALLY_SIGNED: "partially_signed",
+  PENDING_OWNER_SIGNATURE: "pending_owner_signature",
   FULLY_SIGNED: "fully_signed",
   ACTIVE: "active",
+  NOTICE_GIVEN: "notice_given",
+  AMENDED: "amended",
   TERMINATED: "terminated",
   ARCHIVED: "archived",
   CANCELLED: "cancelled",
@@ -213,10 +220,14 @@ export type LeaseStatus = typeof LEASE_STATUS[keyof typeof LEASE_STATUS];
 export function getLeaseStatusLabel(status: string | null | undefined): string {
   switch (status) {
     case LEASE_STATUS.DRAFT: return "Brouillon";
+    case LEASE_STATUS.SENT: return "Envoyé";
     case LEASE_STATUS.PENDING_SIGNATURE: return "En attente de signature";
     case LEASE_STATUS.PARTIALLY_SIGNED: return "Partiellement signé";
+    case LEASE_STATUS.PENDING_OWNER_SIGNATURE: return "Attente signature propriétaire";
     case LEASE_STATUS.FULLY_SIGNED: return "Entièrement signé";
     case LEASE_STATUS.ACTIVE: return "Actif";
+    case LEASE_STATUS.NOTICE_GIVEN: return "Congé donné";
+    case LEASE_STATUS.AMENDED: return "Avenant en cours";
     case LEASE_STATUS.TERMINATED: return "Résilié";
     case LEASE_STATUS.ARCHIVED: return "Archivé";
     case LEASE_STATUS.CANCELLED: return "Annulé";

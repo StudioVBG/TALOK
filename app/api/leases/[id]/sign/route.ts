@@ -579,7 +579,11 @@ async function autoCreateSigner(leaseId: string, profileId: string, role: string
 
 /**
  * Détermine le statut du bail en fonction des signatures
- * ✅ FIX: Vérifie qu'il y a au moins 2 signataires (proprio + locataire) ET qu'ils ont tous signé
+ * Transitions :
+ *   - Aucune signature           → DRAFT (ou PENDING_SIGNATURE si signataires présents)
+ *   - Signature(s) partielle(s)  → PARTIALLY_SIGNED
+ *   - Tous locataires/garants OK → PENDING_OWNER_SIGNATURE
+ *   - Tout le monde signé        → FULLY_SIGNED
  */
 async function determineLeaseStatus(leaseId: string): Promise<string> {
   const serviceClient = getServiceClient();
@@ -596,34 +600,44 @@ async function determineLeaseStatus(leaseId: string): Promise<string> {
     return LEASE_STATUS.DRAFT;
   }
   
-  // ✅ SSOT 2026: Utilisation des helpers de rôles standardisés
+  // Utilisation des helpers de rôles standardisés
   const hasOwner = signers.some(s => isOwnerRole(s.role));
   const hasTenant = signers.some(s => isTenantRole(s.role));
   
-  // ✅ FIX: Vérifier qu'on a au moins 2 signataires
+  // Vérifier qu'on a au moins 2 signataires (proprio + locataire)
   if (signers.length < 2 || !hasOwner || !hasTenant) {
     console.warn("[determineLeaseStatus] Missing required signers (owner:", hasOwner, ", tenant:", hasTenant, ", count:", signers.length, ")");
-    return signers.some(s => s.signature_status === "signed") ? LEASE_STATUS.PENDING_SIGNATURE : LEASE_STATUS.DRAFT;
+    return signers.some(s => s.signature_status === "signed") ? LEASE_STATUS.PARTIALLY_SIGNED : LEASE_STATUS.DRAFT;
   }
   
-  // ✅ FIX: Vérifier que le locataire a un vrai profil lié (pas juste un placeholder)
-  const tenantSigner = signers.find(s => isTenantRole(s.role));
-  
-  const allSigned = signers.every(s => s.signature_status === "signed");
+  const signedCount = signers.filter(s => s.signature_status === "signed").length;
+  const allSigned = signedCount === signers.length;
+  const ownerSigned = signers.filter(s => isOwnerRole(s.role)).every(s => s.signature_status === "signed");
+  const allNonOwnersSigned = signers.filter(s => !isOwnerRole(s.role)).every(s => s.signature_status === "signed");
 
   if (allSigned) {
-    // ✅ FIX: Ne pas activer si le locataire n'a pas de profil réel
+    // Vérifier que le locataire a un vrai profil lié
+    const tenantSigner = signers.find(s => isTenantRole(s.role));
     if (!tenantSigner?.profile_id) {
-      console.warn("[determineLeaseStatus] All signed but tenant has no profile_id - keeping pending_signature");
-      return LEASE_STATUS.PENDING_SIGNATURE;
+      console.warn("[determineLeaseStatus] All signed but tenant has no profile_id - keeping partially_signed");
+      return LEASE_STATUS.PARTIALLY_SIGNED;
     }
-    // ✅ SOTA 2026: Le bail signé passe à "fully_signed", l'activation se fait après l'EDL
+    // SOTA 2026: Le bail signé passe à "fully_signed", l'activation se fait après l'EDL
     console.log("[determineLeaseStatus] All signers signed with valid profiles, lease fully signed:", leaseId);
     return LEASE_STATUS.FULLY_SIGNED;
   }
 
-  // ✅ FIX: Code simplifié - si pas tous signés, c'est pending_signature
-  // Note: En cas de signatures simultanées, la dernière requête déterminera le statut final correct
-  // grâce à la lecture après mise à jour (eventual consistency)
+  // Tous les locataires et garants ont signé, il manque le propriétaire
+  if (allNonOwnersSigned && !ownerSigned && signedCount > 0) {
+    console.log("[determineLeaseStatus] All tenants/guarantors signed, pending owner:", leaseId);
+    return LEASE_STATUS.PENDING_OWNER_SIGNATURE;
+  }
+
+  // Au moins une personne a signé
+  if (signedCount > 0) {
+    return LEASE_STATUS.PARTIALLY_SIGNED;
+  }
+
+  // Personne n'a signé, mais le bail est en attente de signatures
   return LEASE_STATUS.PENDING_SIGNATURE;
 }

@@ -126,7 +126,7 @@ export class AccountingService {
         id,
         nom,
         type_bien,
-        adresse_ligne1,
+        adresse_complete,
         ville,
         code_postal,
         surface,
@@ -206,7 +206,7 @@ export class AccountingService {
           id: property.id,
           reference: `LOT-${property.id.substring(0, 8).toUpperCase()}`,
           type: property.type_bien || "appartement",
-          adresse: property.adresse_ligne1 || "",
+          adresse: property.adresse_complete || "",
           ville: property.ville || "",
           code_postal: property.code_postal || "",
           surface: property.surface || undefined,
@@ -609,7 +609,7 @@ export class AccountingService {
       .from("properties")
       .select(`
         id,
-        adresse_ligne1,
+        adresse_complete,
         ville,
         leases!leases_property_id_fkey(
           id,
@@ -657,7 +657,7 @@ export class AccountingService {
 
       biensFiscaux.push({
         id: property.id,
-        adresse: `${property.adresse_ligne1 || ""}, ${property.ville || ""}`,
+        adresse: `${property.adresse_complete || ""}, ${property.ville || ""}`,
         locataire: tenant ? `${tenant.prenom || ""} ${tenant.nom || ""}`.trim() : undefined,
         loyers_bruts: loyersBien,
         charges_recuperees: chargesBien,
@@ -865,7 +865,7 @@ export class AccountingService {
         type_bail,
         property:properties!inner(
           id,
-          adresse_ligne1,
+          adresse_complete,
           ville,
           code_postal,
           type_bien
@@ -947,7 +947,7 @@ export class AccountingService {
         id: propertyData?.id || "",
         reference: `LOT-${(propertyData?.id || "").substring(0, 8).toUpperCase()}`,
         type: propertyData?.type_bien || "appartement",
-        adresse: propertyData?.adresse_ligne1 || "",
+        adresse: propertyData?.adresse_complete || "",
         ville: propertyData?.ville || "",
         code_postal: propertyData?.code_postal || "",
       },

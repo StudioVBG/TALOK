@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
+import { generateSecureToken } from "@/lib/utils/secure-token";
 
 // Schéma pour un invité de colocation
 const inviteeSchema = z.object({
@@ -487,8 +488,14 @@ export async function POST(request: Request) {
     // Si c'est un draft manuel, on n'envoie pas d'emails
     if (!isManualDraft) {
       for (const invitee of emailsToProcess) {
-        // Générer un token unique pour chaque invité
-        const inviteToken = Buffer.from(`${lease.id}:${invitee.email}:${Date.now()}`).toString("base64url");
+        // FIX P0-E3: Générer un token HMAC sécurisé au lieu de base64url en clair
+        // L'ancien format exposait lease_id et email sans signature cryptographique
+        const inviteToken = generateSecureToken({
+          entityId: lease.id,
+          entityType: "lease",
+          email: invitee.email,
+          expirationDays: 30,
+        });
         const inviteUrl = `${appUrl}/signature/${inviteToken}`;
         
         let emailSent = false;

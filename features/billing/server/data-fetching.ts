@@ -68,9 +68,8 @@ export async function getTenantInvoices() {
 
   if (!profile) return [];
 
-  // On cherche les factures où le tenant_id correspond
-  // OU les factures liées à un bail où je suis signataire (fallback)
-  const { data } = await supabase
+  // 1. Factures directement liées via tenant_id (locataire principal)
+  const { data: directInvoices } = await supabase
     .from("invoices")
     .select(`
       *,
@@ -78,10 +77,47 @@ export async function getTenantInvoices() {
         property:properties(adresse_complete)
       )
     `)
-    .eq("tenant_id", profile.id) // La liaison directe est plus fiable grâce à nos correctifs
-    .order("created_at", { ascending: false });
+    .eq("tenant_id", profile.id)
+    .order("created_at", { ascending: false })
+    .limit(200);
 
-  return (data || []).map((inv: any) => ({
+  // 2. Fallback colocataires : factures des baux où je suis signataire
+  //    mais dont le tenant_id ne pointe pas vers moi
+  const { data: myLeaseIds } = await supabase
+    .from("lease_signers")
+    .select("lease_id")
+    .eq("profile_id", profile.id)
+    .in("role", ["colocataire", "locataire_principal", "locataire"]);
+
+  const leaseIds = (myLeaseIds || []).map((ls) => ls.lease_id).filter(Boolean);
+  const directInvoiceIds = new Set((directInvoices || []).map((inv) => inv.id));
+
+  let colocInvoices: typeof directInvoices = [];
+  if (leaseIds.length > 0) {
+    const { data } = await supabase
+      .from("invoices")
+      .select(`
+        *,
+        lease:leases(
+          property:properties(adresse_complete)
+        )
+      `)
+      .in("lease_id", leaseIds)
+      .neq("tenant_id", profile.id) // Éviter les doublons avec la requête directe
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    colocInvoices = (data || []).filter((inv) => !directInvoiceIds.has(inv.id));
+  }
+
+  // 3. Fusionner et trier par date décroissante
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allInvoices = [...(directInvoices || []), ...(colocInvoices || [])].sort((a: any, b: any) => {
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  }).slice(0, 200);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return allInvoices.map((inv: any) => ({
     id: inv.id,
     periode: inv.periode,
     montant_total: inv.montant_total,

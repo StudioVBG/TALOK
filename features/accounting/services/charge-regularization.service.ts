@@ -394,7 +394,7 @@ export class ChargeRegularizationService {
           property:properties!inner(
             id,
             nom,
-            adresse_ligne1,
+            adresse_complete,
             ville,
             code_postal,
             owner_id
@@ -589,7 +589,7 @@ export class ChargeRegularizationService {
           date_debut,
           tenant:profiles!leases_tenant_id_fkey(prenom, nom),
           property:properties!inner(
-            adresse_ligne1,
+            adresse_complete,
             ville,
             code_postal,
             owner:profiles!properties_owner_id_fkey(prenom, nom)
@@ -623,7 +623,7 @@ export class ChargeRegularizationService {
         nom: `${tenant?.prenom || ""} ${tenant?.nom || ""}`.trim(),
       },
       bien: {
-        adresse: property?.adresse_ligne1 || "",
+        adresse: property?.adresse_complete || "",
         ville: property?.ville || "",
         code_postal: property?.code_postal || "",
       },

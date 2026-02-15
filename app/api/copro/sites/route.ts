@@ -120,12 +120,11 @@ export async function POST(request: NextRequest) {
     
     // Attribuer le rôle syndic à l'utilisateur pour ce site
     await supabase
-      .from('user_roles')
+      .from('user_site_roles')
       .insert({
         user_id: user.id,
         role_code: 'syndic',
         site_id: site.id,
-        granted_by: user.id,
       });
     
     return NextResponse.json(site, { status: 201 });

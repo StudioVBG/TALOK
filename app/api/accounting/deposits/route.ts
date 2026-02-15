@@ -57,7 +57,7 @@ export async function GET(request: Request) {
         depot_de_garantie,
         property:properties!inner(
           id,
-          adresse_ligne1,
+          adresse_complete,
           owner_id
         )
       )
@@ -97,7 +97,7 @@ export async function GET(request: Request) {
         depositsByLease.set(op.lease_id as string, {
           lease_id: op.lease_id,
           tenant_id: op.tenant_id,
-          property_address: leaseData?.property?.adresse_ligne1 || "",
+          property_address: leaseData?.property?.adresse_complete || "",
           initial_amount: leaseData?.depot_de_garantie || 0,
           current_balance: 0,
           operations: [],

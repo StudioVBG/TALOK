@@ -1,36 +1,49 @@
 "use client";
-// @ts-nocheck
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { invitationsService } from "@/features/onboarding/services/invitations.service";
 import { Mail, AlertCircle, ArrowRight, RefreshCw } from "lucide-react";
 import Link from "next/link";
+
+// FIX P1-E12: Suppression de @ts-nocheck — types explicites
+interface InvitationData {
+  id: string;
+  email: string;
+  role: "locataire_principal" | "colocataire" | "garant";
+}
 
 export default function InvitePage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [invitation, setInvitation] = useState<any>(null);
+  const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const token = params.token as string;
 
+  // FIX P1-E9: Valider le token via route API au lieu du service client-side
+  // L'ancienne approche utilisait invitationsService (anon key) directement,
+  // ce qui pouvait échouer sur les RLS pour les utilisateurs non connectés.
   useEffect(() => {
     const validateInvitation = async () => {
       try {
-        const inv = await invitationsService.validateInvitationToken(token);
-        if (!inv) {
+        const res = await fetch(`/api/invitations/validate?token=${encodeURIComponent(token)}`);
+        if (!res.ok) {
           setError("Lien d'invitation invalide ou expiré");
           return;
         }
-        setInvitation(inv);
-      } catch (err: any) {
-        setError(err.message || "Erreur lors de la validation");
+        const data = await res.json();
+        if (!data.valid) {
+          setError(data.error || "Lien d'invitation invalide ou expiré");
+          return;
+        }
+        setInvitation(data.invitation);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Erreur lors de la validation");
       } finally {
         setLoading(false);
       }
@@ -153,7 +166,9 @@ export default function InvitePage() {
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
               Vous avez déjà un compte ?{" "}
-              <Link href={`/auth/signin?email=${encodeURIComponent(invitation.email)}`} className="text-primary hover:underline">
+              {/* FIX P1-E14: Passer le token d'invitation au redirect login
+                  pour que l'invitation soit consommée après connexion */}
+              <Link href={`/auth/signin?email=${encodeURIComponent(invitation.email)}&invite=${encodeURIComponent(token)}&redirect=${encodeURIComponent(`/tenant/onboarding/context?invite=${token}`)}`} className="text-primary hover:underline">
                 Se connecter
               </Link>
             </p>

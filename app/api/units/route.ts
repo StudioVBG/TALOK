@@ -53,7 +53,7 @@ export async function GET(request: Request) {
         property:properties!inner(
           id,
           nom,
-          adresse_ligne1,
+          adresse_complete,
           ville,
           code_postal,
           owner_id
