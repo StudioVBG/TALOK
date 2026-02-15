@@ -22,7 +22,7 @@ export default async function TenantRequestsPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-200">
+              <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-200 dark:shadow-blue-900/30">
                 <Wrench className="h-6 w-6 text-white" />
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-foreground">Mes demandes</h1>
@@ -32,7 +32,7 @@ export default async function TenantRequestsPage() {
             </p>
           </div>
           
-          <Button asChild className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 font-bold rounded-xl transition-all hover:scale-105 active:scale-95">
+          <Button asChild className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 font-bold rounded-xl transition-all hover:scale-105 active:scale-95">
             <Link href="/tenant/requests/new">
               <Plus className="mr-2 h-5 w-5" /> Nouvelle demande
             </Link>
@@ -42,7 +42,7 @@ export default async function TenantRequestsPage() {
         {/* Note informative SOTA */}
         <div className="p-6 bg-muted rounded-3xl border border-border flex items-start gap-4">
           <div className="p-2 bg-card rounded-xl shadow-sm border border-border">
-            <MessageSquare className="h-5 w-5 text-indigo-600" />
+            <MessageSquare className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div className="space-y-1">
             <p className="font-bold text-foreground">Une assistance intelligente</p>

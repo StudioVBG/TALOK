@@ -41,10 +41,20 @@ const SEGMENT_LABELS: Record<string, string> = {
   settings: "Paramètres",
   
   // Sections tenant
-  lease: "Mon bail",
-  payments: "Paiements",
-  requests: "Demandes",
+  lease: "Mon Logement",
+  payments: "Loyers & Factures",
+  requests: "Demandes & SAV",
   profile: "Profil",
+  receipts: "Mes Quittances",
+  meters: "Compteurs & Énergie",
+  colocation: "Colocation",
+  inspections: "États des lieux",
+  messages: "Messagerie",
+  rewards: "Club Récompenses",
+  marketplace: "Marketplace",
+  visits: "Visites",
+  help: "Centre d'aide",
+  "legal-rights": "Mes Droits",
   
   // Sections admin
   overview: "Vue d'ensemble",

@@ -44,8 +44,8 @@ const categories = [
   { value: "plomberie", label: "Plomberie", icon: Droplet, color: "text-blue-500", bgColor: "bg-blue-50" },
   { value: "electricite", label: "Électricité", icon: Zap, color: "text-amber-500", bgColor: "bg-amber-50" },
   { value: "chauffage", label: "Chauffage", icon: Thermometer, color: "text-red-500", bgColor: "bg-red-50" },
-  { value: "serrurerie", label: "Serrurerie", icon: Lock, color: "text-slate-700", bgColor: "bg-slate-100" },
-  { value: "autre", label: "Autre", icon: HelpCircle, color: "text-slate-400", bgColor: "bg-slate-50" },
+  { value: "serrurerie", label: "Serrurerie", icon: Lock, color: "text-foreground/80", bgColor: "bg-muted" },
+  { value: "autre", label: "Autre", icon: HelpCircle, color: "text-muted-foreground", bgColor: "bg-muted" },
 ];
 
 const priorities = [
@@ -161,31 +161,31 @@ export default function NewTenantRequestPage() {
           <div className="space-y-4">
             <Link 
               href="/tenant/requests" 
-              className="group text-sm font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-2 transition-colors"
+              className="group text-sm font-bold text-muted-foreground hover:text-indigo-600 flex items-center gap-2 transition-colors"
             >
-              <div className="p-1.5 rounded-lg bg-slate-100 group-hover:bg-indigo-50 transition-colors">
+              <div className="p-1.5 rounded-lg bg-muted group-hover:bg-indigo-50 transition-colors">
                 <ChevronLeft className="h-4 w-4" />
               </div>
               Retour aux demandes
             </Link>
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-900">Nouvelle Demande</h1>
-              <p className="text-slate-500 text-lg mt-1">Comment pouvons-nous vous aider aujourd'hui ?</p>
+              <h1 className="text-3xl font-black tracking-tight text-foreground">Nouvelle Demande</h1>
+              <p className="text-muted-foreground text-lg mt-1">Comment pouvons-nous vous aider aujourd'hui ?</p>
             </div>
           </div>
 
           {/* Switch Mode SOTA */}
-          <div className="bg-slate-100 p-1.5 rounded-2xl flex border border-slate-200 shadow-inner">
+          <div className="bg-muted p-1.5 rounded-2xl flex border border-border shadow-inner">
             <button 
               onClick={() => setMode('tom')}
               className={cn(
                 "px-6 py-2.5 text-sm font-bold rounded-xl transition-all flex items-center gap-2",
                 mode === 'tom' 
-                  ? "bg-white shadow-lg text-indigo-600" 
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-card shadow-lg text-indigo-600" 
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Sparkles className={cn("h-4 w-4", mode === 'tom' ? "text-amber-500" : "text-slate-400")} />
+              <Sparkles className={cn("h-4 w-4", mode === 'tom' ? "text-amber-500" : "text-muted-foreground")} />
               Assistant Tom
             </button>
             <button 
@@ -193,8 +193,8 @@ export default function NewTenantRequestPage() {
               className={cn(
                 "px-6 py-2.5 text-sm font-bold rounded-xl transition-all",
                 mode === 'classic' 
-                  ? "bg-white shadow-lg text-slate-900" 
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-card shadow-lg text-foreground" 
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               Classique
@@ -237,31 +237,31 @@ export default function NewTenantRequestPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                 >
-                  <GlassCard className="p-8 border-slate-200 bg-white shadow-2xl space-y-8">
+                  <GlassCard className="p-8 border-border bg-card shadow-2xl space-y-8">
                     <div className="flex items-center gap-4 border-b pb-6">
                       <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
                         <Wrench className="h-6 w-6 text-indigo-600" />
                       </div>
-                      <h3 className="text-xl font-bold text-slate-900">Formulaire de demande</h3>
+                      <h3 className="text-xl font-bold text-foreground">Formulaire de demande</h3>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-8">
                       <div className="space-y-3">
-                        <Label htmlFor="titre" className="text-xs font-black uppercase tracking-widest text-slate-400">Objet de la demande</Label>
+                        <Label htmlFor="titre" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Objet de la demande</Label>
                         <Input 
                           id="titre" 
                           placeholder="Ex: Robinet qui fuit, Problème de serrure..." 
                           value={form.titre} 
                           onChange={(e) => setForm({ ...form, titre: e.target.value })} 
-                          className="h-14 rounded-2xl border-slate-200 focus:ring-indigo-500 font-bold text-lg"
+                          className="h-14 rounded-2xl border-border focus:ring-indigo-500 font-bold text-lg"
                         />
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3">
-                          <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Catégorie</Label>
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Catégorie</Label>
                           <Select value={form.categorie} onValueChange={(v) => setForm({ ...form, categorie: v })}>
-                            <SelectTrigger className="h-14 rounded-2xl border-slate-200 font-bold">
+                            <SelectTrigger className="h-14 rounded-2xl border-border font-bold">
                               <SelectValue placeholder="Sélectionner..." />
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl border-none shadow-2xl">
@@ -278,8 +278,8 @@ export default function NewTenantRequestPage() {
                         </div>
 
                         <div className="space-y-3">
-                          <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Degré d'urgence</Label>
-                          <div className="flex gap-2 p-1.5 bg-slate-50 rounded-2xl border border-slate-100">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Degré d'urgence</Label>
+                          <div className="flex gap-2 p-1.5 bg-muted rounded-2xl border border-border">
                             {priorities.map((p) => (
                               <button
                                 key={p.value}
@@ -288,8 +288,8 @@ export default function NewTenantRequestPage() {
                                 className={cn(
                                   "flex-1 py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all",
                                   form.priorite === p.value 
-                                    ? "bg-white shadow-sm text-indigo-600 ring-1 ring-indigo-100" 
-                                    : "text-slate-400 hover:text-slate-600"
+                                    ? "bg-card shadow-sm text-indigo-600 ring-1 ring-indigo-100" 
+                                    : "text-muted-foreground hover:text-foreground/80"
                                 )}
                               >
                                 {p.label}
@@ -300,13 +300,13 @@ export default function NewTenantRequestPage() {
                       </div>
 
                       <div className="space-y-3">
-                        <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-slate-400">Détails de l'intervention</Label>
+                        <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Détails de l'intervention</Label>
                         <Textarea 
                           id="description" 
                           placeholder="Veuillez décrire le problème, sa localisation et si possible les circonstances..." 
                           value={form.description} 
                           onChange={(e) => setForm({ ...form, description: e.target.value })} 
-                          className="rounded-3xl border-slate-200 focus:ring-indigo-500 min-h-[200px] p-6 text-lg"
+                          className="rounded-3xl border-border focus:ring-indigo-500 min-h-[200px] p-6 text-lg"
                         />
                       </div>
 
@@ -329,11 +329,11 @@ export default function NewTenantRequestPage() {
           {/* Sidebar Tips */}
           <div className="lg:col-span-4 space-y-6">
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-              <GlassCard className="p-6 border-slate-200 bg-amber-50/50 space-y-4">
+              <GlassCard className="p-6 border-border bg-amber-50/50 space-y-4">
                 <div className="h-10 w-10 bg-amber-100 rounded-xl flex items-center justify-center">
                   <AlertCircle className="h-5 w-5 text-amber-600" />
                 </div>
-                <h4 className="font-bold text-slate-900">En cas d'urgence vitale</h4>
+                <h4 className="font-bold text-foreground">En cas d'urgence vitale</h4>
                 <p className="text-xs text-amber-800 leading-relaxed">
                   Si votre sécurité est menacée (incendie, fuite de gaz majeure, effondrement), contactez immédiatement les pompiers (18) ou le SAMU (15) avant de créer un ticket.
                 </p>
@@ -341,16 +341,16 @@ export default function NewTenantRequestPage() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
-              <GlassCard className="p-6 border-slate-200 bg-white shadow-lg space-y-4">
+              <GlassCard className="p-6 border-border bg-card shadow-lg space-y-4">
                 <div className="h-10 w-10 bg-emerald-50 rounded-xl flex items-center justify-center">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                 </div>
-                <h4 className="font-bold text-slate-900">Prise en charge rapide</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <h4 className="font-bold text-foreground">Prise en charge rapide</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Ajouter une description précise permet à votre bailleur de mandater le bon prestataire dès le premier passage.
                 </p>
                 <div className="pt-2">
-                  <Badge variant="outline" className="bg-slate-50 border-slate-100 text-[10px] uppercase font-bold tracking-widest text-slate-400">
+                  <Badge variant="outline" className="bg-muted border-border text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
                     SLA Moyen : 48h
                   </Badge>
                 </div>

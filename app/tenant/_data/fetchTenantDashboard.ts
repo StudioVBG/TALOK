@@ -58,6 +58,8 @@ export interface TenantLease {
     id: string;
     name: string;
     email?: string;
+    telephone?: string;
+    avatar_url?: string;
   };
 }
 
@@ -160,14 +162,30 @@ async function fetchTenantDashboardDirect(
     leases = leasesData || [];
   }
 
-  // Récupérer les factures, tickets et EDL en parallèle
+  // Récupérer les propriétés liées aux baux pour enrichir les données
   const propertyIds = leases.map((l: any) => l.property_id).filter(Boolean);
 
-  const [invoicesResult, ticketsResult, edlResult] = await Promise.allSettled([
+  // Charger les propriétés + propriétaires en parallèle pour enrichir factures/tickets/EDL
+  const [propertiesResult, ownersResult, invoicesResult, ticketsResult, edlResult] = await Promise.allSettled([
+    // Propriétés liées aux baux (avec owner_id)
+    propertyIds.length > 0
+      ? supabase
+          .from("properties")
+          .select("id, type, adresse_complete, ville, code_postal, surface, nb_pieces, etage, ascenseur, dpe_classe_energie, dpe_classe_climat, cover_url, digicode, interphone, owner_id")
+          .in("id", propertyIds)
+      : Promise.resolve({ data: [] }),
+    // Propriétaires des biens
+    propertyIds.length > 0
+      ? supabase
+          .from("properties")
+          .select("id, owner_id, owner:profiles!owner_id(id, prenom, nom, email, telephone, avatar_url)")
+          .in("id", propertyIds)
+      : Promise.resolve({ data: [] }),
+    // Factures
     leaseIds.length > 0
       ? supabase
           .from("invoices")
-          .select("id, lease_id, periode, montant_total, montant_loyer, montant_charges, statut, due_date")
+          .select("id, lease_id, periode, montant_total, montant_loyer, montant_charges, statut, due_date, created_at")
           .in("lease_id", leaseIds)
           .order("periode", { ascending: false })
           .limit(20)
@@ -189,30 +207,80 @@ async function fetchTenantDashboardDirect(
       : Promise.resolve({ data: [] }),
   ]);
 
+  const propertiesData = propertiesResult.status === "fulfilled" ? (propertiesResult.value as any).data || [] : [];
+  const ownersData = ownersResult.status === "fulfilled" ? (ownersResult.value as any).data || [] : [];
   const invoicesData = invoicesResult.status === "fulfilled" ? (invoicesResult.value as any).data || [] : [];
   const ticketsData = ticketsResult.status === "fulfilled" ? (ticketsResult.value as any).data || [] : [];
   const edlData = edlResult.status === "fulfilled" ? (edlResult.value as any).data || [] : [];
 
-  const invoices: TenantInvoice[] = invoicesData.map((i: any) => ({
-    ...i,
-    property_type: "",
-    property_address: "",
-  }));
+  // Créer un index rapide des propriétés par ID
+  const propertyMap = new Map<string, any>();
+  for (const p of propertiesData) {
+    propertyMap.set(p.id, p);
+  }
 
-  const tickets: TenantTicket[] = ticketsData.map((t: any) => ({
-    ...t,
-    property_address: "",
-    property_type: "",
-  }));
+  // Créer un index des propriétaires par property_id
+  const ownerMap = new Map<string, any>();
+  for (const o of ownersData) {
+    if (o.owner) {
+      ownerMap.set(o.id, o.owner);
+    }
+  }
 
-  const pending_edls: PendingEDL[] = edlData.map((e: any) => ({
-    id: e.id,
-    type: e.type || "entree",
-    scheduled_at: e.scheduled_at || "",
-    invitation_token: e.invitation_token || "",
-    property_address: "",
-    property_type: "",
-  }));
+  // Helper pour retrouver la propriété d'un bail
+  const getPropertyForLease = (leaseId: string) => {
+    const lease = leases.find((l: any) => l.id === leaseId);
+    return lease ? propertyMap.get(lease.property_id) : undefined;
+  };
+
+  // Enrichir les baux avec propriété et propriétaire
+  const enrichedLeases = leases.map((l: any) => {
+    const prop = propertyMap.get(l.property_id);
+    const ownerProfile = ownerMap.get(l.property_id);
+    return {
+      ...l,
+      property: prop || null,
+      owner: ownerProfile
+        ? {
+            id: ownerProfile.id,
+            name: `${ownerProfile.prenom || ""} ${ownerProfile.nom || ""}`.trim() || "Propriétaire",
+            email: ownerProfile.email,
+            telephone: ownerProfile.telephone,
+            avatar_url: ownerProfile.avatar_url,
+          }
+        : { id: "", name: "Propriétaire", email: undefined },
+    };
+  });
+
+  const invoices: TenantInvoice[] = invoicesData.map((i: any) => {
+    const prop = getPropertyForLease(i.lease_id);
+    return {
+      ...i,
+      property_type: prop?.type || "",
+      property_address: prop ? `${prop.adresse_complete}, ${prop.code_postal} ${prop.ville}` : "",
+    };
+  });
+
+  const tickets: TenantTicket[] = ticketsData.map((t: any) => {
+    const prop = t.property_id ? propertyMap.get(t.property_id) : undefined;
+    return {
+      ...t,
+      property_address: prop ? `${prop.adresse_complete}, ${prop.code_postal} ${prop.ville}` : "",
+      property_type: prop?.type || "",
+    };
+  });
+
+  const pending_edls: PendingEDL[] = edlData.map((e: any) => {
+    const prop = e.property_id ? propertyMap.get(e.property_id) : undefined;
+    return {
+      id: e.id,
+      type: e.type || "entree",
+      scheduled_at: e.scheduled_at || "",
+      invitation_token: e.invitation_token || "",
+      property_address: prop ? `${prop.adresse_complete}, ${prop.code_postal} ${prop.ville}` : "",
+      property_type: prop?.type || "",
+    };
+  });
 
   const unpaidInvoices = invoices.filter((i) => i.statut === "sent" || i.statut === "late");
 
@@ -220,10 +288,10 @@ async function fetchTenantDashboardDirect(
     profile_id: profile.id,
     kyc_status: (profile as any).kyc_status || "pending",
     tenant: { prenom: profile.prenom, nom: profile.nom },
-    leases: leases as any[],
-    properties: [],
-    lease: leases.length > 0 ? leases[0] as any : null,
-    property: null,
+    leases: enrichedLeases as any[],
+    properties: propertiesData,
+    lease: enrichedLeases.length > 0 ? enrichedLeases[0] as any : null,
+    property: enrichedLeases.length > 0 ? enrichedLeases[0].property : null,
     invoices,
     tickets,
     notifications: [],
@@ -232,8 +300,8 @@ async function fetchTenantDashboardDirect(
     stats: {
       unpaid_amount: unpaidInvoices.reduce((sum, i) => sum + Number(i.montant_total || 0), 0),
       unpaid_count: unpaidInvoices.length,
-      total_monthly_rent: leases.reduce((sum, l) => sum + Number(l.loyer || 0), 0),
-      active_leases_count: leases.filter((l) => l.statut === "active").length,
+      total_monthly_rent: enrichedLeases.reduce((sum: number, l: any) => sum + Number(l.loyer || 0), 0),
+      active_leases_count: enrichedLeases.filter((l: any) => l.statut === "active").length,
     },
   };
 }

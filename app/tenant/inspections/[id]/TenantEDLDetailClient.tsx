@@ -177,11 +177,11 @@ export default function TenantEDLDetailClient({
               <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-200">
                 <FileText className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900 capitalize">
+              <h1 className="text-3xl font-bold tracking-tight text-foreground capitalize">
                 EDL {edl.type === 'entree' ? "d'entrée" : "de sortie"}
               </h1>
             </div>
-            <p className="text-slate-500 text-lg flex items-center gap-2">
+            <p className="text-muted-foreground text-lg flex items-center gap-2">
               <Home className="h-4 w-4" /> {property?.adresse_complete || property?.adresse}
             </p>
           </motion.div>
@@ -210,10 +210,10 @@ export default function TenantEDLDetailClient({
             {/* Aperçu Document Premium */}
             <div className="space-y-4">
               <div className="flex items-center justify-between px-2">
-                <h3 className="text-xl font-bold text-slate-800">Inspection détaillée</h3>
-                <Badge variant="outline" className="bg-white/50 border-slate-200">{stats.completedItems} éléments vérifiés</Badge>
+                <h3 className="text-xl font-bold text-foreground">Inspection détaillée</h3>
+                <Badge variant="outline" className="bg-card/50 border-border">{stats.completedItems} éléments vérifiés</Badge>
               </div>
-              <GlassCard className="p-0 border-slate-200 shadow-2xl overflow-hidden bg-white">
+              <GlassCard className="p-0 border-border shadow-2xl overflow-hidden bg-card">
                 <div className="h-[75vh] overflow-y-auto custom-scrollbar">
                   <EDLPreview edlData={edlTemplateData} edlId={edl.id} />
                 </div>
@@ -223,8 +223,8 @@ export default function TenantEDLDetailClient({
 
           <div className="lg:col-span-4 space-y-6">
             {/* 1. Signataires Timeline */}
-            <GlassCard className="p-6 border-slate-200 bg-white shadow-lg space-y-6">
-              <h4 className="font-bold text-slate-900 flex items-center gap-2 border-b pb-4">
+            <GlassCard className="p-6 border-border bg-card shadow-lg space-y-6">
+              <h4 className="font-bold text-foreground flex items-center gap-2 border-b pb-4">
                 <ShieldCheck className="h-5 w-5 text-indigo-600" /> Validation
               </h4>
               <div className="space-y-6">
@@ -235,15 +235,15 @@ export default function TenantEDLDetailClient({
                     <div key={sig.id} className="flex items-start gap-4">
                       <div className={cn(
                         "h-10 w-10 rounded-xl flex items-center justify-center shadow-sm",
-                        isSigned ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-slate-50 text-slate-300 border border-slate-100"
+                        isSigned ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-muted text-muted-foreground/30 border border-border"
                       )}>
                         {isSigned ? <CheckCircle2 className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900 text-sm">
+                        <p className="font-bold text-foreground text-sm">
                           {sig.profile?.prenom} {sig.profile?.nom || (isOwner ? "Propriétaire" : "Locataire")}
                         </p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                           {isOwner ? "Bailleur" : "Locataire"} • {isSigned ? formatDateShort(sig.signed_at) : "En attente"}
                         </p>
                       </div>
@@ -254,14 +254,14 @@ export default function TenantEDLDetailClient({
             </GlassCard>
 
             {/* 2. Données Techniques (Compteurs & Clés) - Visibilité Totale */}
-            <GlassCard className="p-6 border-slate-200 bg-white shadow-lg space-y-4">
-              <h4 className="font-bold text-slate-900 flex items-center gap-2 border-b pb-3">
+            <GlassCard className="p-6 border-border bg-card shadow-lg space-y-4">
+              <h4 className="font-bold text-foreground flex items-center gap-2 border-b pb-3">
                 <Maximize className="h-5 w-5 text-indigo-600" /> Données techniques
               </h4>
               
               {/* Compteurs */}
               <div className="space-y-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Compteurs du logement</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Compteurs du logement</p>
                 <div className="grid grid-cols-1 gap-2">
                   {(allPropertyMeters || []).map((meter: any) => {
                     const reading = meterReadings.find(r => r.meter_id === meter.id);
@@ -269,16 +269,16 @@ export default function TenantEDLDetailClient({
                     const Icon = type === "electricity" ? Zap : type === "water" ? Droplet : Flame;
                     
                     return (
-                      <div key={meter.id} className="flex flex-col p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div key={meter.id} className="flex flex-col p-3 rounded-xl bg-muted border border-border">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
                             <Icon className="h-4 w-4 text-indigo-500" />
-                            <span className="text-xs font-bold text-slate-700 capitalize">
+                            <span className="text-xs font-bold text-foreground/80 capitalize">
                               {type === 'electricity' ? 'Électricité' : type === 'water' ? 'Eau' : 'Gaz'}
                             </span>
                           </div>
                           {reading ? (
-                            <span className="text-sm font-black text-slate-900">
+                            <span className="text-sm font-black text-foreground">
                               {reading.reading_value} {reading.reading_unit || meter.unit}
                             </span>
                           ) : (
@@ -288,8 +288,8 @@ export default function TenantEDLDetailClient({
                           )}
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-slate-400">N° {meter.meter_number || meter.serial_number || "Non renseigné"}</span>
-                          {meter.location && <span className="text-[10px] text-slate-400 italic">{meter.location}</span>}
+                          <span className="text-[10px] text-muted-foreground">N° {meter.meter_number || meter.serial_number || "Non renseigné"}</span>
+                          {meter.location && <span className="text-[10px] text-muted-foreground italic">{meter.location}</span>}
                         </div>
                       </div>
                     );
@@ -299,14 +299,14 @@ export default function TenantEDLDetailClient({
 
               {/* Clés (si présentes) */}
               {(edl.keys && edl.keys.length > 0) && (
-                <div className="space-y-3 pt-3 border-t border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clés remises</p>
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Clés remises</p>
                   <div className="grid grid-cols-1 gap-2">
                     {edl.keys.map((key: any, i: number) => (
                       <div key={i} className="flex items-center justify-between p-2 px-3 rounded-lg bg-indigo-50/50 border border-indigo-100">
                         <div className="flex items-center gap-2">
                           <div className="h-2 w-2 rounded-full bg-indigo-400" />
-                          <span className="text-xs font-medium text-slate-700">{key.type}</span>
+                          <span className="text-xs font-medium text-foreground/80">{key.type}</span>
                         </div>
                         <span className="text-xs font-bold text-indigo-700">x{key.quantite || key.quantity}</span>
                       </div>
@@ -317,26 +317,26 @@ export default function TenantEDLDetailClient({
             </GlassCard>
 
             {/* 3. Recapitulatif (Ancien bloc 3 devenu 4) */}
-            <GlassCard className="p-6 border-slate-200 bg-slate-50/50 space-y-4">
-              <h4 className="font-bold text-slate-900 flex items-center gap-2 uppercase text-[10px] tracking-[0.2em]">Récapitulatif</h4>
+            <GlassCard className="p-6 border-border bg-muted/50 space-y-4">
+              <h4 className="font-bold text-foreground flex items-center gap-2 uppercase text-[10px] tracking-[0.2em]">Récapitulatif</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between py-1">
-                  <span className="text-slate-500">Pièces</span>
+                    <span className="text-muted-foreground">Pièces</span>
                   <span className="font-bold">{rooms.length}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-slate-500">Points vérifiés</span>
+                    <span className="text-muted-foreground">Points vérifiés</span>
                   <span className="font-bold">{stats.completedItems}/{stats.totalItems}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-slate-500">Photos preuves</span>
+                    <span className="text-muted-foreground">Photos preuves</span>
                   <span className="font-bold">{stats.totalPhotos}</span>
                 </div>
               </div>
-              <div className="pt-4 border-t border-slate-200">
+              <div className="pt-4 border-t border-border">
                 <div className="flex items-start gap-2">
                   <Info className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
                     Ce document est une copie numérique de l'original signé. La valeur juridique est identique à un document papier.
                   </p>
                 </div>
@@ -350,8 +350,8 @@ export default function TenantEDLDetailClient({
       <Dialog open={isSignModalOpen} onOpenChange={setIsSignModalOpen}>
         <DialogContent className="max-w-lg rounded-[2rem] border-none shadow-2xl p-8">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black text-slate-900">Signer l'état des lieux</DialogTitle>
-            <DialogDescription className="font-medium text-slate-500">
+            <DialogTitle className="text-2xl font-black text-foreground">Signer l'état des lieux</DialogTitle>
+            <DialogDescription className="font-medium text-muted-foreground">
               Veuillez apposer votre signature manuscrite pour confirmer les observations notées dans l'EDL.
             </DialogDescription>
           </DialogHeader>

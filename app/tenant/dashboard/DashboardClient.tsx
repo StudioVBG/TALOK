@@ -689,9 +689,12 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                     <Button 
                       variant="outline"
                       className="font-bold rounded-xl h-12 px-6 border-border"
+                      asChild
                     >
-                      <Info className="h-4 w-4 mr-2" />
-                      Comment ça marche ?
+                      <Link href="/tenant/help">
+                        <Info className="h-4 w-4 mr-2" />
+                        Comment ça marche ?
+                      </Link>
                     </Button>
                   </div>
                 </CardContent>

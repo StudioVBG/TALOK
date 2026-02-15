@@ -1,7 +1,7 @@
 "use client";
-// @ts-nocheck
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   User,
@@ -89,8 +89,12 @@ export function TenantSettingsClient({
   userEmail,
 }: TenantSettingsClientProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // État du formulaire
   const [formData, setFormData] = useState({
@@ -110,6 +114,53 @@ export function TenantSettingsClient({
   const handleChange = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setHasChanges(true);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validation
+    if (!file.type.startsWith("image/")) {
+      toast({ variant: "destructive", title: "Erreur", description: "Veuillez sélectionner une image (JPG, PNG, etc.)" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "Erreur", description: "L'image ne doit pas dépasser 5 Mo" });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+      formDataUpload.append("profileId", profile.id);
+
+      const res = await fetch("/api/profile/avatar", {
+        method: "POST",
+        body: formDataUpload,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Erreur lors de l'upload");
+      }
+
+      const { avatar_url: newUrl } = await res.json();
+      setAvatarUrl(newUrl);
+      router.refresh();
+      toast({ title: "Photo mise à jour", description: "Votre avatar a été modifié avec succès." });
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible de modifier l'avatar",
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+      // Reset input pour pouvoir re-sélectionner le même fichier
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -140,6 +191,7 @@ export function TenantSettingsClient({
         description: "Vos informations ont été enregistrées avec succès.",
       });
       setHasChanges(false);
+      router.refresh();
     } catch (error: unknown) {
       toast({
         variant: "destructive",
@@ -164,16 +216,29 @@ export function TenantSettingsClient({
         <div className="flex items-center gap-4 mb-8">
           <div className="relative">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={buildAvatarUrl(profile.avatar_url) || undefined} />
+              <AvatarImage src={buildAvatarUrl(avatarUrl) || undefined} />
               <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                 {initials}
               </AvatarFallback>
             </Avatar>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleAvatarUpload}
+            />
             <button
               type="button"
-              className="absolute bottom-0 right-0 p-1.5 bg-white dark:bg-slate-800 rounded-full shadow-lg border hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingAvatar}
+              className="absolute bottom-0 right-0 p-1.5 bg-card rounded-full shadow-lg border border-border hover:bg-muted transition-colors disabled:opacity-50"
             >
-              <Camera className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+              {isUploadingAvatar ? (
+                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+              ) : (
+                <Camera className="h-4 w-4 text-muted-foreground" />
+              )}
             </button>
           </div>
           <div>
@@ -271,7 +336,7 @@ export function TenantSettingsClient({
                     type="email"
                     value={userEmail}
                     disabled
-                    className="bg-slate-100 dark:bg-slate-800"
+                    className="bg-muted"
                   />
                   <Shield {...{className: "h-5 w-5 text-green-600", title: "Email vérifié"} as any} />
                 </div>

@@ -73,9 +73,9 @@ export default function TenantSignaturesPage() {
               <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-200">
                 <FileSignature className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Signatures</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Signatures</h1>
             </div>
-            <p className="text-slate-500 text-lg">
+            <p className="text-muted-foreground text-lg">
               Validation et authentification de vos documents officiels.
             </p>
           </motion.div>
@@ -101,8 +101,8 @@ export default function TenantSignaturesPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <GlassCard className={`overflow-hidden border-none shadow-xl ${
                 mySignature?.signature_status === "signed" 
-                  ? "bg-gradient-to-br from-slate-900 to-slate-800 text-white" 
-                  : "bg-white border-blue-200"
+                  ? "bg-gradient-to-br from-foreground to-foreground text-white" 
+                  : "bg-card border-blue-200"
               }`}>
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">
@@ -120,7 +120,7 @@ export default function TenantSignaturesPage() {
                   <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10">
                     <div>
                       <p className="font-bold text-xl mb-1">Bail de location</p>
-                      <p className={`text-sm ${mySignature?.signature_status === "signed" ? "text-white/60" : "text-slate-500"}`}>
+                      <p className={`text-sm ${mySignature?.signature_status === "signed" ? "text-white/60" : "text-muted-foreground"}`}>
                         {mySignature?.signature_status === "signed"
                           ? `Signé électroniquement le ${mySignature.signed_at ? formatDateShort(mySignature.signed_at) : "—"}`
                           : "Une signature est requise pour valider votre entrée."}
@@ -142,34 +142,34 @@ export default function TenantSignaturesPage() {
             {/* 2. Historique complet des signatures (Timeline) */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-slate-800">Parcours de signature</h3>
+                <h3 className="text-xl font-bold text-foreground">Parcours de signature</h3>
               </div>
               
-              <GlassCard className="p-6 bg-white border-slate-200 shadow-lg">
+              <GlassCard className="p-6 bg-card border-border shadow-lg">
                 <div className="space-y-8 relative">
                   {/* Ligne verticale de la timeline */}
-                  <div className="absolute left-6 top-2 bottom-2 w-0.5 bg-slate-100" />
+                  <div className="absolute left-6 top-2 bottom-2 w-0.5 bg-muted" />
 
                   {signers.map((signer: any, index: number) => (
                     <div key={signer.id} className="relative flex items-start gap-6 group">
                       <div className={`z-10 h-12 w-12 rounded-2xl flex items-center justify-center shadow-md transition-transform group-hover:scale-110 ${
                         signer.signature_status === 'signed' 
                           ? "bg-emerald-50 text-emerald-600 border border-emerald-100" 
-                          : "bg-slate-50 text-slate-400 border border-slate-100"
+                          : "bg-muted text-muted-foreground/60 border border-border"
                       }`}>
                         {signer.signature_status === 'signed' ? <CheckCircle2 className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
                       </div>
                       <div className="flex-1 pt-1">
                         <div className="flex justify-between items-start mb-1">
-                          <p className="font-bold text-slate-900">{signer.profile?.prenom} {signer.profile?.nom}</p>
+                          <p className="font-bold text-foreground">{signer.profile?.prenom} {signer.profile?.nom}</p>
                           {signer.signed_at && (
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
                               {formatDateShort(signer.signed_at)}
                             </span>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <p className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                          <p className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                             {formatRole(signer.role)}
                           </p>
                           {signer.signature_status === 'signed' && (
@@ -208,7 +208,7 @@ export default function TenantSignaturesPage() {
                           leaseId={dashboard.lease?.id} 
                           signed={true}
                           variant={"secondary" as any}
-                          className="w-full h-14 text-lg font-bold bg-white text-indigo-600 hover:bg-slate-50 shadow-xl border-none"
+                          className="w-full h-14 text-lg font-bold bg-white text-indigo-600 dark:text-indigo-400 hover:bg-muted shadow-xl border-none"
                           label="Télécharger le Bail Signé"
                         />
                         <p className="text-center text-[10px] text-white/50 uppercase tracking-[0.2em] font-bold">
@@ -224,22 +224,22 @@ export default function TenantSignaturesPage() {
                 </motion.div>
               ) : (
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
-                  <GlassCard className="p-8 border-slate-200 bg-white shadow-xl text-center space-y-6">
+                  <GlassCard className="p-8 border-border bg-card shadow-xl text-center space-y-6">
                     <div className="h-20 w-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto">
                       <Clock className="h-10 w-10 text-amber-500 animate-pulse" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-slate-900">En attente de signature</h2>
-                      <p className="text-slate-500 mt-2 text-sm">
+                      <h2 className="text-xl font-bold text-foreground">En attente de signature</h2>
+                      <p className="text-muted-foreground mt-2 text-sm">
                         Le document sera certifié et téléchargeable dès que tous les signataires auront apposé leur signature.
                       </p>
                     </div>
                     <div className="pt-4 space-y-2">
-                      <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
                         <span>Progression</span>
                         <span>{signedSigners.length} / {signers.length}</span>
                       </div>
-                      <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
                         <motion.div 
                           className="h-full bg-amber-500" 
                           initial={{ width: 0 }}
@@ -256,10 +256,10 @@ export default function TenantSignaturesPage() {
             {/* Aide Contextuelle */}
             <div className="mt-8">
               <div className="flex items-center gap-2 mb-4">
-                <ShieldCheck className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-bold text-slate-800">Signature Sécurisée</span>
+                <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-bold text-foreground">Signature Sécurisée</span>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <p className="text-xs text-muted-foreground leading-relaxed bg-muted p-4 rounded-2xl border border-border">
                 Nous utilisons un protocole de signature électronique conforme à la norme eIDAS. 
                 Chaque signature est horodatée et accompagnée d'un dossier de preuve cryptographique incluant votre adresse IP et vos informations d'identité.
               </p>

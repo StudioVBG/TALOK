@@ -47,7 +47,7 @@ export default function TenantNotificationsPage() {
       case "info": return <Info className="h-5 w-5 text-blue-600" />;
       case "warning": return <AlertCircle className="h-5 w-5 text-amber-600" />;
       case "message": return <MessageSquare className="h-5 w-5 text-indigo-600" />;
-      default: return <Bell className="h-5 w-5 text-slate-400" />;
+      default: return <Bell className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
@@ -60,9 +60,9 @@ export default function TenantNotificationsPage() {
           <div>
             <Link 
               href="/tenant/dashboard" 
-              className="group text-sm font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-2 transition-colors mb-4"
+              className="group text-sm font-bold text-muted-foreground hover:text-indigo-600 flex items-center gap-2 transition-colors mb-4"
             >
-              <div className="p-1.5 rounded-lg bg-slate-100 group-hover:bg-indigo-50 transition-colors">
+              <div className="p-1.5 rounded-lg bg-muted group-hover:bg-indigo-50 transition-colors">
                 <ArrowLeft className="h-4 w-4" />
               </div>
               Retour au tableau de bord
@@ -71,7 +71,7 @@ export default function TenantNotificationsPage() {
               <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-200">
                 <Bell className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-900">Notifications</h1>
+              <h1 className="text-3xl font-black tracking-tight text-foreground">Notifications</h1>
             </div>
           </div>
         </div>
@@ -79,12 +79,12 @@ export default function TenantNotificationsPage() {
         {loading ? (
           <div className="flex justify-center py-24"><Loader2 className="animate-spin h-10 w-10 text-indigo-600" /></div>
         ) : notifications.length === 0 ? (
-          <GlassCard className="p-12 text-center border-slate-200">
-            <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Bell className="h-10 w-10 text-slate-200" />
+          <GlassCard className="p-12 text-center border-border">
+            <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
+              <Bell className="h-10 w-10 text-muted-foreground/30" />
             </div>
             <h3 className="text-xl font-bold">Aucune notification</h3>
-            <p className="text-slate-500 mt-2">Vous êtes à jour ! Toutes les nouvelles alertes apparaîtront ici.</p>
+            <p className="text-muted-foreground mt-2">Vous êtes à jour ! Toutes les nouvelles alertes apparaîtront ici.</p>
           </GlassCard>
         ) : (
           <div className="space-y-4">
@@ -92,7 +92,7 @@ export default function TenantNotificationsPage() {
               <GlassCard 
                 key={n.id} 
                 className={cn(
-                  "p-5 border-slate-200 bg-white hover:shadow-xl transition-all group",
+                  "p-5 border-border bg-card hover:shadow-xl transition-all group",
                   !n.read_at && "border-l-4 border-l-indigo-600 bg-indigo-50/10"
                 )}
               >
@@ -100,17 +100,17 @@ export default function TenantNotificationsPage() {
                   <div className="flex items-start gap-4">
                     <div className={cn(
                       "p-3 rounded-2xl flex-shrink-0",
-                      !n.read_at ? "bg-indigo-100" : "bg-slate-50"
+                      !n.read_at ? "bg-indigo-100" : "bg-muted"
                     )}>
                       {getIcon(n.type)}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-bold text-slate-900">{n.title}</h4>
+                        <h4 className="font-bold text-foreground">{n.title}</h4>
                         {!n.read_at && <Badge className="bg-indigo-600 h-2 w-2 p-0 rounded-full" />}
                       </div>
-                      <p className="text-sm text-slate-500 leading-relaxed">{n.body}</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 flex items-center gap-1.5">
+                      <p className="text-sm text-muted-foreground leading-relaxed">{n.body}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-2 flex items-center gap-1.5">
                         <Clock className="h-3 w-3" /> {formatDateShort(n.created_at)}
                       </p>
                     </div>

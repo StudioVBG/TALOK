@@ -41,9 +41,9 @@ export default function TenantRewardsPage() {
               <div className="p-2 bg-purple-600 rounded-lg shadow-lg shadow-purple-200">
                 <Gift className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Mes Récompenses</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Mes Récompenses</h1>
             </div>
-            <p className="text-slate-500 text-lg">
+            <p className="text-muted-foreground text-lg">
               Transformez votre ponctualité et vos éco-gestes en avantages.
             </p>
           </motion.div>
@@ -64,7 +64,7 @@ export default function TenantRewardsPage() {
               <p className="text-indigo-100 max-w-sm leading-relaxed">
                 Vous avez gagné 120 points ce mois-ci. Vous êtes à 250 points de votre prochain bon d'achat IKEA.
               </p>
-              <Button size="lg" className="bg-white text-indigo-600 hover:bg-slate-50 font-black rounded-2xl h-12 md:h-14 px-6 md:px-10 shadow-xl w-full sm:w-auto">
+              <Button size="lg" className="bg-white text-indigo-600 hover:bg-muted font-black rounded-2xl h-12 md:h-14 px-6 md:px-10 shadow-xl w-full sm:w-auto">
                 Découvrir la boutique <ShoppingBag className="ml-2 h-5 w-5" />
               </Button>
             </div>
@@ -88,20 +88,20 @@ export default function TenantRewardsPage() {
           
           {/* Historique - 7/12 */}
           <div className="lg:col-span-7 space-y-6">
-            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2 px-2">
+            <h3 className="text-xl font-bold text-foreground flex items-center gap-2 px-2">
               <History className="h-5 w-5 text-indigo-600" /> Historique des points
             </h3>
-            <GlassCard className="p-0 overflow-hidden border-slate-200 bg-white shadow-xl">
-              <div className="divide-y divide-slate-100">
+            <GlassCard className="p-0 overflow-hidden border-border bg-card shadow-xl">
+              <div className="divide-y divide-border">
                 {data?.history.map((tx) => (
-                  <div key={tx.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                  <div key={tx.id} className="p-5 flex items-center justify-between hover:bg-muted transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
                         <Star className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900">{tx.description}</p>
-                        <p className="text-xs text-slate-400 font-medium uppercase tracking-widest">{formatDateShort(tx.created_at)}</p>
+                        <p className="font-bold text-foreground">{tx.description}</p>
+                        <p className="text-xs text-muted-foreground/60 font-medium uppercase tracking-widest">{formatDateShort(tx.created_at)}</p>
                       </div>
                     </div>
                     <span className="font-black text-emerald-600">+{tx.points}</span>
@@ -113,7 +113,7 @@ export default function TenantRewardsPage() {
 
           {/* Comment gagner - 5/12 */}
           <div className="lg:col-span-5 space-y-6">
-            <h3 className="text-xl font-bold text-slate-800 px-2">Comment gagner des points ?</h3>
+            <h3 className="text-xl font-bold text-foreground px-2">Comment gagner des points ?</h3>
             <div className="space-y-4">
               {[
                 { label: "Loyer payé à l'échéance", pts: 100, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -121,8 +121,8 @@ export default function TenantRewardsPage() {
                 { label: "Profil 100% complété", pts: 200, color: "text-purple-600", bg: "bg-purple-50" },
                 { label: "Signature EDL d'entrée", pts: 150, color: "text-amber-600", bg: "bg-amber-50" },
               ].map((item, i) => (
-                <GlassCard key={i} className="p-4 border-slate-100 flex items-center justify-between">
-                  <span className="font-bold text-slate-700">{item.label}</span>
+                <GlassCard key={i} className="p-4 border-border flex items-center justify-between">
+                  <span className="font-bold text-foreground/80">{item.label}</span>
                   <Badge className={`${item.bg} ${item.color} border-none font-black`}>+{item.pts} pts</Badge>
                 </GlassCard>
               ))}

@@ -18,6 +18,12 @@ import {
   Gift,
   ShoppingBag,
   User,
+  Gauge,
+  Users,
+  CalendarDays,
+  Scale,
+  Bell,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,11 +68,16 @@ interface TenantAppLayoutProps {
 const allNavItems = [
   { name: "Tableau de bord", href: "/tenant/dashboard", icon: LayoutDashboard, tourId: "nav-dashboard", group: "Mon Foyer" },
   { name: "Ma Vie au Logement", href: "/tenant/lease", icon: Home, tourId: "nav-lease", group: "Mon Foyer" },
+  { name: "Compteurs & Énergie", href: "/tenant/meters", icon: Gauge, tourId: "nav-meters", group: "Mon Foyer" },
+  { name: "Colocation", href: "/tenant/colocation", icon: Users, tourId: "nav-colocation", group: "Mon Foyer" },
   { name: "Coffre-fort (Documents)", href: "/tenant/documents", icon: FileText, tourId: "nav-documents", group: "Mon Contrat" },
   { name: "Suivi Juridique (EDL/Sign)", href: "/tenant/inspections", icon: ClipboardCheck, tourId: "nav-inspections", group: "Mon Contrat" },
+  { name: "Mes Droits", href: "/tenant/legal-rights", icon: Scale, tourId: "nav-legal", group: "Mon Contrat" },
   { name: "Loyers & Factures", href: "/tenant/payments", icon: CreditCard, tourId: "nav-payments", group: "Mes Finances" },
+  { name: "Mes Quittances", href: "/tenant/receipts", icon: Receipt, tourId: "nav-receipts", group: "Mes Finances" },
   { name: "Demandes & SAV", href: "/tenant/requests", icon: Wrench, tourId: "nav-requests", group: "Assistance" },
   { name: "Messagerie", href: "/tenant/messages", icon: MessageSquare, group: "Assistance" },
+  { name: "Visites", href: "/tenant/visits", icon: CalendarDays, group: "Assistance" },
   { name: "Club Récompenses", href: "/tenant/rewards", icon: Gift, group: "Mes Avantages" },
   { name: "Marketplace", href: "/tenant/marketplace", icon: ShoppingBag, group: "Mes Avantages" },
 ];
@@ -400,10 +411,16 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         ]}
         moreItems={[
           { href: "/tenant/documents", label: "Documents", icon: FileText },
+          { href: "/tenant/receipts", label: "Quittances", icon: Receipt },
           { href: "/tenant/inspections", label: "Suivi EDL", icon: ClipboardCheck },
           { href: "/tenant/messages", label: "Messages", icon: MessageSquare },
+          { href: "/tenant/meters", label: "Compteurs", icon: Gauge },
+          { href: "/tenant/colocation", label: "Colocation", icon: Users },
+          { href: "/tenant/visits", label: "Visites", icon: CalendarDays },
+          { href: "/tenant/legal-rights", label: "Mes Droits", icon: Scale },
           { href: "/tenant/rewards", label: "Récompenses", icon: Gift },
           { href: "/tenant/marketplace", label: "Marketplace", icon: ShoppingBag },
+          { href: "/tenant/settings", label: "Mon Profil", icon: Settings },
           { href: "/tenant/help", label: "Aide", icon: HelpCircle },
         ]}
         hideAbove="md"

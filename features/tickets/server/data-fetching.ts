@@ -19,7 +19,15 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
       *,
       property:properties(adresse_complete),
       creator:profiles!created_by_profile_id(nom, prenom, role),
-      messages:ticket_messages(count)
+      messages:ticket_messages(count),
+      work_orders(
+        id,
+        statut,
+        date_intervention_prevue,
+        cout_estime,
+        cout_final,
+        provider:profiles!provider_id(id, nom, prenom, telephone)
+      )
     `)
     .order("created_at", { ascending: false });
 

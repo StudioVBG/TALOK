@@ -206,9 +206,9 @@ export default function TenantMetersPage() {
               <div className="p-2 bg-amber-500 rounded-lg shadow-lg shadow-amber-200">
                 <Gauge className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Mes Compteurs</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Mes Compteurs</h1>
             </div>
-            <p className="text-slate-500 text-lg">
+            <p className="text-muted-foreground text-lg">
               Suivi mensuel et index de consommation.
             </p>
           </motion.div>
@@ -224,10 +224,17 @@ export default function TenantMetersPage() {
             {/* Colonne Gauche : Liste des Compteurs - 8/12 */}
             <div className="lg:col-span-8 space-y-6">
               {meters.length === 0 ? (
-                <GlassCard className="p-12 text-center border-slate-200">
-                  <Gauge className="h-16 w-16 mx-auto text-slate-200 mb-4" />
-                  <h3 className="text-xl font-bold">Aucun compteur configuré</h3>
-                  <p className="text-slate-500 mt-2">Contactez votre propriétaire pour ajouter vos compteurs d'énergie.</p>
+                <GlassCard className="p-12 text-center border-border">
+                  <div className="h-20 w-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Gauge className="h-10 w-10 text-amber-400 dark:text-amber-500" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground">Aucun compteur configuré</h3>
+                  <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
+                    Les relevés de compteurs seront disponibles dès que votre propriétaire les aura ajoutés à votre logement.
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 mt-4 italic">
+                    Eau, électricité, gaz — tout sera suivi ici automatiquement.
+                  </p>
                 </GlassCard>
               ) : (
                 <div className="grid gap-6 md:grid-cols-2">
@@ -241,31 +248,31 @@ export default function TenantMetersPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
                       >
-                        <GlassCard className="group hover:shadow-2xl hover:border-amber-200 transition-all duration-300 border-slate-200 bg-white p-6">
+                        <GlassCard className="group hover:shadow-2xl hover:border-amber-200 dark:hover:border-amber-800 transition-all duration-300 border-border bg-card p-6">
                           <div className="flex items-start justify-between mb-6">
                             <div className={cn("p-4 rounded-2xl shadow-inner transition-transform group-hover:scale-110", config.bgColor)}>
                               <Icon className={cn("h-8 w-8", config.color)} />
                             </div>
                             <div className="text-right">
-                              <Badge variant="outline" className="bg-slate-50 text-[10px] font-black uppercase tracking-[0.1em] mb-1">
+                              <Badge variant="outline" className="bg-muted text-[10px] font-black uppercase tracking-[0.1em] mb-1">
                                 {config.label}
                               </Badge>
-                              <p className="text-[10px] text-slate-400 font-mono">{meter.serial_number}</p>
+                              <p className="text-[10px] text-muted-foreground font-mono">{meter.serial_number}</p>
                             </div>
                           </div>
 
                           <div className="space-y-4 mb-8">
-                            <div className="flex items-baseline justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                              <span className="text-xs font-bold text-slate-400 uppercase">Dernier index</span>
+                            <div className="flex items-baseline justify-between p-4 rounded-2xl bg-muted border border-border">
+                              <span className="text-xs font-bold text-muted-foreground uppercase">Dernier index</span>
                               <div className="text-right">
-                                <span className="text-3xl font-black text-slate-900">
+                                <span className="text-3xl font-black text-foreground">
                                   {meter.last_reading?.value.toLocaleString("fr-FR") || "—"}
                                 </span>
-                                <span className="text-sm font-bold text-slate-400 ml-1">{meter.unit}</span>
+                                <span className="text-sm font-bold text-muted-foreground ml-1">{meter.unit}</span>
                               </div>
                             </div>
                             {meter.last_reading && (
-                              <p className="text-[10px] text-slate-400 flex items-center gap-1.5 px-1 font-bold uppercase tracking-wider">
+                              <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 px-1 font-bold uppercase tracking-wider">
                                 <Calendar className="h-3 w-3" />
                                 Relevé le {new Date(meter.last_reading.date).toLocaleDateString("fr-FR")}
                               </p>
@@ -275,17 +282,17 @@ export default function TenantMetersPage() {
                           <div className="flex gap-2">
                             <Button 
                               onClick={() => handleOpenReadingDialog(meter)}
-                              className="flex-1 h-12 bg-slate-900 hover:bg-black text-white font-bold shadow-lg shadow-slate-200 rounded-xl"
+                              className="flex-1 h-12 bg-foreground hover:bg-foreground/90 text-background font-bold shadow-lg rounded-xl"
                             >
                               <Plus className="h-4 w-4 mr-2" /> Nouveau relevé
                             </Button>
                             <Button 
                               variant="outline" 
                               size="icon"
-                              className="h-12 w-12 rounded-xl border-slate-200 hover:bg-slate-50"
+                              className="h-12 w-12 rounded-xl border-border hover:bg-muted"
                               onClick={() => handleShowHistory(meter)}
                             >
-                              <History className="h-5 w-5 text-slate-400" />
+                              <History className="h-5 w-5 text-muted-foreground" />
                             </Button>
                           </div>
                         </GlassCard>
@@ -319,12 +326,12 @@ export default function TenantMetersPage() {
               </motion.div>
 
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>
-                <GlassCard className="p-6 border-slate-200 bg-amber-50/50">
+                <GlassCard className="p-6 border-border bg-amber-50/50 dark:bg-amber-900/10">
                   <div className="flex items-start gap-3">
-                    <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                    <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div className="space-y-2">
-                      <p className="text-sm font-bold text-amber-900">Conseil Linky & Gazpar</p>
-                      <p className="text-xs text-amber-800 leading-relaxed">
+                      <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Conseil Linky & Gazpar</p>
+                      <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                         Pour un relevé certifié, prenez une photo nette de l'index. Nos algorithmes comparent automatiquement les chiffres pour éviter les erreurs de saisie.
                       </p>
                     </div>
@@ -351,7 +358,7 @@ export default function TenantMetersPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
                   "aspect-video rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all duration-300",
-                  photoPreview ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:bg-slate-50 bg-slate-50/50"
+                  photoPreview ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20" : "border-border hover:bg-muted bg-muted/50"
                 )}
               >
                 {photoPreview ? (
@@ -366,24 +373,24 @@ export default function TenantMetersPage() {
                   </div>
                 ) : (
                   <div className="text-center space-y-2">
-                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm">
-                      <Camera className="h-6 w-6 text-slate-400" />
+                    <div className="h-12 w-12 bg-card rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                      <Camera className="h-6 w-6 text-muted-foreground" />
                     </div>
-                    <p className="text-sm font-bold text-slate-500">Ajouter une photo</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Preuve visuelle requise</p>
+                    <p className="text-sm font-bold text-muted-foreground">Ajouter une photo</p>
+                    <p className="text-[10px] text-muted-foreground/60 uppercase tracking-widest font-black">Preuve visuelle requise</p>
                   </div>
                 )}
               </div>
               <input ref={fileInputRef} type="file" capture="environment" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
 
               <div className="space-y-3">
-                <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Nouvel index ({selectedMeter?.unit})</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Nouvel index ({selectedMeter?.unit})</Label>
                 <Input 
                   type="number" 
                   value={newReading}
                   onChange={(e) => setNewReading(e.target.value)}
                   placeholder={`Dernier : ${selectedMeter?.last_reading?.value || "0"}`}
-                  className="h-14 text-2xl font-black rounded-2xl border-slate-200 focus:ring-amber-500"
+                  className="h-14 text-2xl font-black rounded-2xl border-border focus:ring-amber-500"
                 />
               </div>
             </div>
@@ -410,12 +417,12 @@ export default function TenantMetersPage() {
             
             <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3 py-4">
               {historyLoading ? (
-                <div className="flex justify-center py-12"><Loader2 className="animate-spin h-8 w-8 text-slate-200" /></div>
+                <div className="flex justify-center py-12"><Loader2 className="animate-spin h-8 w-8 text-muted-foreground/30" /></div>
               ) : readingHistory.map((reading, idx) => (
-                <div key={reading.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div key={reading.id} className="flex items-center justify-between p-4 rounded-2xl bg-muted border border-border">
                   <div>
-                    <p className="text-xl font-black text-slate-900">{reading.value.toLocaleString("fr-FR")} <span className="text-xs font-bold text-slate-400">{selectedMeter?.unit}</span></p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formatDateShort(reading.reading_date)}</p>
+                    <p className="text-xl font-black text-foreground">{reading.value.toLocaleString("fr-FR")} <span className="text-xs font-bold text-muted-foreground">{selectedMeter?.unit}</span></p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">{formatDateShort(reading.reading_date)}</p>
                   </div>
                   {idx < readingHistory.length - 1 && (
                     <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 font-bold">

@@ -103,7 +103,7 @@ export default function TenantPaymentsPage() {
   const isAutomatic = ["sepa_sdd", "carte_wallet"].includes(formData.moyen_encaissement);
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-muted to-muted">
       <Card className="w-full max-w-2xl shadow-xl border-none">
         <CardHeader className="space-y-1">
           <div className="flex items-center gap-3">
@@ -133,7 +133,7 @@ export default function TenantPaymentsPage() {
                     }
                   }}
                 >
-                  <SelectTrigger className="h-12 border-slate-200">
+                  <SelectTrigger className="h-12 border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -187,15 +187,15 @@ export default function TenantPaymentsPage() {
               )}
 
               {formData.moyen_encaissement === "sepa_sdd" && paymentMethodId && (
-                <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="flex items-start space-x-3 p-4 bg-muted rounded-xl border border-border">
                   <input
                     type="checkbox"
                     id="sepa_mandat"
                     checked={formData.sepa_mandat_accepte}
                     onChange={(e) => setFormData({ ...formData, sepa_mandat_accepte: e.target.checked })}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-1 h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500"
                   />
-                  <Label htmlFor="sepa_mandat" className="text-sm leading-snug text-slate-600 cursor-pointer">
+                  <Label htmlFor="sepa_mandat" className="text-sm leading-snug text-muted-foreground cursor-pointer">
                     J&apos;autorise l&apos;application à prélever automatiquement le montant de mon loyer et de mes charges sur le compte associé à ce moyen de paiement, conformément aux termes de mon bail.
                   </Label>
                 </div>
@@ -221,7 +221,7 @@ export default function TenantPaymentsPage() {
                         step="0.01"
                         value={formData.part_percentage}
                         onChange={(e) => setFormData({ ...formData, part_percentage: e.target.value })}
-                        className="bg-white border-amber-200 focus:ring-amber-500 pr-8"
+                        className="bg-card border-amber-200 focus:ring-amber-500 pr-8"
                         placeholder="50"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 font-bold">%</span>
@@ -238,7 +238,7 @@ export default function TenantPaymentsPage() {
                         step="0.01"
                         value={formData.part_montant}
                         onChange={(e) => setFormData({ ...formData, part_montant: e.target.value })}
-                        className="bg-white border-amber-200 focus:ring-amber-500 pr-8"
+                        className="bg-card border-amber-200 focus:ring-amber-500 pr-8"
                         placeholder="500"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 font-bold">€</span>
@@ -253,7 +253,7 @@ export default function TenantPaymentsPage() {
 
             <Button 
               onClick={() => handleSubmit()} 
-              className="w-full h-12 text-lg font-semibold bg-slate-900 hover:bg-slate-800 shadow-lg" 
+              className="w-full h-12 text-lg font-semibold bg-foreground hover:bg-foreground/90 shadow-lg" 
               disabled={loading || (isAutomatic && !paymentMethodId)}
             >
               {loading ? (

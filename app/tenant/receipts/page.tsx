@@ -32,11 +32,11 @@ async function ReceiptsContent() {
   if (!lease) {
     return (
       <div className="text-center py-12">
-        <FileText className="h-16 w-16 mx-auto mb-4 text-slate-300" />
-        <h2 className="text-xl font-semibold text-slate-700 mb-2">
+        <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           Aucun bail actif
         </h2>
-        <p className="text-slate-500 max-w-md mx-auto">
+        <p className="text-muted-foreground max-w-md mx-auto">
           Vous n'avez pas encore de bail actif. Les quittances apparaîtront ici 
           une fois que votre bail sera signé et que des paiements seront effectués.
         </p>
@@ -67,23 +67,23 @@ export default function TenantReceiptsPage() {
               </Button>
             </Link>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
-            <FileText className="h-8 w-8 text-blue-600" />
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+            <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             Mes Quittances
           </h1>
-          <p className="text-slate-500 mt-1">
+          <p className="text-muted-foreground mt-1">
             Historique de vos paiements et quittances de loyer
           </p>
         </div>
       </div>
 
       {/* Info card */}
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4">
         <div className="flex items-start gap-3">
-          <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+          <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
           <div>
-            <p className="font-medium text-blue-900">À propos des quittances</p>
-            <p className="text-sm text-blue-700 mt-1">
+            <p className="font-medium text-blue-900 dark:text-blue-200">À propos des quittances</p>
+            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
               Une quittance est générée automatiquement après chaque paiement de loyer. 
               Elle constitue une preuve de paiement que vous pouvez conserver ou fournir 
               lors de démarches administratives (CAF, dossier location, etc.).

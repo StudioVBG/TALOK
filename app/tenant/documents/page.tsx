@@ -79,15 +79,15 @@ const DOCUMENT_CONFIG: Record<string, { label: string; icon: any; color: string;
   gaz: { label: "Diagnostic Gaz", icon: FileText, color: "text-orange-600", bgColor: "bg-orange-50" },
   
   // Autres
-  facture: { label: "Facture", icon: FileText, color: "text-slate-600", bgColor: "bg-slate-50" },
+  facture: { label: "Facture", icon: FileText, color: "text-muted-foreground", bgColor: "bg-muted" },
   cni: { label: "Pièce d'identité", icon: User, color: "text-purple-600", bgColor: "bg-purple-50" },
   piece_identite: { label: "Pièce d'identité", icon: User, color: "text-purple-600", bgColor: "bg-purple-50" },
   justificatif_revenus: { label: "Justificatif de revenus", icon: FileText, color: "text-teal-600", bgColor: "bg-teal-50" },
   attestation_loyer: { label: "Attestation de loyer", icon: FileText, color: "text-sky-600", bgColor: "bg-sky-50" },
   
   // Par défaut
-  autre: { label: "Document", icon: FileText, color: "text-slate-400", bgColor: "bg-slate-100" },
-  other: { label: "Document", icon: FileText, color: "text-slate-400", bgColor: "bg-slate-100" },
+  autre: { label: "Document", icon: FileText, color: "text-muted-foreground", bgColor: "bg-muted" },
+  other: { label: "Document", icon: FileText, color: "text-muted-foreground", bgColor: "bg-muted" },
 };
 
 function DocumentsSkeleton() {
@@ -435,7 +435,7 @@ export default function TenantDocumentsPage() {
               </div>
               <div>
                 <h4 className="text-xl font-bold">Sécurité de vos données</h4>
-                <p className="text-slate-400 text-sm max-w-md">
+                <p className="text-white/60 text-sm max-w-md">
                   Tous vos documents sont chiffrés et stockés conformément aux normes RGPD. Seuls vous et votre bailleur y avez accès.
                 </p>
               </div>

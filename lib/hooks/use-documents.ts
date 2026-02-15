@@ -132,7 +132,7 @@ export function useDocuments(filters?: {
       const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
       
       // ========================================
-      // LOCATAIRE: Documents liés à son profil ou ses baux
+      // LOCATAIRE: Documents liés à son profil, ses baux ET ses propriétés
       // ========================================
       if (profile.role === "tenant") {
         // 1. Documents directement liés au profil du locataire
@@ -160,8 +160,42 @@ export function useDocuments(filters?: {
           );
         }
         
+        // 4. SOTA 2026: Récupérer aussi les documents partagés via property_id
+        // (diagnostics, DDT, etc. uploadés par le propriétaire avant la création du bail)
+        let propertyDocs: DocumentRow[] = [];
+        if (leaseIds.length > 0) {
+          // Récupérer les property_ids des baux
+          const { data: leaseData } = await supabaseClient
+            .from("leases")
+            .select("property_id")
+            .in("id", leaseIds);
+          
+          const propertyIds = [...new Set(
+            (leaseData || []).map((l: any) => l.property_id).filter(Boolean)
+          )];
+          
+          if (propertyIds.length > 0) {
+            // Documents partagés via property_id (diagnostics, règlement copro, etc.)
+            // On ne prend que les types pertinents pour le locataire
+            const sharedTypes = [
+              "diagnostic_performance", "dpe", "erp", "crep", "amiante", 
+              "electricite", "gaz", "reglement_copro", "notice_information",
+              "EDL_entree", "EDL_sortie", "edl", "edl_entree", "edl_sortie",
+            ];
+            
+            propertyDocs = await queryDocumentsWithFallback(
+              supabaseClient,
+              SELECT_WITH_PROPERTY,
+              (q: any) => q
+                .in("property_id", propertyIds)
+                .in("type", sharedTypes)
+                .order("created_at", { ascending: false })
+            );
+          }
+        }
+        
         // Fusionner et dédupliquer
-        const allDocs = [...(directDocs || []), ...leaseDocs];
+        const allDocs = [...(directDocs || []), ...leaseDocs, ...propertyDocs];
         const uniqueDocs = allDocs.reduce((acc, doc) => {
           if (!acc.find((d: any) => d.id === doc.id)) {
             acc.push(doc);

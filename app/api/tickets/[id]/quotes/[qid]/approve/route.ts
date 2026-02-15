@@ -104,6 +104,29 @@ export async function POST(
       .update({ statut: "in_progress" } as any)
       .eq("id", id as any);
 
+    // Mettre à jour le work_order du prestataire dont le devis est approuvé → statut "scheduled"
+    const quoteData = quote as any;
+    if (quoteData.provider_id) {
+      await supabaseClient
+        .from("work_orders")
+        .update({
+          statut: "scheduled",
+          cout_estime: quoteData.amount || quoteData.montant_total || null,
+        } as any)
+        .eq("ticket_id", id as any)
+        .eq("provider_id", quoteData.provider_id as any);
+    }
+
+    // Rejeter les work_orders des autres prestataires (ceux dont le devis n'est pas choisi)
+    if (quoteData.provider_id) {
+      await supabaseClient
+        .from("work_orders")
+        .update({ statut: "cancelled" } as any)
+        .eq("ticket_id", id as any)
+        .neq("provider_id", quoteData.provider_id as any)
+        .eq("statut", "assigned" as any);
+    }
+
     // Émettre des événements
     await supabaseClient.from("outbox").insert({
       event_type: "Quote.Approved",

@@ -70,7 +70,7 @@ const STATUS_CONFIG = {
   },
   expired: { 
     label: "Expiré", 
-    color: "bg-slate-100 text-slate-700 border-slate-300",
+    color: "bg-muted text-muted-foreground border-border",
     icon: AlertTriangle,
   },
 };
@@ -224,7 +224,7 @@ export default function TenantIdentityPage() {
       {leases.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
-            <CreditCard className="h-16 w-16 mx-auto text-slate-300 mb-4" />
+            <CreditCard className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-semibold mb-2">Aucun document d'identité</h3>
             <p className="text-muted-foreground">
               Vous n'avez pas encore de documents d'identité associés à un bail.
@@ -279,9 +279,9 @@ export default function TenantIdentityPage() {
                     {/* Documents */}
                     <div className="grid md:grid-cols-2 gap-4">
                       {/* Recto */}
-                      <div className={`p-4 rounded-lg border ${rectoDoc ? "bg-slate-50" : "bg-amber-50 border-amber-200"}`}>
+                      <div className={`p-4 rounded-lg border ${rectoDoc ? "bg-muted" : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"}`}>
                         <div className="flex items-center gap-2 mb-2">
-                          <CreditCard className="h-4 w-4 text-slate-600" />
+                          <CreditCard className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium">Recto CNI</span>
                         </div>
                         {rectoDoc ? (
@@ -308,9 +308,9 @@ export default function TenantIdentityPage() {
                       </div>
 
                       {/* Verso */}
-                      <div className={`p-4 rounded-lg border ${versoDoc ? "bg-slate-50" : "bg-amber-50 border-amber-200"}`}>
+                      <div className={`p-4 rounded-lg border ${versoDoc ? "bg-muted" : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"}`}>
                         <div className="flex items-center gap-2 mb-2">
-                          <CreditCard className="h-4 w-4 text-slate-600" />
+                          <CreditCard className="h-4 w-4 text-muted-foreground" />
                           <span className="font-medium">Verso CNI</span>
                         </div>
                         {versoDoc ? (

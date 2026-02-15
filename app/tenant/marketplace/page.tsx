@@ -85,9 +85,9 @@ export default function TenantMarketplacePage() {
               <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-200">
                 <ShoppingBag className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-900">Services & Offres</h1>
+              <h1 className="text-3xl font-black tracking-tight text-foreground">Services & Offres</h1>
             </div>
-            <p className="text-slate-500 text-lg">
+            <p className="text-muted-foreground text-lg">
               Des avantages négociés exclusivement pour nos locataires.
             </p>
           </motion.div>
@@ -111,7 +111,7 @@ export default function TenantMarketplacePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
             >
-              <GlassCard className="group hover:shadow-2xl hover:border-indigo-200 transition-all duration-500 border-slate-200 bg-white overflow-hidden flex flex-col h-full">
+              <GlassCard className="group hover:shadow-2xl hover:border-indigo-200 transition-all duration-500 border-border bg-card overflow-hidden flex flex-col h-full">
                 <div className="p-4 sm:p-6 md:p-8 space-y-4 md:space-y-6 flex-1">
                   <div className="flex items-start justify-between">
                     <div className={cn("p-4 rounded-2xl shadow-inner transition-transform group-hover:scale-110", offer.bg)}>
@@ -123,9 +123,9 @@ export default function TenantMarketplacePage() {
                   </div>
 
                   <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{offer.provider}</p>
-                    <h3 className="text-2xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors">{offer.title}</h3>
-                    <p className="text-slate-500 mt-2 leading-relaxed font-medium">{offer.description}</p>
+                    <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] mb-1">{offer.provider}</p>
+                    <h3 className="text-2xl font-black text-foreground group-hover:text-indigo-600 transition-colors">{offer.title}</h3>
+                    <p className="text-muted-foreground mt-2 leading-relaxed font-medium">{offer.description}</p>
                   </div>
 
                   <div className="flex items-center gap-1 text-amber-400">
@@ -134,14 +134,14 @@ export default function TenantMarketplacePage() {
                     <Star className="h-4 w-4 fill-current" />
                     <Star className="h-4 w-4 fill-current" />
                     <Star className="h-4 w-4 fill-current" />
-                    <span className="text-xs text-slate-400 font-bold ml-2">(4.9/5)</span>
+                    <span className="text-xs text-muted-foreground/60 font-bold ml-2">(4.9/5)</span>
                   </div>
                 </div>
 
-                <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-400">Offre certifiée 2026</span>
+                <div className="p-6 bg-muted border-t border-border flex items-center justify-between">
+                  <span className="text-xs font-bold text-muted-foreground/60">Offre certifiée 2026</span>
                   <Button 
-                    className="bg-slate-900 hover:bg-black text-white font-black rounded-xl px-6 h-11"
+                    className="bg-foreground hover:bg-black text-white font-black rounded-xl px-6 h-11"
                     onClick={() => handleOfferClick(offer)}
                   >
                     Profiter de l'offre <ArrowRight className="ml-2 h-4 w-4" />
@@ -153,14 +153,14 @@ export default function TenantMarketplacePage() {
         </div>
 
         {/* SOTA Hint Section */}
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mt-6 md:mt-12 p-6 md:p-10 rounded-2xl md:rounded-[3rem] bg-slate-900 text-white relative overflow-hidden shadow-2xl">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mt-6 md:mt-12 p-6 md:p-10 rounded-2xl md:rounded-[3rem] bg-foreground text-white relative overflow-hidden shadow-2xl">
           <div className="relative z-10 grid md:grid-cols-2 gap-6 md:gap-12 items-center">
             <div className="space-y-4 md:space-y-6">
               <div className="h-14 w-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <Sparkles className="h-8 w-8 text-white" />
               </div>
               <h2 className="text-2xl md:text-4xl font-black tracking-tight">Besoin d'un coup de main ?</h2>
-              <p className="text-slate-400 text-lg leading-relaxed">
+              <p className="text-muted-foreground/60 text-lg leading-relaxed">
                 Notre assistant <strong>Tom</strong> peut s'occuper de toutes les démarches administratives liées à votre emménagement.
               </p>
               <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl h-14 px-10">

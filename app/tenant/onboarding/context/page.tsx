@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -56,11 +55,33 @@ export default function TenantContextPage() {
         }));
         // Charger les infos du logement si disponible
         if (invitation.property_id) {
-          // TODO: Charger les infos du logement
+          try {
+            const supabase = (await import("@/lib/supabase/client")).createClient();
+            const { data: property } = await supabase
+              .from("properties")
+              .select("id, adresse_complete, ville, code_postal, type, surface, nb_pieces")
+              .eq("id", invitation.property_id)
+              .single();
+            
+            if (property) {
+              setPropertyInfo(property);
+              toast({
+                title: "Invitation validée",
+                description: `Logement trouvé : ${property.adresse_complete}, ${property.code_postal} ${property.ville}`,
+              });
+            }
+          } catch (err) {
+            console.error("[onboarding/context] Erreur chargement propriété depuis invitation:", err);
+          }
         }
       }
     } catch (error) {
-      // Ignorer les erreurs
+      console.error("[onboarding/context] Erreur validation invitation:", error);
+      toast({
+        title: "Invitation invalide",
+        description: "Le lien d'invitation n'est plus valide ou a déjà été utilisé.",
+        variant: "destructive",
+      });
     }
   };
 

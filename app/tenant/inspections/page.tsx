@@ -92,9 +92,9 @@ export default function TenantInspectionsPage() {
               <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-200">
                 <ClipboardCheck className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">États des Lieux</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">États des Lieux</h1>
             </div>
-            <p className="text-slate-500 text-lg">
+            <p className="text-muted-foreground text-lg">
               Historique technique et vérification de votre logement.
             </p>
           </motion.div>
@@ -116,13 +116,16 @@ export default function TenantInspectionsPage() {
         {isLoading ? (
           <div className="flex justify-center py-24"><Loader2 className="animate-spin h-10 w-10 text-indigo-600" /></div>
         ) : edlList.length === 0 ? (
-          <GlassCard className="p-12 text-center border-slate-200">
-            <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <ClipboardCheck className="h-10 w-10 text-slate-200" />
+          <GlassCard className="p-12 text-center border-border">
+            <div className="h-20 w-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <ClipboardCheck className="h-10 w-10 text-indigo-300 dark:text-indigo-500" />
             </div>
-            <h3 className="text-xl font-bold">Aucun état des lieux</h3>
-            <p className="text-slate-500 mt-2 max-w-sm mx-auto">
+            <h3 className="text-xl font-bold text-foreground">Aucun état des lieux</h3>
+            <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
               Les documents apparaîtront ici dès que votre propriétaire aura programmé l'entrée ou la sortie.
+            </p>
+            <p className="text-xs text-muted-foreground/60 mt-4 italic">
+              L'EDL est obligatoire pour garantir la protection de votre dépôt de garantie.
             </p>
           </GlassCard>
         ) : (
@@ -135,7 +138,7 @@ export default function TenantInspectionsPage() {
                 transition={{ delay: index * 0.05 }}
               >
                 <GlassCard className={cn(
-                  "p-0 border-slate-200 bg-white hover:shadow-xl transition-all duration-300 group overflow-hidden",
+                  "p-0 border-border bg-card hover:shadow-xl transition-all duration-300 group overflow-hidden",
                   edl.needsMySignature && "border-amber-200 ring-2 ring-amber-100 ring-opacity-50"
                 )}>
                   <div className="flex flex-col md:flex-row items-stretch md:items-center">
@@ -155,7 +158,7 @@ export default function TenantInspectionsPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-lg text-slate-900 capitalize">
+                            <h3 className="font-bold text-lg text-foreground capitalize">
                               EDL {edl.type === 'entree' ? "d'entrée" : "de sortie"}
                             </h3>
                             <StatusBadge 
@@ -164,10 +167,10 @@ export default function TenantInspectionsPage() {
                               className="text-[10px] h-5"
                             />
                           </div>
-                          <p className="text-slate-500 text-sm flex items-center gap-1.5">
+                          <p className="text-muted-foreground text-sm flex items-center gap-1.5">
                             <Home className="h-3.5 w-3.5" /> {edl.property?.adresse_complete}
                           </p>
-                          <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mt-2 flex items-center gap-1.5">
+                          <p className="text-muted-foreground/60 text-[10px] uppercase font-bold tracking-widest mt-2 flex items-center gap-1.5">
                             <Calendar className="h-3 w-3" /> 
                             {formatDateShort(edl.scheduled_at || edl.created_at)}
                           </p>
@@ -182,7 +185,7 @@ export default function TenantInspectionsPage() {
                             "h-11 px-6 font-bold shadow-lg transition-all rounded-xl",
                             edl.needsMySignature 
                               ? "bg-amber-500 hover:bg-amber-600 shadow-amber-100" 
-                              : "border-slate-200 hover:bg-indigo-50 hover:text-indigo-600"
+                              : "border-border hover:bg-indigo-50 hover:text-indigo-600"
                           )}
                         >
                           <Link href={edl.needsMySignature ? `/signature-edl/${edl.invitation_token}` : `/tenant/inspections/${edl.id}`}>
@@ -200,11 +203,11 @@ export default function TenantInspectionsPage() {
         )}
 
         {/* Note informative SOTA */}
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mt-8 p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-start gap-4">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mt-8 p-6 bg-muted rounded-3xl border border-border flex items-start gap-4">
           <Info className="h-6 w-6 text-indigo-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="font-bold text-slate-900">Pourquoi l'état des lieux est-il crucial ?</p>
-            <p className="text-sm text-slate-500 leading-relaxed">
+            <p className="font-bold text-foreground">Pourquoi l'état des lieux est-il crucial ?</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
               C'est le seul document qui protège votre dépôt de garantie. En cas de litige, seul l'EDL comparé à la sortie fait foi. 
               <strong> Astuce :</strong> Prenez vos propres photos pendant l'EDL et uploadez-les dans vos documents personnels.
             </p>

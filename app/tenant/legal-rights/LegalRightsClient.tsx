@@ -45,7 +45,7 @@ function ContactCard({
   const variants = {
     important: "border-amber-300 bg-amber-50/50 dark:bg-amber-950/20",
     help: "border-green-300 bg-green-50/50 dark:bg-green-950/20",
-    neutral: "border-slate-200",
+    neutral: "border-border",
     emergency: "border-red-300 bg-red-50/50 dark:bg-red-950/20"
   };
 

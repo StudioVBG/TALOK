@@ -30,16 +30,31 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useTenantData } from "../_data/TenantDataProvider";
+import { useTenantRealtime } from "@/lib/hooks/use-realtime-tenant";
 
 interface TenantPaymentsClientProps {
   invoices: any[];
 }
 
-export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
+export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymentsClientProps) {
   const router = useRouter();
+  const { refetch } = useTenantData();
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // SOTA 2026: Temps réel pour synchronisation des factures avec le propriétaire
+  const realtime = useTenantRealtime({ showToasts: true, enableSound: false });
+
+  // Fusionner les factures initiales avec les données temps réel
+  const invoices = useMemo(() => {
+    // Si le realtime signale un changement de facture, on force le refetch
+    if (realtime.hasRecentInvoice) {
+      refetch();
+    }
+    return initialInvoices;
+  }, [initialInvoices, realtime.hasRecentInvoice, refetch]);
 
   const handleDownload = (invoiceId: string) => {
     window.open(`/api/invoices/${invoiceId}/receipt`, "_blank");
@@ -47,15 +62,31 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
 
   const handlePaymentSuccess = () => {
     setIsPaymentOpen(false);
+    // Rafraîchir les données du context provider + la page
+    refetch();
     router.refresh(); 
   };
 
-  // Statistiques financières SOTA
+  // Statistiques financières SOTA - score de ponctualité calculé réellement
   const stats = useMemo(() => {
     const unpaid = invoices.filter(i => i.statut !== 'paid');
     const totalUnpaid = unpaid.reduce((acc, curr) => acc + (curr.montant_total || 0), 0);
-    const paidCount = invoices.filter(i => i.statut === 'paid').length;
-    return { totalUnpaid, unpaidCount: unpaid.length, paidCount };
+    const paidInvoices = invoices.filter(i => i.statut === 'paid');
+    const paidCount = paidInvoices.length;
+    const totalCount = invoices.length;
+    
+    // Calcul du score de ponctualité réel
+    // 100% = tous payés à temps, diminue si des factures sont en retard
+    const lateCount = invoices.filter(i => i.statut === 'late').length;
+    const punctualityScore = totalCount > 0 
+      ? Math.round(((totalCount - lateCount) / totalCount) * 100) 
+      : 100;
+    const punctualityLabel = punctualityScore >= 90 ? "Excellent" 
+      : punctualityScore >= 70 ? "Bon" 
+      : punctualityScore >= 50 ? "Moyen" 
+      : "À améliorer";
+    
+    return { totalUnpaid, unpaidCount: unpaid.length, paidCount, punctualityScore, punctualityLabel, totalCount };
   }, [invoices]);
 
   const filteredInvoices = useMemo(() => {
@@ -73,21 +104,35 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-emerald-600 rounded-lg shadow-lg shadow-emerald-200">
+              <div className="p-2 bg-emerald-600 rounded-lg shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30">
                 <Receipt className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Paiements</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Paiements</h1>
+              {/* Indicateur temps réel */}
+              {realtime.isConnected && (
+                <motion.div 
+                  initial={{ scale: 0 }} 
+                  animate={{ scale: 1 }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-bold"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  Live
+                </motion.div>
+              )}
             </div>
-            <p className="text-slate-500 text-lg">
+            <p className="text-muted-foreground text-lg">
               Suivi de vos loyers, quittances et santé financière.
             </p>
           </motion.div>
 
           <div className="relative w-full md:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Rechercher une période..." 
-              className="pl-10 h-11 bg-white border-slate-200 shadow-sm focus:ring-emerald-500"
+              className="pl-10 h-11 bg-card border-border shadow-sm focus:ring-emerald-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -97,10 +142,15 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
         {/* Panneau de Statut Financier Bento */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <GlassCard className="p-6 border-none shadow-xl bg-slate-900 text-white relative overflow-hidden">
+            <GlassCard className={cn(
+              "p-6 border-none shadow-xl text-white relative overflow-hidden",
+              "bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700"
+            )}>
               <div className="relative z-10">
                 <p className="text-xs font-bold text-white/50 uppercase tracking-widest mb-1">Total à régulariser</p>
-                <p className="text-4xl font-black">{formatCurrency(stats.totalUnpaid)}</p>
+                <p className="text-4xl font-black">
+                  {formatCurrency(realtime.unpaidAmount > 0 ? realtime.unpaidAmount : stats.totalUnpaid)}
+                </p>
                 <div className="mt-4 flex items-center gap-2">
                   <Badge className={cn("border-none", stats.totalUnpaid > 0 ? "bg-red-500" : "bg-emerald-500")}>
                     {stats.unpaidCount} facture{stats.unpaidCount > 1 ? 's' : ''}
@@ -112,18 +162,34 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="md:col-span-2">
-            <GlassCard className="p-6 border-slate-200 bg-white shadow-lg h-full flex flex-col justify-center">
+            <GlassCard className="p-6 border-border bg-card shadow-lg h-full flex flex-col justify-center">
               <div className="flex items-center gap-6">
-                <div className="h-16 w-16 rounded-3xl bg-emerald-50 flex items-center justify-center shadow-inner">
-                  <TrendingUp className="h-8 w-8 text-emerald-600" />
+                <div className={cn(
+                  "h-16 w-16 rounded-3xl flex items-center justify-center shadow-inner",
+                  stats.punctualityScore >= 70 ? "bg-emerald-50 dark:bg-emerald-900/30" : "bg-amber-50 dark:bg-amber-900/30"
+                )}>
+                  <TrendingUp className={cn(
+                    "h-8 w-8",
+                    stats.punctualityScore >= 70 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                  )} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Score de ponctualité</h3>
-                  <p className="text-slate-500 text-sm">Vous avez payé {stats.paidCount} loyers à l'échéance. Continuez ainsi !</p>
+                  <h3 className="text-lg font-bold text-foreground">Score de ponctualité</h3>
+                  <p className="text-muted-foreground text-sm">
+                    {stats.paidCount > 0 
+                      ? `Vous avez payé ${stats.paidCount} loyer${stats.paidCount > 1 ? 's' : ''} sur ${stats.totalCount}. ${stats.punctualityScore >= 90 ? 'Continuez ainsi !' : 'Vous pouvez mieux faire !'}`
+                      : 'Aucun paiement enregistré pour le moment.'
+                    }
+                  </p>
                 </div>
                 <div className="ml-auto text-center hidden sm:block">
-                  <p className="text-3xl font-black text-emerald-600">100%</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Excellent</p>
+                  <p className={cn(
+                    "text-3xl font-black",
+                    stats.punctualityScore >= 70 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                  )}>
+                    {stats.punctualityScore}%
+                  </p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">{stats.punctualityLabel}</p>
                 </div>
               </div>
             </GlassCard>
@@ -133,10 +199,10 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
         {/* Liste des Paiements - Timeline Style */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-2">
-            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <History className="h-5 w-5 text-emerald-600" /> Historique
+            <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+              <History className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /> Historique
             </h2>
-            <Badge variant="outline" className="bg-white/50">{filteredInvoices.length} transactions</Badge>
+            <Badge variant="outline" className="bg-card/50">{filteredInvoices.length} transactions</Badge>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
@@ -149,8 +215,8 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
                   transition={{ delay: index * 0.03 }}
                 >
                   <GlassCard className={cn(
-                    "p-0 border-slate-200 bg-white hover:shadow-xl transition-all duration-300 group overflow-hidden",
-                    invoice.statut !== 'paid' && "border-red-100 ring-1 ring-red-50"
+                    "p-0 border-border bg-card hover:shadow-xl transition-all duration-300 group overflow-hidden",
+                    invoice.statut !== 'paid' && "border-red-100 dark:border-red-900/50 ring-1 ring-red-50 dark:ring-red-900/30"
                   )}>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center">
                       <div className={cn(
@@ -162,13 +228,13 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
                         <div className="flex items-center gap-4">
                           <div className={cn(
                             "p-3 rounded-2xl transition-transform group-hover:scale-110",
-                            invoice.statut === 'paid' ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                            invoice.statut === 'paid' ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" : "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
                           )}>
                             <FileText className="h-6 w-6" />
                           </div>
                           <div>
-                            <p className="font-black text-slate-900 text-lg">Loyer {invoice.periode}</p>
-                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">
+                            <p className="font-black text-foreground text-lg">Loyer {invoice.periode}</p>
+                            <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-0.5">
                               Échéance : {formatDateShort(invoice.created_at)}
                             </p>
                           </div>
@@ -176,8 +242,8 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
 
                         <div className="flex flex-wrap items-center gap-4 sm:gap-8 ml-auto sm:ml-0">
                           <div className="text-right">
-                            <p className="text-2xl font-black text-slate-900">{formatCurrency(invoice.montant_total)}</p>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">Montant total</p>
+                            <p className="text-2xl font-black text-foreground">{formatCurrency(invoice.montant_total)}</p>
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase">Montant total</p>
                           </div>
 
                           <div className="flex items-center gap-3">
@@ -191,7 +257,7 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
                               {invoice.statut !== 'paid' ? (
                                 <Button 
                                   size="sm" 
-                                  className="bg-red-600 hover:bg-red-700 text-white font-bold h-10 px-6 rounded-xl shadow-lg shadow-red-100"
+                                  className="bg-red-600 hover:bg-red-700 text-white font-bold h-10 px-6 rounded-xl shadow-lg shadow-red-100 dark:shadow-red-900/30"
                                   onClick={() => {
                                     setSelectedInvoice(invoice);
                                     setIsPaymentOpen(true);
@@ -237,14 +303,14 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
         </Dialog>
 
         {/* Zone de Tips SOTA */}
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mt-12 p-8 rounded-[2rem] bg-gradient-to-br from-slate-900 to-slate-800 text-white relative overflow-hidden shadow-2xl">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mt-12 p-8 rounded-[2rem] bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-white relative overflow-hidden shadow-2xl">
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div className="space-y-4">
               <div className="h-14 w-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md">
                 <PartyPopper className="h-8 w-8 text-emerald-400" />
               </div>
               <h2 className="text-3xl font-black">Besoin d'un justificatif ?</h2>
-              <p className="text-slate-400 leading-relaxed">
+              <p className="text-white/60 leading-relaxed">
                 Vos quittances de loyer sont générées automatiquement dès réception de votre paiement. Elles servent de justificatif de domicile officiel.
               </p>
               <Button variant="secondary" className="bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold h-12 px-8" asChild>
@@ -256,7 +322,7 @@ export function TenantPaymentsClient({ invoices }: TenantPaymentsClientProps) {
                 <GlassCard className="p-6 bg-white/5 border-white/10 backdrop-blur-xl rotate-3 group-hover:rotate-0 transition-transform duration-500">
                   <CheckCircle2 className="h-12 w-12 text-emerald-400 mb-4" />
                   <p className="text-xl font-bold">Paiement Garanti</p>
-                  <p className="text-sm text-slate-400 mt-2">Toutes vos transactions sont sécurisées par cryptage SSL 256 bits.</p>
+                  <p className="text-sm text-white/60 mt-2">Toutes vos transactions sont sécurisées par cryptage SSL 256 bits.</p>
                 </GlassCard>
                 <Sparkles className="absolute -top-4 -right-4 h-12 w-12 text-emerald-400/30 animate-pulse" />
               </div>

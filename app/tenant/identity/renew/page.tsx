@@ -197,7 +197,7 @@ function RenewCNIContent() {
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   {["Photographiez le recto", "Photographiez le verso", "Validation automatique"].map((t, i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                    <div key={i} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
                       <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">{i + 1}</div>
                       <p className="font-medium">{t}</p>
                     </div>
@@ -217,7 +217,7 @@ function RenewCNIContent() {
                 {rectoPreview ? (
                   <div className="relative"><img src={rectoPreview} alt="Recto" className="w-full rounded-lg border" /><Button variant="destructive" size="icon" className="absolute top-2 right-2" onClick={() => { setRectoFile(null); setRectoPreview(null); }}><X className="h-4 w-4" /></Button></div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-50"><Upload className="h-10 w-10 text-slate-400 mb-2" /><span className="text-sm text-muted-foreground">Cliquez pour importer</span><input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect("recto", e.target.files?.[0] || null)} /></label>
+                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"><Upload className="h-10 w-10 text-muted-foreground mb-2" /><span className="text-sm text-muted-foreground">Cliquez pour importer</span><input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect("recto", e.target.files?.[0] || null)} /></label>
                 )}
                 <div className="flex gap-2"><Button variant="outline" onClick={() => setStep("intro")} className="flex-1">Retour</Button><Button onClick={() => setStep("verso")} disabled={!rectoFile} className="flex-1">Suivant</Button></div>
               </CardContent>
@@ -233,7 +233,7 @@ function RenewCNIContent() {
                 {versoPreview ? (
                   <div className="relative"><img src={versoPreview} alt="Verso" className="w-full rounded-lg border" /><Button variant="destructive" size="icon" className="absolute top-2 right-2" onClick={() => { setVersoFile(null); setVersoPreview(null); }}><X className="h-4 w-4" /></Button></div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-50"><Upload className="h-10 w-10 text-slate-400 mb-2" /><span className="text-sm text-muted-foreground">Cliquez pour importer</span><input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect("verso", e.target.files?.[0] || null)} /></label>
+                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"><Upload className="h-10 w-10 text-muted-foreground mb-2" /><span className="text-sm text-muted-foreground">Cliquez pour importer</span><input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect("verso", e.target.files?.[0] || null)} /></label>
                 )}
                 <div className="flex gap-2"><Button variant="outline" onClick={() => setStep("recto")} className="flex-1">Retour</Button><Button onClick={handleSubmit} disabled={!versoFile} className="flex-1">Valider</Button></div>
               </CardContent>

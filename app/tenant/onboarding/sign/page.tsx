@@ -145,14 +145,14 @@ export default function TenantSignLeasePage() {
             <div className="mx-auto w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center animate-bounce">
               <CheckCircle2 className="w-10 h-10 text-emerald-600" />
             </div>
-            <CardTitle className="text-3xl font-black text-slate-900">Contrat Validé !</CardTitle>
-            <CardDescription className="text-lg font-medium text-slate-600 px-4">
+            <CardTitle className="text-3xl font-black text-foreground">Contrat Validé !</CardTitle>
+            <CardDescription className="text-lg font-medium text-muted-foreground px-4">
               Félicitations, votre bail est maintenant actif. Préparez vos cartons !
             </CardDescription>
           </CardHeader>
-          <CardContent className="bg-slate-50 p-6 text-center border-t">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 mb-2" />
-            <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Redirection vers votre espace...</p>
+          <CardContent className="bg-muted p-6 text-center border-t">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-600 dark:text-indigo-400 mb-2" />
+            <p className="text-sm text-muted-foreground font-bold uppercase tracking-widest">Redirection vers votre espace...</p>
           </CardContent>
         </Card>
       </div>
@@ -160,16 +160,16 @@ export default function TenantSignLeasePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50">
+    <div className="flex flex-col min-h-screen bg-muted">
       {/* Header compact */}
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+      <div className="bg-card border-b px-6 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-200">
+          <div className="p-2 bg-indigo-600 dark:bg-indigo-500 rounded-lg shadow-lg shadow-indigo-200">
             <FileSignature className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Signature du bail</h1>
-            <p className="text-xs text-slate-500 font-medium">Étape finale de votre emménagement</p>
+            <h1 className="text-xl font-bold text-foreground">Signature du bail</h1>
+            <p className="text-xs text-muted-foreground font-medium">Étape finale de votre emménagement</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -185,15 +185,15 @@ export default function TenantSignLeasePage() {
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
         {/* Panneau Gauche : Aperçu du bail */}
-        <div className="lg:col-span-7 p-6 overflow-y-auto bg-slate-100/50">
+        <div className="lg:col-span-7 p-6 overflow-y-auto bg-muted/50">
           {!isKycVerified ? (
             <Card className="max-w-xl mx-auto mt-12 border-none shadow-xl">
               <CardHeader className="text-center">
-                <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-4 text-amber-600">
+                <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-4 text-amber-600 dark:text-amber-400">
                   <UserCheck className="w-8 h-8" />
                 </div>
                 <CardTitle className="text-2xl font-black">Vérification obligatoire</CardTitle>
-                <CardDescription className="text-slate-600">
+                <CardDescription className="text-muted-foreground">
                   Pour des raisons légales (eIDAS), vous devez avoir vérifié votre identité avec une CNI ou un Passeport avant de pouvoir signer votre bail.
                 </CardDescription>
               </CardHeader>
@@ -212,22 +212,22 @@ export default function TenantSignLeasePage() {
               </CardContent>
             </Card>
           ) : leaseId ? (
-            <div className="max-w-4xl mx-auto shadow-2xl rounded-2xl overflow-hidden bg-white ring-1 ring-slate-200">
+            <div className="max-w-4xl mx-auto shadow-2xl rounded-2xl overflow-hidden bg-card ring-1 ring-border">
               <LeasePreview leaseId={leaseId} />
             </div>
           ) : !dashboard ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-12">
-              <Loader2 className="h-12 w-12 animate-spin text-indigo-600 mb-4" />
-              <h3 className="text-xl font-bold text-slate-600">Récupération de votre dossier...</h3>
-              <p className="text-slate-400 max-w-sm mt-2">Nous préparons votre espace de signature.</p>
+              <Loader2 className="h-12 w-12 animate-spin text-indigo-600 dark:text-indigo-400 mb-4" />
+              <h3 className="text-xl font-bold text-muted-foreground">Récupération de votre dossier...</h3>
+              <p className="text-muted-foreground/60 max-w-sm mt-2">Nous préparons votre espace de signature.</p>
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center p-12">
-              <div className="h-20 w-20 bg-amber-50 rounded-full flex items-center justify-center mb-6">
-                <AlertCircle className="h-10 w-10 text-amber-500" />
+              <div className="h-20 w-20 bg-amber-50 dark:bg-amber-900/30 rounded-full flex items-center justify-center mb-6">
+                <AlertCircle className="h-10 w-10 text-amber-500 dark:text-amber-400" />
               </div>
-              <h3 className="text-xl font-bold text-slate-800">Aucun bail en attente</h3>
-              <p className="text-slate-500 max-w-sm mt-2">
+              <h3 className="text-xl font-bold text-foreground">Aucun bail en attente</h3>
+              <p className="text-muted-foreground max-w-sm mt-2">
                 Nous n'avons pas trouvé de contrat prêt pour la signature. 
                 Si vous venez de recevoir l'invitation, essayez de rafraîchir la page.
               </p>
@@ -239,38 +239,38 @@ export default function TenantSignLeasePage() {
         </div>
 
         {/* Panneau Droite : Actions de signature */}
-        <div className="lg:col-span-5 p-8 bg-white border-l border-slate-200 shadow-[-10px_0_30px_rgba(0,0,0,0.02)] overflow-y-auto">
+        <div className="lg:col-span-5 p-8 bg-card border-l border-border shadow-[-10px_0_30px_rgba(0,0,0,0.02)] overflow-y-auto">
           <div className="max-w-md mx-auto space-y-8">
             <div className="space-y-4">
-              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+              <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl">
                 <div className="flex gap-3">
-                  <AlertCircle className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
-                  <p className="text-sm text-indigo-900 leading-relaxed font-medium">
+                  <AlertCircle className="h-5 w-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                  <p className="text-sm text-indigo-900 dark:text-indigo-100 leading-relaxed font-medium">
                     <strong>Note importante :</strong> Veuillez relire attentivement l'intégralité du document à gauche avant de procéder à la signature. Cette action a une valeur juridique légale.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6 pt-4 border-t border-slate-100">
-              <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <ArrowRight className="h-5 w-5 text-indigo-600" />
+            <div className="space-y-6 pt-4 border-t border-border">
+              <h4 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <ArrowRight className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 Validation & Engagement
               </h4>
               
               <div className="space-y-4">
                 <div className={cn(
                   "flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer group",
-                  !isKycVerified ? "opacity-50 cursor-not-allowed bg-slate-50 border-slate-200" : "hover:border-indigo-200 hover:bg-indigo-50/30 border-slate-200"
+                  !isKycVerified ? "opacity-50 cursor-not-allowed bg-muted border-border" : "hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/30 border-border"
                 )} onClick={() => isKycVerified && setAccepted(!accepted)}>
                   <Checkbox 
                     id="accept-lease" 
                     checked={accepted} 
                     onCheckedChange={(checked) => isKycVerified && setAccepted(!!checked)}
                     disabled={!isKycVerified}
-                    className="mt-1 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                    className="mt-1 data-[state=checked]:bg-indigo-600 dark:data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-600 dark:data-[state=checked]:border-indigo-500"
                   />
-                  <label htmlFor="accept-lease" className="text-sm font-semibold text-slate-700 leading-snug cursor-pointer">
+                  <label htmlFor="accept-lease" className="text-sm font-semibold text-foreground/80 leading-snug cursor-pointer">
                     Je certifie avoir lu et accepté toutes les clauses du présent bail de location ainsi que ses annexes.
                   </label>
                 </div>
@@ -281,17 +281,17 @@ export default function TenantSignLeasePage() {
                     disabled={loading || !accepted || !leaseId || !isKycVerified} 
                     className={cn(
                       "w-full h-14 rounded-2xl text-lg font-black transition-all shadow-xl",
-                      accepted && isKycVerified ? "bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02] shadow-indigo-200" : "bg-slate-200 text-slate-400"
+                      accepted && isKycVerified ? "bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 hover:scale-[1.02] shadow-indigo-200" : "bg-muted text-muted-foreground/60"
                     )}
                   >
                     Prêt pour la signature
                   </Button>
                 ) : (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <Card className="border-2 border-indigo-100 shadow-xl overflow-hidden bg-slate-50/50">
-                      <CardHeader className="bg-white border-b py-3 px-4">
+                    <Card className="border-2 border-indigo-100 dark:border-indigo-900/50 shadow-xl overflow-hidden bg-muted/50">
+                      <CardHeader className="bg-card border-b py-3 px-4">
                         <CardTitle className="text-sm font-bold flex items-center gap-2">
-                          <FileSignature className="h-4 w-4 text-indigo-600" />
+                          <FileSignature className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                           Signature de {signerName}
                         </CardTitle>
                       </CardHeader>
@@ -305,7 +305,7 @@ export default function TenantSignLeasePage() {
                           variant="ghost" 
                           size="sm" 
                           onClick={() => setShowSignaturePad(false)}
-                          className="w-full mt-2 text-slate-400 font-bold hover:text-slate-600"
+                          className="w-full mt-2 text-muted-foreground/60 font-bold hover:text-muted-foreground"
                         >
                           Annuler
                         </Button>
@@ -317,12 +317,12 @@ export default function TenantSignLeasePage() {
             </div>
 
             {/* Aide eIDAS */}
-            <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/30 flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-emerald-700">
+            <div className="p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/30 flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                 <ShieldCheck className="h-4 w-4" />
                 <span className="text-xs font-black uppercase tracking-widest">Processus eIDAS</span>
               </div>
-              <p className="text-[10px] text-emerald-600 leading-tight font-medium italic">
+              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 leading-tight font-medium italic">
                 Ce processus de signature inclut la capture de vos métadonnées (IP, User Agent, Horodatage) et le scellement cryptographique du document pour garantir son intégrité légale.
               </p>
             </div>

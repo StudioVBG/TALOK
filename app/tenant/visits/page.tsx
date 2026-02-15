@@ -14,10 +14,10 @@ export default async function TenantVisitsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Mes visites
           </h1>
-          <p className="text-slate-500 mt-1">
+          <p className="text-muted-foreground mt-1">
             Gérez vos réservations de visite
           </p>
         </div>
@@ -31,35 +31,35 @@ export default async function TenantVisitsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-6 rounded-2xl bg-white border border-slate-100 shadow-sm">
+        <div className="p-6 rounded-2xl bg-card border border-border shadow-sm">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-yellow-100 flex items-center justify-center">
               <Clock className="h-5 w-5 text-yellow-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">En attente</p>
+              <p className="text-sm font-medium text-muted-foreground">En attente</p>
               <p className="text-2xl font-bold text-yellow-600">-</p>
             </div>
           </div>
         </div>
-        <div className="p-6 rounded-2xl bg-white border border-slate-100 shadow-sm">
+        <div className="p-6 rounded-2xl bg-card border border-border shadow-sm">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
               <CalendarCheck className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Confirmées</p>
+              <p className="text-sm font-medium text-muted-foreground">Confirmées</p>
               <p className="text-2xl font-bold text-green-600">-</p>
             </div>
           </div>
         </div>
-        <div className="p-6 rounded-2xl bg-white border border-slate-100 shadow-sm">
+        <div className="p-6 rounded-2xl bg-card border border-border shadow-sm">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
               <CalendarDays className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Effectuées</p>
+              <p className="text-sm font-medium text-muted-foreground">Effectuées</p>
               <p className="text-2xl font-bold text-blue-600">-</p>
             </div>
           </div>
