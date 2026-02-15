@@ -36,6 +36,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { cn } from "@/lib/utils";
+import { getStatusBadgeProps } from "@/lib/types/status";
 import { CreditBuilderCard, CreditScoreData } from "@/features/tenant/components/credit-builder-card";
 import { ConsumptionChart, ConsumptionDataPoint } from "@/features/tenant/components/consumption-chart";
 
@@ -416,33 +417,35 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                 </div>
               </div>
 
-              {/* Actions rapides */}
-              <div className="mt-8 flex flex-wrap gap-3">
-                {!hasLeaseData && (
-                  <Button 
-                    asChild 
-                    className="bg-white text-indigo-700 hover:bg-white/90 font-bold rounded-xl h-12 px-6 shadow-lg"
+              {/* AUDIT UX H-05: Checklist onboarding détaillée (étapes individuelles) */}
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                {[
+                  { label: "Compte créé", done: true, href: "#" },
+                  { label: "Logement lié", done: hasLeaseData, href: "/tenant/onboarding/context" },
+                  { label: "Assurance déposée", done: !!dashboard?.insurance?.has_insurance, href: "/tenant/documents" },
+                  { label: "Identité vérifiée", done: dashboard?.kyc_status === 'verified', href: "/tenant/onboarding/identity" },
+                  { label: "Bail signé", done: currentLease?.statut === 'active' || currentLease?.statut === 'fully_signed', href: "/tenant/onboarding/sign" },
+                ].map((step) => (
+                  <Link
+                    key={step.label}
+                    href={step.done ? "#" : step.href}
+                    className={cn(
+                      "flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                      step.done
+                        ? "bg-white/15 text-white/90 cursor-default"
+                        : "bg-white/10 text-white/70 hover:bg-white/20 border border-white/10"
+                    )}
+                    onClick={step.done ? (e) => e.preventDefault() : undefined}
                   >
-                    <Link href="/tenant/onboarding/context" className="flex items-center gap-2">
-                      <Home className="h-4 w-4" />
-                      Lier mon logement
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                )}
-                {/* ✅ SOTA 2026: Bouton "Signer mon bail" supprimé ici car déjà présent dans pendingActions */}
-                {dashboard?.kyc_status !== 'verified' && (
-                  <Button 
-                    asChild 
-                    variant="secondary"
-                    className="bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl h-12 px-6 backdrop-blur-sm border border-white/20"
-                  >
-                    <Link href="/tenant/onboarding/identity" className="flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      Vérifier mon identité
-                    </Link>
-                  </Button>
-                )}
+                    {step.done ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-300 shrink-0" />
+                    ) : (
+                      <div className="h-4 w-4 rounded-full border-2 border-white/40 shrink-0" />
+                    )}
+                    <span className={step.done ? "line-through decoration-white/40" : ""}>{step.label}</span>
+                    {!step.done && <ArrowRight className="h-3 w-3 ml-auto shrink-0 opacity-50" />}
+                  </Link>
+                ))}
               </div>
             </div>
           </motion.div>
@@ -456,14 +459,14 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                 {isOnboardingIncomplete ? "Votre tableau de bord" : `Bonjour${profile?.prenom ? `, ${profile.prenom}` : ""} 👋`}
               </h1>
               {/* 🔴 SOTA 2026: Indicateur de connexion temps réel */}
-              {realtime.isConnected && (
+                {realtime.isConnected && (
                 <motion.div 
                   initial={{ scale: 0 }} 
                   animate={{ scale: 1 }}
                   className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold"
                 >
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                   Live
@@ -541,7 +544,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                       <p className="text-sm text-muted-foreground mt-1 font-medium flex items-center gap-2">
                         Loyer mensuel CC
                         {realtime.hasRecentLeaseChange && (
-                          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px] animate-pulse">
+                          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px] motion-safe:animate-pulse">
                             Mis à jour
                           </Badge>
                         )}
@@ -581,7 +584,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                       <Link href="/tenant/payments">Payer le loyer</Link>
                     </Button>
                     <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-border" asChild>
-                      <Link href="/tenant/payments">Historique & Quittances</Link>
+                      <Link href="/tenant/documents">Mes Documents</Link>
                     </Button>
                   </>
                 ) : (
@@ -625,8 +628,8 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-2">
                         <StatusBadge 
-                          status={currentLease?.statut === 'active' ? 'Bail Actif' : currentLease?.statut === 'pending_signature' ? 'À signer' : 'En attente'} 
-                          type={currentLease?.statut === 'active' ? 'success' : 'warning'}
+                          {...getStatusBadgeProps("lease", currentLease?.statut || "draft")}
+                          status={getStatusBadgeProps("lease", currentLease?.statut || "draft").label}
                           className="bg-white/10 text-white border-white/20 backdrop-blur-md px-3 h-7 font-bold"
                         />
                         <Badge variant="outline" className="text-white/70 border-white/20 h-7 font-bold">
@@ -663,7 +666,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
               <GlassCard className="relative overflow-hidden h-full border-2 border-dashed border-border bg-gradient-to-br from-muted to-muted/80 min-h-[300px]">
                 <CardContent className="p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center h-full text-center">
                   <div className="relative mb-6">
-                    <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-2xl animate-pulse" />
+                    <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-2xl motion-safe:animate-pulse" />
                     <div className="relative p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl shadow-xl">
                       <Home className="h-12 w-12 text-white" />
                     </div>
@@ -756,7 +759,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                         {/* Indicateur temps réel */}
                         {item.isRealtime && (
                           <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                            <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
                           </span>
                         )}

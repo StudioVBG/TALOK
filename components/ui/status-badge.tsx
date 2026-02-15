@@ -34,7 +34,7 @@ export function StatusBadge({ status, type, className, animate = true }: StatusB
     >
       {animate && (
         <span className="relative flex h-2 w-2">
-          <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", dotColors[type])}></span>
+          <span className={cn("motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", dotColors[type])}></span>
           <span className={cn("relative inline-flex rounded-full h-2 w-2", dotColors[type])}></span>
         </span>
       )}

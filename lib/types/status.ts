@@ -294,3 +294,85 @@ export const EDL_STATUS_VARIANTS: Record<EDLStatus, StatusVariant> = {
   signed: "success",
   disputed: "danger",
 };
+
+// ============================================
+// UNIFIED STATUS → BADGE PROPS HELPER
+// ============================================
+
+/**
+ * Type du composant StatusBadge (success | warning | error | neutral | info)
+ * Mappe depuis nos StatusVariant internes.
+ */
+export type StatusBadgeType = "success" | "warning" | "error" | "neutral" | "info";
+
+const VARIANT_TO_BADGE_TYPE: Record<StatusVariant, StatusBadgeType> = {
+  success: "success",
+  warning: "warning",
+  danger: "error",
+  info: "info",
+  muted: "neutral",
+  default: "neutral",
+};
+
+/**
+ * Helper centralisé : convertit un statut brut en props pour <StatusBadge>.
+ *
+ * Usage :
+ * ```tsx
+ * const badge = getStatusBadgeProps("lease", lease.statut);
+ * <StatusBadge status={badge.label} type={badge.type} />
+ * ```
+ */
+export function getStatusBadgeProps(
+  entity: "lease" | "invoice" | "ticket" | "edl" | "property" | "payment",
+  status: string,
+): { label: string; type: StatusBadgeType } {
+  switch (entity) {
+    case "lease": {
+      const s = status as LeaseStatus;
+      return {
+        label: LEASE_STATUS_LABELS[s] || status,
+        type: VARIANT_TO_BADGE_TYPE[LEASE_STATUS_VARIANTS[s] || "muted"],
+      };
+    }
+    case "invoice": {
+      const s = status as InvoiceStatus;
+      return {
+        label: INVOICE_STATUS_LABELS[s] || status,
+        type: VARIANT_TO_BADGE_TYPE[INVOICE_STATUS_VARIANTS[s] || "muted"],
+      };
+    }
+    case "ticket": {
+      const s = status as TicketStatus;
+      return {
+        label: TICKET_STATUS_LABELS[s] || status,
+        type: VARIANT_TO_BADGE_TYPE[TICKET_STATUS_VARIANTS[s] || "muted"],
+      };
+    }
+    case "edl": {
+      const s = status as EDLStatus;
+      return {
+        label: EDL_STATUS_LABELS[s] || status,
+        type: VARIANT_TO_BADGE_TYPE[EDL_STATUS_VARIANTS[s] || "muted"],
+      };
+    }
+    case "property": {
+      const s = status as PropertyStatus;
+      return {
+        label: PROPERTY_STATUS_LABELS[s] || status,
+        type: VARIANT_TO_BADGE_TYPE[PROPERTY_STATUS_VARIANTS[s] || "muted"],
+      };
+    }
+    case "payment": {
+      const s = status as PaymentStatus;
+      return {
+        label: PAYMENT_STATUS_LABELS[s] || status,
+        type: VARIANT_TO_BADGE_TYPE[
+          (s === "succeeded" ? "success" : s === "failed" ? "danger" : s === "refunded" ? "info" : s === "processing" ? "warning" : "muted") as StatusVariant
+        ],
+      };
+    }
+    default:
+      return { label: status, type: "neutral" };
+  }
+}

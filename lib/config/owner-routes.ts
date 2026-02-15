@@ -226,10 +226,10 @@ export const TENANT_ROUTES = {
     icon: "Gauge",
   },
   signatures: {
-    path: "/tenant/signatures",
-    name: "Signatures",
+    path: "/tenant/documents",
+    name: "Documents",
     auth: ["tenant"],
-    icon: "FileSignature",
+    icon: "FileText",
   },
   messages: {
     path: "/tenant/messages",

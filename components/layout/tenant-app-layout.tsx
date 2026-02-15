@@ -15,15 +15,8 @@ import {
   HelpCircle,
   ChevronLeft,
   ClipboardCheck,
-  Gift,
-  ShoppingBag,
-  User,
   Gauge,
   Users,
-  CalendarDays,
-  Scale,
-  Bell,
-  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,36 +57,27 @@ interface TenantAppLayoutProps {
   } | null;
 }
 
-// Navigation items - single source of truth
+// Navigation items - single source of truth (AUDIT UX: simplifié de 14 à 7 items)
 const allNavItems = [
-  { name: "Tableau de bord", href: "/tenant/dashboard", icon: LayoutDashboard, tourId: "nav-dashboard", group: "Mon Foyer" },
-  { name: "Ma Vie au Logement", href: "/tenant/lease", icon: Home, tourId: "nav-lease", group: "Mon Foyer" },
-  { name: "Compteurs & Énergie", href: "/tenant/meters", icon: Gauge, tourId: "nav-meters", group: "Mon Foyer" },
-  { name: "Colocation", href: "/tenant/colocation", icon: Users, tourId: "nav-colocation", group: "Mon Foyer" },
-  { name: "Coffre-fort (Documents)", href: "/tenant/documents", icon: FileText, tourId: "nav-documents", group: "Mon Contrat" },
-  { name: "Suivi Juridique (EDL/Sign)", href: "/tenant/inspections", icon: ClipboardCheck, tourId: "nav-inspections", group: "Mon Contrat" },
-  { name: "Mes Droits", href: "/tenant/legal-rights", icon: Scale, tourId: "nav-legal", group: "Mon Contrat" },
-  { name: "Loyers & Factures", href: "/tenant/payments", icon: CreditCard, tourId: "nav-payments", group: "Mes Finances" },
-  { name: "Mes Quittances", href: "/tenant/receipts", icon: Receipt, tourId: "nav-receipts", group: "Mes Finances" },
-  { name: "Demandes & SAV", href: "/tenant/requests", icon: Wrench, tourId: "nav-requests", group: "Assistance" },
-  { name: "Messagerie", href: "/tenant/messages", icon: MessageSquare, group: "Assistance" },
-  { name: "Visites", href: "/tenant/visits", icon: CalendarDays, group: "Assistance" },
-  { name: "Club Récompenses", href: "/tenant/rewards", icon: Gift, group: "Mes Avantages" },
-  { name: "Marketplace", href: "/tenant/marketplace", icon: ShoppingBag, group: "Mes Avantages" },
+  { name: "Tableau de bord", href: "/tenant/dashboard", icon: LayoutDashboard, tourId: "nav-dashboard", group: "Mon Espace" },
+  { name: "Mon Logement", href: "/tenant/lease", icon: Home, tourId: "nav-lease", group: "Mon Espace" },
+  { name: "Documents", href: "/tenant/documents", icon: FileText, tourId: "nav-documents", group: "Mes Documents" },
+  { name: "Loyers & Paiements", href: "/tenant/payments", icon: CreditCard, tourId: "nav-payments", group: "Mes Finances" },
+  { name: "Demandes", href: "/tenant/requests", icon: Wrench, tourId: "nav-requests", group: "Assistance" },
+  { name: "Messages", href: "/tenant/messages", icon: MessageSquare, tourId: "nav-messages", group: "Assistance" },
 ];
 
 const footerNavItems = [
-  { name: "Aide & FAQ", href: "/tenant/help", icon: HelpCircle },
+  { name: "Aide", href: "/tenant/help", icon: HelpCircle },
   { name: "Mon Profil", href: "/tenant/settings", icon: Settings },
 ];
 
 // Group navigation for desktop sidebar
 const navigationGroups = [
-  { title: "Mon Foyer", items: allNavItems.filter(i => i.group === "Mon Foyer") },
-  { title: "Mon Contrat", items: allNavItems.filter(i => i.group === "Mon Contrat") },
+  { title: "Mon Espace", items: allNavItems.filter(i => i.group === "Mon Espace") },
+  { title: "Mes Documents", items: allNavItems.filter(i => i.group === "Mes Documents") },
   { title: "Mes Finances", items: allNavItems.filter(i => i.group === "Mes Finances") },
   { title: "Assistance", items: allNavItems.filter(i => i.group === "Assistance") },
-  { title: "Mes Avantages", items: allNavItems.filter(i => i.group === "Mes Avantages") },
 ];
 
 export function TenantAppLayout({ children, profile: serverProfile }: TenantAppLayoutProps) {
@@ -154,7 +138,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
                     href={item.href}
                     data-tour={item.tourId}
                     className={cn(
-                      "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 touch-target",
+                      "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
                       isActive
                         ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -180,7 +164,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex items-center justify-center w-10 h-10 rounded-lg transition-colors touch-target",
+                    "flex items-center justify-center w-10 h-10 rounded-lg transition-colors touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
                     isCurrent(item.href)
                       ? "bg-muted text-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -226,7 +210,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
                   href={item.href}
                   data-tour={item.tourId}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
                     isCurrent(item.href)
                       ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
                       : "text-muted-foreground hover:bg-muted"
@@ -254,7 +238,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
                 isCurrent(item.href)
                   ? "bg-muted text-foreground"
                   : "text-muted-foreground hover:bg-muted"
@@ -402,24 +386,20 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           Mobile Bottom Navigation (< md)
           Hidden on tablet+ where rail nav takes over
           ============================================ */}
+      {/* AUDIT UX: Documents en accès direct (plus dans "Plus"), Logement déplacé dans "Plus" */}
       <SharedBottomNav
         items={[
           { href: "/tenant/dashboard", label: "Accueil", icon: LayoutDashboard },
-          { href: "/tenant/lease", label: "Logement", icon: Home },
+          { href: "/tenant/documents", label: "Documents", icon: FileText },
           { href: "/tenant/payments", label: "Paiements", icon: CreditCard },
           { href: "/tenant/requests", label: "Demandes", icon: Wrench },
         ]}
         moreItems={[
-          { href: "/tenant/documents", label: "Documents", icon: FileText },
-          { href: "/tenant/receipts", label: "Quittances", icon: Receipt },
-          { href: "/tenant/inspections", label: "Suivi EDL", icon: ClipboardCheck },
+          { href: "/tenant/lease", label: "Mon Logement", icon: Home },
           { href: "/tenant/messages", label: "Messages", icon: MessageSquare },
+          { href: "/tenant/inspections", label: "États des lieux", icon: ClipboardCheck },
           { href: "/tenant/meters", label: "Compteurs", icon: Gauge },
           { href: "/tenant/colocation", label: "Colocation", icon: Users },
-          { href: "/tenant/visits", label: "Visites", icon: CalendarDays },
-          { href: "/tenant/legal-rights", label: "Mes Droits", icon: Scale },
-          { href: "/tenant/rewards", label: "Récompenses", icon: Gift },
-          { href: "/tenant/marketplace", label: "Marketplace", icon: ShoppingBag },
           { href: "/tenant/settings", label: "Mon Profil", icon: Settings },
           { href: "/tenant/help", label: "Aide", icon: HelpCircle },
         ]}

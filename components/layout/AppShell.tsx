@@ -99,7 +99,7 @@ const tenantNavigation: NavSection[] = [
     items: [
       { name: "Demandes", href: "/tenant/requests", icon: Wrench },
       { name: "Compteurs", href: "/tenant/meters", icon: Gauge },
-      { name: "Signatures", href: "/tenant/signatures", icon: FileSignature },
+      { name: "Documents", href: "/tenant/documents", icon: FileSignature },
       { name: "Messages", href: "/tenant/messages", icon: MessageSquare },
     ],
   },

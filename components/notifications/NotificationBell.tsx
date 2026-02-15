@@ -175,9 +175,9 @@ export function NotificationBell() {
       // EDL planifié
       case "edl_scheduled":
         if (notification.metadata?.edl_id) {
-          return `/tenant/signatures`;
+          return `/tenant/documents`;
         }
-        return `/tenant/meters`;
+        return `/tenant/documents`;
       
       // ✅ SOTA 2026: Notifications logement - Propriétaire
       case "property_draft_created":

@@ -61,8 +61,8 @@ const tenantActions: QuickAction[] = [
   },
   {
     icon: FileText,
-    label: "Mes quittances",
-    href: "/tenant/receipts",
+    label: "Mes documents",
+    href: "/tenant/documents",
     color: "text-emerald-600 dark:text-emerald-400",
   },
   {
