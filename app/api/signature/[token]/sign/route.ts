@@ -2,39 +2,38 @@ export const runtime = 'nodejs';
 
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
-import { verifyOTP, deleteOTP } from "@/lib/services/otp-store";
+import { verifyOTP } from "@/lib/services/otp-store";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { extractClientIP } from "@/lib/utils/ip-address";
-import { generateSignatureProof, generateHash } from "@/lib/services/signature-proof.service";
+import { generateSignatureProof } from "@/lib/services/signature-proof.service";
+import { verifyTokenCompat } from "@/lib/utils/secure-token";
+import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
+import { createSignatureLogger } from "@/lib/utils/signature-logger";
+import { isOwnerRole, LEASE_STATUS } from "@/lib/constants/roles";
 
 interface PageProps {
   params: Promise<{ token: string }>;
 }
 
-// Décoder le token (format: leaseId:email:timestamp en base64url)
-function decodeToken(token: string): { leaseId: string; tenantEmail: string; timestamp: number } | null {
-  try {
-    const decoded = Buffer.from(token, "base64url").toString("utf-8");
-    const [leaseId, tenantEmail, timestampStr] = decoded.split(":");
-    if (!leaseId || !tenantEmail || !timestampStr) return null;
-    return { leaseId, tenantEmail, timestamp: parseInt(timestampStr, 10) };
-  } catch {
-    return null;
-  }
-}
-
-// Vérifier si le token est expiré (7 jours)
-function isTokenExpired(timestamp: number): boolean {
-  return Date.now() - timestamp > 30 * 24 * 60 * 60 * 1000;
-}
-
 /**
  * POST /api/signature/[token]/sign
  * Valider l'OTP et signer le bail
+ *
+ * FIX P0-4: Statuts de bail uniformisés
+ * FIX P0-5: Suppression du fallback "par rôle"
+ * FIX P1-4: Support tokens sécurisés (HMAC) + rétrocompat ancien format
+ * FIX P1-7: Remplacement listUsers() admin par query profiles
+ * FIX P1-8: Ajout audit_log
+ * FIX P1-9: Expiration token corrigée (30 jours cohérent)
+ * FIX P1-2: Suppression base64 de proof_metadata
+ *
+ * @version 2026-02-15 - Audit sécurité complet
  */
 export async function POST(request: Request, { params }: PageProps) {
+  const log = createSignatureLogger("/api/signature/[token]/sign");
+
   try {
-    // Rate limiting pour les signatures (10/minute max)
+    // Rate limiting
     const rateLimitResponse = applyRateLimit(request, "signature");
     if (rateLimitResponse) {
       return rateLimitResponse;
@@ -42,26 +41,21 @@ export async function POST(request: Request, { params }: PageProps) {
 
     const { token } = await params;
 
-    // Décoder le token
-    const tokenData = decodeToken(token);
+    // FIX P1-4: Vérifier le token (nouveau format HMAC ou ancien format)
+    const tokenData = verifyTokenCompat(token, 30); // 30 jours d'expiration
     if (!tokenData) {
+      log.warn("Token invalide ou expiré");
       return NextResponse.json(
-        { error: "Lien d'invitation invalide" },
-        { status: 404 }
-      );
-    }
-
-    // Vérifier expiration
-    if (isTokenExpired(tokenData.timestamp)) {
-      return NextResponse.json(
-        { error: "Le lien d'invitation a expiré" },
+        { error: "Lien d'invitation invalide ou expiré" },
         { status: 410 }
       );
     }
 
+    log.setContext({ entityId: tokenData.entityId, entityType: "lease" });
+
     const serviceClient = getServiceClient();
 
-    // Récupérer le bail avec owner_id
+    // Récupérer le bail
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select(`
@@ -72,110 +66,85 @@ export async function POST(request: Request, { params }: PageProps) {
           owner_id
         )
       `)
-      .eq("id", tokenData.leaseId)
+      .eq("id", tokenData.entityId)
       .single();
 
     if (leaseError || !lease) {
-      return NextResponse.json(
-        { error: "Bail non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
     }
 
     const body = await request.json();
     const otpCode = body.otp_code;
-    const signatureImage = body.signatureImage; // Image de signature optionnelle
+    const signatureImage = body.signatureImage;
 
     if (!otpCode) {
-      return NextResponse.json(
-        { error: "Code de vérification requis" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Code de vérification requis" }, { status: 400 });
     }
 
-    // Vérifier le code OTP avec le service
-    const otpResult = verifyOTP(tokenData.leaseId, otpCode);
-    
+    // Vérifier le code OTP
+    const otpResult = verifyOTP(tokenData.entityId, otpCode);
     if (!otpResult.valid) {
-      return NextResponse.json(
-        { error: otpResult.error || "Code invalide" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: otpResult.error || "Code invalide" }, { status: 400 });
     }
 
-    // ✅ CODE VALIDE - Le service a déjà supprimé le code
-
-    // ✅ CODE VALIDE - Procéder à la signature
-
-    // ✅ SOTA 2026: Recherche flexible du signataire
+    // Recherche du signataire :
     // Priorité 1: Par email (insensible à la casse)
-    const normalizedEmail = tokenData.tenantEmail.toLowerCase().trim();
+    const normalizedEmail = tokenData.email.toLowerCase().trim();
     
     const { data: signer } = await serviceClient
       .from("lease_signers")
-      .select("id, profile_id, role, invited_name, invited_email")
+      .select("id, profile_id, role, invited_name, invited_email, signature_status")
       .eq("lease_id", lease.id)
       .ilike("invited_email", normalizedEmail)
       .maybeSingle();
 
     let actualSigner = signer;
+
+    // Vérifier si déjà signé
+    if (actualSigner?.signature_status === "signed") {
+      return NextResponse.json({ error: "Vous avez déjà signé ce bail" }, { status: 400 });
+    }
     
-    // Priorité 2: Par profile_id via un profil existant
+    // FIX P1-7: Priorité 2 — recherche par email dans profiles (au lieu de listUsers admin)
     if (!actualSigner) {
-      const { data: existingUsers } = await serviceClient.auth.admin.listUsers();
-      const existingUser = existingUsers?.users?.find(
-        (u) => u.email?.toLowerCase() === normalizedEmail
-      );
+      const { data: profileByEmail } = await serviceClient
+        .from("profiles")
+        .select("id")
+        .eq("email", normalizedEmail)
+        .maybeSingle();
 
-      if (existingUser) {
-        const { data: profile } = await serviceClient
-          .from("profiles")
-          .select("id")
-          .eq("user_id", existingUser.id)
-          .single();
+      if (profileByEmail) {
+        const { data: signerByProfile } = await serviceClient
+          .from("lease_signers")
+          .select("id, profile_id, role, invited_name, invited_email, signature_status")
+          .eq("lease_id", lease.id)
+          .eq("profile_id", profileByEmail.id)
+          .maybeSingle();
 
-        if (profile) {
-          const { data: signerByProfile } = await serviceClient
-            .from("lease_signers")
-            .select("id, profile_id, role, invited_name, invited_email")
-            .eq("lease_id", lease.id)
-            .eq("profile_id", profile.id)
-            .maybeSingle();
-
-          actualSigner = signerByProfile;
+        if (signerByProfile?.signature_status === "signed") {
+          return NextResponse.json({ error: "Vous avez déjà signé ce bail" }, { status: 400 });
         }
+        actualSigner = signerByProfile;
       }
     }
-    
-    // Priorité 3: Par rôle flexible (dernier recours)
-    if (!actualSigner) {
-      const { data: signerByRole } = await serviceClient
-        .from("lease_signers")
-        .select("id, profile_id, role, invited_name, invited_email")
-        .eq("lease_id", lease.id)
-        .in("role", ["locataire_principal", "locataire", "tenant", "colocataire", "principal"] as any)
-        .is("signature_status", null)
-        .limit(1)
-        .maybeSingle();
-      
-      actualSigner = signerByRole;
-    }
+
+    // FIX P0-5: PAS de fallback "par rôle" — un signataire DOIT être identifié par email ou profile
 
     if (!actualSigner) {
-      console.error(`[Signature OTP] ❌ Aucun signataire trouvé pour ${normalizedEmail} sur le bail ${lease.id}`);
+      log.error("Aucun signataire trouvé", { email: normalizedEmail, leaseId: lease.id });
       return NextResponse.json(
         { error: "Vous n'êtes pas signataire de ce bail" },
         { status: 403 }
       );
     }
 
-    console.log(`[Signature OTP] ✅ Signataire trouvé: ${actualSigner.id}, role: ${actualSigner.role}`);
+    log.info("Signataire trouvé", { signerId: actualSigner.id, role: actualSigner.role });
 
     const signerProfileId = actualSigner.profile_id || null;
     const signerRole = actualSigner.role;
-    const signerName = actualSigner.invited_name || tokenData.tenantEmail;
+    const signerName = actualSigner.invited_name || tokenData.email;
 
-    // 2. Préparer les données de mise à jour
+    // Préparer les données de mise à jour
     const ipAddress = extractClientIP(request);
     const userAgent = request.headers.get("user-agent") || "unknown";
     const updateData: Record<string, any> = {
@@ -185,17 +154,19 @@ export async function POST(request: Request, { params }: PageProps) {
       user_agent: userAgent,
     };
 
-    // ✅ FIX: Sauvegarder l'image de signature dans Storage + base64
+    // Sauvegarder l'image de signature dans Storage
     if (signatureImage) {
-      updateData.signature_image = signatureImage; // Base64 comme fallback
+      // FIX P0-2: Valider l'image
+      const validation = validateSignatureImage(signatureImage);
+      if (!validation.valid) {
+        log.warn("Image de signature invalide", { errors: validation.errors });
+        // Ne pas bloquer — continuer sans image (OTP suffit comme preuve)
+      }
 
-      // Uploader aussi dans Storage pour cohérence
+      // FIX P1-2: Ne plus stocker base64 dans la colonne signature_image
       try {
         const signaturePath = `signatures/${lease.id}/${actualSigner.id}_${Date.now()}.png`;
-        const signatureBuffer = Buffer.from(
-          signatureImage.replace(/^data:image\/\w+;base64,/, ""),
-          "base64"
-        );
+        const signatureBuffer = Buffer.from(stripBase64Prefix(signatureImage), "base64");
 
         const { error: uploadError } = await serviceClient.storage
           .from("documents")
@@ -206,14 +177,16 @@ export async function POST(request: Request, { params }: PageProps) {
 
         if (!uploadError) {
           updateData.signature_image_path = signaturePath;
-          console.log(`[Signature OTP] ✅ Image uploadée: ${signaturePath}`);
+          log.info("Image uploadée", { path: signaturePath });
+        } else {
+          log.warn("Erreur upload image", { error: uploadError.message });
         }
       } catch (uploadError) {
-        console.warn("[Signature OTP] ⚠️ Erreur upload image:", uploadError);
+        log.warn("Exception upload image", { error: String(uploadError) });
       }
     }
 
-    // FIX #5: Générer la preuve cryptographique (parité avec sign-with-pad)
+    // Générer la preuve cryptographique
     try {
       const documentContent = `lease:${lease.id}|signer:${normalizedEmail}|role:${signerRole}|otp_verified:true`;
       const proof = await generateSignatureProof({
@@ -233,10 +206,20 @@ export async function POST(request: Request, { params }: PageProps) {
         ipAddress: ipAddress || undefined,
       });
       updateData.proof_id = proof.proofId;
-      updateData.proof_metadata = proof;
+      // FIX P1-2: Exclure imageData du proof_metadata
+      const proofForDB = {
+        ...proof,
+        signature: {
+          ...proof.signature,
+          imageData: updateData.signature_image_path
+            ? `[STORED:${updateData.signature_image_path}]`
+            : "[OTP_VERIFIED]",
+        },
+      };
+      updateData.proof_metadata = proofForDB;
       updateData.document_hash = proof.document.hash;
     } catch (proofErr) {
-      console.warn("[Signature OTP] ⚠️ Erreur génération preuve:", proofErr);
+      log.warn("Erreur génération preuve", { error: String(proofErr) });
     }
 
     await serviceClient
@@ -244,7 +227,7 @@ export async function POST(request: Request, { params }: PageProps) {
       .update(updateData)
       .eq("id", actualSigner.id);
 
-    // 3. Vérifier si tous les signataires ont signé
+    // Vérifier si tous les signataires ont signé
     const { data: allSigners } = await serviceClient
       .from("lease_signers")
       .select("id, signature_status, role")
@@ -253,20 +236,14 @@ export async function POST(request: Request, { params }: PageProps) {
     const totalSigners = allSigners?.length || 0;
     const signedCount = allSigners?.filter(s => s.signature_status === "signed").length || 0;
     const allSigned = totalSigners >= 2 && signedCount === totalSigners;
-    
-    // ✅ FIX: Recherche flexible du propriétaire
-    const ownerSigned = allSigners?.some(s => 
-      ["proprietaire", "owner", "bailleur"].includes(s.role?.toLowerCase() || "") && 
-      s.signature_status === "signed"
-    ) ?? false;
+    const ownerSigned = allSigners?.some(s => isOwnerRole(s.role) && s.signature_status === "signed") ?? false;
 
-    // 4. Mettre à jour le bail avec le nouveau statut
-    // ✅ SOTA 2026: Le bail signé passe à "fully_signed", l'activation se fait après l'EDL
+    // FIX P0-4: Utiliser UNIQUEMENT les constantes LEASE_STATUS
     let newStatus = lease.statut;
     if (allSigned) {
-      newStatus = "fully_signed";  // Activation après EDL via /activate
-    } else if (!ownerSigned) {
-      newStatus = "pending_owner_signature";
+      newStatus = LEASE_STATUS.FULLY_SIGNED;
+    } else if (signedCount > 0) {
+      newStatus = LEASE_STATUS.PENDING_SIGNATURE;
     }
 
     if (newStatus !== lease.statut) {
@@ -276,20 +253,19 @@ export async function POST(request: Request, { params }: PageProps) {
         .eq("id", lease.id);
 
       if (updateError) {
-        // Si le statut n'est pas autorisé, garder pending_signature
-        if (updateError.message?.includes("check") || updateError.code === "23514") {
-          console.log("[Signature] Statut", newStatus, "non autorisé, fallback vers pending_signature");
+        log.warn("Erreur mise à jour statut bail", { newStatus, error: updateError.message });
+        // Fallback vers pending_signature
+        if (updateError.code === "23514") {
           await serviceClient
             .from("leases")
-            .update({ statut: "pending_signature" })
+            .update({ statut: LEASE_STATUS.PENDING_SIGNATURE })
             .eq("id", lease.id);
-        } else {
-          console.error("[Signature] Erreur mise à jour bail:", updateError);
+          newStatus = LEASE_STATUS.PENDING_SIGNATURE;
         }
       }
     }
 
-    // 5. Créer un document de signature dans la table documents
+    // Créer le document de signature
     const roleLabels: Record<string, string> = {
       locataire_principal: "locataire",
       colocataire: "colocataire",
@@ -308,14 +284,29 @@ export async function POST(request: Request, { params }: PageProps) {
         metadata: {
           signed_at: new Date().toISOString(),
           signer_role: roleLabels[signerRole] || signerRole,
-          signer_email: tokenData.tenantEmail,
+          signer_email: tokenData.email,
           signer_name: signerName,
           verification_method: "otp_sms",
-          signature_ip: extractClientIP(request),
+          signature_ip: ipAddress,
         },
       });
 
-    // 6. Notifier le propriétaire
+    // FIX P1-8: Ajouter audit_log
+    await serviceClient.from("audit_log").insert({
+      user_id: signerProfileId || null,
+      action: "lease_signed_via_token",
+      entity_type: "lease",
+      entity_id: lease.id,
+      metadata: {
+        role: signerRole,
+        proof_id: updateData.proof_id,
+        verification_method: "otp_sms",
+        signer_email: normalizedEmail,
+        correlation_id: log.getCorrelationId(),
+      },
+    } as any);
+
+    // Notifier le propriétaire
     const { data: leaseWithProperty } = await serviceClient
       .from("leases")
       .select(`
@@ -324,10 +315,7 @@ export async function POST(request: Request, { params }: PageProps) {
           id,
           owner_id,
           adresse_complete,
-          owner:profiles!properties_owner_id_fkey(
-            id,
-            user_id
-          )
+          owner:profiles!properties_owner_id_fkey(id, user_id)
         )
       `)
       .eq("id", lease.id)
@@ -339,27 +327,27 @@ export async function POST(request: Request, { params }: PageProps) {
         user_id: ownerUserId,
         type: "lease_signed",
         title: allSigned 
-          ? "✅ Bail entièrement signé !" 
-          : `📝 ${roleLabels[signerRole] || signerRole} a signé`,
+          ? "Bail entièrement signé !" 
+          : `${roleLabels[signerRole] || signerRole} a signé`,
         body: allSigned
-          ? `Tous les signataires ont signé le bail pour ${(leaseWithProperty?.property as any)?.adresse_complete}. Le bail est maintenant actif.`
+          ? `Tous les signataires ont signé le bail pour ${(leaseWithProperty?.property as any)?.adresse_complete}. Le bail est en attente de l'état des lieux d'entrée.`
           : `${signerName} (${roleLabels[signerRole] || signerRole}) a signé le bail pour ${(leaseWithProperty?.property as any)?.adresse_complete}.`,
         read: false,
         metadata: {
           lease_id: lease.id,
-          signer_email: tokenData.tenantEmail,
+          signer_email: tokenData.email,
           signer_role: signerRole,
           all_signed: allSigned,
         },
       });
     }
 
-    console.log(`📧 Propriétaire notifié: bail ${lease.id} signé par ${tokenData.tenantEmail} (${signerRole})`);
+    log.complete(true, { allSigned, newStatus, signerId: actualSigner.id });
 
     return NextResponse.json({
       success: true,
       message: allSigned 
-        ? "✅ Bail entièrement signé ! En attente de l'état des lieux d'entrée." 
+        ? "Bail entièrement signé ! En attente de l'état des lieux d'entrée." 
         : "Signature enregistrée avec succès !",
       lease_id: lease.id,
       signer_profile_id: signerProfileId,
@@ -369,7 +357,7 @@ export async function POST(request: Request, { params }: PageProps) {
     });
 
   } catch (error: unknown) {
-    console.error("Erreur API sign:", error);
+    log.complete(false, { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

@@ -25,7 +25,32 @@ const TEMPLATES: Record<ExtendedTypeBail, string> = {
   parking: BAIL_PARKING_TEMPLATE, // Nouveau template parking
 };
 
+/**
+ * Version courante des templates de bail.
+ * Incrémenter à chaque modification structurelle du template.
+ * Format : YYYY.MM.revision
+ *
+ * FIX P2-6: Template versioning
+ */
+export const TEMPLATE_VERSION = "2026.02.1";
+
+/**
+ * Historique des versions de templates.
+ * Permet de savoir si un PDF doit être régénéré.
+ */
+export const TEMPLATE_VERSION_HISTORY: Record<string, string> = {
+  "2026.01.1": "Version initiale avec signatures",
+  "2026.02.1": "Audit sécurité signatures + badge sealed",
+};
+
 export class LeaseTemplateService {
+  /**
+   * Retourne la version courante du template
+   */
+  static getCurrentVersion(): string {
+    return TEMPLATE_VERSION;
+  }
+
   /**
    * Génère le HTML du bail à partir des données
    */

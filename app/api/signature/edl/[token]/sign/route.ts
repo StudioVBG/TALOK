@@ -1,5 +1,11 @@
 /**
- * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ * @version 2026-02-15 - Audit sécurité complet
+ *
+ * FIX P1-1: Ajout rate limiting
+ * FIX P1-2: Suppression base64 de proof_metadata
+ * FIX P1-8: Ajout audit_log
+ * FIX P0-2: Validation image signature
+ * FIX P2-5: Logger structuré
  */
 export const runtime = 'nodejs';
 
@@ -7,6 +13,9 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
+import { createSignatureLogger } from "@/lib/utils/signature-logger";
 
 /**
  * POST /api/signature/edl/[token]/sign - Signer un EDL via token d'invitation
@@ -15,7 +24,15 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const log = createSignatureLogger("/api/signature/edl/[token]/sign");
+
   try {
+    // FIX P1-1: Rate limiting (manquait totalement)
+    const rateLimitResponse = applyRateLimit(request, "signature");
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const { token } = await params;
     const serviceClient = getServiceClient();
 
@@ -27,8 +44,11 @@ export async function POST(
       .single();
 
     if (sigError || !signatureEntry) {
+      log.warn("Token EDL invalide");
       return NextResponse.json({ error: "Lien invalide ou expiré" }, { status: 404 });
     }
+
+    log.setContext({ entityId: signatureEntry.edl_id, entityType: "edl" });
 
     // Vérifier si le token a expiré (7 jours après l'envoi)
     const TOKEN_EXPIRATION_DAYS = 7;
@@ -41,12 +61,12 @@ export async function POST(
             error: "Ce lien d'invitation a expiré. Veuillez demander un nouveau lien au propriétaire.",
             expired_at: expirationDate.toISOString(),
           },
-          { status: 410 } // 410 Gone - ressource expirée
+          { status: 410 }
         );
       }
     }
 
-    // Vérifier si déjà signé (on vérifie signature_image_path car c'est la preuve réelle)
+    // Vérifier si déjà signé (idempotency)
     if (signatureEntry.signature_image_path) {
       return NextResponse.json({ error: "Ce document a déjà été signé" }, { status: 400 });
     }
@@ -61,8 +81,18 @@ export async function POST(
       );
     }
 
+    // FIX P0-2: Validation de l'image
+    const validation = validateSignatureImage(signatureBase64);
+    if (!validation.valid) {
+      log.warn("Image de signature invalide", { errors: validation.errors });
+      return NextResponse.json(
+        { error: validation.errors[0], validation_errors: validation.errors },
+        { status: 400 }
+      );
+    }
+
     // 2. Uploader l'image de signature
-    const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, "");
+    const base64Data = stripBase64Prefix(signatureBase64);
     const fileName = `edl/${signatureEntry.edl_id}/signatures/guest_${Date.now()}.png`;
     
     const { error: uploadError } = await serviceClient.storage
@@ -73,6 +103,7 @@ export async function POST(
       });
 
     if (uploadError) {
+      log.error("Erreur upload signature", { error: uploadError.message });
       throw new Error("Erreur lors de l'enregistrement de l'image de signature");
     }
 
@@ -84,7 +115,7 @@ export async function POST(
       signerName: (signatureEntry as any).signer_name || `${signatureEntry.profile?.prenom || ""} ${signatureEntry.profile?.nom || ""}`.trim() || "Locataire",
       signerEmail: signatureEntry.profile?.email || "guest@tenant.com",
       signerProfileId: (signatureEntry as any).signer_profile_id,
-      identityVerified: true, // On considère vérifié par le token unique
+      identityVerified: true,
       identityMethod: "Lien d'invitation sécurisé",
       signatureType: "draw",
       signatureImage: signatureBase64,
@@ -93,6 +124,15 @@ export async function POST(
       screenSize: clientMetadata?.screenSize || "Non spécifié",
       touchDevice: clientMetadata?.touchDevice || false,
     });
+
+    // FIX P1-2: Exclure base64 du proof_metadata
+    const proofForDB = {
+      ...proof,
+      signature: {
+        ...proof.signature,
+        imageData: `[STORED:${fileName}]`,
+      },
+    };
 
     // 4. Mettre à jour la signature
     const { error: updateError } = await serviceClient
@@ -103,7 +143,7 @@ export async function POST(
         ip_inet: proof.metadata.ipAddress as any,
         user_agent: proof.metadata.userAgent,
         proof_id: proof.proofId,
-        proof_metadata: proof as any,
+        proof_metadata: proofForDB as any,
         document_hash: proof.document.hash,
       } as any)
       .eq("id", signatureEntry.id);
@@ -140,9 +180,25 @@ export async function POST(
       } as any);
     }
 
+    // FIX P1-8: Audit log (manquait totalement)
+    await serviceClient.from("audit_log").insert({
+      user_id: (signatureEntry as any).signer_profile_id || null,
+      action: "edl_signed_via_token",
+      entity_type: "edl",
+      entity_id: signatureEntry.edl_id,
+      metadata: {
+        signer_role: signatureEntry.signer_role,
+        proof_id: proof.proofId,
+        ip: proof.metadata.ipAddress,
+        correlation_id: log.getCorrelationId(),
+      },
+    } as any);
+
+    log.complete(true, { proofId: proof.proofId, allSigned: hasOwner && hasTenant });
+
     return NextResponse.json({ success: true, proof_id: proof.proofId });
   } catch (error: unknown) {
-    console.error("[sign-edl-token] Error:", error);
+    log.complete(false, { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

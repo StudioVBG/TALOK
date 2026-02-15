@@ -8,6 +8,8 @@ import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
 import { verifyEDLAccess } from "@/lib/helpers/edl-auth";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
+import { createSignatureLogger } from "@/lib/utils/signature-logger";
 
 /**
  * POST /api/edl/[id]/sign - Signer un EDL avec Audit Trail
@@ -36,12 +38,25 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const log = createSignatureLogger("/api/edl/[id]/sign", edlId);
+    log.setContext({ entityType: "edl", userId: user.id });
+
     const body = await request.json();
     const { signature: signatureBase64, metadata: clientMetadata } = body;
 
     if (!signatureBase64) {
       return NextResponse.json(
         { error: "La signature tactile est obligatoire" },
+        { status: 400 }
+      );
+    }
+
+    // FIX P0-2: Validation de l'image de signature côté serveur
+    const validation = validateSignatureImage(signatureBase64);
+    if (!validation.valid) {
+      log.warn("Image de signature invalide", { errors: validation.errors });
+      return NextResponse.json(
+        { error: validation.errors[0], validation_errors: validation.errors },
         { status: 400 }
       );
     }
@@ -359,7 +374,7 @@ export async function POST(
     }
 
     // 4. Uploader l'image de signature dans Storage (utiliser serviceClient pour éviter RLS)
-    const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, "");
+    const base64Data = stripBase64Prefix(signatureBase64);
     const fileName = `edl/${edlId}/signatures/${user.id}_${Date.now()}.png`;
     
     const { error: uploadError } = await serviceClient.storage

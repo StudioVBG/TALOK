@@ -4,52 +4,53 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { generateSignatureProof, generateSignatureCertificate } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { verifyTokenCompat } from "@/lib/utils/secure-token";
+import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
+import { createSignatureLogger } from "@/lib/utils/signature-logger";
+import { isOwnerRole, LEASE_STATUS } from "@/lib/constants/roles";
 
 interface PageProps {
   params: Promise<{ token: string }>;
 }
 
-// Décoder le token
-function decodeToken(token: string): { leaseId: string; tenantEmail: string; timestamp: number } | null {
-  try {
-    const decoded = Buffer.from(token, "base64url").toString("utf-8");
-    const [leaseId, tenantEmail, timestampStr] = decoded.split(":");
-    if (!leaseId || !tenantEmail || !timestampStr) return null;
-    return { leaseId, tenantEmail, timestamp: parseInt(timestampStr, 10) };
-  } catch {
-    return null;
-  }
-}
-
-// Vérifier si le token est expiré (30 jours)
-function isTokenExpired(timestamp: number): boolean {
-  return Date.now() - timestamp > 30 * 24 * 60 * 60 * 1000;
-}
-
 /**
  * POST /api/signature/[token]/sign-with-pad
  * Signature électronique avec tracé ou texte (sans OTP)
+ *
+ * FIX P0-4: Statuts de bail uniformisés (LEASE_STATUS)
+ * FIX P0-5: Suppression du fallback "par rôle"
+ * FIX P1-1: Ajout rate limiting
+ * FIX P1-2: Suppression base64 de proof_metadata + colonne signature_image
+ * FIX P1-4: Support tokens sécurisés HMAC + rétrocompat
+ * FIX P1-8: Ajout audit_log
+ * FIX P2-5: Logger structuré
+ *
+ * @version 2026-02-15 - Audit sécurité complet
  */
 export async function POST(request: Request, { params }: PageProps) {
-  try {
-    const { token } = await params;
+  const log = createSignatureLogger("/api/signature/[token]/sign-with-pad");
 
-    // Décoder le token
-    const tokenData = decodeToken(token);
-    if (!tokenData) {
-      return NextResponse.json(
-        { error: "Lien d'invitation invalide" },
-        { status: 404 }
-      );
+  try {
+    // FIX P1-1: Ajout du rate limiting (manquait totalement)
+    const rateLimitResponse = applyRateLimit(request, "signature");
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
-    // Vérifier expiration
-    if (isTokenExpired(tokenData.timestamp)) {
+    const { token } = await params;
+
+    // FIX P1-4: Vérifier le token (nouveau format HMAC ou ancien format)
+    const tokenData = verifyTokenCompat(token, 30);
+    if (!tokenData) {
+      log.warn("Token invalide ou expiré");
       return NextResponse.json(
-        { error: "Le lien d'invitation a expiré" },
+        { error: "Lien d'invitation invalide ou expiré" },
         { status: 410 }
       );
     }
+
+    log.setContext({ entityId: tokenData.entityId, entityType: "lease" });
 
     const serviceClient = getServiceClient();
 
@@ -69,17 +70,14 @@ export async function POST(request: Request, { params }: PageProps) {
           owner_id
         )
       `)
-      .eq("id", tokenData.leaseId)
+      .eq("id", tokenData.entityId)
       .single();
 
     if (leaseError || !lease) {
-      return NextResponse.json(
-        { error: "Bail non trouvé" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
     }
 
-    // P1-7: Récupérer les données de l'entité juridique si applicable
+    // Récupérer l'entité juridique si applicable
     let entityInfo: { nom: string; siret: string | null; type: string; representant: string | null } | null = null;
     if ((lease as any).signatory_entity_id) {
       const { data: entity } = await serviceClient
@@ -104,43 +102,48 @@ export async function POST(request: Request, { params }: PageProps) {
       signatureImage,
       signerName,
       signerProfileId,
-      identityVerified,
-      identityMethod,
       userAgent,
       screenSize,
       touchDevice,
     } = body;
 
     if (!signatureImage || !signerName) {
+      return NextResponse.json({ error: "Données de signature manquantes" }, { status: 400 });
+    }
+
+    // FIX P0-2: Valider l'image de signature côté serveur
+    const validation = validateSignatureImage(signatureImage);
+    if (!validation.valid) {
+      log.warn("Image de signature invalide", { errors: validation.errors });
       return NextResponse.json(
-        { error: "Données de signature manquantes" },
+        { error: validation.errors[0], validation_errors: validation.errors },
         { status: 400 }
       );
     }
 
-    // Générer la preuve de signature
     const ipAddress = extractClientIP(request);
 
-    // Créer un contenu de document pour le hash (inclut données entité P1-7)
+    // Contenu pour le hash du document
     const documentContent = JSON.stringify({
       leaseId: lease.id,
       type: lease.type_bail,
       loyer: lease.loyer,
       property: lease.properties,
-      signerEmail: tokenData.tenantEmail,
+      signerEmail: tokenData.email,
       entity: entityInfo,
       timestamp: Date.now(),
     });
 
+    // FIX: identityVerified et identityMethod ne viennent plus du body client
     const proof = await generateSignatureProof({
       documentType: "bail",
       documentId: lease.id,
       documentContent,
       signerName,
-      signerEmail: tokenData.tenantEmail,
+      signerEmail: tokenData.email,
       signerProfileId,
-      identityVerified: identityVerified || false,
-      identityMethod: identityMethod || "cni",
+      identityVerified: false, // FIX: Pas de vérification d'identité dans ce flow (pas d'OTP, pas de CNI)
+      identityMethod: "signature_pad_token",
       signatureType: signatureType || "draw",
       signatureImage,
       userAgent: userAgent || request.headers.get("user-agent") || "unknown",
@@ -149,60 +152,68 @@ export async function POST(request: Request, { params }: PageProps) {
       ipAddress,
     });
 
-    // 135. Générer le certificat texte
     const certificate = generateSignatureCertificate(proof);
 
-    // ✅ SOTA 2026: Recherche flexible du signataire par email OU par rôle
-    // Priorité 1: Par email (le plus fiable)
+    // Recherche du signataire — Priorité 1: Par email
+    const normalizedEmail = tokenData.email.toLowerCase().trim();
     let tenantSigner = null;
     
     const { data: signerByEmail } = await serviceClient
       .from("lease_signers")
-      .select("id, profile_id, role")
+      .select("id, profile_id, role, signature_status")
       .eq("lease_id", lease.id)
-      .eq("invited_email", tokenData.tenantEmail.toLowerCase())
+      .eq("invited_email", normalizedEmail)
       .maybeSingle();
     
     if (signerByEmail) {
+      if (signerByEmail.signature_status === "signed") {
+        return NextResponse.json({ error: "Vous avez déjà signé ce bail" }, { status: 400 });
+      }
       tenantSigner = signerByEmail;
-      console.log(`[Signature] ✅ Signataire trouvé par email: ${tokenData.tenantEmail}, role: ${signerByEmail.role}`);
-    } else {
-      // Priorité 2: Par rôle flexible (fallback)
-      const { data: signerByRole } = await serviceClient
-        .from("lease_signers")
-        .select("id, profile_id, role")
-        .eq("lease_id", lease.id)
-        .in("role", ["locataire_principal", "locataire", "tenant", "colocataire", "principal"] as any)
-        .is("signature_status", null)  // Non encore signé
-        .limit(1)
+      log.info("Signataire trouvé par email", { signerId: signerByEmail.id, role: signerByEmail.role });
+    }
+
+    // Priorité 2: Par profile via email dans profiles
+    if (!tenantSigner) {
+      const { data: profileByEmail } = await serviceClient
+        .from("profiles")
+        .select("id")
+        .eq("email", normalizedEmail)
         .maybeSingle();
       
-      if (signerByRole) {
-        tenantSigner = signerByRole;
-        console.log(`[Signature] ✅ Signataire trouvé par rôle: ${signerByRole.role}`);
+      if (profileByEmail) {
+        const { data: signerByProfile } = await serviceClient
+          .from("lease_signers")
+          .select("id, profile_id, role, signature_status")
+          .eq("lease_id", lease.id)
+          .eq("profile_id", profileByEmail.id)
+          .maybeSingle();
+        
+        if (signerByProfile?.signature_status === "signed") {
+          return NextResponse.json({ error: "Vous avez déjà signé ce bail" }, { status: 400 });
+        }
+        tenantSigner = signerByProfile;
       }
     }
 
+    // FIX P0-5: PAS de fallback "par rôle" — risque de mauvais signataire
+
     if (!tenantSigner) {
-      console.error(`[Signature] ❌ Aucun signataire trouvé pour ${tokenData.tenantEmail} sur le bail ${lease.id}`);
+      log.error("Aucun signataire trouvé", { email: normalizedEmail, leaseId: lease.id });
       return NextResponse.json(
         { error: "Vous n'êtes pas signataire de ce bail" },
         { status: 403 }
       );
     }
 
-    const tenantProfileId = signerProfileId || tenantSigner?.profile_id || null;
+    const tenantProfileId = signerProfileId || tenantSigner.profile_id || null;
 
-    // Sauvegarder l'image de signature dans Storage
-    // ✅ FIX: Utiliser le même format de path que /leases/[id]/sign pour cohérence
+    // Upload image de signature dans Storage
     const signaturePath = `signatures/${lease.id}/${tenantSigner.id}_${Date.now()}.png`;
     let uploadSuccess = false;
     
     try {
-      const signatureBuffer = Buffer.from(
-        proof.signature.imageData.replace(/^data:image\/\w+;base64,/, ""),
-        "base64"
-      );
+      const signatureBuffer = Buffer.from(stripBase64Prefix(signatureImage), "base64");
       
       const { error: uploadError } = await serviceClient.storage
         .from("documents")
@@ -213,27 +224,34 @@ export async function POST(request: Request, { params }: PageProps) {
       
       if (!uploadError) {
         uploadSuccess = true;
-        console.log(`[Signature] ✅ Image uploadée: ${signaturePath}`);
+        log.info("Image uploadée", { path: signaturePath });
       } else {
-        console.warn("[Signature] ⚠️ Erreur upload image:", uploadError);
+        log.warn("Erreur upload image", { error: uploadError.message });
       }
     } catch (uploadError) {
-      console.warn("[Signature] ⚠️ Exception upload image:", uploadError);
+      log.warn("Exception upload image", { error: String(uploadError) });
     }
 
-    // Mettre à jour le signataire avec la signature ET l'image
+    // FIX P1-2: Exclure base64 du proof_metadata et ne plus écrire signature_image
+    const proofForDB = {
+      ...proof,
+      signature: {
+        ...proof.signature,
+        imageData: uploadSuccess ? `[STORED:${signaturePath}]` : "[UPLOAD_FAILED]",
+      },
+    };
+
     const updateData: Record<string, any> = {
       signature_status: "signed",
       signed_at: proof.timestamp.iso,
-      signature_image: signatureImage, // Base64 comme fallback
+      // FIX P1-3: Ne plus écrire signature_image (base64) — utiliser uniquement signature_image_path
       ip_inet: proof.metadata.ipAddress as any,
       user_agent: proof.metadata.userAgent,
       proof_id: proof.proofId,
-      proof_metadata: proof as any,
+      proof_metadata: proofForDB as any,
       document_hash: proof.document.hash,
     };
     
-    // ✅ Ajouter le path Storage seulement si l'upload a réussi
     if (uploadSuccess) {
       updateData.signature_image_path = signaturePath;
     }
@@ -244,13 +262,10 @@ export async function POST(request: Request, { params }: PageProps) {
       .eq("id", tenantSigner.id);
     
     if (signerUpdateError) {
-      console.error("[Signature] ❌ Erreur mise à jour signataire:", signerUpdateError);
-    } else {
-      console.log(`[Signature] ✅ Signataire ${tenantSigner.id} mis à jour avec signature`);
+      log.error("Erreur mise à jour signataire", { error: signerUpdateError.message });
     }
 
-    // ✅ SOTA 2026: Déterminer le nouveau statut du bail
-    // Vérifier si TOUS les signataires ont signé
+    // Déterminer le nouveau statut — FIX P0-4: Utiliser UNIQUEMENT LEASE_STATUS
     const { data: allSigners } = await serviceClient
       .from("lease_signers")
       .select("id, role, signature_status")
@@ -258,47 +273,40 @@ export async function POST(request: Request, { params }: PageProps) {
     
     const totalSigners = allSigners?.length || 0;
     const signedCount = allSigners?.filter(s => s.signature_status === "signed").length || 0;
-    const ownerSigned = allSigners?.some(s => 
-      ["proprietaire", "owner", "bailleur"].includes(s.role?.toLowerCase() || "") && 
-      s.signature_status === "signed"
-    );
     const allSigned = totalSigners >= 2 && signedCount === totalSigners;
     
-    console.log(`[Signature] État: ${signedCount}/${totalSigners} signatures, owner=${ownerSigned}, all=${allSigned}`);
-
-    // Déterminer le nouveau statut
     let newStatus: string;
     if (allSigned) {
-      newStatus = "fully_signed"; // ✅ Prêt pour EDL, pas encore active
-    } else if (ownerSigned) {
-      newStatus = "partially_signed";
+      newStatus = LEASE_STATUS.FULLY_SIGNED;
+    } else if (signedCount > 0) {
+      newStatus = LEASE_STATUS.PENDING_SIGNATURE;
     } else {
-      newStatus = "pending_owner_signature";
+      newStatus = lease.statut || LEASE_STATUS.PENDING_SIGNATURE;
     }
 
     // Mettre à jour le statut du bail
-    const { error: updateError } = await serviceClient
-      .from("leases")
-      .update({ statut: newStatus })
-      .eq("id", lease.id);
+    if (newStatus !== lease.statut) {
+      const { error: updateError } = await serviceClient
+        .from("leases")
+        .update({ statut: newStatus })
+        .eq("id", lease.id);
 
-    if (updateError) {
-      // Fallback si le statut n'est pas autorisé par la contrainte CHECK
-      if (updateError.message?.includes("check") || updateError.code === "23514") {
-        console.log(`[Signature] Statut ${newStatus} non autorisé, fallback vers pending_signature`);
-        await serviceClient
-          .from("leases")
-          .update({ statut: "pending_signature" })
-          .eq("id", lease.id);
-      } else {
-        console.error("[Signature] Erreur mise à jour bail:", updateError);
+      if (updateError) {
+        if (updateError.code === "23514") {
+          log.warn("Statut non autorisé, fallback", { attempted: newStatus });
+          await serviceClient
+            .from("leases")
+            .update({ statut: LEASE_STATUS.PENDING_SIGNATURE })
+            .eq("id", lease.id);
+          newStatus = LEASE_STATUS.PENDING_SIGNATURE;
+        } else {
+          log.error("Erreur mise à jour bail", { error: updateError.message });
+        }
       }
-    } else {
-      console.log(`[Signature] ✅ Bail ${lease.id} passé à ${newStatus}`);
     }
 
     // Sauvegarder la preuve de signature comme document
-    const { error: docError } = await serviceClient
+    await serviceClient
       .from("documents")
       .insert({
         type: "bail_signe_locataire",
@@ -319,16 +327,27 @@ export async function POST(request: Request, { params }: PageProps) {
         },
       });
 
-    if (docError) {
-      console.warn("[Signature] Erreur sauvegarde preuve:", docError);
-    }
+    // FIX P1-8: Audit log
+    await serviceClient.from("audit_log").insert({
+      user_id: tenantProfileId || null,
+      action: "lease_signed_via_pad",
+      entity_type: "lease",
+      entity_id: lease.id,
+      metadata: {
+        role: tenantSigner.role,
+        proof_id: proof.proofId,
+        verification_method: "signature_pad_token",
+        signer_email: normalizedEmail,
+        correlation_id: log.getCorrelationId(),
+      },
+    } as any);
 
-    console.log(`✅ Bail ${lease.id} signé par ${signerName} - Preuve: ${proof.proofId} - Status: ${newStatus}`);
+    log.complete(true, { allSigned, newStatus, proofId: proof.proofId });
 
     return NextResponse.json({
       success: true,
       message: allSigned 
-        ? "✅ Bail entièrement signé ! En attente de l'état des lieux d'entrée." 
+        ? "Bail entièrement signé ! En attente de l'état des lieux d'entrée." 
         : "Signature enregistrée avec succès !",
       proof_id: proof.proofId,
       lease_id: lease.id,
@@ -338,7 +357,7 @@ export async function POST(request: Request, { params }: PageProps) {
     });
 
   } catch (error: unknown) {
-    console.error("Erreur API sign-with-pad:", error);
+    log.complete(false, { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

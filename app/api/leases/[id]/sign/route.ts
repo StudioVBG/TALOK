@@ -9,11 +9,19 @@ import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-li
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
 import { SIGNER_ROLES, isOwnerRole, isTenantRole, LEASE_STATUS } from "@/lib/constants/roles";
+import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
+import { createSignatureLogger } from "@/lib/utils/signature-logger";
 
 /**
  * POST /api/leases/[id]/sign - Signer un bail avec Audit Trail conforme
  *
- * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ * FIX P0-2: Validation image signature côté serveur
+ * FIX P0-3: Décompte quotas signatures
+ * FIX P0-6: Appel seal_lease() après fully_signed
+ * FIX P1-2: Suppression base64 de proof_metadata
+ * FIX P2-5: Logger structuré
+ *
+ * @version 2026-02-15 - Audit sécurité complet
  */
 export async function POST(
   request: Request,
@@ -21,6 +29,8 @@ export async function POST(
 ) {
   const { id } = await params;
   const leaseId = id;
+  const log = createSignatureLogger("/api/leases/[id]/sign", leaseId);
+  log.setContext({ entityType: "lease" });
   
   try {
     const supabase = await createClient();
@@ -31,13 +41,17 @@ export async function POST(
     const serviceClient = getServiceClient();
 
     if (!user) {
+      log.warn("Tentative non authentifiée");
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
+
+    log.setContext({ userId: user.id });
 
     // Rate limiting
     const limiter = getRateLimiterByUser(rateLimitPresets.api);
     const limitResult = limiter(user.id);
     if (!limitResult.allowed) {
+      log.warn("Rate limit atteint");
       return NextResponse.json(
         { error: "Trop de requêtes. Veuillez réessayer plus tard." },
         { status: 429 }
@@ -54,9 +68,17 @@ export async function POST(
       );
     }
 
-    // 1. Récupérer le profil (sans jointure tenant_profiles pour éviter les erreurs)
-    console.log("[Sign-Lease] Looking for profile with user_id:", user.id);
-    
+    // FIX P0-2: Validation de l'image de signature côté serveur
+    const validation = validateSignatureImage(signature_image);
+    if (!validation.valid) {
+      log.warn("Image de signature invalide", { errors: validation.errors, sizeBytes: validation.sizeBytes });
+      return NextResponse.json(
+        { error: validation.errors[0], validation_errors: validation.errors },
+        { status: 400 }
+      );
+    }
+
+    // 1. Récupérer le profil
     const { data: profileData, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, prenom, nom, role")
@@ -64,15 +86,9 @@ export async function POST(
       .single();
 
     const profile = profileData as any;
-    
-    console.log("[Sign-Lease] Profile query result:", { 
-      found: !!profile, 
-      error: profileError?.message,
-      profileId: profile?.id,
-      role: profile?.role 
-    });
 
     if (!profile) {
+      log.error("Profil non trouvé", { profileError: profileError?.message });
       return NextResponse.json({ 
         error: "Profil non trouvé", 
         details: {
@@ -83,16 +99,19 @@ export async function POST(
       }, { status: 404 });
     }
 
+    log.setContext({ profileId: profile.id, signerRole: profile.role });
+
     // 2. Vérifier les droits de signature
     const rights = await checkSignatureRights(leaseId, profile.id, user.email || "");
 
     if (!rights.canSign) {
+      log.warn("Droits de signature refusés", { reason: rights.reason });
       return NextResponse.json({ error: rights.reason || "Accès refusé" }, { status: 403 });
     }
 
     const isOwner = profile.role === "owner";
     
-    // ✅ FIX: Récupérer le CNI optionnellement (ne bloque plus la signature)
+    // Récupérer le CNI optionnellement
     let cniNumber: string | null = null;
     if (!isOwner) {
       const { data: tenantProfile } = await serviceClient
@@ -104,9 +123,34 @@ export async function POST(
       cniNumber = (tenantProfile as any)?.cni_number || null;
     }
 
-    // ✅ FIX: La vérification CNI n'est plus obligatoire
-    // Un locataire avec un compte créé via invitation est considéré comme vérifié
-    console.log("[Sign-Lease] Identity check:", { isOwner, hasCNI: !!cniNumber });
+    log.info("Vérification identité", { isOwner, hasCNI: !!cniNumber });
+
+    // 3. FIX P0-3: Vérifier le quota de signatures avant de continuer
+    try {
+      const { incrementSignatureUsage, checkSignatureQuota } = await import("@/lib/subscriptions/signature-tracking");
+      
+      // Trouver le owner_id du bien pour vérifier son quota
+      const { data: leaseForQuota } = await serviceClient
+        .from("leases")
+        .select("property:properties(owner_id)")
+        .eq("id", leaseId as any)
+        .single();
+      
+      const ownerId = (leaseForQuota as any)?.property?.owner_id;
+      if (ownerId) {
+        const quota = await checkSignatureQuota(ownerId);
+        if (!quota.canSign && !quota.isUnlimited) {
+          log.warn("Quota de signatures atteint", { used: quota.used, limit: quota.limit });
+          return NextResponse.json(
+            { error: "Quota de signatures mensuel atteint. Veuillez upgrader votre abonnement." },
+            { status: 403 }
+          );
+        }
+      }
+    } catch (quotaError) {
+      // Ne pas bloquer la signature si le service de quota est indisponible
+      log.warn("Vérification quota échouée, poursuite", { error: String(quotaError) });
+    }
 
     // 4. Récupérer les données du bail pour le hash
     const { data: lease } = await serviceClient
@@ -116,7 +160,6 @@ export async function POST(
       .single();
 
     // 5. Générer le Dossier de Preuve (Audit Trail)
-    // ✅ FIX: Adapter la méthode d'identité selon le cas
     let identityMethod = "Compte Authentifié (Email Vérifié)";
     if (isOwner) {
       identityMethod = "Compte Propriétaire Authentifié";
@@ -127,11 +170,11 @@ export async function POST(
     const proof = await generateSignatureProof({
       documentType: "BAIL",
       documentId: leaseId,
-      documentContent: JSON.stringify(lease), // Hash du contenu actuel du bail
+      documentContent: JSON.stringify(lease),
       signerName: `${profile.prenom} ${profile.nom}`,
       signerEmail: user.email!,
       signerProfileId: profile.id,
-      identityVerified: true, // ✅ FIX: Toujours vrai si le compte existe
+      identityVerified: true,
       identityMethod: identityMethod,
       signatureType: "draw",
       signatureImage: signature_image,
@@ -141,8 +184,8 @@ export async function POST(
       touchDevice: clientMetadata?.touchDevice || false,
     });
 
-    // 6. Uploader l'image de signature avec vérification d'erreur
-    const base64Data = signature_image.replace(/^data:image\/\w+;base64,/, "");
+    // 6. Uploader l'image de signature
+    const base64Data = stripBase64Prefix(signature_image);
     const fileName = `signatures/${leaseId}/${user.id}_${Date.now()}.png`;
     
     const { error: uploadError } = await serviceClient.storage
@@ -153,13 +196,13 @@ export async function POST(
       });
 
     if (uploadError) {
-      console.error("[Sign-Lease] ❌ Erreur upload signature:", uploadError);
+      log.error("Erreur upload signature", { uploadError: uploadError.message });
       return NextResponse.json(
         { error: "Erreur lors de l'enregistrement de la signature. Veuillez réessayer." },
         { status: 500 }
       );
     }
-    console.log(`[Sign-Lease] ✅ Signature uploadée: ${fileName}`);
+    log.info("Signature uploadée", { fileName });
 
     // 7. Auto-créer le signataire si nécessaire
     let signer = rights.signer;
@@ -168,6 +211,15 @@ export async function POST(
     }
 
     // 8. Mettre à jour le signataire avec les infos de preuve
+    // FIX P1-2: Exclure l'image base64 du proof_metadata pour réduire la taille
+    const proofForDB = {
+      ...proof,
+      signature: {
+        ...proof.signature,
+        imageData: `[STORED:${fileName}]`,
+      },
+    };
+
     const { error: updateError } = await serviceClient
       .from("lease_signers")
       .update({
@@ -177,7 +229,7 @@ export async function POST(
         ip_inet: proof.metadata.ipAddress as any,
         user_agent: proof.metadata.userAgent,
         proof_id: proof.proofId,
-        proof_metadata: proof as any,
+        proof_metadata: proofForDB as any,
         document_hash: proof.document.hash,
       } as any)
       .eq("id", signer.id as any);
@@ -188,18 +240,50 @@ export async function POST(
     const newLeaseStatus = await determineLeaseStatus(leaseId);
     await serviceClient.from("leases").update({ statut: newLeaseStatus } as any).eq("id", leaseId as any);
 
+    // FIX P0-3: Incrémenter l'usage des signatures après succès
+    try {
+      const { incrementSignatureUsage } = await import("@/lib/subscriptions/signature-tracking");
+      const leaseForOwner = lease as any;
+      const ownerId = leaseForOwner?.property?.owner_id || leaseForOwner?.property_id;
+      if (ownerId) {
+        await incrementSignatureUsage(ownerId, 1, {
+          document_type: "bail",
+          document_id: leaseId,
+          signers_count: 1,
+        });
+      }
+    } catch (usageError) {
+      log.warn("Erreur incrément usage signature", { error: String(usageError) });
+    }
+
+    // FIX P0-6: Si fully_signed, déclencher le scellement du bail
+    if (newLeaseStatus === LEASE_STATUS.FULLY_SIGNED) {
+      try {
+        const { error: sealError } = await serviceClient.rpc("seal_lease", {
+          p_lease_id: leaseId,
+          p_pdf_path: `pending_generation_${Date.now()}`,
+        });
+        if (sealError) {
+          log.warn("Erreur scellement bail (non bloquant)", { sealError: sealError.message });
+        } else {
+          log.info("Bail scellé avec succès");
+        }
+      } catch (sealErr) {
+        log.warn("Exception scellement bail", { error: String(sealErr) });
+      }
+    }
+
     // 10. Journaliser
     await serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "lease_signed",
       entity_type: "lease",
       entity_id: leaseId,
-      metadata: { role: rights.role, proof_id: proof.proofId },
+      metadata: { role: rights.role, proof_id: proof.proofId, correlation_id: log.getCorrelationId() },
     } as any);
 
-    // 11. ✅ SOTA 2026: Émettre les événements pour notifications
+    // 11. Émettre les événements pour notifications
     try {
-      // Récupérer les infos nécessaires pour les notifications
       const { data: leaseInfo } = await serviceClient
         .from("leases")
         .select(`
@@ -210,13 +294,11 @@ export async function POST(
         .eq("id", leaseId)
         .single();
 
-      const ownerSigner = leaseInfo?.signers?.find((s: any) => s.role === "proprietaire");
-      const tenantSigner = leaseInfo?.signers?.find((s: any) => 
-        s.role === "locataire_principal" || s.role === "locataire"
-      );
+      const ownerSigner = leaseInfo?.signers?.find((s: any) => isOwnerRole(s.role));
+      const tenantSigner = leaseInfo?.signers?.find((s: any) => isTenantRole(s.role));
 
       // Si le LOCATAIRE vient de signer → Notifier le PROPRIÉTAIRE
-      if (rights.role?.includes("locataire") || rights.role === "tenant" || rights.role === "principal") {
+      if (isTenantRole(rights.role) || rights.role === "tenant" || rights.role === "principal") {
         await serviceClient.from("outbox").insert({
           event_type: "Lease.TenantSigned",
           payload: {
@@ -227,11 +309,10 @@ export async function POST(
             property_address: leaseInfo?.property?.adresse_complete || leaseInfo?.property?.ville || "votre bien",
           },
         } as any);
-        console.log(`[Sign-Lease] ✅ Événement Lease.TenantSigned émis pour notifier le propriétaire`);
       }
 
-      // Si le PROPRIÉTAIRE vient de signer → Notifier le LOCATAIRE que c'est fait
-      if (rights.role === "proprietaire" || rights.role === "owner" || rights.role === "bailleur") {
+      // Si le PROPRIÉTAIRE vient de signer → Notifier le LOCATAIRE
+      if (isOwnerRole(rights.role)) {
         await serviceClient.from("outbox").insert({
           event_type: "Lease.OwnerSigned",
           payload: {
@@ -242,12 +323,10 @@ export async function POST(
             property_address: leaseInfo?.property?.adresse_complete || leaseInfo?.property?.ville || "le bien",
           },
         } as any);
-        console.log(`[Sign-Lease] ✅ Événement Lease.OwnerSigned émis pour notifier le locataire`);
       }
 
       // Si le bail est maintenant FULLY_SIGNED → Notifier les deux parties
-      if (newLeaseStatus === "fully_signed") {
-        // Notifier le propriétaire
+      if (newLeaseStatus === LEASE_STATUS.FULLY_SIGNED) {
         if (ownerSigner?.profiles?.user_id) {
           await serviceClient.from("outbox").insert({
             event_type: "Lease.FullySigned",
@@ -262,7 +341,6 @@ export async function POST(
           } as any);
         }
 
-        // Notifier le locataire
         if (tenantSigner?.profiles?.user_id) {
           await serviceClient.from("outbox").insert({
             event_type: "Lease.FullySigned",
@@ -276,21 +354,20 @@ export async function POST(
             },
           } as any);
         }
-
-        console.log(`[Sign-Lease] ✅ Événements Lease.FullySigned émis pour les deux parties`);
       }
     } catch (notifError) {
-      // Ne pas bloquer la signature si les notifications échouent
-      console.error("[Sign-Lease] Erreur émission événements:", notifError);
+      log.warn("Erreur émission événements (non bloquant)", { error: String(notifError) });
     }
 
-    // ✅ SOTA 2026: Invalider le cache ISR pour refléter le changement de statut du bail sur la page propriété
+    // Invalider le cache ISR
     const signedPropertyId = (lease as any)?.property_id || (lease as any)?.property?.id;
     if (signedPropertyId) {
       revalidatePath(`/owner/properties/${signedPropertyId}`);
       revalidatePath("/owner/properties");
     }
     revalidatePath("/owner/leases");
+
+    log.complete(true, { proofId: proof.proofId, newStatus: newLeaseStatus });
 
     return NextResponse.json({
       success: true,
@@ -300,7 +377,7 @@ export async function POST(
     });
 
   } catch (error: unknown) {
-    console.error("[Sign-Lease] Error:", error);
+    log.complete(false, { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

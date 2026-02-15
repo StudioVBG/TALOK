@@ -55,17 +55,85 @@ export function SignaturePad({
   const [selectedFont, setSelectedFont] = useState(0);
   const [hasDrawn, setHasDrawn] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+
+  // Clé unique pour le localStorage (basée sur le nom du signataire)
+  const storageKey = `signature_draft_${signerName.replace(/\s+/g, "_").toLowerCase()}`;
 
   // Détecter si c'est un appareil tactile
   useEffect(() => {
     setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0);
   }, []);
 
+  // FIX P2-3: Restaurer un brouillon de signature depuis localStorage
+  useEffect(() => {
+    try {
+      const draft = localStorage.getItem(storageKey);
+      if (draft) {
+        const parsed = JSON.parse(draft);
+        if (parsed.mode === "text") {
+          setSignatureMode("text");
+          setTextSignature(parsed.text || signerName);
+          setSelectedFont(parsed.font || 0);
+          setHasDraft(true);
+        } else if (parsed.mode === "draw" && parsed.data && signatureRef.current) {
+          // Restaurer le dessin au prochain tick (canvas doit être monté)
+          setTimeout(() => {
+            try {
+              if (signatureRef.current) {
+                signatureRef.current.fromDataURL(parsed.data);
+                setHasDrawn(true);
+                setHasDraft(true);
+              }
+            } catch {
+              // Ignore si le canvas n'est pas prêt
+            }
+          }, 100);
+        }
+      }
+    } catch {
+      // localStorage indisponible ou données corrompues
+    }
+  }, [storageKey, signerName]);
+
+  // FIX P2-3: Sauvegarder le brouillon dans localStorage
+  const saveDraft = (mode: "draw" | "text") => {
+    try {
+      if (mode === "text") {
+        localStorage.setItem(storageKey, JSON.stringify({
+          mode: "text",
+          text: textSignature,
+          font: selectedFont,
+          savedAt: Date.now(),
+        }));
+      } else if (signatureRef.current && !signatureRef.current.isEmpty()) {
+        localStorage.setItem(storageKey, JSON.stringify({
+          mode: "draw",
+          data: signatureRef.current.toDataURL("image/png"),
+          savedAt: Date.now(),
+        }));
+      }
+    } catch {
+      // localStorage plein ou indisponible
+    }
+  };
+
+  // Nettoyer le brouillon après soumission réussie
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(storageKey);
+      setHasDraft(false);
+    } catch {
+      // Ignore
+    }
+  };
+
   // Effacer la signature dessinée
   const clearSignature = () => {
     if (signatureRef.current) {
       signatureRef.current.clear();
       setHasDrawn(false);
+      clearDraft();
     }
   };
 
@@ -124,6 +192,8 @@ export function SignaturePad({
       },
     };
 
+    // Nettoyer le brouillon après soumission réussie
+    clearDraft();
     onSignatureComplete(signature);
   };
 
@@ -137,6 +207,14 @@ export function SignaturePad({
 
   return (
     <div className={cn("space-y-4", className)}>
+      {/* Indicateur brouillon restauré */}
+      {hasDraft && (
+        <div className="flex items-center justify-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950 rounded-lg p-2">
+          <RotateCcw className="h-3 w-3" />
+          <span>Brouillon restauré — vous pouvez continuer ou effacer</span>
+        </div>
+      )}
+
       {/* Indicateur appareil */}
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
         {isTouchDevice ? (
@@ -189,6 +267,7 @@ export function SignaturePad({
                 minWidth={1.5}
                 maxWidth={3}
                 onBegin={() => setHasDrawn(true)}
+                onEnd={() => saveDraft("draw")}
               />
             </div>
             
@@ -220,7 +299,10 @@ export function SignaturePad({
               <Label>Votre signature</Label>
               <Input
                 value={textSignature}
-                onChange={(e) => setTextSignature(e.target.value)}
+                onChange={(e) => {
+                  setTextSignature(e.target.value);
+                  saveDraft("text");
+                }}
                 placeholder="Tapez votre nom complet"
                 className="text-lg"
               />
