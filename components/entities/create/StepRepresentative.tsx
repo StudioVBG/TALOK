@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { EntityFormData } from "@/app/owner/entities/new/page";
+import type { EntityFormData } from "@/lib/entities/entity-form-utils";
 
 interface StepRepresentativeProps {
   formData: EntityFormData;

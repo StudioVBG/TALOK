@@ -2,8 +2,8 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { isRegimeFiscalLocked } from "@/app/owner/entities/new/page";
-import type { EntityFormData } from "@/app/owner/entities/new/page";
+import { isRegimeFiscalLocked } from "@/lib/entities/entity-form-utils";
+import type { EntityFormData } from "@/lib/entities/entity-form-utils";
 
 interface StepLegalInfoProps {
   formData: EntityFormData;

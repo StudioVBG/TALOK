@@ -17,7 +17,7 @@ import { StepAddress } from "@/components/entities/create/StepAddress";
 import { StepRepresentative } from "@/components/entities/create/StepRepresentative";
 import { StepBankDetails } from "@/components/entities/create/StepBankDetails";
 import { cn } from "@/lib/utils";
-import type { EntityFormData } from "../../new/page";
+import type { EntityFormData } from "@/lib/entities/entity-form-utils";
 
 const STEPS = [
   { id: 1, label: "Type" },

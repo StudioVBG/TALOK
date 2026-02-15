@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { isDomTomPostalCode, getTvaRate } from "@/lib/entities/resolveOwnerIdentity";
-import type { EntityFormData } from "@/app/owner/entities/new/page";
+import type { EntityFormData } from "@/lib/entities/entity-form-utils";
 
 interface StepAddressProps {
   formData: EntityFormData;

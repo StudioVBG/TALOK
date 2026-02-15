@@ -29,39 +29,9 @@ import { cn } from "@/lib/utils";
 // TYPES
 // ============================================
 
-export interface EntityFormData {
-  // Step 1: Type
-  entityType: string;
-
-  // Step 2: Legal info
-  nom: string;
-  formeJuridique: string;
-  regimeFiscal: string;
-  siret: string;
-  capitalSocial: string;
-  dateCreation: string;
-  numeroTva: string;
-  objetSocial: string;
-
-  // Step 3: Address
-  adresseSiege: string;
-  codePostalSiege: string;
-  villeSiege: string;
-  emailEntite: string;
-  telephoneEntite: string;
-
-  // Step 4: Representative
-  representantMode: "self" | "other";
-  representantPrenom: string;
-  representantNom: string;
-  representantQualite: string;
-  representantDateNaissance: string;
-
-  // Step 5: Bank
-  iban: string;
-  bic: string;
-  banqueNom: string;
-}
+// Types et utils partagés — source de vérité dans lib/entities/entity-form-utils.ts
+import type { EntityFormData } from "@/lib/entities/entity-form-utils";
+import { isRegimeFiscalLocked, getDefaultRegimeFiscal } from "@/lib/entities/entity-form-utils";
 
 const INITIAL_DATA: EntityFormData = {
   entityType: "",
@@ -114,17 +84,7 @@ const ENTITY_TYPE_TO_FORME: Record<string, string> = {
   snc: "SNC",
 };
 
-// Régime fiscal constraints
-const FORCE_IS_TYPES = ["sci_is", "sas", "sasu", "sa"];
-
-function getDefaultRegimeFiscal(entityType: string): string {
-  if (FORCE_IS_TYPES.includes(entityType)) return "is";
-  return "ir";
-}
-
-export function isRegimeFiscalLocked(entityType: string): boolean {
-  return FORCE_IS_TYPES.includes(entityType);
-}
+// Régime fiscal constraints — importés depuis lib/entities/entity-form-utils.ts
 
 // ============================================
 // PAGE
