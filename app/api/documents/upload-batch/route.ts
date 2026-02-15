@@ -295,9 +295,14 @@ export async function POST(request: Request) {
           }
         }
 
-        const publicUrlForAnalysis =
-          (record.preview_url as string) ||
-          serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).getPublicUrl(filePath).data.publicUrl;
+        // Pour l'analyse IA, utiliser une URL signée courte durée
+        let publicUrlForAnalysis = record.preview_url as string | null;
+        if (!publicUrlForAnalysis) {
+          const { data: aiSignedUrl } = await serviceClient.storage
+            .from(STORAGE_BUCKETS.DOCUMENTS)
+            .createSignedUrl(filePath, 600); // 10 min pour l'analyse
+          publicUrlForAnalysis = aiSignedUrl?.signedUrl ?? null;
+        }
 
         // We await here to ensure execution in serverless environment, 
         // though ideally this would be offloaded to a background job
