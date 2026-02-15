@@ -116,7 +116,7 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ profileCompletion }: DashboardClientProps) {
-  const { dashboard, error } = useOwnerData();
+  const { dashboard, apiData, isLoadingApi, error } = useOwnerData();
   // Single realtime hook instance shared between RealtimeRevenueWidget (via its own hook) and RealtimeStatusIndicator (via props)
   const realtimeStatus = useRealtimeDashboard({ showToasts: false });
   const completionPercentage = profileCompletion ? calculateCompletionPercentage(profileCompletion) : 0;
@@ -254,6 +254,8 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
     ),
   ];
 
+  // Utiliser les données détaillées de l'API quand disponibles,
+  // sinon fallback sur les données du context (counts) pour un affichage initial
   const transformedData = {
     zone1_tasks: urgentActions.map(action => ({
       id: action.id,
@@ -263,34 +265,21 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
       dueDate: new Date().toISOString(),
       link: action.link,
     })),
-    zone2_finances: {
+    zone2_finances: apiData?.zone2_finances || {
       chart_data: [],
       kpis: {
         revenue_current_month: {
-          collected: dashboard.invoices?.paid || 0,
-          expected: (dashboard.invoices?.paid || 0) + (dashboard.invoices?.pending || 0),
-          percentage: dashboard.invoices?.paid && dashboard.invoices?.pending
-            ? Math.round((dashboard.invoices.paid / (dashboard.invoices.paid + dashboard.invoices.pending)) * 100)
-            : 0
+          collected: 0,
+          expected: 0,
+          percentage: 0,
         },
         revenue_last_month: { collected: 0, expected: 0, percentage: 0 },
-        arrears_amount: dashboard.invoices?.late || 0,
+        arrears_amount: 0,
       },
     },
     zone3_portfolio: {
-      modules: [
-        {
-          module: "habitation" as const,
-          label: "Habitation",
-          stats: {
-            properties_count: dashboard.properties?.total || 0,
-            active_leases: dashboard.leases?.active || 0,
-            monthly_revenue: dashboard.invoices?.total || 0,
-          },
-          action_url: "/owner/properties"
-        },
-      ],
-      compliance: complianceAlerts,
+      modules: apiData?.zone3_portfolio?.modules || [],
+      compliance: apiData?.zone3_portfolio?.compliance || complianceAlerts,
     },
   };
 
@@ -502,7 +491,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
           </div>
           
           <div className="md:col-span-2 lg:col-span-1">
-            <OwnerRecentActivity activities={(dashboard.recentActivity || []) as any} />
+            <OwnerRecentActivity activities={(apiData?.recentActivity || dashboard.recentActivity || []) as any} />
           </div>
         </div>
 
