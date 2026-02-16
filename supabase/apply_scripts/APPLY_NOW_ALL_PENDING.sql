@@ -295,11 +295,55 @@ BEGIN
   RAISE NOTICE '[C.4] % profil(s) mis à jour avec email', v_updated;
 END $$;
 
--- 5. Policy INSERT explicite sur profiles
-DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
+-- 5. Nettoyage des anciennes policies sur profiles + recréation complète
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname FROM pg_policies
+    WHERE tablename = 'profiles' AND schemaname = 'public'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON profiles', pol.policyname);
+  END LOOP;
+END $$;
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles NO FORCE ROW LEVEL SECURITY;
+
+-- Policy CRITIQUE: chaque utilisateur peut LIRE/MODIFIER son propre profil
+CREATE POLICY "profiles_own_access" ON profiles
+  FOR ALL TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+-- Policy admin: lecture de tous les profils
+CREATE POLICY "profiles_admin_read" ON profiles
+  FOR SELECT TO authenticated
+  USING (public.is_admin());
+
+-- Policy propriétaire: lecture des profils de ses locataires
+CREATE POLICY "profiles_owner_read_tenants" ON profiles
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM lease_signers ls
+      INNER JOIN leases l ON l.id = ls.lease_id
+      INNER JOIN properties p ON p.id = l.property_id
+      WHERE ls.profile_id = profiles.id
+      AND p.owner_id = public.get_my_profile_id()
+    )
+  );
+
+-- Policy INSERT: un utilisateur peut créer son propre profil
 CREATE POLICY "profiles_insert_own" ON profiles
   FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
+
+-- Permissions fonctions helper
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_profile_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon;
+GRANT EXECUTE ON FUNCTION public.get_my_profile_id() TO anon;
 
 -- 6. Lier rétroactivement TOUS les lease_signers orphelins
 DO $$
