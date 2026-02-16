@@ -94,7 +94,15 @@ export function middleware(request: NextRequest) {
     (c) => c.name.includes("auth-token") || c.name.startsWith("sb-")
   );
 
-  // 5. Redirection si non authentifié vers les zones protégées
+  // 5. Redirect authenticated users away from auth pages (avoid login loop)
+  const authPages = ["/auth/signin", "/auth/signup"];
+  if (hasAuthCookie && authPages.some((p) => pathname === p)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  // 6. Redirection si non authentifié vers les zones protégées
   const protectedPaths = [
     "/tenant",
     "/owner",
@@ -106,9 +114,11 @@ export function middleware(request: NextRequest) {
     "/admin",
     "/messages",
     "/notifications",
-    "/settings"
+    "/settings",
+    "/profile",
+    "/dashboard",
   ];
-  
+
   const isProtected = protectedPaths.some(p => pathname === p || pathname.startsWith(`${p}/`)) || pathname.startsWith("/app");
 
   if (isProtected && !hasAuthCookie) {
@@ -119,11 +129,6 @@ export function middleware(request: NextRequest) {
       url.searchParams.set("redirect", pathname);
     }
     return NextResponse.redirect(url);
-  }
-
-  if (pathname === "/dashboard") {
-    // Le layout de l'app se chargera de rediriger vers le bon dashboard selon le rôle
-    return NextResponse.next();
   }
 
   return NextResponse.next();
