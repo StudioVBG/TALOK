@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { invoiceSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { invoicesQuerySchema, validateQueryParams } from "@/lib/validations/params";
 import { withSecurity } from "@/lib/api/with-security";
 
@@ -40,11 +41,12 @@ export async function GET(request: Request) {
     const limit = Math.min(parseInt(String(queryParams.limit || "50")), 200); // Max 200
     const offset = (page - 1) * limit;
 
-    // Récupérer le profil
-    const { data: profile } = await (supabase as any)
+    // Récupérer le profil avec service role (bypass RLS)
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
     if (!profile || !("role" in profile)) {
@@ -162,12 +164,12 @@ export const POST = withSecurity(async function POST(request: Request) {
     const body = await request.json();
     const validated = invoiceSchema.parse(body);
 
-    // Récupérer le profil
-    const supabaseClient = supabase as any;
-    const { data: profile } = await supabaseClient
+    // Récupérer le profil avec service role (bypass RLS)
+    const svcClient = getServiceClient();
+    const { data: profile } = await svcClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
+      .eq("user_id", user.id)
       .single();
 
     if (!profile || !("role" in profile) || (profile as any).role !== "owner") {

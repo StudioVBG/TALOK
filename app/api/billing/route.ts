@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { getStripe } from "@/lib/stripe-client";
 import { getAlertLevel, getUsagePercentage } from "@/lib/billing-utils";
 import type {
@@ -47,7 +48,9 @@ export async function GET() {
     let subscription: SubscriptionRowExtended | null = null;
     let subError: { code?: string } | null = null;
 
-    const { data: profile } = await supabase
+    // Utiliser service role pour la vérification du profil (bypass RLS)
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)

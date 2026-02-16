@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 export async function GET() {
   try {
@@ -17,8 +18,9 @@ export async function GET() {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    // Récupérer le profil prestataire
-    const { data: profile, error: profileError } = await supabase
+    // Vérifier le rôle avec service role (bypass RLS pour éviter les 403)
+    const serviceClient = getServiceClient();
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, prenom, nom, role")
       .eq("user_id", user.id)

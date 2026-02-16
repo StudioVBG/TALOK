@@ -137,8 +137,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est admin
-    const { data: profile } = await supabase
+    // Vérifier que l'utilisateur est admin avec service role (bypass RLS)
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("role")
       .eq("user_id", user.id)
@@ -155,8 +156,6 @@ export async function GET(request: Request) {
     if (!leaseId) {
       return NextResponse.json({ error: "leaseId requis" }, { status: 400 });
     }
-
-    const serviceClient = getServiceClient();
     
     // 1. Vérifier le bail
     const { data: lease, error: leaseError } = await serviceClient

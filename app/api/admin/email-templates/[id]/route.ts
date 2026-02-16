@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -20,7 +21,9 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
+    // Vérifier le rôle admin avec service role (bypass RLS)
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("role")
       .eq("user_id", user.id)
@@ -68,7 +71,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
+    // Vérifier le rôle admin avec service role (bypass RLS)
+    const svcClient = getServiceClient();
+    const { data: profile } = await svcClient
       .from("profiles")
       .select("role")
       .eq("user_id", user.id)

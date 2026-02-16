@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { sitesService } from '@/features/copro/services';
 import { z } from 'zod';
 
@@ -98,8 +99,9 @@ export async function POST(request: NextRequest) {
     
     const input = validationResult.data;
     
-    // Récupérer le profile_id de l'utilisateur pour le syndic
-    const { data: profile } = await supabase
+    // Récupérer le profile_id avec service role (bypass RLS)
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id')
       .eq('user_id', user.id)

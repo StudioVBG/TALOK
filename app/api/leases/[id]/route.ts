@@ -40,8 +40,11 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Récupérer le profil de l'utilisateur
-    const { data: profile, error: profileError } = await supabase
+    // Utiliser le service client pour bypass RLS
+    const serviceClient = getServiceClient();
+
+    // Récupérer le profil avec service role (bypass RLS)
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -53,9 +56,6 @@ export async function GET(request: Request, { params }: RouteParams) {
         { status: 404 }
       );
     }
-
-    // Utiliser le service client pour bypass RLS
-    const serviceClient = getServiceClient();
 
     // ✅ SOTA 2026: Récupérer le bail avec jointures (property + signers en une requête)
     // FIX AUDIT: Réduit les requêtes de 5 séquentielles → 2 parallèles
@@ -210,8 +210,11 @@ export const PUT = withSecurity(async function PUT(request: Request, { params }:
       );
     }
 
-    // Récupérer le profil de l'utilisateur
-    const { data: profile, error: profileError } = await supabase
+    // Utiliser le service client pour bypass RLS
+    const serviceClient = getServiceClient();
+
+    // Récupérer le profil avec service role (bypass RLS)
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -223,9 +226,6 @@ export const PUT = withSecurity(async function PUT(request: Request, { params }:
         { status: 404 }
       );
     }
-
-    // Utiliser le service client pour bypass RLS
-    const serviceClient = getServiceClient();
 
     // Vérifier que le bail existe et récupérer les données actuelles
     const { data: lease, error: leaseError } = await serviceClient
@@ -410,8 +410,11 @@ export const DELETE = withSecurity(async function DELETE(request: Request, { par
       );
     }
 
-    // Récupérer le profil de l'utilisateur
-    const { data: profile, error: profileError } = await supabase
+    // Utiliser le service client pour bypass RLS
+    const serviceClient = getServiceClient();
+
+    // Récupérer le profil avec service role (bypass RLS)
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -423,9 +426,6 @@ export const DELETE = withSecurity(async function DELETE(request: Request, { par
         { status: 404 }
       );
     }
-
-    // Utiliser le service client pour bypass RLS
-    const serviceClient = getServiceClient();
 
     // ✅ SOTA 2026: Récupérer le bail avec son statut (LEFT JOIN pour propriétés supprimées)
     const { data: lease, error: leaseError } = await serviceClient

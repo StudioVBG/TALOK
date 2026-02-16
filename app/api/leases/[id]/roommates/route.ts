@@ -114,8 +114,9 @@ export async function POST(
     const body = await request.json();
     const validated = addRoommateSchema.parse(body);
 
-    // Récupérer le profil de l'utilisateur (doit être owner)
-    const { data: profile } = await supabase
+    // Récupérer le profil avec service role (bypass RLS)
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role, prenom, nom")
       .eq("user_id", user.id)
@@ -349,8 +350,9 @@ export async function PATCH(
     const body = await request.json();
     const validated = updateRoommateSchema.parse(body);
 
-    // Vérifier les permissions
-    const { data: profile } = await supabase
+    // Vérifier les permissions avec service role (bypass RLS)
+    const svcClient = getServiceClient();
+    const { data: profile } = await svcClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
