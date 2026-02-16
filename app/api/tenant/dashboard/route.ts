@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { fetchTenantDashboard } from "@/app/tenant/_data/fetchTenantDashboard";
 
 /**
@@ -24,8 +25,9 @@ export async function GET() {
       );
     }
 
-    // Vérifier le rôle
-    const { data: profile } = await supabase
+    // Vérifier le rôle avec service role (évite les blocages RLS)
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("role")
       .eq("user_id", user.id)

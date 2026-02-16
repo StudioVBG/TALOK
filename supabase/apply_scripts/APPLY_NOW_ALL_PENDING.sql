@@ -107,7 +107,7 @@ CREATE POLICY "notifications_insert_own_or_service" ON notifications
     OR profile_id = public.get_my_profile_id()
   );
 
--- 3. DOCUMENT_GED_AUDIT_LOG
+-- 3. DOCUMENT_GED_AUDIT_LOG (colonne = performed_by, pas actor_id)
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'document_ged_audit_log' AND schemaname = 'public') THEN
@@ -116,9 +116,11 @@ BEGIN
     EXECUTE '
       CREATE POLICY "audit_log_insert_own" ON document_ged_audit_log
         FOR INSERT TO authenticated
-        WITH CHECK (actor_id = public.get_my_profile_id() OR actor_id IS NULL)
+        WITH CHECK (performed_by = auth.uid() OR performed_by IS NULL)
     ';
     RAISE NOTICE '[A.3] document_ged_audit_log: policy INSERT corrigée';
+  ELSE
+    RAISE NOTICE '[A.3] document_ged_audit_log: table absente — skip';
   END IF;
 END $$;
 

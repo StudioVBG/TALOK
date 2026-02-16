@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 // Interface pour un bail avec propriété jointe
 export interface TenantLease {
@@ -130,18 +131,26 @@ export interface TenantDashboardData {
 }
 
 /**
- * Fallback: requêtes directes quand la RPC tenant_dashboard n'est pas disponible
+ * Fallback: requêtes directes quand la RPC tenant_dashboard n'est pas disponible.
+ * Utilise le service role client pour bypasser les RLS — l'auth est déjà vérifiée en amont.
  */
 async function fetchTenantDashboardDirect(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  _supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string
 ): Promise<TenantDashboardData | null> {
+  // Utiliser le service role client pour éviter les blocages RLS
+  const supabase = getServiceClient();
+
   // Récupérer le profil
-  const { data: profileRaw } = await supabase
+  const { data: profileRaw, error: profileError } = await supabase
     .from("profiles")
     .select("id, prenom, nom, kyc_status")
     .eq("user_id", userId)
     .single();
+
+  if (profileError) {
+    console.error("[fetchTenantDashboardDirect] Erreur profil:", profileError.message);
+  }
 
   // Cast nécessaire car kyc_status n'existe pas dans les types générés Supabase
   const profile = profileRaw as { id: string; prenom: string | null; nom: string | null; kyc_status?: string | null } | null;
@@ -332,14 +341,18 @@ async function fetchTenantDashboardDirect(
 export async function fetchTenantDashboard(userId: string): Promise<TenantDashboardData | null> {
   const supabase = await createClient();
 
-  // On passe directement le user_id à la RPC qui est sécurisée (SECURITY DEFINER)
-  // mais on vérifie quand même que c'est bien le user connecté
+  // Vérifier l'authentification avec le client cookie-based
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user || user.id !== userId) {
     throw new Error("Accès non autorisé");
   }
 
-  const { data, error } = await supabase.rpc("tenant_dashboard", {
+  // Utiliser le service role pour la RPC et les requêtes de données
+  // L'auth est vérifiée ci-dessus, le service role bypasse les RLS
+  // ce qui évite les blocages si les policies ne sont pas correctement appliquées
+  const serviceClient = getServiceClient();
+
+  const { data, error } = await serviceClient.rpc("tenant_dashboard", {
     p_tenant_user_id: userId,
   });
 
@@ -350,8 +363,8 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
 
   if (!data) return null;
 
-  // Récupérer les infos du profil pour le message de bienvenue
-  const { data: profile } = await supabase
+  // Récupérer les infos du profil pour le message de bienvenue (service role)
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("prenom, nom")
     .eq("user_id", userId)

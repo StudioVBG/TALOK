@@ -384,22 +384,21 @@ export function useAuth() {
 
       // Only update user state if user_id actually changed
       // (avoids re-renders from new User objects on TOKEN_REFRESHED)
-      if (newUserId !== currentUserIdRef.current) {
+      const isNewUser = newUserId !== currentUserIdRef.current;
+      if (isNewUser) {
         currentUserIdRef.current = newUserId;
         safeSetUser(newUser);
-
-        // New user — reset global guards
-        if (newUserId) {
-          resetGlobalGuards();
-        }
       }
 
       if (newUser) {
-        // Only re-fetch on SIGNED_IN or INITIAL_SESSION.
+        // Only re-fetch on SIGNED_IN (not INITIAL_SESSION, which is handled by getUser above).
         // Ignore TOKEN_REFRESHED to prevent infinite loop.
-        if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
-          // Use setTimeout(0) to avoid Supabase deadlock
-          // (onAuthStateChange + DB query simultaneously)
+        // For INITIAL_SESSION, only fetch if not already fetched by getUser().
+        if (event === "SIGNED_IN") {
+          resetGlobalGuards();
+          setTimeout(() => fetchProfile(newUser.id), 0);
+        } else if (event === "INITIAL_SESSION" && isNewUser) {
+          // Only fetch if getUser() hasn't already started a fetch for this user
           setTimeout(() => fetchProfile(newUser.id), 0);
         }
       } else if (event === "SIGNED_OUT") {
