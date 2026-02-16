@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 export async function GET() {
   try {
@@ -18,14 +19,31 @@ export async function GET() {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile, error: profileError } = await supabase
+    // Récupérer le profil - avec fallback service role en cas de blocage RLS
+    let profile: { id: string; role: string; prenom: string | null; nom: string | null } | null = null;
+    const { data: directProfile, error: profileError } = await supabase
       .from("profiles")
       .select("id, role, prenom, nom")
       .eq("user_id", user.id)
       .single();
 
-    if (profileError || !profile) {
+    if (!profileError && directProfile) {
+      profile = directProfile;
+    } else {
+      try {
+        const serviceClient = getServiceClient();
+        const { data: serviceProfile } = await serviceClient
+          .from("profiles")
+          .select("id, role, prenom, nom")
+          .eq("user_id", user.id)
+          .single();
+        profile = serviceProfile as typeof profile;
+      } catch (e) {
+        console.warn("[API agency/dashboard] Service role fallback failed:", e);
+      }
+    }
+
+    if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 

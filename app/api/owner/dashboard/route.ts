@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -18,12 +19,29 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil propriétaire
-    const { data: profile } = await supabase
+    // Récupérer le profil propriétaire - avec fallback service role en cas de blocage RLS
+    let profile: { id: string; role: string } | null = null;
+    const { data: directProfile, error: profileError } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
       .single();
+
+    if (!profileError && directProfile) {
+      profile = directProfile;
+    } else {
+      try {
+        const serviceClient = getServiceClient();
+        const { data: serviceProfile } = await serviceClient
+          .from("profiles")
+          .select("id, role")
+          .eq("user_id", user.id)
+          .single();
+        profile = serviceProfile as { id: string; role: string } | null;
+      } catch (e) {
+        console.warn("[API owner/dashboard] Service role fallback failed:", e);
+      }
+    }
 
     if (!profile || profile.role !== "owner") {
       return NextResponse.json(
