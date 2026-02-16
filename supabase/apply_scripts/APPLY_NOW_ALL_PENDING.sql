@@ -91,7 +91,7 @@ BEGIN
   END IF;
 END $$;
 
-RAISE NOTICE '[A] ✅ Sécurité RLS terminée';
+DO $$ BEGIN RAISE NOTICE '[A] ✅ Sécurité RLS terminée'; END $$;
 
 COMMIT;
 
@@ -136,7 +136,7 @@ CREATE TRIGGER trigger_auto_link_lease_signers
   FOR EACH ROW
   EXECUTE FUNCTION public.auto_link_lease_signers_on_profile_created();
 
-RAISE NOTICE '[B] ✅ Trigger auto_link_lease_signers créé';
+DO $$ BEGIN RAISE NOTICE '[B] ✅ Trigger auto_link_lease_signers créé'; END $$;
 
 COMMIT;
 
