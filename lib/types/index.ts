@@ -455,12 +455,18 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
 export interface Profile {
   id: string;
   user_id: string;
+  email: string | null;
   role: UserRole;
   prenom: string | null;
   nom: string | null;
   telephone: string | null;
   avatar_url: string | null;
   date_naissance: string | null;
+  lieu_naissance: string | null;
+  adresse: string | null;
+  nationalite: string | null;
+  onboarding_completed_at: string | null;
+  suspended: boolean;
   created_at: string;
   updated_at: string;
 }

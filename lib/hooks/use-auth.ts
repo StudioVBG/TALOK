@@ -1,232 +1,416 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types";
 import type { ProfileRow } from "@/lib/supabase/typed-client";
 
 // ======================================================================
-// Guards GLOBAUX (au niveau module) — partagés entre toutes les instances
-// de useAuth() pour éviter les doubles appels (layout + page).
+// Types for auth state machine
+// ======================================================================
+export type AuthStatus =
+  | "initializing"      // App just started, checking session
+  | "unauthenticated"   // No session found
+  | "loading_profile"   // Session OK, loading profile
+  | "authenticated"     // Session + profile OK
+  | "profile_error";    // Session OK but profile load/creation failed
+
+export interface AuthError {
+  type:
+    | "PROFILE_NOT_FOUND"
+    | "FETCH_ERROR"
+    | "CREATION_FAILED"
+    | "SESSION_EXPIRED"
+    | "NETWORK_ERROR";
+  message: string;
+  retryable: boolean;
+}
+
+// ======================================================================
+// Structured logger for auth events
+// ======================================================================
+const authLogger = {
+  info: (event: string, data?: Record<string, unknown>) => {
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[Auth] ${event}`, data ?? "");
+    }
+  },
+  warn: (event: string, data?: Record<string, unknown>) => {
+    console.warn(`[Auth] ${event}`, data ?? "");
+  },
+  error: (event: string, error: unknown, data?: Record<string, unknown>) => {
+    console.error(`[Auth] ${event}`, error, data ?? "");
+  },
+};
+
+// ======================================================================
+// Global guards (module-level) — shared across all instances of useAuth()
+// to prevent duplicate calls when layout + page both mount the hook.
 // ======================================================================
 let _globalProfilePromise: Promise<Profile | null> | null = null;
 let _globalFetchedUserId: string | null = null;
-// Garde anti-retry : empêche les tentatives de création infinies
+// Anti-retry guard: prevents infinite profile creation attempts
 let _globalCreateAttempted = false;
 
+/**
+ * Reset all global guards. Called on sign-out and user change.
+ */
+function resetGlobalGuards() {
+  _globalFetchedUserId = null;
+  _globalProfilePromise = null;
+  _globalCreateAttempted = false;
+}
+
+// ======================================================================
+// Retry helper with exponential backoff
+// ======================================================================
+async function fetchWithRetry<T>(
+  fn: () => Promise<T>,
+  { maxRetries = 2, baseDelay = 1000, maxDelay = 5000 } = {}
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+      // Only retry on network errors, not on logical errors
+      if (
+        error instanceof TypeError &&
+        error.message.includes("fetch")
+      ) {
+        const delay = Math.min(
+          baseDelay * 2 ** attempt + Math.random() * 500,
+          maxDelay
+        );
+        authLogger.warn("Retrying after network error", {
+          attempt: attempt + 1,
+          maxRetries,
+          delay,
+        });
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw new Error("Unreachable");
+}
+
+// ======================================================================
+// Main hook
+// ======================================================================
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<(Profile | ProfileRow) | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<AuthError | null>(null);
+  const [status, setStatus] = useState<AuthStatus>("initializing");
   const supabase = createClient();
 
-  // Ref pour stocker le user_id actuel (évite re-renders sur objet User)
+  // Ref to track current user_id (avoids re-renders on User object changes)
   const currentUserIdRef = useRef<string | null>(null);
-  // Ref locale pour le lock de concurrence intra-instance
+  // Local concurrency lock to prevent concurrent fetches within this instance
   const fetchingRef = useRef(false);
+  // Track whether this instance has been unmounted
+  const mountedRef = useRef(true);
 
-  const fetchProfile = useCallback(async (userId: string, force = false) => {
-    // Si une autre instance a déjà fetch ou est en train de fetch ce user,
-    // réutiliser la même promesse globale
-    if (!force && _globalFetchedUserId === userId && _globalProfilePromise) {
-      try {
-        const cachedProfile = await _globalProfilePromise;
-        setProfile(cachedProfile);
-        if (!cachedProfile && _globalCreateAttempted) {
-          setProfileError("Profil introuvable et création automatique échouée");
-        }
-      } catch {
-        setProfile(null);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
+  // Safe state setters that check mount status
+  const safeSetProfile = useCallback(
+    (p: (Profile | ProfileRow) | null) => {
+      if (mountedRef.current) setProfile(p);
+    },
+    []
+  );
+  const safeSetLoading = useCallback(
+    (l: boolean) => {
+      if (mountedRef.current) setLoading(l);
+    },
+    []
+  );
+  const safeSetProfileError = useCallback(
+    (e: AuthError | null) => {
+      if (mountedRef.current) setProfileError(e);
+    },
+    []
+  );
+  const safeSetStatus = useCallback(
+    (s: AuthStatus) => {
+      if (mountedRef.current) setStatus(s);
+    },
+    []
+  );
+  const safeSetUser = useCallback(
+    (u: User | null) => {
+      if (mountedRef.current) setUser(u);
+    },
+    []
+  );
 
-    // Empêcher les appels concurrents au sein de cette instance
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-
-    // Reset l'erreur au début d'un vrai fetch
-    setProfileError(null);
-
-    // Créer la promesse globale pour dédupliquer entre les instances
-    _globalProfilePromise = (async (): Promise<Profile | null> => {
-      try {
-        // Utiliser maybeSingle() au lieu de single() pour éviter l'erreur 406
-        // quand le profil n'existe pas encore (trigger handle_new_user non exécuté)
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        if (error) {
-          // Si erreur de récursion RLS, utiliser la route API en fallback
-          if (error.code === '42P17' || error.message?.includes('infinite recursion')) {
-            console.warn("RLS recursion detected, using API fallback");
-            try {
-              const response = await fetch("/api/me/profile", {
-                credentials: "include",
-              });
-              if (response.ok) {
-                return (await response.json()) as Profile;
-              }
-            } catch (apiError) {
-              console.error("Error fetching profile from API:", apiError);
-            }
+  const fetchProfile = useCallback(
+    async (userId: string, force = false) => {
+      // If another instance already fetched this user, reuse the cached promise
+      if (!force && _globalFetchedUserId === userId && _globalProfilePromise) {
+        try {
+          const cachedProfile = await _globalProfilePromise;
+          safeSetProfile(cachedProfile);
+          if (!cachedProfile && _globalCreateAttempted) {
+            safeSetProfileError({
+              type: "PROFILE_NOT_FOUND",
+              message: "Profil introuvable et creation automatique echouee",
+              retryable: false,
+            });
+            safeSetStatus("profile_error");
+          } else if (cachedProfile) {
+            safeSetStatus("authenticated");
+            safeSetProfileError(null);
           }
-          throw error;
+        } catch {
+          safeSetProfile(null);
+          safeSetStatus("profile_error");
+        } finally {
+          safeSetLoading(false);
         }
+        return;
+      }
 
-        if (!data) {
-          // Profil introuvable — le trigger handle_new_user n'a pas fonctionné.
-          // Tenter de créer le profil UNE SEULE FOIS via la route API (service role)
+      // Prevent concurrent fetches within this instance
+      if (fetchingRef.current) return;
+      fetchingRef.current = true;
+
+      // Reset error at the start of a real fetch
+      safeSetProfileError(null);
+      safeSetStatus("loading_profile");
+
+      // Create global promise for deduplication across instances
+      _globalProfilePromise = (async (): Promise<Profile | null> => {
+        try {
+          // Step 1: Try direct Supabase query
+          const { data, error } = await fetchWithRetry(() =>
+            supabase
+              .from("profiles")
+              .select("*")
+              .eq("user_id", userId)
+              .maybeSingle()
+          );
+
+          if (error) {
+            // RLS recursion error — fallback to API route
+            if (
+              error.code === "42P17" ||
+              error.message?.includes("infinite recursion")
+            ) {
+              authLogger.warn("RLS recursion detected, using API fallback", {
+                userId,
+              });
+              try {
+                const response = await fetchWithRetry(() =>
+                  fetch("/api/me/profile", { credentials: "include" })
+                );
+                if (response.ok) {
+                  return (await response.json()) as Profile;
+                }
+              } catch (apiError) {
+                authLogger.error("API fallback failed", apiError, { userId });
+              }
+            }
+            throw error;
+          }
+
+          if (data) {
+            authLogger.info("Profile loaded", { userId });
+            return data as Profile;
+          }
+
+          // Step 2: Profile not found — trigger may not have fired.
+          // Attempt creation ONCE via API route (service role).
           if (_globalCreateAttempted) {
-            console.warn("[useAuth] Création profil déjà tentée, abandon pour user_id:", userId);
+            authLogger.warn(
+              "Profile creation already attempted, giving up",
+              { userId }
+            );
             return null;
           }
           _globalCreateAttempted = true;
 
-          console.warn("[useAuth] Profil introuvable pour user_id:", userId, "— tentative de création automatique (unique)");
+          authLogger.warn(
+            "Profile not found, attempting single auto-creation",
+            { userId }
+          );
+
           try {
-            const response = await fetch("/api/me/profile", {
-              method: "POST",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ user_id: userId }),
-            });
+            const response = await fetchWithRetry(() =>
+              fetch("/api/me/profile", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: userId }),
+              })
+            );
             if (response.ok) {
               const created = (await response.json()) as Profile;
-              console.log("[useAuth] Profil auto-créé avec succès pour user_id:", userId);
+              authLogger.info("Profile auto-created successfully", { userId });
               return created;
             }
-            console.error("[useAuth] Échec création profil automatique, status:", response.status);
+            authLogger.error(
+              "Profile auto-creation failed",
+              new Error(`HTTP ${response.status}`),
+              { userId }
+            );
           } catch (apiError) {
-            console.error("[useAuth] Erreur création profil automatique:", apiError);
+            authLogger.error("Profile auto-creation error", apiError, {
+              userId,
+            });
           }
+
+          return null;
+        } catch (err) {
+          authLogger.error("Profile fetch error", err, { userId });
           return null;
         }
+      })();
 
-        return data as Profile;
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-        return null;
+      // Mark user_id immediately to block other instances
+      _globalFetchedUserId = userId;
+
+      try {
+        const result = await _globalProfilePromise;
+        safeSetProfile(result);
+        if (!result) {
+          safeSetProfileError({
+            type: "PROFILE_NOT_FOUND",
+            message: "Profil introuvable et creation automatique echouee",
+            retryable: false,
+          });
+          safeSetStatus("profile_error");
+        } else {
+          safeSetProfileError(null);
+          safeSetStatus("authenticated");
+        }
+      } catch {
+        safeSetProfile(null);
+        safeSetProfileError({
+          type: "FETCH_ERROR",
+          message: "Erreur lors du chargement du profil",
+          retryable: true,
+        });
+        safeSetStatus("profile_error");
+      } finally {
+        safeSetLoading(false);
+        fetchingRef.current = false;
       }
-    })();
-
-    // Marquer le user_id immédiatement pour bloquer les autres instances
-    _globalFetchedUserId = userId;
-
-    try {
-      const result = await _globalProfilePromise;
-      setProfile(result);
-      if (!result) {
-        setProfileError("Profil introuvable et création automatique échouée");
-      }
-    } catch {
-      setProfile(null);
-      setProfileError("Erreur lors du chargement du profil");
-    } finally {
-      setLoading(false);
-      fetchingRef.current = false;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   useEffect(() => {
-    // Récupère l'utilisateur actuel
-    supabase.auth.getUser().then(({ data: { user: currentUser }, error }) => {
-      // Si erreur de refresh token, nettoyer et rediriger
-      if (error && (
-        error.message?.includes('refresh_token') ||
-        error.message?.includes('Invalid Refresh Token') ||
-        error.message?.includes('Refresh Token Not Found')
-      )) {
-        console.error('[useAuth] Refresh token invalide, nettoyage de la session');
-        supabase.auth.signOut().finally(() => {
-          if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth')) {
-            window.location.href = '/auth/signin?error=session_expired';
-          }
-        });
-        setLoading(false);
-        return;
-      }
+    mountedRef.current = true;
 
-      if (currentUser) {
-        // Ne mettre à jour user que si le user_id change (évite re-renders inutiles)
-        if (currentUserIdRef.current !== currentUser.id) {
-          currentUserIdRef.current = currentUser.id;
-          setUser(currentUser);
+    // Get current user on mount
+    supabase.auth
+      .getUser()
+      .then(({ data: { user: currentUser }, error }) => {
+        // Invalid refresh token — clean up and redirect
+        if (
+          error &&
+          (error.message?.includes("refresh_token") ||
+            error.message?.includes("Invalid Refresh Token") ||
+            error.message?.includes("Refresh Token Not Found"))
+        ) {
+          authLogger.error("Invalid refresh token, cleaning session", error);
+          supabase.auth.signOut().finally(() => {
+            if (
+              typeof window !== "undefined" &&
+              !window.location.pathname.includes("/auth")
+            ) {
+              window.location.href = "/auth/signin?error=session_expired";
+            }
+          });
+          safeSetLoading(false);
+          safeSetStatus("unauthenticated");
+          return;
         }
-        fetchProfile(currentUser.id);
-      } else {
-        currentUserIdRef.current = null;
-        setUser(null);
-        setLoading(false);
-      }
-    });
 
-    // Écoute les changements d'authentification
+        if (currentUser) {
+          if (currentUserIdRef.current !== currentUser.id) {
+            // New user — reset guards for fresh fetch
+            resetGlobalGuards();
+            currentUserIdRef.current = currentUser.id;
+            safeSetUser(currentUser);
+          }
+          fetchProfile(currentUser.id);
+        } else {
+          currentUserIdRef.current = null;
+          safeSetUser(null);
+          safeSetLoading(false);
+          safeSetStatus("unauthenticated");
+        }
+      });
+
+    // Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       const newUser = session?.user ?? null;
       const newUserId = newUser?.id ?? null;
 
-      // Ne mettre à jour le state `user` que si le user_id change réellement
-      // (évite les re-renders causés par les nouveaux objets User sur TOKEN_REFRESHED)
+      // Only update user state if user_id actually changed
+      // (avoids re-renders from new User objects on TOKEN_REFRESHED)
       if (newUserId !== currentUserIdRef.current) {
         currentUserIdRef.current = newUserId;
-        setUser(newUser);
+        safeSetUser(newUser);
+
+        // New user — reset global guards
+        if (newUserId) {
+          resetGlobalGuards();
+        }
       }
 
       if (newUser) {
-        // Ne re-fetch que si c'est un nouvel utilisateur (SIGNED_IN)
-        // ou le premier chargement (INITIAL_SESSION).
-        // Ignorer TOKEN_REFRESHED pour éviter la boucle infinie.
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          fetchProfile(newUser.id);
+        // Only re-fetch on SIGNED_IN or INITIAL_SESSION.
+        // Ignore TOKEN_REFRESHED to prevent infinite loop.
+        if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+          // Use setTimeout(0) to avoid Supabase deadlock
+          // (onAuthStateChange + DB query simultaneously)
+          setTimeout(() => fetchProfile(newUser.id), 0);
         }
-      } else if (event === 'SIGNED_OUT') {
-        // Déconnexion — nettoyer tout
-        setProfile(null);
-        setProfileError(null);
-        setLoading(false);
+      } else if (event === "SIGNED_OUT") {
+        // Sign-out — clean everything
+        safeSetProfile(null);
+        safeSetProfileError(null);
+        safeSetLoading(false);
+        safeSetStatus("unauthenticated");
         currentUserIdRef.current = null;
-        _globalFetchedUserId = null;
-        _globalProfilePromise = null;
-        _globalCreateAttempted = false;
+        resetGlobalGuards();
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mountedRef.current = false;
+      subscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fonction publique pour forcer un refresh du profil (ex: après mise à jour)
-
   /**
-   * Déconnexion SOTA 2026
-   * Note: Préférez useSignOut() pour une redirection garantie
+   * Sign out — SOTA 2026
+   * Note: Prefer useSignOut() for guaranteed redirection
    */
   const signOut = async () => {
     try {
-      // Nettoyer l'état local et les guards globaux immédiatement
-      setUser(null);
-      setProfile(null);
-      setProfileError(null);
+      // Clean local state and global guards immediately
+      safeSetUser(null);
+      safeSetProfile(null);
+      safeSetProfileError(null);
+      safeSetStatus("unauthenticated");
       currentUserIdRef.current = null;
-      _globalFetchedUserId = null;
-      _globalProfilePromise = null;
-      _globalCreateAttempted = false;
+      resetGlobalGuards();
 
-      // Déconnecter de Supabase
+      // Sign out from Supabase
       await supabase.auth.signOut();
 
-      // Nettoyer le cache local
+      // Clean local cache
       if (typeof window !== "undefined") {
         try {
           const keysToRemove = Object.keys(localStorage).filter(
@@ -234,22 +418,24 @@ export function useAuth() {
           );
           keysToRemove.forEach((key) => localStorage.removeItem(key));
         } catch (e) {
-          console.warn("[useAuth] Erreur nettoyage localStorage:", e);
+          authLogger.warn("localStorage cleanup error", {
+            error: String(e),
+          });
         }
       }
     } catch (error) {
-      console.error("[useAuth] Erreur signOut:", error);
-      // Ne pas throw, on veut que la redirection se fasse quand même
+      authLogger.error("signOut error", error);
+      // Don't throw — we want the redirect to happen regardless
     }
   };
 
+  /**
+   * Force-refresh the profile (e.g., after profile update)
+   */
   const refreshProfile = async () => {
     if (user?.id) {
-      // Réinitialiser les guards globaux pour forcer un nouveau fetch
-      _globalFetchedUserId = null;
-      _globalProfilePromise = null;
-      _globalCreateAttempted = false;
-      setProfileError(null);
+      resetGlobalGuards();
+      safeSetProfileError(null);
       await fetchProfile(user.id, true);
     }
   };
@@ -258,10 +444,13 @@ export function useAuth() {
     user,
     profile,
     loading,
-    profileError,
+    /** @deprecated Use error.message instead */
+    profileError: profileError?.message ?? null,
+    error: profileError,
+    status,
     signOut,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!profile,
+    initialized: status !== "initializing",
     refreshProfile,
   };
 }
-
