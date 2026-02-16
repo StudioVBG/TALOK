@@ -109,7 +109,7 @@ export interface Lease {
   properties?: PropertyRow | null;
 }
 
-/** Structure de la propriété */
+/** Structure de la propriété — inclut tous les champs utilisés par mapLeaseToTemplate */
 export interface Property {
   id: string;
   owner_id: string;
@@ -121,7 +121,57 @@ export interface Property {
   type: string;
   cover_url: string | null;
   loyer_hc?: number;
+  loyer_base?: number;
   charges_mensuelles?: number;
+  // Surface
+  surface?: number;
+  surface_habitable_m2?: number;
+  nb_pieces?: number;
+  etage?: number | null;
+  // DPE / Diagnostics — champs critiques pour la validation du bail
+  energie?: string | null;
+  ges?: string | null;
+  dpe_classe_energie?: string | null;
+  dpe_classe_climat?: string | null;
+  dpe_consommation?: number | null;
+  dpe_emissions?: number | null;
+  dpe_estimation_conso_min?: number | null;
+  dpe_estimation_conso_max?: number | null;
+  dpe_date?: string | null;
+  dpe_date_validite?: string | null;
+  dpe_cout_min?: number | null;
+  dpe_cout_max?: number | null;
+  // Caractéristiques du logement
+  annee_construction?: number | null;
+  chauffage_type?: string | null;
+  chauffage_energie?: string | null;
+  eau_chaude_type?: string | null;
+  eau_chaude_energie?: string | null;
+  regime?: string | null;
+  // Annexes / équipements
+  has_balcon?: boolean;
+  has_terrasse?: boolean;
+  has_jardin?: boolean;
+  has_cave?: boolean;
+  has_parking?: boolean;
+  clim_presence?: boolean | string;
+  clim_type?: string | null;
+  cuisine_equipee?: boolean;
+  interphone?: boolean;
+  digicode?: boolean;
+  fibre_optique?: boolean;
+  // Diagnostics complémentaires (CREP, élec, gaz, ERP, bruit)
+  crep_date?: string | null;
+  crep_plomb?: boolean;
+  elec_date?: string | null;
+  elec_anomalies?: boolean;
+  elec_nb_anomalies?: number | null;
+  gaz_date?: string | null;
+  gaz_anomalies?: boolean;
+  gaz_type_anomalie?: string | null;
+  erp_date?: string | null;
+  bruit_date?: string | null;
+  bruit_zone?: string | null;
 }
 
 /** Structure d'un document */
@@ -261,7 +311,7 @@ async function fetchLeaseDetailsFallback(
   
   // 2. Récupérer les signataires
   // ✅ SOTA 2026: Récupérer TOUS les champs de signature (image ET path)
-  const { data: signers } = await supabase
+  const { data: signers, error: signersError } = await supabase
     .from("lease_signers")
     .select(`
       id,
@@ -289,6 +339,14 @@ async function fetchLeaseDetailsFallback(
       )
     `)
     .eq("lease_id", leaseId);
+
+  if (signersError) {
+    console.error("[fetchLeaseDetails] Erreur récupération signataires:", signersError);
+  }
+  if (!signers || signers.length === 0) {
+    console.warn("[fetchLeaseDetails] ⚠️ Aucun signataire trouvé pour le bail:", leaseId,
+      "— Vérifiez que lease_signers contient des entrées pour ce bail.");
+  }
 
   // 3. Récupérer les paiements via les factures
   const { data: payments } = await supabase
@@ -379,8 +437,8 @@ async function fetchLeaseDetailsFallback(
     .eq("metadata->>type", "initial_invoice")
     .maybeSingle();
 
-  // Construire le résultat
-  type PropertyRowExtended = PropertyRow & { numero_rue?: string; nom_rue?: string };
+  // Construire le résultat — on mappe TOUS les champs utilisés par mapLeaseToTemplate
+  type PropertyRowExtended = PropertyRow & { numero_rue?: string; nom_rue?: string; dpe_date_validite?: string | null; dpe_cout_min?: number | null; dpe_cout_max?: number | null; has_parking?: boolean; cuisine_equipee?: boolean; interphone?: boolean; digicode?: boolean; fibre_optique?: boolean; crep_date?: string | null; crep_plomb?: boolean; elec_date?: string | null; elec_anomalies?: boolean; elec_nb_anomalies?: number | null; gaz_date?: string | null; gaz_anomalies?: boolean; gaz_type_anomalie?: string | null; erp_date?: string | null; bruit_date?: string | null; bruit_zone?: string | null; eau_chaude_energie?: string | null };
   const prop = propertyRow as PropertyRowExtended;
   const property: Property = {
     id: propertyRow.id,
@@ -393,7 +451,57 @@ async function fetchLeaseDetailsFallback(
     type: propertyRow.type,
     cover_url: (mainPhoto as { url?: string } | null)?.url ?? null,
     loyer_hc: propertyRow.loyer_hc ?? undefined,
+    loyer_base: propertyRow.loyer_base ?? undefined,
     charges_mensuelles: propertyRow.charges_mensuelles ?? undefined,
+    // Surface
+    surface: propertyRow.surface ?? undefined,
+    surface_habitable_m2: propertyRow.surface_habitable_m2 ?? undefined,
+    nb_pieces: propertyRow.nb_pieces ?? undefined,
+    etage: propertyRow.etage,
+    // DPE / Diagnostics
+    energie: propertyRow.energie,
+    ges: propertyRow.ges,
+    dpe_classe_energie: propertyRow.dpe_classe_energie,
+    dpe_classe_climat: propertyRow.dpe_classe_climat,
+    dpe_consommation: propertyRow.dpe_consommation,
+    dpe_emissions: propertyRow.dpe_emissions,
+    dpe_estimation_conso_min: propertyRow.dpe_estimation_conso_min,
+    dpe_estimation_conso_max: propertyRow.dpe_estimation_conso_max,
+    dpe_date: propertyRow.dpe_date,
+    dpe_date_validite: prop.dpe_date_validite,
+    dpe_cout_min: prop.dpe_cout_min,
+    dpe_cout_max: prop.dpe_cout_max,
+    // Caractéristiques
+    annee_construction: propertyRow.annee_construction,
+    chauffage_type: propertyRow.chauffage_type,
+    chauffage_energie: propertyRow.chauffage_energie,
+    eau_chaude_type: propertyRow.eau_chaude_type,
+    eau_chaude_energie: prop.eau_chaude_energie,
+    regime: propertyRow.regime,
+    // Annexes / équipements
+    has_balcon: propertyRow.has_balcon ?? prop.has_balcon,
+    has_terrasse: propertyRow.has_terrasse ?? prop.has_terrasse,
+    has_jardin: propertyRow.has_jardin ?? prop.has_jardin,
+    has_cave: propertyRow.has_cave,
+    has_parking: prop.has_parking,
+    clim_presence: propertyRow.clim_presence as boolean | string | undefined,
+    clim_type: propertyRow.clim_type,
+    cuisine_equipee: prop.cuisine_equipee,
+    interphone: prop.interphone,
+    digicode: prop.digicode,
+    fibre_optique: prop.fibre_optique,
+    // Diagnostics complémentaires
+    crep_date: prop.crep_date,
+    crep_plomb: prop.crep_plomb,
+    elec_date: prop.elec_date,
+    elec_anomalies: prop.elec_anomalies,
+    elec_nb_anomalies: prop.elec_nb_anomalies,
+    gaz_date: prop.gaz_date,
+    gaz_anomalies: prop.gaz_anomalies,
+    gaz_type_anomalie: prop.gaz_type_anomalie,
+    erp_date: prop.erp_date,
+    bruit_date: prop.bruit_date,
+    bruit_zone: prop.bruit_zone,
   };
 
   // SSOT 2026 : Consolider les données financières

@@ -165,17 +165,45 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   // Charger le statut DPE au chargement
+  // Fallback : si dpe_deliverables est vide, utiliser les champs DPE de la propriété
   useEffect(() => {
     async function checkDPE() {
       try {
         const result = await dpeService.getLatestDeliverable(property.id);
-        setDpeStatus(result);
+        if (result.status !== "MISSING") {
+          setDpeStatus(result);
+          return;
+        }
+        // Fallback : vérifier les champs DPE stockés directement sur la propriété
+        const propAny = property as any;
+        const classeEnergie = propAny.dpe_classe_energie || propAny.energie;
+        if (classeEnergie) {
+          const isExpired = propAny.dpe_date_validite
+            ? new Date(propAny.dpe_date_validite) < new Date()
+            : false;
+          setDpeStatus({
+            status: isExpired ? "EXPIRED" : "VALID",
+            data: {
+              classe_energie: classeEnergie,
+              classe_ges: propAny.dpe_classe_climat || propAny.ges,
+              source: "property_fields",
+            },
+          });
+        } else {
+          setDpeStatus(result); // MISSING
+        }
       } catch (error) {
         console.error("Erreur check DPE:", error);
+        // Même en cas d'erreur, essayer le fallback propriété
+        const propAny = property as any;
+        const classeEnergie = propAny.dpe_classe_energie || propAny.energie;
+        if (classeEnergie) {
+          setDpeStatus({ status: "VALID", data: { classe_energie: classeEnergie, source: "property_fields_fallback" } });
+        }
       }
     }
     checkDPE();
-  }, [property.id]);
+  }, [property]);
 
   const statusConfig = STATUS_CONFIG[lease.statut] || STATUS_CONFIG.draft;
   
@@ -231,6 +259,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const premierVersement = displayLoyer + displayCharges + displayDepot;
 
   // ✅ SOTA 2026: Détection robuste des signataires (gère toutes les variantes de rôles)
+  // Log de diagnostic en dev pour identifier les problèmes de données
+  if (process.env.NODE_ENV === "development" && (!signers || signers.length === 0)) {
+    console.warn("[LeaseDetailsClient] ⚠️ Aucun signataire trouvé pour ce bail:", leaseId);
+  }
+  if (process.env.NODE_ENV === "development" && signers?.length > 0) {
+    console.log("[LeaseDetailsClient] Signataires:", signers.map((s: any) => ({ id: s.id, role: s.role, profile_id: s.profile?.id, invited_email: s.invited_email, status: s.signature_status })));
+  }
+
   const mainTenant = signers?.find((s: any) => {
     const role = (s.role || '').toLowerCase();
     return role === 'locataire_principal' || role === 'locataire' || role === 'tenant' || role === 'principal';
@@ -239,6 +275,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     const role = (s.role || '').toLowerCase();
     return role === 'proprietaire' || role === 'owner' || role === 'bailleur';
   });
+
+  if (process.env.NODE_ENV === "development" && signers?.length > 0 && !mainTenant) {
+    console.warn("[LeaseDetailsClient] ⚠️ Signataires présents mais aucun avec rôle locataire. Rôles trouvés:", signers.map((s: any) => s.role));
+  }
   
   // ✅ SOTA 2026: Logique corrigée - Le propriétaire peut signer dès que le locataire a signé
   const needsOwnerSignature = useMemo(() => {
