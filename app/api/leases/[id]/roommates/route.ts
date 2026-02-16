@@ -166,8 +166,6 @@ export async function POST(
       }, { status: 400 });
     }
 
-    const serviceClient = getServiceClient();
-
     // Vérifier si l'utilisateur existe déjà
     const { data: existingUsersAuth } = await serviceClient.auth.admin.listUsers();
     const existingUser = existingUsersAuth?.users?.find(
