@@ -182,6 +182,40 @@ export async function POST(
       existingProfile = tenantProfile;
     }
 
+    // FIX AUDIT 2026-02-16: Vérifier qu'un roommate avec cet email n'existe pas déjà
+    const { data: existingRoommate } = await serviceClient
+      .from("roommates")
+      .select("id, invited_email")
+      .eq("lease_id", leaseId)
+      .eq("invited_email", validated.email.toLowerCase().trim())
+      .is("left_on", null)
+      .maybeSingle();
+
+    if (existingRoommate) {
+      return NextResponse.json(
+        { error: `Un colocataire avec l'email ${validated.email} existe déjà pour ce bail.` },
+        { status: 409 }
+      );
+    }
+
+    // Vérifier aussi par profile_id si le profil existe
+    if (existingProfile) {
+      const { data: existingRoommateByProfile } = await serviceClient
+        .from("roommates")
+        .select("id")
+        .eq("lease_id", leaseId)
+        .eq("user_id", existingProfile.user_id)
+        .is("left_on", null)
+        .maybeSingle();
+
+      if (existingRoommateByProfile) {
+        return NextResponse.json(
+          { error: `Ce colocataire est déjà enregistré sur ce bail.` },
+          { status: 409 }
+        );
+      }
+    }
+
     // Calculer le poids si non fourni
     const weight = validated.weight || (1 / nbPlaces);
 

@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { generateSignatureProof, generateSignatureCertificate } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
@@ -322,8 +323,14 @@ export async function POST(request: Request, { params }: PageProps) {
       .update(updateData)
       .eq("id", tenantSigner.id);
     
+    // FIX AUDIT 2026-02-16: Si la mise à jour du signataire échoue, on ne doit PAS
+    // continuer à mettre à jour le statut du bail — risque d'incohérence.
     if (signerUpdateError) {
-      log.error("Erreur mise à jour signataire", { error: signerUpdateError?.message ?? String(signerUpdateError) });
+      log.error("Erreur mise à jour signataire — abandon", { error: signerUpdateError?.message ?? String(signerUpdateError) });
+      return NextResponse.json(
+        { error: "Erreur lors de l'enregistrement de la signature. Veuillez réessayer." },
+        { status: 500 }
+      );
     }
 
     // Déterminer le nouveau statut — FIX P0-4: Utiliser UNIQUEMENT LEASE_STATUS
@@ -368,7 +375,7 @@ export async function POST(request: Request, { params }: PageProps) {
     }
 
     // Sauvegarder la preuve de signature comme document
-    await serviceClient
+    const { error: docInsertError } = await serviceClient
       .from("documents")
       .insert({
         type: "bail_signe_locataire",
@@ -389,6 +396,10 @@ export async function POST(request: Request, { params }: PageProps) {
         },
       });
 
+    if (docInsertError) {
+      log.warn("Erreur insertion document preuve (non bloquant)", { error: docInsertError.message });
+    }
+
     // FIX P1-8: Audit log
     await serviceClient.from("audit_log").insert({
       user_id: tenantProfileId ?? null,
@@ -403,6 +414,11 @@ export async function POST(request: Request, { params }: PageProps) {
         correlation_id: log.getCorrelationId(),
       },
     });
+
+    // FIX AUDIT 2026-02-16: Invalider le cache pour les pages liées
+    revalidatePath("/owner/leases");
+    revalidatePath(`/owner/leases/${typedLease.id}`);
+    revalidatePath("/tenant/signatures");
 
     log.complete(true, { allSigned, newStatus, proofId: proof.proofId });
 

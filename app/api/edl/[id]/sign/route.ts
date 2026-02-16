@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
@@ -156,24 +157,42 @@ export async function POST(
           }
         }
         // Cas B: Le profil a un user_id différent → conflit d'identité
+        // FIX AUDIT 2026-02-16: Ne PAS écraser le user_id d'un autre utilisateur.
+        // Cela détacherait le profil de son vrai propriétaire. On skip et on passe
+        // aux étapes suivantes pour créer/trouver un profil propre.
         else if (profileByEmail.user_id !== user.id) {
-          console.warn("[sign-edl] ⚠️ Étape 2: Conflit - profil email a un autre user_id:", profileByEmail.user_id);
-          const { error: updateError } = await serviceClient
-            .from("profiles")
-            .update({ user_id: user.id })
-            .eq("id", profileByEmail.id);
-          if (updateError) {
-            console.warn("[sign-edl] ⚠️ Étape 2: Erreur mise à jour user_id:", updateError.message);
-          }
+          console.warn(
+            "[sign-edl] ⚠️ Étape 2: Conflit d'identité détecté — profil email",
+            user.email,
+            "appartient à user_id:",
+            profileByEmail.user_id,
+            "mais l'utilisateur courant est:",
+            user.id,
+            "— on ne touche PAS au profil existant."
+          );
+          // Ne pas assigner ce profil, passer aux étapes suivantes
+        }
+        // Cas A résolu ou user_id déjà correct : on peut utiliser le profil
+        else {
+          profile = {
+            id: profileByEmail.id,
+            prenom: profileByEmail.prenom ?? "",
+            nom: profileByEmail.nom ?? "",
+            role: profileByEmail.role,
+          };
+          console.log("[sign-edl] ✅ Étape 2: Profil trouvé par email:", profile.id, "role:", profile.role);
         }
 
-        profile = {
-          id: profileByEmail.id,
-          prenom: profileByEmail.prenom ?? "",
-          nom: profileByEmail.nom ?? "",
-          role: profileByEmail.role,
-        };
-        console.log("[sign-edl] ✅ Étape 2: Profil trouvé par email:", profile.id, "role:", profile.role);
+        // Cas A: user_id était null, on l'a lié → on peut utiliser le profil
+        if (!profile && !profileByEmail.user_id) {
+          profile = {
+            id: profileByEmail.id,
+            prenom: profileByEmail.prenom ?? "",
+            nom: profileByEmail.nom ?? "",
+            role: profileByEmail.role,
+          };
+          console.log("[sign-edl] ✅ Étape 2 (après liaison): Profil assigné:", profile.id);
+        }
       } else {
         console.log("[sign-edl] ℹ️ Étape 2: Pas de profil avec email", step2Error?.message || "");
       }
@@ -212,8 +231,9 @@ export async function POST(
           }
 
           if (sigProfile) {
-            // Lier le profil au compte si pas déjà fait
-            if (!sigProfile.user_id || sigProfile.user_id !== user.id) {
+            // FIX AUDIT 2026-02-16: Lier uniquement si user_id est null.
+            // Ne jamais écraser un user_id existant appartenant à un autre compte.
+            if (!sigProfile.user_id) {
               const { error: linkErr } = await serviceClient
                 .from("profiles")
                 .update({ user_id: user.id })
@@ -223,15 +243,30 @@ export async function POST(
               } else {
                 console.log("[sign-edl] 🔗 Étape 3: Profil lié au compte via edl_signatures");
               }
+              profile = {
+                id: sigProfile.id,
+                prenom: sigProfile.prenom ?? "",
+                nom: sigProfile.nom ?? "",
+                role: sigProfile.role,
+              };
+              console.log("[sign-edl] ✅ Étape 3: Profil trouvé via signer_profile_id:", profile.id);
+            } else if (sigProfile.user_id === user.id) {
+              profile = {
+                id: sigProfile.id,
+                prenom: sigProfile.prenom ?? "",
+                nom: sigProfile.nom ?? "",
+                role: sigProfile.role,
+              };
+              console.log("[sign-edl] ✅ Étape 3: Profil déjà lié au bon compte:", profile.id);
+            } else {
+              console.warn(
+                "[sign-edl] ⚠️ Étape 3: Profil signer_profile_id",
+                sigProfile.id,
+                "appartient à un autre user_id:",
+                sigProfile.user_id,
+                "— skip, passage à l'étape 4"
+              );
             }
-
-            profile = {
-              id: sigProfile.id,
-              prenom: sigProfile.prenom ?? "",
-              nom: sigProfile.nom ?? "",
-              role: sigProfile.role,
-            };
-            console.log("[sign-edl] ✅ Étape 3: Profil trouvé via signer_profile_id:", profile.id);
           } else {
             console.log("[sign-edl] ℹ️ Étape 3: signer_profile_id existe mais profil introuvable");
           }
@@ -484,10 +519,14 @@ export async function POST(
     );
 
     if (hasOwner && hasTenant) {
-      await serviceClient
+      const { error: edlUpdateError } = await serviceClient
         .from("edl")
         .update({ status: "signed" } as any)
         .eq("id", edlId);
+
+      if (edlUpdateError) {
+        log.error("Échec mise à jour statut EDL", { error: edlUpdateError.message });
+      }
 
       await serviceClient.from("outbox").insert({
         event_type: "Inspection.Signed",
@@ -510,6 +549,12 @@ export async function POST(
         ip: proof.metadata.ipAddress ?? undefined,
       },
     } as any);
+
+    // FIX AUDIT 2026-02-16: Invalider le cache pour que l'UI reflète la signature
+    revalidatePath("/owner/inspections");
+    revalidatePath(`/owner/inspections/${edlId}`);
+    revalidatePath("/tenant/inspections");
+    revalidatePath(`/tenant/inspections/${edlId}`);
 
     return NextResponse.json({ success: true, proof_id: proof.proofId });
   } catch (error: unknown) {

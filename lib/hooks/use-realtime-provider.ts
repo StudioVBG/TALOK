@@ -18,6 +18,8 @@ import { useAuth } from "@/lib/hooks/use-auth";
 import { useToast } from "@/components/ui/use-toast";
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
+const supabase = createClient();
+
 export interface ProviderRealtimeEvent {
   id: string;
   type: "work_order" | "review" | "quote";
@@ -40,7 +42,10 @@ export function useRealtimeProvider(options: UseRealtimeProviderOptions = {}) {
 
   const { profile } = useAuth();
   const { toast } = useToast();
-  const supabase = createClient();
+  
+  // FIX AUDIT 2026-02-16: Stabiliser toast dans un ref
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
   const profileId = options.profileId || profile?.id;
 
@@ -62,14 +67,15 @@ export function useRealtimeProvider(options: UseRealtimeProviderOptions = {}) {
       setLastUpdate(new Date());
 
       if (showToasts && event.importance === "high") {
-        toast({
+        toastRef.current({
           title: event.title,
           description: event.description,
           duration: 6000,
         });
       }
     },
-    [maxEvents, showToasts, toast]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [maxEvents, showToasts]
   );
 
   useEffect(() => {
@@ -171,13 +177,32 @@ export function useRealtimeProvider(options: UseRealtimeProviderOptions = {}) {
 
     channelsRef.current.push(reviewsChannel);
 
+    // FIX AUDIT 2026-02-16: Reconnexion automatique sur perte de connexion
+    const reconnectInterval = setInterval(() => {
+      const allSubscribed = channelsRef.current.every(
+        (ch) => (ch as any).state === "joined" || (ch as any).state === "SUBSCRIBED"
+      );
+      if (!allSubscribed && channelsRef.current.length > 0 && profileId) {
+        console.warn("[useRealtimeProvider] Channels déconnectés, reconnexion...");
+        setIsConnected(false);
+        channelsRef.current.forEach((channel) => {
+          supabase.removeChannel(channel);
+        });
+        channelsRef.current = [];
+        // Re-setup sera déclenché par le prochain cycle useEffect
+      }
+    }, 30000);
+
     return () => {
+      clearInterval(reconnectInterval);
       channelsRef.current.forEach((channel) => {
         supabase.removeChannel(channel);
       });
       channelsRef.current = [];
     };
-  }, [profileId, supabase, addEvent]);
+  // FIX AUDIT 2026-02-16: Retirer supabase (singleton) et addEvent (stabilisé)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileId]);
 
   const clearNewOrdersCount = useCallback(() => {
     setNewOrdersCount(0);

@@ -389,8 +389,12 @@ export async function POST(
 
       // Si le compteur n'a pas de property_id, l'associer au property de l'EDL
       if (!meter.property_id && edlPropertyId) {
-        await serviceClient.from("meters").update({ property_id: edlPropertyId }).eq("id", meterId);
-        (meter as any).property_id = edlPropertyId;
+        const { error: linkMeterErr } = await serviceClient.from("meters").update({ property_id: edlPropertyId }).eq("id", meterId);
+        if (linkMeterErr) {
+          console.warn(`[POST /api/edl/${edlId}/meter-readings] Failed to link meter to property:`, linkMeterErr.message);
+        } else {
+          (meter as any).property_id = edlPropertyId;
+        }
       }
       
       const meterData = meter as any;
@@ -406,7 +410,10 @@ export async function POST(
         }
         if (location) updateData.location = location;
         
-        await serviceClient.from("meters").update(updateData).eq("id", meterId);
+        const { error: updateMeterErr } = await serviceClient.from("meters").update(updateData).eq("id", meterId);
+        if (updateMeterErr) {
+          console.warn(`[POST /api/edl/${edlId}/meter-readings] Failed to update meter metadata:`, updateMeterErr.message);
+        }
       }
       
       actualMeterData = meter;

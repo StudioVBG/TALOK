@@ -77,17 +77,20 @@ export default function TenantColocationPage() {
       setCurrentUserId(user.id);
 
       // Get current profile
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("id")
         .eq("user_id", user.id)
         .single();
 
+      if (profileError) {
+        console.error("Erreur récupération profil colocation:", profileError.message);
+      }
       if (!profile) return;
       setCurrentProfileId(profile.id);
 
       // Get lease with signers
-      const { data: leaseSigners } = await supabase
+      const { data: leaseSigners, error: leaseSignersError } = await supabase
         .from("lease_signers")
         .select(`
           id,
@@ -118,6 +121,9 @@ export default function TenantColocationPage() {
         .in("role", ["locataire_principal", "colocataire"])
         .single();
 
+      if (leaseSignersError) {
+        console.error("Erreur récupération bail colocation:", leaseSignersError.message);
+      }
       if (!leaseSigners) {
         setLoading(false);
         return;
@@ -138,7 +144,7 @@ export default function TenantColocationPage() {
       setIsMainTenant(leaseSigners.role === "locataire_principal");
 
       // Get all roommates for this lease
-      const { data: allSigners } = await supabase
+      const { data: allSigners, error: allSignersError } = await supabase
         .from("lease_signers")
         .select(`
           id,
@@ -157,6 +163,9 @@ export default function TenantColocationPage() {
         .eq("lease_id", leaseData.id)
         .in("role", ["locataire_principal", "colocataire"]);
 
+      if (allSignersError) {
+        console.error("Erreur récupération colocataires:", allSignersError.message);
+      }
       if (allSigners) {
         const roommatesList: Roommate[] = allSigners.map((signer: any) => ({
           id: signer.profiles.id,

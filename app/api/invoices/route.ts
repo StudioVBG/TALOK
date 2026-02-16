@@ -235,6 +235,24 @@ export const POST = withSecurity(async function POST(request: Request) {
     // Calculer le montant total
     const montant_total = validated.montant_loyer + validated.montant_charges;
 
+    // FIX AUDIT 2026-02-16: Vérifier qu'aucune facture n'existe déjà pour ce bail + période
+    const { data: existingInvoice } = await svcClient
+      .from("invoices")
+      .select("id, statut")
+      .eq("lease_id", validated.lease_id as any)
+      .eq("periode", validated.periode as any)
+      .maybeSingle();
+
+    if (existingInvoice) {
+      return NextResponse.json(
+        {
+          error: `Une facture existe déjà pour la période ${validated.periode} sur ce bail (statut: ${(existingInvoice as any).statut}).`,
+          existing_invoice_id: (existingInvoice as any).id,
+        },
+        { status: 409 }
+      );
+    }
+
     // Créer la facture
     const { data: invoice, error: invoiceError } = await supabaseClient
       .from("invoices")

@@ -4,10 +4,16 @@
  * Ce hook écoute les changements en temps réel sur les tables Supabase
  * et invalide automatiquement les caches React Query correspondants.
  *
+ * FIX AUDIT 2026-02-16:
+ * - Stabilisation des références (useRef pour callbacks, useMemo pour arrays)
+ * - Ajout reconnexion automatique sur CHANNEL_ERROR / TIMED_OUT / CLOSED
+ * - Suppression de `supabase` des dépendances useEffect (singleton stable)
+ * - Clé de canal stable (sans Date.now()) pour éviter les re-subscriptions inutiles
+ *
  * @module lib/hooks/use-realtime-sync
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -35,7 +41,6 @@ interface RealtimeSyncConfig {
   debug?: boolean;
 }
 
-// Mapping par défaut des tables vers les query keys
 const DEFAULT_QUERY_KEY_MAPPING: Record<string, string[]> = {
   properties: ["properties", "owner:properties", "owner-properties"],
   leases: ["leases", "owner:leases", "tenant:leases"],
@@ -51,6 +56,15 @@ const DEFAULT_QUERY_KEY_MAPPING: Record<string, string[]> = {
   photos: ["photos", "property-photos"],
 };
 
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_BASE_DELAY_MS = 1000;
+
+/**
+ * Client Supabase singleton — résolu une seule fois au niveau module.
+ * Cela garantit une référence stable entre les renders.
+ */
+const supabase = createClient();
+
 /**
  * Hook pour synchroniser Supabase Realtime avec React Query
  */
@@ -65,108 +79,158 @@ export function useRealtimeSync(config: RealtimeSyncConfig) {
 
   const queryClient = useQueryClient();
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const supabase = createClient();
+  const reconnectAttemptRef = useRef(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string>("idle");
+
+  // Stabiliser la clé de canal avec les tables triées (évite Date.now())
+  const tablesKey = useMemo(() => [...tables].sort().join("-"), [tables]);
+
+  // Stocker onUpdate et debug dans des refs pour ne pas les mettre dans les deps
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+  const debugRef = useRef(debug);
+  debugRef.current = debug;
 
   /**
    * Invalide les query keys associées à une table
    */
   const invalidateQueriesForTable = useCallback(
     (table: string, payload: PostgresChangesPayload) => {
-      const queryKeys = queryKeyMapping[table] || [table];
+      const keys = queryKeyMapping[table] || [table];
 
-      if (debug) {
-        console.log(`[RealtimeSync] Invalidating queries for table: ${table}`, queryKeys);
+      if (debugRef.current) {
+        console.log(`[RealtimeSync] Invalidating queries for table: ${table}`, keys);
       }
 
-      // Invalider chaque query key
-      queryKeys.forEach((key) => {
+      keys.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: [key] });
       });
 
-      // Si le payload contient des IDs spécifiques, invalider aussi ces queries
       const entityId = payload.new?.id || payload.old?.id;
       if (entityId) {
         queryClient.invalidateQueries({ queryKey: [table, entityId] });
       }
     },
-    [queryClient, queryKeyMapping, debug]
+    [queryClient, queryKeyMapping]
   );
 
   /**
-   * Handler pour les changements Postgres
+   * Crée et souscrit un canal Realtime avec gestion de reconnexion
    */
-  const handleChange = useCallback(
-    (payload: any) => {
-      const typedPayload = payload as PostgresChangesPayload;
-      const table = typedPayload.table;
-
-      if (debug) {
-        console.log(`[RealtimeSync] ${typedPayload.eventType} on ${table}`, typedPayload);
-      }
-
-      // Invalider les queries
-      invalidateQueriesForTable(table, typedPayload);
-
-      // Appeler le callback custom
-      onUpdate?.(typedPayload);
-    },
-    [invalidateQueriesForTable, onUpdate, debug]
-  );
-
-  useEffect(() => {
+  const subscribe = useCallback(() => {
     if (tables.length === 0) return;
 
-    // Créer un canal unique pour toutes les tables
-    const channelName = `realtime-sync-${tables.join("-")}-${Date.now()}`;
+    // Nettoyer le canal précédent s'il existe
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    const channelName = `realtime-sync-${tablesKey}`;
     const channel = supabase.channel(channelName);
 
-    // S'abonner aux changements de chaque table
     tables.forEach((table) => {
       channel.on(
         "postgres_changes",
-        {
-          event: "*",
-          schema,
-          table,
-        },
-        handleChange
+        { event: "*", schema, table },
+        (payload: any) => {
+          const typedPayload = payload as PostgresChangesPayload;
+
+          if (debugRef.current) {
+            console.log(`[RealtimeSync] ${typedPayload.eventType} on ${typedPayload.table}`, typedPayload);
+          }
+
+          invalidateQueriesForTable(typedPayload.table, typedPayload);
+          onUpdateRef.current?.(typedPayload);
+        }
       );
     });
 
-    // Démarrer l'écoute
     channel.subscribe((status) => {
-      if (debug) {
+      if (debugRef.current) {
         console.log(`[RealtimeSync] Channel status: ${status}`);
+      }
+      setConnectionStatus(status);
+
+      if (status === "SUBSCRIBED") {
+        reconnectAttemptRef.current = 0;
+      }
+
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        console.warn(`[RealtimeSync] Connection lost (${status}), scheduling reconnect...`);
+        scheduleReconnect();
       }
     });
 
     channelRef.current = channel;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tablesKey, schema, invalidateQueriesForTable, tables]);
 
-    // Cleanup
+  /**
+   * Planifie une reconnexion avec backoff exponentiel
+   */
+  const scheduleReconnect = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+    }
+
+    if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      console.error(`[RealtimeSync] Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
+      setConnectionStatus("failed");
+      return;
+    }
+
+    const delay = Math.min(
+      RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttemptRef.current),
+      30000
+    );
+    reconnectAttemptRef.current += 1;
+
+    if (debugRef.current) {
+      console.log(`[RealtimeSync] Reconnecting in ${delay}ms (attempt ${reconnectAttemptRef.current}/${MAX_RECONNECT_ATTEMPTS})`);
+    }
+
+    reconnectTimerRef.current = setTimeout(() => {
+      subscribe();
+    }, delay);
+  }, [subscribe]);
+
+  useEffect(() => {
+    subscribe();
+
     return () => {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
-  }, [tables, schema, handleChange, debug, supabase]);
+  }, [subscribe]);
 
-  /**
-   * Forcer l'invalidation d'une table
-   */
   const forceInvalidate = useCallback(
     (table: string) => {
-      const queryKeys = queryKeyMapping[table] || [table];
-      queryKeys.forEach((key) => {
+      const keys = queryKeyMapping[table] || [table];
+      keys.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: [key] });
       });
     },
     [queryClient, queryKeyMapping]
   );
 
+  const forceReconnect = useCallback(() => {
+    reconnectAttemptRef.current = 0;
+    subscribe();
+  }, [subscribe]);
+
   return {
     forceInvalidate,
-    isConnected: !!channelRef.current,
+    forceReconnect,
+    isConnected: connectionStatus === "SUBSCRIBED",
+    connectionStatus,
   };
 }
 
@@ -223,12 +287,28 @@ export function useTableRealtimeSync(
 ) {
   const queryClient = useQueryClient();
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const supabase = createClient();
+  const reconnectAttemptRef = useRef(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { filter, queryKeys = [table], onUpdate, debug = false } = options || {};
+  const { filter, queryKeys, onUpdate, debug = false } = options || {};
 
-  useEffect(() => {
-    const channelName = `realtime-${table}-${filter || "all"}-${Date.now()}`;
+  // Stabiliser queryKeys pour éviter les re-subscriptions
+  const stableQueryKeys = useMemo(() => queryKeys || [table], [queryKeys, table]);
+  const queryKeysKey = stableQueryKeys.join(",");
+
+  // Stocker les callbacks dans des refs
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+  const debugRef = useRef(debug);
+  debugRef.current = debug;
+
+  const subscribe = useCallback(() => {
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    const channelName = `realtime-${table}-${filter || "all"}`;
     const channel = supabase.channel(channelName);
 
     const subscriptionOptions: any = {
@@ -242,39 +322,76 @@ export function useTableRealtimeSync(
     }
 
     channel.on("postgres_changes", subscriptionOptions, (payload: any) => {
-      if (debug) {
+      if (debugRef.current) {
         console.log(`[RealtimeSync] ${payload.eventType} on ${table}`, payload);
       }
 
-      // Invalider les queries
-      queryKeys.forEach((key) => {
+      stableQueryKeys.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: [key] });
       });
 
-      // Invalider la query spécifique si ID présent
       const entityId = payload.new?.id || payload.old?.id;
       if (entityId) {
         queryClient.invalidateQueries({ queryKey: [table, entityId] });
       }
 
-      onUpdate?.(payload);
+      onUpdateRef.current?.(payload);
     });
 
     channel.subscribe((status) => {
-      if (debug) {
+      if (debugRef.current) {
         console.log(`[RealtimeSync] Channel ${table} status: ${status}`);
+      }
+
+      if (status === "SUBSCRIBED") {
+        reconnectAttemptRef.current = 0;
+      }
+
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        console.warn(`[RealtimeSync] Channel ${table} lost (${status}), scheduling reconnect...`);
+        scheduleReconnect();
       }
     });
 
     channelRef.current = channel;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table, filter, queryKeysKey, queryClient, stableQueryKeys]);
+
+  const scheduleReconnect = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+    }
+
+    if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      console.error(`[RealtimeSync] Channel ${table}: max reconnect attempts reached.`);
+      return;
+    }
+
+    const delay = Math.min(
+      RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttemptRef.current),
+      30000
+    );
+    reconnectAttemptRef.current += 1;
+
+    reconnectTimerRef.current = setTimeout(() => {
+      subscribe();
+    }, delay);
+  }, [subscribe, table]);
+
+  useEffect(() => {
+    subscribe();
 
     return () => {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
-  }, [table, filter, queryKeys, onUpdate, debug, queryClient, supabase]);
+  }, [subscribe]);
 
   return {
     isConnected: !!channelRef.current,

@@ -237,8 +237,27 @@ export async function POST(
     if (updateError) throw updateError;
 
     // 9. Mettre à jour le statut global du bail
+    // FIX AUDIT 2026-02-16: Vérification d'erreur + rollback compensatoire
     const newLeaseStatus = await determineLeaseStatus(leaseId);
-    await serviceClient.from("leases").update({ statut: newLeaseStatus } as any).eq("id", leaseId as any);
+    const { error: leaseUpdateError } = await serviceClient
+      .from("leases")
+      .update({ statut: newLeaseStatus } as any)
+      .eq("id", leaseId as any);
+
+    if (leaseUpdateError) {
+      log.error("Échec mise à jour statut bail — rollback signataire", {
+        leaseUpdateError: leaseUpdateError.message,
+        attemptedStatus: newLeaseStatus,
+      });
+      // Rollback compensatoire : remettre le signataire en pending
+      await serviceClient
+        .from("lease_signers")
+        .update({ signature_status: "pending", signed_at: null } as any)
+        .eq("id", signer.id as any);
+      throw new Error(
+        `Échec de la mise à jour du statut du bail: ${leaseUpdateError.message}. La signature a été annulée, veuillez réessayer.`
+      );
+    }
 
     // FIX P0-3: Incrémenter l'usage des signatures après succès
     try {
@@ -359,13 +378,16 @@ export async function POST(
       log.warn("Erreur émission événements (non bloquant)", { error: String(notifError) });
     }
 
-    // Invalider le cache ISR
+    // Invalider le cache ISR — propriétaire ET locataire
     const signedPropertyId = (lease as any)?.property_id || (lease as any)?.property?.id;
     if (signedPropertyId) {
       revalidatePath(`/owner/properties/${signedPropertyId}`);
       revalidatePath("/owner/properties");
     }
     revalidatePath("/owner/leases");
+    revalidatePath("/tenant/signatures");
+    revalidatePath("/tenant/documents");
+    revalidatePath(`/owner/leases/${leaseId}`);
 
     log.complete(true, { proofId: proof.proofId, newStatus: newLeaseStatus });
 

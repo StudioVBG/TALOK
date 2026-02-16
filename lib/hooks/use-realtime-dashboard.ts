@@ -11,11 +11,13 @@
  * - Signatures en attente
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useToast } from "@/components/ui/use-toast";
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+
+const supabase = createClient();
 
 export interface RealtimeDashboardData {
   // Compteurs live
@@ -58,7 +60,10 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
   
   const { profile } = useAuth();
   const { toast } = useToast();
-  const supabase = createClient();
+  
+  // FIX AUDIT 2026-02-16: Stabiliser toast dans un ref
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
   
   const ownerId = options.ownerId || profile?.id;
   
@@ -91,13 +96,14 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
     }));
     
     if (showToasts && event.type === "payment" && event.action === "created") {
-      toast({
+      toastRef.current({
         title: "💰 " + event.title,
         description: event.description,
         duration: 5000,
       });
     }
-  }, [maxEvents, showToasts, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxEvents, showToasts]);
 
   // Charger les données initiales
   const fetchInitialData = useCallback(async () => {
@@ -182,7 +188,8 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
     } finally {
       setLoading(false);
     }
-  }, [ownerId, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerId]);
 
   // Charger les données au montage
   useEffect(() => {
@@ -591,7 +598,9 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
         supabase.removeChannel(channel);
       });
     };
-  }, [ownerId, supabase, addEvent]);
+  // FIX AUDIT 2026-02-16: Retirer supabase (singleton stable) et addEvent (stabilisé)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerId]);
 
   return {
     ...data,

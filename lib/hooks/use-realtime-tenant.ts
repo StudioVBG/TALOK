@@ -15,11 +15,13 @@
  * - EDLs planifiés
  */
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useToast } from "@/components/ui/use-toast";
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+
+const supabase = createClient();
 
 export interface TenantRealtimeEvent {
   id: string;
@@ -73,7 +75,10 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
   
   const { profile } = useAuth();
   const { toast } = useToast();
-  const supabase = createClient();
+  
+  // FIX AUDIT 2026-02-16: Stabiliser toast dans un ref pour ne pas déclencher de re-subscribe
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
   
   const [data, setData] = useState<TenantRealtimeData>({
     currentRent: 0,
@@ -94,6 +99,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
   const [loading, setLoading] = useState(true);
   const [leaseIds, setLeaseIds] = useState<string[]>(options.leaseIds || []);
   const channelsRef = useRef<RealtimeChannel[]>([]);
+  const addEventRef = useRef<typeof addEvent>(null!);
 
   // Jouer un son de notification
   const playNotificationSound = useCallback(() => {
@@ -130,7 +136,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
     // Toast et son pour les événements importants
     if (showNotification && showToasts && event.importance === "high") {
       playNotificationSound();
-      toast({
+      toastRef.current({
         title: `🔔 ${event.title}`,
         description: event.description,
         duration: 6000,
@@ -146,7 +152,8 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
         hasRecentDocument: false,
       }));
     }, 5000);
-  }, [maxEvents, showToasts, playNotificationSound, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxEvents, showToasts, playNotificationSound]);
 
   // Récupérer les IDs des baux du locataire
   const fetchLeaseIds = useCallback(async () => {
@@ -158,7 +165,8 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       .eq("profile_id", profile.id);
     
     return signers?.map(s => s.lease_id).filter(Boolean) || [];
-  }, [profile?.id, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
 
   // Charger les données initiales
   const fetchInitialData = useCallback(async () => {
@@ -233,12 +241,16 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [profile?.id, options.leaseIds, fetchLeaseIds, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, options.leaseIds, fetchLeaseIds]);
 
   // Charger les données au montage
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
+
+  // Maintenir le ref à jour
+  addEventRef.current = addEvent;
 
   // Configurer les listeners temps réel
   useEffect(() => {
@@ -646,7 +658,9 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       });
       channelsRef.current = [];
     };
-  }, [profile?.id, leaseIds, supabase, addEvent]);
+  // FIX AUDIT 2026-02-16: Retirer supabase (singleton stable) et addEvent (ref-based)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, leaseIds]);
 
   // Effacer les indicateurs de changements récents
   const clearRecentIndicators = useCallback(() => {

@@ -539,12 +539,20 @@ export const DELETE = withSecurity(async function DELETE(request: Request, { par
       .select("id")
       .eq("lease_id", leaseId);
     
+    // FIX AUDIT 2026-02-16: Ajout de vérifications d'erreurs sur chaque étape de suppression
+    // pour détecter les échecs partiels et les journaliser.
+    const deleteErrors: string[] = [];
+
     if (edls && edls.length > 0) {
       const edlIds = edls.map(e => e.id);
-      await serviceClient.from("edl_items").delete().in("edl_id", edlIds);
-      await serviceClient.from("edl_media").delete().in("edl_id", edlIds);
-      await serviceClient.from("edl_signatures").delete().in("edl_id", edlIds);
-      await serviceClient.from("edl").delete().in("id", edlIds);
+      const { error: e1 } = await serviceClient.from("edl_items").delete().in("edl_id", edlIds);
+      if (e1) deleteErrors.push(`edl_items: ${e1.message}`);
+      const { error: e2 } = await serviceClient.from("edl_media").delete().in("edl_id", edlIds);
+      if (e2) deleteErrors.push(`edl_media: ${e2.message}`);
+      const { error: e3 } = await serviceClient.from("edl_signatures").delete().in("edl_id", edlIds);
+      if (e3) deleteErrors.push(`edl_signatures: ${e3.message}`);
+      const { error: e4 } = await serviceClient.from("edl").delete().in("id", edlIds);
+      if (e4) deleteErrors.push(`edl: ${e4.message}`);
     }
 
     // 2. Supprimer les documents liés (storage + DB)
@@ -554,18 +562,18 @@ export const DELETE = withSecurity(async function DELETE(request: Request, { par
       .eq("lease_id", leaseId);
 
     if (leaseDocuments && leaseDocuments.length > 0) {
-      // Supprimer les fichiers du storage d'abord
       const storagePaths = leaseDocuments
         .map((d: any) => d.storage_path)
         .filter((p: string | null): p is string => Boolean(p));
       if (storagePaths.length > 0) {
-        await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove(storagePaths);
+        const { error: storageErr } = await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove(storagePaths);
+        if (storageErr) deleteErrors.push(`storage: ${(storageErr as any)?.message || String(storageErr)}`);
       }
-      // Puis supprimer les entrées DB
-      await serviceClient
+      const { error: docsErr } = await serviceClient
         .from("documents")
         .delete()
         .eq("lease_id", leaseId);
+      if (docsErr) deleteErrors.push(`documents: ${docsErr.message}`);
     }
 
     // 3. Supprimer les paiements liés aux factures
@@ -575,35 +583,45 @@ export const DELETE = withSecurity(async function DELETE(request: Request, { par
       .eq("lease_id", leaseId);
     
     if (invoices && invoices.length > 0) {
-      await serviceClient
+      const { error: payErr } = await serviceClient
         .from("payments")
         .delete()
         .in("invoice_id", invoices.map(i => i.id));
+      if (payErr) deleteErrors.push(`payments: ${payErr.message}`);
     }
 
     // 4. Supprimer les factures liées
-    await serviceClient
+    const { error: invErr } = await serviceClient
       .from("invoices")
       .delete()
       .eq("lease_id", leaseId);
+    if (invErr) deleteErrors.push(`invoices: ${invErr.message}`);
 
     // 5. Supprimer les signataires
-    await serviceClient
+    const { error: sigErr } = await serviceClient
       .from("lease_signers")
       .delete()
       .eq("lease_id", leaseId);
+    if (sigErr) deleteErrors.push(`lease_signers: ${sigErr.message}`);
 
     // 6. Supprimer les roommates
-    await serviceClient
+    const { error: rmErr } = await serviceClient
       .from("roommates")
       .delete()
       .eq("lease_id", leaseId);
+    if (rmErr) deleteErrors.push(`roommates: ${rmErr.message}`);
 
     // 7. Supprimer les mouvements de dépôt
-    await serviceClient
+    const { error: depErr } = await serviceClient
       .from("deposit_movements")
       .delete()
       .eq("lease_id", leaseId);
+    if (depErr) deleteErrors.push(`deposit_movements: ${depErr.message}`);
+
+    // Journaliser les erreurs partielles (non bloquantes pour la suppression du bail)
+    if (deleteErrors.length > 0) {
+      console.warn(`[DELETE /api/leases/${leaseId}] Erreurs partielles lors de la cascade:`, deleteErrors);
+    }
 
     // 8. Enfin, supprimer le bail
     const { error: deleteError } = await serviceClient

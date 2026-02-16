@@ -174,6 +174,10 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
     serviceClient.from("edl_signatures").select("*").eq("edl_id", edlId),
   ]);
 
+  if (itemsResult.error) console.error("[fetchInspectionDetail] edl_items error:", itemsResult.error.message);
+  if (mediaResult.error) console.error("[fetchInspectionDetail] edl_media error:", mediaResult.error.message);
+  if (signaturesResult.error) console.error("[fetchInspectionDetail] edl_signatures error:", signaturesResult.error.message);
+
   const edl_items: EDLItem[] = (itemsResult.data || []) as EDLItem[];
   const edl_media: EDLMedia[] = (mediaResult.data || []) as unknown as EDLMedia[];
   let edl_signatures: EDLSignature[] = (signaturesResult.data || []) as unknown as EDLSignature[];
