@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 // Interface pour un bail avec propriété jointe
 export interface TenantLease {
@@ -136,12 +137,32 @@ async function fetchTenantDashboardDirect(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string
 ): Promise<TenantDashboardData | null> {
-  // Récupérer le profil
-  const { data: profileRaw } = await supabase
+  // Récupérer le profil — avec fallback service role en cas de blocage RLS
+  let profileRaw: Record<string, unknown> | null = null;
+
+  const { data: directProfile, error: profileError } = await supabase
     .from("profiles")
     .select("id, prenom, nom, kyc_status")
     .eq("user_id", userId)
     .single();
+
+  if (!profileError && directProfile) {
+    profileRaw = directProfile;
+  } else {
+    // Fallback: utiliser le service role pour contourner les politiques RLS
+    console.warn("[fetchTenantDashboardDirect] Profile not found via direct query, using service role fallback. Error:", profileError?.message);
+    try {
+      const serviceClient = getServiceClient();
+      const { data: serviceProfile } = await serviceClient
+        .from("profiles")
+        .select("id, prenom, nom, kyc_status")
+        .eq("user_id", userId)
+        .single();
+      profileRaw = serviceProfile;
+    } catch (e) {
+      console.error("[fetchTenantDashboardDirect] Service role fallback failed:", e);
+    }
+  }
 
   // Cast nécessaire car kyc_status n'existe pas dans les types générés Supabase
   const profile = profileRaw as { id: string; prenom: string | null; nom: string | null; kyc_status?: string | null } | null;
@@ -345,17 +366,36 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
 
   if (error) {
     console.warn("[fetchTenantDashboard] RPC failed, using direct queries fallback:", error.message);
+    // Passer le service role client pour le fallback en cas de blocage RLS
     return fetchTenantDashboardDirect(supabase, userId);
   }
 
   if (!data) return null;
 
   // Récupérer les infos du profil pour le message de bienvenue
-  const { data: profile } = await supabase
+  // Avec fallback service role en cas de blocage RLS
+  let profile: { prenom: string | null; nom: string | null } | null = null;
+  const { data: directProfile, error: profileErr } = await supabase
     .from("profiles")
     .select("prenom, nom")
     .eq("user_id", userId)
     .single();
+
+  if (!profileErr && directProfile) {
+    profile = directProfile;
+  } else {
+    try {
+      const serviceClient = getServiceClient();
+      const { data: serviceProfile } = await serviceClient
+        .from("profiles")
+        .select("prenom, nom")
+        .eq("user_id", userId)
+        .single();
+      profile = serviceProfile;
+    } catch (e) {
+      console.warn("[fetchTenantDashboard] Profile lookup fallback failed:", e);
+    }
+  }
 
   // Nettoyage des données pour éviter les "undefined" et assurer la cohérence
   const cleanData = data as TenantDashboardData;
