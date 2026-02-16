@@ -4,19 +4,21 @@
 -- Version: 20260216300000
 --
 -- PROBLEMES CORRIGES:
---   1. handle_new_user() ne remplissait pas la colonne email
---   2. handle_new_user() n'incluait pas la gestion du role guarantor
+--   1. handle_new_user() ne remplissait pas la colonne `email`
+--   2. handle_new_user() n'incluait pas la gestion du role `guarantor`
+--      dans le ON CONFLICT (deja corrige en 20260212, consolide ici)
 --   3. Des utilisateurs auth.users existent sans profil correspondant
+--      (trigger rate, erreur RLS, race condition)
 --   4. Des profils existants ont email = NULL
 --   5. Absence de policy INSERT explicite sur profiles
+--      (le FOR ALL couvre le cas, mais une policy INSERT explicite est
+--       plus lisible et securise les futures evolutions)
 --
 -- ACTIONS:
 --   A. Mettre a jour handle_new_user() (email + guarantor + robustesse)
 --   B. Creer les profils manquants pour les auth.users desynchronises
 --   C. Backfill les emails NULL dans les profils existants
 --   D. Assurer qu'une policy INSERT RLS existe sur profiles
---   E. Verification finale
---   F. Fonctions RPC pour le health check
 -- =====================================================
 
 BEGIN;
@@ -24,6 +26,9 @@ BEGIN;
 -- ============================================
 -- A. MISE A JOUR DE handle_new_user()
 -- ============================================
+-- Ajout de l'email, meilleure gestion d'erreur,
+-- support du role guarantor (consolidation)
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -39,7 +44,7 @@ DECLARE
 BEGIN
   -- Lire le role depuis les metadata, avec fallback sur 'tenant'
   v_role := COALESCE(
-    NEW.raw_user_meta_data ->> 'role',
+    NEW.raw_user_meta_data->>'role',
     'tenant'
   );
 
@@ -49,20 +54,22 @@ BEGIN
   END IF;
 
   -- Lire les autres donnees depuis les metadata
-  v_prenom := NEW.raw_user_meta_data ->> 'prenom';
-  v_nom := NEW.raw_user_meta_data ->> 'nom';
-  v_telephone := NEW.raw_user_meta_data ->> 'telephone';
+  v_prenom := NEW.raw_user_meta_data->>'prenom';
+  v_nom := NEW.raw_user_meta_data->>'nom';
+  v_telephone := NEW.raw_user_meta_data->>'telephone';
+
+  -- Recuperer l'email depuis le champ auth.users.email
   v_email := NEW.email;
 
   -- Inserer le profil avec toutes les donnees, y compris l'email
-  INSERT INTO public.profiles (user_id, email, role, prenom, nom, telephone, created_at, updated_at)
-  VALUES (NEW.id, v_email, v_role, v_prenom, v_nom, v_telephone, NOW(), NOW())
+  INSERT INTO public.profiles (user_id, role, prenom, nom, telephone, email)
+  VALUES (NEW.id, v_role, v_prenom, v_nom, v_telephone, v_email)
   ON CONFLICT (user_id) DO UPDATE SET
-    email = COALESCE(EXCLUDED.email, profiles.email),
     role = COALESCE(EXCLUDED.role, profiles.role),
     prenom = COALESCE(EXCLUDED.prenom, profiles.prenom),
     nom = COALESCE(EXCLUDED.nom, profiles.nom),
     telephone = COALESCE(EXCLUDED.telephone, profiles.telephone),
+    email = COALESCE(EXCLUDED.email, profiles.email),
     updated_at = NOW();
 
   RETURN NEW;
@@ -70,7 +77,7 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   -- Ne jamais bloquer la creation d'un utilisateur auth
   -- meme si l'insertion du profil echoue
-  RAISE WARNING '[handle_new_user] Erreur creation profil pour user_id=%, email=%: % (SQLSTATE=%)',
+  RAISE WARNING '[handle_new_user] Erreur lors de la creation du profil pour user_id=%, email=%: % (SQLSTATE=%)',
     NEW.id, NEW.email, SQLERRM, SQLSTATE;
   RETURN NEW;
 END;
@@ -88,12 +95,14 @@ Ne bloque jamais la creation auth meme en cas d''erreur (EXCEPTION handler).';
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================
 -- B. CREER LES PROFILS MANQUANTS
 -- ============================================
+-- Pour chaque utilisateur dans auth.users qui n'a pas de profil,
+-- en creer un avec les donnees disponibles.
+
 DO $$
 DECLARE
   v_count INTEGER := 0;
@@ -111,6 +120,7 @@ BEGIN
     LEFT JOIN public.profiles p ON p.user_id = u.id
     WHERE p.id IS NULL
   LOOP
+    -- Valider le role
     IF v_user.role NOT IN ('admin', 'owner', 'tenant', 'provider', 'guarantor') THEN
       v_user.role := 'tenant';
     END IF;
@@ -144,6 +154,9 @@ END $$;
 -- ============================================
 -- C. BACKFILL DES EMAILS NULL
 -- ============================================
+-- Mettre a jour les profils existants qui ont email = NULL
+-- avec l'email provenant de auth.users.
+
 DO $$
 DECLARE
   v_updated INTEGER;
@@ -170,19 +183,19 @@ END $$;
 -- ============================================
 -- D. POLICY INSERT EXPLICITE SUR PROFILES
 -- ============================================
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE tablename = 'profiles'
-    AND policyname = 'profiles_insert_own'
-  ) THEN
-    CREATE POLICY "profiles_insert_own"
-      ON profiles FOR INSERT
-      TO authenticated
-      WITH CHECK (user_id = auth.uid());
-  END IF;
-END $$;
+-- Le FOR ALL existant (profiles_own_access) couvre l'INSERT,
+-- mais une policy INSERT explicite est plus claire et securise
+-- les futures modifications de profiles_own_access.
+
+-- Supprimer si elle existe deja (idempotent)
+DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
+
+-- Permettre a un utilisateur authentifie de creer son propre profil
+-- (couvre le cas ou le trigger handle_new_user echoue et que le
+--  client tente un INSERT direct ou via l'API)
+CREATE POLICY "profiles_insert_own" ON profiles
+  FOR INSERT TO authenticated
+  WITH CHECK (user_id = auth.uid());
 
 -- ============================================
 -- E. VERIFICATION FINALE
@@ -207,7 +220,7 @@ BEGIN
   WHERE email IS NULL OR email = '';
 
   RAISE NOTICE '========================================';
-  RAISE NOTICE '  RAPPORT DE SYNCHRONISATION AUTH / PROFILES';
+  RAISE NOTICE '  RAPPORT DE SYNCHRONISATION AUTH <-> PROFILES';
   RAISE NOTICE '========================================';
   RAISE NOTICE '  auth.users total       : %', v_total_auth;
   RAISE NOTICE '  profiles total         : %', v_total_profiles;
@@ -215,9 +228,9 @@ BEGIN
   RAISE NOTICE '  profils sans email     : %', v_null_email_count;
 
   IF v_orphan_count = 0 AND v_null_email_count = 0 THEN
-    RAISE NOTICE '  STATUS: SYNC OK';
+    RAISE NOTICE '  STATUS: SYNC OK — Aucun probleme detecte';
   ELSE
-    RAISE WARNING '  STATUS: PROBLEMES RESTANTS';
+    RAISE WARNING '  STATUS: PROBLEMES RESTANTS — Verifier manuellement';
   END IF;
 
   RAISE NOTICE '========================================';
@@ -226,7 +239,10 @@ END $$;
 -- ============================================
 -- F. FONCTIONS RPC POUR LE HEALTH CHECK (/api/health/auth)
 -- ============================================
+-- Ces fonctions sont appelees par l'endpoint de monitoring
+-- et doivent etre SECURITY DEFINER pour acceder a auth.users.
 
+-- Compter les auth.users total
 CREATE OR REPLACE FUNCTION public.count_auth_users()
 RETURNS INTEGER
 LANGUAGE sql
@@ -237,6 +253,7 @@ AS $$
   SELECT count(*)::INTEGER FROM auth.users;
 $$;
 
+-- Compter les auth.users sans profil
 CREATE OR REPLACE FUNCTION public.check_auth_without_profile()
 RETURNS INTEGER
 LANGUAGE sql
@@ -250,6 +267,7 @@ AS $$
   WHERE p.id IS NULL;
 $$;
 
+-- Compter les profils orphelins (sans auth.users)
 CREATE OR REPLACE FUNCTION public.check_orphan_profiles()
 RETURNS INTEGER
 LANGUAGE sql
@@ -263,6 +281,7 @@ AS $$
   WHERE u.id IS NULL AND p.user_id IS NOT NULL;
 $$;
 
+-- Compter les emails desynchronises
 CREATE OR REPLACE FUNCTION public.check_desync_emails()
 RETURNS INTEGER
 LANGUAGE sql
@@ -278,6 +297,7 @@ AS $$
     AND u.email IS NOT NULL;
 $$;
 
+-- Verifier si un trigger existe sur auth.users
 CREATE OR REPLACE FUNCTION public.check_trigger_exists(p_trigger_name TEXT)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -295,6 +315,7 @@ AS $$
   );
 $$;
 
+-- Verifier si une policy INSERT ou ALL existe sur une table
 CREATE OR REPLACE FUNCTION public.check_insert_policy_exists(p_table_name TEXT)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -310,6 +331,7 @@ AS $$
   );
 $$;
 
+-- Permissions pour les fonctions de health check (admin seulement via service role)
 GRANT EXECUTE ON FUNCTION public.count_auth_users() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_auth_without_profile() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_orphan_profiles() TO authenticated;

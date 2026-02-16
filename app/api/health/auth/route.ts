@@ -95,6 +95,14 @@ async function buildSyncReport(supabase: any): Promise<SyncReport> {
     .from("profiles")
     .select("id", { count: "exact", head: true })
     .or("email.is.null,email.eq.");
+<<<<<<< HEAD
+=======
+
+  const profilesWithoutEmailCount = nullEmailCount ?? 0;
+  const profilesWithoutEmailStatus: "pass" | "fail" =
+    profilesWithoutEmailCount === 0 ? "pass" : "fail";
+  if (profilesWithoutEmailStatus === "pass") score++;
+>>>>>>> 631f2c4a (refactor(auth): streamline sync report logic and improve variable naming)
 
   const profilesWithoutEmailCount = nullEmailCount ?? 0;
   const profilesWithoutEmailStatus: "pass" | "fail" =
@@ -110,9 +118,13 @@ async function buildSyncReport(supabase: any): Promise<SyncReport> {
   const { data: orphanProfilesData } = await supabase.rpc(
     "check_orphan_profiles"
   );
+<<<<<<< HEAD
   const orphanProfilesCount = orphanProfilesData
     ? Number(orphanProfilesData)
     : 0;
+=======
+  const orphanProfilesCount = orphanProfilesData ? Number(orphanProfilesData) : 0;
+>>>>>>> 631f2c4a (refactor(auth): streamline sync report logic and improve variable naming)
   let orphanProfilesStatus: "pass" | "warn" = "pass";
   if (orphanProfilesCount === 0) {
     score++;
@@ -135,6 +147,7 @@ async function buildSyncReport(supabase: any): Promise<SyncReport> {
     p_trigger_name: "on_auth_user_created",
   });
   const triggerExistsVal = !!triggerData;
+<<<<<<< HEAD
   const triggerExistsStatus: "pass" | "fail" = triggerExistsVal
     ? "pass"
     : "fail";
@@ -152,6 +165,20 @@ async function buildSyncReport(supabase: any): Promise<SyncReport> {
   if (insertPolicyExistsVal) score++;
 
   // 8. Distribution des roles
+=======
+  const triggerExistsStatus: "pass" | "fail" = triggerExistsVal ? "pass" : "fail";
+  if (triggerExistsVal) score++;
+
+  // 7. INSERT policy exists — via RPC
+  const { data: policyData } = await supabase.rpc("check_insert_policy_exists", {
+    p_table_name: "profiles",
+  });
+  const insertPolicyExistsVal = !!policyData;
+  const insertPolicyExistsStatus: "pass" | "fail" = insertPolicyExistsVal ? "pass" : "fail";
+  if (insertPolicyExistsVal) score++;
+
+  // 8. Distribution des rôles
+>>>>>>> 631f2c4a (refactor(auth): streamline sync report logic and improve variable naming)
   const { data: allProfiles } = await supabase.from("profiles").select("role");
   const roleDistribution: Record<string, number> = {};
   if (allProfiles) {
@@ -160,7 +187,11 @@ async function buildSyncReport(supabase: any): Promise<SyncReport> {
     }
   }
 
+<<<<<<< HEAD
   // 9. Total auth users
+=======
+  // 9. Total auth users (via RPC)
+>>>>>>> 631f2c4a (refactor(auth): streamline sync report logic and improve variable naming)
   const { data: authUsersCount } = await supabase.rpc("count_auth_users");
 
   // Status global
