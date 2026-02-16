@@ -161,6 +161,7 @@ export const POST = withSecurity(async function POST(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const supabaseClient = supabase as any;
     const body = await request.json();
     const validated = invoiceSchema.parse(body);
 
