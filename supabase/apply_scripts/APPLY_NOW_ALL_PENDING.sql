@@ -9,10 +9,11 @@
 -- 4. Cliquer "Run"
 -- 5. Vérifier les NOTICES dans l'onglet "Messages" en bas
 --
--- CONTENU (3 migrations):
+-- CONTENU (4 migrations):
 -- A. Sécurité RLS (20260216100000)
 -- B. Auto-link lease_signers trigger (20260216200000)
 -- C. Fix synchronisation auth ↔ profiles (20260216300000)
+-- D. Index de performance RLS (20260216400000)
 -- =====================================================
 
 
@@ -338,3 +339,47 @@ BEGIN
   END IF;
   RAISE NOTICE '================================================';
 END $$;
+
+
+-- ======================================================
+-- D. INDEX DE PERFORMANCE POUR LES POLICIES RLS
+-- (20260216400000_performance_indexes_rls.sql)
+-- ======================================================
+
+BEGIN;
+
+-- lease_signers: index pour lookup par profile_id, email, composite
+CREATE INDEX IF NOT EXISTS idx_lease_signers_profile_id
+  ON public.lease_signers (profile_id) WHERE profile_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_lease_signers_invited_email_lower
+  ON public.lease_signers (LOWER(invited_email)) WHERE invited_email IS NOT NULL AND profile_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_lease_signers_lease_profile
+  ON public.lease_signers (lease_id, profile_id) WHERE profile_id IS NOT NULL;
+
+-- documents: index colonnes RLS
+CREATE INDEX IF NOT EXISTS idx_documents_property_id ON public.documents (property_id) WHERE property_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_documents_lease_id ON public.documents (lease_id) WHERE lease_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_documents_owner_id ON public.documents (owner_id) WHERE owner_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_documents_tenant_id ON public.documents (tenant_id) WHERE tenant_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_documents_storage_path ON public.documents (storage_path) WHERE storage_path IS NOT NULL;
+
+-- leases, properties, invoices, tickets: index FK
+CREATE INDEX IF NOT EXISTS idx_leases_property_id ON public.leases (property_id);
+CREATE INDEX IF NOT EXISTS idx_properties_owner_id ON public.properties (owner_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_owner_id ON public.invoices (owner_id) WHERE owner_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_invoices_tenant_id ON public.invoices (tenant_id) WHERE tenant_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_invoices_lease_id ON public.invoices (lease_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_property_id ON public.tickets (property_id) WHERE property_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON public.tickets (created_by_profile_id) WHERE created_by_profile_id IS NOT NULL;
+
+-- profiles: index user_id
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON public.profiles (user_id);
+
+DO $$
+DECLARE idx_count INT;
+BEGIN
+  SELECT count(*) INTO idx_count FROM pg_indexes WHERE schemaname = 'public' AND indexname LIKE 'idx_%';
+  RAISE NOTICE '✅ % index de performance créés/vérifiés', idx_count;
+END $$;
+
+COMMIT;

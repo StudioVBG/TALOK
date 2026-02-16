@@ -218,11 +218,38 @@ export function useAuth() {
           }
 
           if (data) {
-            authLogger.info("Profile loaded", { userId });
+            authLogger.info("Profile loaded via direct query", { userId });
             return data as Profile;
           }
 
-          // Step 2: Profile not found — trigger may not have fired.
+          // Step 2: Profile not found via direct query (RLS may be blocking).
+          // Try the GET API route first (uses service role, bypasses RLS).
+          authLogger.warn(
+            "Profile not found via direct query, trying API fallback",
+            { userId }
+          );
+          try {
+            const getResponse = await fetchWithRetry(() =>
+              fetch("/api/me/profile", { credentials: "include" })
+            );
+            if (getResponse.ok) {
+              const existingProfile = (await getResponse.json()) as Profile;
+              authLogger.info("Profile found via API fallback", { userId });
+              return existingProfile;
+            }
+            // 404 = profile truly doesn't exist, continue to creation
+            if (getResponse.status !== 404) {
+              authLogger.error(
+                "API fallback returned unexpected status",
+                new Error(`HTTP ${getResponse.status}`),
+                { userId }
+              );
+            }
+          } catch (apiGetErr) {
+            authLogger.error("API GET fallback failed", apiGetErr, { userId });
+          }
+
+          // Step 3: Profile truly doesn't exist — trigger may not have fired.
           // Attempt creation ONCE via API route (service role).
           if (_globalCreateAttempted) {
             authLogger.warn(
@@ -234,7 +261,7 @@ export function useAuth() {
           _globalCreateAttempted = true;
 
           authLogger.warn(
-            "Profile not found, attempting single auto-creation",
+            "Profile not found anywhere, attempting single auto-creation",
             { userId }
           );
 

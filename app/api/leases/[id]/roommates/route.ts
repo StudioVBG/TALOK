@@ -228,14 +228,17 @@ export async function POST(
         });
     }
 
-    // Si le profil existe, l'ajouter comme signataire et notifier
+    // ✅ SYNC: Toujours créer un lease_signer pour maintenir la cohérence
+    // Si le profil existe → lié immédiatement. Sinon → invited_email pour auto-link futur.
+    const signerRole = validated.role === "principal" ? "locataire_principal" : "colocataire";
     if (existingProfile) {
       await serviceClient
         .from("lease_signers")
         .insert({
           lease_id: leaseId,
           profile_id: existingProfile.id,
-          role: validated.role === "principal" ? "locataire_principal" : "colocataire",
+          invited_email: validated.email,
+          role: signerRole,
           signature_status: "pending",
         });
 
@@ -248,6 +251,19 @@ export async function POST(
           body: `Vous avez été ajouté à la colocation ${(lease.property as any)?.adresse_complete}. Votre part : ${Math.round(weight * 100)}%.`,
           read: false,
           metadata: { lease_id: leaseId, weight },
+        });
+    } else {
+      // Profil n'existe pas encore : créer un lease_signer orphelin
+      // Le trigger auto_link_lease_signers ou le layout tenant le rattrapera
+      await serviceClient
+        .from("lease_signers")
+        .insert({
+          lease_id: leaseId,
+          profile_id: null,
+          invited_email: validated.email,
+          invited_name: validated.name || null,
+          role: signerRole,
+          signature_status: "pending",
         });
     }
 

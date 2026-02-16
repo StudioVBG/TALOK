@@ -509,11 +509,84 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
         .subscribe();
 
       channels.push(documentsChannel);
+
+      // 8. Écouter les interventions prestataire (work_orders)
+      const workOrdersChannel = supabase
+        .channel(`work_orders:${ownerId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "work_orders",
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const wo = payload.new;
+            addEvent({
+              type: "ticket",
+              action: "created",
+              title: "Nouvelle intervention",
+              description: `Intervention planifiée${wo.date_intervention_prevue ? ` le ${new Date(wo.date_intervention_prevue).toLocaleDateString("fr-FR")}` : ""}`,
+              data: wo,
+            });
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "work_orders",
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const wo = payload.new;
+            const oldWo = payload.old as Record<string, any>;
+
+            if (oldWo.statut !== wo.statut) {
+              const statusLabels: Record<string, string> = {
+                done: "Intervention terminée",
+                scheduled: "Intervention planifiée",
+                cancelled: "Intervention annulée",
+              };
+              addEvent({
+                type: "ticket",
+                action: "updated",
+                title: statusLabels[wo.statut] || "Intervention mise à jour",
+                description: wo.cout_final
+                  ? `Coût final : ${wo.cout_final}€`
+                  : `Statut : ${wo.statut}`,
+                data: wo,
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      channels.push(workOrdersChannel);
     };
 
     setupRealtime();
 
+    // ✅ Reconnexion automatique sur perte de connexion
+    // Vérifie l'état des channels toutes les 30s et reconfigure si déconnecté
+    const reconnectInterval = setInterval(() => {
+      const allSubscribed = channels.every(
+        (ch) => (ch as any).state === "joined" || (ch as any).state === "SUBSCRIBED"
+      );
+      if (!allSubscribed && ownerId) {
+        console.warn("[useRealtimeDashboard] Channels déconnectés, reconnexion...");
+        setData(prev => ({ ...prev, isConnected: false }));
+        // Nettoyer et recréer
+        channels.forEach(channel => {
+          supabase.removeChannel(channel);
+        });
+        channels.length = 0;
+        setupRealtime();
+      }
+    }, 30000);
+
     return () => {
+      clearInterval(reconnectInterval);
       channels.forEach(channel => {
         supabase.removeChannel(channel);
       });

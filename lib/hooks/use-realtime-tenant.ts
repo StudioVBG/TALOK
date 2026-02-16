@@ -623,7 +623,24 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
 
     setupRealtime();
 
+    // ✅ Reconnexion automatique sur perte de connexion WebSocket
+    const reconnectInterval = setInterval(() => {
+      const allSubscribed = channelsRef.current.every(
+        (ch) => (ch as any).state === "joined" || (ch as any).state === "SUBSCRIBED"
+      );
+      if (!allSubscribed && channelsRef.current.length > 0) {
+        console.warn("[useTenantRealtime] Channels déconnectés, reconnexion...");
+        setData(prev => ({ ...prev, isConnected: false }));
+        channelsRef.current.forEach(channel => {
+          supabase.removeChannel(channel);
+        });
+        channelsRef.current = [];
+        setupRealtime();
+      }
+    }, 30000);
+
     return () => {
+      clearInterval(reconnectInterval);
       channelsRef.current.forEach(channel => {
         supabase.removeChannel(channel);
       });
