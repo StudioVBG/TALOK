@@ -185,111 +185,66 @@ export function useAuth() {
       // Create global promise for deduplication across instances
       _globalProfilePromise = (async (): Promise<Profile | null> => {
         try {
-          // Step 1: Try direct Supabase query
-          const { data, error } = await fetchWithRetry(() =>
-            supabase
-              .from("profiles")
-              .select("*")
-              .eq("user_id", userId)
-              .maybeSingle()
+          // Step 1: Fetch profile via API route (service role, bypasses RLS)
+          // This is the most reliable method — avoids all RLS configuration issues
+          const response = await fetchWithRetry(() =>
+            fetch("/api/me/profile", { credentials: "include" })
           );
 
-          if (error) {
-            // RLS recursion error — fallback to API route
-            if (
-              error.code === "42P17" ||
-              error.message?.includes("infinite recursion")
-            ) {
-              authLogger.warn("RLS recursion detected, using API fallback", {
-                userId,
-              });
-              try {
-                const response = await fetchWithRetry(() =>
-                  fetch("/api/me/profile", { credentials: "include" })
-                );
-                if (response.ok) {
-                  return (await response.json()) as Profile;
-                }
-              } catch (apiError) {
-                authLogger.error("API fallback failed", apiError, { userId });
+          if (response.ok) {
+            const profileData = (await response.json()) as Profile;
+            authLogger.info("Profile loaded via API", { userId });
+            return profileData;
+          }
+
+          // 404 = profile doesn't exist yet
+          if (response.status === 404) {
+            authLogger.warn("Profile not found (404), attempting auto-creation", { userId });
+
+            // Step 2: Profile doesn't exist — attempt creation ONCE
+            if (_globalCreateAttempted) {
+              authLogger.warn("Profile creation already attempted, giving up", { userId });
+              return null;
+            }
+            _globalCreateAttempted = true;
+
+            try {
+              const createResponse = await fetchWithRetry(() =>
+                fetch("/api/me/profile", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ user_id: userId }),
+                })
+              );
+              if (createResponse.ok) {
+                const created = (await createResponse.json()) as Profile;
+                authLogger.info("Profile auto-created successfully", { userId });
+                return created;
               }
-            }
-            throw error;
-          }
-
-          if (data) {
-            authLogger.info("Profile loaded via direct query", { userId });
-            return data as Profile;
-          }
-
-          // Step 2: Profile not found via direct query (RLS may be blocking).
-          // Try the GET API route first (uses service role, bypasses RLS).
-          authLogger.warn(
-            "Profile not found via direct query, trying API fallback",
-            { userId }
-          );
-          try {
-            const getResponse = await fetchWithRetry(() =>
-              fetch("/api/me/profile", { credentials: "include" })
-            );
-            if (getResponse.ok) {
-              const existingProfile = (await getResponse.json()) as Profile;
-              authLogger.info("Profile found via API fallback", { userId });
-              return existingProfile;
-            }
-            // 404 = profile truly doesn't exist, continue to creation
-            if (getResponse.status !== 404) {
               authLogger.error(
-                "API fallback returned unexpected status",
-                new Error(`HTTP ${getResponse.status}`),
+                "Profile auto-creation failed",
+                new Error(`HTTP ${createResponse.status}`),
                 { userId }
               );
+            } catch (apiError) {
+              authLogger.error("Profile auto-creation error", apiError, { userId });
             }
-          } catch (apiGetErr) {
-            authLogger.error("API GET fallback failed", apiGetErr, { userId });
-          }
-
-          // Step 3: Profile truly doesn't exist — trigger may not have fired.
-          // Attempt creation ONCE via API route (service role).
-          if (_globalCreateAttempted) {
-            authLogger.warn(
-              "Profile creation already attempted, giving up",
-              { userId }
-            );
             return null;
           }
-          _globalCreateAttempted = true;
 
-          authLogger.warn(
-            "Profile not found anywhere, attempting single auto-creation",
-            { userId }
-          );
-
-          try {
-            const response = await fetchWithRetry(() =>
-              fetch("/api/me/profile", {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user_id: userId }),
-              })
-            );
-            if (response.ok) {
-              const created = (await response.json()) as Profile;
-              authLogger.info("Profile auto-created successfully", { userId });
-              return created;
-            }
-            authLogger.error(
-              "Profile auto-creation failed",
-              new Error(`HTTP ${response.status}`),
-              { userId }
-            );
-          } catch (apiError) {
-            authLogger.error("Profile auto-creation error", apiError, {
-              userId,
-            });
+          // 401 = session expired or invalid
+          if (response.status === 401) {
+            authLogger.warn("Session expired during profile fetch", { userId });
+            return null;
           }
 
+          // Other error
+          authLogger.error(
+            "Profile API returned unexpected status",
+            new Error(`HTTP ${response.status}`),
+            { userId }
+          );
           return null;
         } catch (err) {
           authLogger.error("Profile fetch error", err, { userId });
