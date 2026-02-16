@@ -29,16 +29,70 @@ DROP POLICY IF EXISTS "authenticated_users_insert_leases" ON leases;
 DROP POLICY IF EXISTS "authenticated_users_update_leases" ON leases;
 DROP POLICY IF EXISTS "authenticated_users_delete_leases" ON leases;
 
+-- S'assurer que RLS est activé
+ALTER TABLE leases ENABLE ROW LEVEL SECURITY;
+
+-- Recréer les fonctions helper (idempotent)
+CREATE OR REPLACE FUNCTION public.user_profile_id()
+RETURNS UUID LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$ SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1; $$;
+
+CREATE OR REPLACE FUNCTION public.user_role()
+RETURNS TEXT LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$ SELECT role FROM profiles WHERE user_id = auth.uid() LIMIT 1; $$;
+
+CREATE OR REPLACE FUNCTION public.get_my_profile_id()
+RETURNS UUID LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$ SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1; $$;
+
+CREATE OR REPLACE FUNCTION public.is_lease_member(p_lease_id UUID)
+RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM lease_signers
+    WHERE lease_id = p_lease_id
+      AND profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1)
+  );
+$$;
+
+-- Recréer les policies scoped si manquantes
 DO $$
 DECLARE
   policy_count INT;
 BEGIN
   SELECT count(*) INTO policy_count
   FROM pg_policies WHERE tablename = 'leases' AND schemaname = 'public';
+
   IF policy_count = 0 THEN
-    RAISE EXCEPTION 'ERREUR CRITIQUE: Table leases sans policy RLS après nettoyage.';
+    RAISE NOTICE '[A.1] Aucune policy sur leases — création des policies scoped';
+
+    -- Admin: accès total
+    EXECUTE 'CREATE POLICY "leases_admin_all" ON leases FOR ALL TO authenticated USING (public.user_role() = ''admin'')';
+
+    -- Owner: accès total sur ses propriétés
+    EXECUTE '
+      CREATE POLICY "leases_owner_all" ON leases FOR ALL TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM properties p
+          WHERE p.id = leases.property_id
+          AND p.owner_id = public.user_profile_id()
+        )
+      )
+    ';
+
+    -- Tenant: lecture seule sur ses baux
+    EXECUTE '
+      CREATE POLICY "leases_tenant_select" ON leases FOR SELECT TO authenticated
+      USING (public.is_lease_member(id))
+    ';
+
+    SELECT count(*) INTO policy_count
+    FROM pg_policies WHERE tablename = 'leases' AND schemaname = 'public';
+    RAISE NOTICE '[A.1] ✅ % policies scoped créées sur leases', policy_count;
+  ELSE
+    RAISE NOTICE '[A.1] leases: % policies RLS déjà actives — OK', policy_count;
   END IF;
-  RAISE NOTICE '[A.1] leases: % policies RLS actives', policy_count;
 END $$;
 
 -- 2. NOTIFICATIONS: Restreindre l'INSERT
