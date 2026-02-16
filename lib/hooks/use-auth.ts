@@ -66,7 +66,7 @@ function resetGlobalGuards() {
 // Retry helper with exponential backoff
 // ======================================================================
 async function fetchWithRetry<T>(
-  fn: () => Promise<T>,
+  fn: () => PromiseLike<T> | Promise<T>,
   { maxRetries = 2, baseDelay = 1000, maxDelay = 5000 } = {}
 ): Promise<T> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {

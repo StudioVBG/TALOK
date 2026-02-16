@@ -1,5 +1,5 @@
 -- =====================================================
--- SCRIPT DE VALIDATION: Synchronisation auth / profiles
+-- SCRIPT DE VALIDATION: Synchronisation auth <-> profiles
 -- Date: 2026-02-16
 --
 -- USAGE: Executer dans le SQL Editor de Supabase
@@ -25,12 +25,12 @@ BEGIN
 
   RAISE NOTICE '';
   RAISE NOTICE '==================================================';
-  RAISE NOTICE '   RAPPORT DE SANTE — SYNC AUTH / PROFILES';
+  RAISE NOTICE '   RAPPORT DE SANTE — SYNC AUTH <-> PROFILES';
   RAISE NOTICE '   Date: %', to_char(NOW(), 'YYYY-MM-DD HH24:MI');
   RAISE NOTICE '==================================================';
-  RAISE NOTICE '  auth.users total          : %', v_total_auth;
-  RAISE NOTICE '  auth.users confirmes      : %', v_confirmed_auth;
-  RAISE NOTICE '  profiles total            : %', v_total_profiles;
+  RAISE NOTICE '  auth.users total          : %', lpad(v_total_auth::TEXT, 6);
+  RAISE NOTICE '  auth.users confirmes      : %', lpad(v_confirmed_auth::TEXT, 6);
+  RAISE NOTICE '  profiles total            : %', lpad(v_total_profiles::TEXT, 6);
   RAISE NOTICE '==================================================';
 END $$;
 
@@ -193,6 +193,7 @@ DECLARE
   v_has_guarantor BOOLEAN;
   v_has_exception BOOLEAN;
 BEGIN
+  -- Verifier que le trigger existe
   SELECT EXISTS(
     SELECT 1 FROM pg_trigger t
     JOIN pg_class c ON c.oid = t.tgrelid
@@ -202,6 +203,7 @@ BEGIN
       AND c.relname = 'users'
   ) INTO v_trigger_exists;
 
+  -- Recuperer le code source de la fonction
   SELECT prosrc INTO v_func_source
   FROM pg_proc
   WHERE proname = 'handle_new_user'
@@ -217,26 +219,26 @@ BEGIN
   IF NOT v_trigger_exists THEN
     RAISE WARNING '   FAIL — Le trigger on_auth_user_created N''EXISTE PAS sur auth.users';
   ELSE
-    RAISE NOTICE '   OK — Trigger on_auth_user_created existe';
+    RAISE NOTICE '   Trigger on_auth_user_created existe';
   END IF;
 
   IF v_func_source IS NULL THEN
     RAISE WARNING '   FAIL — La fonction handle_new_user() n''existe pas';
   ELSE
     IF v_has_email THEN
-      RAISE NOTICE '   OK — handle_new_user() inclut la gestion de l''email';
+      RAISE NOTICE '   handle_new_user() inclut la gestion de l''email';
     ELSE
       RAISE WARNING '   FAIL — handle_new_user() ne gere PAS l''email';
     END IF;
 
     IF v_has_guarantor THEN
-      RAISE NOTICE '   OK — handle_new_user() supporte le role guarantor';
+      RAISE NOTICE '   handle_new_user() supporte le role guarantor';
     ELSE
       RAISE WARNING '   WARN — handle_new_user() ne supporte pas le role guarantor';
     END IF;
 
     IF v_has_exception THEN
-      RAISE NOTICE '   OK — handle_new_user() a un EXCEPTION handler (ne bloque pas auth)';
+      RAISE NOTICE '   handle_new_user() a un EXCEPTION handler (ne bloque pas auth)';
     ELSE
       RAISE WARNING '   WARN — handle_new_user() n''a pas d''EXCEPTION handler';
     END IF;
@@ -254,21 +256,25 @@ DECLARE
   v_has_own_access BOOLEAN;
   v_rec RECORD;
 BEGIN
+  -- Verifier si RLS est active
   SELECT relrowsecurity INTO v_rls_enabled
   FROM pg_class
   WHERE relname = 'profiles'
     AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
 
+  -- Compter les policies
   SELECT count(*) INTO v_policy_count
   FROM pg_policies
   WHERE tablename = 'profiles' AND schemaname = 'public';
 
+  -- Verifier si une policy INSERT existe
   SELECT EXISTS(
     SELECT 1 FROM pg_policies
     WHERE tablename = 'profiles' AND schemaname = 'public'
       AND (cmd = 'INSERT' OR cmd = '*')
   ) INTO v_has_insert_policy;
 
+  -- Verifier si profiles_own_access existe
   SELECT EXISTS(
     SELECT 1 FROM pg_policies
     WHERE tablename = 'profiles' AND schemaname = 'public'
@@ -279,7 +285,7 @@ BEGIN
   RAISE NOTICE '-- CHECK 6: Policies RLS sur profiles --';
 
   IF v_rls_enabled THEN
-    RAISE NOTICE '   OK — RLS est active sur profiles';
+    RAISE NOTICE '   RLS est active sur profiles';
   ELSE
     RAISE WARNING '   FAIL — RLS n''est PAS active sur profiles';
   END IF;
@@ -297,13 +303,13 @@ BEGIN
   END LOOP;
 
   IF v_has_insert_policy THEN
-    RAISE NOTICE '   OK — Une policy INSERT (ou ALL) existe';
+    RAISE NOTICE '   Une policy INSERT (ou ALL) existe';
   ELSE
     RAISE WARNING '   FAIL — Aucune policy INSERT sur profiles';
   END IF;
 
   IF v_has_own_access THEN
-    RAISE NOTICE '   OK — Policy profiles_own_access existe';
+    RAISE NOTICE '   Policy profiles_own_access existe';
   ELSE
     RAISE WARNING '   WARN — Policy profiles_own_access manquante';
   END IF;
@@ -343,6 +349,7 @@ DECLARE
   v_score INTEGER := 0;
   v_max_score INTEGER := 6;
 BEGIN
+  -- Calculer les metriques
   SELECT count(*) INTO v_orphan_auth
   FROM auth.users u LEFT JOIN public.profiles p ON p.user_id = u.id WHERE p.id IS NULL;
 
@@ -370,6 +377,7 @@ BEGIN
       AND (cmd = 'INSERT' OR cmd = '*')
   ) INTO v_insert_policy_ok;
 
+  -- Calculer le score
   IF v_orphan_auth = 0 THEN v_score := v_score + 1; END IF;
   IF v_null_emails = 0 THEN v_score := v_score + 1; END IF;
   IF v_orphan_profiles = 0 THEN v_score := v_score + 1; END IF;
@@ -379,15 +387,15 @@ BEGIN
 
   RAISE NOTICE '';
   RAISE NOTICE '==================================================';
-  RAISE NOTICE '          RESUME DE SYNCHRONISATION';
+  RAISE NOTICE '            RESUME DE SYNCHRONISATION';
   RAISE NOTICE '==================================================';
-  RAISE NOTICE '  Auth sans profil      : %', v_orphan_auth;
-  RAISE NOTICE '  Profils sans email    : %', v_null_emails;
-  RAISE NOTICE '  Profils orphelins     : %', v_orphan_profiles;
-  RAISE NOTICE '  Emails desynchronises : %', v_desync_emails;
-  RAISE NOTICE '  Trigger OK            : %', CASE WHEN v_trigger_ok THEN 'OUI' ELSE 'NON' END;
-  RAISE NOTICE '  Policy INSERT OK      : %', CASE WHEN v_insert_policy_ok THEN 'OUI' ELSE 'NON' END;
-  RAISE NOTICE '--------------------------------------------------';
+  RAISE NOTICE '  Auth sans profil      : %', lpad(v_orphan_auth::TEXT, 6);
+  RAISE NOTICE '  Profils sans email    : %', lpad(v_null_emails::TEXT, 6);
+  RAISE NOTICE '  Profils orphelins     : %', lpad(v_orphan_profiles::TEXT, 6);
+  RAISE NOTICE '  Emails desynchronises : %', lpad(v_desync_emails::TEXT, 6);
+  RAISE NOTICE '  Trigger OK            : %', CASE WHEN v_trigger_ok THEN '   OUI' ELSE '   NON' END;
+  RAISE NOTICE '  Policy INSERT OK      : %', CASE WHEN v_insert_policy_ok THEN '   OUI' ELSE '   NON' END;
+  RAISE NOTICE '==================================================';
 
   IF v_score = v_max_score THEN
     RAISE NOTICE '  SCORE: %/% — TOUT EST SYNCHRONISE', v_score, v_max_score;
