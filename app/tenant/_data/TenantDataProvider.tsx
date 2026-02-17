@@ -68,7 +68,10 @@ export function TenantDataProvider({
       }
     } catch (err) {
       console.error("[TenantDataProvider] Erreur refetch:", err);
-      // On ne remplace pas le dashboard existant en cas d'erreur de refetch
+      // Propager l'erreur uniquement si aucune donnée existante (premier chargement raté)
+      if (!dashboard) {
+        setError(err instanceof Error ? err.message : "Erreur de chargement du tableau de bord");
+      }
     } finally {
       setIsRefetching(false);
     }

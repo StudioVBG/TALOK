@@ -144,7 +144,12 @@ export function OwnerDataProvider({
       }
     } catch (err) {
       console.error("[OwnerDataProvider] Erreur chargement API dashboard:", err);
+      // Propager l'erreur uniquement si aucune donnée existante
+      if (!apiData) {
+        setError(err instanceof Error ? err.message : "Erreur de chargement des données détaillées");
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Chargement initial des données API

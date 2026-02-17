@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { DashboardClient } from "./DashboardClient";
 
 /**
@@ -22,11 +23,29 @@ export default async function TenantDashboardPage() {
   }> = [];
 
   if (user) {
-    const { data: profile } = await supabase
+    // Récupérer le profil avec fallback service role en cas de blocage RLS
+    let profile: { id: string } | null = null;
+    const { data: directProfile, error: profileError } = await supabase
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)
       .single();
+
+    if (!profileError && directProfile) {
+      profile = directProfile;
+    } else {
+      try {
+        const serviceClient = getServiceClient();
+        const { data: serviceProfile } = await serviceClient
+          .from("profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+        profile = serviceProfile as { id: string } | null;
+      } catch (e) {
+        console.warn("[TenantDashboardPage] Service role fallback failed:", e);
+      }
+    }
 
     if (profile) {
       const { data: edls } = await supabase
@@ -40,7 +59,7 @@ export default async function TenantDashboardPage() {
 
       if (edls && edls.length > 0) {
         pendingEDLs = edls
-          .filter((sig: any) => sig.edl && sig.edl.status !== 'draft')
+          .filter((sig: any) => sig.edl != null && sig.edl.status !== 'draft')
           .map((sig: any) => ({
             id: sig.edl.id,
             type: sig.edl.type,

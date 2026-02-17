@@ -4,6 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 import type { PropertyRow } from "@/lib/supabase/typed-client";
 
@@ -39,12 +40,29 @@ export async function fetchProperties(
     redirect("/auth/signin");
   }
 
-  // Vérifier que l'utilisateur est bien le propriétaire
-  const { data: profile } = await supabase
+  // Vérifier que l'utilisateur est bien le propriétaire — fallback service role RLS
+  let profile: { id: string; role: string } | null = null;
+  const { data: directProfile, error: profileError } = await supabase
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
     .single();
+
+  if (!profileError && directProfile) {
+    profile = directProfile;
+  } else {
+    try {
+      const serviceClient = getServiceClient();
+      const { data: serviceProfile } = await serviceClient
+        .from("profiles")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .single();
+      profile = serviceProfile as { id: string; role: string } | null;
+    } catch (e) {
+      console.warn("[fetchProperties] Service role fallback failed:", e);
+    }
+  }
 
   if (!profile || profile.role !== "owner" || profile.id !== ownerId) {
     throw new Error("Accès non autorisé");
