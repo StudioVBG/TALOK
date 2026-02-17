@@ -110,7 +110,8 @@ describe("EDL Wizard - Compression d'images", () => {
 
 describe("EDL Wizard - Mécanisme de retry", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
-  let consoleSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let consoleSpy: any;
 
   beforeEach(() => {
     fetchMock = vi.fn();
@@ -145,7 +146,7 @@ describe("EDL Wizard - Mécanisme de retry", () => {
           }));
         }
 
-        const res = await fetchMock(url, options);
+        const res: any = await fetchMock(url, options);
 
         if (!res.ok) {
           const errorData = await res.json?.().catch(() => ({}));
@@ -180,7 +181,7 @@ describe("EDL Wizard - Mécanisme de retry", () => {
       .mockRejectedValueOnce(new Error("Failed to fetch"))
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true }) });
 
-    const result = await safeFetch("/api/edl/123/sections", {}, 2, retryCallback);
+    const result: any = await safeFetch("/api/edl/123/sections", {}, 2, retryCallback);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(retryCallback).toHaveBeenCalledWith(1);

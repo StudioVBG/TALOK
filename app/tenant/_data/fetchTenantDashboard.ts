@@ -224,9 +224,9 @@ async function fetchTenantDashboardDirect(
     propertyIds.length > 0
       ? supabase
           .from("edl")
-          .select("id, type, statut, scheduled_at, invitation_token, property_id")
+          .select("id, type, status, scheduled_at, property_id")
           .in("property_id", propertyIds)
-          .in("statut", ["scheduled", "in_progress"])
+          .in("status", ["draft", "in_progress"])
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -317,7 +317,7 @@ async function fetchTenantDashboardDirect(
       id: e.id,
       type: e.type || "entree",
       scheduled_at: e.scheduled_at || "",
-      invitation_token: e.invitation_token || "",
+      invitation_token: "",
       property_address: prop ? `${prop.adresse_complete}, ${prop.code_postal} ${prop.ville}` : "",
       property_type: prop?.type || "",
     };

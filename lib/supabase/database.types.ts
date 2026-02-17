@@ -362,6 +362,23 @@ export type DocumentRow = {
   metadata?: Json | null
   tenant_id?: string | null
   renewal_requested_at?: string | null
+  collection?: string | null
+  title?: string | null
+  file_size?: number | null
+  original_filename?: string | null
+  entity_id?: string | null
+  valid_from?: string | null
+  valid_until?: string | null
+  version?: number | null
+  parent_document_id?: string | null
+  is_current_version?: boolean | null
+  signed_at?: string | null
+  signature_data?: Json | null
+  tags?: string[] | null
+  ged_status?: string | null
+  ged_ai_data?: Json | null
+  ged_ai_processed_at?: string | null
+  search_vector?: unknown | null
   created_at: string
   updated_at?: string
 
@@ -397,6 +414,10 @@ export type EDLRow = {
   created_by: string
   // Missing columns discovered by type-level query parser
   scheduled_at?: string | null
+  property_id?: string | null
+  general_notes?: string | null
+  keys?: Json | null
+  entity_id?: string | null
   created_at: string
   updated_at: string
 
@@ -2449,6 +2470,68 @@ export type AuditEvent = AuditEventRow
 export type AuditDailyStats = AuditDailyStatsRow
 export type AuditEventDistribution = AuditEventDistributionRow
 export type SchemaTranslation = SchemaTranslationRow
+
+// ============================================
+// EMAIL TEMPLATE SYSTEM TYPES
+// ============================================
+
+export type EmailTemplateRow = {
+  id: string
+  slug: string
+  category: string
+  name: string
+  description?: string | null
+  subject: string
+  body_html: string
+  body_text: string
+  available_variables: Json
+  is_active: boolean
+  send_delay_minutes: number
+  created_at: string
+  updated_at: string
+}
+
+export type EmailTemplateVersionRow = {
+  id: string
+  template_id: string
+  subject: string
+  body_html: string
+  body_text: string
+  modified_by?: string | null
+  created_at: string
+}
+
+export type EmailLogRow = {
+  id: string
+  template_slug: string
+  recipient_email: string
+  variables_used?: Json | null
+  status: 'sent' | 'failed' | 'bounced'
+  error_message?: string | null
+  sent_at: string
+}
+
+// ============================================
+// SMS MESSAGES TYPES
+// ============================================
+
+export type SMSMessageRow = {
+  id: string
+  profile_id?: string | null
+  from_number: string
+  to_number: string
+  message: string
+  segments: number
+  twilio_sid?: string | null
+  twilio_status?: string | null
+  status: 'queued' | 'sent' | 'delivered' | 'undelivered' | 'failed'
+  error_code?: string | null
+  error_message?: string | null
+  sent_at?: string | null
+  delivered_at?: string | null
+  created_at: string
+  updated_at: string
+}
 
 // Alias génériques pour compatibilité
 export type AnyRow = GenericRow

@@ -143,7 +143,7 @@ async function fetchDashboardDirect(
     // EDL query - récupérer les états des lieux liés aux propriétés
     supabase
       .from("edl")
-      .select("id, statut, owner_signed")
+      .select("id, status")
       .in("property_id", propertyIds),
     // Activité récente - dernières factures et tickets pour le flux d'activité
     supabase
@@ -207,8 +207,8 @@ async function fetchDashboardDirect(
     },
     edl: {
       total: edls.length,
-      pending_owner_signature: (edls as Array<{ statut?: string; owner_signed?: boolean | null }>).filter((e) =>
-        e.statut === "completed" && !e.owner_signed
+      pending_owner_signature: (edls as Array<{ status?: string }>).filter((e) =>
+        e.status === "completed"
       ).length,
     },
     zone3_portfolio: { compliance: [] },
