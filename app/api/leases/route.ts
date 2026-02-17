@@ -107,17 +107,7 @@ export async function GET(request: Request) {
       .from("leases")
       .select(`
         *,
-        property:properties(
-          id,
-          adresse_complete,
-          ville,
-          code_postal,
-          loyer_hc,
-          loyer_base,
-          charges_mensuelles,
-          surface_habitable_m2,
-          surface
-        )
+        property:properties(*)
       `)
       .order("created_at", { ascending: false });
 

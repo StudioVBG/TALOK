@@ -870,10 +870,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                         </div>
                         <span className="text-xs text-amber-600">Aperçu du contrat ci-dessous</span>
                       </div>
-                      <LeasePreview typeBail={lease.type_bail as any} bailData={bailData} leaseId={leaseId} />
+                      <LeasePreview typeBail={lease.type_bail as any} bailData={bailData} leaseId={leaseId} leaseStatus={lease.statut} />
                     </div>
                   ) : (
-                    <LeasePreview typeBail={lease.type_bail as any} bailData={bailData} leaseId={leaseId} />
+                    <LeasePreview typeBail={lease.type_bail as any} bailData={bailData} leaseId={leaseId} leaseStatus={lease.statut} />
                   )}
                 </div>
               </TabsContent>

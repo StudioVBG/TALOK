@@ -100,7 +100,7 @@ export async function fetchAdminOwnerDetails(ownerId: string): Promise<AdminOwne
   
   let { data: propertiesData, error: propError } = await serviceClient
     .from("properties")
-    .select("id, adresse_complete, ville, code_postal, type, surface, nb_pieces, rental_status, owner_id")
+    .select("*")
     .eq("owner_id", ownerId);
 
   console.log(`[fetchAdminOwnerDetails] Résultat avec profile.id: ${propertiesData?.length || 0} propriétés`, propError?.message || '');
@@ -109,7 +109,7 @@ export async function fetchAdminOwnerDetails(ownerId: string): Promise<AdminOwne
   if ((!propertiesData || propertiesData.length === 0) && profile.user_id) {
     const { data: propertiesByUserId, error: propError2 } = await serviceClient
       .from("properties")
-      .select("id, adresse_complete, ville, code_postal, type, surface, nb_pieces, rental_status, owner_id")
+      .select("*")
       .eq("owner_id", profile.user_id);
     
     console.log(`[fetchAdminOwnerDetails] Résultat avec user_id: ${propertiesByUserId?.length || 0} propriétés`, propError2?.message || '');

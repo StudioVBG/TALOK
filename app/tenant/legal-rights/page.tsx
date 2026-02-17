@@ -51,11 +51,18 @@ export default async function TenantLegalRightsPage() {
           id,
           property_id,
           statut,
+          type_bail,
+          loyer,
+          date_debut,
           properties:property_id (
+            id,
             adresse_complete,
             code_postal,
             ville,
-            departement
+            departement,
+            type,
+            dpe_classe_energie,
+            owner_id
           )
         )
       `)

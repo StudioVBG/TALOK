@@ -110,10 +110,22 @@ export default function TenantColocationPage() {
             type_bail,
             loyer,
             charges_forfaitaires,
+            statut,
+            date_debut,
+            date_fin,
             properties!inner (
+              id,
               adresse_complete,
               ville,
-              code_postal
+              code_postal,
+              type,
+              surface,
+              surface_habitable_m2,
+              nb_pieces,
+              dpe_classe_energie,
+              dpe_classe_climat,
+              cover_url,
+              owner_id
             )
           )
         `)

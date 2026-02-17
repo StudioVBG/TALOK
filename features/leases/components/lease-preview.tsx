@@ -41,6 +41,8 @@ interface LeasePreviewProps {
   refreshKey?: number;
   /** ✅ SOTA 2026: Active le refresh automatique depuis l'API (toutes les 30s si leaseId fourni) */
   autoRefresh?: boolean;
+  /** Statut du bail — si signé/actif, les alertes de validation sont atténuées */
+  leaseStatus?: string;
 }
 
 const typeLabels: Record<TypeBail, string> = {
@@ -67,6 +69,7 @@ export function LeasePreview({
   onGenerated,
   refreshKey = 0,
   autoRefresh = false,
+  leaseStatus,
 }: LeasePreviewProps) {
   const [html, setHtml] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -113,40 +116,52 @@ export function LeasePreview({
   }, [typeBail, bailData]);
 
   // ✅ SOTA 2026: Validation des données du bail (CRITIQUES vs RECOMMANDÉES)
+  // Si le bail est déjà signé/actif, les erreurs de données manquantes deviennent des warnings
+  // car elles reflètent un manque de données côté affichage, pas un vrai blocage
+  const isSealed = ["fully_signed", "active", "terminated", "archived"].includes(leaseStatus || "");
+  
   const validateBailData = useCallback((): { critical: string[]; warnings: string[] } => {
     const critical: string[] = [];
     const warnings: string[] = [];
     
-    // === CHAMPS CRITIQUES (bloquent la création) ===
+    // Pour un bail scellé, les erreurs de données manquantes sont des warnings informatifs
+    const pushError = (msg: string) => {
+      if (isSealed) {
+        warnings.push(msg);
+      } else {
+        critical.push(msg);
+      }
+    };
+    
+    // === CHAMPS CRITIQUES (bloquent la création pour les brouillons) ===
     
     // Bailleur
     const isSociete = bailData.bailleur?.type === "societe";
     if (isSociete) {
       if (!bailData.bailleur?.nom && !bailData.bailleur?.raison_sociale) {
-        critical.push("Raison sociale de la société manquante");
+        pushError("Raison sociale de la société manquante");
       }
       if (!bailData.bailleur?.siret) {
         warnings.push("SIRET de la société non renseigné");
       }
     } else {
       if (!bailData.bailleur?.nom) {
-        critical.push("Nom du bailleur manquant");
+        pushError("Nom du bailleur manquant");
       }
       if (!bailData.bailleur?.prenom) {
-        critical.push("Prénom du bailleur manquant");
+        pushError("Prénom du bailleur manquant");
       }
     }
     
     if (!bailData.bailleur?.adresse) {
-      critical.push("Adresse du bailleur manquante");
+      pushError("Adresse du bailleur manquante");
     }
     
     // Locataire
     if (!bailData.locataires || bailData.locataires.length === 0) {
-      critical.push("Aucun locataire défini");
+      pushError("Aucun locataire défini");
     } else {
       const mainTenant = bailData.locataires[0];
-      // Vérifier si c'est une invitation (données placeholder) vs profil réel
       const isPlaceholder = mainTenant.nom?.includes("[") || mainTenant.nom?.includes("@");
       if (!isPlaceholder) {
         if (!mainTenant.nom || mainTenant.nom === "[NOM LOCATAIRE]") {
@@ -157,14 +172,13 @@ export function LeasePreview({
     
     // Logement
     if (!bailData.logement?.adresse_complete) {
-      critical.push("Adresse du logement manquante");
+      pushError("Adresse du logement manquante");
     }
     
     if (!bailData.logement?.surface_habitable || bailData.logement.surface_habitable <= 0) {
-      critical.push("Surface habitable non renseignée");
+      pushError("Surface habitable non renseignée");
     } else if (bailData.logement.surface_habitable < 9) {
-      // Loi Carrez : minimum 9m² pour location
-      critical.push("Surface habitable insuffisante (min. 9m² légal)");
+      pushError("Surface habitable insuffisante (min. 9m² légal)");
     }
     
     if (!bailData.logement?.nb_pieces_principales || bailData.logement.nb_pieces_principales < 1) {
@@ -173,7 +187,7 @@ export function LeasePreview({
     
     // Conditions financières
     if (!bailData.conditions?.loyer_hc || bailData.conditions.loyer_hc <= 0) {
-      critical.push("Montant du loyer non renseigné");
+      pushError("Montant du loyer non renseigné");
     }
     
     if (bailData.conditions?.charges_montant === undefined) {
@@ -198,13 +212,12 @@ export function LeasePreview({
     
     // Dates
     if (!bailData.conditions?.date_debut) {
-      critical.push("Date de début du bail non renseignée");
+      pushError("Date de début du bail non renseignée");
     } else {
       const dateDebut = new Date(bailData.conditions.date_debut);
       const aujourdhui = new Date();
       aujourdhui.setHours(0, 0, 0, 0);
       
-      // Pour bail saisonnier : peut commencer dans le passé proche (annulation)
       if (typeBailLocal !== "saisonnier") {
         const debutMoins6Mois = new Date(aujourdhui);
         debutMoins6Mois.setMonth(debutMoins6Mois.getMonth() - 6);
@@ -217,7 +230,7 @@ export function LeasePreview({
     // Durée pour baux avec fin obligatoire
     if (typeBailLocal === "saisonnier" || typeBailLocal === "mobilite") {
       if (!bailData.conditions?.date_fin) {
-        critical.push(`Date de fin obligatoire pour un bail ${typeBailLocal === "saisonnier" ? "saisonnier" : "mobilité"}`);
+        pushError(`Date de fin obligatoire pour un bail ${typeBailLocal === "saisonnier" ? "saisonnier" : "mobilité"}`);
       } else if (bailData.conditions.date_debut) {
         const debut = new Date(bailData.conditions.date_debut);
         const fin = new Date(bailData.conditions.date_fin);
@@ -234,21 +247,20 @@ export function LeasePreview({
     
     // === DIAGNOSTICS OBLIGATOIRES ===
     if (!bailData.diagnostics?.dpe?.classe_energie) {
-      critical.push("DPE non renseigné (obligatoire depuis 2023)");
+      pushError("DPE non renseigné (obligatoire depuis 2023)");
     } else {
       const classeEnergie = bailData.diagnostics.dpe.classe_energie;
-      // Depuis 2025 : interdiction de louer G, depuis 2028 : F, depuis 2034 : E
       if (classeEnergie === "G") {
-        critical.push("⚠️ Logement classé G : location interdite depuis 2025");
+        critical.push("Logement classé G : location interdite depuis 2025");
       } else if (classeEnergie === "F") {
-        warnings.push("⚠️ Logement classé F : location interdite à partir de 2028");
+        warnings.push("Logement classé F : location interdite à partir de 2028");
       } else if (classeEnergie === "E") {
-        warnings.push("ℹ️ Logement classé E : location interdite à partir de 2034");
+        warnings.push("Logement classé E : location interdite à partir de 2034");
       }
     }
     
     return { critical, warnings };
-  }, [bailData]);
+  }, [bailData, isSealed]);
 
   // Wrapper pour compatibilité avec le code existant
   const validationResult = useMemo(() => validateBailData(), [validateBailData]);

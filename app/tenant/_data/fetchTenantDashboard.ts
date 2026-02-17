@@ -30,6 +30,7 @@ export interface TenantLease {
     code_postal: string;
     type: string;
     surface?: number;
+    surface_habitable_m2?: number;
     nb_pieces?: number;
     etage?: number;
     ascenseur?: boolean;
@@ -39,9 +40,30 @@ export interface TenantLease {
     num_lot?: string;
     digicode?: string;
     interphone?: string;
+    // DPE / Diagnostics complets
+    energie?: string;
+    ges?: string;
     dpe_classe_energie?: string;
     dpe_classe_climat?: string;
+    dpe_consommation?: number;
+    dpe_emissions?: number;
+    dpe_date?: string;
+    dpe_date_validite?: string;
     cover_url?: string;
+    owner_id?: string;
+    // Caractéristiques logement
+    chauffage_type?: string;
+    chauffage_energie?: string;
+    eau_chaude_type?: string;
+    regime?: string;
+    loyer_hc?: number;
+    charges_mensuelles?: number;
+    // Annexes
+    has_balcon?: boolean;
+    has_terrasse?: boolean;
+    has_jardin?: boolean;
+    has_cave?: boolean;
+    clim_presence?: boolean | string;
     meters?: Array<{
       id: string;
       type: string;
@@ -54,6 +76,7 @@ export interface TenantLease {
       label: string;
       count_info: string;
     }>;
+    [key: string]: unknown;
   };
   owner: {
     id: string;
@@ -133,18 +156,19 @@ export interface TenantDashboardData {
 /**
  * Fallback: requêtes directes quand la RPC tenant_dashboard n'est pas disponible.
  * Utilise le service role client pour bypasser les RLS — l'auth est déjà vérifiée en amont.
+ *
+ * v4: Ajoute recherche par email, meters, keys (EDL), insurance check
  */
 async function fetchTenantDashboardDirect(
   _supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string
 ): Promise<TenantDashboardData | null> {
-  // Utiliser le service role client pour éviter les blocages RLS
   const supabase = getServiceClient();
 
-  // Récupérer le profil
+  // Récupérer le profil + email de l'utilisateur
   const { data: profileRaw, error: profileError } = await supabase
     .from("profiles")
-    .select("id, prenom, nom, kyc_status")
+    .select("id, prenom, nom, kyc_status, user_id")
     .eq("user_id", userId)
     .single();
 
@@ -152,18 +176,39 @@ async function fetchTenantDashboardDirect(
     console.error("[fetchTenantDashboardDirect] Erreur profil:", profileError.message);
   }
 
-  // Cast nécessaire car kyc_status n'existe pas dans les types générés Supabase
-  const profile = profileRaw as { id: string; prenom: string | null; nom: string | null; kyc_status?: string | null } | null;
-
+  const profile = profileRaw as { id: string; prenom: string | null; nom: string | null; kyc_status?: string | null; user_id: string } | null;
   if (!profile) return null;
 
-  // Récupérer les baux via lease_signers
-  const { data: signers } = await supabase
+  // Récupérer l'email de l'utilisateur pour la recherche par invited_email
+  let userEmail = "";
+  try {
+    const { data: { user: authUser } } = await _supabase.auth.getUser();
+    userEmail = authUser?.email?.toLowerCase() || "";
+  } catch {
+    console.warn("[fetchTenantDashboardDirect] Impossible de récupérer l'email");
+  }
+
+  // Récupérer les baux via lease_signers (par profile_id OU invited_email)
+  let signerFilter = supabase
     .from("lease_signers")
     .select("lease_id")
     .eq("profile_id", profile.id);
 
-  const leaseIds = (signers || []).map((s: { lease_id: string }) => s.lease_id);
+  const { data: signersByProfile } = await signerFilter;
+  let leaseIdsByProfile = (signersByProfile || []).map((s: { lease_id: string }) => s.lease_id);
+
+  // Recherche supplémentaire par email si disponible
+  let leaseIdsByEmail: string[] = [];
+  if (userEmail) {
+    const { data: signersByEmail } = await supabase
+      .from("lease_signers")
+      .select("lease_id")
+      .ilike("invited_email", userEmail);
+    leaseIdsByEmail = (signersByEmail || []).map((s: { lease_id: string }) => s.lease_id);
+  }
+
+  // Union des lease_ids
+  const leaseIds = [...new Set([...leaseIdsByProfile, ...leaseIdsByEmail])];
 
   let leases: any[] = [];
   if (leaseIds.length > 0) {
@@ -174,19 +219,66 @@ async function fetchTenantDashboardDirect(
     leases = leasesData || [];
   }
 
-  // Récupérer les propriétés liées aux baux pour enrichir les données
+  // Signataires complets avec profils
+  let allLeaseSigners: any[] = [];
+  if (leaseIds.length > 0) {
+    const { data: leaseSignersData } = await supabase
+      .from("lease_signers")
+      .select(`
+        id,
+        lease_id,
+        profile_id,
+        role,
+        signature_status,
+        signed_at,
+        invited_email,
+        invited_name,
+        profiles (
+          id,
+          prenom,
+          nom,
+          email,
+          telephone,
+          avatar_url
+        )
+      `)
+      .in("lease_id", leaseIds);
+    allLeaseSigners = (leaseSignersData || []).map((s: any) => {
+      const p = Array.isArray(s.profiles) ? s.profiles[0] : s.profiles;
+      return {
+        id: s.id,
+        profile_id: s.profile_id || p?.id,
+        role: s.role,
+        signature_status: s.signature_status,
+        signed_at: s.signed_at,
+        lease_id: s.lease_id,
+        invited_email: s.invited_email,
+        invited_name: s.invited_name,
+        prenom: p?.prenom || s.invited_name?.split(" ")[0] || "",
+        nom: p?.nom || s.invited_name?.split(" ").slice(1).join(" ") || "",
+        avatar_url: p?.avatar_url || null,
+      };
+    });
+  }
+
   const propertyIds = leases.map((l: any) => l.property_id).filter(Boolean);
 
-  // Charger les propriétés + propriétaires en parallèle pour enrichir factures/tickets/EDL
-  const [propertiesResult, ownersResult, invoicesResult, ticketsResult, edlResult] = await Promise.allSettled([
-    // Propriétés liées aux baux (avec owner_id)
+  // Charger les données en parallèle : propriétés, propriétaires, factures, tickets, EDL, meters, keys EDL, insurance
+  const [
+    propertiesResult,
+    ownersResult,
+    invoicesResult,
+    ticketsResult,
+    edlResult,
+    metersResult,
+    edlKeysResult,
+    insuranceResult,
+  ] = await Promise.allSettled([
+    // Propriétés complètes (select *)
     propertyIds.length > 0
-      ? supabase
-          .from("properties")
-          .select("id, type, adresse_complete, ville, code_postal, surface, nb_pieces, etage, ascenseur, dpe_classe_energie, dpe_classe_climat, cover_url, digicode, interphone, owner_id")
-          .in("id", propertyIds)
+      ? supabase.from("properties").select("*").in("id", propertyIds)
       : Promise.resolve({ data: [] }),
-    // Propriétaires des biens
+    // Propriétaires
     propertyIds.length > 0
       ? supabase
           .from("properties")
@@ -202,14 +294,14 @@ async function fetchTenantDashboardDirect(
           .order("periode", { ascending: false })
           .limit(20)
       : Promise.resolve({ data: [] }),
-    // Tickets créés par ce locataire
+    // Tickets
     supabase
       .from("tickets")
       .select("id, titre, description, priorite, statut, created_at, property_id")
       .eq("created_by_profile_id", profile.id)
       .order("created_at", { ascending: false })
       .limit(10),
-    // EDL en attente pour les propriétés du locataire
+    // EDL en attente
     propertyIds.length > 0
       ? supabase
           .from("edl")
@@ -217,6 +309,33 @@ async function fetchTenantDashboardDirect(
           .in("property_id", propertyIds)
           .in("statut", ["scheduled", "in_progress"])
       : Promise.resolve({ data: [] }),
+    // Compteurs actifs avec dernière lecture
+    propertyIds.length > 0
+      ? supabase
+          .from("meters")
+          .select("id, property_id, type, serial_number, unit, is_active")
+          .in("property_id", propertyIds)
+          .eq("is_active", true)
+      : Promise.resolve({ data: [] }),
+    // Clés depuis le dernier EDL signé/complété par propriété
+    propertyIds.length > 0
+      ? supabase
+          .from("edl")
+          .select("property_id, keys, completed_date, created_at")
+          .in("property_id", propertyIds)
+          .in("status", ["signed", "completed"])
+          .not("keys", "is", null)
+          .order("completed_date", { ascending: false, nullsFirst: false })
+      : Promise.resolve({ data: [] }),
+    // Assurance : attestation non archivée et non expirée
+    supabase
+      .from("documents")
+      .select("id, expiry_date")
+      .eq("tenant_id", profile.id)
+      .eq("type", "attestation_assurance")
+      .eq("is_archived", false)
+      .order("expiry_date", { ascending: false })
+      .limit(1),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -242,14 +361,17 @@ async function fetchTenantDashboardDirect(
   const invoicesData = getData<Record<string, unknown>>(invoicesResult);
   const ticketsData = getData<Record<string, unknown>>(ticketsResult);
   const edlData = getData<Record<string, unknown>>(edlResult);
+  const metersData = getData<Record<string, unknown>>(metersResult);
+  const edlKeysData = getData<Record<string, unknown>>(edlKeysResult);
+  const insuranceData = getData<Record<string, unknown>>(insuranceResult);
 
-  // Créer un index rapide des propriétés par ID
+  // Index des propriétés par ID
   const propertyMap = new Map<string, PropertyRecord>();
   for (const p of propertiesData) {
     propertyMap.set(p.id, p);
   }
 
-  // Créer un index des propriétaires par property_id
+  // Index des propriétaires par property_id
   const ownerMap = new Map<string, OwnerRecord["owner"]>();
   for (const o of ownersData) {
     if (o.owner) {
@@ -257,19 +379,91 @@ async function fetchTenantDashboardDirect(
     }
   }
 
-  // Helper pour retrouver la propriété d'un bail
+  // Récupérer les dernières lectures des compteurs
+  const metersByProperty = new Map<string, any[]>();
+  for (const m of metersData) {
+    const propId = (m as any).property_id;
+    if (!metersByProperty.has(propId)) metersByProperty.set(propId, []);
+    metersByProperty.get(propId)!.push(m);
+  }
+
+  // Récupérer les lectures les plus récentes pour chaque compteur
+  const meterIds = metersData.map((m: any) => m.id).filter(Boolean);
+  let meterReadingsMap = new Map<string, { value: number; date: string }>();
+  if (meterIds.length > 0) {
+    const { data: readings } = await supabase
+      .from("meter_readings")
+      .select("meter_id, reading_value, reading_date")
+      .in("meter_id", meterIds)
+      .order("reading_date", { ascending: false });
+    if (readings) {
+      for (const r of readings) {
+        if (!meterReadingsMap.has(r.meter_id)) {
+          meterReadingsMap.set(r.meter_id, {
+            value: r.reading_value,
+            date: r.reading_date,
+          });
+        }
+      }
+    }
+  }
+
+  // Index des clés EDL par property_id (uniquement le plus récent)
+  const keysMap = new Map<string, any[]>();
+  for (const edlRow of edlKeysData) {
+    const propId = (edlRow as any).property_id;
+    if (!keysMap.has(propId) && (edlRow as any).keys) {
+      const rawKeys = (edlRow as any).keys;
+      const mappedKeys = Array.isArray(rawKeys)
+        ? rawKeys.map((k: any) => ({
+            label: k.type || k.label || "Clé",
+            count_info: k.quantite ? `${k.quantite} unité(s)` : k.count_info || "—",
+          }))
+        : [];
+      keysMap.set(propId, mappedKeys);
+    }
+  }
+
+  // Assurance
+  const insuranceDoc = insuranceData.length > 0 ? (insuranceData[0] as any) : null;
+  const hasInsurance = insuranceDoc
+    ? (!insuranceDoc.expiry_date || new Date(insuranceDoc.expiry_date) > new Date())
+    : false;
+
+  // Helper
   const getPropertyForLease = (leaseId: string) => {
     const lease = leases.find((l: any) => l.id === leaseId);
     return lease ? propertyMap.get(lease.property_id) : undefined;
   };
 
-  // Enrichir les baux avec propriété et propriétaire
+  // Enrichir les baux avec propriété (+ meters + keys), propriétaire ET signataires
   const enrichedLeases = leases.map((l: any) => {
     const prop = propertyMap.get(l.property_id);
     const ownerProfile = ownerMap.get(l.property_id);
+    const leaseSignersForLease = allLeaseSigners.filter((s: any) => s.lease_id === l.id);
+    const propId = l.property_id;
+
+    // Enrichir les meters avec les lectures
+    const meters = (metersByProperty.get(propId) || []).map((m: any) => {
+      const reading = meterReadingsMap.get(m.id);
+      return {
+        id: m.id,
+        type: m.type,
+        serial_number: m.serial_number,
+        unit: m.unit,
+        last_reading_value: reading?.value ?? null,
+        last_reading_date: reading?.date ?? null,
+      };
+    });
+
+    const keys = keysMap.get(propId) || [];
+
     return {
       ...l,
-      property: prop || null,
+      lease_signers: leaseSignersForLease,
+      property: prop
+        ? { ...prop, meters, keys }
+        : null,
       owner: ownerProfile
         ? {
             id: ownerProfile.id,
@@ -313,7 +507,6 @@ async function fetchTenantDashboardDirect(
   });
 
   const unpaidInvoices = invoices.filter((i) => i.statut === "sent" || i.statut === "late");
-
   const profileKyc = "kyc_status" in profile ? (profile as { kyc_status?: string }).kyc_status : undefined;
 
   return {
@@ -328,7 +521,10 @@ async function fetchTenantDashboardDirect(
     tickets,
     notifications: [],
     pending_edls,
-    insurance: { has_insurance: false },
+    insurance: {
+      has_insurance: hasInsurance,
+      last_expiry_date: insuranceDoc?.expiry_date || undefined,
+    },
     stats: {
       unpaid_amount: unpaidInvoices.reduce((sum, i) => sum + Number(i.montant_total || 0), 0),
       unpaid_count: unpaidInvoices.length,
@@ -377,11 +573,16 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
   if (cleanData.leases) {
     cleanData.leases = cleanData.leases.map((l: any) => ({
       ...l,
+      // La RPC renvoie "signers", l'interface attend "lease_signers" — on unifie
+      lease_signers: l.lease_signers || l.signers || [],
       property: l.property ? {
         ...l.property,
         ville: l.property.ville || "Ville inconnue",
         code_postal: l.property.code_postal || "00000",
-        adresse_complete: l.property.adresse_complete || "Adresse non renseignée"
+        adresse_complete: l.property.adresse_complete || "Adresse non renseignée",
+        // S'assurer que meters et keys sont des tableaux
+        meters: l.property.meters || [],
+        keys: l.property.keys || [],
       } : l.property,
       owner: l.owner ? {
         ...l.owner,

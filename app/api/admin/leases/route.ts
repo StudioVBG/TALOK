@@ -50,15 +50,12 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         property:properties(
-          id,
-          adresse_complete,
-          ville,
-          code_postal,
-          type,
+          *,
           owner:profiles!properties_owner_id_fkey(
             id,
             prenom,
             nom,
+            email,
             telephone
           )
         ),
@@ -67,10 +64,13 @@ export async function GET(request: NextRequest) {
           role,
           signature_status,
           signed_at,
+          invited_email,
+          invited_name,
           profile:profiles(
             id,
             prenom,
-            nom
+            nom,
+            email
           )
         )
       `, { count: "exact" });

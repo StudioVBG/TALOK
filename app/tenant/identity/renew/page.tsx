@@ -72,7 +72,7 @@ function RenewCNIContent() {
 
       const { data: leaseData } = await supabase
         .from("leases")
-        .select(`id, type_bail, properties (adresse_complete, ville)`)
+        .select(`id, type_bail, statut, loyer, date_debut, properties (id, adresse_complete, ville, code_postal, type, dpe_classe_energie, owner_id)`)
         .eq("id", leaseId!).single();
       setLease(leaseData);
     } catch (err: any) {

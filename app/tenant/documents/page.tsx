@@ -179,7 +179,8 @@ export default function TenantDocumentsPage() {
     // Bail à signer
     const leaseStatus = dashboard.lease?.statut;
     if (leaseStatus === "pending_signature" || leaseStatus === "partially_signed") {
-      const tenantSigner = ((dashboard.lease as any)?.signers as any[])?.find(
+      const leaseSigners = (dashboard.lease as any)?.lease_signers || (dashboard.lease as any)?.signers || [];
+      const tenantSigner = (leaseSigners as any[])?.find(
         (s: any) => s.role === "locataire_principal" || s.role === "tenant" || s.role === "locataire"
       );
       const hasSignedLease = tenantSigner?.signature_status === "signed" || !!tenantSigner?.signed_at;

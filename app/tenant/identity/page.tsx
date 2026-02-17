@@ -117,9 +117,17 @@ export default function TenantIdentityPage() {
           leases (
             id,
             type_bail,
+            statut,
+            loyer,
+            date_debut,
             property:properties (
+              id,
               adresse_complete,
-              ville
+              ville,
+              code_postal,
+              type,
+              dpe_classe_energie,
+              owner_id
             )
           )
         `)

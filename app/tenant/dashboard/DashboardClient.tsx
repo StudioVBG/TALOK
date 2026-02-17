@@ -190,10 +190,11 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
 
   // ✅ FIX: Vérifier si le locataire a déjà signé ce bail
   const hasSignedLease = useMemo(() => {
-    if (!(dashboard?.lease as any)?.signers) return false;
+    const signers = (dashboard?.lease as any)?.lease_signers || (dashboard?.lease as any)?.signers || [];
+    if (signers.length === 0) return false;
 
     // Chercher le signataire locataire
-    const tenantSigner = ((dashboard!.lease as any).signers as any[]).find((s: any) =>
+    const tenantSigner = (signers as any[]).find((s: any) =>
       s.role === 'locataire_principal' || s.role === 'tenant' || s.role === 'locataire'
     );
     

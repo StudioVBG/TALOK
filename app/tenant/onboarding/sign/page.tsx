@@ -47,10 +47,11 @@ export default function TenantSignLeasePage() {
 
   // ✅ FIX: Vérifier si le locataire a déjà signé ce bail
   const hasAlreadySigned = useMemo(() => {
-    if (!(dashboard?.lease as any)?.signers) return false;
+    const signers = (dashboard?.lease as any)?.lease_signers || (dashboard?.lease as any)?.signers || [];
+    if (signers.length === 0) return false;
 
     // Chercher si le locataire actuel a signé
-    const tenantSigner = (dashboard!.lease as any).signers.find((s: any) =>
+    const tenantSigner = signers.find((s: any) =>
       s.role === 'locataire_principal' || s.role === 'tenant' || s.role === 'locataire'
     );
     

@@ -21,13 +21,7 @@ async function getTenantProfileAdmin(tenantId: string) {
         *,
         lease:leases(
           *,
-          property:properties(
-            id,
-            adresse_complete,
-            code_postal,
-            ville,
-            owner_id
-          )
+          property:properties(*)
         )
       ),
       lease_signers:lease_signers(
@@ -35,16 +29,17 @@ async function getTenantProfileAdmin(tenantId: string) {
         role,
         signature_status,
         signed_at,
+        invited_email,
+        invited_name,
         lease:leases(
           id,
           statut,
           type_bail,
           loyer,
-          property:properties(
-            id,
-            adresse_complete,
-            ville
-          )
+          charges_forfaitaires,
+          date_debut,
+          date_fin,
+          property:properties(*)
         )
       )
     `)
