@@ -124,26 +124,21 @@ BEGIN
   END IF;
 END $$;
 
--- 4. PROFESSIONAL_ORDERS
+-- 4. PROFESSIONAL_ORDERS (table référentiel statique — lecture seule pour tous les authentifiés)
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'professional_orders' AND schemaname = 'public') THEN
     EXECUTE 'DROP POLICY IF EXISTS "professional_orders_select_policy" ON professional_orders';
     EXECUTE 'DROP POLICY IF EXISTS "professional_orders_select_scoped" ON professional_orders';
+    -- Table référentiel (code, name, website, professions) — pas de données sensibles
     EXECUTE '
-      CREATE POLICY "professional_orders_select_scoped" ON professional_orders
+      CREATE POLICY "professional_orders_select_authenticated" ON professional_orders
         FOR SELECT TO authenticated
-        USING (
-          public.user_role() = ''admin''
-          OR EXISTS (
-            SELECT 1 FROM leases l
-            JOIN properties p ON p.id = l.property_id
-            WHERE l.id = professional_orders.lease_id
-            AND p.owner_id = public.get_my_profile_id()
-          )
-        )
+        USING (true)
     ';
-    RAISE NOTICE '[A.4] professional_orders: policy SELECT corrigée';
+    RAISE NOTICE '[A.4] professional_orders: policy SELECT référentiel (lecture seule) créée';
+  ELSE
+    RAISE NOTICE '[A.4] professional_orders: table absente — skip';
   END IF;
 END $$;
 
