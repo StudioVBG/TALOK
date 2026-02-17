@@ -51,7 +51,10 @@ export async function GET(
           date_fin,
           lease_signers!inner(
             profile_id,
-            role
+            role,
+            signature_status,
+            invited_email,
+            invited_name
           )
         )
       `

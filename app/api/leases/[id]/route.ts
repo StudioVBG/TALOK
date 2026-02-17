@@ -72,7 +72,9 @@ export async function GET(request: Request, { params }: RouteParams) {
             signature_status,
             signed_at,
             profile_id,
-            profile:profiles(id, prenom, nom)
+            invited_email,
+            invited_name,
+            profile:profiles(id, prenom, nom, email)
           )
         `)
         .eq("id", leaseId)
@@ -442,6 +444,9 @@ export const DELETE = withSecurity(async function DELETE(request: Request, { par
         signers:lease_signers(
           profile_id,
           role,
+          signature_status,
+          invited_email,
+          invited_name,
           profile:profiles(prenom, nom, email)
         )
       `)

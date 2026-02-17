@@ -43,6 +43,7 @@ export async function GET(
         signature_status,
         signed_at,
         invited_email,
+        invited_name,
         profile:profile_id (
           id,
           prenom,

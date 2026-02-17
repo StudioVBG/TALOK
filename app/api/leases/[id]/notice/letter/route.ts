@@ -43,6 +43,10 @@ export async function GET(
         ),
         signers:lease_signers(
           role,
+          profile_id,
+          signature_status,
+          invited_email,
+          invited_name,
           profile:profiles(id, prenom, nom, email, user_id)
         )
       `)

@@ -697,6 +697,9 @@ export async function DELETE(
         signers:lease_signers(
           profile_id,
           role,
+          signature_status,
+          invited_email,
+          invited_name,
           profile:profiles(id, prenom, nom, email)
         )
       `)
@@ -742,7 +745,9 @@ export async function DELETE(
         id,
         signers:lease_signers(
           profile_id,
-          role
+          role,
+          invited_email,
+          invited_name
         )
       `)
       .eq("property_id", propertyId);

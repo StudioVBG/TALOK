@@ -61,7 +61,9 @@ export async function POST(
         signers:lease_signers(
           profile_id,
           role,
-          signature_status
+          signature_status,
+          invited_email,
+          invited_name
         )
       `)
       .eq("id", leaseId)

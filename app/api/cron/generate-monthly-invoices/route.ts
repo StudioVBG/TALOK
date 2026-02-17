@@ -88,7 +88,9 @@ export async function GET(request: NextRequest) {
         ),
         lease_signers(
           profile_id,
-          role
+          role,
+          invited_email,
+          invited_name
         )
       `)
       .eq("statut", "active")

@@ -42,7 +42,10 @@ export async function GET(request: Request) {
         tenant_profiles(*),
         lease_signers(
           lease_id,
-          role
+          role,
+          signature_status,
+          invited_email,
+          invited_name
         )
       `,
         { count: "exact" }

@@ -65,6 +65,9 @@ export async function GET(
         lease_signers(
           profile_id,
           role,
+          signature_status,
+          invited_email,
+          invited_name,
           profiles:profile_id(
             id,
             prenom,
