@@ -69,10 +69,20 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps) {
-  const { dashboard, profile, error } = useTenantData();
+  const { dashboard, profile, error, refetch, isRefetching } = useTenantData();
 
   // Gestion du logement sélectionné si multi-baux
   const [selectedLeaseIndex, setSelectedLeaseIndex] = useState(0);
+
+  // Auto-retry once if dashboard is null (profile race condition)
+  const [retried, setRetried] = useState(false);
+  useEffect(() => {
+    if (!dashboard && !error && !isRefetching && !retried) {
+      setRetried(true);
+      const timer = setTimeout(() => refetch(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [dashboard, error, isRefetching, retried, refetch]);
   
   // 🔴 SOTA 2026: États pour les données dynamiques (Credit Score & Consommation)
   const [creditScoreData, setCreditScoreData] = useState<CreditScoreData | null>(null);
@@ -312,19 +322,35 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
   }
 
   if (!dashboard) {
+    // If we haven't retried yet or are currently refetching, show a loading skeleton
+    if (!retried || isRefetching) {
+      return (
+        <div className="flex items-center justify-center min-h-[50vh] p-4">
+          <div className="text-center space-y-4 max-w-md">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto" />
+            <h2 className="text-xl font-bold text-foreground">Chargement de votre espace</h2>
+            <p className="text-muted-foreground">
+              Préparation de vos données en cours...
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // After retry, show a proper "no data" state (not a misleading "loading" message)
     return (
       <div className="flex items-center justify-center min-h-[50vh] p-4">
         <div className="text-center space-y-4 max-w-md">
           <div className="mx-auto p-3 bg-amber-100 dark:bg-amber-900/30 rounded-full w-fit">
             <Info className="h-8 w-8 text-amber-600 dark:text-amber-400" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">Tableau de bord en cours de chargement</h2>
+          <h2 className="text-xl font-bold text-foreground">Bienvenue sur Talok</h2>
           <p className="text-muted-foreground">
-            Vos données ne sont pas encore disponibles. Cela peut arriver si votre profil vient d&apos;être créé ou si aucun bail n&apos;est encore lié à votre compte.
+            Votre espace locataire n&apos;est pas encore configuré. Cela peut arriver si votre profil vient d&apos;être créé ou si aucun bail n&apos;est encore lié à votre compte.
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center mt-4">
-            <Button onClick={() => window.location.reload()} variant="default">
-              Rafraîchir la page
+            <Button onClick={() => { setRetried(false); refetch(); }} variant="default" disabled={isRefetching}>
+              {isRefetching ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Chargement...</> : "Rafraîchir"}
             </Button>
             <Button onClick={() => window.location.href = "/tenant/settings"} variant="outline">
               Compléter mon profil
