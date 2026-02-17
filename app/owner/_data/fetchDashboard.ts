@@ -4,7 +4,6 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 
 export interface OwnerDashboardData {
@@ -234,33 +233,9 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
     redirect("/auth/signin");
   }
 
-  // Vérifier les permissions — avec fallback service role en cas de blocage RLS
-  let profile: { id: string; role: string } | null = null;
-  const { data: directProfile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!profileError && directProfile) {
-    profile = directProfile;
-  } else {
-    try {
-      const serviceClient = getServiceClient();
-      const { data: serviceProfile } = await serviceClient
-        .from("profiles")
-        .select("id, role")
-        .eq("user_id", user.id)
-        .single();
-      profile = serviceProfile as { id: string; role: string } | null;
-    } catch (e) {
-      console.warn("[fetchDashboard] Service role fallback failed:", e);
-    }
-  }
-
-  if (!profile || profile.role !== "owner" || profile.id !== ownerId) {
-    throw new Error("Accès non autorisé");
-  }
+  // Note: Les permissions (rôle owner + ownerId) sont déjà vérifiées
+  // par le layout via getServerProfile() avant d'appeler cette fonction.
+  // Pas de lookup profil redondant ici.
 
   // Tenter la RPC optimisée en premier
   const { data, error } = await supabase.rpc("owner_dashboard", {
