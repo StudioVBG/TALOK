@@ -344,11 +344,25 @@ export async function POST(request: Request, { params }: PageProps) {
     const signedCount = signersList.filter((s: { signature_status?: string }) => s.signature_status === "signed").length;
     const allSigned = totalSigners >= 2 && signedCount === totalSigners;
     
+    // ✅ SOTA BIC 2026: Détermination correcte du statut après signature partielle
     let newStatus: string;
     if (allSigned) {
       newStatus = LEASE_STATUS.FULLY_SIGNED;
     } else if (signedCount > 0) {
-      newStatus = LEASE_STATUS.PENDING_SIGNATURE;
+      // Au moins une signature → "partially_signed" (pas "pending_signature")
+      const ownerSigners = signersList.filter((s: { role?: string }) => 
+        s.role === "proprietaire" || s.role === "owner" || s.role === "bailleur"
+      );
+      const allNonOwnersSigned = signersList
+        .filter((s: { role?: string }) => !["proprietaire", "owner", "bailleur"].includes(s.role ?? ""))
+        .every((s: { signature_status?: string }) => s.signature_status === "signed");
+      const ownerSigned = ownerSigners.every((s: { signature_status?: string }) => s.signature_status === "signed");
+      
+      if (allNonOwnersSigned && !ownerSigned) {
+        newStatus = LEASE_STATUS.PENDING_OWNER_SIGNATURE;
+      } else {
+        newStatus = LEASE_STATUS.PARTIALLY_SIGNED;
+      }
     } else {
       newStatus = typedLease.statut ?? LEASE_STATUS.PENDING_SIGNATURE;
     }

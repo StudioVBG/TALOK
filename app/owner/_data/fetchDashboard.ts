@@ -140,10 +140,11 @@ async function fetchDashboardDirect(
       .from("tickets")
       .select("id, statut, created_at")
       .in("property_id", propertyIds),
-    // EDL query - récupérer les états des lieux liés aux propriétés
+    // ✅ SOTA 2026: EDL query — colonnes correctes: "status" (pas "statut"), pas de "owner_signed"
+    // La signature propriétaire se vérifie via la table edl_signatures
     supabase
       .from("edl")
-      .select("id, statut, owner_signed")
+      .select("id, status")
       .in("property_id", propertyIds),
     // Activité récente - dernières factures et tickets pour le flux d'activité
     supabase
@@ -207,8 +208,10 @@ async function fetchDashboardDirect(
     },
     edl: {
       total: edls.length,
-      pending_owner_signature: (edls as Array<{ statut?: string; owner_signed?: boolean | null }>).filter((e) =>
-        e.statut === "completed" && !e.owner_signed
+      // ✅ SOTA 2026: Un EDL en "completed" est en attente de signature.
+      // Un EDL "signed" est entièrement signé. Pas de colonne "owner_signed".
+      pending_owner_signature: (edls as Array<{ status?: string }>).filter((e) =>
+        e.status === "completed"
       ).length,
     },
     zone3_portfolio: { compliance: [] },

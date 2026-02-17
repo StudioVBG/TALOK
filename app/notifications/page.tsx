@@ -65,59 +65,31 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
+  // ✅ SOTA BIC 2026: Appel API réel au lieu de mock data
   useEffect(() => {
     async function fetchNotifications() {
       try {
-        // Simulation - en production, appeler l'API
-        const mockNotifications: Notification[] = [
-          {
-            id: "1",
-            type: "payment",
-            title: "Paiement reçu",
-            message: "Le loyer de novembre 2024 a été reçu pour le 12 rue de la Paix.",
-            created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
-            read: false,
-            link: "/owner/money",
-          },
-          {
-            id: "2",
-            type: "ticket",
-            title: "Nouveau ticket",
-            message: "Un nouveau ticket a été créé : Fuite salle de bain",
-            created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2h ago
-            read: false,
-            link: "/owner/tickets",
-          },
-          {
-            id: "3",
-            type: "document",
-            title: "Document disponible",
-            message: "Votre quittance de novembre est disponible.",
-            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-            read: true,
-            link: "/owner/documents",
-          },
-          {
-            id: "4",
-            type: "lease",
-            title: "Bail à renouveler",
-            message: "Le bail du 45 avenue des Champs se termine dans 30 jours.",
-            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
-            read: true,
-            link: "/owner/leases",
-          },
-          {
-            id: "5",
-            type: "system",
-            title: "Bienvenue !",
-            message: "Votre compte a été créé avec succès. Découvrez toutes les fonctionnalités.",
-            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(), // 7 days ago
-            read: true,
-          },
-        ];
-        setNotifications(mockNotifications);
+        const response = await fetch("/api/notifications");
+        if (response.ok) {
+          const data = await response.json();
+          // Normaliser les données de l'API vers le format attendu
+          const apiNotifications: Notification[] = (data.notifications || data || []).map((n: any) => ({
+            id: n.id,
+            type: n.type || "system",
+            title: n.title || "Notification",
+            message: n.message || n.body || "",
+            created_at: n.created_at,
+            read: n.read ?? false,
+            link: n.link || n.metadata?.link || undefined,
+          }));
+          setNotifications(apiNotifications);
+        } else {
+          console.error("Erreur API notifications:", response.status);
+          setNotifications([]);
+        }
       } catch (error) {
         console.error("Erreur chargement notifications:", error);
+        setNotifications([]);
       } finally {
         setLoading(false);
       }
@@ -125,19 +97,44 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, []);
 
+  // ✅ SOTA BIC 2026: Actions connectées à l'API
   const markAllAsRead = async () => {
     setNotifications(notifications.map((n) => ({ ...n, read: true })));
-    // En production, appeler l'API
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_all_read" }),
+      });
+    } catch (error) {
+      console.error("Erreur markAllAsRead:", error);
+    }
   };
 
   const markAsRead = async (id: string) => {
     setNotifications(notifications.map((n) => (n.id === id ? { ...n, read: true } : n)));
-    // En production, appeler l'API
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_read", id }),
+      });
+    } catch (error) {
+      console.error("Erreur markAsRead:", error);
+    }
   };
 
   const deleteNotification = async (id: string) => {
     setNotifications(notifications.filter((n) => n.id !== id));
-    // En production, appeler l'API
+    try {
+      await fetch("/api/notifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+    } catch (error) {
+      console.error("Erreur deleteNotification:", error);
+    }
   };
 
   const filteredNotifications = filter === "unread"

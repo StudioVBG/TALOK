@@ -13,9 +13,9 @@ import { NextResponse } from "next/server";
  * - Possibilité d'ajuster le loyer (avec limite IRL)
  * - Conservation des mêmes locataires et propriétés
  *
- * Le bail actuel passe en statut "renewed" et le nouveau en "draft"
+ * Le bail actuel passe en statut "archived" et le nouveau en "draft"
  *
- * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ * @version 2026-02-17 - SOTA BIC: Fix statut "renewed" → "archived" (alignement LEASE_STATUS)
  */
 export async function POST(
   request: Request,
@@ -172,11 +172,12 @@ export async function POST(
       }
     }
 
-    // Mettre à jour l'ancien bail
+    // ✅ SOTA 2026: Mettre à jour l'ancien bail → "archived" (pas "renewed" qui n'est pas
+    // dans LEASE_STATUS). Un bail renouvelé est archivé avec la référence au nouveau bail.
     const { error: updateError } = await serviceClient
       .from("leases")
       .update({
-        statut: "renewed",
+        statut: "archived",
         renewed_to_lease_id: newLeaseData.id,
       })
       .eq("id", leaseId);

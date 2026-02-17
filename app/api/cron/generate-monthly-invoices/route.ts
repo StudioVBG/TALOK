@@ -130,13 +130,40 @@ export async function GET(request: NextRequest) {
           continue;
         }
         
-        // Trouver le locataire principal
+        // ✅ SOTA BIC 2026: Trouver le locataire principal (avec fallback élargi)
         const tenantSigner = lease.lease_signers.find(
-          (s) => s.role === "locataire_principal" || s.role === "colocataire"
+          (s) => s.role === "locataire_principal" || s.role === "locataire" || s.role === "colocataire"
         );
         
         if (!tenantSigner) {
           result.errors.push(`Bail ${lease.id}: Pas de locataire trouvé`);
+          continue;
+        }
+        
+        // ✅ SOTA BIC 2026: Gérer les locataires invités sans profile_id
+        // Si le locataire n'a pas encore de profil lié (invitation en cours),
+        // chercher un profil par email dans la base
+        let resolvedTenantId = tenantSigner.profile_id;
+        if (!resolvedTenantId && (tenantSigner as any).invited_email) {
+          const { data: tenantProfile } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("email", (tenantSigner as any).invited_email)
+            .maybeSingle();
+          
+          if (tenantProfile) {
+            resolvedTenantId = tenantProfile.id;
+            // Mettre à jour le lease_signer pour le futur
+            await supabase
+              .from("lease_signers")
+              .update({ profile_id: tenantProfile.id })
+              .eq("lease_id", lease.id)
+              .eq("invited_email", (tenantSigner as any).invited_email);
+          }
+        }
+        
+        if (!resolvedTenantId) {
+          result.errors.push(`Bail ${lease.id}: Locataire sans profil (invited_email: ${(tenantSigner as any).invited_email || "N/A"})`);
           continue;
         }
         
@@ -157,7 +184,7 @@ export async function GET(request: NextRequest) {
           .insert({
             lease_id: lease.id,
             owner_id: lease.properties.owner_id,
-            tenant_id: tenantSigner.profile_id,
+            tenant_id: resolvedTenantId,
             periode: currentMonth,
             montant_loyer: loyerHC,
             montant_charges: charges,
@@ -180,15 +207,16 @@ export async function GET(request: NextRequest) {
         console.log(`[CRON] Created invoice ${newInvoice.id} for lease ${lease.id}`);
         result.invoices_created++;
         
-        // 4. Créer une notification pour le propriétaire
-        await supabase.rpc("create_notification", {
-          p_recipient_id: lease.properties.owner_id,
-          p_type: "reminder",
-          p_title: "Quittance générée",
-          p_message: `La quittance de ${montantTotal}€ pour ${lease.properties.adresse_complete} a été générée.`,
-          p_link: `/owner/money?invoice=${newInvoice.id}`,
-          p_related_id: newInvoice.id,
-          p_related_type: "invoice",
+        // ✅ SOTA BIC 2026: Créer une notification via INSERT direct (pas de RPC fragile)
+        await supabase.from("notifications").insert({
+          recipient_id: lease.properties.owner_id,
+          type: "reminder",
+          title: "Quittance générée",
+          message: `La quittance de ${montantTotal}€ pour ${lease.properties.adresse_complete} a été générée.`,
+          link: `/owner/money?invoice=${newInvoice.id}`,
+          related_id: newInvoice.id,
+          related_type: "invoice",
+          read: false,
         });
         
       } catch (leaseError: any) {

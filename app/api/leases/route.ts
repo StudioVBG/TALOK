@@ -417,7 +417,7 @@ export const POST = withSecurity(async function POST(request: Request) {
       depot_de_garantie: depotGarantie, // ← Calculé automatiquement si non fourni
       date_debut: validatedData.date_debut,
       date_fin: validatedData.date_fin || null,
-      statut: (body.statut as string) || "draft",
+      statut: "draft", // ✅ SOTA BIC 2026: Toujours "draft" à la création (sécurité)
     };
 
     const { data: lease, error: leaseError } = await serviceClient

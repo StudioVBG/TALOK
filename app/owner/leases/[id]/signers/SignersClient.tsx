@@ -134,13 +134,16 @@ export function SignersClient({
   const signedCount = signers.filter((s) => s.signature_status === "signed").length;
   const pendingCount = signers.filter((s) => s.signature_status === "pending").length;
 
-  // Le bail peut-il être modifié ?
+  // ✅ SOTA 2026: Le bail peut-il être modifié (ajout/suppression de signataires) ?
+  // Autorisé tant que le bail n'est pas activé, terminé ou archivé.
+  // fully_signed est inclus pour permettre l'ajout de garants post-signature.
   const canEdit = 
     lease.statut === "draft" || 
     lease.statut === "sent" || 
     lease.statut === "pending_signature" || 
     lease.statut === "partially_signed" ||
-    lease.statut === "pending_owner_signature";
+    lease.statut === "pending_owner_signature" ||
+    lease.statut === "fully_signed";
   const isColocation = lease.type_bail === "colocation";
 
   const getInitials = (prenom?: string, nom?: string) => {
@@ -379,7 +382,7 @@ export function SignersClient({
     );
   };
 
-  // Composant pour afficher une section vide avec bouton d'invitation
+  // ✅ SOTA 2026: Section vide avec bouton d'invitation — protégée par canEdit
   const EmptySection = ({ 
     title, 
     role 
@@ -392,12 +395,16 @@ export function SignersClient({
         <UserPlus className="h-10 w-10 text-slate-300 mx-auto mb-3" />
         <h3 className="font-semibold text-slate-700 mb-2">Aucun {title.toLowerCase()}</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Invitez une personne pour qu'elle puisse signer le bail.
+          {canEdit 
+            ? "Invitez une personne pour qu'elle puisse signer le bail."
+            : "Le bail est dans un état qui ne permet plus d'ajouter de signataires."}
         </p>
-        <Button onClick={() => openInviteModal(role)}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Inviter un {title.toLowerCase()}
-        </Button>
+        {canEdit && (
+          <Button onClick={() => openInviteModal(role)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Inviter un {title.toLowerCase()}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

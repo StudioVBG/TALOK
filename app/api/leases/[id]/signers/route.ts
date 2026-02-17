@@ -150,8 +150,18 @@ export async function POST(
       );
     }
 
-    // Vérifier le statut du bail
-    if (!["draft", "pending_signature"].includes(leaseData.statut)) {
+    // ✅ SOTA 2026: Vérifier le statut du bail — autoriser l'ajout de signataires
+    // tant que le bail n'est pas encore activé/terminé.
+    // Cas légitime : ajout d'un garant APRÈS signature initiale (fully_signed).
+    const ALLOWED_SIGNER_ADD_STATUS = [
+      "draft",
+      "sent",
+      "pending_signature",
+      "partially_signed",
+      "pending_owner_signature",
+      "fully_signed",
+    ];
+    if (!ALLOWED_SIGNER_ADD_STATUS.includes(leaseData.statut)) {
       return NextResponse.json(
         { error: "Impossible d'ajouter un signataire à ce bail (statut: " + leaseData.statut + ")" },
         { status: 400 }
@@ -298,11 +308,16 @@ export async function POST(
       console.error("[signers/POST] Erreur envoi email:", emailError);
     }
 
-    // Mettre à jour le statut du bail si nécessaire
-    if (leaseData.statut === "draft") {
+    // ✅ SOTA 2026: Recalculer le statut du bail après ajout d'un signataire
+    // - draft → pending_signature (premier signataire ajouté)
+    // - fully_signed → pending_signature (nouveau signataire pas encore signé)
+    // - partially_signed reste partially_signed
+    const statusRequiringUpdate = ["draft", "fully_signed", "pending_owner_signature"];
+    if (statusRequiringUpdate.includes(leaseData.statut)) {
+      const newStatus = leaseData.statut === "draft" ? "pending_signature" : "pending_signature";
       await serviceClient
         .from("leases")
-        .update({ statut: "pending_signature" })
+        .update({ statut: newStatus })
         .eq("id", leaseId);
     }
 

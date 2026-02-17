@@ -2,9 +2,11 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 /**
- * API Routes pour les notifications
- * GET /api/notifications - Liste des notifications
- * POST /api/notifications - Créer une notification (admin/système)
+ * API Routes pour les notifications — SOTA BIC 2026
+ * GET    /api/notifications - Liste des notifications
+ * PATCH  /api/notifications - Marquer comme lu (une ou toutes)
+ * DELETE /api/notifications - Supprimer une notification
+ * POST   /api/notifications - Créer une notification (admin/système)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -76,6 +78,121 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: unknown) {
     console.error('Error in GET /api/notifications:', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH /api/notifications - Marquer comme lu (une ou toutes)
+ * ✅ SOTA BIC 2026
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!profile) {
+      return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
+    }
+
+    const body = await request.json();
+
+    if (body.action === 'mark_all_read') {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq('profile_id', profile.id)
+        .eq('is_read', false);
+
+      if (error) {
+        console.error('Error marking all as read:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (body.action === 'mark_read' && body.id) {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq('id', body.id)
+        .eq('profile_id', profile.id);
+
+      if (error) {
+        console.error('Error marking as read:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: 'Action invalide' }, { status: 400 });
+  } catch (error: unknown) {
+    console.error('Error in PATCH /api/notifications:', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/notifications - Supprimer une notification
+ * ✅ SOTA BIC 2026
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!profile) {
+      return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
+    }
+
+    const body = await request.json();
+
+    if (!body.id) {
+      return NextResponse.json({ error: 'ID requis' }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', body.id)
+      .eq('profile_id', profile.id);
+
+    if (error) {
+      console.error('Error deleting notification:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    console.error('Error in DELETE /api/notifications:', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }

@@ -253,11 +253,21 @@ export const PUT = withSecurity(async function PUT(request: Request, { params }:
       );
     }
 
-    // Vérifier si le bail peut être modifié
+    // ✅ SOTA BIC 2026: Validation des statuts non modifiables
+    // Seuls les baux terminés/archivés/annulés sont verrouillés.
     const leaseData = lease as any;
-    if (leaseData.statut === "terminated" || leaseData.statut === "archived") {
+    const LOCKED_STATUS = ["terminated", "archived", "cancelled"];
+    if (LOCKED_STATUS.includes(leaseData.statut)) {
       return NextResponse.json(
-        { error: "Ce bail est terminé et ne peut plus être modifié" },
+        { error: `Ce bail est ${leaseData.statut === "terminated" ? "terminé" : leaseData.statut === "archived" ? "archivé" : "annulé"} et ne peut plus être modifié` },
+        { status: 400 }
+      );
+    }
+
+    // ✅ SOTA BIC 2026: Bloquer la modification du statut via PUT (transitions gérées par les routes dédiées)
+    if (body.statut !== undefined && body.statut !== leaseData.statut) {
+      return NextResponse.json(
+        { error: "Le statut du bail ne peut pas être modifié directement. Utilisez les actions dédiées (signer, renouveler, résilier)." },
         { status: 400 }
       );
     }
