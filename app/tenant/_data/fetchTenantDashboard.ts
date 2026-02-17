@@ -142,7 +142,7 @@ async function fetchTenantDashboardDirect(
 
   const { data: directProfile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, prenom, nom, kyc_status")
+    .select("id, prenom, nom")
     .eq("user_id", userId)
     .single();
 
@@ -155,7 +155,7 @@ async function fetchTenantDashboardDirect(
       const serviceClient = getServiceClient();
       const { data: serviceProfile } = await serviceClient
         .from("profiles")
-        .select("id, prenom, nom, kyc_status")
+        .select("id, prenom, nom")
         .eq("user_id", userId)
         .single();
       profileRaw = serviceProfile;
@@ -164,8 +164,7 @@ async function fetchTenantDashboardDirect(
     }
   }
 
-  // Cast nécessaire car kyc_status n'existe pas dans les types générés Supabase
-  const profile = profileRaw as { id: string; prenom: string | null; nom: string | null; kyc_status?: string | null } | null;
+  const profile = profileRaw as { id: string; prenom: string | null; nom: string | null } | null;
 
   if (!profile) return null;
 
@@ -326,11 +325,9 @@ async function fetchTenantDashboardDirect(
 
   const unpaidInvoices = invoices.filter((i) => i.statut === "sent" || i.statut === "late");
 
-  const profileKyc = "kyc_status" in profile ? (profile as { kyc_status?: string }).kyc_status : undefined;
-
   return {
     profile_id: profile.id,
-    kyc_status: (profileKyc as TenantDashboardData["kyc_status"]) || "pending",
+    kyc_status: "pending",
     tenant: { prenom: profile.prenom ?? "", nom: profile.nom ?? "" },
     leases: enrichedLeases as any[],
     properties: propertiesData,
