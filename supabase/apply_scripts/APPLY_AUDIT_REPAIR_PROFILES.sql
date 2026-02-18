@@ -1,5 +1,6 @@
 -- ============================================================================
 -- BLOC 1 : TABLE D'AUDIT + RÉPARATION PROFILS
+-- À exécuter dans Supabase SQL Editor
 -- ============================================================================
 
 -- 1. Création de la table de log des réparations
@@ -71,7 +72,7 @@ SELECT 'profiles', id::TEXT, 'UPDATE',
        jsonb_build_object('old_email', old_email, 'new_email', new_email, 'reason', 'email_desync')
 FROM updated;
 
--- 5. Résultat
+-- 5. Résultat : affiche le résumé des réparations effectuées
 SELECT action, COUNT(*) AS nb, details->>'reason' AS reason
 FROM public._repair_log
 WHERE table_name = 'profiles'
