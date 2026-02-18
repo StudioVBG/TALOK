@@ -182,6 +182,9 @@ export function useAuth() {
       safeSetProfileError(null);
       safeSetStatus("loading_profile");
 
+      // Mark user_id BEFORE creating the promise to block other instances immediately
+      _globalFetchedUserId = userId;
+
       // Create global promise for deduplication across instances
       _globalProfilePromise = (async (): Promise<Profile | null> => {
         try {
@@ -252,9 +255,6 @@ export function useAuth() {
         }
       })();
 
-      // Mark user_id immediately to block other instances
-      _globalFetchedUserId = userId;
-
       try {
         const result = await _globalProfilePromise;
         safeSetProfile(result);
@@ -315,12 +315,16 @@ export function useAuth() {
         }
 
         if (currentUser) {
-          if (currentUserIdRef.current !== currentUser.id) {
+          const isNewUser = currentUserIdRef.current !== currentUser.id;
+          if (isNewUser) {
             // New user — reset guards for fresh fetch
             resetGlobalGuards();
             currentUserIdRef.current = currentUser.id;
             safeSetUser(currentUser);
           }
+          // Always call fetchProfile — global deduplication handles the rest.
+          // If onAuthStateChange already started a fetch for this user,
+          // fetchProfile will reuse the cached promise.
           fetchProfile(currentUser.id);
         } else {
           currentUserIdRef.current = null;
@@ -421,6 +425,21 @@ export function useAuth() {
     }
   };
 
+  /**
+   * Retry profile fetch after a profile_error.
+   * Resets the creation guard so auto-creation can be attempted again.
+   */
+  const retryProfile = async () => {
+    if (user?.id) {
+      authLogger.info("Manual profile retry triggered", { userId: user.id });
+      resetGlobalGuards();
+      safeSetProfileError(null);
+      safeSetStatus("loading_profile");
+      safeSetLoading(true);
+      await fetchProfile(user.id, true);
+    }
+  };
+
   return {
     user,
     profile,
@@ -433,5 +452,6 @@ export function useAuth() {
     isAuthenticated: !!user && !!profile,
     initialized: status !== "initializing",
     refreshProfile,
+    retryProfile,
   };
 }

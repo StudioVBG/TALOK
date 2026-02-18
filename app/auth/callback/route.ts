@@ -5,6 +5,12 @@ import { NextResponse } from "next/server";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import { getServiceClient } from "@/lib/supabase/service-client";
 
+interface ProfilePartial {
+  id?: string;
+  role?: string;
+  onboarding_completed_at?: string | null;
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -27,9 +33,10 @@ export async function GET(request: Request) {
       const { data: p } = await supabase
         .from("profiles")
         .select("role")
-        .eq("user_id", data.user.id as any)
+        .eq("user_id", data.user.id)
         .maybeSingle();
-      const roleParam = (p as any)?.role ? `&role=${(p as any).role}` : "";
+      const profileRole = (p as ProfilePartial)?.role;
+      const roleParam = profileRole ? `&role=${profileRole}` : "";
       return NextResponse.redirect(
         new URL(`/signup/verify-email?email=${encodeURIComponent(data.user.email || "")}${roleParam}`, origin)
       );
@@ -40,11 +47,11 @@ export async function GET(request: Request) {
       // Récupérer le profil pour obtenir le rôle et le statut d'onboarding
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, onboarding_completed_at")
-        .eq("user_id", data.user.id as any)
+        .select("id, role, onboarding_completed_at")
+        .eq("user_id", data.user.id)
         .maybeSingle();
 
-      const profileData = profile as any;
+      const profileData = profile as ProfilePartial | null;
 
       // Si pas de profil (ex: OAuth sans role), rediriger vers choix du rôle
       if (!profileData?.role) {
@@ -65,7 +72,7 @@ export async function GET(request: Request) {
         }
       }
 
-      // ✅ AUTO-LINK: À chaque connexion, lier les lease_signers orphelins
+      // AUTO-LINK: À chaque connexion, lier les lease_signers orphelins
       // Couvre le cas où un locataire existant est invité sur un nouveau bail
       if (data.user.email && profileData.id) {
         try {
@@ -82,16 +89,15 @@ export async function GET(request: Request) {
               .update({ profile_id: profileData.id } as Record<string, unknown>)
               .ilike("invited_email", data.user.email)
               .is("profile_id", null);
-            console.log(`[auth/callback] ✅ ${orphanSigners.length} lease_signers auto-liés pour ${data.user.email}`);
+            console.log(`[auth/callback] ${orphanSigners.length} lease_signers auto-linked for ${data.user.email}`);
           }
         } catch (autoLinkErr) {
           // Non-bloquant : ne jamais empêcher la connexion
-          console.error("[auth/callback] Erreur auto-link (non-bloquante):", autoLinkErr);
+          console.error("[auth/callback] Auto-link error (non-blocking):", autoLinkErr);
         }
       }
 
       // Onboarding terminé — rediriger vers le dashboard approprié
-      // FIX AUDIT: Source de vérité unique via getRoleDashboardUrl()
       const dashUrl = getRoleDashboardUrl(profileData.role);
       return NextResponse.redirect(new URL(dashUrl, origin));
     }
