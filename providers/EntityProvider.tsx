@@ -16,7 +16,7 @@ interface EntityProviderProps {
 
 export function EntityProvider({ children }: EntityProviderProps) {
   const { profile } = useAuth();
-  const { fetchEntities, entities, lastFetchedAt } = useEntityStore();
+  const fetchEntities = useEntityStore((s) => s.fetchEntities);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -25,6 +25,7 @@ export function EntityProvider({ children }: EntityProviderProps) {
     // No intermediate query needed — profile.id is the owner_profile_id FK value.
     const loadEntities = async () => {
       try {
+        const { entities, lastFetchedAt } = useEntityStore.getState();
         const isStale =
           !lastFetchedAt || Date.now() - lastFetchedAt > 5 * 60 * 1000;
         if (entities.length === 0 || isStale) {
@@ -36,7 +37,7 @@ export function EntityProvider({ children }: EntityProviderProps) {
     };
 
     loadEntities();
-  }, [profile?.id, fetchEntities, entities.length, lastFetchedAt]);
+  }, [profile?.id, fetchEntities]);
 
   return <>{children}</>;
 }

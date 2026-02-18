@@ -479,13 +479,21 @@ export async function getPropertyOwnership(
 
 /**
  * Récupère les biens d'une entité juridique
+ *
+ * Combine deux sources de données :
+ * 1. property_ownership (détentions explicites avec quote-part, acquisition, etc.)
+ * 2. properties.legal_entity_id (lien direct, ex: biens créés via wizard sans ownership record)
+ *
+ * Les biens trouvés uniquement via properties.legal_entity_id sont renvoyés
+ * comme des détentions synthétiques en pleine propriété.
  */
 export async function getPropertiesByEntity(
   entityId: string
 ): Promise<PropertyOwnershipWithDetails[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  // 1. Fetch explicit property_ownership records
+  const { data: ownerships, error: ownershipError } = await supabase
     .from("property_ownership")
     .select(`
       *,
@@ -502,11 +510,60 @@ export async function getPropertiesByEntity(
     .eq("is_current", true)
     .order("date_acquisition", { ascending: false });
 
-  if (error) {
-    throw new Error(`Erreur: ${error.message}`);
+  if (ownershipError) {
+    throw new Error(`Erreur: ${ownershipError.message}`);
   }
 
-  return data as PropertyOwnershipWithDetails[];
+  // 2. Find properties linked via legal_entity_id but missing from property_ownership
+  const ownershipPropertyIds = (ownerships || [])
+    .map((o: Record<string, unknown>) => {
+      const prop = o.property as Record<string, unknown> | null;
+      return prop?.id as string | undefined;
+    })
+    .filter(Boolean) as string[];
+
+  let directQuery = supabase
+    .from("properties")
+    .select("id, adresse_complete, ville, type, loyer_hc, surface")
+    .eq("legal_entity_id", entityId)
+    .is("deleted_at", null);
+
+  if (ownershipPropertyIds.length > 0) {
+    directQuery = directQuery.not("id", "in", `(${ownershipPropertyIds.join(",")})`);
+  }
+
+  const { data: directProperties } = await directQuery;
+
+  // 3. Create synthetic ownership records for direct properties (default: pleine propriété 100%)
+  const syntheticOwnerships: PropertyOwnershipWithDetails[] = (directProperties || []).map(
+    (p: Record<string, unknown>) => ({
+      id: `direct-${p.id as string}`,
+      property_id: p.id as string,
+      legal_entity_id: entityId,
+      profile_id: null,
+      quote_part_numerateur: 1,
+      quote_part_denominateur: 1,
+      pourcentage_detention: 100,
+      detention_type: "pleine_propriete" as const,
+      is_current: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      property: {
+        id: p.id as string,
+        adresse_complete: (p.adresse_complete as string) || "",
+        ville: (p.ville as string) || "",
+        type: (p.type as string) || "",
+        loyer_hc: (p.loyer_hc as number) || null,
+        surface: (p.surface as number) || null,
+      },
+    })
+  );
+
+  // 4. Merge: explicit ownerships first, then synthetic ones
+  return [
+    ...(ownerships as PropertyOwnershipWithDetails[]),
+    ...syntheticOwnerships,
+  ];
 }
 
 /**
@@ -683,12 +740,12 @@ export async function getEntityFiscalSummary(
   const totalRent = invoices?.reduce((sum, i) => sum + (i.montant_loyer || 0), 0) ?? 0;
   const totalCharges = invoices?.reduce((sum, i) => sum + (i.montant_charges || 0), 0) ?? 0;
 
-  // Compter les biens
+  // Compter les biens — depuis properties.legal_entity_id (source de vérité)
   const { count: propertiesCount } = await supabase
-    .from("property_ownership")
+    .from("properties")
     .select("id", { count: "exact", head: true })
     .eq("legal_entity_id", entityId)
-    .eq("is_current", true);
+    .is("deleted_at", null);
 
   return {
     entity,

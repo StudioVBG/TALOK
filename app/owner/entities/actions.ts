@@ -18,6 +18,7 @@ const entityTypeSchema = z.enum([
   "particulier",
   "sci_ir",
   "sci_is",
+  "sci_construction_vente",
   "sarl",
   "sarl_famille",
   "eurl",
@@ -303,19 +304,33 @@ export async function deleteEntity(
     const supabase = await createClient();
     const { id } = parsed.data;
 
-    // Check if entity has active properties or leases
-    const { data: ownerships } = await supabase
-      .from("property_ownerships")
-      .select("id")
+    // Check if entity has active properties (via properties.legal_entity_id)
+    const { count: propertiesCount } = await supabase
+      .from("properties")
+      .select("id", { count: "exact", head: true })
       .eq("legal_entity_id", id)
-      .eq("is_current", true)
-      .limit(1);
+      .is("deleted_at", null);
 
-    if (ownerships && ownerships.length > 0) {
+    if (propertiesCount && propertiesCount > 0) {
       return {
         success: false,
         error:
           "Impossible de supprimer cette entité : elle possède encore des biens. Transférez-les d'abord.",
+      };
+    }
+
+    // Also check property_ownership records
+    const { count: ownershipCount } = await supabase
+      .from("property_ownership")
+      .select("id", { count: "exact", head: true })
+      .eq("legal_entity_id", id)
+      .eq("is_current", true);
+
+    if (ownershipCount && ownershipCount > 0) {
+      return {
+        success: false,
+        error:
+          "Impossible de supprimer cette entité : des détentions de biens sont encore actives. Transférez-les d'abord.",
       };
     }
 
