@@ -65,14 +65,14 @@ DECLARE
 BEGIN
   FOR v_user IN
     SELECT
-      u.id,
-      u.email,
-      COALESCE(u.raw_user_meta_data->>'role', 'tenant') AS role,
-      u.raw_user_meta_data->>'prenom' AS prenom,
-      u.raw_user_meta_data->>'nom' AS nom,
-      u.raw_user_meta_data->>'telephone' AS telephone
-    FROM auth.users u
-    LEFT JOIN public.profiles p ON p.user_id = u.id
+      au.id,
+      au.email,
+      COALESCE(au.raw_user_meta_data->>'role', 'tenant') AS role,
+      au.raw_user_meta_data->>'prenom' AS prenom,
+      au.raw_user_meta_data->>'nom' AS nom,
+      au.raw_user_meta_data->>'telephone' AS telephone
+    FROM auth.users au
+    LEFT JOIN public.profiles p ON p.user_id = au.id
     WHERE p.id IS NULL
   LOOP
     IF v_user.role NOT IN ('admin', 'owner', 'tenant', 'provider', 'guarantor') THEN
@@ -105,12 +105,12 @@ DECLARE
 BEGIN
   WITH updated AS (
     UPDATE public.profiles p
-    SET email = u.email, updated_at = NOW()
-    FROM auth.users u
-    WHERE p.user_id = u.id
+    SET email = au.email, updated_at = NOW()
+    FROM auth.users au
+    WHERE p.user_id = au.id
       AND (p.email IS NULL OR p.email = '')
-      AND u.email IS NOT NULL AND u.email != ''
-    RETURNING p.id, u.email AS new_email
+      AND au.email IS NOT NULL AND au.email != ''
+    RETURNING p.id, au.email AS new_email
   )
   INSERT INTO public._repair_log (table_name, record_id, action, details)
   SELECT 'profiles', id::TEXT, 'UPDATE',
@@ -128,13 +128,13 @@ DECLARE
 BEGIN
   WITH updated AS (
     UPDATE public.profiles p
-    SET email = u.email, updated_at = NOW()
-    FROM auth.users u
-    WHERE p.user_id = u.id
-      AND p.email IS DISTINCT FROM u.email
-      AND u.email IS NOT NULL AND u.email != ''
+    SET email = au.email, updated_at = NOW()
+    FROM auth.users au
+    WHERE p.user_id = au.id
+      AND p.email IS DISTINCT FROM au.email
+      AND au.email IS NOT NULL AND au.email != ''
       AND p.email IS NOT NULL
-    RETURNING p.id, p.email AS old_email, u.email AS new_email
+    RETURNING p.id, p.email AS old_email, au.email AS new_email
   )
   INSERT INTO public._repair_log (table_name, record_id, action, details)
   SELECT 'profiles', id::TEXT, 'UPDATE',
@@ -155,13 +155,13 @@ DECLARE
   rec RECORD;
 BEGIN
   FOR rec IN
-    SELECT p.id AS profile_id, LOWER(u.email) AS user_email
+    SELECT p.id AS profile_id, LOWER(au.email) AS user_email
     FROM public.profiles p
-    JOIN auth.users u ON u.id = p.user_id
-    WHERE u.email IS NOT NULL AND u.email != ''
+    JOIN auth.users au ON au.id = p.user_id
+    WHERE au.email IS NOT NULL AND au.email != ''
       AND EXISTS (
         SELECT 1 FROM public.lease_signers ls
-        WHERE LOWER(ls.invited_email) = LOWER(u.email)
+        WHERE LOWER(ls.invited_email) = LOWER(au.email)
           AND ls.profile_id IS NULL
       )
   LOOP
@@ -215,16 +215,16 @@ DECLARE
 BEGIN
   -- Cas 1: invoices avec tenant_id NULL - remplir depuis lease_signers
   WITH fix AS (
-    UPDATE public.invoices i
+    UPDATE public.invoices inv
     SET tenant_id = ls.profile_id
     FROM public.lease_signers ls
-    WHERE i.lease_id = ls.lease_id
+    WHERE inv.lease_id = ls.lease_id
       AND ls.role IN ('locataire_principal', 'colocataire')
       AND ls.profile_id IS NOT NULL
-      AND (i.tenant_id IS NULL OR NOT EXISTS (
-        SELECT 1 FROM public.profiles WHERE id = i.tenant_id
+      AND (inv.tenant_id IS NULL OR NOT EXISTS (
+        SELECT 1 FROM public.profiles WHERE id = inv.tenant_id
       ))
-    RETURNING i.id, ls.profile_id AS new_tenant_id
+    RETURNING inv.id, ls.profile_id AS new_tenant_id
   )
   INSERT INTO public._repair_log (table_name, record_id, action, details)
   SELECT 'invoices', id::TEXT, 'UPDATE',
@@ -243,16 +243,16 @@ DECLARE
   v_fixed INTEGER := 0;
 BEGIN
   WITH fix AS (
-    UPDATE public.invoices i
-    SET owner_id = p.owner_id
+    UPDATE public.invoices inv
+    SET owner_id = prop.owner_id
     FROM public.leases l
-    JOIN public.properties p ON p.id = l.property_id
-    WHERE i.lease_id = l.id
-      AND (i.owner_id IS NULL OR NOT EXISTS (
-        SELECT 1 FROM public.profiles WHERE id = i.owner_id
+    JOIN public.properties prop ON prop.id = l.property_id
+    WHERE inv.lease_id = l.id
+      AND (inv.owner_id IS NULL OR NOT EXISTS (
+        SELECT 1 FROM public.profiles WHERE id = inv.owner_id
       ))
-      AND p.owner_id IS NOT NULL
-    RETURNING i.id, p.owner_id AS new_owner_id
+      AND prop.owner_id IS NOT NULL
+    RETURNING inv.id, prop.owner_id AS new_owner_id
   )
   INSERT INTO public._repair_log (table_name, record_id, action, details)
   SELECT 'invoices', id::TEXT, 'UPDATE',
@@ -363,9 +363,9 @@ BEGIN
   WHERE ls.profile_id IS NULL
     AND ls.invited_email IS NOT NULL
     AND EXISTS (
-      SELECT 1 FROM auth.users u
-      JOIN public.profiles p ON p.user_id = u.id
-      WHERE LOWER(u.email) = LOWER(ls.invited_email)
+      SELECT 1 FROM auth.users au2
+      JOIN public.profiles p2 ON p2.user_id = au2.id
+      WHERE LOWER(au2.email) = LOWER(ls.invited_email)
     );
 
   -- Check 9: Lease_signers orphelins (email sans compte)
@@ -379,8 +379,8 @@ BEGIN
     AND ls.invited_email IS NOT NULL
     AND ls.invited_email != 'locataire@a-definir.com'
     AND NOT EXISTS (
-      SELECT 1 FROM auth.users u
-      WHERE LOWER(u.email) = LOWER(ls.invited_email)
+      SELECT 1 FROM auth.users au2
+      WHERE LOWER(au2.email) = LOWER(ls.invited_email)
     );
 
   -- Check 10: Invoices sans lease valide
@@ -769,9 +769,9 @@ BEGIN
   FROM public.lease_signers ls
   WHERE ls.profile_id IS NULL AND ls.invited_email IS NOT NULL
     AND EXISTS (
-      SELECT 1 FROM auth.users u
-      JOIN public.profiles p ON p.user_id = u.id
-      WHERE LOWER(u.email) = LOWER(ls.invited_email)
+      SELECT 1 FROM auth.users au2
+      JOIN public.profiles p2 ON p2.user_id = au2.id
+      WHERE LOWER(au2.email) = LOWER(ls.invited_email)
     );
 
   SELECT COUNT(DISTINCT l.id) INTO v_chaines_completes
