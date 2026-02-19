@@ -35,6 +35,19 @@ export async function GET(
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
+    // Vérifier que le locataire est bien signataire de ce bail
+    const { data: signer } = await serviceClient
+      .from("lease_signers")
+      .select("id, lease_id")
+      .eq("lease_id", leaseId)
+      .eq("profile_id", profile.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!signer) {
+      return NextResponse.json({ error: "Accès non autorisé à ce bail" }, { status: 403 });
+    }
+
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select("id, property_id")
@@ -46,6 +59,7 @@ export async function GET(
     }
 
     // 2. Récupérer tous les documents liés au bail OU à la propriété
+    // FIX: Inclure les docs même si tenant_id n'est pas encore renseigné
     const { data: docs, error: docsError } = await serviceClient
       .from("documents")
       .select("*")

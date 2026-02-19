@@ -398,7 +398,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                     variant="secondary"
                     className="bg-white/20 hover:bg-white/30 text-white border-0"
                   >
-                    <Link href="/tenant/support">
+                    <Link href="/tenant/help">
                       <MessageCircle className="h-4 w-4 mr-2" />
                       Contacter le support
                     </Link>
