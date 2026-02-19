@@ -4,7 +4,7 @@
  * AI Command Palette - Interface principale AI-First
  * SOTA 2026 - Interaction naturelle par commandes
  * 
- * Accessible via ⌘K / Ctrl+K
+ * Opened programmatically via useAICommand store (⌘K handled by CommandPalette)
  * Combine recherche rapide et chat avec l'assistant Tom
  */
 
@@ -158,18 +158,8 @@ export function AICommandPalette({ open, onOpenChange }: AICommandPaletteProps) 
     },
   });
 
-  // Raccourci clavier global
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        onOpenChange(!open);
-      }
-    };
-
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, [open, onOpenChange]);
+  // Note: ⌘K shortcut is handled by CommandPalette (per-role search palette).
+  // AICommandPalette is opened programmatically via the Zustand store (useAICommand).
 
   // Reset au close
   useEffect(() => {

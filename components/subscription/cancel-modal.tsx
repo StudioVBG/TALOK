@@ -138,7 +138,7 @@ export function CancelModal({ open, onClose, onSuccess }: CancelModalProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={resetAndClose}>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) resetAndClose(); }}>
       <DialogContent className="max-w-lg bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border-slate-700/50" aria-describedby={undefined}>
         <DialogTitle className="sr-only">Résiliation d&apos;abonnement</DialogTitle>
         <AnimatePresence mode="wait">

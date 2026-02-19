@@ -137,7 +137,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="max-w-4xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border-slate-700/50 p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Header avec gradient */}
         <div className="relative px-6 pt-6 pb-4 border-b border-slate-700/50">
