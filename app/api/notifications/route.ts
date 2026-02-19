@@ -111,11 +111,14 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json();
 
+    // ✅ FIX: Utiliser le même filtre OR que GET pour couvrir user_id et profile_id
+    const ownershipFilter = `profile_id.eq.${profile.id},and(user_id.eq.${user.id},profile_id.is.null)`;
+
     if (body.action === 'mark_all_read') {
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
-        .eq('profile_id', profile.id)
+        .or(ownershipFilter)
         .eq('is_read', false);
 
       if (error) {
@@ -131,7 +134,7 @@ export async function PATCH(request: NextRequest) {
         .from('notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('id', body.id)
-        .eq('profile_id', profile.id);
+        .or(ownershipFilter);
 
       if (error) {
         console.error('Error marking as read:', error);
@@ -180,11 +183,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID requis' }, { status: 400 });
     }
 
+    // ✅ FIX: Même filtre OR que GET/PATCH pour couvrir user_id et profile_id
     const { error } = await supabase
       .from('notifications')
       .delete()
       .eq('id', body.id)
-      .eq('profile_id', profile.id);
+      .or(`profile_id.eq.${profile.id},and(user_id.eq.${user.id},profile_id.is.null)`);
 
     if (error) {
       console.error('Error deleting notification:', error);

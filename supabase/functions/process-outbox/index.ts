@@ -745,14 +745,27 @@ async function generateInitialInvoice(supabase: any, leaseId: string) {
 }
 
 async function sendNotification(supabase: any, notification: any) {
+  // ✅ FIX: Résoudre profile_id depuis user_id pour cohérence avec GET /api/notifications
+  let profileId: string | null = null;
+  if (notification.user_id) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", notification.user_id)
+      .maybeSingle();
+    profileId = profile?.id || null;
+  }
+
   // Créer la notification dans la table
   await supabase.from("notifications").insert({
     user_id: notification.user_id,
+    profile_id: profileId,
     type: notification.type,
     title: notification.title,
     body: notification.message,
     metadata: notification.metadata,
     read: false,
+    is_read: false,
   } as any);
 
   // Envoyer push notification si activée
