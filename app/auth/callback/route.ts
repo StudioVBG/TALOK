@@ -58,22 +58,9 @@ export async function GET(request: Request) {
         return NextResponse.redirect(new URL("/signup/role", origin));
       }
 
-      // Si onboarding non terminé, rediriger vers l'onboarding approprié
-      if (!profileData?.onboarding_completed_at) {
-        switch (profileData.role) {
-          case "owner":
-            return NextResponse.redirect(new URL("/signup/plan?role=owner", origin));
-          case "tenant":
-            return NextResponse.redirect(new URL("/tenant/onboarding/context", origin));
-          case "provider":
-            return NextResponse.redirect(new URL("/provider/onboarding/profile", origin));
-          case "guarantor":
-            return NextResponse.redirect(new URL("/guarantor/onboarding/context", origin));
-        }
-      }
-
-      // AUTO-LINK: À chaque connexion, lier les lease_signers orphelins
-      // Couvre le cas où un locataire existant est invité sur un nouveau bail
+      // AUTO-LINK: Lier les lease_signers orphelins AVANT toute redirection
+      // Doit s'exécuter pour TOUS les utilisateurs (y compris ceux en cours d'onboarding)
+      // sinon un nouveau locataire invité n'est jamais lié à son bail
       if (data.user.email && profileData.id) {
         try {
           const serviceClient = getServiceClient();
@@ -94,6 +81,20 @@ export async function GET(request: Request) {
         } catch (autoLinkErr) {
           // Non-bloquant : ne jamais empêcher la connexion
           console.error("[auth/callback] Auto-link error (non-blocking):", autoLinkErr);
+        }
+      }
+
+      // Si onboarding non terminé, rediriger vers l'onboarding approprié
+      if (!profileData?.onboarding_completed_at) {
+        switch (profileData.role) {
+          case "owner":
+            return NextResponse.redirect(new URL("/signup/plan?role=owner", origin));
+          case "tenant":
+            return NextResponse.redirect(new URL("/tenant/onboarding/context", origin));
+          case "provider":
+            return NextResponse.redirect(new URL("/provider/onboarding/profile", origin));
+          case "guarantor":
+            return NextResponse.redirect(new URL("/guarantor/onboarding/context", origin));
         }
       }
 

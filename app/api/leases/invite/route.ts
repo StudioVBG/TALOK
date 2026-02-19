@@ -401,16 +401,18 @@ export async function POST(request: Request) {
       
       // Si le profil existe, l'ajouter comme signataire et créer une notification
       if (existingProfile) {
-        // Ajouter comme signataire
-        const signerRole = invitee.role === "principal" 
-          ? "locataire_principal" 
+        // Ajouter comme signataire (avec invited_email pour le fallback de recherche)
+        const signerRole = invitee.role === "principal"
+          ? "locataire_principal"
           : "colocataire";
-          
+
         const { error: tenantSignerError } = await serviceClient
           .from("lease_signers")
           .insert({
             lease_id: lease.id,
             profile_id: existingProfile.id,
+            invited_email: invitee.email,
+            invited_name: invitee.name || null,
             role: signerRole,
             signature_status: "pending",
           });
