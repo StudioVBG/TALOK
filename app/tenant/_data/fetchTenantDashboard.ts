@@ -177,7 +177,26 @@ async function fetchTenantDashboardDirect(
   }
 
   const profile = profileRaw as { id: string; prenom: string | null; nom: string | null; kyc_status?: string | null; user_id: string } | null;
-  if (!profile) return null;
+  if (!profile) {
+    console.warn("[fetchTenantDashboardDirect] Profil introuvable pour user_id:", userId, "— retour dashboard vide");
+    // Return a minimal dashboard instead of null so the UI shows a proper "no lease" state
+    // instead of an infinite "loading" message
+    return {
+      profile_id: "",
+      kyc_status: "pending",
+      tenant: undefined,
+      leases: [],
+      properties: [],
+      lease: null,
+      property: null,
+      invoices: [],
+      tickets: [],
+      notifications: [],
+      pending_edls: [],
+      insurance: { has_insurance: false },
+      stats: { unpaid_amount: 0, unpaid_count: 0, total_monthly_rent: 0, active_leases_count: 0 },
+    };
+  }
 
   // Récupérer l'email de l'utilisateur pour la recherche par invited_email
   let userEmail = "";
@@ -557,7 +576,12 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
     return fetchTenantDashboardDirect(supabase, userId);
   }
 
-  if (!data) return null;
+  if (!data) {
+    // RPC returned null — profile not found as tenant.
+    // Fall back to direct queries which don't require role='tenant' in the profile lookup.
+    console.warn("[fetchTenantDashboard] RPC returned null, falling back to direct queries");
+    return fetchTenantDashboardDirect(supabase, userId);
+  }
 
   // Récupérer les infos du profil pour le message de bienvenue (service role)
   const { data: profile } = await serviceClient

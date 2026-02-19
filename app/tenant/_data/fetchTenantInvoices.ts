@@ -30,7 +30,7 @@ export async function fetchTenantInvoices(userId: string): Promise<InvoiceRow[]>
     .from("lease_signers")
     .select("lease_id")
     .eq("profile_id", profile.id)
-    .in("role", ["locataire_principal", "locataire", "colocataire"]);
+    .in("role", ["locataire_principal", "colocataire"]);
 
   const leaseIds = (leaseSigners || []).map((ls: { lease_id: string }) => ls.lease_id);
 
