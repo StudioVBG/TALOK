@@ -620,13 +620,13 @@ AND NOT EXISTS (
 
 ## Synthese des actions prioritaires
 
-| Priorite | Action | Impact | Effort |
-|----------|--------|--------|--------|
-| **P0** | Supprimer trigger `on_profile_created_auto_link` + fonction `auto_link_signer_profile` | Double-execution, case-sensitivity | 1 migration SQL |
-| **P0** | Verifier config Stripe: un seul endpoint par type d'evenement | Double-traitement paiements | Config Stripe Dashboard |
-| **P1** | Ajouter EXCEPTION handler a `auto_link_lease_signers_on_profile_created` | Inscription bloquee si erreur notification | 1 migration SQL |
-| **P1** | Corriger politique RLS notifications (supprimer l'ancienne permissive) | Securite | 1 migration SQL |
-| **P1** | Optimiser auto-link dans tenant/layout.tsx (1x par session) | Performance | 1 modification TS |
-| **P2** | Ajouter deduplication aux triggers de notification | Doublons notifications | 1 migration SQL |
-| **P2** | Ajouter audit logging au webhook signatures | Tracabilite | 1 modification TS |
-| **P2** | Completer implementation entite juridique <-> biens | Feature incomplete | Multi-fichiers |
+| Priorite | Action | Impact | Effort | Statut |
+|----------|--------|--------|--------|--------|
+| **P0** | Supprimer trigger `on_profile_created_auto_link` + fonction `auto_link_signer_profile` | Double-execution, case-sensitivity | 1 migration SQL | ✅ Corrige (`20260219200000_fix_autolink_triggers_audit.sql`) |
+| **P0** | Verifier config Stripe: un seul endpoint par type d'evenement | Double-traitement paiements | Config Stripe Dashboard | ⏳ Manuel — verifier dans Stripe Dashboard |
+| **P1** | Ajouter EXCEPTION handler a `auto_link_lease_signers_on_profile_created` | Inscription bloquee si erreur notification | 1 migration SQL | ✅ Corrige (`20260219200000_fix_autolink_triggers_audit.sql`) |
+| **P1** | Corriger politique RLS notifications (supprimer l'ancienne permissive) | Securite | 1 migration SQL | ✅ Corrige (`20260219200000_fix_autolink_triggers_audit.sql`) |
+| **P1** | Optimiser auto-link dans tenant/layout.tsx (1x par session) | Performance | 1 modification TS | ✅ Corrige (`app/tenant/layout.tsx` — cookie `autolink_done`) |
+| **P2** | Ajouter deduplication aux triggers de notification | Doublons notifications | 1 migration SQL | ✅ Corrige (`20260219200000_fix_autolink_triggers_audit.sql`) |
+| **P2** | Ajouter audit logging au webhook signatures | Tracabilite | 1 modification TS | ✅ Corrige (`app/api/signatures/webhook/route.ts` — `webhook_logs`) |
+| **P2** | Completer implementation entite juridique <-> biens | Feature incomplete | Multi-fichiers | ⏳ A planifier |
