@@ -7,7 +7,6 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { createClient } from "@/lib/supabase/client";
 
 // ============================================
 // TYPES
@@ -61,68 +60,25 @@ export const useEntityStore = create<EntityState>()(
       isLoading: false,
       lastFetchedAt: null,
 
-      fetchEntities: async (ownerProfileId: string) => {
+      fetchEntities: async (_ownerProfileId: string) => {
         set({ isLoading: true });
 
         try {
-          const supabase = createClient();
+          // Passer par l'API route qui utilise service_role (bypass RLS)
+          // au lieu de requêtes Supabase directes bloquées par les policies
+          // sur legal_entities (dépendance à owner_profiles).
+          const res = await fetch("/api/owner/legal-entities?stats=true");
 
-          const { data: entities, error } = await supabase
-            .from("legal_entities")
-            .select("*")
-            .eq("owner_profile_id", ownerProfileId)
-            .eq("is_active", true)
-            .order("nom");
-
-          if (error) {
-            console.error("[EntityStore] Error fetching entities:", error);
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            console.error("[EntityStore] API error:", res.status, body?.error);
             set({ isLoading: false });
             return;
           }
 
-          // Fetch property and lease counts per entity
-          const entityIds = (entities || []).map((e: Record<string, unknown>) => e.id as string);
-          const propertyCounts: Record<string, number> = {};
-          const leaseCounts: Record<string, number> = {};
+          const { entities: rawEntities } = await res.json();
 
-          // Trouver l'entité "particulier" pour y rattacher les biens sans entité
-          const particulierEntity = (entities || []).find(
-            (e: Record<string, unknown>) => e.entity_type === "particulier"
-          );
-
-          if (entityIds.length > 0) {
-            // Fetch ALL properties to count both entity-assigned and personal
-            const { data: props } = await supabase
-              .from("properties")
-              .select("legal_entity_id")
-              .eq("owner_id", ownerProfileId)
-              .is("deleted_at", null);
-            if (props) {
-              for (const p of props as any[]) {
-                if (p.legal_entity_id && entityIds.includes(p.legal_entity_id)) {
-                  // Bien affecté à une entité connue
-                  propertyCounts[p.legal_entity_id] = (propertyCounts[p.legal_entity_id] || 0) + 1;
-                } else if (!p.legal_entity_id && particulierEntity) {
-                  // Bien sans entité → compter dans l'entité "particulier" (nom propre)
-                  const pId = particulierEntity.id as string;
-                  propertyCounts[pId] = (propertyCounts[pId] || 0) + 1;
-                }
-              }
-            }
-
-            const { data: leases } = await supabase
-              .from("leases")
-              .select("signatory_entity_id")
-              .in("signatory_entity_id", entityIds)
-              .in("statut", ["active", "pending_signature", "fully_signed"]);
-            if (leases) {
-              for (const l of leases as any[]) {
-                if (l.signatory_entity_id) leaseCounts[l.signatory_entity_id] = (leaseCounts[l.signatory_entity_id] || 0) + 1;
-              }
-            }
-          }
-
-          const entitySummaries: LegalEntitySummary[] = (entities || []).map(
+          const entitySummaries: LegalEntitySummary[] = (rawEntities || []).map(
             (e: Record<string, unknown>) => ({
               id: e.id as string,
               nom: (e.nom as string) || "",
@@ -132,11 +88,11 @@ export const useEntityStore = create<EntityState>()(
               siret: (e.siret as string) || null,
               codePostalSiege: (e.code_postal_siege as string) || null,
               villeSiege: (e.ville_siege as string) || null,
-              isDefault: false, // Will be computed
+              isDefault: false,
               isActive: (e.is_active as boolean) ?? true,
               couleur: (e.couleur as string) || null,
-              propertyCount: propertyCounts[e.id as string] || 0,
-              activeLeaseCount: leaseCounts[e.id as string] || 0,
+              propertyCount: (e.property_count as number) || 0,
+              activeLeaseCount: (e.lease_count as number) || 0,
               hasIban: !!(e.iban as string),
             })
           );
