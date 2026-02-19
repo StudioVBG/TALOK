@@ -36,7 +36,7 @@ interface Invoice {
   id: string;
   periode: string;
   montant_total: number;
-  statut: "draft" | "sent" | "paid" | "late" | "cancelled";
+  statut: "draft" | "sent" | "viewed" | "partial" | "paid" | "late" | "cancelled";
   created_at: string;
   lease?: {
     property?: {
@@ -101,6 +101,7 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
                 <div className={`p-3 rounded-full shrink-0 ${
                   invoice.statut === 'paid' ? 'bg-emerald-100 text-emerald-600' :
                   invoice.statut === 'late' ? 'bg-red-100 text-red-600' :
+                  invoice.statut === 'partial' ? 'bg-amber-100 text-amber-600' :
                   'bg-blue-100 text-blue-600'
                 }`}>
                   <FileText className="h-6 w-6" />
@@ -130,9 +131,10 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
                   <StatusBadge 
                     status={invoice.statut} 
                     type={
-                      invoice.statut === 'paid' ? 'success' : 
-                      invoice.statut === 'late' ? 'error' : 
-                      invoice.statut === 'sent' ? 'info' : 'neutral'
+                      invoice.statut === 'paid' ? 'success' :
+                      invoice.statut === 'late' ? 'error' :
+                      invoice.statut === 'sent' || invoice.statut === 'viewed' ? 'info' :
+                      invoice.statut === 'partial' ? 'warning' : 'neutral'
                     }
                   />
                 </div>

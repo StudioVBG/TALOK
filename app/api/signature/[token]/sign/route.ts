@@ -330,18 +330,22 @@ export async function POST(request: Request, { params }: PageProps) {
       .eq("id", lease.id)
       .single();
 
-    const ownerUserId = (leaseWithProperty?.property as any)?.owner?.user_id;
+    const ownerData = (leaseWithProperty?.property as any)?.owner;
+    const ownerUserId = ownerData?.user_id;
+    const ownerProfileId = ownerData?.id;
     if (ownerUserId) {
       await serviceClient.from("notifications").insert({
         user_id: ownerUserId,
+        profile_id: ownerProfileId || null,
         type: "lease_signed",
-        title: allSigned 
-          ? "Bail entièrement signé !" 
+        title: allSigned
+          ? "Bail entièrement signé !"
           : `${roleLabels[signerRole] || signerRole} a signé`,
         body: allSigned
           ? `Tous les signataires ont signé le bail pour ${(leaseWithProperty?.property as any)?.adresse_complete}. Le bail est en attente de l'état des lieux d'entrée.`
           : `${signerName} (${roleLabels[signerRole] || signerRole}) a signé le bail pour ${(leaseWithProperty?.property as any)?.adresse_complete}.`,
         read: false,
+        is_read: false,
         metadata: {
           lease_id: lease.id,
           signer_email: tokenData.email,

@@ -125,8 +125,11 @@ function LeaseStatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; className: string }> = {
     active: { label: "Actif", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
     pending_signature: { label: "Signature en cours", className: "bg-amber-100 text-amber-700 border-amber-200" },
+    partially_signed: { label: "Partiellement signé", className: "bg-orange-100 text-orange-700 border-orange-200" },
     pending_owner_signature: { label: "Signature propriétaire", className: "bg-blue-100 text-blue-700 border-blue-200" },
+    fully_signed: { label: "Signé", className: "bg-indigo-100 text-indigo-700 border-indigo-200" },
     terminated: { label: "Terminé", className: "bg-slate-100 text-slate-600 border-slate-200" },
+    invitation_pending: { label: "Invitation envoyée", className: "bg-purple-100 text-purple-700 border-purple-200" },
   };
 
   const { label, className } = config[status] || { label: status, className: "bg-slate-100 text-slate-600" };
@@ -194,12 +197,19 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link href={`/owner/tenants/${tenant.profile_id}`}>
-                      <Users className="h-4 w-4 mr-2" />
-                      Voir le profil
-                    </Link>
-                  </DropdownMenuItem>
+                  {tenant.profile_id ? (
+                    <DropdownMenuItem asChild>
+                      <Link href={`/owner/tenants/${tenant.profile_id}`}>
+                        <Users className="h-4 w-4 mr-2" />
+                        Voir le profil
+                      </Link>
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem disabled className="text-slate-400">
+                      <Clock className="h-4 w-4 mr-2" />
+                      Profil en attente
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link href={`/owner/leases/${tenant.lease_id}`}>
                       <FileText className="h-4 w-4 mr-2" />
@@ -207,12 +217,14 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href={`/owner/messages?tenant=${tenant.profile_id}`}>
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Envoyer un message
-                    </Link>
-                  </DropdownMenuItem>
+                  {tenant.profile_id && (
+                    <DropdownMenuItem asChild>
+                      <Link href={`/owner/messages?tenant=${tenant.profile_id}`}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Envoyer un message
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   {tenant.telephone && (
                     <DropdownMenuItem asChild>
                       <a href={`tel:${tenant.telephone}`}>
@@ -302,16 +314,26 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
               }
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" asChild className="h-8">
-                <Link href={`/owner/messages?tenant=${tenant.profile_id}`}>
-                  <MessageSquare className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
-              <Button variant="ghost" size="sm" asChild className="h-8">
-                <Link href={`/owner/tenants/${tenant.profile_id}`}>
-                  Détails
-                </Link>
-              </Button>
+              {tenant.profile_id ? (
+                <>
+                  <Button variant="ghost" size="sm" asChild className="h-8">
+                    <Link href={`/owner/messages?tenant=${tenant.profile_id}`}>
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild className="h-8">
+                    <Link href={`/owner/tenants/${tenant.profile_id}`}>
+                      Détails
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <Button variant="ghost" size="sm" asChild className="h-8">
+                  <Link href={`/owner/leases/${tenant.lease_id}`}>
+                    Voir le bail
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
