@@ -42,10 +42,12 @@ export type PropertyUsage =
 // PROPERTY STATUS - Migration V3
 // ============================================
 /**
- * @deprecated Utiliser PropertyStatusV3 depuis @/lib/types/property-v3
- * PropertyStatus a des valeurs dupliquées (fr/en). PropertyStatusV3 utilise uniquement les valeurs anglaises.
+ * Statut de workflow de propriété (cycle de publication)
+ * Réexporté depuis @/lib/types/status.ts — source de vérité unique
+ * Valeurs: draft | pending_review | published | rejected | archived
  */
-export type PropertyStatus = "brouillon" | "en_attente" | "published" | "publie" | "rejete" | "rejected" | "archive" | "archived";
+import type { PropertyStatus, LeaseStatus, InvoiceStatus } from "./status";
+export type { PropertyStatus, LeaseStatus, InvoiceStatus };
 
 // Alias vers PropertyStatusV3
 // (exporté plus bas dans EXPORTS V3)
@@ -145,21 +147,20 @@ export type LeaseType =
   | "bail_mixte"
   | "bail_rural";
 
-// ✅ SOTA 2026: Tous les statuts de bail légaux
-export type LeaseStatus = 
-  | "draft"                   // Brouillon
-  | "sent"                    // Envoyé pour signature
-  | "pending_signature"       // En attente de signatures
-  | "partially_signed"        // Partiellement signé
-  | "pending_owner_signature" // Locataire signé, attente propriétaire
-  | "fully_signed"            // Entièrement signé (avant EDL)
-  | "active"                  // Bail actif
-  | "notice_given"            // Congé donné (préavis en cours)
-  | "amended"                 // Avenant en cours
-  | "terminated"              // Terminé
-  | "archived";               // Archivé
+/**
+ * Statut de bail — cycle de vie complet
+ * Importé depuis @/lib/types/status.ts — source de vérité unique
+ * Valeurs: draft | pending_signature | partially_signed | fully_signed |
+ *          active | notice_given | terminated | archived
+ * (réexporté via l'import groupé ci-dessus)
+ */
 
-export type InvoiceStatus = "draft" | "sent" | "paid" | "late";
+/**
+ * Statut de facture locataire
+ * Importé depuis @/lib/types/status.ts — source de vérité unique
+ * Valeurs: draft | sent | viewed | partial | paid | late | cancelled
+ * (réexporté via l'import groupé ci-dessus)
+ */
 
 // ✅ SOTA 2026: Tous les moyens de paiement synchronisés avec la DB
 // Synchronisé avec: payments_moyen_check dans 20241129000002_cash_payments.sql
@@ -902,7 +903,7 @@ export type {
   AcknowledgmentMethod,
   SettlementStatus,
   DeductionType,
-  PaymentMethod as EndOfLeasePaymentMethod,
+  EndOfLeasePaymentMethod,
   DepartureNotice,
   DGSettlement,
   DeductionItem,

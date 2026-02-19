@@ -56,7 +56,14 @@ export type DeductionType =
   | "charge_regularization"
   | "other";
 
-export type PaymentMethod = "virement" | "cheque" | "especes";
+/**
+ * Méthode de paiement pour fin de bail / restitution DG
+ * @see PaymentMethod dans @/lib/types/index.ts pour les paiements locataires
+ */
+export type EndOfLeasePaymentMethod = "virement" | "cheque" | "especes";
+
+/** @deprecated Utiliser EndOfLeasePaymentMethod */
+export type PaymentMethod = EndOfLeasePaymentMethod;
 
 // ============================================
 // INTERFACES
@@ -108,7 +115,7 @@ export interface DGSettlement {
   contested_at: string | null;
   contest_reason: string | null;
   payment_date: string | null;
-  payment_method: PaymentMethod | null;
+  payment_method: EndOfLeasePaymentMethod | null;
   payment_reference: string | null;
   legal_deadline: string;
   is_overdue: boolean;
@@ -192,7 +199,7 @@ export interface UpdateSettlementDTO {
   other_deductions_amount?: number;
   status?: SettlementStatus;
   payment_date?: string;
-  payment_method?: PaymentMethod;
+  payment_method?: EndOfLeasePaymentMethod;
   payment_reference?: string;
   notes?: string;
 }

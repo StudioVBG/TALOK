@@ -23,12 +23,19 @@ export type SubscriptionStatus =
   | "canceled"
   | "incomplete";
 
-export type InvoiceStatus =
+/**
+ * Statut de facture Stripe (billing/abonnement)
+ * @see InvoiceStatus dans @/lib/types/status.ts pour les factures locataires
+ */
+export type BillingInvoiceStatus =
   | "draft"
   | "open"
   | "paid"
   | "void"
   | "uncollectible";
+
+/** @deprecated Utiliser BillingInvoiceStatus */
+export type InvoiceStatus = BillingInvoiceStatus;
 
 export type Territoire =
   | "metropole"
@@ -105,7 +112,7 @@ export interface UsageSummary {
 export interface Invoice {
   id: string;
   number: string;
-  status: InvoiceStatus;
+  status: BillingInvoiceStatus;
   amount_ht: number;
   amount_tva: number;
   amount_ttc: number;
@@ -128,13 +135,20 @@ export interface InvoicesResponse {
 // PAYMENT METHOD
 // ============================================
 
-export interface PaymentMethod {
+/**
+ * Moyen de paiement Stripe (carte bancaire enregistrée)
+ * @see PaymentMethod dans @/lib/types/index.ts pour les méthodes de paiement métier
+ */
+export interface BillingPaymentMethod {
   id: string;
   brand: "visa" | "mastercard" | "amex" | "discover" | "unknown";
   last4: string;
   exp_month: number;
   exp_year: number;
 }
+
+/** @deprecated Utiliser BillingPaymentMethod */
+export type PaymentMethod = BillingPaymentMethod;
 
 // ============================================
 // PLAN
@@ -172,7 +186,7 @@ export interface BillingData {
   subscription: Subscription;
   usage: UsageSummary;
   plan: PlanDefinition;
-  payment_method: PaymentMethod | null;
+  payment_method: BillingPaymentMethod | null;
 }
 
 // ============================================

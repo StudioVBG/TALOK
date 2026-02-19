@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, FileEdit, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { InvoiceStatus } from "@/types/billing";
+import type { BillingInvoiceStatus as InvoiceStatus } from "@/types/billing";
 
 const STATUS_CONFIG: Record<
   InvoiceStatus,
