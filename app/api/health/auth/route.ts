@@ -14,7 +14,8 @@ interface SyncReport {
     profilesWithoutEmail: { count: number; status: "pass" | "fail" };
     orphanProfiles: { count: number; status: "pass" | "warn" };
     desyncEmails: { count: number; status: "pass" | "warn" };
-    triggerExists: { exists: boolean; status: "pass" | "fail" };
+    triggerInsertExists: { exists: boolean; status: "pass" | "fail" };
+    triggerEmailSyncExists: { exists: boolean; status: "pass" | "fail" };
     insertPolicyExists: { exists: boolean; status: "pass" | "fail" };
   };
   totals: {
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
   if (error) {
     return NextResponse.json(
       { error: error.message },
-      { status: (error as any).status || 401 }
+      { status: (error as Record<string, unknown>).status as number || 401 }
     );
   }
 
@@ -60,9 +61,10 @@ export async function GET(request: Request) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function buildSyncReport(supabase: any): Promise<SyncReport> {
   let score = 0;
-  const maxScore = 6;
+  const maxScore = 7;
 
   // 1. Auth users sans profil
   const { data: orphanAuth, error: orphanAuthErr } = await supabase.rpc(
@@ -130,17 +132,28 @@ async function buildSyncReport(supabase: any): Promise<SyncReport> {
     desyncEmailsStatus = "warn";
   }
 
-  // 6. Trigger exists
-  const { data: triggerData } = await supabase.rpc("check_trigger_exists", {
-    p_trigger_name: "on_auth_user_created",
-  });
-  const triggerExistsVal = !!triggerData;
-  const triggerExistsStatus: "pass" | "fail" = triggerExistsVal
+  // 6. Trigger INSERT exists (on_auth_user_created)
+  const { data: triggerInsertData } = await supabase.rpc(
+    "check_trigger_exists",
+    { p_trigger_name: "on_auth_user_created" }
+  );
+  const triggerInsertExistsVal = !!triggerInsertData;
+  const triggerInsertExistsStatus: "pass" | "fail" = triggerInsertExistsVal
     ? "pass"
     : "fail";
-  if (triggerExistsVal) score++;
+  if (triggerInsertExistsVal) score++;
 
-  // 7. INSERT policy exists
+  // 7. Trigger EMAIL SYNC exists (on_auth_user_email_changed)
+  const { data: triggerEmailSyncData } = await supabase.rpc(
+    "check_trigger_exists",
+    { p_trigger_name: "on_auth_user_email_changed" }
+  );
+  const triggerEmailSyncExistsVal = !!triggerEmailSyncData;
+  const triggerEmailSyncExistsStatus: "pass" | "fail" =
+    triggerEmailSyncExistsVal ? "pass" : "fail";
+  if (triggerEmailSyncExistsVal) score++;
+
+  // 8. INSERT policy exists
   const { data: policyData } = await supabase.rpc(
     "check_insert_policy_exists",
     { p_table_name: "profiles" }
@@ -151,7 +164,7 @@ async function buildSyncReport(supabase: any): Promise<SyncReport> {
     : "fail";
   if (insertPolicyExistsVal) score++;
 
-  // 8. Distribution des roles
+  // 9. Distribution des roles
   const { data: allProfiles } = await supabase.from("profiles").select("role");
   const roleDistribution: Record<string, number> = {};
   if (allProfiles) {
@@ -160,14 +173,14 @@ async function buildSyncReport(supabase: any): Promise<SyncReport> {
     }
   }
 
-  // 9. Total auth users
+  // 10. Total auth users
   const { data: authUsersCount } = await supabase.rpc("count_auth_users");
 
   // Status global
   let status: "healthy" | "degraded" | "critical";
   if (score === maxScore) {
     status = "healthy";
-  } else if (score >= 4) {
+  } else if (score >= 5) {
     status = "degraded";
   } else {
     status = "critical";
@@ -195,9 +208,13 @@ async function buildSyncReport(supabase: any): Promise<SyncReport> {
         count: desyncEmailsCount,
         status: desyncEmailsStatus,
       },
-      triggerExists: {
-        exists: triggerExistsVal,
-        status: triggerExistsStatus,
+      triggerInsertExists: {
+        exists: triggerInsertExistsVal,
+        status: triggerInsertExistsStatus,
+      },
+      triggerEmailSyncExists: {
+        exists: triggerEmailSyncExistsVal,
+        status: triggerEmailSyncExistsStatus,
       },
       insertPolicyExists: {
         exists: insertPolicyExistsVal,

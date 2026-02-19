@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import type { UserRole } from "@/lib/types";
 
 interface ProtectedRouteProps {
@@ -16,7 +17,7 @@ export function ProtectedRoute({
   allowedRoles,
   redirectTo = "/auth/signin",
 }: ProtectedRouteProps) {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, status, retryProfile } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -27,24 +28,10 @@ export function ProtectedRoute({
       return;
     }
 
-    if (allowedRoles && profile && !allowedRoles.includes(profile.role as any)) {
-      // Rediriger vers le dashboard approprié selon le rôle
-      switch (profile.role) {
-        case "owner":
-          router.replace("/owner/dashboard");
-          break;
-        case "tenant":
-          router.replace("/tenant");
-          break;
-        case "provider":
-          router.replace("/provider");
-          break;
-        case "admin":
-          router.replace("/admin/dashboard");
-          break;
-        default:
-          router.push("/dashboard");
-      }
+    if (allowedRoles && profile && !allowedRoles.includes(profile.role as UserRole)) {
+      // Redirect to the appropriate dashboard using centralized helper
+      const dashUrl = getRoleDashboardUrl(profile.role);
+      router.replace(dashUrl);
       return;
     }
   }, [user, profile, loading, allowedRoles, redirectTo, router]);
@@ -64,10 +51,43 @@ export function ProtectedRoute({
     return null;
   }
 
-  if (allowedRoles && profile && !allowedRoles.includes(profile.role as any)) {
+  // Handle profile_error state — show error UI with retry instead of blank screen
+  if (status === "profile_error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-4xl mb-4">&#x26A0;</div>
+          <h2 className="text-lg font-semibold mb-2">
+            Impossible de charger votre profil
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            Une erreur est survenue lors du chargement de votre profil.
+            Veuillez réessayer ou vous reconnecter.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => retryProfile()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+            >
+              Réessayer
+            </button>
+            <button
+              onClick={() => {
+                router.push("/auth/signin");
+              }}
+              className="px-4 py-2 border border-input rounded-md hover:bg-accent transition-colors"
+            >
+              Se reconnecter
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (allowedRoles && profile && !allowedRoles.includes(profile.role as UserRole)) {
     return null;
   }
 
   return <>{children}</>;
 }
-
