@@ -165,20 +165,27 @@ export function mapLeaseToTemplate(
       est_mandataire: false,
     } as any,
 
-    locataires: mainTenant ? [{
-      // ✅ FIX: Priorité aux données du profil, puis invited_name, puis extraction depuis l'email
-      nom: mainTenant.profile?.nom || 
-           (mainTenant.invited_name ? mainTenant.invited_name.split(' ').slice(1).join(' ') || mainTenant.invited_name : "") ||
-           (mainTenant.invited_email && !mainTenant.invited_email.includes('@a-definir') ? mainTenant.invited_email.split('@')[0] : "[NOM LOCATAIRE]"),
-      prenom: mainTenant.profile?.prenom || 
-              (mainTenant.invited_name ? mainTenant.invited_name.split(' ')[0] : ""),
-      email: mainTenant.profile?.email || mainTenant.invited_email || "",
-      telephone: mainTenant.profile?.telephone || "",
-      date_naissance: mainTenant.profile?.date_naissance || "",
-      lieu_naissance: mainTenant.profile?.lieu_naissance || "",
-      nationalite: mainTenant.profile?.nationalite || "Française",
-      adresse: mainTenant.profile?.adresse || "",
-    }] as any[] : [],
+    locataires: mainTenant ? [(() => {
+      // FIX: Chaîne de fallback robuste — ne JAMAIS retourner un placeholder avec crochets
+      // qui serait converti en "[En attente de locataire]" par le template service
+      const profileNom = mainTenant.profile?.nom;
+      const profilePrenom = mainTenant.profile?.prenom;
+      const invitedParts = mainTenant.invited_name?.trim().split(' ') || [];
+      const invitedPrenom = invitedParts[0] || '';
+      const invitedNom = invitedParts.slice(1).join(' ') || invitedParts[0] || '';
+      const emailName = mainTenant.invited_email?.split('@')[0]?.replace(/[._-]/g, ' ') || '';
+
+      return {
+        nom: profileNom || invitedNom || emailName || 'Locataire',
+        prenom: profilePrenom || invitedPrenom || '',
+        email: mainTenant.profile?.email || mainTenant.invited_email || "",
+        telephone: mainTenant.profile?.telephone || "",
+        date_naissance: mainTenant.profile?.date_naissance || "",
+        lieu_naissance: mainTenant.profile?.lieu_naissance || "",
+        nationalite: mainTenant.profile?.nationalite || "Française",
+        adresse: mainTenant.profile?.adresse || "",
+      };
+    })()] as any[] : [],
 
     logement: {
       adresse_complete: property.adresse_complete || (property as any).adresse || "",

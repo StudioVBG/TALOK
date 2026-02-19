@@ -303,35 +303,44 @@ async function fetchLeaseDetailsFallback(
   }
   
   // 2. Récupérer les signataires
-  // ✅ SOTA 2026: Récupérer TOUS les champs de signature (image ET path)
-  const { data: signers, error: signersError } = await supabase
+  // ✅ FIX: FK hint explicite profiles!profile_id pour éviter les ambiguïtés PostgREST
+  // Avec fallback si le hint échoue (compatibilité schemas variés)
+  const profilesJoinFields = `id, prenom, nom, email, telephone, avatar_url, date_naissance, lieu_naissance, nationalite, adresse`;
+  const signerBaseFields = `id, role, signature_status, signed_at, signature_image, signature_image_path, proof_id, ip_inet, invited_email, invited_name, invited_at, profile_id`;
+
+  let signers: any[] | null = null;
+  let signersError: any = null;
+
+  // Tentative 1: Avec FK hint explicite
+  const result1 = await supabase
     .from("lease_signers")
-    .select(`
-      id,
-      role,
-      signature_status,
-      signed_at,
-      signature_image,
-      signature_image_path,
-      proof_id,
-      ip_inet,
-      invited_email,
-      invited_name,
-      invited_at,
-      profiles (
-        id,
-        prenom,
-        nom,
-        email,
-        telephone,
-        avatar_url,
-        date_naissance,
-        lieu_naissance,
-        nationalite,
-        adresse
-      )
-    `)
+    .select(`${signerBaseFields}, profiles!profile_id (${profilesJoinFields})`)
     .eq("lease_id", leaseId);
+
+  if (!result1.error) {
+    signers = result1.data;
+  } else {
+    console.warn("[fetchLeaseDetails] FK hint failed, trying without:", result1.error.message);
+    // Tentative 2: Sans FK hint
+    const result2 = await supabase
+      .from("lease_signers")
+      .select(`${signerBaseFields}, profiles (${profilesJoinFields})`)
+      .eq("lease_id", leaseId);
+
+    if (!result2.error) {
+      signers = result2.data;
+    } else {
+      console.warn("[fetchLeaseDetails] profiles join failed, fetching without profiles:", result2.error.message);
+      // Tentative 3: Sans join profiles (dernier recours — les noms viennent de invited_name/email)
+      const result3 = await supabase
+        .from("lease_signers")
+        .select(signerBaseFields)
+        .eq("lease_id", leaseId);
+
+      signers = result3.data;
+      signersError = result3.error;
+    }
+  }
 
   if (signersError) {
     console.error("[fetchLeaseDetails] Erreur récupération signataires:", signersError);

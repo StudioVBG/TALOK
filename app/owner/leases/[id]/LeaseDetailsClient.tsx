@@ -1125,17 +1125,24 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 
                 <div className="pt-3 border-t border-slate-50">
                   <p className="text-xs text-muted-foreground mb-2">Locataire</p>
-                  {mainTenant ? (
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
-                        {mainTenant.profile?.prenom?.[0]}{mainTenant.profile?.nom?.[0]}
+                  {mainTenant ? (() => {
+                    // FIX: Afficher les données du profil OU les données d'invitation
+                    const tenantPrenom = mainTenant.profile?.prenom || mainTenant.invited_name?.split(' ')[0] || '';
+                    const tenantNom = mainTenant.profile?.nom || mainTenant.invited_name?.split(' ').slice(1).join(' ') || '';
+                    const tenantDisplay = (tenantPrenom + ' ' + tenantNom).trim() || mainTenant.invited_email || 'Locataire';
+                    const initials = (tenantPrenom?.[0] || '') + (tenantNom?.[0] || '') || (mainTenant.invited_email?.[0]?.toUpperCase() || 'L');
+                    return (
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
+                          {initials}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{tenantDisplay}</p>
+                          <Badge variant="secondary" className="text-[10px] h-5">Principal</Badge>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">{mainTenant.profile?.prenom} {mainTenant.profile?.nom}</p>
-                        <Badge variant="secondary" className="text-[10px] h-5">Principal</Badge>
-                      </div>
-                    </div>
-                  ) : (
+                    );
+                  })() : (
                     <div className="flex flex-col gap-3">
                       <p className="text-sm italic text-muted-foreground">En attente d&apos;invitation</p>
                       <Link
