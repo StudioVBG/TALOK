@@ -429,9 +429,59 @@ export async function POST(request: Request, { params }: PageProps) {
       },
     });
 
+    // ✅ FIX: Notifier le propriétaire (manquait dans sign-with-pad contrairement à /sign)
+    const roleLabels: Record<string, string> = {
+      locataire_principal: "locataire",
+      colocataire: "colocataire",
+      garant: "garant",
+      proprietaire: "propriétaire",
+    };
+
+    try {
+      const { data: leaseWithOwner } = await serviceClient
+        .from("leases")
+        .select(`
+          id,
+          property:properties(
+            id,
+            owner_id,
+            adresse_complete,
+            owner:profiles!properties_owner_id_fkey(id, user_id)
+          )
+        `)
+        .eq("id", typedLease.id)
+        .single();
+
+      const ownerProfile = (leaseWithOwner?.property as any)?.owner;
+      if (ownerProfile?.user_id) {
+        await serviceClient.from("notifications").insert({
+          user_id: ownerProfile.user_id,
+          profile_id: ownerProfile.id,
+          type: "lease_signed",
+          title: allSigned
+            ? "Bail entièrement signé !"
+            : `${roleLabels[tenantSigner.role] || tenantSigner.role} a signé`,
+          body: allSigned
+            ? `Tous les signataires ont signé le bail pour ${(leaseWithOwner?.property as any)?.adresse_complete}. Le bail est en attente de l'état des lieux d'entrée.`
+            : `${signerName} (${roleLabels[tenantSigner.role] || tenantSigner.role}) a signé le bail pour ${(leaseWithOwner?.property as any)?.adresse_complete}.`,
+          read: false,
+          is_read: false,
+          metadata: {
+            lease_id: typedLease.id,
+            signer_email: tokenData.email,
+            signer_role: tenantSigner.role,
+            all_signed: allSigned,
+          },
+        });
+      }
+    } catch (notifErr) {
+      log.warn("Erreur notification propriétaire (non bloquant)", { error: String(notifErr) });
+    }
+
     // FIX AUDIT 2026-02-16: Invalider le cache pour les pages liées
     revalidatePath("/owner/leases");
     revalidatePath(`/owner/leases/${typedLease.id}`);
+    revalidatePath("/owner/tenants");
     revalidatePath("/tenant/signatures");
 
     log.complete(true, { allSigned, newStatus, proofId: proof.proofId });

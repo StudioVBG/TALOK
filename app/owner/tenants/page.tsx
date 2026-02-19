@@ -44,6 +44,7 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
   const supabase = await createClient();
 
   // Récupérer tous les baux du propriétaire avec les infos locataires
+  // ✅ FIX: Inclure invited_email et invited_name pour les locataires en attente
   const { data: leases, error } = await supabase
     .from("leases")
     .select(`
@@ -63,6 +64,9 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
       ),
       lease_signers(
         role,
+        invited_email,
+        invited_name,
+        signature_status,
         profile:profiles(
           id,
           prenom,
@@ -98,42 +102,45 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
     ) || [];
 
     for (const signer of tenantSigners) {
-      if (!signer.profile) continue;
-
-      // Récupérer les stats de paiement pour ce locataire
-      const { data: invoices } = await supabase
-        .from("invoices")
-        .select("id, statut, montant_total, date_paiement, date_echeance")
-        .eq("lease_id", lease.id)
-        .eq("tenant_id", signer.profile.id);
+      // ✅ FIX: Afficher aussi les locataires invités mais pas encore inscrits
+      // Avant: if (!signer.profile) continue; → les locataires en attente étaient invisibles
+      if (!signer.profile && !signer.invited_email) continue;
 
       let paymentsOnTime = 0;
       let paymentsLate = 0;
       let lastPaymentDate: string | null = null;
       let currentBalance = 0;
 
-      (invoices || []).forEach((inv: any) => {
-        if (inv.statut === "paid") {
-          // Vérifier si payé à temps
-          if (inv.date_paiement && inv.date_echeance) {
-            if (new Date(inv.date_paiement) <= new Date(inv.date_echeance)) {
-              paymentsOnTime++;
+      // Récupérer les stats de paiement uniquement si le profil est lié
+      if (signer.profile) {
+        const { data: invoices } = await supabase
+          .from("invoices")
+          .select("id, statut, montant_total, date_paiement, date_echeance")
+          .eq("lease_id", lease.id)
+          .eq("tenant_id", signer.profile.id);
+
+        (invoices || []).forEach((inv: any) => {
+          if (inv.statut === "paid") {
+            if (inv.date_paiement && inv.date_echeance) {
+              if (new Date(inv.date_paiement) <= new Date(inv.date_echeance)) {
+                paymentsOnTime++;
+              } else {
+                paymentsLate++;
+              }
             } else {
-              paymentsLate++;
+              paymentsOnTime++;
             }
-          } else {
-            paymentsOnTime++;
+            if (!lastPaymentDate || inv.date_paiement > lastPaymentDate) {
+              lastPaymentDate = inv.date_paiement;
+            }
+          } else if (inv.statut === "sent" || inv.statut === "late") {
+            currentBalance += inv.montant_total || 0;
           }
-          if (!lastPaymentDate || inv.date_paiement > lastPaymentDate) {
-            lastPaymentDate = inv.date_paiement;
-          }
-        } else if (inv.statut === "sent" || inv.statut === "late") {
-          currentBalance += inv.montant_total || 0;
-        }
-      });
+        });
+      }
 
       const paymentsTotal = paymentsOnTime + paymentsLate;
-      
+
       // Calculer le score locataire (0-5 étoiles)
       let score = 5;
       if (paymentsTotal > 0) {
@@ -144,16 +151,25 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
         score = Math.max(1, score - 1);
       }
 
+      // ✅ FIX: Utiliser les données du profil si disponible, sinon les données d'invitation
+      const tenantId = signer.profile
+        ? `${lease.id}-${signer.profile.id}`
+        : `${lease.id}-invited-${signer.invited_email}`;
+      const profileId = signer.profile?.id || "";
+      const prenom = signer.profile?.prenom || signer.invited_name?.split(" ")[0] || "";
+      const nom = signer.profile?.nom || signer.invited_name?.split(" ").slice(1).join(" ") || "";
+      const email = signer.profile?.email || signer.invited_email || "";
+
       tenants.push({
-        id: `${lease.id}-${signer.profile.id}`,
-        profile_id: signer.profile.id,
-        prenom: signer.profile.prenom || "",
-        nom: signer.profile.nom || "",
-        email: signer.profile.email || "",
-        telephone: signer.profile.telephone,
-        avatar_url: signer.profile.avatar_url,
+        id: tenantId,
+        profile_id: profileId,
+        prenom,
+        nom,
+        email,
+        telephone: signer.profile?.telephone || null,
+        avatar_url: signer.profile?.avatar_url || null,
         lease_id: lease.id,
-        lease_status: lease.statut,
+        lease_status: !signer.profile ? "invitation_pending" : lease.statut,
         lease_start: lease.date_debut,
         lease_end: lease.date_fin,
         lease_type: lease.type_bail,

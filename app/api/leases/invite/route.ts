@@ -426,14 +426,17 @@ export async function POST(request: Request) {
           ? ` Votre part : ${Math.round(invitee.weight * 100)}% (${Math.round(validated.loyer * invitee.weight)}€/mois).`
           : "";
           
+        // ✅ FIX: Ajouter profile_id en plus de user_id pour cohérence avec GET /api/notifications
         const { error: notifError } = await serviceClient
           .from("notifications")
           .insert({
             user_id: existingProfile.user_id,
+            profile_id: existingProfile.id,
             type: "lease_invite",
-            title: isColocation ? "🏠 Invitation colocation" : "🏠 Nouveau bail à signer",
+            title: isColocation ? "Invitation colocation" : "Nouveau bail à signer",
             body: `${profile.prenom} ${profile.nom} vous invite à ${isColocation ? "rejoindre une colocation" : "signer un bail"} pour ${property.adresse_complete}, ${property.code_postal} ${property.ville}.${partText}`,
             read: false,
+            is_read: false,
             metadata: {
               lease_id: lease.id,
               property_id: validated.property_id,

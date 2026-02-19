@@ -42,11 +42,12 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Essayer d'abord avec la table notifications directement
+    // ✅ FIX: Chercher par profile_id OU user_id pour ne manquer aucune notification
+    // Certaines notifications anciennes n'ont que user_id sans profile_id
     let query = supabase
       .from('notifications')
       .select('*')
-      .eq('profile_id', profile.id)
+      .or(`profile_id.eq.${profile.id},and(user_id.eq.${user.id},profile_id.is.null)`)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
     const { count: unreadCount } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
-      .eq('profile_id', profile.id)
+      .or(`profile_id.eq.${profile.id},and(user_id.eq.${user.id},profile_id.is.null)`)
       .eq('is_read', false);
 
     return NextResponse.json({
