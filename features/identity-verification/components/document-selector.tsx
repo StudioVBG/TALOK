@@ -20,7 +20,7 @@ const iconMap = {
 
 export function DocumentSelector({ open, onSelect, onClose }: DocumentSelectorProps) {
   return (
-    <Sheet open={open} onOpenChange={onClose}>
+    <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <SheetContent
         side="bottom"
         className="rounded-t-[2rem] bg-white px-0 pb-10 pt-0 border-0 max-h-[85vh]"

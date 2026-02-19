@@ -64,7 +64,7 @@ export function PDFPreviewModal({
                   documentType?.includes("identite");
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent
         aria-describedby={undefined}
         className={cn(
