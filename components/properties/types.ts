@@ -20,9 +20,23 @@ export type PropertyType =
   | "entrepot" 
   | "fonds_de_commerce";
 
-export type PropertyStatus = "vacant" | "loue" | "en_travaux" | "signature_en_cours";
+/**
+ * Statut opérationnel de propriété (vue composants)
+ * Différent de PropertyStatus (workflow: draft → published) dans @/lib/types/status.ts
+ */
+export type PropertyDisplayStatus = "vacant" | "loue" | "en_travaux" | "signature_en_cours";
 
-export type LeaseStatus = "draft" | "pending_signature" | "active" | "terminated" | "expired";
+/** @deprecated Utiliser PropertyDisplayStatus */
+export type PropertyStatus = PropertyDisplayStatus;
+
+/**
+ * Sous-ensemble de LeaseStatus pour l'affichage composants
+ * @see LeaseStatus dans @/lib/types/status.ts pour le cycle de vie complet
+ */
+export type PropertyLeaseStatus = "draft" | "pending_signature" | "active" | "terminated" | "expired";
+
+/** @deprecated Utiliser PropertyLeaseStatus ou LeaseStatus depuis @/lib/types/status */
+export type LeaseStatus = PropertyLeaseStatus;
 
 // ============================================
 // INTERFACES PRINCIPALES
@@ -55,7 +69,7 @@ export interface PropertyTenant {
 
 export interface PropertyLease {
   id: string;
-  statut: LeaseStatus;
+  statut: PropertyLeaseStatus;
   type_bail?: string;
   date_debut: string;
   date_fin?: string | null;
@@ -82,7 +96,7 @@ export interface PropertyMeter {
 export interface PropertyData {
   id: string;
   type: PropertyType;
-  statut: PropertyStatus;
+  statut: PropertyDisplayStatus;
   adresse_complete: string;
   code_postal: string;
   ville: string;
@@ -296,7 +310,7 @@ export function isProType(type: PropertyType): boolean {
   return PRO_TYPES.includes(type);
 }
 
-export const STATUS_CONFIG: Record<PropertyStatus, { label: string; color: string }> = {
+export const STATUS_CONFIG: Record<PropertyDisplayStatus, { label: string; color: string }> = {
   vacant: { label: "Vacant", color: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400" },
   loue: { label: "Loué", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
   en_travaux: { label: "En travaux", color: "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400" },

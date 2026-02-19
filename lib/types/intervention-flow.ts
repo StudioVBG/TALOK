@@ -58,9 +58,13 @@ export type EscrowStatus = 'none' | 'pending' | 'held' | 'released' | 'refunded'
 export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'refunded' | 'disputed';
 
 /**
- * Méthode de paiement
+ * Méthode de paiement pour interventions/work orders
+ * @see PaymentMethod dans @/lib/types/index.ts pour les paiements locataires
  */
-export type PaymentMethod = 'card' | 'sepa_debit' | 'bank_transfer' | 'direct';
+export type WorkOrderPaymentMethod = 'card' | 'sepa_debit' | 'bank_transfer' | 'direct';
+
+/** @deprecated Utiliser WorkOrderPaymentMethod */
+export type PaymentMethod = WorkOrderPaymentMethod;
 
 /**
  * Configuration des frais de paiement
@@ -124,7 +128,7 @@ export interface WorkOrderPayment {
   platform_fee: number;
   total_fees: number;
   net_amount: number;
-  payment_method: PaymentMethod | null;
+  payment_method: WorkOrderPaymentMethod | null;
   stripe_payment_intent_id: string | null;
   stripe_charge_id: string | null;
   stripe_transfer_id: string | null;

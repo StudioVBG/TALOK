@@ -145,43 +145,35 @@ export function fromPhotoTagV3(tag: PhotoTagV3 | null): PhotoTag {
 // ============================================
 
 /**
- * Convertit PropertyStatus legacy vers PropertyStatusV3
- * PropertyStatus legacy a des valeurs dupliquées (fr/en)
+ * Convertit PropertyStatus legacy (français/anglais mixte) vers PropertyStatusV3
+ * Accepte les anciennes valeurs françaises pour rétrocompatibilité
  */
 export function toPropertyStatusV3(status: PropertyStatus | string): PropertyStatusV3 {
-  const statusMap: Partial<Record<PropertyStatus, PropertyStatusV3>> = {
+  const statusMap: Record<string, PropertyStatusV3> = {
+    // Anciennes valeurs françaises (legacy)
     brouillon: "draft",
     en_attente: "pending_review",
+    publie: "published",
+    rejete: "rejected",
+    archive: "archived",
+    // Valeurs SOTA 2026 (identité PropertyStatus ↔ PropertyStatusV3)
+    draft: "draft",
+    pending_review: "pending_review",
     published: "published",
-    publie: "published", // Dupliqué
     rejected: "rejected",
-    rejete: "rejected", // Dupliqué
     archived: "archived",
-    archive: "archived", // Dupliqué
   };
-  
-  // Si c'est déjà une valeur V3, retourner directement
-  if (status === "draft" || status === "pending_review" || status === "published" || status === "rejected" || status === "archived") {
-    return status as PropertyStatusV3;
-  }
-  
-  return statusMap[status as PropertyStatus] ?? "draft";
+
+  return statusMap[status] ?? "draft";
 }
 
 /**
- * Convertit PropertyStatusV3 vers PropertyStatus legacy
- * Utilise les valeurs anglaises (standard)
+ * Convertit PropertyStatusV3 vers PropertyStatus
+ * PropertyStatus et PropertyStatusV3 ont maintenant les mêmes valeurs (SOTA 2026)
  */
 export function fromPropertyStatusV3(status: PropertyStatusV3): PropertyStatus {
-  const legacyMap: Record<PropertyStatusV3, PropertyStatus> = {
-    draft: "brouillon",
-    pending_review: "en_attente",
-    published: "published",
-    rejected: "rejected",
-    archived: "archived",
-  };
-  
-  return legacyMap[status] ?? "brouillon";
+  // PropertyStatus et PropertyStatusV3 sont alignés (même valeurs)
+  return status as PropertyStatus;
 }
 
 // ============================================

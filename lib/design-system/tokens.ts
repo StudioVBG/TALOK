@@ -82,28 +82,36 @@ export type PriorityVariant = keyof typeof priorityStyles;
 // INVOICE/PAYMENT STATUS
 // ============================================================================
 
-export const invoiceStatusStyles = {
+export const invoiceStatusStyles: Record<string, string> = {
   draft: 'text-slate-600 bg-slate-100 border-slate-200 dark:text-slate-400 dark:bg-slate-800 dark:border-slate-700',
   sent: 'text-sky-600 bg-sky-100 border-sky-200 dark:text-sky-400 dark:bg-sky-900/50 dark:border-sky-800',
+  viewed: 'text-violet-600 bg-violet-100 border-violet-200 dark:text-violet-400 dark:bg-violet-900/50 dark:border-violet-800',
+  partial: 'text-amber-600 bg-amber-100 border-amber-200 dark:text-amber-400 dark:bg-amber-900/50 dark:border-amber-800',
   paid: 'text-emerald-600 bg-emerald-100 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-900/50 dark:border-emerald-800',
   late: 'text-rose-600 bg-rose-100 border-rose-200 dark:text-rose-400 dark:bg-rose-900/50 dark:border-rose-800',
   cancelled: 'text-slate-500 bg-slate-50 border-slate-200 dark:text-slate-500 dark:bg-slate-900 dark:border-slate-800',
-} as const;
+};
 
-export type InvoiceStatus = keyof typeof invoiceStatusStyles;
+/** @deprecated Importer InvoiceStatus depuis @/lib/types/status */
+export type InvoiceStatus = string;
 
 // ============================================================================
 // LEASE STATUS
 // ============================================================================
 
-export const leaseStatusStyles = {
+export const leaseStatusStyles: Record<string, string> = {
   draft: 'text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-800',
   pending_signature: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/50',
+  partially_signed: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/50',
+  fully_signed: 'text-sky-600 bg-sky-100 dark:text-sky-400 dark:bg-sky-900/50',
   active: 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/50',
+  notice_given: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/50',
   terminated: 'text-slate-500 bg-slate-100 dark:text-slate-500 dark:bg-slate-800',
-} as const;
+  archived: 'text-slate-400 bg-slate-50 dark:text-slate-500 dark:bg-slate-900',
+};
 
-export type LeaseStatus = keyof typeof leaseStatusStyles;
+/** @deprecated Importer LeaseStatus depuis @/lib/types/status */
+export type LeaseStatus = string;
 
 // ============================================================================
 // TICKET STATUS

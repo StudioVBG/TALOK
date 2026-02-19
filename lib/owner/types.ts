@@ -4,9 +4,30 @@
 
 export type OwnerModuleKey = "habitation" | "lcd" | "pro" | "parking";
 
-export type PropertyStatus = "loue" | "en_preavis" | "vacant" | "a_completer";
-export type LeaseStatus = "draft" | "pending_signature" | "active" | "terminated";
-export type InvoiceStatus = "draft" | "sent" | "paid" | "late";
+/**
+ * Statut opérationnel de propriété (vue propriétaire)
+ * Différent de PropertyStatus (workflow: draft → published) dans @/lib/types/status.ts
+ */
+export type PropertyOperationalStatus = "loue" | "en_preavis" | "vacant" | "a_completer";
+
+/** @deprecated Utiliser PropertyOperationalStatus */
+export type PropertyStatus = PropertyOperationalStatus;
+/**
+ * Sous-ensemble simplifié de LeaseStatus pour l'affichage propriétaire
+ * @see LeaseStatus dans @/lib/types/status.ts pour le cycle de vie complet
+ */
+export type OwnerLeaseStatus = "draft" | "pending_signature" | "active" | "terminated";
+
+/** @deprecated Utiliser OwnerLeaseStatus ou LeaseStatus depuis @/lib/types/status */
+export type LeaseStatus = OwnerLeaseStatus;
+/**
+ * Sous-ensemble simplifié de InvoiceStatus pour l'affichage propriétaire
+ * @see InvoiceStatus dans @/lib/types/status.ts pour le cycle de vie complet
+ */
+export type OwnerInvoiceStatus = "draft" | "sent" | "paid" | "late";
+
+/** @deprecated Utiliser OwnerInvoiceStatus ou InvoiceStatus depuis @/lib/types/status */
+export type InvoiceStatus = OwnerInvoiceStatus;
 export type DocumentStatus = "active" | "expiring_soon" | "expired" | "archived";
 export type TodoPriority = "high" | "medium" | "low";
 export type RiskSeverity = "high" | "medium" | "low";
@@ -35,7 +56,7 @@ export interface OwnerProperty {
   nb_chambres?: number;
   etage?: number | null;
   ascenseur?: boolean;
-  status: PropertyStatus;
+  status: PropertyOperationalStatus;
   monthlyRent: number;
   cover_url?: string;
   
@@ -93,7 +114,7 @@ export interface OwnerProperty {
     id: string;
     loyer: number;
     charges_forfaitaires: number;
-    statut: LeaseStatus;
+    statut: OwnerLeaseStatus;
   };
   
   created_at: string;
@@ -113,7 +134,7 @@ export interface OwnerContract {
   charges_forfaitaires: number;
   date_debut: string;
   date_fin?: string;
-  statut: LeaseStatus;
+  statut: OwnerLeaseStatus;
   tenant?: {
     id: string;
     prenom: string;
@@ -149,7 +170,7 @@ export interface OwnerMoneyInvoice {
   montant_total: number;
   montant_loyer: number;
   montant_charges: number;
-  statut: InvoiceStatus;
+  statut: OwnerInvoiceStatus;
   days_overdue?: number;
   created_at: string;
 }

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useStripePortal } from "@/hooks/useStripePortal";
 import { isExpiringSoon } from "@/lib/billing-utils";
-import type { PaymentMethod as PaymentMethodType } from "@/types/billing";
+import type { BillingPaymentMethod as PaymentMethodType } from "@/types/billing";
 
 const BRAND_DISPLAY: Record<string, { label: string }> = {
   visa: { label: "Visa" },

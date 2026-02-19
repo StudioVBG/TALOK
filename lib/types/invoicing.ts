@@ -8,9 +8,10 @@
 export type InvoiceDocumentType = 'invoice' | 'quote' | 'credit_note';
 
 /**
- * Statut de facture
+ * Statut de facture prestataire
+ * @see InvoiceStatus dans @/lib/types/status.ts pour les factures locataires
  */
-export type InvoiceStatus =
+export type ProviderInvoiceStatus =
   | 'draft'
   | 'sent'
   | 'viewed'
@@ -21,15 +22,22 @@ export type InvoiceStatus =
   | 'cancelled'
   | 'credited';
 
+/** @deprecated Utiliser ProviderInvoiceStatus */
+export type InvoiceStatus = ProviderInvoiceStatus;
+
 /**
  * Type de paiement
  */
 export type PaymentType = 'deposit' | 'partial' | 'final' | 'refund';
 
 /**
- * Méthode de paiement
+ * Méthode de paiement pour factures prestataire
+ * @see PaymentMethod dans @/lib/types/index.ts pour les paiements locataires
  */
-export type PaymentMethod = 'card' | 'transfer' | 'check' | 'cash' | 'platform';
+export type ProviderPaymentMethod = 'card' | 'transfer' | 'check' | 'cash' | 'platform';
+
+/** @deprecated Utiliser ProviderPaymentMethod */
+export type PaymentMethod = ProviderPaymentMethod;
 
 /**
  * Facture prestataire
@@ -60,7 +68,7 @@ export interface ProviderInvoice {
   late_fees_amount: number;
   early_payment_discount_rate: number | null;
   early_payment_discount_days: number | null;
-  status: InvoiceStatus;
+  status: ProviderInvoiceStatus;
   sent_at: string | null;
   sent_to_email: string | null;
   viewed_at: string | null;
@@ -103,7 +111,7 @@ export interface InvoicePayment {
   invoice_id: string;
   amount: number;
   payment_type: PaymentType;
-  payment_method: PaymentMethod | null;
+  payment_method: ProviderPaymentMethod | null;
   transaction_id: string | null;
   stripe_payment_intent_id: string | null;
   check_number: string | null;
@@ -157,7 +165,7 @@ export interface CreateInvoiceItemData {
 export interface CreatePaymentData {
   amount: number;
   payment_type: PaymentType;
-  payment_method?: PaymentMethod;
+  payment_method?: ProviderPaymentMethod;
   transaction_id?: string;
   check_number?: string;
   paid_at?: string;
@@ -238,7 +246,7 @@ export interface InvoicePDFData {
   payments: Array<{
     amount: number;
     type: PaymentType;
-    method: PaymentMethod | null;
+    method: ProviderPaymentMethod | null;
     date: string;
   }>;
   balance: number;
@@ -253,7 +261,7 @@ export interface InvoicePDFData {
 // Labels et constantes
 // =====================================================
 
-export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+export const INVOICE_STATUS_LABELS: Record<ProviderInvoiceStatus, string> = {
   draft: 'Brouillon',
   sent: 'Envoyée',
   viewed: 'Vue',
@@ -265,7 +273,7 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   credited: 'Avoir émis',
 };
 
-export const INVOICE_STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
+export const INVOICE_STATUS_COLORS: Record<ProviderInvoiceStatus, { bg: string; text: string }> = {
   draft: { bg: 'bg-gray-100', text: 'text-gray-700' },
   sent: { bg: 'bg-blue-100', text: 'text-blue-700' },
   viewed: { bg: 'bg-purple-100', text: 'text-purple-700' },
@@ -290,7 +298,7 @@ export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
   refund: 'Remboursement',
 };
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+export const PAYMENT_METHOD_LABELS: Record<ProviderPaymentMethod, string> = {
   card: 'Carte bancaire',
   transfer: 'Virement',
   check: 'Chèque',

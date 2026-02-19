@@ -25,18 +25,11 @@ export interface EDLEntry {
 }
 
 /**
- * Statuts possibles d'un bail — alignés avec la CHECK DB
+ * Statuts possibles d'un bail — alignés avec @/lib/types/status.ts
  * Migration : 20260108400000_lease_lifecycle_sota2026.sql
  */
-export type LeaseStatus =
-  | "draft"
-  | "pending_signature"
-  | "partially_signed"
-  | "fully_signed"
-  | "active"
-  | "terminated"
-  | "archived"
-  | "cancelled";
+import type { LeaseStatus } from "@/lib/types/status";
+export type { LeaseStatus };
 
 /** Statuts possibles d'une signature */
 export type SignatureStatus = "pending" | "signed" | "refused" | "expired";
