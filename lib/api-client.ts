@@ -3,6 +3,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import { getClientCsrfToken } from "@/lib/security/csrf";
 
 const API_BASE = '/api';
 
@@ -70,6 +71,15 @@ export class ApiClient {
       });
 
       headers.set('Authorization', `Bearer ${session!.access_token}`);
+
+      // Inclure le token CSRF pour les requêtes de mutation (POST, PUT, DELETE, PATCH)
+      const method = options.method?.toUpperCase() || 'GET';
+      if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+        const csrfToken = getClientCsrfToken();
+        if (csrfToken) {
+          headers.set('x-csrf-token', csrfToken);
+        }
+      }
 
       const url = `${API_BASE}${endpoint}`;
       if (process.env.NODE_ENV === "development") {
@@ -181,9 +191,19 @@ export class ApiClient {
    * Upload de fichier avec FormData
    */
   async uploadFile<T>(endpoint: string, formData: FormData): Promise<T> {
+    const headers: Record<string, string> = {};
+
+    // Inclure le token CSRF pour les uploads (POST)
+    const csrfToken = getClientCsrfToken();
+    if (csrfToken) {
+      headers['x-csrf-token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
       body: formData,
+      headers,
+      credentials: 'include',
     });
 
     if (!response.ok) {
