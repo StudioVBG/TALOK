@@ -78,6 +78,8 @@ export async function POST(request: Request) {
 
     console.log("[Webhook] Événement reçu:", eventType);
 
+    const eventId = body.data?.id || body.id || crypto.randomUUID();
+
     // Traiter selon le type d'événement
     switch (eventType) {
       case "signature.completed":
@@ -99,9 +101,35 @@ export async function POST(request: Request) {
         console.log("Événement signature non géré:", eventType);
     }
 
+    // Audit logging — même pattern que le webhook Stripe
+    await supabase.from("webhook_logs").insert({
+      provider: "yousign",
+      event_type: eventType,
+      event_id: eventId,
+      payload: body.data || body,
+      processed_at: new Date().toISOString(),
+      status: "success",
+    });
+
     return NextResponse.json({ received: true });
   } catch (error: unknown) {
     console.error("Erreur webhook signature:", error);
+
+    // Log l'erreur dans webhook_logs
+    try {
+      const supabase = await createClient();
+      await supabase.from("webhook_logs").insert({
+        provider: "yousign",
+        event_type: "unknown",
+        event_id: crypto.randomUUID(),
+        payload: { error: error instanceof Error ? error.message : "Unknown error" },
+        processed_at: new Date().toISOString(),
+        status: "error",
+      });
+    } catch {
+      // Ne pas masquer l'erreur originale
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
