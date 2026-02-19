@@ -1,9 +1,11 @@
 -- =====================================================
 -- SCRIPT DE VALIDATION: Synchronisation auth <-> profiles
--- Date: 2026-02-16
+-- Date: 2026-02-18 (mis a jour)
 --
 -- USAGE: Executer dans le SQL Editor de Supabase
---        apres avoir applique la migration 20260216300000
+--        apres avoir applique les migrations:
+--        - 20260216300000_fix_auth_profile_sync.sql
+--        - 20260218100000_sync_auth_email_updates.sql
 --
 -- Ce script produit un rapport de sante complet
 -- sans modifier aucune donnee (lecture seule).
@@ -183,7 +185,7 @@ BEGIN
 END $$;
 
 -- ============================================
--- 6. VERIFICATION DU TRIGGER handle_new_user
+-- 6. VERIFICATION DU TRIGGER handle_new_user (INSERT)
 -- ============================================
 DO $$
 DECLARE
@@ -214,7 +216,7 @@ BEGIN
   v_has_exception := v_func_source ILIKE '%EXCEPTION%';
 
   RAISE NOTICE '';
-  RAISE NOTICE '-- CHECK 5: Trigger handle_new_user --';
+  RAISE NOTICE '-- CHECK 5: Trigger handle_new_user (INSERT) --';
 
   IF NOT v_trigger_exists THEN
     RAISE WARNING '   FAIL — Le trigger on_auth_user_created N''EXISTE PAS sur auth.users';
@@ -246,7 +248,60 @@ BEGIN
 END $$;
 
 -- ============================================
--- 7. VERIFICATION DES POLICIES RLS SUR PROFILES
+-- 7. VERIFICATION DU TRIGGER handle_user_email_change (UPDATE)
+-- ============================================
+DO $$
+DECLARE
+  v_trigger_exists BOOLEAN;
+  v_func_exists BOOLEAN;
+  v_func_source TEXT;
+BEGIN
+  -- Verifier que le trigger UPDATE existe
+  SELECT EXISTS(
+    SELECT 1 FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE t.tgname = 'on_auth_user_email_changed'
+      AND n.nspname = 'auth'
+      AND c.relname = 'users'
+  ) INTO v_trigger_exists;
+
+  -- Verifier que la fonction existe
+  SELECT EXISTS(
+    SELECT 1 FROM pg_proc
+    WHERE proname = 'handle_user_email_change'
+      AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+  ) INTO v_func_exists;
+
+  -- Recuperer le code source
+  SELECT prosrc INTO v_func_source
+  FROM pg_proc
+  WHERE proname = 'handle_user_email_change'
+    AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
+
+  RAISE NOTICE '';
+  RAISE NOTICE '-- CHECK 6: Trigger email sync (UPDATE) --';
+
+  IF NOT v_trigger_exists THEN
+    RAISE WARNING '   FAIL — Le trigger on_auth_user_email_changed N''EXISTE PAS sur auth.users';
+  ELSE
+    RAISE NOTICE '   Trigger on_auth_user_email_changed existe';
+  END IF;
+
+  IF NOT v_func_exists THEN
+    RAISE WARNING '   FAIL — La fonction handle_user_email_change() n''existe pas';
+  ELSE
+    RAISE NOTICE '   Fonction handle_user_email_change() existe';
+    IF v_func_source ILIKE '%EXCEPTION%' THEN
+      RAISE NOTICE '   handle_user_email_change() a un EXCEPTION handler';
+    ELSE
+      RAISE WARNING '   WARN — handle_user_email_change() n''a pas d''EXCEPTION handler';
+    END IF;
+  END IF;
+END $$;
+
+-- ============================================
+-- 8. VERIFICATION DES POLICIES RLS SUR PROFILES
 -- ============================================
 DO $$
 DECLARE
@@ -282,7 +337,7 @@ BEGIN
   ) INTO v_has_own_access;
 
   RAISE NOTICE '';
-  RAISE NOTICE '-- CHECK 6: Policies RLS sur profiles --';
+  RAISE NOTICE '-- CHECK 7: Policies RLS sur profiles --';
 
   IF v_rls_enabled THEN
     RAISE NOTICE '   RLS est active sur profiles';
@@ -316,14 +371,14 @@ BEGIN
 END $$;
 
 -- ============================================
--- 8. DISTRIBUTION DES ROLES
+-- 9. DISTRIBUTION DES ROLES
 -- ============================================
 DO $$
 DECLARE
   v_rec RECORD;
 BEGIN
   RAISE NOTICE '';
-  RAISE NOTICE '-- CHECK 7: Distribution des roles --';
+  RAISE NOTICE '-- CHECK 8: Distribution des roles --';
 
   FOR v_rec IN
     SELECT role, count(*) AS cnt
@@ -336,7 +391,7 @@ BEGIN
 END $$;
 
 -- ============================================
--- 9. RESUME FINAL
+-- 10. RESUME FINAL
 -- ============================================
 DO $$
 DECLARE
@@ -344,10 +399,11 @@ DECLARE
   v_null_emails INTEGER;
   v_orphan_profiles INTEGER;
   v_desync_emails INTEGER;
-  v_trigger_ok BOOLEAN;
+  v_trigger_insert_ok BOOLEAN;
+  v_trigger_email_sync_ok BOOLEAN;
   v_insert_policy_ok BOOLEAN;
   v_score INTEGER := 0;
-  v_max_score INTEGER := 6;
+  v_max_score INTEGER := 7;
 BEGIN
   -- Calculer les metriques
   SELECT count(*) INTO v_orphan_auth
@@ -369,7 +425,14 @@ BEGIN
     JOIN pg_class c ON c.oid = t.tgrelid
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE t.tgname = 'on_auth_user_created' AND n.nspname = 'auth' AND c.relname = 'users'
-  ) INTO v_trigger_ok;
+  ) INTO v_trigger_insert_ok;
+
+  SELECT EXISTS(
+    SELECT 1 FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE t.tgname = 'on_auth_user_email_changed' AND n.nspname = 'auth' AND c.relname = 'users'
+  ) INTO v_trigger_email_sync_ok;
 
   SELECT EXISTS(
     SELECT 1 FROM pg_policies
@@ -382,24 +445,26 @@ BEGIN
   IF v_null_emails = 0 THEN v_score := v_score + 1; END IF;
   IF v_orphan_profiles = 0 THEN v_score := v_score + 1; END IF;
   IF v_desync_emails = 0 THEN v_score := v_score + 1; END IF;
-  IF v_trigger_ok THEN v_score := v_score + 1; END IF;
+  IF v_trigger_insert_ok THEN v_score := v_score + 1; END IF;
+  IF v_trigger_email_sync_ok THEN v_score := v_score + 1; END IF;
   IF v_insert_policy_ok THEN v_score := v_score + 1; END IF;
 
   RAISE NOTICE '';
   RAISE NOTICE '==================================================';
   RAISE NOTICE '            RESUME DE SYNCHRONISATION';
   RAISE NOTICE '==================================================';
-  RAISE NOTICE '  Auth sans profil      : %', lpad(v_orphan_auth::TEXT, 6);
-  RAISE NOTICE '  Profils sans email    : %', lpad(v_null_emails::TEXT, 6);
-  RAISE NOTICE '  Profils orphelins     : %', lpad(v_orphan_profiles::TEXT, 6);
-  RAISE NOTICE '  Emails desynchronises : %', lpad(v_desync_emails::TEXT, 6);
-  RAISE NOTICE '  Trigger OK            : %', CASE WHEN v_trigger_ok THEN '   OUI' ELSE '   NON' END;
-  RAISE NOTICE '  Policy INSERT OK      : %', CASE WHEN v_insert_policy_ok THEN '   OUI' ELSE '   NON' END;
+  RAISE NOTICE '  Auth sans profil        : %', lpad(v_orphan_auth::TEXT, 6);
+  RAISE NOTICE '  Profils sans email      : %', lpad(v_null_emails::TEXT, 6);
+  RAISE NOTICE '  Profils orphelins       : %', lpad(v_orphan_profiles::TEXT, 6);
+  RAISE NOTICE '  Emails desynchronises   : %', lpad(v_desync_emails::TEXT, 6);
+  RAISE NOTICE '  Trigger INSERT OK       : %', CASE WHEN v_trigger_insert_ok THEN '   OUI' ELSE '   NON' END;
+  RAISE NOTICE '  Trigger Email Sync OK   : %', CASE WHEN v_trigger_email_sync_ok THEN '   OUI' ELSE '   NON' END;
+  RAISE NOTICE '  Policy INSERT OK        : %', CASE WHEN v_insert_policy_ok THEN '   OUI' ELSE '   NON' END;
   RAISE NOTICE '==================================================';
 
   IF v_score = v_max_score THEN
     RAISE NOTICE '  SCORE: %/% — TOUT EST SYNCHRONISE', v_score, v_max_score;
-  ELSIF v_score >= 4 THEN
+  ELSIF v_score >= 5 THEN
     RAISE NOTICE '  SCORE: %/% — PROBLEMES MINEURS', v_score, v_max_score;
   ELSE
     RAISE NOTICE '  SCORE: %/% — PROBLEMES CRITIQUES', v_score, v_max_score;
