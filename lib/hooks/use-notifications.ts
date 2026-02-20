@@ -303,7 +303,9 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
         supabase.removeChannel(channel);
       }
     };
-  }, [profile?.id, profile?.user_id, supabase, limit, playNotificationSound, showToast, toast]);
+  // Only re-subscribe when identity or connection changes — NOT on callback changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, profile?.user_id, supabase, limit]);
 
   return {
     notifications,

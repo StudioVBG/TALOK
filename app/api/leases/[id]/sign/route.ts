@@ -505,13 +505,35 @@ async function checkSignatureRights(leaseId: string, profileId: string, email: s
     }
     
     // 2b. Chercher un signataire locataire avec email placeholder (fallback)
-    const { data: placeholderSignerData } = await serviceClient
-      .from("lease_signers")
-      .select("*")
-      .eq("lease_id", leaseId as any)
-      .is("profile_id", null)
-      .in("role", ["locataire_principal", "locataire", "tenant", "colocataire"] as any)
-      .maybeSingle();
+    // Prioritize matching by email first for accuracy, then fall back to any placeholder
+    let placeholderSignerData: any = null;
+
+    if (email) {
+      // Try exact email match first
+      const { data: emailMatch } = await serviceClient
+        .from("lease_signers")
+        .select("*")
+        .eq("lease_id", leaseId as any)
+        .is("profile_id", null)
+        .in("role", ["locataire_principal", "locataire", "tenant", "colocataire"] as any)
+        .eq("invited_email", email)
+        .maybeSingle();
+
+      placeholderSignerData = emailMatch;
+    }
+
+    if (!placeholderSignerData) {
+      // Fall back to any placeholder signer without profile_id
+      const { data: anyPlaceholder } = await serviceClient
+        .from("lease_signers")
+        .select("*")
+        .eq("lease_id", leaseId as any)
+        .is("profile_id", null)
+        .in("role", ["locataire_principal", "locataire", "tenant", "colocataire"] as any)
+        .maybeSingle();
+
+      placeholderSignerData = anyPlaceholder;
+    }
     
     const placeholderSigner = placeholderSignerData as any;
       

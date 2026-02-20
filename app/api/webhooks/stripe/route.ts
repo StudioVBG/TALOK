@@ -148,14 +148,20 @@ async function processReceiptGeneration(supabase: any, invoiceId: string, paymen
       .single();
 
     console.log(`[Receipt] Generated and saved: ${fileName}`);
-    
+
     // 5. Envoyer email avec la quittance (via Resend)
     const { sendRentReceiptEmail } = await import("@/lib/services/email-service");
-    
-    // Obtenir l'URL publique de la quittance
-    const { data: { publicUrl } } = supabase.storage
+
+    // Obtenir une URL signée pour la quittance (plus fiable que getPublicUrl après upload)
+    const { data: signedUrlData } = await supabase.storage
       .from("documents")
-      .getPublicUrl(fileName);
+      .createSignedUrl(fileName, 7 * 24 * 3600); // 7 days
+
+    const publicUrl = signedUrlData?.signedUrl;
+    if (!publicUrl) {
+      console.error("[Receipt] Failed to generate signed URL for:", fileName);
+      return;
+    }
 
     await sendRentReceiptEmail(
       tenant.email,

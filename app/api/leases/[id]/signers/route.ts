@@ -97,7 +97,14 @@ export async function POST(
 
     const leaseId = id;
     const body = await request.json();
-    const validated = addSignerSchema.parse(body);
+    const parseResult = addSignerSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: "Données invalides", details: parseResult.error.errors },
+        { status: 400 }
+      );
+    }
+    const validated = parseResult.data;
 
     // Récupérer le profil de l'utilisateur actuel
     const { data: ownerProfile } = await supabase

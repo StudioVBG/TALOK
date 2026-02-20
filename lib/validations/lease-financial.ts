@@ -220,6 +220,19 @@ export const LeaseCreateSchema = z.object({
     }
   }
 
+  // Validation date_fin > date_debut
+  if (data.date_debut && data.date_fin) {
+    const debutCheck = new Date(data.date_debut);
+    const finCheck = new Date(data.date_fin);
+    if (finCheck <= debutCheck) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La date de fin doit être postérieure à la date de début",
+        path: ["date_fin"],
+      });
+    }
+  }
+
   // Validation durée bail mobilité (max 10 mois)
   if (data.type_bail === "bail_mobilite" && data.date_debut && data.date_fin) {
     const debut = new Date(data.date_debut);

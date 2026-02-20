@@ -454,7 +454,7 @@ export async function POST(
       documentId: edlId,
       documentContent: JSON.stringify(edl), // Hash du contenu actuel de l'EDL
       signerName: `${profile.prenom} ${profile.nom}`,
-      signerEmail: user.email ?? `user-${user.id.slice(0, 8)}@unknown.local`,
+      signerEmail: user.email || `user-${user.id.slice(0, 8)}@talok.local`,
       signerProfileId: profile.id,
       identityVerified: isOwner || !!cniNumber,
       identityMethod: isOwner ? "Compte Propriétaire Authentifié" : `CNI n°${cniNumber ?? ""}`,

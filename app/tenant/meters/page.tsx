@@ -117,26 +117,39 @@ export default function TenantMetersPage() {
   const [readingHistory, setReadingHistory] = useState<MeterReading[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  const fetchMeters = async () => {
+  const fetchMeters = async (signal?: AbortSignal) => {
     setIsLoading(true);
     try {
-      const leaseResponse = await fetch("/api/tenant/lease");
+      const leaseResponse = await fetch("/api/tenant/lease", { signal });
+      if (!leaseResponse.ok) {
+        setMeters([]);
+        return;
+      }
       const leaseData = await leaseResponse.json();
       if (!leaseData.lease?.property_id) {
         setMeters([]);
         return;
       }
-      const metersResponse = await fetch(`/api/properties/${leaseData.lease.property_id}/meters`);
+      const metersResponse = await fetch(`/api/properties/${leaseData.lease.property_id}/meters`, { signal });
+      if (!metersResponse.ok) {
+        setMeters([]);
+        return;
+      }
       const metersData = await metersResponse.json();
       setMeters(metersData.meters || []);
     } catch (error: unknown) {
+      if (error instanceof Error && error.name === "AbortError") return;
       console.error("Erreur chargement compteurs:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => { fetchMeters(); }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchMeters(controller.signal);
+    return () => controller.abort();
+  }, []);
 
   const handleOpenReadingDialog = (meter: Meter) => {
     setSelectedMeter(meter);

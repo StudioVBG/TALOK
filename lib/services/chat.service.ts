@@ -92,13 +92,13 @@ class ChatService {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) throw new Error("Non authentifié");
 
-    const { data: profile } = await this.supabase
+    const { data: profile, error: profileError } = await this.supabase
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)
       .single();
 
-    if (!profile) throw new Error("Profil non trouvé");
+    if (profileError || !profile) throw new Error("Profil non trouvé");
 
     const { data, error } = await this.supabase
       .from("conversations")
@@ -264,13 +264,13 @@ class ChatService {
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) throw new Error("Non authentifié");
 
-    const { data: profile } = await this.supabase
+    const { data: profile, error: profileError } = await this.supabase
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)
       .single();
 
-    if (!profile) throw new Error("Profil non trouvé");
+    if (profileError || !profile) throw new Error("Profil non trouvé");
 
     // Déterminer le rôle de l'expéditeur
     const { data: conversation } = await this.supabase

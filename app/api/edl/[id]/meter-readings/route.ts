@@ -224,22 +224,19 @@ export async function POST(
       profileRole: profile.role
     }, serviceClient);
 
-    if (!accessResult.authorized) {
+    if (!accessResult.authorized || !accessResult.edl) {
       return NextResponse.json(
         { error: accessResult.reason || "Accès non autorisé" },
         { status: accessResult.edl ? 403 : 404 }
       );
     }
 
+    const edlDataPost = accessResult.edl;
+
     // Vérifier si l'EDL peut être modifié
-    const editCheck = canEditEDL(accessResult.edl);
+    const editCheck = canEditEDL(edlDataPost);
     if (!editCheck.canEdit) {
       return NextResponse.json({ error: editCheck.reason }, { status: 400 });
-    }
-
-    const edlDataPost = accessResult.edl;
-    if (!edlDataPost) {
-      return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
     }
     const leaseData = Array.isArray(edlDataPost.lease) ? edlDataPost.lease[0] : edlDataPost.lease;
 

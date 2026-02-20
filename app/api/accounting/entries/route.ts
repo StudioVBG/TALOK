@@ -65,8 +65,9 @@ export async function GET(request: Request) {
     const startDate = searchParams.get("start_date");
     const endDate = searchParams.get("end_date");
     const pieceRef = searchParams.get("piece_ref");
-    const limit = parseInt(searchParams.get("limit") || "100");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const MAX_LIMIT = 500;
+    const limit = Math.min(parseInt(searchParams.get("limit") || "100") || 100, MAX_LIMIT);
+    const offset = Math.max(parseInt(searchParams.get("offset") || "0") || 0, 0);
 
     let query = supabase
       .from("accounting_entries")

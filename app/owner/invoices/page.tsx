@@ -42,17 +42,22 @@ const statusConfig: Record<string, { label: string; icon: typeof Clock; classNam
 export default function OwnerInvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchInvoices() {
       try {
         const res = await fetch("/api/owner/invoices");
-        if (res.ok) {
-          const data = await res.json();
-          setInvoices(data.invoices || []);
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Erreur ${res.status}`);
         }
-      } catch (error) {
-        console.error("Erreur chargement factures:", error);
+        const data = await res.json();
+        setInvoices(data.invoices || []);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Erreur de chargement";
+        setError(message);
+        console.error("Erreur chargement factures:", err);
       } finally {
         setLoading(false);
       }
