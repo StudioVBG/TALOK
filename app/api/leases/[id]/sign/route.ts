@@ -293,19 +293,27 @@ export async function POST(
             code: sealError.code,
           });
           // Insert outbox pour retry asynchrone (worker/cron peut rappeler seal_lease)
-          await serviceClient.from("outbox").insert({
-            event_type: "Lease.SealRetry",
-            payload: { lease_id: leaseId, reason: "seal_lease_failed", error: sealError.message },
-          }).single().catch(() => null);
+          try {
+            await serviceClient.from("outbox").insert({
+              event_type: "Lease.SealRetry",
+              payload: { lease_id: leaseId, reason: "seal_lease_failed", error: sealError.message },
+            });
+          } catch {
+            // non bloquant
+          }
         } else {
           log.info("Bail scellé avec succès", { lease_id: leaseId });
         }
       } catch (sealErr) {
         log.warn("Exception scellement bail", { lease_id: leaseId, error: String(sealErr) });
-        await serviceClient.from("outbox").insert({
-          event_type: "Lease.SealRetry",
-          payload: { lease_id: leaseId, reason: "seal_lease_exception", error: String(sealErr) },
-        }).single().catch(() => null);
+        try {
+          await serviceClient.from("outbox").insert({
+            event_type: "Lease.SealRetry",
+            payload: { lease_id: leaseId, reason: "seal_lease_exception", error: String(sealErr) },
+          });
+        } catch {
+          // non bloquant
+        }
       }
     }
 

@@ -22,6 +22,12 @@ Bienvenue dans la documentation du projet de gestion locative.
 ### Diagnostic & Analyse
 - **[DIAGNOSTIC_TECH_LEAD_COMPLET.md](../DIAGNOSTIC_TECH_LEAD_COMPLET.md)** - Diagnostic complet du projet (Tech Lead)
 
+### SOTA 2026 (State of the Art)
+- **[SOTA-2026-REFERENCE.md](SOTA-2026-REFERENCE.md)** - Référence centralisée : définition, conventions, scores, liens
+- **[RAPPORT_AMELIORATIONS_SOTA_2026.md](RAPPORT_AMELIORATIONS_SOTA_2026.md)** - Améliorations déjà intégrées (IA, stack, UX)
+- **[audit/prompts/05-benchmarks-sota-2026.md](audit/prompts/05-benchmarks-sota-2026.md)** - Grille benchmarks vs leaders (TALOK à mettre à jour par audit)
+- **[SOTA-2026-VISIT-SCHEDULING.md](SOTA-2026-VISIT-SCHEDULING.md)** - Planification des visites (stack, BDD, APIs)
+
 ## 📁 Structure de la Documentation
 
 ```

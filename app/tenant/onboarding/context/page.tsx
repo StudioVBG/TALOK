@@ -67,7 +67,7 @@ export default function TenantContextPage() {
           .select("step")
           .eq("user_id", user.id)
           .eq("role", "tenant");
-        const steps = (progress ?? []).map((p: { step: string }) => p.step);
+        const steps = ((progress ?? []) as { step: string }[]).map((p) => p.step);
         if (!cancelled && steps.includes("tenant_context")) {
           router.replace("/tenant/onboarding/file");
         }

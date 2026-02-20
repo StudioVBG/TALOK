@@ -1,5 +1,24 @@
 # Secteur 5 — Benchmarks SOTA 2026
 
+**Référence :** [docs/SOTA-2026-REFERENCE.md](../../SOTA-2026-REFERENCE.md)  
+**Version :** Février 2026
+
+---
+
+## État TALOK (à mettre à jour par audit)
+
+Les valeurs **TALOK** ci-dessous reflètent l’état connu du produit (code et docs). À mettre à jour à chaque audit de page ou release.
+
+| Catégorie | ✅ TALOK | ⚠️ Partiel | ❌ Absent |
+|-----------|----------|------------|-----------|
+| Navigation | 4 | 1 | 1 |
+| Data Display | 5 | 1 | 1 |
+| Feedback | 5 | 0 | 1 |
+| Settings | 4 | 1 | 1 |
+| Gestion Locative | 6 | 2 | 1 |
+
+---
+
 ## Prompt
 
 > **Contexte** : TALOK est un SaaS de gestion locative français. Ce prompt compare les features visibles sur la capture d'écran avec l'état de l'art SaaS 2026 (Stripe, Notion, Vercel, Linear, et concurrents directs gestion locative).
@@ -15,66 +34,66 @@
 > ### Navigation & Structure
 > | Feature | Stripe | Notion | Vercel | Linear | TALOK |
 > |---------|--------|--------|--------|--------|-------|
-> | Breadcrumbs contextuels | ✅ | ✅ | ✅ | ✅ | ? |
-> | Command palette (⌘K) | ✅ | ✅ | ✅ | ✅ | ? |
-> | Sidebar collapsible | ✅ | ✅ | ✅ | ✅ | ? |
-> | Multi-workspace switch | ❌ | ✅ | ✅ | ✅ | ? |
-> | Deep linking / URL state | ✅ | ✅ | ✅ | ✅ | ? |
-> | Quick actions / shortcuts | ✅ | ✅ | ✅ | ✅ | ? |
+> | Breadcrumbs contextuels | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+> | Command palette (⌘K) | ✅ | ✅ | ✅ | ✅ | ❌ |
+> | Sidebar collapsible | ✅ | ✅ | ✅ | ✅ | ✅ |
+> | Multi-workspace switch | ❌ | ✅ | ✅ | ✅ | ⚠️ |
+> | Deep linking / URL state | ✅ | ✅ | ✅ | ✅ | ✅ |
+> | Quick actions / shortcuts | ✅ | ✅ | ✅ | ✅ | ⚠️ |
 >
 > ### Data Display
 > | Feature | Stripe | Notion | Vercel | Linear | TALOK |
 > |---------|--------|--------|--------|--------|-------|
-> | Skeleton loaders | ✅ | ✅ | ✅ | ✅ | ? |
-> | Empty states illustrés | ✅ | ✅ | ✅ | ✅ | ? |
-> | Pagination / infinite scroll | ✅ | ✅ | ✅ | ✅ | ? |
-> | Filtres avancés persistants | ✅ | ✅ | ❌ | ✅ | ? |
-> | Export CSV/PDF | ✅ | ❌ | ❌ | ✅ | ? |
-> | Tri multi-colonnes | ✅ | ✅ | ❌ | ✅ | ? |
-> | Recherche full-text | ✅ | ✅ | ✅ | ✅ | ? |
+> | Skeleton loaders | ✅ | ✅ | ✅ | ✅ | ✅ |
+> | Empty states illustrés | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+> | Pagination / infinite scroll | ✅ | ✅ | ✅ | ✅ | ✅ |
+> | Filtres avancés persistants | ✅ | ✅ | ❌ | ✅ | ⚠️ |
+> | Export CSV/PDF | ✅ | ❌ | ❌ | ✅ | ✅ |
+> | Tri multi-colonnes | ✅ | ✅ | ❌ | ✅ | ✅ |
+> | Recherche full-text | ✅ | ✅ | ✅ | ✅ | ⚠️ |
 >
 > ### Feedback & Interactions
 > | Feature | Stripe | Notion | Vercel | Linear | TALOK |
 > |---------|--------|--------|--------|--------|-------|
-> | Toast notifications | ✅ | ✅ | ✅ | ✅ | ? |
-> | Optimistic updates | ✅ | ✅ | ✅ | ✅ | ? |
-> | Undo action (Ctrl+Z) | ❌ | ✅ | ❌ | ✅ | ? |
-> | Real-time updates | ✅ | ✅ | ✅ | ✅ | ? |
-> | Inline editing | ✅ | ✅ | ❌ | ✅ | ? |
-> | Drag & drop | ❌ | ✅ | ❌ | ✅ | ? |
+> | Toast notifications | ✅ | ✅ | ✅ | ✅ | ✅ |
+> | Optimistic updates | ✅ | ✅ | ✅ | ✅ | ✅ |
+> | Undo action (Ctrl+Z) | ❌ | ✅ | ❌ | ✅ | ✅ (wizard) |
+> | Real-time updates | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+> | Inline editing | ✅ | ✅ | ❌ | ✅ | ❌ |
+> | Drag & drop | ❌ | ✅ | ❌ | ✅ | ⚠️ |
 >
 > ### Settings & Account
 > | Feature | Stripe | Notion | Vercel | Linear | TALOK |
 > |---------|--------|--------|--------|--------|-------|
-> | Dark mode | ❌ | ✅ | ✅ | ✅ | ? |
-> | 2FA / Passkeys | ✅ | ✅ | ✅ | ✅ | ? |
-> | Audit log | ✅ | ✅ | ✅ | ✅ | ? |
-> | API keys management | ✅ | ✅ | ✅ | ✅ | ? |
-> | Webhooks config | ✅ | ❌ | ✅ | ✅ | ? |
-> | Team roles & permissions | ✅ | ✅ | ✅ | ✅ | ? |
+> | Dark mode | ❌ | ✅ | ✅ | ✅ | ✅ |
+> | 2FA / Passkeys | ✅ | ✅ | ✅ | ✅ | ✅ |
+> | Audit log | ✅ | ✅ | ✅ | ✅ | ✅ |
+> | API keys management | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+> | Webhooks config | ✅ | ❌ | ✅ | ✅ | ✅ |
+> | Team roles & permissions | ✅ | ✅ | ✅ | ✅ | ✅ |
 >
 > ### Gestion Locative (concurrents directs)
 > | Feature | Rentila | Smovin | Qalimo | TALOK |
 > |---------|---------|--------|--------|-------|
-> | Quittances auto | ✅ | ✅ | ✅ | ? |
-> | Relance impayés | ✅ | ✅ | ❌ | ? |
-> | Révision loyer auto (IRL) | ✅ | ✅ | ✅ | ? |
-> | EDL digital | ❌ | ✅ | ❌ | ? |
-> | Signature électronique | ❌ | ❌ | ❌ | ? |
-> | DPE / diagnostics | ❌ | ❌ | ❌ | ? |
-> | Multi-entités | ❌ | ✅ | ❌ | ? |
-> | Comptabilité SCI | ❌ | ✅ | ❌ | ? |
-> | Assistant IA | ❌ | ❌ | ❌ | ? |
+> | Quittances auto | ✅ | ✅ | ✅ | ✅ |
+> | Relance impayés | ✅ | ✅ | ❌ | ✅ |
+> | Révision loyer auto (IRL) | ✅ | ✅ | ✅ | ⚠️ |
+> | EDL digital | ❌ | ✅ | ❌ | ✅ |
+> | Signature électronique | ❌ | ❌ | ❌ | ✅ |
+> | DPE / diagnostics | ❌ | ❌ | ❌ | ⚠️ |
+> | Multi-entités | ❌ | ✅ | ❌ | ✅ |
+> | Comptabilité SCI | ❌ | ✅ | ❌ | ⚠️ |
+> | Assistant IA | ❌ | ❌ | ❌ | ✅ |
 >
 > 3. **Taux de couverture**
 >    - Features présentes (✅) / Total features benchmarkées × 100
->    - Par catégorie et global
+>    - Par catégorie et global. Mettre à jour la section « État TALOK » en tête de ce fichier après chaque audit.
 >
 > 4. **Quick wins** — Features à fort impact et faible effort d'implémentation
 >    - Identifie les features manquantes (❌) qui sont présentes chez 3+ leaders
 >    - Estime l'effort : S (< 1 jour), M (1-3 jours), L (> 3 jours)
 >
-> 5. **Avantages compétitifs** — Features uniques TALOK absentes chez les concurrents
+> 5. **Avantages compétitifs** — Features uniques TALOK absentes chez les concurrents (ex. signature électronique, EDL digital, assistant IA)
 
 ---
 

@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import type { BuildingUnitTemplate } from "@/lib/supabase/database.types";
 import { z } from "zod";
 
 const buildingUnitPayloadSchema = z.object({
@@ -139,7 +140,7 @@ export async function POST(
       type: u.type,
       surface: u.surface,
       nb_pieces: u.nb_pieces,
-      template: u.template ?? null,
+      template: (u.template ?? null) as BuildingUnitTemplate | null,
       loyer_hc: u.loyer_hc,
       charges: u.charges,
       depot_garantie: u.depot_garantie,

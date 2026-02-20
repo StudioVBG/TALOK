@@ -108,13 +108,14 @@ describe("EDL Wizard - Compression d'images", () => {
 // 3. Tests du mécanisme de retry
 // ============================================
 
+type MockFetchResponse = { ok: boolean; json?: () => Promise<unknown>; status?: number };
+
 describe("EDL Wizard - Mécanisme de retry", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
-  let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     fetchMock = vi.fn();
-    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
@@ -145,13 +146,14 @@ describe("EDL Wizard - Mécanisme de retry", () => {
           }));
         }
 
-        const res = await fetchMock(url, options);
+        const res = (await fetchMock(url, options)) as MockFetchResponse;
 
         if (!res.ok) {
-          const errorData = await res.json?.().catch(() => ({}));
-          const err = new Error(errorData.error || `Erreur ${res.status}`);
+          const status = res.status ?? 500;
+          const errorData = (await res.json?.().catch(() => ({}))) as { error?: string };
+          const err = new Error(errorData.error || `Erreur ${status}`);
 
-          if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+          if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
             throw err;
           }
           lastError = err;
@@ -180,7 +182,7 @@ describe("EDL Wizard - Mécanisme de retry", () => {
       .mockRejectedValueOnce(new Error("Failed to fetch"))
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true }) });
 
-    const result = await safeFetch("/api/edl/123/sections", {}, 2, retryCallback);
+    const result = (await safeFetch("/api/edl/123/sections", {}, 2, retryCallback)) as MockFetchResponse;
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(retryCallback).toHaveBeenCalledWith(1);
