@@ -160,7 +160,7 @@ export async function createEDL(
       // Re-fetch pour avoir les profile_id à jour (au cas où le trigger a aussi lié)
       const refetch = await serviceClient
         .from("lease_signers")
-        .select("profile_id, role, invited_email, invited_name")
+        .select("id, profile_id, role, invited_email, invited_name")
         .eq("lease_id", leaseId);
       leaseSigners = refetch.data ?? leaseSigners;
     }
