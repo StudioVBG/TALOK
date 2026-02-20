@@ -4,6 +4,7 @@ import type { LeaseDetails } from "@/app/owner/_data/fetchLeaseDetails";
 import { getMaxDepotLegal } from "@/lib/validations/lease-financial";
 import { isTenantRole, isOwnerRole, isGuarantorRole, SIGNER_ROLES } from "@/lib/constants/roles";
 import type { OwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
+import { resolveTenantDisplay } from "@/lib/helpers/resolve-tenant-display";
 
 interface OwnerProfile {
   id: string;
@@ -165,20 +166,19 @@ export function mapLeaseToTemplate(
       est_mandataire: false,
     } as any,
 
-    locataires: mainTenant ? [{
-      // ✅ FIX: Priorité aux données du profil, puis invited_name, puis extraction depuis l'email
-      nom: mainTenant.profile?.nom || 
-           (mainTenant.invited_name ? mainTenant.invited_name.split(' ').slice(1).join(' ') || mainTenant.invited_name : "") ||
-           (mainTenant.invited_email && !mainTenant.invited_email.includes('@a-definir') ? mainTenant.invited_email.split('@')[0] : "[NOM LOCATAIRE]"),
-      prenom: mainTenant.profile?.prenom || 
-              (mainTenant.invited_name ? mainTenant.invited_name.split(' ')[0] : ""),
-      email: mainTenant.profile?.email || mainTenant.invited_email || "",
-      telephone: mainTenant.profile?.telephone || "",
-      date_naissance: mainTenant.profile?.date_naissance || "",
-      lieu_naissance: mainTenant.profile?.lieu_naissance || "",
-      nationalite: mainTenant.profile?.nationalite || "Française",
-      adresse: mainTenant.profile?.adresse || "",
-    }] as any[] : [],
+    locataires: mainTenant ? (() => {
+      const d = resolveTenantDisplay(mainTenant);
+      return [{
+        nom: d.nom,
+        prenom: d.prenom,
+        email: d.email,
+        telephone: d.telephone,
+        date_naissance: d.dateNaissance,
+        lieu_naissance: d.lieuNaissance,
+        nationalite: d.nationalite,
+        adresse: d.adresse,
+      }] as any[];
+    })() : [],
 
     logement: {
       adresse_complete: property.adresse_complete || (property as any).adresse || "",

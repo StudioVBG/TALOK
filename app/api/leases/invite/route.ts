@@ -225,28 +225,20 @@ export async function POST(request: Request) {
       }];
     }
 
-    // Vérifier les comptes existants pour tous les emails
-    const { data: existingUsersAuth } = await serviceClient.auth.admin.listUsers();
-    
-    // Map email -> profil existant
+    // SOTA 2026: RPC find_profile_by_email au lieu de listUsers() (O(1) par email)
     const existingProfiles: Map<string, { id: string; user_id: string }> = new Map();
-    
+
     for (const invitee of emailsToProcess) {
-      const existingUser = existingUsersAuth?.users?.find(
-        (u) => u.email?.toLowerCase() === invitee.email.toLowerCase()
-      );
-      
-      if (existingUser) {
-        const { data: tenantProfile } = await serviceClient
-          .from("profiles")
-          .select("id, user_id, role")
-          .eq("user_id", existingUser.id)
-          .single();
-        
-        if (tenantProfile) {
-          existingProfiles.set(invitee.email.toLowerCase(), tenantProfile);
-          console.log(`[API leases/invite] Profil existant trouvé pour ${invitee.email}:`, tenantProfile.id);
-        }
+      const { data: profileRows } = await serviceClient.rpc("find_profile_by_email", {
+        target_email: invitee.email,
+      });
+      const tenantProfile = Array.isArray(profileRows) ? profileRows[0] : profileRows;
+      if (tenantProfile?.id) {
+        existingProfiles.set(invitee.email.toLowerCase(), {
+          id: tenantProfile.id,
+          user_id: tenantProfile.user_id,
+        });
+        console.log(`[API leases/invite] Profil existant trouvé pour ${invitee.email}:`, tenantProfile.id);
       }
     }
 

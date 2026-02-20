@@ -67,6 +67,7 @@ import {
 import { LeaseEdlTab } from "./tabs/LeaseEdlTab";
 import { LeaseDocumentsTab } from "./tabs/LeaseDocumentsTab";
 import { LeasePaymentsTab } from "./tabs/LeasePaymentsTab";
+import { resolveTenantDisplay, resolveTenantFullName } from "@/lib/helpers/resolve-tenant-display";
 
 interface LeaseDetailsClientProps {
   details: LeaseDetails;
@@ -1127,13 +1128,31 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   <p className="text-xs text-muted-foreground mb-2">Locataire</p>
                   {mainTenant ? (
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
-                        {mainTenant.profile?.prenom?.[0]}{mainTenant.profile?.nom?.[0]}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{mainTenant.profile?.prenom} {mainTenant.profile?.nom}</p>
-                        <Badge variant="secondary" className="text-[10px] h-5">Principal</Badge>
-                      </div>
+                      {(() => {
+                        const tenantDisplay = resolveTenantDisplay(mainTenant);
+                        const initial1 = (tenantDisplay.prenom?.[0] || tenantDisplay.nom?.[0] || "?").toUpperCase();
+                        const initial2 = (tenantDisplay.prenom ? tenantDisplay.nom?.[0] : tenantDisplay.nom?.[1]) || "";
+                        return (
+                          <>
+                            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
+                              {initial1}{initial2 ? initial2.toUpperCase() : ""}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">
+                                {resolveTenantFullName(mainTenant) || "Locataire"}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                <Badge variant="secondary" className="text-[10px] h-5">Principal</Badge>
+                                {!tenantDisplay.isLinked && !tenantDisplay.isPlaceholder && (
+                                  <Badge variant="outline" className="text-[10px] h-5 text-amber-600 border-amber-300">
+                                    Compte non lié
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div className="flex flex-col gap-3">
@@ -1276,7 +1295,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
           charges: displayCharges,
           propertyAddress: property.adresse_complete || `${property.numero_rue || ""} ${property.nom_rue || ""}`.trim(),
           propertyCity: property.ville || "",
-          tenantName: mainTenant?.profile ? `${mainTenant.profile.prenom || ""} ${mainTenant.profile.nom || ""}`.trim() : undefined,
+          tenantName: mainTenant ? (resolveTenantDisplay(mainTenant).isPlaceholder ? undefined : resolveTenantFullName(mainTenant)) : undefined,
           dateDebut: lease.date_debut,
         }}
         ownerName={ownerProfile ? `${ownerProfile.prenom || ""} ${ownerProfile.nom || ""}`.trim() : ""}

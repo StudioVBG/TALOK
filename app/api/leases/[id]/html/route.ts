@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { LeaseTemplateService } from "@/lib/templates/bail";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import type { TypeBail, BailComplet, DiagnosticsTechniques, Logement, Bailleur } from "@/lib/templates/bail/types";
+import { resolveTenantDisplay } from "@/lib/helpers/resolve-tenant-display";
 
 /**
  * GET /api/leases/[id]/html - Récupérer le HTML d'un bail (signé ou non)
@@ -178,67 +179,17 @@ export async function GET(
       const role = s.role?.toLowerCase() || "";
       return role.includes("locataire") || role.includes("tenant") || role === "principal";
     });
-    
-    console.log("[Lease HTML] Found tenant signer:", tenantSigner ? {
-      role: tenantSigner.role,
-      hasProfile: !!tenantSigner.profile,
-      profileName: tenantSigner.profile ? `${tenantSigner.profile.prenom} ${tenantSigner.profile.nom}` : null,
-      invitedName: tenantSigner.invited_name,
-      invitedEmail: tenantSigner.invited_email,
-    } : "NONE");
 
-    const tenant = tenantSigner?.profile;
-    
-    // ✅ FIX: Utiliser invited_name/invited_email si pas de profil
-    let locataires: any[] = [];
-    if (tenant && (tenant.prenom || tenant.nom)) {
-      // Cas 1: Le profil est lié avec des données
-      locataires = [{
-        nom: tenant.nom || "",
-        prenom: tenant.prenom || "",
-        email: tenant.email || tenantSigner.invited_email || "",
-        telephone: tenant.telephone || "",
-        date_naissance: tenant.date_naissance || "",
-        lieu_naissance: tenant.lieu_naissance || "", // ✅ SOTA 2026: Récupérer lieu_naissance du profil
-      }];
-      console.log("[Lease HTML] Using profile data:", locataires[0]);
-    } else if (tenantSigner?.invited_name && tenantSigner.invited_name.trim() !== "") {
-      // Cas 2: Pas de profil mais on a un nom d'invitation
-      const invitedName = tenantSigner.invited_name.trim();
-      const nameParts = invitedName.split(" ");
-      locataires = [{
-        nom: nameParts.length > 1 ? nameParts.slice(1).join(" ") : invitedName,
-        prenom: nameParts.length > 1 ? nameParts[0] : "",
-        email: tenantSigner.invited_email || "",
-        telephone: "",
-        date_naissance: "",
-        lieu_naissance: "",
-      }];
-      console.log("[Lease HTML] Using invited_name:", locataires[0]);
-    } else if (tenantSigner?.invited_email && !tenantSigner.invited_email.includes('@a-definir')) {
-      // Cas 3: Pas de nom mais on a un vrai email - extraire le nom de l'email
-      const emailName = tenantSigner.invited_email.split('@')[0].replace(/[._]/g, ' ');
-      locataires = [{
-        nom: emailName,
-        prenom: "",
-        email: tenantSigner.invited_email,
-        telephone: "",
-        date_naissance: "",
-        lieu_naissance: "",
-      }];
-      console.log("[Lease HTML] Using email extraction:", locataires[0]);
-    } else {
-      // Cas 4: Aucune donnée exploitable
-      locataires = [{
-        nom: "[EN ATTENTE DE LOCATAIRE]",
-        prenom: "",
-        email: "",
-        telephone: "",
-        date_naissance: "",
-        lieu_naissance: "",
-      }];
-      console.log("[Lease HTML] No tenant data found, using placeholder");
-    }
+    // SOTA 2026: Résolution centralisée (profile → invited_name → invited_email → placeholder)
+    const tenantDisplay = resolveTenantDisplay(tenantSigner);
+    const locataires: any[] = [{
+      nom: tenantDisplay.nom,
+      prenom: tenantDisplay.prenom,
+      email: tenantDisplay.email,
+      telephone: tenantDisplay.telephone,
+      date_naissance: tenantDisplay.dateNaissance,
+      lieu_naissance: tenantDisplay.lieuNaissance,
+    }];
 
     // ✅ FIX: Générer les URLs signées AVANT de créer bailData
     // On s'assure de modifier l'objet lease.signers lui-même

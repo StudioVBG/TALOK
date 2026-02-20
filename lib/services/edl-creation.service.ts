@@ -137,14 +137,43 @@ export async function createEDL(
 
   const edlData = newEdl as Record<string, unknown>;
 
-  // 6. Inject lease signers as EDL signatures (non-blocking)
+  // 6. SOTA 2026: Auto-link signers orphelins du bail puis injecter les signatures EDL
   try {
-    const { data: leaseSigners } = await serviceClient
+    let { data: leaseSigners } = await serviceClient
       .from("lease_signers")
-      .select("profile_id, role, invited_email, invited_name")
+      .select("id, profile_id, role, invited_email, invited_name")
       .eq("lease_id", leaseId);
 
+    // Tenter d'auto-lier les orphelins (invited_email → profil existant)
+    if (leaseSigners) {
+      for (const ls of leaseSigners) {
+        if (ls.profile_id || !ls.invited_email?.trim()) continue;
+        const { data: profileRows } = await serviceClient.rpc("find_profile_by_email", {
+          target_email: ls.invited_email,
+        });
+        const found = Array.isArray(profileRows) ? profileRows[0] : profileRows;
+        if (found?.id) {
+          await serviceClient.from("lease_signers").update({ profile_id: found.id }).eq("id", ls.id);
+          (ls as Record<string, unknown>).profile_id = found.id;
+        }
+      }
+      // Re-fetch pour avoir les profile_id à jour (au cas où le trigger a aussi lié)
+      const refetch = await serviceClient
+        .from("lease_signers")
+        .select("profile_id, role, invited_email, invited_name")
+        .eq("lease_id", leaseId);
+      leaseSigners = refetch.data ?? leaseSigners;
+    }
+
     if (leaseSigners && leaseSigners.length > 0) {
+      const principalTenant = leaseSigners.find(
+        (ls: Record<string, unknown>) =>
+          String(ls.role).toLowerCase().includes("locataire") || String(ls.role) === "principal"
+      );
+      if (principalTenant && !principalTenant.profile_id) {
+        console.warn("[createEDL] Locataire principal sans profile_id — EDL créé avec invited_email/invited_name");
+      }
+
       const edlSignatures = leaseSigners.map((ls: Record<string, unknown>) => ({
         edl_id: edlData.id,
         signer_user: null,

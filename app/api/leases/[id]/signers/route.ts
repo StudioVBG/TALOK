@@ -238,6 +238,23 @@ export async function POST(
       }
     }
 
+    // SOTA 2026: Vérifier doublon par invited_email (même sans profile_id)
+    if (validated.email?.trim()) {
+      const { data: existingByEmail } = await serviceClient
+        .from("lease_signers")
+        .select("id")
+        .eq("lease_id", leaseId)
+        .ilike("invited_email", validated.email.trim())
+        .maybeSingle();
+
+      if (existingByEmail) {
+        return NextResponse.json(
+          { error: "Un signataire avec cet email existe déjà pour ce bail" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Créer le signataire
     const signerData: any = {
       lease_id: leaseId,

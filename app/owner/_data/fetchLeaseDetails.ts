@@ -513,12 +513,33 @@ async function fetchLeaseDetailsFallback(
     properties: propertyRow,
   };
 
-  // ✅ SOTA 2026: Générer des URLs signées pour les images de signature (bucket privé)
-  // Durée de validité: 1 heure
+  // ✅ SOTA 2026: Auto-repair — lier les signers orphelins dont l'email matche un profil
   type SignerWithProfile = LeaseSignerRow & {
     profiles?: ProfileRow | ProfileRow[] | null;
   };
   const signersArray = (signers ?? []) as SignerWithProfile[];
+  for (const s of signersArray) {
+    const hasProfile = Array.isArray(s.profiles) ? s.profiles?.[0] : s.profiles;
+    if (hasProfile || !s.invited_email?.trim()) continue;
+    const { data: profileRows } = await supabase.rpc("find_profile_by_email", {
+      target_email: s.invited_email,
+    });
+    const found = Array.isArray(profileRows) ? profileRows[0] : profileRows;
+    if (!found?.id) continue;
+    await supabase.from("lease_signers").update({ profile_id: found.id }).eq("id", s.id);
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("id, prenom, nom, email, telephone, avatar_url, date_naissance, lieu_naissance, nationalite, adresse")
+      .eq("id", found.id)
+      .single();
+    if (profileRow) {
+      (s as SignerWithProfile).profiles = profileRow as ProfileRow;
+      console.log("[fetchLeaseDetails] Auto-repair: signer", s.id, "lié au profil", found.id);
+    }
+  }
+
+  // ✅ SOTA 2026: Générer des URLs signées pour les images de signature (bucket privé)
+  // Durée de validité: 1 heure
   const signersWithSignedUrls = await Promise.all(
     signersArray.map(async (s) => {
       let signatureImageUrl: string | null = null;
