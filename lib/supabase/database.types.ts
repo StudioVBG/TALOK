@@ -2075,7 +2075,51 @@ export type Database = {
       admin_user_notes: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       agency_commissions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       agency_profiles: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
-      ai_conversations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      ai_conversations: {
+        Row: {
+          id: string
+          profile_id: string
+          user_query: string
+          assistant_response: string | null
+          response_time_ms: number | null
+          tokens_used: number | null
+          model_used: string | null
+          rag_docs_retrieved: number
+          rag_sources: Json
+          thread_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          profile_id: string
+          user_query: string
+          assistant_response?: string | null
+          response_time_ms?: number | null
+          tokens_used?: number | null
+          model_used?: string | null
+          rag_docs_retrieved?: number
+          rag_sources?: Json
+          thread_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          profile_id?: string
+          user_query?: string
+          assistant_response?: string | null
+          response_time_ms?: number | null
+          tokens_used?: number | null
+          model_used?: string | null
+          rag_docs_retrieved?: number
+          rag_sources?: Json
+          thread_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "ai_conversations_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "ai_conversations_thread_id_fkey"; columns: ["thread_id"]; isOneToOne: false; referencedRelation: "assistant_threads"; referencedColumns: ["id"] }
+        ]
+      }
       analytics_aggregates: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       analytics_dashboards: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       analytics_widgets: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
@@ -2120,7 +2164,41 @@ export type Database = {
       impersonation_sessions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       insurance_policies: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       invitations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
-      invoice_reminders: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      invoice_reminders: {
+        Row: {
+          id: string
+          invoice_id: string
+          sent_at: string
+          method: "email" | "sms" | "courrier"
+          status: "sent" | "delivered" | "failed" | "bounced"
+          recipient_email: string | null
+          error_message: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          sent_at?: string
+          method?: "email" | "sms" | "courrier"
+          status?: "sent" | "delivered" | "failed" | "bounced"
+          recipient_email?: string | null
+          error_message?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          sent_at?: string
+          method?: "email" | "sms" | "courrier"
+          status?: "sent" | "delivered" | "failed" | "bounced"
+          recipient_email?: string | null
+          error_message?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "invoice_reminders_invoice_id_fkey"; columns: ["invoice_id"]; isOneToOne: false; referencedRelation: "invoices"; referencedColumns: ["id"] }
+        ]
+      }
       lease_drafts: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       lease_end_timeline: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       lease_indexations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
@@ -2167,7 +2245,35 @@ export type Database = {
       tenant_documents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       tenant_identity_documents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       tenant_profiles: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
-      tenant_rewards: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      tenant_rewards: {
+        Row: {
+          id: string
+          profile_id: string
+          points: number
+          action_type: "rent_paid_on_time" | "energy_saving" | "profile_completed" | "document_uploaded" | "on_time_streak" | "referral"
+          description: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          profile_id: string
+          points: number
+          action_type: "rent_paid_on_time" | "energy_saving" | "profile_completed" | "document_uploaded" | "on_time_streak" | "referral"
+          description?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          profile_id?: string
+          points?: number
+          action_type?: "rent_paid_on_time" | "energy_saving" | "profile_completed" | "document_uploaded" | "on_time_streak" | "referral"
+          description?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "tenant_rewards_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
+        ]
+      }
       ticket_messages: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       two_factor_sessions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       two_factor_settings: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
@@ -2178,8 +2284,165 @@ export type Database = {
       vetusty_grid: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       vetusty_items: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       vetusty_reports: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
-      webhook_logs: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      webhook_logs: {
+        Row: {
+          id: string
+          provider: string
+          event_type: string
+          event_id: string | null
+          payload: Json | null
+          error: string | null
+          processed_at: string | null
+          status: "success" | "error" | "skipped"
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          provider?: string
+          event_type: string
+          event_id?: string | null
+          payload?: Json | null
+          error?: string | null
+          processed_at?: string | null
+          status?: "success" | "error" | "skipped"
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          provider?: string
+          event_type?: string
+          event_id?: string | null
+          payload?: Json | null
+          error?: string | null
+          processed_at?: string | null
+          status?: "success" | "error" | "skipped"
+          created_at?: string
+        }
+        Relationships: []
+      }
       webhook_queue: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      legal_embeddings: {
+        Row: {
+          id: string
+          content: string
+          category: "loi_alur" | "decret_decence" | "bail_type" | "charges" | "depot_garantie" | "conge" | "travaux" | "assurance" | "fiscalite" | "copropriete" | "edl" | "indexation"
+          source_title: string | null
+          source_url: string | null
+          source_date: string | null
+          article_reference: string | null
+          metadata: Json
+          embedding: unknown | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          content: string
+          category: "loi_alur" | "decret_decence" | "bail_type" | "charges" | "depot_garantie" | "conge" | "travaux" | "assurance" | "fiscalite" | "copropriete" | "edl" | "indexation"
+          source_title?: string | null
+          source_url?: string | null
+          source_date?: string | null
+          article_reference?: string | null
+          metadata?: Json
+          embedding?: unknown | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          content?: string
+          category?: "loi_alur" | "decret_decence" | "bail_type" | "charges" | "depot_garantie" | "conge" | "travaux" | "assurance" | "fiscalite" | "copropriete" | "edl" | "indexation"
+          source_title?: string | null
+          source_url?: string | null
+          source_date?: string | null
+          article_reference?: string | null
+          metadata?: Json
+          embedding?: unknown | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      platform_knowledge: {
+        Row: {
+          id: string
+          title: string
+          content: string
+          knowledge_type: "faq" | "tutorial" | "best_practice" | "template" | "glossary" | "workflow"
+          target_roles: string[]
+          slug: string | null
+          priority: number
+          metadata: Json
+          embedding: unknown | null
+          is_published: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          content: string
+          knowledge_type: "faq" | "tutorial" | "best_practice" | "template" | "glossary" | "workflow"
+          target_roles?: string[]
+          slug?: string | null
+          priority?: number
+          metadata?: Json
+          embedding?: unknown | null
+          is_published?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          content?: string
+          knowledge_type?: "faq" | "tutorial" | "best_practice" | "template" | "glossary" | "workflow"
+          target_roles?: string[]
+          slug?: string | null
+          priority?: number
+          metadata?: Json
+          embedding?: unknown | null
+          is_published?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_context_embeddings: {
+        Row: {
+          id: string
+          profile_id: string
+          entity_type: "property" | "lease" | "tenant" | "invoice" | "ticket" | "document"
+          entity_id: string
+          content: string
+          summary: string | null
+          embedding: unknown | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          profile_id: string
+          entity_type: "property" | "lease" | "tenant" | "invoice" | "ticket" | "document"
+          entity_id: string
+          content: string
+          summary?: string | null
+          embedding?: unknown | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          profile_id?: string
+          entity_type?: "property" | "lease" | "tenant" | "invoice" | "ticket" | "document"
+          entity_id?: string
+          content?: string
+          summary?: string | null
+          embedding?: unknown | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "user_context_embeddings_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
+        ]
+      }
     }
     Views: Record<string, { Row: Record<string, unknown>; Relationships: Array<{ foreignKeyName: string; columns: string[]; isOneToOne: boolean; referencedRelation: string; referencedColumns: string[] }> }>
     Functions: Record<string, { Args: Record<string, unknown>; Returns: unknown }>
