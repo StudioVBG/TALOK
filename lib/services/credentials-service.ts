@@ -51,7 +51,10 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
  * Déchiffre une clé API chiffrée avec AES-256-GCM
  */
 function decryptKey(encryptedKey: string): string {
-  const masterKey = process.env.API_KEY_MASTER_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "default-key-for-dev-only-32chars!";
+  const masterKey = process.env.API_KEY_MASTER_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!masterKey) {
+    throw new Error("[CRITICAL] API_KEY_MASTER_KEY or SUPABASE_SERVICE_ROLE_KEY must be set for encryption");
+  }
   const algorithm = "aes-256-gcm";
   const key = crypto.scryptSync(masterKey, "external-api-salt", 32);
   

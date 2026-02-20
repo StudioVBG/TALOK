@@ -351,15 +351,15 @@ export default function EditLeasePage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-slate-50 rounded-lg">
                   <p className="text-xs text-muted-foreground">Loyer mensuel HC</p>
-                  <p className="text-xl font-bold">{lease.loyer?.toLocaleString("fr-FR")} €</p>
+                  <p className="text-xl font-bold">{(lease.loyer ?? 0).toLocaleString("fr-FR")} €</p>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-lg">
                   <p className="text-xs text-muted-foreground">Charges</p>
-                  <p className="text-xl font-bold">{lease.charges_forfaitaires?.toLocaleString("fr-FR")} €</p>
+                  <p className="text-xl font-bold">{(lease.charges_forfaitaires ?? 0).toLocaleString("fr-FR")} €</p>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-lg">
                   <p className="text-xs text-muted-foreground">Dépôt de garantie</p>
-                  <p className="text-xl font-bold">{lease.depot_garantie?.toLocaleString("fr-FR")} €</p>
+                  <p className="text-xl font-bold">{(lease.depot_garantie ?? 0).toLocaleString("fr-FR")} €</p>
                   <p className="text-xs text-muted-foreground">Max légal : {maxDepotLegal.toLocaleString("fr-FR")} €</p>
                 </div>
               </div>
@@ -402,7 +402,7 @@ export default function EditLeasePage() {
               <div className="p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-700">
                   <strong>Total mensuel:</strong>{" "}
-                  {(lease.loyer + lease.charges_forfaitaires).toLocaleString("fr-FR")} €
+                  {((lease.loyer || 0) + (lease.charges_forfaitaires || 0)).toLocaleString("fr-FR")} €
                 </p>
               </div>
             </CardContent>

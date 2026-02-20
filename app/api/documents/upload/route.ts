@@ -136,7 +136,14 @@ export const POST = withSecurity(async function POST(request: Request) {
           }
         }
       } catch (resolveErr) {
-        console.warn("[POST /api/documents/upload] Auto-resolve lease/property échoué:", resolveErr);
+        console.error("[POST /api/documents/upload] Auto-resolve lease/property échoué:", resolveErr);
+        // For tenants, lease association is important for document visibility
+        if (!resolvedLeaseId && !resolvedPropertyId) {
+          return NextResponse.json(
+            { error: "Impossible de déterminer votre bail. Veuillez réessayer." },
+            { status: 400 }
+          );
+        }
       }
     }
 
@@ -168,13 +175,18 @@ export const POST = withSecurity(async function POST(request: Request) {
     let resolvedOwnerId: string | null = profileAny.role === "owner" ? profileAny.id : null;
     if (profileAny.role === "tenant" && resolvedPropertyId && !resolvedOwnerId) {
       try {
-        const { data: prop } = await serviceClient
+        const { data: prop, error: propError } = await serviceClient
           .from("properties")
           .select("owner_id")
           .eq("id", resolvedPropertyId)
-          .single();
+          .maybeSingle();
+        if (propError) {
+          console.error("[POST /api/documents/upload] owner_id resolution failed:", propError);
+        }
         if (prop) resolvedOwnerId = (prop as any).owner_id;
-      } catch { /* non-bloquant */ }
+      } catch (err) {
+        console.error("[POST /api/documents/upload] owner_id resolution error:", err);
+      }
     }
 
     // Créer l'entrée dans la table documents

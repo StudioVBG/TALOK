@@ -326,15 +326,19 @@ export const POST = withSecurity(async function POST(request: Request) {
     const body = await request.json();
     
     // ✅ SSOT 2026: Validation unifiée avec Zod
-    const loyer = body.loyer ? parseFloat(body.loyer) : undefined;
+    const loyerRaw = body.loyer ? parseFloat(body.loyer) : undefined;
+    const loyer = loyerRaw !== undefined && Number.isFinite(loyerRaw) ? loyerRaw : undefined;
     const typeBail = body.type_bail || "meuble";
-    const depotFourni = body.depot_garantie ? parseFloat(body.depot_garantie) : undefined;
+    const depotRaw = body.depot_garantie ? parseFloat(body.depot_garantie) : undefined;
+    const depotFourni = depotRaw !== undefined && Number.isFinite(depotRaw) ? depotRaw : undefined;
+    const chargesRaw = body.charges_forfaitaires ? parseFloat(body.charges_forfaitaires) : 0;
+    const chargesParsed = Number.isFinite(chargesRaw) ? chargesRaw : 0;
     
     const validationResult = LeaseCreateSchema.safeParse({
       property_id: body.property_id,
       type_bail: typeBail,
       loyer: loyer,
-      charges_forfaitaires: body.charges_forfaitaires ? parseFloat(body.charges_forfaitaires) : 0,
+      charges_forfaitaires: chargesParsed,
       depot_de_garantie: depotFourni, // Peut être undefined - sera calculé après
       date_debut: body.date_debut,
       date_fin: body.date_fin || null,

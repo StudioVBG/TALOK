@@ -110,9 +110,25 @@ export async function POST(
       );
     }
 
-    // Calculer les montants
-    const montant_loyer = loyer_override || leaseData.loyer;
-    const montant_charges = charges_override || leaseData.charges_forfaitaires || 0;
+    // Calculer les montants avec validation de type
+    const parsedLoyerOverride = loyer_override != null ? Number(loyer_override) : null;
+    const parsedChargesOverride = charges_override != null ? Number(charges_override) : null;
+
+    if (parsedLoyerOverride != null && (!Number.isFinite(parsedLoyerOverride) || parsedLoyerOverride < 0)) {
+      return NextResponse.json(
+        { error: "loyer_override doit être un nombre positif valide" },
+        { status: 400 }
+      );
+    }
+    if (parsedChargesOverride != null && (!Number.isFinite(parsedChargesOverride) || parsedChargesOverride < 0)) {
+      return NextResponse.json(
+        { error: "charges_override doit être un nombre positif valide" },
+        { status: 400 }
+      );
+    }
+
+    const montant_loyer = parsedLoyerOverride ?? leaseData.loyer;
+    const montant_charges = parsedChargesOverride ?? leaseData.charges_forfaitaires ?? 0;
     const montant_total = montant_loyer + montant_charges;
 
     // Créer la facture

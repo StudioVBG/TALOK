@@ -10,6 +10,8 @@ import {
   EDLComplet,
 } from "@/lib/templates/edl";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
+import { verifyEDLAccess } from "@/lib/helpers/edl-auth";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 /**
  * POST /api/edl/pdf
@@ -30,6 +32,32 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { edlData, edlId, isVierge, rooms } = body;
+
+    // Vérifier les permissions d'accès à l'EDL
+    if (edlId) {
+      const serviceClient = getServiceClient();
+      const { data: profile } = await serviceClient
+        .from("profiles")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+      }
+
+      const accessResult = await verifyEDLAccess(
+        { edlId, userId: user.id, profileId: profile.id, profileRole: profile.role },
+        serviceClient
+      );
+
+      if (!accessResult.authorized) {
+        return NextResponse.json(
+          { error: "Vous n'avez pas accès à cet état des lieux" },
+          { status: 403 }
+        );
+      }
+    }
 
     let html: string;
     let fileName: string;
