@@ -19,6 +19,7 @@ import Stripe from "stripe";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { generateReceiptPDF } from "@/lib/services/receipt-generator";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
+import type { Json } from "@/lib/supabase/database.types";
 
 // Initialiser Stripe de manière lazy pour éviter les erreurs au build
 function getStripe(): Stripe {
@@ -728,7 +729,7 @@ export async function POST(request: NextRequest) {
       provider: "stripe",
       event_type: event.type,
       event_id: event.id,
-      payload: event.data.object,
+      payload: JSON.parse(JSON.stringify(event.data.object)) as Json,
       processed_at: new Date().toISOString(),
       status: "success",
     });
