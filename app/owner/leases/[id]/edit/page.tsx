@@ -488,7 +488,7 @@ export default function EditLeasePage() {
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={new Date(lease.date_debut)}
+                        selected={lease.date_debut ? new Date(lease.date_debut) : undefined}
                         onSelect={(date) =>
                           date && setLease({ ...lease, date_debut: date.toISOString() })
                         }

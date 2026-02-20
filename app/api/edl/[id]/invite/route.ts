@@ -10,10 +10,14 @@ import { NextResponse } from "next/server";
  */
 function isPlaceholderEmail(email: string | null | undefined): boolean {
   if (!email) return true;
-  return email.includes('@a-definir') || 
-         email.includes('@placeholder') ||
-         email.includes('@example') ||
-         email === 'locataire@a-definir.com';
+  const lower = email.toLowerCase();
+  return lower.includes('@a-definir') ||
+         lower.includes('@a-définir') ||
+         lower.includes('@placeholder') ||
+         lower.includes('@example') ||
+         lower.includes('@unknown') ||
+         lower.includes('@talok.local') ||
+         lower === 'locataire@a-definir.com';
 }
 
 /**
