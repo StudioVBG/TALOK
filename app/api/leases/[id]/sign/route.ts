@@ -234,7 +234,10 @@ export async function POST(
       } as any)
       .eq("id", signer.id as any);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      await serviceClient.storage.from("documents").remove([fileName]).catch(() => null);
+      throw updateError;
+    }
 
     // 9. Mettre à jour le statut global du bail
     // FIX AUDIT 2026-02-16: Vérification d'erreur + rollback compensatoire
@@ -249,11 +252,12 @@ export async function POST(
         leaseUpdateError: leaseUpdateError.message,
         attemptedStatus: newLeaseStatus,
       });
-      // Rollback compensatoire : remettre le signataire en pending
+      // Rollback compensatoire : remettre le signataire en pending + supprimer le fichier orphelin
       await serviceClient
         .from("lease_signers")
-        .update({ signature_status: "pending", signed_at: null } as any)
+        .update({ signature_status: "pending", signed_at: null, signature_image_path: null } as any)
         .eq("id", signer.id as any);
+      await serviceClient.storage.from("documents").remove([fileName]).catch(() => null);
       throw new Error(
         `Échec de la mise à jour du statut du bail: ${leaseUpdateError.message}. La signature a été annulée, veuillez réessayer.`
       );
@@ -283,12 +287,25 @@ export async function POST(
           p_pdf_path: `pending_generation_${Date.now()}`,
         });
         if (sealError) {
-          log.warn("Erreur scellement bail (non bloquant)", { sealError: sealError.message });
+          log.warn("Erreur scellement bail (non bloquant)", {
+            lease_id: leaseId,
+            sealError: sealError.message,
+            code: sealError.code,
+          });
+          // Insert outbox pour retry asynchrone (worker/cron peut rappeler seal_lease)
+          await serviceClient.from("outbox").insert({
+            event_type: "Lease.SealRetry",
+            payload: { lease_id: leaseId, reason: "seal_lease_failed", error: sealError.message },
+          }).single().catch(() => null);
         } else {
-          log.info("Bail scellé avec succès");
+          log.info("Bail scellé avec succès", { lease_id: leaseId });
         }
       } catch (sealErr) {
-        log.warn("Exception scellement bail", { error: String(sealErr) });
+        log.warn("Exception scellement bail", { lease_id: leaseId, error: String(sealErr) });
+        await serviceClient.from("outbox").insert({
+          event_type: "Lease.SealRetry",
+          payload: { lease_id: leaseId, reason: "seal_lease_exception", error: String(sealErr) },
+        }).single().catch(() => null);
       }
     }
 

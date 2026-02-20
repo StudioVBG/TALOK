@@ -105,6 +105,14 @@ export interface ReceiptData {
  * @see Décret n°2015-587 du 6 mai 2015
  */
 export async function generateReceiptPDF(data: ReceiptData): Promise<Uint8Array> {
+  // Conformité ALUR : champs obligatoires
+  if (!data.ownerAddress?.trim()) {
+    throw new Error("Quittance : l'adresse du propriétaire est obligatoire (ALUR)");
+  }
+  if (!data.period?.trim() && !data.periodeDebut) {
+    throw new Error("Quittance : la période (ou période début/fin) est obligatoire");
+  }
+
   // Créer le document PDF
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595.28, 841.89]); // A4

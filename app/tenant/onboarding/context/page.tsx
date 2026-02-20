@@ -20,13 +20,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+interface PropertyInfoShort {
+  id: string;
+  adresse_complete?: string;
+  ville?: string;
+  code_postal?: string;
+  type?: string;
+  surface?: number;
+  nb_pieces?: number;
+}
+
 export default function TenantContextPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState("");
-  const [propertyInfo, setPropertyInfo] = useState<any>(null);
+  const [propertyInfo, setPropertyInfo] = useState<PropertyInfoShort | null>(null);
 
   const inviteToken = searchParams.get("invite");
   const codeParam = searchParams.get("code");
@@ -43,6 +53,30 @@ export default function TenantContextPage() {
       loadInvitationData(inviteToken);
     }
   }, [inviteToken]);
+
+  // Redirection si l'utilisateur a déjà complété cette étape (éviter boucle)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = (await import("@/lib/supabase/client")).createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: progress } = await supabase
+          .from("onboarding_progress")
+          .select("step")
+          .eq("user_id", user.id)
+          .eq("role", "tenant");
+        const steps = (progress ?? []).map((p: { step: string }) => p.step);
+        if (!cancelled && steps.includes("tenant_context")) {
+          router.replace("/tenant/onboarding/file");
+        }
+      } catch {
+        // Ignorer les erreurs (RLS, etc.)
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [router]);
 
   const loadInvitationData = async (token: string) => {
     try {
@@ -86,16 +120,21 @@ export default function TenantContextPage() {
   };
 
   const handleValidateCode = async () => {
-    if (!code) return;
+    const trimmed = code?.trim() ?? "";
+    if (!trimmed) return;
+    if (trimmed.length < 4 || trimmed.length > 20) {
+      toast({ title: "Code invalide", description: "Le code doit contenir entre 4 et 20 caractères.", variant: "destructive" });
+      return;
+    }
 
     setLoading(true);
     try {
-      const validation = await propertyCodesService.validatePropertyCode(code);
+      const validation = await propertyCodesService.validatePropertyCode(trimmed);
       if (validation.valid && validation.property) {
-        setPropertyInfo(validation.property);
+        setPropertyInfo(validation.property as PropertyInfoShort);
         setFormData((prev) => ({
           ...prev,
-          code_logement: code,
+          code_logement: trimmed,
         }));
         toast({
           title: "Code validé",

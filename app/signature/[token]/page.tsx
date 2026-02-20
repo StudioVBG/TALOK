@@ -36,8 +36,8 @@ function decodeToken(token: string): TokenData | null {
 
 function isTokenExpired(timestamp: number): boolean {
   const now = Date.now();
-  const sevenDaysMs = 30 * 24 * 60 * 60 * 1000;
-  return now - timestamp > sevenDaysMs;
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000; // 30 jours
+  return now - timestamp > thirtyDaysMs;
 }
 
 async function getLeaseByToken(token: string) {
@@ -49,7 +49,7 @@ async function getLeaseByToken(token: string) {
     return null;
   }
   
-  // Vérifier l'expiration (7 jours)
+  // Vérifier l'expiration (30 jours)
   if (isTokenExpired(tokenData.timestamp)) {
     console.log("[Signature] Token expiré");
     return { expired: true, tenantEmail: tokenData.tenantEmail };

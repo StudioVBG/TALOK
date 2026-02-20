@@ -298,7 +298,8 @@ export const LeaseUpdateSchema = z.object({
     "notice_given",
     "amended",
     "terminated",
-    "archived"
+    "archived",
+    "cancelled",
   ]).optional(),
 }).passthrough(); // Permet d'autres champs
 

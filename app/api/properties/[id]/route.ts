@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { propertyGeneralUpdateSchema, propertySchema } from "@/lib/validations";
+import { propertyGeneralUpdateSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { propertyIdParamSchema } from "@/lib/validations/params";

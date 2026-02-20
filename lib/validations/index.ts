@@ -399,6 +399,7 @@ export const propertyGeneralUpdateSchema = z
       "bureaux",
       "entrepot",
       "fonds_de_commerce",
+      "immeuble",
     ]).optional(),
     type: z.enum([
       "appartement",
@@ -411,6 +412,7 @@ export const propertyGeneralUpdateSchema = z
       "bureaux",
       "entrepot",
       "fonds_de_commerce",
+      "immeuble",
     ]).optional(),
     adresse_complete: z.string().min(1).optional(),
     complement_adresse: z.string().optional().nullable(),
@@ -470,6 +472,14 @@ export const propertyGeneralUpdateSchema = z
     local_rideau_metal: z.boolean().optional(),
     local_acces_camion: z.boolean().optional(),
     local_parking_clients: z.boolean().optional(),
+    // SOTA 2026 - Immeuble
+    building_floors: z.number().int().min(1).max(50).optional().nullable(),
+    has_ascenseur: z.boolean().optional(),
+    has_gardien: z.boolean().optional(),
+    has_interphone: z.boolean().optional(),
+    has_digicode: z.boolean().optional(),
+    has_local_velo: z.boolean().optional(),
+    has_local_poubelles: z.boolean().optional(),
     // Conditions de location V3
     type_bail: z.enum([
       "vide", "meuble", "colocation",
@@ -612,6 +622,7 @@ export const leaseStatusSchema = z.enum([
   "amended",
   "terminated",
   "archived",
+  "cancelled",
 ]);
 
 // Validation des baux
@@ -624,6 +635,9 @@ export const leaseSchema = z.object({
     "colocation",
     "saisonnier",
     "bail_mobilite",
+    "bail_rural",
+    "bail_mixte",
+    "etudiant",
     "commercial_3_6_9",
     "commercial_derogatoire",
     "professionnel",

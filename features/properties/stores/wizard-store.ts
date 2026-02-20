@@ -610,7 +610,8 @@ export const usePropertyWizardStore = create<WizardState>()(
       const errorMessage = error instanceof Error ? error.message : 'Erreur import photos';
       set({
         photoImportStatus: 'error',
-        lastError: errorMessage
+        lastError: errorMessage,
+        pendingPhotoUrls: [] // Éviter les tentatives en boucle
       });
       showSyncErrorToast(errorMessage);
     }

@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -45,9 +44,10 @@ export default function TenantFilePage() {
     // Charger le brouillon si disponible
     onboardingService.getDraft().then((draft) => {
       if (draft?.data && draft.role === "tenant") {
+        const data = draft.data as Record<string, unknown>;
         setFormData((prev) => ({
           ...prev,
-          ...(draft.data as any),
+          ...(typeof data === "object" && data !== null ? data : {}),
         }));
       }
     });
@@ -81,22 +81,22 @@ export default function TenantFilePage() {
 
       if (!profile) throw new Error("Profil non trouvé");
 
-      const profileData = profile as any;
+      const profileId = (profile as { id: string }).id;
 
       // Créer ou mettre à jour le profil locataire
-      const { error: profileError } = await (supabase.from("tenant_profiles") as any).upsert(
-        {
-          profile_id: profileData.id as any,
-          situation_pro: validated.situation_pro,
-          revenus_mensuels: validated.revenus_mensuels,
-          nb_adultes: validated.nb_adultes,
-          nb_enfants: validated.nb_enfants,
-          garant_required: validated.garant_required,
-        } as any,
-        {
-          onConflict: "profile_id",
-        }
-      );
+      const { error: profileError } = await supabase
+        .from("tenant_profiles")
+        .upsert(
+          {
+            profile_id: profileId,
+            situation_pro: validated.situation_pro,
+            revenus_mensuels: validated.revenus_mensuels,
+            nb_adultes: validated.nb_adultes,
+            nb_enfants: validated.nb_enfants,
+            garant_required: validated.garant_required,
+          },
+          { onConflict: "profile_id" }
+        );
 
       if (profileError) throw profileError;
 

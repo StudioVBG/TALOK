@@ -10,6 +10,14 @@
 
 import { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+const edlKeySchema = z.object({
+  type: z.string().min(1).max(100),
+  quantite: z.number().int().min(0).max(99),
+  notes: z.string().max(500).optional(),
+});
+const edlKeysSchema = z.array(edlKeySchema).max(50);
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -63,6 +71,13 @@ export async function createEDL(
   // 1. Validate type
   if (!type || !["entree", "sortie"].includes(type)) {
     return { success: false, error: "Type d'EDL invalide (entree ou sortie requis)", status: 400 };
+  }
+
+  if (keys !== undefined && keys.length > 0) {
+    const parsed = edlKeysSchema.safeParse(keys);
+    if (!parsed.success) {
+      return { success: false, error: "Données des clés invalides", status: 400 };
+    }
   }
 
   // 2. Resolve lease and property

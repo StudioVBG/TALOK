@@ -110,21 +110,28 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Marquer l'invitation comme utilisée
-    const { error: updateError } = await serviceClient
+    // 8. Marquer l'invitation comme utilisée (update conditionnel : used_at null uniquement)
+    const { data: updatedRows, error: updateError } = await serviceClient
       .from("invitations")
       .update({
         used_at: new Date().toISOString(),
         used_by: profileId,
       })
       .eq("id", invitation.id ?? "")
-      .is("used_at", null); // Double protection contre race condition
+      .is("used_at", null) // Double protection contre race condition
+      .select("id");
 
     if (updateError) {
       console.error("[accept-invitation] Erreur update invitation:", updateError);
       return NextResponse.json(
         { error: "Erreur lors de l'acceptation de l'invitation" },
         { status: 500 }
+      );
+    }
+    if (!updatedRows || updatedRows.length === 0) {
+      return NextResponse.json(
+        { error: "Cette invitation a déjà été utilisée." },
+        { status: 409 }
       );
     }
 

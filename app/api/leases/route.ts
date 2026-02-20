@@ -205,23 +205,6 @@ export async function GET(request: Request) {
 
     // ✅ SYNCHRONISATION : Les données financières viennent du BIEN (source unique)
     // Le bail ne stocke que property_id, type_bail, dates, statut
-    const getMaxDepotLegal = (typeBail: string, loyerHC: number): number => {
-      switch (typeBail) {
-        case "nu":
-        case "etudiant":
-          return loyerHC * 1;
-        case "meuble":
-        case "colocation":
-          return loyerHC * 2;
-        case "mobilite":
-          return 0;
-        case "saisonnier":
-          return loyerHC * 2;
-        default:
-          return loyerHC;
-      }
-    };
-
     const leasesWithSigners = (leases || []).map((lease: any) => {
       const property = lease.property;
       const signers = signersMap[lease.id] || [];

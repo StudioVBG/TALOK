@@ -54,6 +54,22 @@ export const POST = withSecurity(async function POST(request: Request) {
     if (!type) {
       return NextResponse.json({ error: "Le type de document est requis." }, { status: 400 });
     }
+    const allowedTypes = [
+      "bail", "avenant", "engagement_garant", "bail_signe_locataire", "bail_signe_proprietaire",
+      "piece_identite", "cni_recto", "cni_verso", "passeport", "titre_sejour",
+      "quittance", "facture", "rib", "avis_imposition", "bulletin_paie", "attestation_loyer",
+      "attestation_assurance", "assurance_pno",
+      "diagnostic", "dpe", "diagnostic_gaz", "diagnostic_electricite", "diagnostic_plomb", "diagnostic_amiante", "diagnostic_termites", "erp",
+      "EDL_entree", "EDL_sortie", "inventaire",
+      "candidature_identite", "candidature_revenus", "candidature_domicile", "candidature_garantie",
+      "garant_identite", "garant_revenus", "garant_domicile", "garant_engagement",
+      "devis", "ordre_mission", "rapport_intervention",
+      "taxe_fonciere", "taxe_sejour", "copropriete", "proces_verbal", "appel_fonds",
+      "consentement", "courrier", "photo", "justificatif_revenus", "autre",
+    ];
+    if (!allowedTypes.includes(type)) {
+      return NextResponse.json({ error: `Type de document invalide: ${type}` }, { status: 400 });
+    }
 
     const files = formData.getAll("files").filter((file): file is File => file instanceof File);
     if (files.length === 0) {
@@ -218,6 +234,7 @@ export const POST = withSecurity(async function POST(request: Request) {
     }
 
     const insertedDocuments = [];
+    const uploadedPaths: string[] = [];
 
     for (let index = 0; index < files.length; index += 1) {
       const file = files[index];
@@ -236,11 +253,15 @@ export const POST = withSecurity(async function POST(request: Request) {
 
       if (uploadError) {
         console.error("Erreur upload storage:", uploadError);
+        if (uploadedPaths.length > 0) {
+          await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove(uploadedPaths);
+        }
         return NextResponse.json(
           { error: `Erreur lors de l'upload du fichier ${file.name}` },
           { status: 500 }
         );
       }
+      uploadedPaths.push(filePath);
 
       // Générer une URL signée au lieu d'une URL publique pour les documents privés
       let previewUrl: string | null = null;
@@ -278,8 +299,8 @@ export const POST = withSecurity(async function POST(request: Request) {
         .single();
 
       if (insertError || !document) {
-        // Nettoyer le fichier uploadé en cas d'erreur DB
-        await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([filePath]);
+        // Nettoyer tous les fichiers déjà uploadés dans ce batch (y compris le courant)
+        await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove(uploadedPaths);
         return NextResponse.json(
           { error: insertError?.message || `Erreur lors de l'enregistrement du fichier ${file.name}` },
           { status: 500 }

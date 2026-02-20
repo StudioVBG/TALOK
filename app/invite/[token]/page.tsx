@@ -20,6 +20,7 @@ export default function InvitePage() {
   const params = useParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [resendLoading, setResendLoading] = useState(false);
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +63,7 @@ export default function InvitePage() {
   const handleResendInvitation = async () => {
     if (!invitation) return;
 
-    setLoading(true);
+    setResendLoading(true);
     try {
       const response = await fetch(`/api/invites/${invitation.id}/resend`, {
         method: "POST",
@@ -87,7 +88,7 @@ export default function InvitePage() {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setResendLoading(false);
     }
   };
 
@@ -120,9 +121,9 @@ export default function InvitePage() {
             <p className="text-sm text-muted-foreground text-center">
               Le lien peut avoir expiré ou avoir déjà été utilisé.
             </p>
-            <Button onClick={handleResendInvitation} className="w-full" variant="outline">
+            <Button onClick={handleResendInvitation} className="w-full" variant="outline" disabled={resendLoading}>
               <Mail className="mr-2 h-4 w-4" />
-              Demander un nouveau lien
+              {resendLoading ? "Envoi en cours..." : "Demander un nouveau lien"}
             </Button>
             <div className="text-center">
               <Link href="/auth/signin" className="text-sm text-primary hover:underline">

@@ -72,7 +72,8 @@ export default function TenantSignLeasePage() {
       }
       
       // Si le bail n'est plus en attente de signature (active, terminated, etc.)
-      if (leaseStatus && !['pending_signature', 'draft'].includes(leaseStatus)) {
+      const allowedStatuses = ['pending_signature', 'draft', 'partially_signed', 'fully_signed'];
+      if (leaseStatus && !allowedStatuses.includes(leaseStatus)) {
         router.push("/tenant/dashboard");
       }
     }
@@ -86,11 +87,13 @@ export default function TenantSignLeasePage() {
   }, [dashboard, leaseId, kycStatus, isKycVerified, hasAlreadySigned]);
 
   const onSignatureComplete = async (signature: SignatureData) => {
+    if (!leaseId) {
+      toast({ title: "Erreur", description: "ID du bail manquant.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
 
     try {
-      if (!leaseId) throw new Error("ID du bail manquant");
-
       // ✅ APPEL À LA VRAIE API DE SIGNATURE
       const response = await fetch(`/api/leases/${leaseId}/sign`, {
         method: "POST",

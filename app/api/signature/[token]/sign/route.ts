@@ -94,15 +94,15 @@ export async function POST(request: Request, { params }: PageProps) {
     
     const { data: signer } = await serviceClient
       .from("lease_signers")
-      .select("id, profile_id, role, invited_name, invited_email, signature_status")
+      .select("id, profile_id, role, invited_name, invited_email, signature_status, signed_at")
       .eq("lease_id", lease.id)
       .ilike("invited_email", normalizedEmail)
       .maybeSingle();
 
     let actualSigner = signer;
 
-    // Vérifier si déjà signé
-    if (actualSigner?.signature_status === "signed") {
+    // Vérifier si déjà signé (status + signed_at pour éviter faux positifs)
+    if (actualSigner?.signature_status === "signed" && actualSigner?.signed_at) {
       return NextResponse.json({ error: "Vous avez déjà signé ce bail" }, { status: 400 });
     }
     
@@ -117,12 +117,12 @@ export async function POST(request: Request, { params }: PageProps) {
       if (profileByEmail) {
         const { data: signerByProfile } = await serviceClient
           .from("lease_signers")
-          .select("id, profile_id, role, invited_name, invited_email, signature_status")
+          .select("id, profile_id, role, invited_name, invited_email, signature_status, signed_at")
           .eq("lease_id", lease.id)
           .eq("profile_id", profileByEmail.id)
           .maybeSingle();
 
-        if (signerByProfile?.signature_status === "signed") {
+        if (signerByProfile?.signature_status === "signed" && signerByProfile?.signed_at) {
           return NextResponse.json({ error: "Vous avez déjà signé ce bail" }, { status: 400 });
         }
         actualSigner = signerByProfile;

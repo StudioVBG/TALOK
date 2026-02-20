@@ -112,10 +112,17 @@ export async function GET(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 
+    if (!document.storage_path) {
+      return NextResponse.json(
+        { error: "Document sans fichier associé" },
+        { status: 404 }
+      );
+    }
+
     // Générer l'URL signée (valide 1 heure)
     const { data: signedUrlData, error: signedUrlError } = await serviceClient.storage
       .from("documents")
-      .createSignedUrl(document.storage_path!, 3600); // 1 heure
+      .createSignedUrl(document.storage_path, 3600); // 1 heure
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
       console.error("[Signed URL] Erreur génération:", signedUrlError);

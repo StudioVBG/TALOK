@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { z } from "zod";
 import { leaseSchema } from "@/lib/validations";
 import Link from "next/link";
 import {
@@ -65,6 +66,18 @@ import { useEntityStore } from "@/stores/useEntityStore";
 // Aperçu EDL intégré dans le wizard
 import { EdlPreviewStep } from "./EdlPreviewStep";
 import type { BailWizardEdlInput } from "@/lib/mappers/bail-wizard-to-edl-preview";
+
+// Validation Zod des invités colocation (email, nom, rôle requis)
+const colocationInviteeSchema = z.object({
+  email: z.string().min(1, "Email requis").email("Email invalide"),
+  name: z.string().min(1, "Nom requis"),
+  role: z.enum(["principal", "colocataire"]),
+  weight: z.number().min(0).max(1).optional(),
+  roomLabel: z.string().optional(),
+  hasGuarantor: z.boolean().optional(),
+  guarantorEmail: z.string().email().nullable().optional(),
+  guarantorName: z.string().nullable().optional(),
+});
 
 // Interface étendue pour inclure toutes les données nécessaires au bail
 interface Property {
@@ -732,10 +745,31 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   const handleSubmit = async () => {
     // Validation différente selon le type de bail
     if (isColocation) {
-      const validInvitees = invitees.filter(i => i.email);
-      if (!selectedType || !selectedPropertyId || validInvitees.length === 0) {
+      const withEmail = invitees.filter(i => i.email?.trim());
+      if (!selectedType || !selectedPropertyId || withEmail.length === 0) {
         toast({ title: "Données manquantes", description: "Veuillez sélectionner un bien et inviter au moins un colocataire", variant: "destructive" });
         return;
+      }
+      for (let idx = 0; idx < withEmail.length; idx++) {
+        const parsed = colocationInviteeSchema.safeParse({
+          email: withEmail[idx].email,
+          name: withEmail[idx].name ?? "",
+          role: withEmail[idx].role,
+          weight: withEmail[idx].weight,
+          roomLabel: withEmail[idx].roomLabel,
+          hasGuarantor: withEmail[idx].hasGuarantor,
+          guarantorEmail: withEmail[idx].guarantorEmail ?? null,
+          guarantorName: withEmail[idx].guarantorName ?? null,
+        });
+        if (!parsed.success) {
+          const first = parsed.error.errors[0];
+          toast({
+            title: "Colocataire invalide",
+            description: `Invité ${idx + 1}: ${first?.message ?? "champs requis manquants"}`,
+            variant: "destructive",
+          });
+          return;
+        }
       }
     } else {
       if (!selectedType || !selectedPropertyId) {

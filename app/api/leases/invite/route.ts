@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
 import { generateSecureToken } from "@/lib/utils/secure-token";
+import { getMaxDepotLegal } from "@/lib/validations/lease-financial";
 
 // Schéma pour un invité de colocation
 const inviteeSchema = z.object({
@@ -229,38 +230,29 @@ export async function POST(request: Request) {
     const existingProfiles: Map<string, { id: string; user_id: string }> = new Map();
 
     for (const invitee of emailsToProcess) {
-      const { data: profileRows } = await serviceClient.rpc("find_profile_by_email", {
-        target_email: invitee.email,
-      });
-      const tenantProfile = Array.isArray(profileRows) ? profileRows[0] : profileRows;
-      if (tenantProfile?.id) {
-        existingProfiles.set(invitee.email.toLowerCase(), {
-          id: tenantProfile.id,
-          user_id: tenantProfile.user_id,
+      try {
+        const { data: profileRows, error: rpcError } = await serviceClient.rpc("find_profile_by_email", {
+          target_email: invitee.email,
         });
-        console.log(`[API leases/invite] Profil existant trouvé pour ${invitee.email}:`, tenantProfile.id);
+        if (rpcError) {
+          console.warn(`[API leases/invite] RPC find_profile_by_email failed for ${invitee.email}:`, rpcError.message);
+          continue;
+        }
+        const tenantProfile = Array.isArray(profileRows) ? profileRows[0] : profileRows;
+        if (tenantProfile?.id) {
+          existingProfiles.set(invitee.email.toLowerCase(), {
+            id: tenantProfile.id,
+            user_id: tenantProfile.user_id,
+          });
+          console.log(`[API leases/invite] Profil existant trouvé pour ${invitee.email}:`, tenantProfile.id);
+        }
+      } catch (err) {
+        console.warn(`[API leases/invite] Exception find_profile_by_email for ${invitee.email}:`, err);
+        // Continue: signer will be created with invited_email only (fallback)
       }
     }
 
-    // ✅ Calcul du dépôt max légal selon le type de bail
-    const getMaxDepotLegal = (typeBail: string, loyerHC: number): number => {
-      switch (typeBail) {
-        case "nu":
-        case "etudiant":
-          return loyerHC * 1;
-        case "meuble":
-        case "colocation":
-          return loyerHC * 2;
-        case "mobilite":
-          return 0;
-        case "saisonnier":
-          return loyerHC * 2;
-        default:
-          return loyerHC;
-      }
-    };
-
-    // ✅ Valider et calculer le dépôt final
+    // ✅ Valider et calculer le dépôt final (source unique: lib/validations/lease-financial)
     const maxDepotLegal = getMaxDepotLegal(validated.type_bail, validated.loyer);
     // Si dépôt non fourni ou 0, utiliser le max légal par défaut
     // Si dépôt > max légal, corriger au max légal

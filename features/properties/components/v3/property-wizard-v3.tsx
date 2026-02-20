@@ -141,6 +141,7 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
   // Mapping interne des étapes pour calculs (doit correspondre à wizard-store.ts)
   const STEPS_ORDER: WizardStep[] = ['type_bien', 'address', 'details', 'rooms', 'photos', 'features', 'publish', 'recap'];
   const FAST_STEPS: WizardStep[] = ['type_bien', 'address', 'photos', 'recap'];
+  const BUILDING_STEPS: WizardStep[] = ['type_bien', 'address', 'building_config', 'photos', 'recap'];
 
   const { 
     currentStep, 
@@ -160,6 +161,7 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
   } = usePropertyWizardStore();
 
   const getApplicableSteps = useCallback((type: string, currentMode: WizardMode) => {
+    if (type === 'immeuble') return BUILDING_STEPS;
     let steps = currentMode === 'fast' ? FAST_STEPS : STEPS_ORDER;
     if (type && TYPES_WITHOUT_ROOMS_STEP.includes(type)) {
       return steps.filter(s => s !== 'rooms');
@@ -412,6 +414,49 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
       });
       return;
     }
+
+    // SOTA 2026: Persister les lots d'immeuble avant publication
+    if (formData.type === "immeuble" && (formData.building_units as unknown[] | undefined)?.length) {
+      const units = (formData.building_units as Array<{ floor: number; position: string; type: string; surface: number; nb_pieces: number; loyer_hc: number; charges: number; depot_garantie: number; status?: string; template?: string }>) ?? [];
+      try {
+        const res = await fetch(`/api/properties/${storePropertyId}/building-units`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            building_floors: formData.building_floors ?? 1,
+            has_ascenseur: formData.has_ascenseur,
+            has_gardien: formData.has_gardien,
+            has_interphone: formData.has_interphone,
+            has_digicode: formData.has_digicode,
+            has_local_velo: formData.has_local_velo,
+            has_local_poubelles: formData.has_local_poubelles,
+            units: units.map((u) => ({
+              floor: u.floor,
+              position: u.position ?? "A",
+              type: u.type,
+              surface: u.surface,
+              nb_pieces: u.nb_pieces ?? 0,
+              loyer_hc: u.loyer_hc ?? 0,
+              charges: u.charges ?? 0,
+              depot_garantie: u.depot_garantie ?? 0,
+              status: u.status ?? "vacant",
+              template: u.template ?? null,
+            })),
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error ?? "Erreur enregistrement lots");
+        }
+      } catch (err) {
+        toast({
+          title: "Erreur immeuble",
+          description: err instanceof Error ? err.message : "Impossible d'enregistrer les lots.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     
     // 🎉 Déclencher le confetti avant la redirection
     setShowConfetti(true);
@@ -467,7 +512,8 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
         }
 
         return hasSurface && hasLoyer && hasChauffage && hasChauffageEnergie && hasEauChaude;
-      case 'building_config': return true; // SOTA 2026: Étape immeuble
+      case 'building_config':
+        return (formData.building_floors ?? 0) > 0 && ((formData.building_units as unknown[] | undefined)?.length ?? 0) > 0;
       case 'rooms': return true;
       case 'photos': return true;
       case 'features': return true;

@@ -25,6 +25,22 @@ export const POST = withSecurity(async function POST(request: Request) {
     const propertyId = formData.get("property_id") as string | null;
     const leaseId = formData.get("lease_id") as string | null;
     const type = formData.get("type") as string | null;
+    const allowedDocumentTypes = [
+      "bail", "avenant", "engagement_garant", "bail_signe_locataire", "bail_signe_proprietaire",
+      "piece_identite", "cni_recto", "cni_verso", "passeport", "titre_sejour",
+      "quittance", "facture", "rib", "avis_imposition", "bulletin_paie", "attestation_loyer",
+      "attestation_assurance", "assurance_pno",
+      "diagnostic", "dpe", "diagnostic_gaz", "diagnostic_electricite", "diagnostic_plomb", "diagnostic_amiante", "diagnostic_termites", "erp",
+      "EDL_entree", "EDL_sortie", "inventaire",
+      "candidature_identite", "candidature_revenus", "candidature_domicile", "candidature_garantie",
+      "garant_identite", "garant_revenus", "garant_domicile", "garant_engagement",
+      "devis", "ordre_mission", "rapport_intervention",
+      "taxe_fonciere", "taxe_sejour", "copropriete", "proces_verbal", "appel_fonds",
+      "consentement", "courrier", "photo", "justificatif_revenus", "autre",
+    ];
+    if (type && !allowedDocumentTypes.includes(type)) {
+      return NextResponse.json({ error: `Type de document invalide: ${type}` }, { status: 400 });
+    }
 
     if (!file) {
       return NextResponse.json({ error: "Aucun fichier fourni" }, { status: 400 });
