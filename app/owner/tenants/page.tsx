@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { TenantsClient } from "./TenantsClient";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveTenantDisplay } from "@/lib/helpers/resolve-tenant-display";
 
 
 export const metadata = {
@@ -151,25 +152,23 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
         score = Math.max(1, score - 1);
       }
 
-      // ✅ FIX: Utiliser les données du profil si disponible, sinon les données d'invitation
-      const tenantId = signer.profile
+      // SOTA 2026: Résolution centralisée (profile → invited_name → invited_email)
+      const display = resolveTenantDisplay(signer);
+      const tenantId = display.isLinked && signer.profile
         ? `${lease.id}-${signer.profile.id}`
-        : `${lease.id}-invited-${signer.invited_email}`;
+        : `${lease.id}-invited-${signer.invited_email ?? ""}`;
       const profileId = signer.profile?.id || "";
-      const prenom = signer.profile?.prenom || signer.invited_name?.split(" ")[0] || "";
-      const nom = signer.profile?.nom || signer.invited_name?.split(" ").slice(1).join(" ") || "";
-      const email = signer.profile?.email || signer.invited_email || "";
 
       tenants.push({
         id: tenantId,
         profile_id: profileId,
-        prenom,
-        nom,
-        email,
-        telephone: signer.profile?.telephone || null,
+        prenom: display.prenom,
+        nom: display.nom,
+        email: display.email,
+        telephone: display.telephone || signer.profile?.telephone || null,
         avatar_url: signer.profile?.avatar_url || null,
         lease_id: lease.id,
-        lease_status: !signer.profile ? "invitation_pending" : lease.statut,
+        lease_status: !display.isLinked ? "invitation_pending" : lease.statut,
         lease_start: lease.date_debut,
         lease_end: lease.date_fin,
         lease_type: lease.type_bail,
