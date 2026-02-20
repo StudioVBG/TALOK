@@ -327,6 +327,30 @@ export async function POST(request: Request) {
       console.error("Erreur ajout signataire propriétaire:", signerError);
     }
 
+    // Pour les drafts manuels : si un tenant_email est fourni, créer un signer locataire
+    // Cela garantit que le bail est découvrable par le locataire via tenant_dashboard
+    if (isManualDraft && validated.tenant_email) {
+      const existingProfile = existingProfiles.get(validated.tenant_email.toLowerCase());
+      const signerData: Record<string, unknown> = {
+        lease_id: lease.id,
+        role: "locataire_principal",
+        signature_status: "pending",
+        invited_email: validated.tenant_email,
+        invited_name: validated.tenant_name || null,
+      };
+      if (existingProfile) {
+        signerData.profile_id = existingProfile.id;
+      }
+      const { error: tenantSignerError } = await serviceClient
+        .from("lease_signers")
+        .insert(signerData);
+      if (tenantSignerError) {
+        console.warn("[API leases/invite] Error creating tenant signer for manual draft:", tenantSignerError.message);
+      } else {
+        console.log("[API leases/invite] Created tenant signer for manual draft:", validated.tenant_email);
+      }
+    }
+
     // Traiter chaque invité (locataire standard ou colocataires)
     const processedInvitees: { email: string; exists: boolean; notified: boolean }[] = [];
     
