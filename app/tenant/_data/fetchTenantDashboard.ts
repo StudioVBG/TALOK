@@ -234,7 +234,8 @@ async function fetchTenantDashboardDirect(
     const { data: leasesData } = await supabase
       .from("leases")
       .select("id, property_id, type_bail, loyer, charges_forfaitaires, depot_de_garantie, date_debut, date_fin, statut, created_at")
-      .in("id", leaseIds);
+      .in("id", leaseIds)
+      .in("statut", ["draft", "active", "pending_signature", "fully_signed", "terminated"]);
     leases = leasesData || [];
   }
 

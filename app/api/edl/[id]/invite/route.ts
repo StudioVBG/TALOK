@@ -208,6 +208,42 @@ export async function POST(
     }
 
     // ===============================
+    // 4b. ASSURER QUE LE LOCATAIRE EXISTE DANS lease_signers
+    // ===============================
+    // Si l'EDL est lié à un bail et qu'il n'y a pas de signer tenant, en créer un.
+    // Cela corrige le cas "manual draft" où aucun lease_signer n'existait pour le locataire.
+    if (edl.lease_id) {
+      const { data: existingTenantSigner } = await serviceClient
+        .from("lease_signers")
+        .select("id")
+        .eq("lease_id", edl.lease_id)
+        .in("role", ["locataire_principal", "colocataire"] as any)
+        .maybeSingle();
+
+      if (!existingTenantSigner) {
+        const signerData: Record<string, unknown> = {
+          lease_id: edl.lease_id,
+          role: "locataire_principal",
+          signature_status: "pending",
+          invited_email: targetEmail,
+          invited_name: targetName || null,
+        };
+        if (targetProfileId) {
+          signerData.profile_id = targetProfileId;
+        }
+        const { error: signerInsertError } = await serviceClient
+          .from("lease_signers")
+          .insert(signerData);
+
+        if (signerInsertError) {
+          console.warn("[EDL Invite] Failed to create lease_signer:", signerInsertError.message);
+        } else {
+          console.log("[EDL Invite] Created missing lease_signer for tenant:", targetEmail);
+        }
+      }
+    }
+
+    // ===============================
     // 5. ENVOYER L'EMAIL VIA OUTBOX (service client, non-blocking)
     // ===============================
     try {
