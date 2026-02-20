@@ -1,6 +1,6 @@
 # Audit Complet — Plateforme de Gestion Locative TALOK
 
-**Date :** 2026-02-20
+**Date :** 2026-02-20 (mis a jour apres analyse captures d'ecran)
 **Plateforme :** Talok (talok.fr)
 **Backend :** Supabase (Auth + PostgreSQL)
 **Timezone :** America/Martinique (UTC-4)
@@ -49,6 +49,202 @@ profiles (id, user_id -> auth.users.id, role, email, nom, prenom)
 ```
 
 **Point critique :** La relation bail <-> locataire passe par `lease_signers` (table de jonction), PAS par un `tenant_id` direct sur `leases`. Les colonnes `tenant_email_pending` / `tenant_name_pending` sur `leases` sont des champs transitoires utilises pendant le workflow d'invitation.
+
+---
+
+## RESULTATS — Analyse des captures d'ecran (2026-02-20)
+
+### Bail identifie
+
+| Champ | Valeur |
+|-------|--------|
+| **Bail ID** | `da2eb9da-1ff1-4020-8682-5f993aa6fde7` |
+| **Adresse** | 63 Rue Victor Schoelcher 97200 Fort-de-France |
+| **Type** | Habitation (nu) |
+| **Loyer** | 35,00 EUR/mois (20,00 EUR HC + 15,00 EUR charges) |
+| **Depot de garantie** | 20,00 EUR |
+| **Periode** | 09/01/2026 — 08/01/2029 |
+| **Bailleur** | SCI ATOMGISTE, representee par Marie-Line VOLBERG |
+| **Email bailleur** | contact.explore.mq@gmail.com |
+| **Tel bailleur** | +596696614049 |
+| **Locataire attendu** | Thomas VOLBERG |
+| **Email locataire** | volberg.thomas@hotmail.fr |
+| **Tel locataire** | +596696614049 |
+
+### Tableau recapitulatif — Bail da2eb9da
+
+| Element | Liste baux | Detail bail (sidebar) | Contrat PDF | EDL | Statut |
+|---------|-----------|----------------------|-------------|-----|--------|
+| Nom locataire | Thomas VOLBERG | **"En attente d'invitation"** | **"[En attente de locataire]"** | Thomas VOLBERG | ROUGE |
+| Email locataire | volberg.thomas@hotmail.fr | Non affiche | Non affiche | volberg.thomas@hotmail.fr | JAUNE |
+| Statut bail | "Signe (Attend EDL)" | "Bail signe par toutes les parties" | "Bail valide (avec recommandations)" | — | JAUNE |
+| EDL | — | "Etat des lieux requis" | — | Brouillon (13/02/2026) | JAUNE |
+| Assurance | — | "En attente" | — | — | JAUNE |
+
+### 5 incoherences detectees
+
+#### INCOHERENCE 1 — ROUGE : Sidebar "En attente d'invitation" MAIS bail signe
+
+**Constat :**
+- La sidebar affiche "En attente d'invitation" + bouton "Inviter un locataire"
+- MAIS la checklist affiche "Bail signe par toutes les parties" (coche verte)
+- MAIS la liste des baux affiche "Thomas VOLBERG" correctement
+
+**Cause probable (code source) :**
+La sidebar dans `LeaseDetailsClient.tsx:1128-1169` affiche "En attente d'invitation" quand `mainTenant` est `null`. Or `mainTenant` est determine a la ligne 271 :
+```typescript
+const mainTenant = signers?.find((s) => {
+  const role = (s.role || '').toLowerCase();
+  return role === 'locataire_principal' || role === 'locataire' || role === 'tenant' || role === 'principal';
+});
+```
+Alors que la checklist "Bail signe" ne regarde que `lease.statut` :
+```typescript
+["fully_signed", "active", "terminated", "archived"].includes(lease.statut)
+```
+
+**Diagnostic :** Le `mainTenant` est `null` soit parce que :
+1. Le `lease_signers` avec role `locataire_principal` n'existe PAS pour ce bail
+2. OU le signers array n'est pas charge correctement (probleme RLS/requete)
+3. OU le role stocke en base ne matche pas les valeurs attendues
+
+**Requete SQL de diagnostic :**
+```sql
+-- Voir TOUS les signataires de ce bail
+SELECT
+  ls.id, ls.role, ls.signature_status, ls.signed_at,
+  ls.profile_id, ls.invited_email, ls.invited_name,
+  p.nom AS profile_nom, p.prenom AS profile_prenom, p.email AS profile_email
+FROM lease_signers ls
+LEFT JOIN profiles p ON ls.profile_id = p.id
+WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
+ORDER BY ls.role;
+```
+
+#### INCOHERENCE 2 — ROUGE : PDF "[En attente de locataire]" MAIS liste montre Thomas VOLBERG
+
+**Constat :**
+- Le contrat PDF affiche "Nom et prenom: [En attente de locataire]"
+- La recommandation PDF dit "Aucun locataire defini"
+- MAIS la liste des baux affiche "Thomas VOLBERG" avec avatar "TV"
+
+**Cause (code source) :**
+- La **liste** (`/api/leases/route.ts:238`) resout le nom via `tenantSigner?.profile.prenom + nom`
+- Le **PDF** (`/api/leases/[id]/pdf/route.ts:189`) lit aussi `tenantSigner?.profile`
+- Le **resolve** (`resolve-tenant-display.ts:49-122`) renvoie "[En attente de locataire]" quand :
+  1. `profile.prenom` ET `profile.nom` sont tous deux NULL/vides
+  2. ET `invited_name` est NULL/vide
+  3. ET `invited_email` est NULL/vide ou placeholder
+
+**Diagnostics differencies :**
+- La liste des baux charge les signers via un chemin API different (`GET /api/leases`) avec alias `profile:profiles(...)` - FONCTIONNE
+- Le detail du bail charge via `fetchLeaseDetails.ts:307-334` avec `profiles(...)` sans alias, puis mappe manuellement `profiles` -> `profile` - PEUT ECHOUER si le profil n'est pas lie
+
+**Requete SQL de diagnostic :**
+```sql
+-- Verifier la liaison signer -> profile -> auth.users
+SELECT
+  ls.id AS signer_id,
+  ls.role,
+  ls.profile_id,
+  ls.invited_email,
+  ls.invited_name,
+  p.id AS profile_exists,
+  p.prenom AS profile_prenom,
+  p.nom AS profile_nom,
+  p.email AS profile_email,
+  p.user_id AS profile_user_id,
+  au.email AS auth_email
+FROM lease_signers ls
+LEFT JOIN profiles p ON ls.profile_id = p.id
+LEFT JOIN auth.users au ON p.user_id = au.id
+WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7';
+```
+
+#### INCOHERENCE 3 — JAUNE : EDL montre Thomas VOLBERG mais contrat ne le montre pas
+
+**Constat :**
+- L'EDL (onglet detail) affiche : "Le(s) Locataire(s): Nom: Thomas VOLBERG, Email: volberg.thomas@hotmail.fr"
+- Mais le contrat PDF dans le meme bail affiche "[En attente de locataire]"
+
+**Cause :** L'EDL stocke les informations locataire AU MOMENT DE SA CREATION (copie dans la table `edl`), alors que le contrat PDF lit EN TEMPS REEL depuis `lease_signers` -> `profiles`. Si le lien `lease_signers.profile_id` est rompu, le PDF ne trouve plus les informations.
+
+#### INCOHERENCE 4 — JAUNE : Meme numero de telephone pour les deux parties
+
+**Constat :**
+- Bailleur : +596696614049
+- Locataire : +596696614049
+
+**Note :** Cela peut etre intentionnel (lien familial Thomas/Marie-Line VOLBERG) mais merite verification. Si c'est un copier-coller, le locataire n'a pas de vrai numero en base.
+
+#### INCOHERENCE 5 — JAUNE : Date EDL incoherente
+
+**Constat :**
+- En-tete EDL : "14 fevrier 2026"
+- Liste EDL : "Date prevue: 13/02/2026"
+- Statut : Brouillon
+
+**Cause probable :** L'EDL a ete cree le 13/02 (`scheduled_at`) mais la date affichee dans l'en-tete est la date du jour du chargement ou la date de creation reelle (`created_at`), qui peut etre le 14/02.
+
+### Diagnostic global — Cause racine probable
+
+Le probleme CENTRAL est que **le `lease_signers` du locataire principal est deconnecte** :
+
+```
+Scenario le plus probable:
+
+1. Marie-Line cree le bail → INSERT lease_signers (role='proprietaire', profile_id=owner)
+2. Marie-Line ajoute Thomas → INSERT lease_signers (role='locataire_principal', invited_email='volberg.thomas@hotmail.fr')
+3. Thomas signe le bail (via lien invitation) → UPDATE lease.statut = 'fully_signed'
+4. MAIS le profile_id du signer locataire n'a PAS ete lie au profil de Thomas
+
+RESULTAT:
+- lease_signers row existe avec invited_email + invited_name MAIS profile_id = NULL
+- La liste des baux resout le nom via invited_name ou profil → OK
+- La sidebar/PDF cherchent le profil lie → ECHEC → "[En attente de locataire]"
+```
+
+### Requete SQL corrective prioritaire
+
+```sql
+-- ETAPE 1: DIAGNOSTIC — Voir l'etat exact des signers
+SELECT
+  ls.id AS signer_id,
+  ls.role,
+  ls.signature_status,
+  ls.profile_id,
+  ls.invited_email,
+  ls.invited_name,
+  p.nom AS profile_nom,
+  p.prenom AS profile_prenom,
+  p.user_id,
+  au.email AS auth_email
+FROM lease_signers ls
+LEFT JOIN profiles p ON ls.profile_id = p.id
+LEFT JOIN auth.users au ON p.user_id = au.id
+WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
+ORDER BY ls.role;
+
+-- ETAPE 2: Chercher le profil de Thomas VOLBERG
+SELECT p.id AS profile_id, p.user_id, p.nom, p.prenom, p.email, p.role,
+  au.email AS auth_email, au.last_sign_in_at
+FROM profiles p
+JOIN auth.users au ON p.user_id = au.id
+WHERE LOWER(au.email) = LOWER('volberg.thomas@hotmail.fr');
+
+-- ETAPE 3: Si le profil existe, lier le signer (REMPLACER LES IDs)
+-- UPDATE lease_signers
+-- SET profile_id = '<PROFILE_ID_THOMAS>'
+-- WHERE lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
+--   AND role = 'locataire_principal'
+--   AND profile_id IS NULL;
+
+-- ETAPE 4: Verification post-correction
+-- SELECT ls.*, p.nom, p.prenom, p.email
+-- FROM lease_signers ls
+-- LEFT JOIN profiles p ON ls.profile_id = p.id
+-- WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7';
+```
 
 ---
 
