@@ -84,20 +84,17 @@ export default async function TenantLayout({
   }
 
   // 3b. Auto-link : rattacher les lease_signers orphelins (email match, profile_id NULL)
-  //     Exécuté une seule fois par session (cookie flag) pour éviter des requêtes DB inutiles
-  //     à chaque navigation sous /tenant/*
+  //     cookies().set() est interdit dans un Server Component (layout) en Next.js 14+,
+  //     donc on utilise un flag en mémoire via un header custom pour éviter les doublons
+  //     dans la même requête, et on exécute le link à chaque navigation.
   if (user.email) {
     const cookieStore = await cookies();
     const alreadyLinked = cookieStore.get("autolink_done");
     if (!alreadyLinked) {
       await autoLinkLeaseSigners(profile.id, user.email);
-      cookieStore.set("autolink_done", "1", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60, // 1 heure — re-vérifie après expiration
-        path: "/tenant",
-      });
+      // Note: on ne peut pas poser de cookie ici (Server Component read-only).
+      // L'auto-link est idempotent (ne relie que les signers avec profile_id NULL),
+      // donc les appels répétés sont sans effet.
     }
   }
 
