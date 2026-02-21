@@ -584,6 +584,19 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
     return fetchTenantDashboardDirect(supabase, userId);
   }
 
+  const cleanData = data as TenantDashboardData;
+  const rpcLeaseCount = Array.isArray(cleanData.leases) ? cleanData.leases.length : 0;
+
+  // Filet de sécurité : si la RPC renvoie 0 baux, la prod peut avoir une ancienne RPC
+  // qui ne cherche que par profile_id. On refait un fetch direct (profile_id + invited_email).
+  if (rpcLeaseCount === 0) {
+    const directData = await fetchTenantDashboardDirect(supabase, userId);
+    if (directData && directData.leases && directData.leases.length > 0) {
+      console.warn("[fetchTenantDashboard] RPC returned 0 leases but direct fetch found", directData.leases.length, "— using direct data (invited_email match?)");
+      return directData;
+    }
+  }
+
   // Récupérer les infos du profil pour le message de bienvenue (service role)
   const { data: profile } = await serviceClient
     .from("profiles")
@@ -591,10 +604,8 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
     .eq("user_id", userId)
     .single();
 
-  // Nettoyage des données pour éviter les "undefined" et assurer la cohérence
-  const cleanData = data as TenantDashboardData;
   cleanData.tenant = profile ? { prenom: profile.prenom ?? "", nom: profile.nom ?? "" } : undefined;
-  
+
   if (cleanData.leases) {
     cleanData.leases = cleanData.leases.map((l: any) => ({
       ...l,
