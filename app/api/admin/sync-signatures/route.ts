@@ -35,17 +35,10 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // 1. Trouver les signataires qui ont signé mais sans image dans Storage
-    const { data: signersToFix, error: fetchError } = await adminClient
+    // Trouver les signataires signés sans image dans Storage
+    const { data: signersWithoutPath, error: fetchError } = await adminClient
       .from("lease_signers")
-      .select(`
-        id,
-        lease_id,
-        role,
-        signature_status,
-        signed_at,
-        signature_image_path
-      `)
+      .select("id, lease_id, role, signature_status, signed_at, signature_image_path")
       .eq("signature_status", "signed")
       .not("signed_at", "is", null)
       .is("signature_image_path", null);
@@ -55,92 +48,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
-    console.log(`[Sync Signatures] ${signersToFix?.length || 0} signataires à réparer`);
-
-    const results = {
-      total: signersToFix?.length || 0,
-      fixed: 0,
-      failed: 0,
-      details: [] as any[],
-    };
-
-    // 2. Pour chaque signataire, uploader l'image base64 dans Storage
-    for (const signer of signersToFix || []) {
-      try {
-        // Vérifier que c'est bien une image base64
-        if (!signer.signature_image?.startsWith("data:image/")) {
-          console.log(`[Sync Signatures] Signer ${signer.id}: pas une image base64, skip`);
-          continue;
-        }
-
-        // Extraire les données base64
-        const base64Data = signer.signature_image.replace(/^data:image\/\w+;base64,/, "");
-        const signatureBuffer = Buffer.from(base64Data, "base64");
-
-        // Chemin de stockage
-        const signaturePath = `signatures/${signer.lease_id}/${signer.id}_synced_${Date.now()}.png`;
-
-        // Upload dans Storage
-        const { error: uploadError } = await adminClient.storage
-          .from("documents")
-          .upload(signaturePath, signatureBuffer, {
-            contentType: "image/png",
-            upsert: true,
-          });
-
-        if (uploadError) {
-          console.error(`[Sync Signatures] Erreur upload signer ${signer.id}:`, uploadError);
-          results.failed++;
-          results.details.push({
-            signer_id: signer.id,
-            status: "failed",
-            error: uploadError.message,
-          });
-          continue;
-        }
-
-        // Mettre à jour le signataire avec le nouveau path
-        const { error: updateError } = await adminClient
-          .from("lease_signers")
-          .update({ signature_image_path: signaturePath })
-          .eq("id", signer.id);
-
-        if (updateError) {
-          console.error(`[Sync Signatures] Erreur update signer ${signer.id}:`, updateError);
-          results.failed++;
-          results.details.push({
-            signer_id: signer.id,
-            status: "failed",
-            error: updateError.message,
-          });
-          continue;
-        }
-
-        console.log(`[Sync Signatures] ✅ Signer ${signer.id} réparé: ${signaturePath}`);
-        results.fixed++;
-        results.details.push({
-          signer_id: signer.id,
-          lease_id: signer.lease_id,
-          role: signer.role,
-          status: "fixed",
-          path: signaturePath,
-        });
-
-      } catch (err: any) {
-        console.error(`[Sync Signatures] Exception signer ${signer.id}:`, err);
-        results.failed++;
-        results.details.push({
-          signer_id: signer.id,
-          status: "failed",
-          error: err.message,
-        });
-      }
-    }
-
     return NextResponse.json({
       success: true,
-      message: `${results.fixed}/${results.total} signatures synchronisées`,
-      results,
+      message: `${signersWithoutPath?.length || 0} signataire(s) signés sans image en Storage`,
+      signers_without_path: signersWithoutPath?.map(s => ({
+        id: s.id,
+        lease_id: s.lease_id,
+        role: s.role,
+      })) ?? [],
     });
 
   } catch (error: unknown) {
