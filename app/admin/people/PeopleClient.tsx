@@ -52,7 +52,12 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
       else params.delete("search");
     }
 
-    router.push(`${pathname}?${params.toString()}`);
+    // Use replace for search updates to preserve back button history
+    if (updates.search !== undefined && !updates.tab) {
+      router.replace(`${pathname}?${params.toString()}`);
+    } else {
+      router.push(`${pathname}?${params.toString()}`);
+    }
   };
 
   const totalPages = Math.ceil(initialData.total / 20);

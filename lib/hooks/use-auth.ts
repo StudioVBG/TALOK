@@ -151,8 +151,15 @@ export function useAuth() {
     async (userId: string, force = false) => {
       // If another instance already fetched this user, reuse the cached promise
       if (!force && _globalFetchedUserId === userId && _globalProfilePromise) {
+        // Capture promise reference before awaiting to detect invalidation
+        const promiseRef = _globalProfilePromise;
         try {
-          const cachedProfile = await _globalProfilePromise;
+          const cachedProfile = await promiseRef;
+          // Check if the promise was invalidated while we were awaiting
+          if (_globalProfilePromise !== promiseRef) {
+            // Another fetch started — let it handle state updates
+            return;
+          }
           safeSetProfile(cachedProfile);
           if (!cachedProfile && _globalCreateAttempted) {
             safeSetProfileError({

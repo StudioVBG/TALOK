@@ -53,6 +53,9 @@ interface EntityState {
 // STORE
 // ============================================
 
+// Mutex to prevent concurrent fetchEntities calls
+let _fetchEntitiesMutex: Promise<void> | null = null;
+
 export const useEntityStore = create<EntityState>()(
   persist(
     (set, get) => ({
@@ -62,8 +65,15 @@ export const useEntityStore = create<EntityState>()(
       lastFetchedAt: null,
 
       fetchEntities: async (ownerProfileId: string) => {
+        // Prevent concurrent fetches - reuse existing promise if one is in-flight
+        if (_fetchEntitiesMutex) {
+          await _fetchEntitiesMutex;
+          return;
+        }
+
         set({ isLoading: true });
 
+        _fetchEntitiesMutex = (async () => {
         try {
           const supabase = createClient();
 
@@ -154,7 +164,12 @@ export const useEntityStore = create<EntityState>()(
         } catch (err) {
           console.error("[EntityStore] Unexpected error:", err);
           set({ isLoading: false });
+        } finally {
+          _fetchEntitiesMutex = null;
         }
+        })();
+
+        await _fetchEntitiesMutex;
       },
 
       setActiveEntity: (id: string | null) => {

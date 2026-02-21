@@ -98,6 +98,7 @@ export function UnifiedConversationsList({
       setConversations(data);
     } catch (error) {
       console.error("Erreur chargement conversations:", error);
+      // Silently degrade - conversations list just stays empty
     } finally {
       setLoading(false);
     }

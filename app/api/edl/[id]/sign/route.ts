@@ -586,10 +586,15 @@ export async function POST(
     } as any);
 
     // FIX AUDIT 2026-02-16: Invalider le cache pour que l'UI reflète la signature
+    revalidatePath("/owner");
     revalidatePath("/owner/inspections");
     revalidatePath(`/owner/inspections/${edlId}`);
     revalidatePath("/tenant/inspections");
     revalidatePath(`/tenant/inspections/${edlId}`);
+    const edlPropertyId = (edl as any).property_id || (edl as any).lease?.property_id;
+    if (edlPropertyId) {
+      revalidatePath(`/owner/properties/${edlPropertyId}`);
+    }
 
     return NextResponse.json({ success: true, proof_id: proof.proofId });
   } catch (error: unknown) {

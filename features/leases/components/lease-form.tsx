@@ -61,7 +61,13 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
       propertiesService
         .getPropertiesByOwner(profile.id)
         .then(setProperties)
-        .catch(() => {});
+        .catch(() => {
+          toast({
+            title: "Erreur",
+            description: "Impossible de charger la liste des logements.",
+            variant: "destructive",
+          });
+        });
     }
   }, [lease, profile]);
 

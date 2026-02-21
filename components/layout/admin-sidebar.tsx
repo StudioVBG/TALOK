@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   BarChart3,
   Users,
@@ -94,6 +94,7 @@ const allNavItems = adminNavItems.flatMap((cat) =>
 export function AdminSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   
@@ -388,7 +389,7 @@ export function AdminSidebar({ className }: { className?: string }) {
                         runCommand(() => openSubscriptionManager());
                       } else {
                         runCommand(() => {
-                          window.location.href = item.href;
+                          router.push(item.href);
                         });
                       }
                     }}

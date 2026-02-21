@@ -40,7 +40,13 @@ export function TicketForm({ propertyId, onSuccess, onCancel }: TicketFormProps)
           const propertyLeases = data.filter((l) => l.property_id === propertyId);
           setLeases(propertyLeases);
         })
-        .catch(() => {});
+        .catch(() => {
+          toast({
+            title: "Erreur",
+            description: "Impossible de charger les baux associés.",
+            variant: "destructive",
+          });
+        });
     }
   }, [profile, propertyId]);
 

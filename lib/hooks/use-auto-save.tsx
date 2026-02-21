@@ -95,24 +95,36 @@ export function useAutoSave<T>({
     return null;
   }, [storageKey]);
 
-  // Sauvegarder les données
+  // Sauvegarder les données with retry for onSave failures
   const saveData = useCallback(
-    async (dataToSave: T) => {
+    async (dataToSave: T, retryCount = 0) => {
       if (!enabled) return;
 
       setState((prev) => ({ ...prev, isSaving: true }));
 
       try {
-        // Sauvegarder dans localStorage
+        // Sauvegarder dans localStorage (always succeeds)
         const savePayload = {
           data: dataToSave,
           timestamp: new Date().toISOString(),
         };
         localStorage.setItem(storageKey, JSON.stringify(savePayload));
 
-        // Appeler le callback de sauvegarde si fourni
+        // Appeler le callback de sauvegarde si fourni, with retry
         if (onSave) {
-          await onSave(dataToSave);
+          try {
+            await onSave(dataToSave);
+          } catch (saveError) {
+            // Retry up to 2 times with exponential backoff
+            if (retryCount < 2) {
+              const delay = 1000 * Math.pow(2, retryCount);
+              console.warn(`[AutoSave] onSave failed, retrying in ${delay}ms (attempt ${retryCount + 1}/2)`);
+              setTimeout(() => saveData(dataToSave, retryCount + 1), delay);
+              return;
+            }
+            // After max retries, data is still in localStorage
+            console.error("[AutoSave] onSave failed after retries, data preserved in localStorage:", saveError);
+          }
         }
 
         const now = new Date();

@@ -172,37 +172,40 @@ export default function AdminAccountingPage() {
           break;
       }
 
-      // Fetch summary via RPC
-      const { data: summaryData } = await supabase.rpc("get_accounting_summary", {
-        p_start_date: startDate.toISOString().split("T")[0],
-        p_end_date: endDate.toISOString().split("T")[0],
-      });
+      // Parallel fetches instead of sequential waterfall
+      const [summaryResult, invoicesResult] = await Promise.all([
+        // Fetch summary via RPC
+        supabase.rpc("get_accounting_summary", {
+          p_start_date: startDate.toISOString().split("T")[0],
+          p_end_date: endDate.toISOString().split("T")[0],
+        }),
+        // Fetch late invoices
+        supabase
+          .from("invoices")
+          .select(`
+            id,
+            reference,
+            amount,
+            due_date,
+            status,
+            lease:leases(
+              tenant:profiles!leases_tenant_id_fkey(prenom, nom),
+              property:properties(adresse_complete)
+            )
+          `)
+          .in("status", ["late", "sent"])
+          .lt("due_date", new Date().toISOString())
+          .order("due_date", { ascending: true })
+          .limit(20),
+      ]);
 
-      if (summaryData) {
-        setSummary(summaryData as AccountingSummary);
+      if (summaryResult.data) {
+        setSummary(summaryResult.data as AccountingSummary);
       }
 
-      // Fetch late invoices
-      const { data: invoicesData } = await supabase
-        .from("invoices")
-        .select(`
-          id,
-          reference,
-          amount,
-          due_date,
-          status,
-          lease:leases(
-            tenant:profiles!leases_tenant_id_fkey(prenom, nom),
-            property:properties(adresse_complete)
-          )
-        `)
-        .in("status", ["late", "sent"])
-        .lt("due_date", new Date().toISOString())
-        .order("due_date", { ascending: true })
-        .limit(20);
-
-      if (invoicesData) {
-        const invoices = (invoicesData as any[]).map((inv: Record<string, unknown>) => {
+      let fetchedInvoices: Invoice[] = [];
+      if (invoicesResult.data) {
+        fetchedInvoices = (invoicesResult.data as any[]).map((inv: Record<string, unknown>) => {
           const dueDate = new Date(inv.due_date as string);
           const today = new Date();
           const daysLate = Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
@@ -222,11 +225,11 @@ export default function AdminAccountingPage() {
             days_late: daysLate,
           };
         });
-        setLateInvoices(invoices);
+        setLateInvoices(fetchedInvoices);
       }
 
-      // Generate AI payment alerts (simulation pour démo)
-      const alerts: PaymentAlert[] = lateInvoices.slice(0, 5).map((inv, i) => ({
+      // Generate AI payment alerts from freshly fetched invoices (not stale state)
+      const alerts: PaymentAlert[] = fetchedInvoices.slice(0, 5).map((inv, i) => ({
         id: `alert-${i}`,
         type: inv.days_late > 30 ? "late" : inv.days_late > 0 ? "upcoming" : "partial",
         tenant_id: inv.id,
@@ -254,7 +257,7 @@ export default function AdminAccountingPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, profile, dateRange, toast, lateInvoices]);
+  }, [user, profile, dateRange, toast]);
 
   useEffect(() => {
     if (authLoading) return;

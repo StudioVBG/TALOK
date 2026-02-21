@@ -298,11 +298,11 @@ export const usePropertyWizardStore = create<WizardState>()(
   // Réinitialise complètement le wizard pour une nouvelle création
   reset: () => {
     console.info('[WizardStore] Reset du wizard');
-    // Clear tous les debounce timers
-    const { propertyId } = get();
-    if (propertyId) {
-      clearDebounceState(propertyId);
+    // Clear ALL debounce timers to prevent memory leaks
+    for (const [key, state] of debounceState.entries()) {
+      if (state.timer) clearTimeout(state.timer);
     }
+    debounceState.clear();
     set(INITIAL_STATE);
   },
 
@@ -415,8 +415,9 @@ export const usePropertyWizardStore = create<WizardState>()(
       clearTimeout(debounce.timer);
     }
 
-    // 6. Créer nouveau timer avec capture du propertyId
+    // 6. Créer nouveau timer avec capture du propertyId et pre-update formData for rollback
     const capturedPropertyId = propertyId;
+    const previousFormData = formData;
     debounce.timer = setTimeout(async () => {
       const currentDebounce = debounceState.get(capturedPropertyId);
       if (!currentDebounce) return;
@@ -435,7 +436,8 @@ export const usePropertyWizardStore = create<WizardState>()(
         console.error('[WizardStore] Erreur sauvegarde:', err);
         if (get().propertyId === capturedPropertyId) {
           const errorMessage = "Erreur sauvegarde";
-          set({ syncStatus: 'error', lastError: errorMessage });
+          // Rollback formData to pre-update state
+          set({ formData: previousFormData, syncStatus: 'error', lastError: errorMessage });
           showSyncErrorToast(errorMessage);
         }
       }

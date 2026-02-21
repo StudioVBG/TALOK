@@ -44,18 +44,24 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+// Deterministic seed-based pseudo-random to avoid hydration mismatch
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
 // Données simulées pour les graphiques (à remplacer par données réelles)
 function generateMonthlyData(baseValue: number) {
   const months = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
   return months.map((month, i) => ({
     month,
-    attendu: Math.round(baseValue * (0.9 + Math.random() * 0.2)),
-    encaisse: Math.round(baseValue * (0.85 + Math.random() * 0.15)),
+    attendu: Math.round(baseValue * (0.9 + seededRandom(i * 2 + 1) * 0.2)),
+    encaisse: Math.round(baseValue * (0.85 + seededRandom(i * 2 + 2) * 0.15)),
   }));
 }
 
 function generateSparklineData(count: number = 7) {
-  return Array.from({ length: count }, () => Math.floor(Math.random() * 50) + 20);
+  return Array.from({ length: count }, (_, i) => Math.floor(seededRandom(i + 100) * 50) + 20);
 }
 
 export function DashboardClient({ stats }: DashboardClientProps) {

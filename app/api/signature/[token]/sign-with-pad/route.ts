@@ -479,10 +479,15 @@ export async function POST(request: Request, { params }: PageProps) {
     }
 
     // FIX AUDIT 2026-02-16: Invalider le cache pour les pages liées
+    revalidatePath("/owner");
     revalidatePath("/owner/leases");
     revalidatePath(`/owner/leases/${typedLease.id}`);
     revalidatePath("/owner/tenants");
     revalidatePath("/tenant/signatures");
+    revalidatePath("/owner/dashboard");
+    if (typedLease.property_id) {
+      revalidatePath(`/owner/properties/${typedLease.property_id}`);
+    }
 
     log.complete(true, { allSigned, newStatus, proofId: proof.proofId });
 
