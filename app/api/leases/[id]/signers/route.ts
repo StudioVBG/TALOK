@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { randomBytes } from "crypto";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
 
 const addSignerSchema = z.object({
@@ -175,16 +176,78 @@ export async function POST(
       );
     }
 
-    // Si on ajoute un locataire principal, vérifier qu'il n'y en a pas déjà un
+    // Résoudre profileId pour l'email demandé (utilisé pour doublon et pour création du signer)
+    let profileId: string | null = null;
+    const { data: existingUsers } = await serviceClient.auth.admin.listUsers();
+    const existingUser = existingUsers?.users?.find(
+      (u) => u.email?.toLowerCase() === validated.email.toLowerCase()
+    );
+    if (existingUser) {
+      const { data: existingProfile } = await serviceClient
+        .from("profiles")
+        .select("id")
+        .eq("user_id", existingUser.id)
+        .single();
+      if (existingProfile) profileId = existingProfile.id;
+    }
+
+    // Si on ajoute un locataire principal, vérifier s'il existe déjà (même email = relance, autre email = blocage)
     if (validated.role === "locataire_principal") {
       const { data: existingMain } = await serviceClient
         .from("lease_signers")
-        .select("id")
+        .select("id, invited_email, profile_id")
         .eq("lease_id", leaseId)
         .eq("role", "locataire_principal")
         .maybeSingle();
 
       if (existingMain) {
+        const existingRow = existingMain as { invited_email?: string | null; profile_id?: string | null };
+        const existingEmail = existingRow.invited_email?.toLowerCase().trim();
+        const requestedEmail = validated.email.toLowerCase().trim();
+        const isSameEmail = existingEmail === requestedEmail;
+        const isSameProfile = existingRow.profile_id && profileId === existingRow.profile_id;
+
+        if (isSameEmail || isSameProfile) {
+          // Relance : créer une nouvelle invitation et renvoyer l'email (pas de nouveau signer)
+          const invitationToken = randomBytes(32).toString("hex");
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30);
+          await serviceClient.from("invitations").insert({
+            token: invitationToken,
+            email: validated.email,
+            role: "locataire_principal",
+            property_id: leaseData.property?.id ?? null,
+            unit_id: null,
+            lease_id: leaseId,
+            created_by: ownerProfile.id,
+            expires_at: expiresAt.toISOString(),
+          });
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+          const inviteUrl = `${appUrl}/invite/${invitationToken}`;
+          let emailSent = false;
+          try {
+            const emailResult = await sendLeaseInviteEmail({
+              to: validated.email,
+              tenantName: validated.name || undefined,
+              ownerName: `${ownerProfile.prenom} ${ownerProfile.nom}`,
+              propertyAddress: `${leaseData.property.adresse_complete}, ${leaseData.property.code_postal} ${leaseData.property.ville}`,
+              rent: leaseData.loyer,
+              charges: leaseData.charges_forfaitaires,
+              leaseType: leaseData.type_bail,
+              inviteUrl,
+              role: "locataire_principal",
+            });
+            emailSent = emailResult.success;
+          } catch (e) {
+            console.error("[signers/POST] Erreur envoi email relance:", e);
+          }
+          return NextResponse.json({
+            success: true,
+            resent: true,
+            message: emailSent ? `Invitation relancée à ${validated.email}` : `Lien d'invitation : ${inviteUrl}`,
+            invite_url: inviteUrl,
+          });
+        }
         return NextResponse.json(
           { error: "Un locataire principal existe déjà pour ce bail" },
           { status: 400 }
@@ -207,27 +270,6 @@ export async function POST(
       );
     }
 
-    // Chercher si un profil existe déjà avec cet email
-    const { data: existingUsers } = await serviceClient.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === validated.email.toLowerCase()
-    );
-
-    let profileId: string | null = null;
-
-    if (existingUser) {
-      // Récupérer le profil existant
-      const { data: existingProfile } = await serviceClient
-        .from("profiles")
-        .select("id")
-        .eq("user_id", existingUser.id)
-        .single();
-
-      if (existingProfile) {
-        profileId = existingProfile.id;
-      }
-    }
-
     // Vérifier aussi par profile_id si un profil existe avec cet email
     if (profileId) {
       const { data: existingByProfile } = await serviceClient
@@ -240,23 +282,6 @@ export async function POST(
       if (existingByProfile) {
         return NextResponse.json(
           { error: "Cette personne est déjà signataire de ce bail" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // SOTA 2026: Vérifier doublon par invited_email (même sans profile_id)
-    if (validated.email?.trim()) {
-      const { data: existingByEmail } = await serviceClient
-        .from("lease_signers")
-        .select("id")
-        .eq("lease_id", leaseId)
-        .ilike("invited_email", validated.email.trim())
-        .maybeSingle();
-
-      if (existingByEmail) {
-        return NextResponse.json(
-          { error: "Un signataire avec cet email existe déjà pour ce bail" },
           { status: 400 }
         );
       }
@@ -290,6 +315,24 @@ export async function POST(
       );
     }
 
+    // Créer un record dans la table invitations pour que le locataire puisse accepter via /invite/:token
+    const invitationToken = randomBytes(32).toString("hex");
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    const { error: invError } = await serviceClient.from("invitations").insert({
+      token: invitationToken,
+      email: validated.email,
+      role: validated.role,
+      property_id: leaseData.property?.id ?? null,
+      unit_id: null,
+      lease_id: leaseId,
+      created_by: ownerProfile.id,
+      expires_at: expiresAt.toISOString(),
+    });
+    if (invError) {
+      console.error("[signers/POST] Erreur création invitation (non bloquante):", invError);
+    }
+
     // Créer une notification si le profil existe
     if (profileId && existingUser) {
       await serviceClient.from("notifications").insert({
@@ -309,10 +352,9 @@ export async function POST(
       });
     }
 
-    // Envoyer l'email d'invitation
+    // Envoyer l'email d'invitation (lien /invite pour accepter l'invitation et lier le compte)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const inviteToken = Buffer.from(`${leaseId}:${validated.email}:${Date.now()}`).toString("base64url");
-    const inviteUrl = `${appUrl}/signature/${inviteToken}`;
+    const inviteUrl = `${appUrl}/invite/${invitationToken}`;
 
     let emailSent = false;
     try {

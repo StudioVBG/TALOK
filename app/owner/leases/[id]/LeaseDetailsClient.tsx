@@ -147,6 +147,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const [isTerminating, setIsTerminating] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
   const [dpeStatus, setDpeStatus] = useState<{ status: string; data?: any } | null>(null);
+  const [isResendingTenant, setIsResendingTenant] = useState(false);
   
   // ✅ SOTA 2026: Hook de célébration
   const { celebrate, celebrationProps } = useCelebration();
@@ -164,6 +165,27 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     return "contrat";
   }, [lease.statut]);
   const [activeTab, setActiveTab] = useState(defaultTab);
+
+  const handleResendTenantInvite = async (signerId: string) => {
+    setIsResendingTenant(true);
+    try {
+      const res = await fetch(`/api/leases/${leaseId}/signers/${signerId}/resend`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Erreur lors de la relance");
+      }
+      toast({ title: "Invitation relancée", description: "Un nouvel email a été envoyé au locataire." });
+      router.refresh();
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: err instanceof Error ? err.message : "Impossible de relancer l'invitation.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResendingTenant(false);
+    }
+  };
 
   // Charger le statut DPE au chargement
   // Fallback : si dpe_deliverables est vide, utiliser les champs DPE de la propriété
@@ -1127,13 +1149,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 <div className="pt-3 border-t border-slate-50">
                   <p className="text-xs text-muted-foreground mb-2">Locataire</p>
                   {mainTenant ? (
-                    <div className="flex items-center gap-3">
-                      {(() => {
-                        const tenantDisplay = resolveTenantDisplay(mainTenant);
-                        const initial1 = (tenantDisplay.prenom?.[0] || tenantDisplay.nom?.[0] || "?").toUpperCase();
-                        const initial2 = (tenantDisplay.prenom ? tenantDisplay.nom?.[0] : tenantDisplay.nom?.[1]) || "";
-                        return (
-                          <>
+                    (() => {
+                      const tenantDisplay = resolveTenantDisplay(mainTenant);
+                      const initial1 = (tenantDisplay.prenom?.[0] || tenantDisplay.nom?.[0] || "?").toUpperCase();
+                      const initial2 = (tenantDisplay.prenom ? tenantDisplay.nom?.[0] : tenantDisplay.nom?.[1]) || "";
+                      const isUnlinked = !tenantDisplay.isLinked && !tenantDisplay.isPlaceholder;
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
                               {initial1}{initial2 ? initial2.toUpperCase() : ""}
                             </div>
@@ -1143,17 +1166,33 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                               </p>
                               <div className="flex flex-wrap items-center gap-1 mt-0.5">
                                 <Badge variant="secondary" className="text-[10px] h-5">Principal</Badge>
-                                {!tenantDisplay.isLinked && !tenantDisplay.isPlaceholder && (
-                                  <Badge variant="outline" className="text-[10px] h-5 text-amber-600 border-amber-300">
-                                    Compte non lié
+                                {isUnlinked ? (
+                                  <Badge variant="outline" className="text-[10px] h-5 text-blue-600 border-blue-300">
+                                    Invitation envoyée
                                   </Badge>
-                                )}
+                                ) : null}
                               </div>
                             </div>
-                          </>
-                        );
-                      })()}
-                    </div>
+                          </div>
+                          {isUnlinked && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full border-dashed"
+                              disabled={isResendingTenant}
+                              onClick={() => handleResendTenantInvite(mainTenant.id)}
+                            >
+                              {isResendingTenant ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                              )}
+                              Relancer l&apos;invitation
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div className="flex flex-col gap-3">
                       <p className="text-sm italic text-muted-foreground">En attente d&apos;invitation</p>

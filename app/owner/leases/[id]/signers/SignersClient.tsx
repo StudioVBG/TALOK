@@ -163,6 +163,14 @@ export function SignersClient({
 
   // Ouvrir le modal d'invitation avec un rôle spécifique
   const openInviteModal = (role: "locataire_principal" | "colocataire" | "garant") => {
+    if (role === "locataire_principal" && mainTenant) {
+      toast({
+        title: "Locataire principal déjà défini",
+        description: "Utilisez « Relancer » sur la fiche du locataire pour renvoyer l'invitation.",
+        variant: "default",
+      });
+      return;
+    }
     setInviteRole(role);
     setShowInviteModal(true);
   };

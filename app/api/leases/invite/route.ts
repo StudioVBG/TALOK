@@ -6,8 +6,8 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { randomBytes } from "crypto";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
-import { generateSecureToken } from "@/lib/utils/secure-token";
 import { getMaxDepotLegal } from "@/lib/validations/lease-financial";
 
 // Schéma pour un invité de colocation
@@ -353,7 +353,9 @@ export async function POST(request: Request) {
 
     // Traiter chaque invité (locataire standard ou colocataires)
     const processedInvitees: { email: string; exists: boolean; notified: boolean }[] = [];
-    
+    /** Token d'invitation par email (pour l'URL /invite/:token) — rempli quand !isManualDraft */
+    const invitationTokensByEmail = new Map<string, string>();
+
     for (const invitee of emailsToProcess) {
       const existingProfile = existingProfiles.get(invitee.email.toLowerCase());
       
@@ -461,6 +463,25 @@ export async function POST(request: Request) {
         } else {
           console.log(`[API leases/invite] ✅ Notification créée pour ${invitee.email}`);
         }
+
+        // Créer une invitation pour que le locataire puisse accepter via /invite/:token
+        if (!isManualDraft) {
+          const invToken = randomBytes(32).toString("hex");
+          const invExpires = new Date();
+          invExpires.setDate(invExpires.getDate() + 30);
+          const { error: invErr } = await serviceClient.from("invitations").insert({
+            token: invToken,
+            email: invitee.email,
+            role: signerRole,
+            property_id: validated.property_id,
+            unit_id: null,
+            lease_id: lease.id,
+            created_by: profile.id,
+            expires_at: invExpires.toISOString(),
+          });
+          if (!invErr) invitationTokensByEmail.set(invitee.email.toLowerCase(), invToken);
+          else console.warn(`[API leases/invite] Invitation non créée pour ${invitee.email}:`, invErr.message);
+        }
         
         processedInvitees.push({ email: invitee.email, exists: true, notified: true });
       } else {
@@ -485,6 +506,25 @@ export async function POST(request: Request) {
         } else {
           console.log(`[API leases/invite] ✅ ${invitee.email} ajouté comme signataire invité (${signerRole})`);
         }
+
+        // Créer une invitation pour que le locataire puisse accepter via /invite/:token
+        if (!isManualDraft) {
+          const invToken = randomBytes(32).toString("hex");
+          const invExpires = new Date();
+          invExpires.setDate(invExpires.getDate() + 30);
+          const { error: invErr } = await serviceClient.from("invitations").insert({
+            token: invToken,
+            email: invitee.email,
+            role: signerRole,
+            property_id: validated.property_id,
+            unit_id: null,
+            lease_id: lease.id,
+            created_by: profile.id,
+            expires_at: invExpires.toISOString(),
+          });
+          if (!invErr) invitationTokensByEmail.set(invitee.email.toLowerCase(), invToken);
+          else console.warn(`[API leases/invite] Invitation non créée pour ${invitee.email}:`, invErr.message);
+        }
         
         processedInvitees.push({ email: invitee.email, exists: false, notified: false });
       }
@@ -499,15 +539,14 @@ export async function POST(request: Request) {
     // Si c'est un draft manuel, on n'envoie pas d'emails
     if (!isManualDraft) {
       for (const invitee of emailsToProcess) {
-        // FIX P0-E3: Générer un token HMAC sécurisé au lieu de base64url en clair
-        // L'ancien format exposait lease_id et email sans signature cryptographique
-        const inviteToken = generateSecureToken({
-          entityId: lease.id,
-          entityType: "lease",
-          email: invitee.email,
-          expirationDays: 30,
-        });
-        const inviteUrl = `${appUrl}/signature/${inviteToken}`;
+        // Lien /invite/:token pour accepter l'invitation et lier le compte locataire
+        const invToken = invitationTokensByEmail.get(invitee.email.toLowerCase());
+        if (!invToken) {
+          console.warn(`[API leases/invite] Pas de token d'invitation pour ${invitee.email}, email non envoyé`);
+          emailResults.push({ email: invitee.email, sent: false, inviteUrl: "" });
+          continue;
+        }
+        const inviteUrl = `${appUrl}/invite/${invToken}`;
         
         let emailSent = false;
         try {

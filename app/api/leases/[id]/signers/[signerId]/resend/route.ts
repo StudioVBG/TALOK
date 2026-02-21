@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
+import { randomBytes } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
@@ -108,10 +109,26 @@ export async function POST(
       );
     }
 
-    // Générer un nouveau lien d'invitation
+    // Créer une nouvelle invitation pour que le lien pointe vers /invite/:token
+    const invitationToken = randomBytes(32).toString("hex");
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+    const { error: invError } = await serviceClient.from("invitations").insert({
+      token: invitationToken,
+      email,
+      role: signerData.role,
+      property_id: signerData.lease?.property?.id ?? null,
+      unit_id: null,
+      lease_id: leaseId,
+      created_by: ownerProfile.id,
+      expires_at: expiresAt.toISOString(),
+    });
+    if (invError) {
+      console.error("[resend] Erreur création invitation (non bloquante):", invError);
+    }
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const inviteToken = Buffer.from(`${leaseId}:${email}:${Date.now()}`).toString("base64url");
-    const inviteUrl = `${appUrl}/signature/${inviteToken}`;
+    const inviteUrl = `${appUrl}/invite/${invitationToken}`;
 
     // Envoyer l'email
     let emailSent = false;
