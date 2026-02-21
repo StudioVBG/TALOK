@@ -2,29 +2,12 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { verifyTokenCompat } from "@/lib/utils/secure-token";
 
 interface PageProps {
   params: Promise<{ token: string }>;
-}
-
-// Décoder le token (format: leaseId:email:timestamp en base64url)
-function decodeToken(token: string): { leaseId: string; tenantEmail: string; timestamp: number } | null {
-  try {
-    const decoded = Buffer.from(token, "base64url").toString("utf-8");
-    const [leaseId, tenantEmail, timestampStr] = decoded.split(":");
-    if (!leaseId || !tenantEmail || !timestampStr) return null;
-    return { leaseId, tenantEmail, timestamp: parseInt(timestampStr, 10) };
-  } catch {
-    return null;
-  }
-}
-
-// Vérifier si le token est expiré (30 jours)
-function isTokenExpired(timestamp: number): boolean {
-  return Date.now() - timestamp > 30 * 24 * 60 * 60 * 1000;
 }
 
 /**
@@ -77,28 +60,26 @@ const profileSchema = z.object({
 });
 
 /**
- * Cherche un utilisateur existant par email dans auth.users
+ * FIX P1-7: Cherche un utilisateur existant par email via profiles (au lieu de listUsers admin).
+ * listUsers() itère sur TOUS les utilisateurs auth, ce qui est lent et non-scalable.
+ * La table profiles contient déjà le user_id lié, donc on peut l'utiliser directement.
  */
 async function findAuthUserByEmail(email: string): Promise<string | null> {
   try {
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const serviceClient = getServiceClient();
+    const { data, error } = await serviceClient
+      .from("profiles")
+      .select("user_id")
+      .eq("email", email.toLowerCase().trim())
+      .not("user_id", "is", null)
+      .maybeSingle();
 
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000
-    });
-
-    if (error || !data?.users) {
-      console.log("[Signature] Impossible de lister les users:", error?.message);
+    if (error) {
+      console.log("[Signature] Erreur recherche profil par email:", error.message);
       return null;
     }
 
-    const user = data.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-    return user?.id || null;
+    return data?.user_id || null;
   } catch (e) {
     console.log("[Signature] Erreur recherche auth user:", e);
     return null;
@@ -112,31 +93,24 @@ async function findAuthUserByEmail(email: string): Promise<string | null> {
 export async function POST(request: Request, { params }: PageProps) {
   try {
     const { token } = await params;
-    
-    // Décoder le token
-    const tokenData = decodeToken(token);
+
+    // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
+    const tokenData = verifyTokenCompat(token, 7);
     if (!tokenData) {
       return NextResponse.json(
-        { error: "Lien d'invitation invalide" },
-        { status: 404 }
-      );
-    }
-
-    // Vérifier expiration
-    if (isTokenExpired(tokenData.timestamp)) {
-      return NextResponse.json(
-        { error: "Le lien d'invitation a expiré" },
+        { error: "Lien d'invitation invalide ou expiré" },
         { status: 410 }
       );
     }
 
+    const tenantEmail = tokenData.email;
     const serviceClient = getServiceClient();
 
     // Récupérer le bail via l'ID
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select("id, statut")
-      .eq("id", tokenData.leaseId)
+      .eq("id", tokenData.entityId)
       .single();
 
     if (leaseError || !lease) {
@@ -146,8 +120,10 @@ export async function POST(request: Request, { params }: PageProps) {
       );
     }
 
-    // Vérifier le statut
-    if (lease.statut !== "pending_signature" && lease.statut !== "draft") {
+    // Vérifier le statut - autoriser draft, pending_signature, partially_signed, et pending_owner_signature
+    // car le locataire doit pouvoir sauvegarder son profil tant que le bail n'est pas fully_signed
+    const allowedStatuses = ["draft", "pending_signature", "partially_signed", "pending_owner_signature"];
+    if (!allowedStatuses.includes(lease.statut)) {
       return NextResponse.json(
         { error: "Ce bail n'est plus en attente de signature" },
         { status: 400 }
@@ -176,7 +152,7 @@ export async function POST(request: Request, { params }: PageProps) {
     let authUserId: string | null = null;
 
     // 1. Chercher si un utilisateur auth existe avec cet email
-    authUserId = await findAuthUserByEmail(tokenData.tenantEmail);
+    authUserId = await findAuthUserByEmail(tenantEmail);
     if (authUserId) {
       console.log("[Signature] ✅ Utilisateur auth trouvé:", authUserId);
     }
@@ -202,7 +178,7 @@ export async function POST(request: Request, { params }: PageProps) {
         const { data, error } = await serviceClient
           .from("profiles")
           .select("id, user_id")
-          .eq("email", tokenData.tenantEmail)
+          .eq("email", tenantEmail)
           .maybeSingle();
         
         if (!error && data) {
@@ -262,7 +238,7 @@ export async function POST(request: Request, { params }: PageProps) {
       try {
         const { data: newProfile, error: profileError } = await serviceClient
           .from("profiles")
-          .insert({ ...profileData, email: tokenData.tenantEmail })
+          .insert({ ...profileData, email: tenantEmail })
           .select("id")
           .single();
 
@@ -442,7 +418,7 @@ export async function POST(request: Request, { params }: PageProps) {
       .from("lease_signers")
       .select("id, role, profile_id")
       .eq("lease_id", lease.id)
-      .eq("invited_email", tokenData.tenantEmail)
+      .eq("invited_email", tenantEmail)
       .maybeSingle();
     
     if (signerByEmail) {
@@ -486,7 +462,7 @@ export async function POST(request: Request, { params }: PageProps) {
         .insert({
           lease_id: lease.id,
           profile_id: tenantProfileId,
-          invited_email: tokenData.tenantEmail,
+          invited_email: tenantEmail,
           role: "locataire_principal", // Par défaut si pas de signataire existant
           signature_status: "pending",
         });

@@ -477,29 +477,64 @@ export async function POST(
       },
     };
 
-    const { data: signature, error: sigError } = await serviceClient
+    // FIX: Remplacer .upsert() par une logique explicite find-then-update-or-insert.
+    // L'upsert avec onConflict ne fonctionne pas avec les partial unique indexes
+    // (edl_signatures_edl_id_signer_profile_id_unique a un WHERE signer_profile_id IS NOT NULL).
+    // De plus, les lignes d'invitation (signer_profile_id NULL) n'étaient jamais matchées.
+    const orConditions = [
+      `signer_profile_id.eq.${profile.id}`,
+      `signer_user.eq.${user.id}`,
+      ...(user.email ? [`signer_email.ilike.${user.email}`] : []),
+    ].join(",");
+
+    const { data: existingRow } = await serviceClient
       .from("edl_signatures")
-      .upsert({
-        edl_id: edlId,
-        signer_user: user.id,
-        signer_role: signerRole,
-        signer_profile_id: profile.id,
-        signer_name: `${profile.prenom || ""} ${profile.nom || ""}`.trim() || user.email || "Signataire",
-        signer_email: user.email || null,
-        signed_at: new Date().toISOString(),
-        signature_image_path: fileName,
-        ip_inet: proof.metadata.ipAddress ?? null,
-        proof_id: proof.proofId,
-        proof_metadata: proofMetadataForDB as any,
-        document_hash: proof.document.hash,
-      } as any, {
-        onConflict: "edl_id, signer_profile_id"
-      })
-      .select()
-      .single();
+      .select("id")
+      .eq("edl_id", edlId)
+      .or(orConditions)
+      .maybeSingle();
+
+    const signatureData = {
+      edl_id: edlId,
+      signer_user: user.id,
+      signer_role: signerRole,
+      signer_profile_id: profile.id,
+      signer_name: `${profile.prenom || ""} ${profile.nom || ""}`.trim() || user.email || "Signataire",
+      signer_email: user.email || null,
+      signed_at: new Date().toISOString(),
+      signature_image_path: fileName,
+      ip_inet: proof.metadata.ipAddress ?? null,
+      proof_id: proof.proofId,
+      proof_metadata: proofMetadataForDB as any,
+      document_hash: proof.document.hash,
+    };
+
+    let signature;
+    let sigError;
+
+    if (existingRow) {
+      console.log("[sign-edl] Mise à jour de la signature existante:", existingRow.id);
+      const result = await serviceClient
+        .from("edl_signatures")
+        .update(signatureData as any)
+        .eq("id", existingRow.id)
+        .select()
+        .single();
+      signature = result.data;
+      sigError = result.error;
+    } else {
+      console.log("[sign-edl] Insertion d'une nouvelle signature");
+      const result = await serviceClient
+        .from("edl_signatures")
+        .insert(signatureData as any)
+        .select()
+        .single();
+      signature = result.data;
+      sigError = result.error;
+    }
 
     if (sigError) {
-      console.error("[sign-edl] Signature upsert error:", sigError);
+      console.error("[sign-edl] Signature save error:", sigError);
       throw sigError;
     }
 

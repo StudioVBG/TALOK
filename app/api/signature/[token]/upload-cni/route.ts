@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { verifyTokenCompat } from "@/lib/utils/secure-token";
 
 // Imports pour OCR serveur (fallback)
 let tesseractOCRService: any = null;
@@ -32,23 +33,7 @@ interface PageProps {
   params: Promise<{ token: string }>;
 }
 
-// Décoder le token (format: leaseId:email:timestamp en base64url)
-function decodeToken(token: string): { leaseId: string; tenantEmail: string; timestamp: number } | null {
-  try {
-    const decoded = Buffer.from(token, "base64url").toString("utf-8");
-    const [leaseId, tenantEmail, timestampStr] = decoded.split(":");
-    if (!leaseId || !tenantEmail || !timestampStr) return null;
-    return { leaseId, tenantEmail, timestamp: parseInt(timestampStr, 10) };
-  } catch {
-    return null;
-  }
-}
-
-// Vérifier si le token est expiré (7 jours)
-// FIX AUDIT: Aligné à 7 jours (le commentaire disait 7j mais le code comparait à 30j)
-function isTokenExpired(timestamp: number): boolean {
-  return Date.now() - timestamp > 7 * 24 * 60 * 60 * 1000;
-}
+// Token functions replaced by verifyTokenCompat from secure-token module
 
 /**
  * POST /api/signature/[token]/upload-cni
@@ -66,35 +51,28 @@ export async function POST(request: Request, { params }: PageProps) {
 
     const { token } = await params;
 
-    // Décoder le token
-    const tokenData = decodeToken(token);
+    // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
+    const tokenData = verifyTokenCompat(token, 7);
     if (!tokenData) {
       return NextResponse.json(
-        { error: "Lien d'invitation invalide" },
-        { status: 404 }
-      );
-    }
-
-    // Vérifier expiration
-    if (isTokenExpired(tokenData.timestamp)) {
-      return NextResponse.json(
-        { error: "Le lien d'invitation a expiré" },
+        { error: "Lien d'invitation invalide ou expiré" },
         { status: 410 }
       );
     }
 
+    const tenantEmail = tokenData.email;
     const serviceClient = getServiceClient();
 
     // Récupérer le bail avec property_id et owner_id
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select(`
-        id, 
+        id,
         statut,
         property_id,
         properties!inner(owner_id)
       `)
-      .eq("id", tokenData.leaseId)
+      .eq("id", tokenData.entityId)
       .single();
 
     if (leaseError || !lease) {
@@ -362,7 +340,7 @@ export async function POST(request: Request, { params }: PageProps) {
         is_archived: false,             // ✅ Explicitement non archivé
         metadata: {
           ...extractedData,
-          tenant_email: tokenData.tenantEmail,
+          tenant_email: tenantEmail,
         },
       })
       .select()

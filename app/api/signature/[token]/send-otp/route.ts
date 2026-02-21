@@ -7,26 +7,10 @@ import { setOTP } from "@/lib/services/otp-store";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { sendOTPSMS, smsUtils } from "@/lib/services/sms.service";
 import { sendEmail } from "@/lib/email/send-email";
+import { verifyTokenCompat } from "@/lib/utils/secure-token";
 
 interface PageProps {
   params: Promise<{ token: string }>;
-}
-
-// Décoder le token (format: leaseId:email:timestamp en base64url)
-function decodeToken(token: string): { leaseId: string; tenantEmail: string; timestamp: number } | null {
-  try {
-    const decoded = Buffer.from(token, "base64url").toString("utf-8");
-    const [leaseId, tenantEmail, timestampStr] = decoded.split(":");
-    if (!leaseId || !tenantEmail || !timestampStr) return null;
-    return { leaseId, tenantEmail, timestamp: parseInt(timestampStr, 10) };
-  } catch {
-    return null;
-  }
-}
-
-// Vérifier si le token est expiré (7 jours)
-function isTokenExpired(timestamp: number): boolean {
-  return Date.now() - timestamp > 30 * 24 * 60 * 60 * 1000;
 }
 
 /**
@@ -43,19 +27,12 @@ export async function POST(request: Request, { params }: PageProps) {
 
     const { token } = await params;
 
-    // Décoder le token
-    const tokenData = decodeToken(token);
+    // FIX: Utiliser verifyTokenCompat pour supporter les deux formats de token (HMAC + legacy)
+    // Alignement avec /sign et /sign-with-pad qui utilisent déjà verifyTokenCompat
+    const tokenData = verifyTokenCompat(token, 7);
     if (!tokenData) {
       return NextResponse.json(
-        { error: "Lien d'invitation invalide" },
-        { status: 404 }
-      );
-    }
-
-    // Vérifier expiration
-    if (isTokenExpired(tokenData.timestamp)) {
-      return NextResponse.json(
-        { error: "Le lien d'invitation a expiré" },
+        { error: "Lien d'invitation invalide ou expiré" },
         { status: 410 }
       );
     }
@@ -66,7 +43,7 @@ export async function POST(request: Request, { params }: PageProps) {
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select("id, statut")
-      .eq("id", tokenData.leaseId)
+      .eq("id", tokenData.entityId)
       .single();
 
     if (leaseError || !lease) {
@@ -103,7 +80,7 @@ export async function POST(request: Request, { params }: PageProps) {
     otpExpiry.setMinutes(otpExpiry.getMinutes() + 10); // Expire dans 10 minutes
 
     // Stocker le code OTP
-    setOTP(tokenData.leaseId, {
+    setOTP(tokenData.entityId, {
       code: otpCode,
       phone: phone || email,
       expiresAt: otpExpiry,
