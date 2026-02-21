@@ -176,26 +176,58 @@ async function fetchTenantDashboardDirect(
     console.error("[fetchTenantDashboardDirect] Erreur profil:", profileError.message);
   }
 
-  const profile = profileRaw as { id: string; prenom: string | null; nom: string | null; kyc_status?: string | null; user_id: string } | null;
+  let profile = profileRaw as { id: string; prenom: string | null; nom: string | null; kyc_status?: string | null; user_id: string | null } | null;
+
+  // Fallback : profil par email (reconnexion à partir des données existantes)
   if (!profile) {
-    console.warn("[fetchTenantDashboardDirect] Profil introuvable pour user_id:", userId, "— retour dashboard vide");
-    // Return a minimal dashboard instead of null so the UI shows a proper "no lease" state
-    // instead of an infinite "loading" message
-    return {
-      profile_id: "",
-      kyc_status: "pending",
-      tenant: undefined,
-      leases: [],
-      properties: [],
-      lease: null,
-      property: null,
-      invoices: [],
-      tickets: [],
-      notifications: [],
-      pending_edls: [],
-      insurance: { has_insurance: false },
-      stats: { unpaid_amount: 0, unpaid_count: 0, total_monthly_rent: 0, active_leases_count: 0 },
-    };
+    try {
+      const { data: { user: authUser } } = await _supabase.auth.getUser();
+      if (authUser?.email) {
+        const { data: profileByEmail, error: emailError } = await supabase
+          .from("profiles")
+          .select("id, prenom, nom, kyc_status, user_id")
+          .ilike("email", authUser.email)
+          .maybeSingle();
+
+        if (!emailError && profileByEmail) {
+          profile = profileByEmail as typeof profile;
+          console.warn("[fetchTenantDashboardDirect] Profil trouvé par email (fallback):", profile.id);
+
+          if (!profile.user_id) {
+            const { error: updateError } = await supabase
+              .from("profiles")
+              .update({ user_id: userId })
+              .eq("id", profile.id);
+            if (updateError) {
+              console.error("[fetchTenantDashboardDirect] Erreur sync user_id:", updateError.message);
+            } else {
+              console.log("[fetchTenantDashboardDirect] Profil lié au user_id:", userId);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[fetchTenantDashboardDirect] Fallback profil par email (non-bloquant):", err);
+    }
+
+    if (!profile) {
+      console.warn("[fetchTenantDashboardDirect] Profil introuvable pour user_id:", userId, "— retour dashboard vide");
+      return {
+        profile_id: "",
+        kyc_status: "pending",
+        tenant: undefined,
+        leases: [],
+        properties: [],
+        lease: null,
+        property: null,
+        invoices: [],
+        tickets: [],
+        notifications: [],
+        pending_edls: [],
+        insurance: { has_insurance: false },
+        stats: { unpaid_amount: 0, unpaid_count: 0, total_monthly_rent: 0, active_leases_count: 0 },
+      };
+    }
   }
 
   // Récupérer l'email de l'utilisateur pour la recherche par invited_email
