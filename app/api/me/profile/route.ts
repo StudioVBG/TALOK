@@ -111,20 +111,42 @@ export async function POST(request: Request) {
 
     console.log("[POST /api/me/profile] Profil auto-créé pour user_id:", user.id, "role:", role);
 
-    // Marquer les invitations non utilisées comme acceptées (même email)
-    if (user.email && newProfile) {
+    const profileId = (newProfile as { id: string }).id;
+
+    // Filet de sécurité : lier lease_signers orphelins + backfill invoices (au cas où le trigger DB n'a pas tourné)
+    if (user.email && profileId) {
       try {
-        const { error: invLinkError } = await serviceClient
+        const { data: orphanSigners } = await serviceClient
+          .from("lease_signers")
+          .select("id, lease_id")
+          .ilike("invited_email", user.email)
+          .is("profile_id", null);
+
+        if (orphanSigners?.length) {
+          await serviceClient
+            .from("lease_signers")
+            .update({ profile_id: profileId } as Record<string, unknown>)
+            .ilike("invited_email", user.email)
+            .is("profile_id", null);
+
+          const leaseIds = orphanSigners.map((s) => s.lease_id).filter(Boolean);
+          if (leaseIds.length > 0) {
+            await serviceClient
+              .from("invoices")
+              .update({ tenant_id: profileId })
+              .in("lease_id", leaseIds)
+              .is("tenant_id", null);
+          }
+        }
+
+        // Marquer les invitations non utilisées comme acceptées (même email)
+        await serviceClient
           .from("invitations")
-          .update({ used_by: (newProfile as any).id, used_at: new Date().toISOString() } as Record<string, unknown>)
+          .update({ used_by: profileId, used_at: new Date().toISOString() } as Record<string, unknown>)
           .ilike("email", user.email)
           .is("used_at", null);
-
-        if (invLinkError) {
-          console.error("[POST /api/me/profile] Erreur mise à jour invitations:", invLinkError);
-        }
       } catch (err) {
-        console.error("[POST /api/me/profile] Erreur invitations (non-bloquante):", err);
+        console.error("[POST /api/me/profile] Erreur liaison lease_signers/invitations (non-bloquante):", err);
       }
     }
 
