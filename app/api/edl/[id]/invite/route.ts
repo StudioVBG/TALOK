@@ -253,14 +253,36 @@ export async function POST(
           edl_id: edlId,
           signer_id: existingSig?.id,
           signer_profile_id: targetProfileId,
+          tenant_user_id: targetUserId,
           email: targetEmail,
           name: targetName,
           token: invitationToken,
-          type: (edl as any).type
+          type: (edl as any).type,
+          property_address: (edl as any).property?.adresse_complete || "",
         },
       } as any);
     } catch (e) {
       console.error(`[EDL Invite ${edlId}] Outbox error:`, e);
+    }
+
+    // ===============================
+    // 5b. NOTIFICATION IN-APP DIRECTE (belt-and-suspenders)
+    // ===============================
+    if (targetProfileId) {
+      try {
+        await serviceClient.from("notifications").insert({
+          user_id: targetUserId,
+          profile_id: targetProfileId,
+          type: "edl_invitation",
+          title: "Invitation à signer l'état des lieux",
+          body: `Vous êtes invité à signer l'état des lieux ${(edl as any).type === 'entree' ? "d'entrée" : "de sortie"}.`,
+          is_read: false,
+          metadata: { edl_id: edlId, token: invitationToken },
+          action_url: `/signature-edl/${invitationToken}`,
+        } as any);
+      } catch (e) {
+        console.warn(`[EDL Invite ${edlId}] Notification directe échouée:`, e);
+      }
     }
 
     // ===============================
