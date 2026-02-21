@@ -273,7 +273,8 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
   }, [dashboard, pendingEDLs, hasSignedLease]);
 
   // Vérifier si le bail/logement est lié
-  const hasLeaseData = currentLease && currentProperty?.adresse_complete && currentProperty.adresse_complete !== "Adresse à compléter";
+  // ✅ FIX: Un bail avec une propriété est considéré comme lié, même si l'adresse est incomplète
+  const hasLeaseData = !!(currentLease && currentProperty?.id);
   // ✅ FIX: L'onboarding est incomplet seulement si le locataire N'A PAS signé
   const isOnboardingIncomplete = !hasLeaseData || (currentLease?.statut === 'pending_signature' && !hasSignedLease);
 
@@ -682,11 +683,15 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                     </div>
                     
                     <h2 className="text-3xl md:text-4xl font-black mb-2 tracking-tight">
-                      {currentProperty?.adresse_complete}
+                      {currentProperty?.adresse_complete && currentProperty.adresse_complete !== "Adresse à compléter"
+                        ? currentProperty.adresse_complete
+                        : "Votre logement"}
                     </h2>
                     <p className="text-lg text-white/70 font-medium flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-indigo-400" />
-                      {currentProperty?.ville}{currentProperty?.code_postal ? `, ${currentProperty.code_postal}` : ""}
+                      {currentProperty?.ville || currentProperty?.code_postal
+                        ? `${currentProperty?.ville || ""}${currentProperty?.code_postal ? `, ${currentProperty.code_postal}` : ""}`
+                        : "Adresse en cours de saisie"}
                     </p>
                   </div>
 
