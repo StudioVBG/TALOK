@@ -87,8 +87,8 @@ CREATE TRIGGER trigger_notify_owner_on_tenant_document
   AFTER INSERT ON public.documents
   FOR EACH ROW
   WHEN (NEW.tenant_id IS NOT NULL AND NEW.owner_id IS NOT NULL
-        AND NEW.created_by_profile_id IS NOT NULL
-        AND NEW.created_by_profile_id = NEW.tenant_id)
+        AND NEW.uploaded_by IS NOT NULL
+        AND NEW.tenant_id = NEW.uploaded_by)
   EXECUTE FUNCTION public.notify_owner_on_tenant_document();
 
 COMMIT;
