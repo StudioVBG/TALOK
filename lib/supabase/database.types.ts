@@ -391,7 +391,7 @@ export type EDLRow = {
   id: string
   lease_id: string
   type: 'entree' | 'sortie'
-  status: 'draft' | 'in_progress' | 'completed' | 'signed' | 'disputed'
+  status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'signed' | 'disputed' | 'closed'
   scheduled_date: string | null
   completed_date: string | null
   created_by: string

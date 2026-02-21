@@ -5,7 +5,7 @@ import type { Database, PropertyRow, LeaseRow, LeaseSignerRow, PaymentRow, Invoi
 // ✅ SOTA 2026: Types stricts pour l'intégrité des données
 
 /** Statuts possibles d'un EDL */
-export type EDLStatus = "draft" | "scheduled" | "in_progress" | "completed" | "signed" | "disputed";
+export type EDLStatus = "draft" | "scheduled" | "in_progress" | "completed" | "signed" | "disputed" | "closed";
 
 /** Type d'EDL */
 export type EDLType = "entree" | "sortie";

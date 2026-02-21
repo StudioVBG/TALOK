@@ -118,7 +118,7 @@ export interface EDLComplet {
   // Métadonnées
   is_complete: boolean;
   is_signed: boolean;
-  status: "draft" | "in_progress" | "completed" | "signed" | "disputed";
+  status: "draft" | "scheduled" | "in_progress" | "completed" | "signed" | "disputed" | "closed";
 }
 
 export interface EDLTemplateVariables {
