@@ -98,25 +98,61 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
     return null;
   }
 
-  // Récupérer tous les baux liés à ce profil via lease_signers avec SERVICE CLIENT
-  const { data: leaseSigners, error: signerError } = await serviceClient
+  // Récupérer l'email de l'utilisateur pour la recherche par invited_email
+  let userEmail = "";
+  try {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    userEmail = authUser?.email?.toLowerCase().trim() || "";
+  } catch {
+    console.warn("[fetchTenantLease] Impossible de récupérer l'email auth");
+  }
+
+  // Récupérer les baux via lease_signers par profile_id
+  const { data: signersByProfile, error: signerError } = await serviceClient
     .from("lease_signers")
     .select("lease_id")
     .eq("profile_id", profile.id)
     .order("created_at", { ascending: false }) as { data: Pick<LeaseSignerRow, "lease_id">[] | null; error: Error | null };
 
   if (signerError) {
-    console.log("[fetchTenantLease] ❌ Erreur lease_signers:", signerError.message);
-    return null;
+    console.log("[fetchTenantLease] ❌ Erreur lease_signers (profile):", signerError.message);
   }
-  
-  if (!leaseSigners || leaseSigners.length === 0) {
-    console.log("[fetchTenantLease] ❌ Aucun lease_signer trouvé pour profile:", profile.id);
+
+  const leaseIdsByProfile = (signersByProfile || []).map(ls => ls.lease_id);
+
+  // Recherche supplémentaire par invited_email (fallback)
+  let leaseIdsByEmail: string[] = [];
+  if (userEmail) {
+    const { data: signersByEmail } = await serviceClient
+      .from("lease_signers")
+      .select("lease_id, id, profile_id")
+      .ilike("invited_email", userEmail);
+
+    if (signersByEmail && signersByEmail.length > 0) {
+      leaseIdsByEmail = signersByEmail.map((s: { lease_id: string }) => s.lease_id);
+
+      // Auto-heal: lier les signers orphelins trouvés par email
+      for (const s of signersByEmail) {
+        if (!(s as { profile_id: string | null }).profile_id) {
+          console.log("[fetchTenantLease] Auto-heal: liaison signer orphelin", (s as { id: string }).id, "-> profile", profile.id);
+          await serviceClient
+            .from("lease_signers")
+            .update({ profile_id: profile.id })
+            .eq("id", (s as { id: string }).id);
+        }
+      }
+    }
+  }
+
+  // Union des lease_ids (profile_id + email)
+  const leaseIds = [...new Set([...leaseIdsByProfile, ...leaseIdsByEmail])];
+
+  if (leaseIds.length === 0) {
+    console.log("[fetchTenantLease] ❌ Aucun lease_signer trouvé pour profile:", profile.id, "ou email:", userEmail);
     return null;
   }
 
-  const leaseIds = leaseSigners.map(ls => ls.lease_id);
-  console.log("[fetchTenantLease] ✅ Baux trouvés:", leaseIds.length);
+  console.log("[fetchTenantLease] ✅ Baux trouvés:", leaseIds.length, "(profile:", leaseIdsByProfile.length, "email:", leaseIdsByEmail.length, ")");
 
   // Récupérer tous les baux complets avec SERVICE CLIENT
   const { data: leases, error: leaseError } = await serviceClient
