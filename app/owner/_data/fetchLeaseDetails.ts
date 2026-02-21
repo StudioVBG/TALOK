@@ -303,7 +303,6 @@ async function fetchLeaseDetailsFallback(
   }
   
   // 2. Récupérer les signataires
-  // ✅ SOTA 2026: Récupérer TOUS les champs de signature (image ET path)
   const { data: signers, error: signersError } = await supabase
     .from("lease_signers")
     .select(`
@@ -311,7 +310,6 @@ async function fetchLeaseDetailsFallback(
       role,
       signature_status,
       signed_at,
-      signature_image,
       signature_image_path,
       proof_id,
       ip_inet,
@@ -538,21 +536,11 @@ async function fetchLeaseDetailsFallback(
     }
   }
 
-  // ✅ SOTA 2026: Générer des URLs signées pour les images de signature (bucket privé)
-  // Durée de validité: 1 heure
   const signersWithSignedUrls = await Promise.all(
     signersArray.map(async (s) => {
       let signatureImageUrl: string | null = null;
       
-      // 1. Si signature_image est déjà une data URL ou URL HTTP, l'utiliser
-      if (s.signature_image) {
-        if (s.signature_image.startsWith("data:") || s.signature_image.startsWith("http")) {
-          signatureImageUrl = s.signature_image;
-        }
-      }
-      
-      // 2. Si signature_image_path existe, générer une URL signée
-      if (!signatureImageUrl && s.signature_image_path) {
+      if (s.signature_image_path) {
         try {
           const { data: signedUrlData } = await supabase.storage
             .from("documents")

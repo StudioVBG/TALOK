@@ -140,7 +140,6 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
         role,
         signature_status,
         signed_at,
-        signature_image,
         signature_image_path,
         proof_id,
         profiles (
@@ -166,15 +165,7 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
     const signersWithUrls = await Promise.all((l.lease_signers || []).map(async (s: LeaseSignerWithProfile): Promise<LeaseSignerWithUrl> => {
       let signatureImageUrl: string | null = null;
       
-      // Si signature_image est déjà une data URL ou URL HTTP
-      if (s.signature_image) {
-        if (s.signature_image.startsWith("data:") || s.signature_image.startsWith("http")) {
-          signatureImageUrl = s.signature_image;
-        }
-      }
-      
-      // Sinon, générer une URL signée depuis le path
-      if (!signatureImageUrl && s.signature_image_path) {
+      if (s.signature_image_path) {
         try {
           const { data: signedUrlData } = await serviceClient.storage
             .from("documents")

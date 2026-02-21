@@ -44,13 +44,11 @@ export async function POST(request: Request) {
         role,
         signature_status,
         signed_at,
-        signature_image,
         signature_image_path
       `)
       .eq("signature_status", "signed")
       .not("signed_at", "is", null)
-      .is("signature_image_path", null)
-      .not("signature_image", "is", null);
+      .is("signature_image_path", null);
 
     if (fetchError) {
       console.error("[Sync Signatures] Erreur fetch:", fetchError);
@@ -182,25 +180,20 @@ export async function GET(request: Request) {
     // Statistiques des signatures
     const { data: stats } = await adminClient
       .from("lease_signers")
-      .select("signature_status, signature_image, signature_image_path")
+      .select("signature_status, signature_image_path")
       .eq("signature_status", "signed");
 
     const totalSigned = stats?.length || 0;
     const withPath = stats?.filter(s => s.signature_image_path).length || 0;
-    const withBase64Only = stats?.filter(s => s.signature_image && !s.signature_image_path).length || 0;
-    const withNothing = stats?.filter(s => !s.signature_image && !s.signature_image_path).length || 0;
+    const withNothing = stats?.filter(s => !s.signature_image_path).length || 0;
 
     return NextResponse.json({
       diagnostic: {
         total_signed: totalSigned,
         with_storage_path: withPath,
-        with_base64_only: withBase64Only,
         with_no_image: withNothing,
-        needs_sync: withBase64Only,
       },
-      message: withBase64Only > 0 
-        ? `${withBase64Only} signature(s) peuvent être synchronisées vers Storage`
-        : "Toutes les signatures sont synchronisées",
+      message: "Diagnostic des signatures terminé",
     });
 
   } catch (error: unknown) {
