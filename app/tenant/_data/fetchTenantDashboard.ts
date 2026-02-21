@@ -613,9 +613,9 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
       lease_signers: l.lease_signers || l.signers || [],
       property: l.property ? {
         ...l.property,
-        ville: l.property.ville || "Ville inconnue",
-        code_postal: l.property.code_postal || "00000",
-        adresse_complete: l.property.adresse_complete || "Adresse non renseignée",
+        ville: l.property.ville || "",
+        code_postal: l.property.code_postal || "",
+        adresse_complete: l.property.adresse_complete || null,
         // S'assurer que meters et keys sont des tableaux
         meters: l.property.meters || [],
         keys: l.property.keys || [],
