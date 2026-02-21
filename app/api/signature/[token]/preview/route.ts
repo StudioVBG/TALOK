@@ -6,26 +6,10 @@ import { LeaseTemplateService } from "@/lib/templates/bail/template.service";
 import { numberToWords } from "@/lib/helpers/format";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import type { BailComplet, TypeBail } from "@/lib/templates/bail/types";
+import { verifyTokenCompat } from "@/lib/utils/secure-token";
 
 interface PageProps {
   params: Promise<{ token: string }>;
-}
-
-// Décoder le token (format: leaseId:email:timestamp en base64url)
-function decodeToken(token: string): { leaseId: string; tenantEmail: string; timestamp: number } | null {
-  try {
-    const decoded = Buffer.from(token, "base64url").toString("utf-8");
-    const [leaseId, tenantEmail, timestampStr] = decoded.split(":");
-    if (!leaseId || !tenantEmail || !timestampStr) return null;
-    return { leaseId, tenantEmail, timestamp: parseInt(timestampStr, 10) };
-  } catch {
-    return null;
-  }
-}
-
-// Vérifier si le token est expiré (30 jours)
-function isTokenExpired(timestamp: number): boolean {
-  return Date.now() - timestamp > 30 * 24 * 60 * 60 * 1000;
 }
 
 /**
@@ -193,25 +177,18 @@ export async function GET(request: Request, { params }: PageProps) {
     const { token } = await params;
     console.log("[Preview GET] Token reçu:", token?.substring(0, 20) + "...");
 
-    // Décoder le token
-    const tokenData = decodeToken(token);
+    // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
+    const tokenData = verifyTokenCompat(token, 7);
     if (!tokenData) {
-      console.log("[Preview GET] ❌ Token invalide");
+      console.log("[Preview GET] ❌ Token invalide ou expiré");
       return NextResponse.json(
-        { error: "Lien d'invitation invalide" },
-        { status: 404 }
-      );
-    }
-    console.log("[Preview GET] Token décodé:", { leaseId: tokenData.leaseId, email: tokenData.tenantEmail });
-
-    // Vérifier expiration
-    if (isTokenExpired(tokenData.timestamp)) {
-      console.log("[Preview GET] ❌ Token expiré");
-      return NextResponse.json(
-        { error: "Le lien d'invitation a expiré" },
+        { error: "Lien d'invitation invalide ou expiré" },
         { status: 410 }
       );
     }
+    const leaseId = tokenData.entityId;
+    const tenantEmail = tokenData.email;
+    console.log("[Preview GET] Token décodé:", { leaseId, email: tenantEmail });
 
     const serviceClient = getServiceClient();
 
@@ -240,7 +217,7 @@ export async function GET(request: Request, { params }: PageProps) {
           owner_id
         )
       `)
-      .eq("id", tokenData.leaseId)
+      .eq("id", leaseId)
       .single();
 
     if (leaseError || !lease) {
@@ -253,7 +230,7 @@ export async function GET(request: Request, { params }: PageProps) {
 
     // Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
     const ownerProfile = await resolveOwnerIdentity(serviceClient, {
-      leaseId: tokenData.leaseId,
+      leaseId,
       propertyId: lease.property?.id,
       profileId: lease.property?.owner_id,
     });
@@ -276,7 +253,7 @@ export async function GET(request: Request, { params }: PageProps) {
           adresse
         )
       `)
-      .eq("lease_id", tokenData.leaseId)
+      .eq("lease_id", leaseId)
       .eq("role", "locataire_principal")
       .maybeSingle();
 
@@ -301,7 +278,7 @@ export async function GET(request: Request, { params }: PageProps) {
       lease.property,
       ownerProfile,
       tenantProfile,
-      tokenData.tenantEmail
+      tenantEmail
     );
 
     // Générer le HTML
@@ -334,25 +311,18 @@ export async function POST(request: Request, { params }: PageProps) {
     const body = await request.json();
     console.log("[Preview POST] Token reçu, données profil:", { nom: body.nom, prenom: body.prenom });
 
-    // Décoder le token
-    const tokenData = decodeToken(token);
-    if (!tokenData) {
-      console.log("[Preview POST] ❌ Token invalide");
+    // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
+    const tokenDataPost = verifyTokenCompat(token, 7);
+    if (!tokenDataPost) {
+      console.log("[Preview POST] ❌ Token invalide ou expiré");
       return NextResponse.json(
-        { error: "Lien d'invitation invalide" },
-        { status: 404 }
-      );
-    }
-    console.log("[Preview POST] Token décodé:", { leaseId: tokenData.leaseId });
-
-    // Vérifier expiration
-    if (isTokenExpired(tokenData.timestamp)) {
-      console.log("[Preview POST] ❌ Token expiré");
-      return NextResponse.json(
-        { error: "Le lien d'invitation a expiré" },
+        { error: "Lien d'invitation invalide ou expiré" },
         { status: 410 }
       );
     }
+    const postLeaseId = tokenDataPost.entityId;
+    const postTenantEmail = tokenDataPost.email;
+    console.log("[Preview POST] Token décodé:", { leaseId: postLeaseId });
 
     const serviceClient = getServiceClient();
 
@@ -381,7 +351,7 @@ export async function POST(request: Request, { params }: PageProps) {
           owner_id
         )
       `)
-      .eq("id", tokenData.leaseId)
+      .eq("id", postLeaseId)
       .single();
 
     if (leaseError || !lease) {
@@ -397,7 +367,7 @@ export async function POST(request: Request, { params }: PageProps) {
 
     // Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
     const ownerProfile = await resolveOwnerIdentity(serviceClient, {
-      leaseId: tokenData.leaseId,
+      leaseId: postLeaseId,
       propertyId: lease.property?.id,
       profileId: lease.property?.owner_id,
     });
@@ -406,7 +376,7 @@ export async function POST(request: Request, { params }: PageProps) {
     const tenantProfile = {
       nom: body.nom || "",
       prenom: body.prenom || "",
-      email: body.email || tokenData.tenantEmail,
+      email: body.email || postTenantEmail,
       telephone: body.telephone || "",
       date_naissance: body.dateNaissance || "",
       lieu_naissance: body.lieuNaissance || "",
@@ -419,7 +389,7 @@ export async function POST(request: Request, { params }: PageProps) {
       lease.property,
       ownerProfile,
       tenantProfile,
-      tokenData.tenantEmail
+      postTenantEmail
     );
 
     // Générer le HTML

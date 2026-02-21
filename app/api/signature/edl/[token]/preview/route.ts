@@ -82,7 +82,7 @@ export async function POST(
       serviceClient.from("edl_items").select("*").eq("edl_id", edlId),
       serviceClient.from("edl_media").select("*").eq("edl_id", edlId),
       serviceClient.from("edl_signatures").select("*, profile:profiles(*)").eq("edl_id", edlId),
-      serviceClient.from("owner_profiles").select("*, profile:profiles(*)").eq("profile_id", edl.lease?.property?.owner_id || (edl as any).property_id).single()
+      serviceClient.from("owner_profiles").select("*, profile:profiles(*)").eq("profile_id", edl.lease?.property?.owner_id || (edl as any).property_id).maybeSingle()
     ]);
 
     // 🔧 Générer des URLs signées pour les images de signature (bucket privé)
