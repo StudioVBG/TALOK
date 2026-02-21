@@ -132,85 +132,93 @@ export function useDocuments(filters?: {
       const supabaseClient = getTypedSupabaseClient(typedSupabaseClient);
       
       // ========================================
-      // LOCATAIRE: Documents liés à son profil, ses baux ET ses propriétés
+      // LOCATAIRE: Vue unifiée v_tenant_accessible_documents (SOTA 2026)
+      // Fallback sur requêtes manuelles si la vue n'existe pas
       // ========================================
       if (profile.role === "tenant") {
-        // 1. Documents directement liés au profil du locataire
-        const directDocs = await queryDocumentsWithFallback(
-          supabaseClient,
-          SELECT_WITH_PROPERTY,
-          (q: any) => q.eq("tenant_id", profile.id).order("created_at", { ascending: false })
-        );
+        let allDocs: DocumentRow[] = [];
+        let usedView = false;
 
-        // 2. Récupérer les baux où le locataire est signataire
-        const { data: signerData } = await supabaseClient
-          .from("lease_signers")
-          .select("lease_id")
-          .eq("profile_id", profile.id); // 🔒 Filtre obligatoire
+        try {
+          const { data: viewData, error: viewError } = await supabaseClient
+            .from("v_tenant_accessible_documents" as any)
+            .select(SELECT_WITH_PROPERTY)
+            .order("created_at", { ascending: false });
 
-        const leaseIds = signerData?.map((s: any) => s.lease_id).filter(Boolean) || [];
+          if (!viewError && viewData) {
+            allDocs = viewData as DocumentRow[];
+            usedView = true;
+          }
+        } catch {
+          // View doesn't exist yet, fall through to legacy logic
+        }
 
-        // 3. Documents liés aux baux du locataire
-        let leaseDocs: DocumentRow[] = [];
-        if (leaseIds.length > 0) {
-          leaseDocs = await queryDocumentsWithFallback(
+        if (!usedView) {
+          const directDocs = await queryDocumentsWithFallback(
             supabaseClient,
             SELECT_WITH_PROPERTY,
-            (q: any) => q.in("lease_id", leaseIds).order("created_at", { ascending: false })
+            (q: any) => q.eq("tenant_id", profile.id).order("created_at", { ascending: false })
           );
-        }
-        
-        // 4. SOTA 2026: Récupérer aussi les documents partagés via property_id
-        // (diagnostics, DDT, etc. uploadés par le propriétaire avant la création du bail)
-        let propertyDocs: DocumentRow[] = [];
-        if (leaseIds.length > 0) {
-          // Récupérer les property_ids des baux
-          const { data: leaseData } = await supabaseClient
-            .from("leases")
-            .select("property_id")
-            .in("id", leaseIds);
-          
-          const propertyIds = [...new Set(
-            (leaseData || []).map((l: any) => l.property_id).filter(Boolean)
-          )];
-          
-          if (propertyIds.length > 0) {
-            // Documents partagés via property_id (diagnostics, règlement copro, etc.)
-            // On ne prend que les types pertinents pour le locataire
-            const sharedTypes = [
-              "diagnostic_performance", "dpe", "erp", "crep", "amiante", 
-              "electricite", "gaz", "reglement_copro", "notice_information",
-              "EDL_entree", "EDL_sortie", "edl", "edl_entree", "edl_sortie",
-            ];
-            
-            propertyDocs = await queryDocumentsWithFallback(
+
+          const { data: signerData } = await supabaseClient
+            .from("lease_signers")
+            .select("lease_id")
+            .eq("profile_id", profile.id);
+
+          const leaseIds = signerData?.map((s: any) => s.lease_id).filter(Boolean) || [];
+
+          let leaseDocs: DocumentRow[] = [];
+          if (leaseIds.length > 0) {
+            leaseDocs = await queryDocumentsWithFallback(
               supabaseClient,
               SELECT_WITH_PROPERTY,
-              (q: any) => q
-                .in("property_id", propertyIds)
-                .in("type", sharedTypes)
-                .order("created_at", { ascending: false })
+              (q: any) => q.in("lease_id", leaseIds).order("created_at", { ascending: false })
             );
           }
-        }
-        
-        // Fusionner et dédupliquer
-        const allDocs = [...(directDocs || []), ...leaseDocs, ...propertyDocs];
-        const uniqueDocs = allDocs.reduce((acc, doc) => {
-          if (!acc.find((d: any) => d.id === doc.id)) {
-            acc.push(doc);
+
+          let propertyDocs: DocumentRow[] = [];
+          if (leaseIds.length > 0) {
+            const { data: leaseData } = await supabaseClient
+              .from("leases")
+              .select("property_id")
+              .in("id", leaseIds);
+
+            const propertyIds = [...new Set(
+              (leaseData || []).map((l: any) => l.property_id).filter(Boolean)
+            )];
+
+            if (propertyIds.length > 0) {
+              const sharedTypes = [
+                "diagnostic_performance", "dpe", "erp", "crep", "amiante",
+                "electricite", "gaz", "reglement_copro", "notice_information",
+                "EDL_entree", "EDL_sortie", "edl", "edl_entree", "edl_sortie",
+              ];
+
+              propertyDocs = await queryDocumentsWithFallback(
+                supabaseClient,
+                SELECT_WITH_PROPERTY,
+                (q: any) => q
+                  .in("property_id", propertyIds)
+                  .in("type", sharedTypes)
+                  .order("created_at", { ascending: false })
+              );
+            }
           }
-          return acc;
-        }, [] as DocumentRow[]);
-        
-        // Appliquer les filtres additionnels
-        let filtered = uniqueDocs;
-        
-        // 📁 Exclure les documents archivés par défaut
+
+          const merged = [...(directDocs || []), ...leaseDocs, ...propertyDocs];
+          allDocs = merged.reduce((acc, doc) => {
+            if (!acc.find((d: any) => d.id === doc.id)) {
+              acc.push(doc);
+            }
+            return acc;
+          }, [] as DocumentRow[]);
+        }
+
+        let filtered = allDocs;
+
         if (!filters?.includeArchived) {
           filtered = filtered.filter((d: any) => !(d as any).is_archived);
         }
-        
         if (filters?.propertyId) {
           filtered = filtered.filter((d: any) => d.property_id === filters.propertyId);
         }
@@ -220,64 +228,72 @@ export function useDocuments(filters?: {
         if (filters?.type) {
           filtered = filtered.filter((d: any) => d.type === filters.type);
         }
-        
-        // Trier par date
+
         filtered.sort((a: any, b: any) => {
           const dateA = new Date(a.created_at || 0).getTime();
           const dateB = new Date(b.created_at || 0).getTime();
           return dateB - dateA;
         });
-        
+
         return filtered;
       }
       
       // ========================================
-      // PROPRIÉTAIRE: Documents de ses propriétés (owner_id OU property_id)
+      // PROPRIÉTAIRE: Vue unifiée v_owner_accessible_documents (SOTA 2026)
+      // Fallback sur requêtes manuelles si la vue n'existe pas
       // ========================================
       if (profile.role === "owner") {
-        // 1. Récupérer les IDs des propriétés du propriétaire
-        const { data: ownerProperties } = await supabaseClient
-          .from("properties")
-          .select("id")
-          .eq("owner_id", profile.id);
-        
-        const propertyIds = ownerProperties?.map((p: any) => p.id) || [];
-        
-        // 2. Requête avec filtre combiné : owner_id OU property_id
-        // Cela permet de voir les documents uploadés par les locataires
         let allDocs: DocumentRow[] = [];
-        
-        // Documents où owner_id = profile.id
-        const ownerDocs = await queryDocumentsWithFallback(
-          supabaseClient,
-          SELECT_WITH_PROPERTY_AND_TENANT,
-          (q: any) => q.eq("owner_id", profile.id).order("created_at", { ascending: false })
-        );
-        allDocs = [...ownerDocs];
+        let usedView = false;
 
-        // Documents liés aux propriétés du propriétaire (même si owner_id est null)
-        if (propertyIds.length > 0) {
-          const propertyDocs = await queryDocumentsWithFallback(
+        try {
+          const { data: viewData, error: viewError } = await supabaseClient
+            .from("v_owner_accessible_documents" as any)
+            .select(SELECT_WITH_PROPERTY_AND_TENANT)
+            .order("created_at", { ascending: false });
+
+          if (!viewError && viewData) {
+            allDocs = viewData as DocumentRow[];
+            usedView = true;
+          }
+        } catch {
+          // View doesn't exist yet, fall through to legacy logic
+        }
+
+        if (!usedView) {
+          const { data: ownerProperties } = await supabaseClient
+            .from("properties")
+            .select("id")
+            .eq("owner_id", profile.id);
+
+          const propertyIds = ownerProperties?.map((p: any) => p.id) || [];
+
+          const ownerDocs = await queryDocumentsWithFallback(
             supabaseClient,
             SELECT_WITH_PROPERTY_AND_TENANT,
-            (q: any) => q.in("property_id", propertyIds).order("created_at", { ascending: false })
+            (q: any) => q.eq("owner_id", profile.id).order("created_at", { ascending: false })
           );
-          // Fusionner et dédupliquer
-          for (const doc of propertyDocs) {
-            if (!allDocs.find(d => d.id === doc.id)) {
-              allDocs.push(doc);
+          allDocs = [...ownerDocs];
+
+          if (propertyIds.length > 0) {
+            const propertyDocs = await queryDocumentsWithFallback(
+              supabaseClient,
+              SELECT_WITH_PROPERTY_AND_TENANT,
+              (q: any) => q.in("property_id", propertyIds).order("created_at", { ascending: false })
+            );
+            for (const doc of propertyDocs) {
+              if (!allDocs.find(d => d.id === doc.id)) {
+                allDocs.push(doc);
+              }
             }
           }
         }
-        
-        // Appliquer les filtres additionnels
+
         let filtered = allDocs;
-        
-        // 📁 Exclure les documents archivés par défaut
+
         if (!filters?.includeArchived) {
           filtered = filtered.filter((d: any) => !(d as any).is_archived);
         }
-        
         if (filters?.propertyId) {
           filtered = filtered.filter((d: any) => d.property_id === filters.propertyId);
         }
@@ -287,14 +303,13 @@ export function useDocuments(filters?: {
         if (filters?.type) {
           filtered = filtered.filter((d: any) => d.type === filters.type);
         }
-        
-        // Trier par date
+
         filtered.sort((a: any, b: any) => {
           const dateA = new Date(a.created_at || 0).getTime();
           const dateB = new Date(b.created_at || 0).getTime();
           return dateB - dateA;
         });
-        
+
         return filtered;
       }
       
