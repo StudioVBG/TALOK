@@ -43,10 +43,20 @@ export async function GET() {
     const dashboardData = await fetchTenantDashboard(user.id);
 
     if (!dashboardData) {
-      return NextResponse.json(
-        { error: "Données introuvables" },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        profile_id: "",
+        kyc_status: "pending",
+        leases: [],
+        properties: [],
+        lease: null,
+        property: null,
+        invoices: [],
+        tickets: [],
+        notifications: [],
+        pending_edls: [],
+        insurance: { has_insurance: false },
+        stats: { unpaid_amount: 0, unpaid_count: 0, total_monthly_rent: 0, active_leases_count: 0 },
+      });
     }
 
     return NextResponse.json(dashboardData);

@@ -21,8 +21,6 @@ import { useAuth } from "@/lib/hooks/use-auth";
 import { useToast } from "@/components/ui/use-toast";
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
-const supabase = createClient();
-
 export interface TenantRealtimeEvent {
   id: string;
   type: "lease" | "invoice" | "document" | "ticket" | "edl" | "property";
@@ -100,6 +98,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
   const [leaseIds, setLeaseIds] = useState<string[]>(options.leaseIds || []);
   const channelsRef = useRef<RealtimeChannel[]>([]);
   const addEventRef = useRef<typeof addEvent>(null!);
+  const supabaseRef = useRef(createClient());
 
   // Jouer un son de notification
   const playNotificationSound = useCallback(() => {
@@ -159,7 +158,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
   const fetchLeaseIds = useCallback(async () => {
     if (!profile?.id) return [];
     
-    const { data: signers } = await supabase
+    const { data: signers } = await supabaseRef.current
       .from("lease_signers")
       .select("lease_id")
       .eq("profile_id", profile.id);
@@ -195,24 +194,24 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
         { data: signers },
       ] = await Promise.all([
         // Baux actifs avec infos financières
-        supabase
+        supabaseRef.current
           .from("leases")
           .select("id, loyer, charges_forfaitaires, statut, type_bail, property_id")
           .in("id", ids),
         // Factures impayées
-        supabase
+        supabaseRef.current
           .from("invoices")
           .select("id, montant_total, statut, periode")
           .in("lease_id", ids)
           .in("statut", ["sent", "late"]),
         // Tickets ouverts
-        supabase
+        supabaseRef.current
           .from("tickets")
           .select("id, statut")
           .eq("created_by_profile_id", profile.id)
           .in("statut", ["open", "in_progress"]),
         // Signatures en attente
-        supabase
+        supabaseRef.current
           .from("lease_signers")
           .select("id, signature_status")
           .eq("profile_id", profile.id)
@@ -259,12 +258,12 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
     const setupRealtime = async () => {
       // Nettoyer les anciens channels
       channelsRef.current.forEach(channel => {
-        supabase.removeChannel(channel);
+        supabaseRef.current.removeChannel(channel);
       });
       channelsRef.current = [];
 
       // 1. Écouter les changements sur les BAUX (loyer, charges, statut)
-      const leasesChannel = supabase
+      const leasesChannel = supabaseRef.current
         .channel(`tenant-leases:${profile.id}`)
         .on(
           "postgres_changes",
@@ -349,7 +348,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       channelsRef.current.push(leasesChannel);
 
       // 2. Écouter les NOUVELLES FACTURES
-      const invoicesChannel = supabase
+      const invoicesChannel = supabaseRef.current
         .channel(`tenant-invoices:${profile.id}`)
         .on(
           "postgres_changes",
@@ -417,7 +416,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       channelsRef.current.push(invoicesChannel);
 
       // 3. Écouter les NOUVEAUX DOCUMENTS
-      const documentsChannel = supabase
+      const documentsChannel = supabaseRef.current
         .channel(`tenant-documents:${profile.id}`)
         .on(
           "postgres_changes",
@@ -455,7 +454,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       channelsRef.current.push(documentsChannel);
 
       // 4. Écouter les MISES À JOUR DE TICKETS
-      const ticketsChannel = supabase
+      const ticketsChannel = supabaseRef.current
         .channel(`tenant-tickets:${profile.id}`)
         .on(
           "postgres_changes",
@@ -502,7 +501,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       channelsRef.current.push(ticketsChannel);
 
       // 5. Écouter les SIGNATURES
-      const signersChannel = supabase
+      const signersChannel = supabaseRef.current
         .channel(`tenant-signers:${profile.id}`)
         .on(
           "postgres_changes",
@@ -536,7 +535,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
 
       // 6. Écouter les MODIFICATIONS DE PROPRIÉTÉ (adresse, etc.)
       // On écoute toutes les propriétés liées aux baux
-      const propertyChannel = supabase
+      const propertyChannel = supabaseRef.current
         .channel(`tenant-properties:${profile.id}`)
         .on(
           "postgres_changes",
@@ -568,7 +567,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       channelsRef.current.push(propertyChannel);
 
       // 7. Écouter les CHANGEMENTS D'EDL (états des lieux)
-      const edlChannel = supabase
+      const edlChannel = supabaseRef.current
         .channel(`tenant-edl:${profile.id}`)
         .on(
           "postgres_changes",
@@ -644,7 +643,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
         console.warn("[useTenantRealtime] Channels déconnectés, reconnexion...");
         setData(prev => ({ ...prev, isConnected: false }));
         channelsRef.current.forEach(channel => {
-          supabase.removeChannel(channel);
+          supabaseRef.current.removeChannel(channel);
         });
         channelsRef.current = [];
         setupRealtime();
@@ -654,7 +653,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
     return () => {
       clearInterval(reconnectInterval);
       channelsRef.current.forEach(channel => {
-        supabase.removeChannel(channel);
+        supabaseRef.current.removeChannel(channel);
       });
       channelsRef.current = [];
     };

@@ -421,6 +421,8 @@ export async function POST(request: Request) {
           .insert({
             lease_id: lease.id,
             profile_id: existingProfile.id,
+            invited_email: invitee.email,
+            invited_name: invitee.name || null,
             role: signerRole,
             signature_status: "pending",
           });

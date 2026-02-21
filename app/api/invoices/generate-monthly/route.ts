@@ -117,15 +117,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Récupérer le tenant_id depuis les signataires
+    // Récupérer le tenant_id depuis les signataires (multi-rôles + fallback par email)
     const { data: tenantSigner } = await serviceClient
       .from("lease_signers")
-      .select("profile_id")
+      .select("profile_id, invited_email")
       .eq("lease_id", validated.lease_id as any)
-      .eq("role", "locataire_principal")
+      .in("role", ["locataire_principal", "locataire", "colocataire"])
       .maybeSingle();
 
-    const tenantId = tenantSigner ? (tenantSigner as any).profile_id : null;
+    let tenantId = tenantSigner ? (tenantSigner as { profile_id: string | null; invited_email?: string | null }).profile_id : null;
+    if (!tenantId && tenantSigner && (tenantSigner as { invited_email?: string | null }).invited_email) {
+      const { data: resolved } = await serviceClient
+        .from("profiles")
+        .select("id")
+        .eq("email", (tenantSigner as { invited_email: string }).invited_email)
+        .maybeSingle();
+      tenantId = resolved?.id ?? null;
+    }
 
     // Créer la facture
     const { data: invoice, error: invoiceError } = await serviceClient

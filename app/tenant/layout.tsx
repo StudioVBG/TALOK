@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
@@ -24,7 +23,7 @@ async function autoLinkLeaseSigners(profileId: string, userEmail: string) {
     const serviceClient = getServiceClient();
     const { data: orphanSigners } = await serviceClient
       .from("lease_signers")
-      .select("id")
+      .select("id, lease_id")
       .ilike("invited_email", userEmail)
       .is("profile_id", null);
 
@@ -39,6 +38,15 @@ async function autoLinkLeaseSigners(profileId: string, userEmail: string) {
         console.error("[auto-link] Erreur liaison lease_signers:", error);
       } else {
         console.log(`[auto-link] ${orphanSigners.length} lease_signers liés au profil ${profileId}`);
+        // Backfill invoices.tenant_id pour les baux liés
+        const leaseIds = orphanSigners.map((s) => s.lease_id).filter(Boolean);
+        if (leaseIds.length > 0) {
+          await serviceClient
+            .from("invoices")
+            .update({ tenant_id: profileId })
+            .in("lease_id", leaseIds)
+            .is("tenant_id", null);
+        }
       }
     }
   } catch (err) {
@@ -84,18 +92,8 @@ export default async function TenantLayout({
   }
 
   // 3b. Auto-link : rattacher les lease_signers orphelins (email match, profile_id NULL)
-  //     cookies().set() est interdit dans un Server Component (layout) en Next.js 14+,
-  //     donc on utilise un flag en mémoire via un header custom pour éviter les doublons
-  //     dans la même requête, et on exécute le link à chaque navigation.
   if (user.email) {
-    const cookieStore = await cookies();
-    const alreadyLinked = cookieStore.get("autolink_done");
-    if (!alreadyLinked) {
-      await autoLinkLeaseSigners(profile.id, user.email);
-      // Note: on ne peut pas poser de cookie ici (Server Component read-only).
-      // L'auto-link est idempotent (ne relie que les signers avec profile_id NULL),
-      // donc les appels répétés sont sans effet.
-    }
+    await autoLinkLeaseSigners(profile.id, user.email);
   }
 
   // 4. Charger les données du dashboard (RPC)

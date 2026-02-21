@@ -5,7 +5,7 @@ import { useTenantRealtime } from "@/lib/hooks/use-realtime-tenant";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   FileText, 
   Home, 
@@ -51,6 +51,13 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const LEASE_TYPE_LABELS: Record<string, string> = {
   nu: "Location nue",
@@ -76,34 +83,45 @@ export default function TenantLeasePage() {
   } | null>(null);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [showNoticeWizard, setShowNoticeWizard] = useState(false);
+  const [selectedLeaseIndex, setSelectedLeaseIndex] = useState(0);
+
+  const currentLease = useMemo(() => {
+    if (dashboard?.leases?.length) {
+      const idx = Math.min(selectedLeaseIndex, dashboard.leases.length - 1);
+      return dashboard.leases[idx];
+    }
+    return dashboard?.lease ?? null;
+  }, [dashboard?.leases, dashboard?.lease, selectedLeaseIndex]);
+
+  const lease = currentLease;
+  const property = currentLease?.property ?? null;
   
   useEffect(() => {
-    if (dashboard?.lease?.id) {
+    if (lease?.id) {
       setLoadingDocs(true);
-      fetch(`/api/tenant/lease/${dashboard.lease.id}/documents`)
+      fetch(`/api/tenant/lease/${lease.id}/documents`)
         .then(res => res.json())
         .then(data => setDocs(data))
         .catch(err => console.error("Error fetching docs:", err))
         .finally(() => setLoadingDocs(false));
     }
-  }, [dashboard?.lease?.id]);
+  }, [lease?.id]);
 
   // Realtime: refetch automatique quand le bail ou un document change côté propriétaire
   useEffect(() => {
     if (realtime.hasRecentLeaseChange || realtime.hasRecentDocument) {
       refetch();
       // Recharger aussi les documents
-      if (dashboard?.lease?.id) {
-        fetch(`/api/tenant/lease/${dashboard.lease.id}/documents`)
+      if (lease?.id) {
+        fetch(`/api/tenant/lease/${lease.id}/documents`)
           .then(res => res.json())
           .then(data => setDocs(data))
           .catch(err => console.error("Error refetching docs:", err));
       }
     }
-  }, [realtime.hasRecentLeaseChange, realtime.hasRecentDocument, refetch, dashboard?.lease?.id]);
+  }, [realtime.hasRecentLeaseChange, realtime.hasRecentDocument, refetch, lease?.id]);
 
   if (!dashboard) return null;
-  const { lease, property } = dashboard;
 
   if (!lease) {
     return (
@@ -150,7 +168,24 @@ export default function TenantLeasePage() {
             </p>
           </motion.div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 items-center">
+            {dashboard.leases && dashboard.leases.length > 1 && (
+              <Select
+                value={String(selectedLeaseIndex)}
+                onValueChange={(v) => setSelectedLeaseIndex(Number(v))}
+              >
+                <SelectTrigger className="w-[280px] font-medium">
+                  <SelectValue placeholder="Choisir un logement" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dashboard.leases.map((l: any, idx: number) => (
+                    <SelectItem key={l.id} value={String(idx)}>
+                      {l.property?.adresse_complete ?? `Bail ${idx + 1}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Tabs defaultValue="contract" onValueChange={setActiveTab} className="bg-muted p-1 rounded-xl border border-border">
               <TabsList className="bg-transparent border-none">
                 <TabsTrigger value="contract" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm font-bold">📜 Contrat</TabsTrigger>

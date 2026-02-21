@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 export async function getOwnerInvoices(limit = 50) {
   const supabase = await createClient();
@@ -6,7 +7,8 @@ export async function getOwnerInvoices(limit = 50) {
 
   if (!user) return [];
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id")
     .eq("user_id", user.id)
@@ -14,7 +16,7 @@ export async function getOwnerInvoices(limit = 50) {
 
   if (!profile) return [];
 
-  const { data } = await supabase
+  const { data } = await serviceClient
     .from("invoices")
     .select(`
       *,
@@ -59,8 +61,10 @@ export async function getTenantInvoices() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
+  const serviceClient = getServiceClient();
+
   // Trouver le profil tenant
-  const { data: profile } = await supabase
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id")
     .eq("user_id", user.id)
@@ -69,7 +73,7 @@ export async function getTenantInvoices() {
   if (!profile) return [];
 
   // 1. Factures directement liées via tenant_id (locataire principal)
-  const { data: directInvoices } = await supabase
+  const { data: directInvoices } = await serviceClient
     .from("invoices")
     .select(`
       *,
@@ -82,8 +86,8 @@ export async function getTenantInvoices() {
     .limit(200);
 
   // 2. Fallback colocataires : factures des baux où je suis signataire
-  //    mais dont le tenant_id ne pointe pas vers moi
-  const { data: myLeaseIds } = await supabase
+  //    (tenant_id différent ou NULL)
+  const { data: myLeaseIds } = await serviceClient
     .from("lease_signers")
     .select("lease_id")
     .eq("profile_id", profile.id)
@@ -94,7 +98,7 @@ export async function getTenantInvoices() {
 
   let colocInvoices: typeof directInvoices = [];
   if (leaseIds.length > 0) {
-    const { data } = await supabase
+    const { data } = await serviceClient
       .from("invoices")
       .select(`
         *,
@@ -103,7 +107,7 @@ export async function getTenantInvoices() {
         )
       `)
       .in("lease_id", leaseIds)
-      .neq("tenant_id", profile.id) // Éviter les doublons avec la requête directe
+      .or(`tenant_id.is.null,tenant_id.neq.${profile.id}`)
       .order("created_at", { ascending: false })
       .limit(200);
 

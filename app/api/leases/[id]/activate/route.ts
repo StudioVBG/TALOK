@@ -175,15 +175,38 @@ export async function POST(
         .select(`
           *,
           property:properties!leases_property_id_fkey (owner_id, loyer_hc, charges_mensuelles),
-          signers:lease_signers(profile_id, role)
+          signers:lease_signers(profile_id, role, invited_email)
         `)
         .eq("id", leaseId)
         .single();
 
       if (leaseFull) {
-        const tenantId = leaseFull.signers?.find((s: any) => 
+        let tenantId = leaseFull.signers?.find((s: any) =>
           ['locataire_principal', 'tenant', 'principal'].includes(s.role)
         )?.profile_id;
+
+        // Fallback: résolution par invited_email si profile_id est NULL
+        if (!tenantId) {
+          const tenantSigner = leaseFull.signers?.find((s: any) =>
+            ['locataire_principal', 'tenant', 'principal'].includes(s.role)
+          );
+          if (tenantSigner?.invited_email) {
+            const { data: resolved } = await serviceClient
+              .from("profiles")
+              .select("id")
+              .eq("email", tenantSigner.invited_email)
+              .maybeSingle();
+            if (resolved) {
+              tenantId = resolved.id;
+              await serviceClient
+                .from("lease_signers")
+                .update({ profile_id: resolved.id })
+                .eq("lease_id", leaseId)
+                .eq("invited_email", tenantSigner.invited_email);
+            }
+          }
+        }
+
         const ownerId = leaseFull.property?.owner_id;
 
         if (tenantId && ownerId) {

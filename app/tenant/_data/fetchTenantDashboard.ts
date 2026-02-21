@@ -325,9 +325,9 @@ async function fetchTenantDashboardDirect(
     propertyIds.length > 0
       ? supabase
           .from("edl")
-          .select("id, type, statut, scheduled_at, invitation_token, property_id")
+          .select("id, type, status, scheduled_at, invitation_token, property_id")
           .in("property_id", propertyIds)
-          .in("statut", ["scheduled", "in_progress"])
+          .in("status", ["scheduled", "in_progress"])
       : Promise.resolve({ data: [] }),
     // Compteurs actifs avec dernière lecture
     propertyIds.length > 0
