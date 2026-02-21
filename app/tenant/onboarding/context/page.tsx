@@ -169,9 +169,9 @@ export default function TenantContextPage() {
       await onboardingService.saveDraft("tenant_context", validated, "tenant");
       await onboardingService.markStepCompleted("tenant_context", "tenant");
 
-      // FIX P0-E4: Accepter l'invitation via route API server (au lieu de client-side)
-      // Vérifie l'email, utilise service_role, et lie le profile_id au lease_signers
+      // Lier le locataire au logement selon le mode d'entrée
       if (validated.invite_token) {
+        // Mode invitation : accepter via route API server
         try {
           const acceptRes = await fetch("/api/invitations/accept", {
             method: "POST",
@@ -183,7 +183,6 @@ export default function TenantContextPage() {
           if (!acceptRes.ok) {
             const acceptError = await acceptRes.json();
             console.error("[onboarding/context] Erreur acceptation invitation:", acceptError);
-            // Ne pas bloquer l'onboarding — log l'erreur mais continuer
             if (acceptRes.status === 403) {
               toast({
                 title: "Attention",
@@ -194,6 +193,30 @@ export default function TenantContextPage() {
           }
         } catch (err) {
           console.error("[onboarding/context] Erreur appel accept invitation:", err);
+        }
+      } else if (validated.code_logement) {
+        // Mode code propriété : lier via lease_signers
+        try {
+          const linkRes = await fetch("/api/tenant/link-property", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ code: validated.code_logement }),
+          });
+
+          if (!linkRes.ok) {
+            const linkError = await linkRes.json();
+            console.error("[onboarding/context] Erreur liaison propriété:", linkError);
+            if (linkRes.status !== 409) {
+              toast({
+                title: "Attention",
+                description: linkError.error || "La liaison au logement n'a pas pu être effectuée.",
+                variant: "destructive",
+              });
+            }
+          }
+        } catch (err) {
+          console.error("[onboarding/context] Erreur appel link-property:", err);
         }
       }
 
