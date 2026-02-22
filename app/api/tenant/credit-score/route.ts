@@ -177,10 +177,16 @@ export async function GET() {
     } as CreditScoreResponse);
   } catch (error: unknown) {
     console.error("[CreditScore API] Erreur:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
-      { status: 500 }
-    );
+    // Retourner un état explicite plutôt qu'une 500 pour que le composant puisse afficher un message
+    return NextResponse.json({
+      score: 0,
+      level: "poor",
+      change: 0,
+      factors: { paymentHistory: 0, leaseHistory: 0, documents: 0, incidents: 0 },
+      hasData: false,
+      status: "error",
+      message: "Impossible de calculer le score pour le moment",
+    } as CreditScoreResponse & { status?: string; message?: string });
   }
 }
 

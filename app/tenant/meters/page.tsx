@@ -65,6 +65,16 @@ interface MeterReading {
   created_at: string;
 }
 
+interface ConsumptionEstimate {
+  id: string;
+  meter_id: string;
+  period_start: string;
+  period_end: string;
+  estimated_value: number;
+  actual_value?: number | null;
+  unit: string;
+}
+
 const meterConfig: Record<string, { 
   label: string; 
   icon: any; 
@@ -116,6 +126,7 @@ export default function TenantMetersPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [readingHistory, setReadingHistory] = useState<MeterReading[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [estimates, setEstimates] = useState<ConsumptionEstimate[]>([]);
 
   const fetchMeters = async (signal?: AbortSignal) => {
     setIsLoading(true);
@@ -137,6 +148,28 @@ export default function TenantMetersPage() {
       }
       const metersData = await metersResponse.json();
       setMeters(metersData.meters || []);
+
+      // Charger les estimations de consommation pour chaque compteur
+      const meterIds = (metersData.meters || []).map((m: Meter) => m.id);
+      if (meterIds.length > 0) {
+        try {
+          const estResponses = await Promise.allSettled(
+            meterIds.map((id: string) =>
+              fetch(`/api/meters/${id}/history?include_estimates=true`, { signal })
+                .then(r => r.ok ? r.json() : null)
+            )
+          );
+          const allEstimates: ConsumptionEstimate[] = [];
+          for (const r of estResponses) {
+            if (r.status === "fulfilled" && r.value?.estimates) {
+              allEstimates.push(...r.value.estimates);
+            }
+          }
+          setEstimates(allEstimates);
+        } catch {
+          // Non bloquant : les estimations sont optionnelles
+        }
+      }
     } catch (error: unknown) {
       if (error instanceof Error && error.name === "AbortError") return;
       console.error("Erreur chargement compteurs:", error);

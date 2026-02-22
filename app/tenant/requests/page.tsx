@@ -1,17 +1,49 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Plus, Wrench, MessageSquare, Info } from "lucide-react";
+import { Plus, Wrench, MessageSquare, Info, ShieldAlert, Calendar } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { TicketListUnified } from "@/features/tickets/components/ticket-list-unified";
 import { getTickets } from "@/features/tickets/server/data-fetching";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
+import { createClient } from "@/lib/supabase/server";
+
+async function getClaims() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: claims } = await supabase
+      .from("claims")
+      .select("id, claim_number, incident_date, description, status, estimated_damage, created_at")
+      .eq("created_by", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    return claims || [];
+  } catch {
+    return [];
+  }
+}
+
+const CLAIM_STATUS_MAP: Record<string, { label: string; color: string }> = {
+  submitted: { label: "Soumis", color: "bg-blue-100 text-blue-700" },
+  in_review: { label: "En examen", color: "bg-purple-100 text-purple-700" },
+  approved: { label: "Approuvé", color: "bg-green-100 text-green-700" },
+  rejected: { label: "Refusé", color: "bg-red-100 text-red-700" },
+  paid: { label: "Indemnisé", color: "bg-emerald-100 text-emerald-700" },
+};
 
 export default async function TenantRequestsPage() {
-  const tickets = await getTickets("tenant");
+  const [tickets, claims] = await Promise.all([
+    getTickets("tenant"),
+    getClaims(),
+  ]);
 
   return (
     <PageTransition>
@@ -62,6 +94,43 @@ export default async function TenantRequestsPage() {
             <TicketListUnified tickets={tickets as any} variant="tenant" />
           </div>
         </Suspense>
+
+        {/* Section Sinistres */}
+        {claims.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-600 rounded-lg shadow-lg shadow-red-200 dark:shadow-red-900/30">
+                <ShieldAlert className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold tracking-tight text-foreground">Mes sinistres</h2>
+            </div>
+            <div className="space-y-3">
+              {claims.map((claim: any) => {
+                const statusConfig = CLAIM_STATUS_MAP[claim.status] || CLAIM_STATUS_MAP.submitted;
+                return (
+                  <GlassCard key={claim.id} className="p-5 border-border bg-card">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-foreground">
+                            {claim.claim_number ? `Sinistre #${claim.claim_number}` : "Déclaration de sinistre"}
+                          </p>
+                          <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-1">{claim.description}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Incident du {new Date(claim.incident_date).toLocaleDateString("fr-FR")}
+                          {claim.estimated_damage && ` — Estimation : ${Number(claim.estimated_damage).toLocaleString("fr-FR")} €`}
+                        </p>
+                      </div>
+                    </div>
+                  </GlassCard>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
       </div>
       </PullToRefreshContainer>

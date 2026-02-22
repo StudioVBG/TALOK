@@ -876,6 +876,48 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
             )}
           </motion.div>
 
+          {/* G-bis. DPE Compact - 6/12 — Diagnostics énergie du logement */}
+          {currentProperty?.dpe_classe_energie && (
+            <motion.div
+              className="lg:col-span-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.65 }}
+            >
+              <GlassCard className="p-6 border-border bg-card shadow-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "h-14 w-14 rounded-2xl flex items-center justify-center font-black text-xl text-white",
+                      currentProperty.dpe_classe_energie === "A" ? "bg-green-500" :
+                      currentProperty.dpe_classe_energie === "B" ? "bg-lime-500" :
+                      currentProperty.dpe_classe_energie === "C" ? "bg-yellow-400 text-gray-800" :
+                      currentProperty.dpe_classe_energie === "D" ? "bg-amber-400 text-gray-800" :
+                      currentProperty.dpe_classe_energie === "E" ? "bg-orange-500" :
+                      currentProperty.dpe_classe_energie === "F" ? "bg-red-500" :
+                      "bg-red-700"
+                    )}>
+                      {currentProperty.dpe_classe_energie}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Performance Énergétique</p>
+                      <p className="font-bold text-foreground text-lg leading-tight">DPE Classe {currentProperty.dpe_classe_energie}</p>
+                      {currentProperty.dpe_consommation && (
+                        <p className="text-sm text-muted-foreground">{currentProperty.dpe_consommation} kWh/m²/an</p>
+                      )}
+                    </div>
+                  </div>
+                  {currentProperty.dpe_classe_climat && (
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">GES</p>
+                      <p className="font-black text-2xl text-foreground">{currentProperty.dpe_classe_climat}</p>
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+            </motion.div>
+          )}
+
           {/* G. IA TIP - 6/12 — Conseil dynamique basé sur le contexte utilisateur */}
           <motion.div
             className="lg:col-span-6"
@@ -891,11 +933,13 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                 <p className="text-sm text-white/90 leading-relaxed font-medium max-w-sm">
                   {!dashboard.insurance?.has_insurance
                     ? "Pensez à déposer votre attestation d'assurance habitation pour être en conformité avec votre bail."
-                    : (dashboard.stats?.unpaid_amount > 0)
-                      ? "Vous avez un impayé en cours. Régularisez-le rapidement pour maintenir un bon score locataire."
-                      : (currentLease?.statut === 'pending_signature' && !hasSignedLease)
-                        ? "Votre bail est prêt à être signé ! Finalisez la signature pour activer votre espace."
-                        : "Tout est en ordre ! Pensez à vérifier régulièrement vos relevés de compteurs pour suivre votre consommation."}
+                    : dashboard.insurance?.last_expiry_date && new Date(dashboard.insurance.last_expiry_date) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                      ? `Votre attestation d'assurance expire le ${new Date(dashboard.insurance.last_expiry_date).toLocaleDateString("fr-FR")}. Pensez à la renouveler !`
+                      : (dashboard.stats?.unpaid_amount > 0)
+                        ? "Vous avez un impayé en cours. Régularisez-le rapidement pour maintenir un bon score locataire."
+                        : (currentLease?.statut === 'pending_signature' && !hasSignedLease)
+                          ? "Votre bail est prêt à être signé ! Finalisez la signature pour activer votre espace."
+                          : "Tout est en ordre ! Pensez à vérifier régulièrement vos relevés de compteurs pour suivre votre consommation."}
                 </p>
               </div>
               <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-md h-11 px-6 rounded-xl font-bold" asChild>

@@ -17,6 +17,7 @@ import {
   ClipboardCheck,
   Gauge,
   Users,
+  FileSearch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +64,7 @@ const allNavItems = [
   { name: "Mon Logement", href: "/tenant/lease", icon: Home, tourId: "nav-lease", group: "Mon Espace" },
   { name: "Documents", href: "/tenant/documents", icon: FileText, tourId: "nav-documents", group: "Mes Documents" },
   { name: "Loyers & Paiements", href: "/tenant/payments", icon: CreditCard, tourId: "nav-payments", group: "Mes Finances" },
+  { name: "Candidatures", href: "/tenant/applications", icon: FileSearch, tourId: "nav-applications", group: "Mes Documents" },
   { name: "Demandes", href: "/tenant/requests", icon: Wrench, tourId: "nav-requests", group: "Assistance" },
   { name: "Messages", href: "/tenant/messages", icon: MessageSquare, tourId: "nav-messages", group: "Assistance" },
 ];
