@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
  */
 
 interface CreditScoreResponse {
-  score: number;
+  score: number | null;
   level: "poor" | "fair" | "good" | "excellent";
   change: number; // Variation ce mois
   factors: {
@@ -74,10 +74,10 @@ export async function GET() {
       (ls: any) => ls.lease?.statut === "active" || ls.lease?.statut === "fully_signed"
     ) || [];
 
-    // Si pas de bail actif, retourner hasData: false
+    // Si pas de bail actif, retourner hasData: false avec score null
     if (activeLeases.length === 0) {
       return NextResponse.json({
-        score: 0,
+        score: null,
         level: "poor",
         change: 0,
         factors: {
@@ -87,7 +87,8 @@ export async function GET() {
           incidents: 0,
         },
         hasData: false,
-      } as CreditScoreResponse);
+        status: "not_available",
+      } as CreditScoreResponse & { status?: string });
     }
 
     const currentLease = activeLeases[0].lease;
@@ -177,10 +178,16 @@ export async function GET() {
     } as CreditScoreResponse);
   } catch (error: unknown) {
     console.error("[CreditScore API] Erreur:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
-      { status: 500 }
-    );
+    // Retourner un état explicite plutôt qu'une 500 pour que le composant puisse afficher un message
+    return NextResponse.json({
+      score: null,
+      level: "poor",
+      change: 0,
+      factors: { paymentHistory: 0, leaseHistory: 0, documents: 0, incidents: 0 },
+      hasData: false,
+      status: "error",
+      message: "Impossible de calculer le score pour le moment",
+    } as CreditScoreResponse & { status?: string; message?: string });
   }
 }
 

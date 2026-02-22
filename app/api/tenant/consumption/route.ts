@@ -26,6 +26,88 @@ interface ConsumptionResponse {
   lastUpdate: string | null;
 }
 
+/**
+ * Fallback : construit les données de consommation depuis la table meter_readings
+ * quand les EDL ne contiennent pas de relevés exploitables.
+ */
+async function buildConsumptionFromMeterReadings(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  propertyId: string
+): Promise<ConsumptionResponse | null> {
+  // Récupérer les compteurs actifs de la propriété
+  const { data: meters } = await supabase
+    .from("meters")
+    .select("id, type, unit")
+    .eq("property_id", propertyId)
+    .eq("is_active", true);
+
+  if (!meters || meters.length === 0) return null;
+
+  const meterIds = meters.map((m: any) => m.id);
+
+  // Récupérer les relevés des 12 derniers mois
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+  const { data: readings } = await supabase
+    .from("meter_readings")
+    .select("meter_id, reading_value, reading_date")
+    .in("meter_id", meterIds)
+    .gte("reading_date", twelveMonthsAgo.toISOString().slice(0, 10))
+    .order("reading_date", { ascending: true });
+
+  if (!readings || readings.length === 0) return null;
+
+  // Index des types par meter_id
+  const meterTypeMap = new Map<string, string>();
+  for (const m of meters) {
+    meterTypeMap.set(m.id, (m as any).type || "");
+  }
+
+  // Agréger les relevés par mois et type
+  const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"];
+  const consumptionByMonth: Record<string, ConsumptionData> = {};
+  let latestElec = 0, latestWater = 0, latestGas = 0;
+  let lastUpdate: string | null = null;
+
+  for (const r of readings) {
+    const date = new Date(r.reading_date);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, "0")}`;
+    const monthLabel = monthNames[date.getMonth()];
+
+    if (!consumptionByMonth[monthKey]) {
+      consumptionByMonth[monthKey] = { month: monthLabel, elec: 0, water: 0, gas: 0 };
+    }
+
+    const meterType = meterTypeMap.get(r.meter_id) || "";
+    const value = typeof r.reading_value === "string" ? parseFloat(r.reading_value) || 0 : Number(r.reading_value) || 0;
+
+    if (meterType === "electricity" || meterType === "electricite") {
+      consumptionByMonth[monthKey].elec = value;
+      latestElec = value;
+    } else if (meterType === "water" || meterType === "eau") {
+      consumptionByMonth[monthKey].water = value;
+      latestWater = value;
+    } else if (meterType === "gas" || meterType === "gaz") {
+      consumptionByMonth[monthKey].gas = value;
+      latestGas = value;
+    }
+
+    lastUpdate = r.reading_date;
+  }
+
+  const data = Object.values(consumptionByMonth).slice(-6);
+
+  if (data.length === 0) return null;
+
+  return {
+    data,
+    current: { electricity: latestElec, water: latestWater, gas: latestGas },
+    hasData: true,
+    lastUpdate,
+  };
+}
+
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -104,8 +186,11 @@ export async function GET() {
       .order("created_at", { ascending: false })
       .limit(12);
 
-    // Si pas de relevés, retourner hasData: false
+    // Fallback: si pas de relevés EDL, chercher dans meter_readings (relevés de compteurs réguliers)
     if (!edlReadings || edlReadings.length === 0) {
+      const meterData = await buildConsumptionFromMeterReadings(supabase, propertyId as string);
+      if (meterData) return NextResponse.json(meterData);
+
       return NextResponse.json({
         data: [],
         current: { electricity: 0, water: 0, gas: 0 },
@@ -165,8 +250,11 @@ export async function GET() {
       .slice(0, 6)
       .reverse();
 
-    // Si aucune donnée de compteur trouvée
+    // Si aucune donnée de compteur dans les EDL, fallback sur meter_readings
     if (data.length === 0 || (latestElec === 0 && latestWater === 0 && latestGas === 0)) {
+      const meterData = await buildConsumptionFromMeterReadings(supabase, propertyId as string);
+      if (meterData) return NextResponse.json(meterData);
+
       return NextResponse.json({
         data: [],
         current: { electricity: 0, water: 0, gas: 0 },
@@ -187,10 +275,13 @@ export async function GET() {
     } as ConsumptionResponse);
   } catch (error: unknown) {
     console.error("[Consumption API] Erreur:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
-      { status: 500 }
-    );
+    // Retourner un état explicite plutôt qu'une 500
+    return NextResponse.json({
+      data: [],
+      current: { electricity: 0, water: 0, gas: 0 },
+      hasData: false,
+      lastUpdate: null,
+    } as ConsumptionResponse);
   }
 }
 

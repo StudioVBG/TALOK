@@ -72,6 +72,19 @@ const METER_ICONS: Record<string, any> = {
   gas: Flame,
 };
 
+const CHARGE_TYPE_LABELS: Record<string, string> = {
+  eau: "Eau",
+  electricite: "Électricité",
+  gaz: "Gaz",
+  copro: "Copropriété",
+  taxe: "Taxe",
+  ordures: "Ordures ménagères",
+  assurance: "Assurance",
+  travaux: "Travaux",
+  energie: "Énergie",
+  autre: "Autre",
+};
+
 export default function TenantLeasePage() {
   const { dashboard, refetch } = useTenantData();
   const realtime = useTenantRealtime({ showToasts: true, enableSound: false });
@@ -240,12 +253,37 @@ export default function TenantLeasePage() {
                           <span className="text-muted-foreground font-medium">Charges forfaitaires</span>
                           <span className="font-bold text-foreground">{formatCurrency(lease.charges_forfaitaires)}</span>
                         </div>
+                        {/* Ventilation des charges si disponible */}
+                        {(lease as any).charges && (lease as any).charges.length > 0 && (
+                          <div className="pl-4 border-l-2 border-indigo-100 dark:border-indigo-900/50 space-y-1.5 py-1">
+                            {(lease as any).charges.map((c: any) => (
+                              <div key={c.id} className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground text-xs capitalize">
+                                  {c.label || CHARGE_TYPE_LABELS[c.type] || c.type}
+                                </span>
+                                <span className="text-xs font-medium text-foreground/70">{formatCurrency(c.montant)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <div className="flex justify-between items-center pt-4 border-t border-indigo-100 dark:border-indigo-900/50">
                           <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">Loyer CC</span>
                           <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400">
                             {formatCurrency((lease.loyer || 0) + (lease.charges_forfaitaires || 0))}
                           </span>
                         </div>
+                        {/* Régularisation de charges si disponible */}
+                        {(lease as any).charges_base && (lease as any).charges_base.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-border space-y-2">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Régularisation de charges</p>
+                            {(lease as any).charges_base.map((cb: any) => (
+                              <div key={cb.id} className="flex justify-between items-center text-sm">
+                                <span className="text-muted-foreground">{cb.label || "Poste de charges"}</span>
+                                <span className="font-medium text-foreground">{formatCurrency(cb.amount)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </GlassCard>
                   </motion.div>

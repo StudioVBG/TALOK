@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { linkOrphanSigners, linkProfileToUser } from "@/features/tenant/services/tenant-linking.service";
 import type { LeaseRow, PropertyRow, ProfileRow, LeaseSignerRow, DocumentRow } from "@/lib/supabase/database.types";
 
 type LeaseSignerWithProfile = LeaseSignerRow & {
@@ -76,16 +77,7 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
         
         // IMPORTANT: Lier ce profil au user_id pour les prochaines fois
         if (!profileByEmail.user_id) {
-          const { error: updateError } = await serviceClient
-            .from("profiles")
-            .update({ user_id: userId })
-            .eq("id", profileByEmail.id);
-          
-          if (updateError) {
-            console.error("[fetchTenantLease] ❌ Erreur liaison user_id:", updateError.message);
-          } else {
-            console.log("[fetchTenantLease] 🔗 Profil lié au user_id:", userId);
-          }
+          await linkProfileToUser(profileByEmail.id, userId);
         }
       } else {
         console.log("[fetchTenantLease] ❌ Aucun profil trouvé avec email:", user.email);
@@ -131,16 +123,8 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
     if (signersByEmail && signersByEmail.length > 0) {
       leaseIdsByEmail = signersByEmail.map((s: { lease_id: string }) => s.lease_id);
 
-      // Auto-heal: lier les signers orphelins trouvés par email
-      for (const s of signersByEmail) {
-        if (!(s as { profile_id: string | null }).profile_id) {
-          console.log("[fetchTenantLease] Auto-heal: liaison signer orphelin", (s as { id: string }).id, "-> profile", profile.id);
-          await serviceClient
-            .from("lease_signers")
-            .update({ profile_id: profile.id })
-            .eq("id", (s as { id: string }).id);
-        }
-      }
+      // Auto-heal: lier les signers orphelins trouvés par email (service centralisé)
+      await linkOrphanSigners(profile.id, userEmail);
     }
   }
 

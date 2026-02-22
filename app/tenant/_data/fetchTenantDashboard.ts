@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { linkOrphanSigners } from "@/features/tenant/services/tenant-linking.service";
 
 // Interface pour un bail avec propriété jointe
 export interface TenantLease {
@@ -256,6 +257,11 @@ async function fetchTenantDashboardDirect(
       .select("lease_id")
       .ilike("invited_email", userEmail);
     leaseIdsByEmail = (signersByEmail || []).map((s: { lease_id: string }) => s.lease_id);
+
+    // Auto-heal: lier les signers orphelins trouvés par email (service centralisé)
+    if (leaseIdsByEmail.length > 0) {
+      await linkOrphanSigners(profile.id, userEmail);
+    }
   }
 
   // Union des lease_ids
@@ -315,7 +321,7 @@ async function fetchTenantDashboardDirect(
 
   const propertyIds = leases.map((l: any) => l.property_id).filter(Boolean);
 
-  // Charger les données en parallèle : propriétés, propriétaires, factures, tickets, EDL, meters, keys EDL, insurance
+  // Charger les données en parallèle : propriétés, propriétaires, factures, tickets, EDL, meters, keys EDL, insurance, notifications, charges
   const [
     propertiesResult,
     ownersResult,
@@ -325,6 +331,9 @@ async function fetchTenantDashboardDirect(
     metersResult,
     edlKeysResult,
     insuranceResult,
+    notificationsResult,
+    chargesResult,
+    chargesBaseResult,
   ] = await Promise.allSettled([
     // Propriétés complètes (select *)
     propertyIds.length > 0
@@ -388,6 +397,27 @@ async function fetchTenantDashboardDirect(
       .eq("is_archived", false)
       .order("expiry_date", { ascending: false })
       .limit(1),
+    // Notifications du locataire (fallback direct — avant ça retournait [])
+    supabase
+      .from("notifications")
+      .select("id, type, title, body, link_url, read_at, sent_channels, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    // Charges ventilées par propriété
+    propertyIds.length > 0
+      ? supabase
+          .from("charges")
+          .select("id, property_id, type, label, montant, periodicite, refacturable, created_at")
+          .in("property_id", propertyIds)
+      : Promise.resolve({ data: [] }),
+    // Régularisation de charges (tenant_charges_base) par bail
+    leaseIds.length > 0
+      ? supabase
+          .from("tenant_charges_base")
+          .select("id, lease_id, label, amount, created_at")
+          .in("lease_id", leaseIds)
+      : Promise.resolve({ data: [] }),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -416,6 +446,9 @@ async function fetchTenantDashboardDirect(
   const metersData = getData<Record<string, unknown>>(metersResult);
   const edlKeysData = getData<Record<string, unknown>>(edlKeysResult);
   const insuranceData = getData<Record<string, unknown>>(insuranceResult);
+  const notificationsData = getData<Record<string, unknown>>(notificationsResult);
+  const chargesData = getData<Record<string, unknown>>(chargesResult);
+  const chargesBaseData = getData<Record<string, unknown>>(chargesBaseResult);
 
   // Index des propriétés par ID
   const propertyMap = new Map<string, PropertyRecord>();
@@ -482,6 +515,22 @@ async function fetchTenantDashboardDirect(
     ? (!insuranceDoc.expiry_date || new Date(insuranceDoc.expiry_date) > new Date())
     : false;
 
+  // Index des charges par property_id
+  const chargesByProperty = new Map<string, any[]>();
+  for (const c of chargesData) {
+    const propId = (c as any).property_id;
+    if (!chargesByProperty.has(propId)) chargesByProperty.set(propId, []);
+    chargesByProperty.get(propId)!.push(c);
+  }
+
+  // Index des régularisations de charges par lease_id
+  const chargesBaseByLease = new Map<string, any[]>();
+  for (const cb of chargesBaseData) {
+    const leaseId = (cb as any).lease_id;
+    if (!chargesBaseByLease.has(leaseId)) chargesBaseByLease.set(leaseId, []);
+    chargesBaseByLease.get(leaseId)!.push(cb);
+  }
+
   // Helper
   const getPropertyForLease = (leaseId: string) => {
     const lease = leases.find((l: any) => l.id === leaseId);
@@ -509,10 +558,14 @@ async function fetchTenantDashboardDirect(
     });
 
     const keys = keysMap.get(propId) || [];
+    const charges = chargesByProperty.get(propId) || [];
+    const charges_base = chargesBaseByLease.get(l.id) || [];
 
     return {
       ...l,
       lease_signers: leaseSignersForLease,
+      charges,
+      charges_base,
       property: prop
         ? { ...prop, meters, keys }
         : null,
@@ -584,7 +637,7 @@ async function fetchTenantDashboardDirect(
     property: enrichedLeases.length > 0 ? enrichedLeases[0].property : null,
     invoices,
     tickets,
-    notifications: [],
+    notifications: notificationsData,
     pending_edls,
     insurance: {
       has_insurance: hasInsurance,
