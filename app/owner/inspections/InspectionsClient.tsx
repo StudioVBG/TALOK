@@ -176,8 +176,10 @@ export function InspectionsClient({ inspections }: Props) {
           signed: { label: "Signé", type: "success", animate: false },
           completed: { label: "Terminé", type: "info", animate: false },
           in_progress: { label: "En cours", type: "warning", animate: true },
+          scheduled: { label: "Planifié", type: "info", animate: false },
           disputed: { label: "Contesté", type: "error", animate: true },
           draft: { label: "Brouillon", type: "neutral", animate: false },
+          closed: { label: "Clôturé", type: "neutral", animate: false },
         };
         const config = statusMap[edl.status] || statusMap.draft;
         return (

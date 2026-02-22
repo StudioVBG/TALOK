@@ -25,12 +25,16 @@ interface EDLSignature {
   signer_user: string | null;
   signer_profile_id: string | null;
   signer_role: string;
+  signer_name: string | null;
+  signer_email: string | null;
   signed_at: string | null;
   signature_image_path: string | null;
   signature_image_url?: string;
   invitation_token: string | null;
   invitation_sent_at: string | null;
   ip_inet: string | null;
+  proof_id: string | null;
+  document_hash: string | null;
   profile?: EDLProfile | null;
 }
 
@@ -118,6 +122,7 @@ interface PropertyMeter {
 interface RoomStats {
   total: number;
   completed: number;
+  neuf: number;
   bon: number;
   moyen: number;
   mauvais: number;
@@ -398,6 +403,7 @@ async function fetchInspectionDetail(edlId: string, profileId: string) {
       stats: {
         total: roomItems.length,
         completed,
+        neuf: roomItems.filter(i => i.condition === "neuf").length,
         bon: roomItems.filter(i => i.condition === "bon").length,
         moyen: roomItems.filter(i => i.condition === "moyen").length,
         mauvais: roomItems.filter(i => i.condition === "mauvais").length,

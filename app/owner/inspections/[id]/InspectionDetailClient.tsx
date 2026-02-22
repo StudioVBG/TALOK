@@ -141,13 +141,16 @@ interface Props {
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: "Brouillon", color: "bg-gray-100 text-gray-800", icon: Clock },
+  scheduled: { label: "Planifié", color: "bg-indigo-100 text-indigo-800", icon: Calendar },
   in_progress: { label: "En cours", color: "bg-blue-100 text-blue-800", icon: ClipboardList },
   completed: { label: "Terminé", color: "bg-amber-100 text-amber-800", icon: CheckCircle2 },
   signed: { label: "Signé", color: "bg-green-100 text-green-800", icon: CheckCircle2 },
   disputed: { label: "Contesté", color: "bg-red-100 text-red-800", icon: AlertCircle },
+  closed: { label: "Clôturé", color: "bg-slate-100 text-slate-800", icon: CheckCircle2 },
 };
 
 const conditionConfig: Record<string, { label: string; color: string }> = {
+  neuf: { label: "Neuf", color: "bg-blue-100 text-blue-800" },
   bon: { label: "Bon état", color: "bg-green-100 text-green-800" },
   moyen: { label: "État moyen", color: "bg-yellow-100 text-yellow-800" },
   mauvais: { label: "Mauvais état", color: "bg-orange-100 text-orange-800" },
@@ -185,6 +188,8 @@ export function InspectionDetailClient({ data }: Props) {
     edl_id: edl.id,
     signer_type: s.signer_role,
     signer_profile_id: s.signer_profile_id || s.signer_user,
+    signer_name: s.signer_name,
+    signer_email: s.signer_email,
     // ✅ FIX: Priorité URL signée > path brut
     signature_image: s.signature_image_url || s.signature_image_path,
     signature_image_path: s.signature_image_path, // Garder le path pour référence
@@ -486,9 +491,10 @@ export function InspectionDetailClient({ data }: Props) {
   const tenantSignedLease = !!(mainTenantFromLease?.signed_at);
 
   // Cas 3: L'email est-il un placeholder?
-  const tenantEmail = mainTenantFromLease?.invited_email || 
+  const tenantEmail = mainTenantFromLease?.invited_email ||
                       mainTenantFromLease?.profile?.email ||
-                      tenantSignature?.profile?.email;
+                      tenantSignature?.profile?.email ||
+                      tenantSignature?.signer_email;
 
   const isPlaceholderEmail = tenantEmail && (
     tenantEmail.includes('@a-definir') || 
@@ -508,12 +514,14 @@ export function InspectionDetailClient({ data }: Props) {
                           mainTenantFromLease?.profile_id;
   
   // Nom du locataire pour l'affichage
-  const tenantName = tenantSignature?.profile 
+  // Chaîne de fallback: profil signature → profil bail → signer_name EDL → invited_name bail → email → défaut
+  const tenantName = tenantSignature?.profile
       ? `${tenantSignature.profile.prenom || ''} ${tenantSignature.profile.nom || ''}`.trim()
-      : mainTenantFromLease?.profile 
+      : mainTenantFromLease?.profile
         ? `${mainTenantFromLease.profile.prenom || ''} ${mainTenantFromLease.profile.nom || ''}`.trim()
-      : mainTenantFromLease?.invited_name || 
-        (isPlaceholderEmail ? "Locataire (non défini)" : tenantEmail) || 
+      : tenantSignature?.signer_name ||
+        mainTenantFromLease?.invited_name ||
+        (isPlaceholderEmail ? "Locataire (non défini)" : tenantEmail) ||
         "Locataire";
 
   // Signatures complètes (avec image)
