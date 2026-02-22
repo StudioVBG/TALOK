@@ -301,19 +301,24 @@ export async function POST(request: Request, { params }: PageProps) {
       });
 
     // FIX P1-8: Ajouter audit_log
-    await serviceClient.from("audit_log").insert({
-      user_id: signerProfileId || null,
-      action: "lease_signed_via_token",
-      entity_type: "lease",
-      entity_id: lease.id,
-      metadata: {
-        role: signerRole,
-        proof_id: updateData.proof_id,
-        verification_method: "otp_sms",
-        signer_email: normalizedEmail,
-        correlation_id: log.getCorrelationId(),
-      },
-    } as any);
+    try {
+      await serviceClient.from("audit_log").insert({
+        actor_type: "user",
+        actor_id: signerProfileId || null,
+        action: "lease_signed_via_token",
+        resource: "lease",
+        resource_id: lease.id,
+        after: {
+          role: signerRole,
+          proof_id: updateData.proof_id,
+          verification_method: "otp_sms",
+          signer_email: normalizedEmail,
+          correlation_id: log.getCorrelationId(),
+        },
+      } as any);
+    } catch (auditErr) {
+      log.warn("Erreur audit_log (non bloquant)", { error: String(auditErr) });
+    }
 
     // Notifier le propriétaire
     const { data: leaseWithProperty } = await serviceClient
