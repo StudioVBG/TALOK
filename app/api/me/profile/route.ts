@@ -113,6 +113,21 @@ export async function POST(request: Request) {
 
     const profileId = (newProfile as { id: string }).id;
 
+    // Filet de sécurité : créer le profil spécialisé (owner_profiles / tenant_profiles) si le trigger DB n'a pas tourné
+    if (role === "owner") {
+      await serviceClient
+        .from("owner_profiles")
+        .upsert({ profile_id: profileId, type: "particulier" }, { onConflict: "profile_id", ignoreDuplicates: true });
+    } else if (role === "tenant") {
+      await serviceClient
+        .from("tenant_profiles")
+        .upsert({ profile_id: profileId }, { onConflict: "profile_id", ignoreDuplicates: true });
+    } else if (role === "provider") {
+      await serviceClient
+        .from("provider_profiles")
+        .upsert({ profile_id: profileId, type_services: [] }, { onConflict: "profile_id", ignoreDuplicates: true });
+    }
+
     // Filet de sécurité : lier lease_signers orphelins + backfill invoices (au cas où le trigger DB n'a pas tourné)
     if (user.email && profileId) {
       try {

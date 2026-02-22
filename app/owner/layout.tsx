@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import { fetchProperties, fetchDashboard, fetchContracts } from "./_data";
@@ -46,6 +47,21 @@ export default async function OwnerLayout({
   // Vérifier que c'est bien un propriétaire
   if (profile.role !== "owner") {
     redirect(getRoleDashboardUrl(profile.role));
+  }
+
+  // Filet de sécurité : s'assurer que owner_profiles existe (évite "aucune entité")
+  const serviceClient = getServiceClient();
+  const { data: ownerProfile } = await serviceClient
+    .from("owner_profiles")
+    .select("profile_id")
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (!ownerProfile) {
+    await serviceClient.from("owner_profiles").insert({
+      profile_id: profile.id,
+      type: "particulier",
+    });
   }
 
   // Charger toutes les données en parallèle

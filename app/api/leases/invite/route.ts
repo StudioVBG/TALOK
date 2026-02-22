@@ -195,6 +195,23 @@ export async function POST(request: Request) {
     // Utiliser le service client pour bypass les RLS (évite la récursion infinie)
     const serviceClient = getServiceClient();
 
+    // Valider signatory_entity_id si fourni : doit exister et appartenir au propriétaire
+    if (validated.signatory_entity_id) {
+      const { data: entity, error: entityError } = await serviceClient
+        .from("legal_entities")
+        .select("id, owner_profile_id")
+        .eq("id", validated.signatory_entity_id)
+        .eq("is_active", true)
+        .single();
+
+      if (entityError || !entity || entity.owner_profile_id !== profile.id) {
+        return NextResponse.json(
+          { error: "Entité juridique invalide ou non autorisée" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Déterminer si c'est une colocation
     const isColocation = validated.type_bail === "colocation" && validated.invitees && validated.invitees.length > 0;
     

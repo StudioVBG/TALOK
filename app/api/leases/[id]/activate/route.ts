@@ -181,14 +181,15 @@ export async function POST(
         .single();
 
       if (leaseFull) {
+        const TENANT_ROLES = ['locataire_principal', 'locataire', 'tenant', 'principal', 'colocataire'];
         let tenantId = leaseFull.signers?.find((s: any) =>
-          ['locataire_principal', 'tenant', 'principal'].includes(s.role)
+          TENANT_ROLES.includes(s.role)
         )?.profile_id;
 
         // Fallback: résolution par invited_email si profile_id est NULL
         if (!tenantId) {
           const tenantSigner = leaseFull.signers?.find((s: any) =>
-            ['locataire_principal', 'tenant', 'principal'].includes(s.role)
+            TENANT_ROLES.includes(s.role)
           );
           if (tenantSigner?.invited_email) {
             const { data: resolved } = await serviceClient
@@ -207,9 +208,13 @@ export async function POST(
           }
         }
 
+        if (!tenantId) {
+          console.warn("[Activate Lease] Aucun locataire résolu (profile_id ou email) — facture créée avec tenant_id null pour lease", leaseId);
+        }
+
         const ownerId = leaseFull.property?.owner_id;
 
-        if (tenantId && ownerId) {
+        if (ownerId) {
           // SSOT : Utiliser les données du bien par défaut
           const baseRent = leaseFull.property?.loyer_hc ?? leaseFull.loyer ?? 0;
           const baseCharges = leaseFull.property?.charges_mensuelles ?? leaseFull.charges_forfaitaires ?? 0;
@@ -243,7 +248,8 @@ export async function POST(
             .insert({
               lease_id: leaseId,
               owner_id: ownerId,
-              tenant_id: tenantId,
+              tenant_id: tenantId ?? null,
+              issuer_entity_id: (leaseFull as any).signatory_entity_id ?? null,
               periode: monthStr,
               montant_loyer: Math.round(finalRent * 100) / 100,
               montant_charges: Math.round(finalCharges * 100) / 100,

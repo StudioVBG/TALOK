@@ -337,6 +337,7 @@ export const POST = withSecurity(async function POST(request: Request) {
     const validationResult = LeaseCreateSchema.safeParse({
       property_id: body.property_id,
       type_bail: typeBail,
+      signatory_entity_id: body.signatory_entity_id ?? null,
       loyer: loyer,
       charges_forfaitaires: chargesParsed,
       depot_de_garantie: depotFourni, // Peut être undefined - sera calculé après
@@ -364,11 +365,12 @@ export const POST = withSecurity(async function POST(request: Request) {
       console.log(`[POST /api/leases] Dépôt calculé automatiquement: ${depotGarantie}€ (${validatedData.type_bail}, loyer: ${validatedData.loyer}€)`);
     }
 
-    // Vérifier que le bien appartient au propriétaire (sauf admin)
+    // Vérifier que le bien appartient au propriétaire (sauf admin) et récupérer legal_entity_id pour fallback
+    let propertyForEntity: { legal_entity_id?: string | null } | null = null;
     if (profileData.role !== "admin") {
       const { data: property, error: propertyError } = await serviceClient
         .from("properties")
-        .select("id, owner_id")
+        .select("id, owner_id, legal_entity_id")
         .eq("id", validatedData.property_id)
         .single();
 
@@ -376,10 +378,18 @@ export const POST = withSecurity(async function POST(request: Request) {
         throw new ApiError(404, "Bien non trouvé");
       }
 
-      const typedProperty = property as PropertyWithOwner;
+      const typedProperty = property as PropertyWithOwner & { legal_entity_id?: string | null };
       if (typedProperty.owner_id !== profileData.id) {
         throw new ApiError(403, "Vous n'êtes pas propriétaire de ce bien");
       }
+      propertyForEntity = property;
+    } else {
+      const { data: prop } = await serviceClient
+        .from("properties")
+        .select("legal_entity_id")
+        .eq("id", validatedData.property_id)
+        .single();
+      propertyForEntity = prop;
     }
 
     // ✅ P2: Vérifier s'il existe déjà un bail draft pour cette propriété
@@ -396,6 +406,8 @@ export const POST = withSecurity(async function POST(request: Request) {
     }
 
     // ✅ SSOT 2026: Créer le bail avec les données VALIDÉES + dépôt calculé
+    const signatoryEntityId =
+      validatedData.signatory_entity_id ?? propertyForEntity?.legal_entity_id ?? null;
     const leaseData = {
       property_id: validatedData.property_id,
       type_bail: validatedData.type_bail,
@@ -405,6 +417,7 @@ export const POST = withSecurity(async function POST(request: Request) {
       date_debut: validatedData.date_debut,
       date_fin: validatedData.date_fin || null,
       statut: "draft", // ✅ SOTA BIC 2026: Toujours "draft" à la création (sécurité)
+      signatory_entity_id: signatoryEntityId,
     };
 
     const { data: lease, error: leaseError } = await serviceClient
