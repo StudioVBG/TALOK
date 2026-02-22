@@ -212,6 +212,35 @@ export async function POST(request: Request) {
       );
     }
 
+    // SOTA 2026: Synchroniser tenant_profiles pour débloquer la signature EDL
+    // (la route /api/edl/[id]/sign vérifie tenant_profiles.cni_number)
+    if (newDoc) {
+      const cniNumber =
+        (ocrData.numero_cni as string)?.trim() ||
+        (ocrData.numero as string)?.trim() ||
+        `CNI_UPLOADED_${newDoc.id}`;
+
+      if (side === "recto") {
+        await serviceClient
+          .from("tenant_profiles")
+          .upsert(
+            {
+              profile_id: profile.id,
+              cni_number: cniNumber,
+              cni_recto_path: filePath,
+              cni_expiry_date: expiryDate,
+              cni_verified_at: new Date().toISOString(),
+            },
+            { onConflict: "profile_id" }
+          );
+      } else if (side === "verso") {
+        await serviceClient
+          .from("tenant_profiles")
+          .update({ cni_verso_path: filePath })
+          .eq("profile_id", profile.id);
+      }
+    }
+
     // Si ancienne CNI archivée, lier la nouvelle
     if (isRenewal && newDoc) {
       const docType = side === "recto" ? "cni_recto" : "cni_verso";

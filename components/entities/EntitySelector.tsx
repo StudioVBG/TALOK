@@ -22,23 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-const ENTITY_TYPE_LABELS: Record<string, string> = {
-  particulier: "Personnel",
-  sci_ir: "SCI IR",
-  sci_is: "SCI IS",
-  sarl: "SARL",
-  sarl_famille: "SARL fam.",
-  eurl: "EURL",
-  sas: "SAS",
-  sasu: "SASU",
-  sa: "SA",
-  snc: "SNC",
-  indivision: "Indivision",
-  demembrement_usufruit: "Usufruit",
-  demembrement_nue_propriete: "Nue-prop.",
-  holding: "Holding",
-};
+import { getEntityTypeLabel } from "@/lib/entities/entity-constants";
 
 // Entités de type "particulier" n'ont pas besoin de SIRET
 const ENTITIES_WITHOUT_SIRET = ["particulier"];
@@ -146,8 +130,7 @@ export function EntitySelector({
 
           {/* Entity options — P1-8: property owner entity shown first */}
           {sortedEntities.map((entity) => {
-            const typeLabel =
-              ENTITY_TYPE_LABELS[entity.entityType] || entity.entityType;
+            const typeLabel = getEntityTypeLabel(entity.entityType, true);
             const isPropertyOwner = entity.id === propertyEntityId;
             return (
               <SelectItem key={entity.id} value={entity.id}>

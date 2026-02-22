@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useEntityStore } from "@/stores/useEntityStore";
-import { Building2, User, Users, ArrowUpDown, Check, Plus, Settings } from "lucide-react";
+import { Building2, Check, Plus, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -20,41 +20,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-
-function getEntityIcon(entityType: string) {
-  switch (entityType) {
-    case "particulier":
-      return User;
-    case "indivision":
-      return Users;
-    case "demembrement_usufruit":
-    case "demembrement_nue_propriete":
-      return ArrowUpDown;
-    default:
-      return Building2;
-  }
-}
-
-function getEntityTypeLabel(entityType: string): string {
-  const labels: Record<string, string> = {
-    particulier: "Personnel",
-    sci_ir: "SCI · IR",
-    sci_is: "SCI · IS",
-    sci_construction_vente: "SCCV",
-    sarl: "SARL",
-    sarl_famille: "SARL fam.",
-    eurl: "EURL",
-    sas: "SAS",
-    sasu: "SASU",
-    sa: "SA",
-    snc: "SNC",
-    indivision: "Indivision",
-    demembrement_usufruit: "Usufruit",
-    demembrement_nue_propriete: "Nue-prop.",
-    holding: "Holding",
-  };
-  return labels[entityType] || entityType;
-}
+import { getEntityIcon, getEntityTypeLabel } from "@/lib/entities/entity-constants";
 
 interface CompanySwitcherProps {
   variant?: "sidebar" | "compact";
@@ -261,7 +227,7 @@ function EntityList({
             <div className="flex-1 text-left min-w-0">
               <p className="font-medium truncate">{entity.nom}</p>
               <p className="text-xs text-muted-foreground">
-                {getEntityTypeLabel(entity.entityType)}
+                {getEntityTypeLabel(entity.entityType, true)}
                 {entity.propertyCount > 0 &&
                   ` · ${entity.propertyCount} bien${entity.propertyCount > 1 ? "s" : ""}`}
               </p>

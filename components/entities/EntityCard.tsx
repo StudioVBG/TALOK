@@ -5,37 +5,13 @@
  */
 
 import Link from "next/link";
-import { Building2, User, Users, ArrowUpDown, Check, AlertCircle } from "lucide-react";
+import { Building2, Check, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { LegalEntitySummary } from "@/stores/useEntityStore";
-
-const ENTITY_TYPE_LABELS: Record<string, string> = {
-  particulier: "Personnel",
-  sci_ir: "SCI · IR",
-  sci_is: "SCI · IS",
-  sci_construction_vente: "SCCV",
-  sarl: "SARL",
-  sarl_famille: "SARL de famille",
-  eurl: "EURL",
-  sas: "SAS",
-  sasu: "SASU",
-  sa: "SA",
-  snc: "SNC",
-  indivision: "Indivision",
-  demembrement_usufruit: "Usufruit",
-  demembrement_nue_propriete: "Nue-propriété",
-  holding: "Holding",
-};
-
-function getEntityIcon(entityType: string) {
-  if (entityType === "particulier") return User;
-  if (entityType === "indivision") return Users;
-  if (entityType.startsWith("demembrement")) return ArrowUpDown;
-  return Building2;
-}
+import { ENTITY_TYPE_LABELS, getEntityIcon } from "@/lib/entities/entity-constants";
 
 interface EntityCardProps {
   entity: LegalEntitySummary;

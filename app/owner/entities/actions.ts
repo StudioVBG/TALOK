@@ -9,6 +9,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { canDeleteEntity } from "@/features/legal-entities/services/legal-entities.service";
 
 // ============================================
 // SCHEMAS
@@ -304,33 +305,11 @@ export async function deleteEntity(
     const supabase = await createClient();
     const { id } = parsed.data;
 
-    // Check if entity has active properties (via properties.legal_entity_id)
-    const { count: propertiesCount } = await supabase
-      .from("properties")
-      .select("id", { count: "exact", head: true })
-      .eq("legal_entity_id", id)
-      .is("deleted_at", null);
-
-    if (propertiesCount && propertiesCount > 0) {
+    const { canDelete, reason } = await canDeleteEntity(id);
+    if (!canDelete) {
       return {
         success: false,
-        error:
-          "Impossible de supprimer cette entité : elle possède encore des biens. Transférez-les d'abord.",
-      };
-    }
-
-    // Also check property_ownership records
-    const { count: ownershipCount } = await supabase
-      .from("property_ownership")
-      .select("id", { count: "exact", head: true })
-      .eq("legal_entity_id", id)
-      .eq("is_current", true);
-
-    if (ownershipCount && ownershipCount > 0) {
-      return {
-        success: false,
-        error:
-          "Impossible de supprimer cette entité : des détentions de biens sont encore actives. Transférez-les d'abord.",
+        error: reason ?? "Impossible de supprimer cette entité.",
       };
     }
 

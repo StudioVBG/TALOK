@@ -2,12 +2,11 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { redirect, notFound } from "next/navigation";
-import { Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { redirect } from "next/navigation";
 import EDLSignatureClient from "./EDLSignatureClient";
+import { generateEDLHTML } from "@/lib/templates/edl";
+import { mapDatabaseToEDLComplet } from "@/lib/mappers/edl-to-template";
 
 export async function generateMetadata({ params }: { params: { token: string } }) {
   return {
@@ -38,27 +37,70 @@ async function fetchEDLByToken(token: string) {
 
   const edl = signatureEntry.edl;
   const property = edl.lease?.property || edl.property;
+  const leaseId = edl.lease_id || edl.lease?.id || null;
+  const tenantProfileId = signatureEntry.signer_profile_id || null;
 
-  // 3. Récupérer les données liées pour l'aperçu complet
+  // 3. Récupérer les données liées pour l'aperçu complet + vérification identité (CNI)
   const [
     { data: edl_items },
     { data: edl_media },
     { data: meterReadings },
     { data: signaturesRaw },
-    { data: ownerProfile }
+    { data: ownerProfile },
+    { data: tenantProfile },
+    { data: cniDocs }
   ] = await Promise.all([
     serviceClient.from("edl_items").select("*").eq("edl_id", edl.id),
     serviceClient.from("edl_media").select("*").eq("edl_id", edl.id),
     serviceClient.from("edl_meter_readings").select("*, meter:meters(*)").eq("edl_id", edl.id),
     serviceClient.from("edl_signatures").select("*, profile:profiles(*)").eq("edl_id", edl.id),
-    serviceClient.from("owner_profiles").select("*, profile:profiles(*)").eq("profile_id", property.owner_id).single()
+    serviceClient.from("owner_profiles").select("*, profile:profiles(*)").eq("profile_id", property.owner_id).single(),
+    tenantProfileId
+      ? serviceClient.from("tenant_profiles").select("cni_number").eq("profile_id", tenantProfileId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    leaseId && tenantProfileId
+      ? serviceClient
+          .from("documents")
+          .select("type")
+          .eq("tenant_id", tenantProfileId)
+          .eq("lease_id", leaseId)
+          .in("type", ["cni_recto", "cni_verso"])
+          .eq("is_archived", false)
+      : Promise.resolve({ data: [] })
   ]);
+
+  const hasCniNumber = !!(tenantProfile as { cni_number?: string | null } | null)?.cni_number?.trim?.();
+  const hasRecto = (cniDocs || []).some((d: { type: string }) => d.type === "cni_recto");
+  const hasVerso = (cniDocs || []).some((d: { type: string }) => d.type === "cni_verso");
+  const identityComplete = hasCniNumber && hasRecto && hasVerso;
+
+  // Générer l'aperçu HTML côté serveur (évite un second fetch côté client)
+  const signaturesWithUrls = (signaturesRaw || []).slice();
+  for (const sig of signaturesWithUrls) {
+    if (sig.signature_image_path) {
+      const { data: signedUrlData } = await serviceClient.storage
+        .from("documents")
+        .createSignedUrl(sig.signature_image_path, 3600);
+      if (signedUrlData?.signedUrl) sig.signature_image_url = signedUrlData.signedUrl;
+    }
+  }
+  const fullEdlData = mapDatabaseToEDLComplet(
+    edl,
+    ownerProfile,
+    edl_items || [],
+    edl_media || [],
+    signaturesWithUrls
+  );
+  const previewHtml = generateEDLHTML(fullEdlData);
 
   return {
     signature: signatureEntry,
     edl,
     property,
+    leaseId,
+    identityComplete,
     alreadySigned: false,
+    previewHtml,
     edlFullData: {
       raw: edl,
       ownerProfile,
@@ -95,12 +137,14 @@ export default async function EDLSignaturePage({ params }: { params: { token: st
 
   return (
     <div className="min-h-screen bg-slate-50 py-12">
-      <EDLSignatureClient 
+      <EDLSignatureClient
         token={token}
         edl={data.edl}
         property={data.property}
         signatureId={data.signature.id}
-        fullData={data.edlFullData}
+        identityComplete={data.identityComplete}
+        leaseId={data.leaseId ?? ""}
+        previewHtml={data.previewHtml ?? ""}
       />
     </div>
   );

@@ -321,13 +321,14 @@ async function fetchTenantDashboardDirect(
 
   const propertyIds = leases.map((l: any) => l.property_id).filter(Boolean);
 
-  // Charger les données en parallèle : propriétés, propriétaires, factures, tickets, EDL, meters, keys EDL, insurance, notifications, charges
+  // Charger les données en parallèle : propriétés, propriétaires, factures, tickets, EDL, EDL signés (conformité), meters, keys EDL, insurance, notifications, charges
   const [
     propertiesResult,
     ownersResult,
     invoicesResult,
     ticketsResult,
     edlResult,
+    edlSignedEntryResult,
     metersResult,
     edlKeysResult,
     insuranceResult,
@@ -370,6 +371,15 @@ async function fetchTenantDashboardDirect(
           .in("property_id", propertyIds)
           .in("status", ["scheduled", "in_progress"])
       : Promise.resolve({ data: [] }),
+    // EDL d'entrée signé par propriété (pour checklist conformité)
+    propertyIds.length > 0
+      ? supabase
+          .from("edl")
+          .select("id, property_id, status")
+          .in("property_id", propertyIds)
+          .eq("type", "entree")
+          .in("status", ["signed", "completed"])
+      : Promise.resolve({ data: [] }),
     // Compteurs actifs avec dernière lecture
     propertyIds.length > 0
       ? supabase
@@ -384,7 +394,7 @@ async function fetchTenantDashboardDirect(
           .from("edl")
           .select("property_id, keys, completed_date, created_at")
           .in("property_id", propertyIds)
-          .in("status", ["signed", "completed"])
+          .in("status", ["signed", "completed", "in_progress"])
           .not("keys", "is", null)
           .order("completed_date", { ascending: false, nullsFirst: false })
       : Promise.resolve({ data: [] }),
@@ -443,12 +453,17 @@ async function fetchTenantDashboardDirect(
   const invoicesData = getData<Record<string, unknown>>(invoicesResult);
   const ticketsData = getData<Record<string, unknown>>(ticketsResult);
   const edlData = getData<Record<string, unknown>>(edlResult);
+  const edlSignedEntryData = getData<{ property_id: string }>(edlSignedEntryResult);
   const metersData = getData<Record<string, unknown>>(metersResult);
   const edlKeysData = getData<Record<string, unknown>>(edlKeysResult);
   const insuranceData = getData<Record<string, unknown>>(insuranceResult);
   const notificationsData = getData<Record<string, unknown>>(notificationsResult);
   const chargesData = getData<Record<string, unknown>>(chargesResult);
   const chargesBaseData = getData<Record<string, unknown>>(chargesBaseResult);
+
+  const propertyIdsWithSignedEntryEdl = new Set(
+    edlSignedEntryData.map((e) => e.property_id).filter(Boolean)
+  );
 
   // Index des propriétés par ID
   const propertyMap = new Map<string, PropertyRecord>();
@@ -560,12 +575,14 @@ async function fetchTenantDashboardDirect(
     const keys = keysMap.get(propId) || [];
     const charges = chargesByProperty.get(propId) || [];
     const charges_base = chargesBaseByLease.get(l.id) || [];
+    const has_signed_entry_edl = propertyIdsWithSignedEntryEdl.has(propId);
 
     return {
       ...l,
       lease_signers: leaseSignersForLease,
       charges,
       charges_base,
+      has_signed_entry_edl,
       property: prop
         ? { ...prop, meters, keys }
         : null,

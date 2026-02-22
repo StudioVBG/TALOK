@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTenantData } from "../_data/TenantDataProvider";
 import { useTenantRealtime } from "@/lib/hooks/use-realtime-tenant";
 import { Badge } from "@/components/ui/badge";
@@ -371,9 +372,9 @@ export default function TenantLeasePage() {
                           
                           <div className="space-y-4">
                             <CheckItem label="Contrat de bail signé" status={isFullySigned ? 'success' : 'pending'} />
-                            <CheckItem label="Dossier Diagnostics (DDT)" status={docs?.diagnostics && docs.diagnostics.length > 0 ? 'success' : 'pending'} />
-                            <CheckItem label="Attestation d'assurance" status={dashboard.insurance?.has_insurance ? 'success' : 'pending'} />
-                            <CheckItem label="État des lieux d'entrée" status={lease.statut === 'active' ? 'success' : 'pending'} />
+                            <CheckItem label="Dossier Diagnostics (DDT)" status={docs?.diagnostics && docs.diagnostics.length > 0 ? 'success' : 'pending'} pendingNote="En attente du propriétaire" />
+                            <CheckItem label="Attestation d'assurance" status={dashboard.insurance?.has_insurance ? 'success' : 'pending'} pendingCta={{ href: '/tenant/documents', label: 'Ajoutez votre attestation' }} />
+                            <CheckItem label="État des lieux d'entrée" status={((lease as { has_signed_entry_edl?: boolean }).has_signed_entry_edl === true || lease.statut === 'active') ? 'success' : 'pending'} />
                           </div>
                         </GlassCard>
                       </motion.div>
@@ -748,29 +749,52 @@ export default function TenantLeasePage() {
   );
 }
 
-function CheckItem({ label, status }: { label: string, status: 'success' | 'pending' | 'error' }) {
+function CheckItem({
+  label,
+  status,
+  pendingCta,
+  pendingNote,
+}: {
+  label: string;
+  status: 'success' | 'pending' | 'error';
+  pendingCta?: { href: string; label: string };
+  pendingNote?: string;
+}) {
   return (
-    <div className="flex items-center justify-between group">
-      <div className="flex items-center gap-3">
-        <div className={cn(
-          "p-1.5 rounded-full transition-colors",
-          status === 'success' ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" : 
-          status === 'error' ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400" : "bg-muted text-muted-foreground/50"
-        )}>
-          {status === 'success' ? <CheckCircle2 className="h-4 w-4" /> : 
-           status === 'error' ? <AlertCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between group">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "p-1.5 rounded-full transition-colors",
+            status === 'success' ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" :
+            status === 'error' ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400" : "bg-muted text-muted-foreground/50"
+          )}>
+            {status === 'success' ? <CheckCircle2 className="h-4 w-4" /> :
+             status === 'error' ? <AlertCircle className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+          </div>
+          <span className={cn(
+            "text-sm font-bold transition-colors",
+            status === 'success' ? "text-foreground" : "text-muted-foreground"
+          )}>
+            {label}
+          </span>
         </div>
-        <span className={cn(
-          "text-sm font-bold transition-colors",
-          status === 'success' ? "text-foreground" : "text-muted-foreground"
-        )}>
-          {label}
-        </span>
+        {status === 'success' ? (
+          <Badge variant="outline" className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 px-2 py-0">Conforme</Badge>
+        ) : (
+          <Badge variant="outline" className="text-[10px] font-black uppercase text-muted-foreground bg-muted border-border px-2 py-0">En attente</Badge>
+        )}
       </div>
-      {status === 'success' ? (
-        <Badge variant="outline" className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 px-2 py-0">Conforme</Badge>
-      ) : (
-        <Badge variant="outline" className="text-[10px] font-black uppercase text-muted-foreground bg-muted border-border px-2 py-0">En attente</Badge>
+      {status === 'pending' && (pendingCta ?? pendingNote) && (
+        <div className="pl-8 text-xs text-muted-foreground">
+          {pendingCta ? (
+            <Link href={pendingCta.href} className="text-primary hover:underline font-medium">
+              {pendingCta.label}
+            </Link>
+          ) : pendingNote ? (
+            <span>{pendingNote}</span>
+          ) : null}
+        </div>
       )}
     </div>
   );

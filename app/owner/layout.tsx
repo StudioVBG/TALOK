@@ -64,6 +64,26 @@ export default async function OwnerLayout({
     });
   }
 
+  // Filet de sécurité : s'assurer qu'au moins une entité juridique existe (évite "Aucune entité juridique")
+  const { data: hasEntity } = await serviceClient
+    .from("legal_entities")
+    .select("id")
+    .eq("owner_profile_id", profile.id)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (!hasEntity) {
+    const nom = [profile.prenom, profile.nom].filter(Boolean).join(" ") || "Patrimoine personnel";
+    await serviceClient.from("legal_entities").insert({
+      owner_profile_id: profile.id,
+      entity_type: "particulier",
+      nom,
+      regime_fiscal: "ir",
+      is_active: true,
+    });
+  }
+
   // Charger toutes les données en parallèle
   // Utiliser Promise.allSettled pour ne pas bloquer si une requête échoue
   const [propertiesResult, dashboardResult, contractsResult] = await Promise.allSettled([

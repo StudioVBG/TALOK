@@ -681,12 +681,27 @@ export async function canDeleteEntity(
   const { count: propertiesCount } = await supabase
     .from("properties")
     .select("id", { count: "exact", head: true })
-    .eq("legal_entity_id", entityId);
+    .eq("legal_entity_id", entityId)
+    .is("deleted_at", null);
 
   if (propertiesCount && propertiesCount > 0) {
     return {
       canDelete: false,
       reason: `${propertiesCount} bien(s) sont associés à cette entité`,
+    };
+  }
+
+  // Vérifier les détentions actives (property_ownership)
+  const { count: ownershipCount } = await supabase
+    .from("property_ownership")
+    .select("id", { count: "exact", head: true })
+    .eq("legal_entity_id", entityId)
+    .eq("is_current", true);
+
+  if (ownershipCount && ownershipCount > 0) {
+    return {
+      canDelete: false,
+      reason: "Des détentions de biens sont encore actives. Transférez-les d'abord.",
     };
   }
 

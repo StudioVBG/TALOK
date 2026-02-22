@@ -253,7 +253,7 @@ export const POST = withSecurity(async function POST(request: Request) {
       );
     }
 
-    // Créer la facture
+    // Créer la facture (issuer_entity_id = entité signataire du bail)
     const { data: invoice, error: invoiceError } = await supabaseClient
       .from("invoices")
       .insert({
@@ -265,6 +265,7 @@ export const POST = withSecurity(async function POST(request: Request) {
         montant_charges: validated.montant_charges,
         montant_total,
         statut: "draft",
+        issuer_entity_id: (lease as any).signatory_entity_id ?? null,
       } as any)
       .select()
       .single();

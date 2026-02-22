@@ -456,7 +456,7 @@ export async function POST(
       signerName: `${profile.prenom} ${profile.nom}`,
       signerEmail: user.email || `user-${user.id.slice(0, 8)}@talok.local`,
       signerProfileId: profile.id,
-      identityVerified: isOwner || !!cniNumber,
+      identityVerified,
       identityMethod: isOwner ? "Compte Propriétaire Authentifié" : `CNI n°${cniNumber ?? ""}`,
       signatureType: "draw",
       signatureImage: signatureBase64,
@@ -563,6 +563,28 @@ export async function POST(
         log.error("Échec mise à jour statut EDL", { error: edlUpdateError.message });
       }
 
+      // Sync digicode from EDL keys to property (visible côté locataire)
+      const { data: edlRow } = await serviceClient
+        .from("edl")
+        .select("keys, property_id")
+        .eq("id", edlId)
+        .single();
+      const keys = (edlRow as { keys?: Array<{ type?: string; observations?: string }> } | null)?.keys;
+      const propertyId = (edlRow as { property_id?: string } | null)?.property_id;
+      if (Array.isArray(keys) && propertyId) {
+        const digicodeKey = keys.find(
+          (k) =>
+            k.type &&
+            (String(k.type).toLowerCase().includes("digicode") || String(k.type).toLowerCase().includes("code"))
+        );
+        if (digicodeKey?.observations?.trim()) {
+          await serviceClient
+            .from("properties")
+            .update({ digicode: digicodeKey.observations.trim() })
+            .eq("id", propertyId);
+        }
+      }
+
       await serviceClient.from("outbox").insert({
         event_type: "Inspection.Signed",
         payload: {
@@ -591,7 +613,11 @@ export async function POST(
     revalidatePath("/tenant/inspections");
     revalidatePath(`/tenant/inspections/${edlId}`);
 
-    return NextResponse.json({ success: true, proof_id: proof.proofId });
+    return NextResponse.json({
+      success: true,
+      proof_id: proof.proofId,
+      ...(!identityVerified && { identity_warning: true }),
+    });
   } catch (error: unknown) {
     console.error("[sign-edl] Error:", error);
     return NextResponse.json(

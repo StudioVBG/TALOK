@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 import { isDomTomPostalCode, getTvaRate } from "@/lib/entities/resolveOwnerIdentity";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { deleteEntity } from "../actions";
+import { getEntityTypeLabel } from "@/lib/entities/entity-constants";
 
 // ============================================
 // TYPES
@@ -63,23 +64,6 @@ const TABS: Array<{ id: TabId; label: string; icon: typeof Info }> = [
   { id: "associates", label: "Associés", icon: Users },
   { id: "documents", label: "Documents", icon: FileText },
 ];
-
-const ENTITY_TYPE_LABELS: Record<string, string> = {
-  particulier: "Personnel",
-  sci_ir: "SCI · IR",
-  sci_is: "SCI · IS",
-  sarl: "SARL",
-  sarl_famille: "SARL de famille",
-  eurl: "EURL",
-  sas: "SAS",
-  sasu: "SASU",
-  sa: "SA",
-  snc: "SNC",
-  indivision: "Indivision",
-  demembrement_usufruit: "Usufruit",
-  demembrement_nue_propriete: "Nue-propriété",
-  holding: "Holding",
-};
 
 // ============================================
 // COMPONENT
@@ -125,7 +109,7 @@ export function EntityDetailClient({
   };
 
   const entityType = (entity.entity_type as string) || "sci_ir";
-  const typeLabel = ENTITY_TYPE_LABELS[entityType] || entityType;
+  const typeLabel = getEntityTypeLabel(entityType);
   const siret = entity.siret as string | null;
   const postalCode = entity.code_postal_siege as string | null;
   const isDom = isDomTomPostalCode(postalCode);
@@ -289,10 +273,7 @@ function InfoTab({ entity }: { entity: Record<string, unknown> }) {
           />
           <InfoRow
             label="Type d'entité"
-            value={
-              ENTITY_TYPE_LABELS[entity.entity_type as string] ||
-              (entity.entity_type as string)
-            }
+            value={getEntityTypeLabel((entity.entity_type as string) ?? "")}
           />
           <InfoRow
             label="Régime fiscal"

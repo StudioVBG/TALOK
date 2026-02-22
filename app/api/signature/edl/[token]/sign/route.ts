@@ -71,6 +71,20 @@ export async function POST(
       return NextResponse.json({ error: "Ce document a déjà été signé" }, { status: 400 });
     }
 
+    // P0-1: CNI recommandé mais non bloquant (alignement avec /api/edl/[id]/sign)
+    const signerRole = (signatureEntry as any).signer_role;
+    const isTenant = ["tenant", "locataire", "locataire_principal"].includes(signerRole);
+    const signerProfileId = (signatureEntry as any).signer_profile_id;
+    let identityVerified = true;
+    if (isTenant && signerProfileId) {
+      const { data: tenantProfile } = await serviceClient
+        .from("tenant_profiles")
+        .select("cni_number")
+        .eq("profile_id", signerProfileId)
+        .maybeSingle();
+      identityVerified = !!(tenantProfile as { cni_number?: string | null } | null)?.cni_number?.trim?.();
+    }
+
     const body = await request.json();
     const { signature: signatureBase64, metadata: clientMetadata } = body;
 
@@ -115,8 +129,8 @@ export async function POST(
       signerName: (signatureEntry as any).signer_name || `${signatureEntry.profile?.prenom || ""} ${signatureEntry.profile?.nom || ""}`.trim() || "Locataire",
       signerEmail: signatureEntry.profile?.email || "guest@tenant.com",
       signerProfileId: (signatureEntry as any).signer_profile_id,
-      identityVerified: true,
-      identityMethod: "Lien d'invitation sécurisé",
+      identityVerified,
+      identityMethod: identityVerified ? "CNI vérifié" : "Lien d'invitation sécurisé",
       signatureType: "draw",
       signatureImage: signatureBase64,
       userAgent: request.headers.get("user-agent") || "Inconnu",
@@ -170,6 +184,28 @@ export async function POST(
         .from("edl")
         .update({ status: "signed" } as any)
         .eq("id", signatureEntry.edl_id);
+
+      // Sync digicode from EDL keys to property (visible côté locataire)
+      const { data: edlRow } = await serviceClient
+        .from("edl")
+        .select("keys, property_id")
+        .eq("id", signatureEntry.edl_id)
+        .single();
+      const keys = (edlRow as { keys?: Array<{ type?: string; observations?: string }> } | null)?.keys;
+      const propertyId = (edlRow as { property_id?: string } | null)?.property_id;
+      if (Array.isArray(keys) && propertyId) {
+        const digicodeKey = keys.find(
+          (k) =>
+            k.type &&
+            (String(k.type).toLowerCase().includes("digicode") || String(k.type).toLowerCase().includes("code"))
+        );
+        if (digicodeKey?.observations?.trim()) {
+          await serviceClient
+            .from("properties")
+            .update({ digicode: digicodeKey.observations.trim() })
+            .eq("id", propertyId);
+        }
+      }
 
       await serviceClient.from("outbox").insert({
         event_type: "Inspection.Signed",
