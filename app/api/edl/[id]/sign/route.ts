@@ -432,6 +432,8 @@ export async function POST(
       );
     }
 
+    const identityVerified = isOwner ? true : !!cniNumber;
+
     // 4. Uploader l'image de signature dans Storage (utiliser serviceClient pour éviter RLS)
     const base64Data = stripBase64Prefix(signatureBase64);
     const fileName = `edl/${edlId}/signatures/${user.id}_${Date.now()}.png`;
@@ -580,7 +582,7 @@ export async function POST(
         if (digicodeKey?.observations?.trim()) {
           await serviceClient
             .from("properties")
-            .update({ digicode: digicodeKey.observations.trim() })
+            .update({ digicode: digicodeKey.observations.trim() } as Record<string, unknown>)
             .eq("id", propertyId);
         }
       }

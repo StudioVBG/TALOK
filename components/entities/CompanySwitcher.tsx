@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useEntityStore } from "@/stores/useEntityStore";
-import { Building2, Check, Plus, Settings } from "lucide-react";
+import { Building2, ArrowUpDown, Check, Plus, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,

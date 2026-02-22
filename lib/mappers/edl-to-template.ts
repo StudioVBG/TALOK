@@ -188,3 +188,16 @@ export function mapDatabaseToEDLComplet(
     status: edl.status || "draft",
   };
 }
+
+/** Alias pour compatibilité avec les composants qui appellent avec (edl, ownerProfile, items, media, meterReadings, signatures, keys). */
+export function mapRawEDLToTemplate(
+  edl: any,
+  ownerProfile: any,
+  items: any[],
+  media: any[],
+  _meterReadings?: any[],
+  signatures: any[] = [],
+  _keys?: any[]
+): EDLComplet {
+  return mapDatabaseToEDLComplet(edl, ownerProfile, items, media, signatures);
+}

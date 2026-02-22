@@ -202,7 +202,7 @@ export async function POST(
         if (digicodeKey?.observations?.trim()) {
           await serviceClient
             .from("properties")
-            .update({ digicode: digicodeKey.observations.trim() })
+            .update({ digicode: digicodeKey.observations.trim() } as Record<string, unknown>)
             .eq("id", propertyId);
         }
       }
