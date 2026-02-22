@@ -181,18 +181,23 @@ export async function POST(
     }
 
     // FIX P1-8: Audit log (manquait totalement)
-    await serviceClient.from("audit_log").insert({
-      user_id: (signatureEntry as any).signer_profile_id || null,
-      action: "edl_signed_via_token",
-      entity_type: "edl",
-      entity_id: signatureEntry.edl_id,
-      metadata: {
-        signer_role: signatureEntry.signer_role,
-        proof_id: proof.proofId,
-        ip: proof.metadata.ipAddress,
-        correlation_id: log.getCorrelationId(),
-      },
-    } as any);
+    try {
+      await serviceClient.from("audit_log").insert({
+        actor_type: "user",
+        actor_id: (signatureEntry as any).signer_profile_id || null,
+        action: "edl_signed_via_token",
+        resource: "edl",
+        resource_id: signatureEntry.edl_id,
+        after: {
+          signer_role: signatureEntry.signer_role,
+          proof_id: proof.proofId,
+          ip: proof.metadata.ipAddress,
+          correlation_id: log.getCorrelationId(),
+        },
+      } as any);
+    } catch (auditErr) {
+      log.warn("Erreur audit_log (non bloquant)", { error: String(auditErr) });
+    }
 
     log.complete(true, { proofId: proof.proofId, allSigned: hasOwner && hasTenant });
 

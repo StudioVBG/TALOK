@@ -415,19 +415,24 @@ export async function POST(request: Request, { params }: PageProps) {
     }
 
     // FIX P1-8: Audit log
-    await serviceClient.from("audit_log").insert({
-      user_id: tenantProfileId ?? null,
-      action: "lease_signed_via_pad",
-      entity_type: "lease",
-      entity_id: typedLease.id,
-      metadata: {
-        role: tenantSigner.role,
-        proof_id: proof.proofId,
-        verification_method: "otp_verified_pad",
-        signer_email: normalizedEmail,
-        correlation_id: log.getCorrelationId(),
-      },
-    });
+    try {
+      await serviceClient.from("audit_log").insert({
+        actor_type: "user",
+        actor_id: tenantProfileId ?? null,
+        action: "lease_signed_via_pad",
+        resource: "lease",
+        resource_id: typedLease.id,
+        after: {
+          role: tenantSigner.role,
+          proof_id: proof.proofId,
+          verification_method: "otp_verified_pad",
+          signer_email: normalizedEmail,
+          correlation_id: log.getCorrelationId(),
+        },
+      } as any);
+    } catch (auditErr) {
+      log.warn("Erreur audit_log (non bloquant)", { error: String(auditErr) });
+    }
 
     // ✅ FIX: Notifier le propriétaire (manquait dans sign-with-pad contrairement à /sign)
     const roleLabels: Record<string, string> = {
