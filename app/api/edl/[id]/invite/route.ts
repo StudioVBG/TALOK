@@ -133,6 +133,24 @@ export async function POST(
       console.log("[EDL Invite] Utilisation de l'email fourni:", targetEmail);
     }
 
+    // Étape 4: Si on a un email mais pas de profile_id, chercher le profil par email
+    if (targetEmail && !targetProfileId) {
+      const { data: profileByEmail } = await serviceClient
+        .from("profiles")
+        .select("id, user_id, prenom, nom")
+        .ilike("email", targetEmail)
+        .maybeSingle();
+
+      if (profileByEmail) {
+        targetProfileId = profileByEmail.id;
+        targetUserId = profileByEmail.user_id ?? null;
+        if (!targetName) {
+          targetName = `${profileByEmail.prenom || ''} ${profileByEmail.nom || ''}`.trim();
+        }
+        console.log("[EDL Invite] Profil résolu par email:", targetProfileId);
+      }
+    }
+
     // ===============================
     // 3. VALIDATION FINALE
     // ===============================
@@ -266,23 +284,30 @@ export async function POST(
     }
 
     // ===============================
-    // 5b. NOTIFICATION IN-APP DIRECTE (belt-and-suspenders)
+    // 5b. NOTIFICATION IN-APP DIRECTE
     // ===============================
-    if (targetProfileId) {
+    if (targetProfileId || targetUserId) {
       try {
-        await serviceClient.from("notifications").insert({
-          user_id: targetUserId,
-          profile_id: targetProfileId,
+        const notifPayload: Record<string, unknown> = {
           type: "edl_invitation",
           title: "Invitation à signer l'état des lieux",
+          message: `Vous êtes invité à signer l'état des lieux ${(edl as any).type === 'entree' ? "d'entrée" : "de sortie"}.`,
           body: `Vous êtes invité à signer l'état des lieux ${(edl as any).type === 'entree' ? "d'entrée" : "de sortie"}.`,
           is_read: false,
           metadata: { edl_id: edlId, token: invitationToken },
+          data: { edl_id: edlId, token: invitationToken },
           action_url: `/signature-edl/${invitationToken}`,
-        } as any);
+        };
+        if (targetUserId) notifPayload.user_id = targetUserId;
+        if (targetProfileId) notifPayload.profile_id = targetProfileId;
+
+        await serviceClient.from("notifications").insert(notifPayload as any);
+        console.log(`[EDL Invite ${edlId}] Notification créée pour profile=${targetProfileId} user=${targetUserId}`);
       } catch (e) {
         console.warn(`[EDL Invite ${edlId}] Notification directe échouée:`, e);
       }
+    } else {
+      console.warn(`[EDL Invite ${edlId}] Pas de profile_id ni user_id — notification impossible`);
     }
 
     // ===============================

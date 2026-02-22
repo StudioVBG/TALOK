@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Bell, Check, CheckCheck, Home, FileText, AlertCircle, X, Building2, Camera, Rocket, Mail, UserPlus } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Bell, Check, CheckCheck, Home, FileText, AlertCircle, Building2, Camera, Rocket, Mail, UserPlus, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -16,27 +16,41 @@ interface Notification {
   id: string;
   type: string;
   title: string;
-  message: string;
-  read: boolean;
+  message?: string | null;
+  body?: string | null;
+  read?: boolean;
+  is_read?: boolean;
+  read_at?: string | null;
   created_at: string;
-  metadata?: {
-    lease_id?: string;
-    property_id?: string;
-    [key: string]: any;
-  };
+  action_url?: string | null;
+  metadata?: Record<string, unknown> | null;
+  data?: Record<string, unknown> | null;
+}
+
+function isUnread(n: Notification): boolean {
+  if (typeof n.is_read === "boolean") return !n.is_read;
+  if (typeof n.read === "boolean") return !n.read;
+  return !n.read_at;
+}
+
+function getText(n: Notification): string {
+  return n.message || n.body || "";
+}
+
+function getMeta(n: Notification): Record<string, unknown> {
+  return n.metadata || n.data || {};
 }
 
 const NOTIFICATION_ICONS: Record<string, typeof Bell> = {
   lease_invite: Home,
   payment: FileText,
   alert: AlertCircle,
-  // Types compteurs
+  edl_invitation: ClipboardCheck,
+  edl_scheduled: FileText,
+  edl_meter_pending: AlertCircle,
   meter_reading_required: AlertCircle,
   meter_reading_reminder: Bell,
   meter_reading_submitted: Check,
-  edl_scheduled: FileText,
-  edl_meter_pending: AlertCircle,
-  // ✅ SOTA 2026: Types logement
   property_draft_created: Building2,
   property_step_completed: Check,
   property_photos_added: Camera,
@@ -51,13 +65,12 @@ const NOTIFICATION_COLORS: Record<string, string> = {
   lease_invite: "bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400",
   payment: "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400",
   alert: "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400",
-  // Types compteurs
+  edl_invitation: "bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400",
+  edl_scheduled: "bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400",
+  edl_meter_pending: "bg-orange-100 text-orange-600 dark:bg-orange-900/50 dark:text-orange-400",
   meter_reading_required: "bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400",
   meter_reading_reminder: "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400",
   meter_reading_submitted: "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400",
-  edl_scheduled: "bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400",
-  edl_meter_pending: "bg-orange-100 text-orange-600 dark:bg-orange-900/50 dark:text-orange-400",
-  // ✅ SOTA 2026: Types logement
   property_draft_created: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400",
   property_step_completed: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400",
   property_photos_added: "bg-pink-100 text-pink-600 dark:bg-pink-900/50 dark:text-pink-400",
@@ -74,8 +87,7 @@ export function NotificationBell() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
-  // Charger les notifications
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const response = await fetch("/api/notifications?limit=10");
       if (response.ok) {
@@ -88,27 +100,24 @@ export function NotificationBell() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchNotifications();
-    
-    // Rafraîchir toutes les 30 secondes
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchNotifications]);
 
-  // Marquer toutes comme lues
   const markAllAsRead = async () => {
     try {
       const response = await fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mark_all: true }),
+        body: JSON.stringify({ action: "mark_all_read" }),
       });
-      
+
       if (response.ok) {
-        setNotifications(notifications.map(n => ({ ...n, read: true })));
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true })));
         setUnreadCount(0);
       }
     } catch (error) {
@@ -116,25 +125,23 @@ export function NotificationBell() {
     }
   };
 
-  // Marquer une notification comme lue
   const markAsRead = async (notificationId: string) => {
     try {
       await fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notification_ids: [notificationId] }),
+        body: JSON.stringify({ action: "mark_read", id: notificationId }),
       });
-      
-      setNotifications(notifications.map(n => 
-        n.id === notificationId ? { ...n, read: true } : n
-      ));
-      setUnreadCount(Math.max(0, unreadCount - 1));
+
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, is_read: true, read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Erreur marquage notification:", error);
     }
   };
 
-  // Formater la date
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -150,53 +157,45 @@ export function NotificationBell() {
     return date.toLocaleDateString("fr-FR");
   };
 
-  // Obtenir le lien d'action pour une notification
   const getNotificationLink = (notification: Notification): string | null => {
+    if (notification.action_url) return notification.action_url;
+
+    const meta = getMeta(notification);
+
     switch (notification.type) {
       case "lease_invite":
         return `/tenant/dashboard`;
-      
-      // Notifications compteurs - Locataire
+
+      case "edl_invitation":
+        if (meta.token) return `/signature-edl/${meta.token}`;
+        return `/tenant/dashboard`;
+
       case "meter_reading_required":
       case "meter_reading_reminder":
       case "edl_meter_pending":
         return `/tenant/meters`;
-      
-      // Notifications compteurs - Propriétaire
+
       case "meter_reading_submitted":
-        if (notification.metadata?.edl_id) {
-          return `/owner/inspections/${notification.metadata.edl_id}`;
-        }
-        if (notification.metadata?.property_id) {
-          return `/owner/properties/${notification.metadata.property_id}`;
-        }
+        if (meta.edl_id) return `/owner/inspections/${meta.edl_id}`;
+        if (meta.property_id) return `/owner/properties/${meta.property_id}`;
         return `/owner/dashboard`;
-      
-      // EDL planifié
+
       case "edl_scheduled":
-        if (notification.metadata?.edl_id) {
-          return `/tenant/documents`;
-        }
         return `/tenant/documents`;
-      
-      // ✅ SOTA 2026: Notifications logement - Propriétaire
+
       case "property_draft_created":
       case "property_step_completed":
       case "property_photos_added":
-        if (notification.metadata?.property_id) {
-          return `/owner/properties/new?id=${notification.metadata.property_id}`;
-        }
+        if (meta.property_id) return `/owner/properties/new?id=${meta.property_id}`;
         return `/owner/properties`;
-      
+
       case "property_ready":
       case "property_published":
       case "property_invitation_sent":
       case "property_tenant_joined":
-        if (notification.metadata?.property_id) {
-          return `/owner/properties/${notification.metadata.property_id}`;
-        }
+        if (meta.property_id) return `/owner/properties/${meta.property_id}`;
         return `/owner/properties`;
-      
+
       default:
         return null;
     }
@@ -213,7 +212,7 @@ export function NotificationBell() {
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge 
+            <Badge
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-500 hover:bg-red-500"
             >
               {unreadCount > 9 ? "9+" : unreadCount}
@@ -255,15 +254,16 @@ export function NotificationBell() {
                 const Icon = NOTIFICATION_ICONS[notification.type] || NOTIFICATION_ICONS.default;
                 const colorClass = NOTIFICATION_COLORS[notification.type] || NOTIFICATION_COLORS.default;
                 const link = getNotificationLink(notification);
+                const unread = isUnread(notification);
 
                 const content = (
                   <div
                     className={cn(
                       "p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer",
-                      !notification.read && "bg-blue-50/50 dark:bg-blue-950/20"
+                      unread && "bg-blue-50/50 dark:bg-blue-950/20"
                     )}
                     onClick={() => {
-                      if (!notification.read) {
+                      if (unread) {
                         markAsRead(notification.id);
                       }
                       if (link) {
@@ -279,16 +279,16 @@ export function NotificationBell() {
                         <div className="flex items-start justify-between gap-2">
                           <p className={cn(
                             "text-sm line-clamp-1",
-                            !notification.read && "font-semibold"
+                            unread && "font-semibold"
                           )}>
                             {notification.title}
                           </p>
-                          {!notification.read && (
+                          {unread && (
                             <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                          {notification.message}
+                          {getText(notification)}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {formatDate(notification.created_at)}
@@ -330,6 +330,3 @@ export function NotificationBell() {
     </Popover>
   );
 }
-
-
-

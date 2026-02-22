@@ -353,11 +353,11 @@ async function fetchTenantDashboardDirect(
       .eq("created_by_profile_id", profile.id)
       .order("created_at", { ascending: false })
       .limit(10),
-    // EDL en attente
+    // EDL en attente — invitation_token est sur edl_signatures, pas sur edl
     propertyIds.length > 0
       ? supabase
           .from("edl")
-          .select("id, type, status, scheduled_at, invitation_token, property_id")
+          .select("id, type, status, scheduled_date, property_id, edl_signatures(invitation_token, signer_role)")
           .in("property_id", propertyIds)
           .in("status", ["scheduled", "in_progress"])
       : Promise.resolve({ data: [] }),
@@ -548,11 +548,14 @@ async function fetchTenantDashboardDirect(
 
   const pending_edls: PendingEDL[] = edlData.map((e: any) => {
     const prop = e.property_id ? propertyMap.get(e.property_id) : undefined;
+    const tenantSig = Array.isArray(e.edl_signatures)
+      ? e.edl_signatures.find((s: any) => s.signer_role === "tenant")
+      : e.edl_signatures;
     return {
       id: e.id,
       type: e.type || "entree",
-      scheduled_at: e.scheduled_at || "",
-      invitation_token: e.invitation_token || "",
+      scheduled_at: e.scheduled_date || "",
+      invitation_token: tenantSig?.invitation_token || "",
       property_address: prop ? `${prop.adresse_complete}, ${prop.code_postal} ${prop.ville}` : "",
       property_type: prop?.type || "",
     };
