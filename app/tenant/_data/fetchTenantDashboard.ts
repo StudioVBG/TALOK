@@ -301,6 +301,7 @@ async function fetchTenantDashboardDirect(
     insuranceResult,
     notificationsResult,
     chargesResult,
+    chargesBaseResult,
   ] = await Promise.allSettled([
     // Propriétés complètes (select *)
     propertyIds.length > 0
@@ -378,6 +379,13 @@ async function fetchTenantDashboardDirect(
           .select("id, property_id, type, label, montant, periodicite, refacturable, created_at")
           .in("property_id", propertyIds)
       : Promise.resolve({ data: [] }),
+    // Régularisation de charges (tenant_charges_base) par bail
+    leaseIds.length > 0
+      ? supabase
+          .from("tenant_charges_base")
+          .select("id, lease_id, label, amount, created_at")
+          .in("lease_id", leaseIds)
+      : Promise.resolve({ data: [] }),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -408,6 +416,7 @@ async function fetchTenantDashboardDirect(
   const insuranceData = getData<Record<string, unknown>>(insuranceResult);
   const notificationsData = getData<Record<string, unknown>>(notificationsResult);
   const chargesData = getData<Record<string, unknown>>(chargesResult);
+  const chargesBaseData = getData<Record<string, unknown>>(chargesBaseResult);
 
   // Index des propriétés par ID
   const propertyMap = new Map<string, PropertyRecord>();
@@ -482,6 +491,14 @@ async function fetchTenantDashboardDirect(
     chargesByProperty.get(propId)!.push(c);
   }
 
+  // Index des régularisations de charges par lease_id
+  const chargesBaseByLease = new Map<string, any[]>();
+  for (const cb of chargesBaseData) {
+    const leaseId = (cb as any).lease_id;
+    if (!chargesBaseByLease.has(leaseId)) chargesBaseByLease.set(leaseId, []);
+    chargesBaseByLease.get(leaseId)!.push(cb);
+  }
+
   // Helper
   const getPropertyForLease = (leaseId: string) => {
     const lease = leases.find((l: any) => l.id === leaseId);
@@ -510,11 +527,13 @@ async function fetchTenantDashboardDirect(
 
     const keys = keysMap.get(propId) || [];
     const charges = chargesByProperty.get(propId) || [];
+    const charges_base = chargesBaseByLease.get(l.id) || [];
 
     return {
       ...l,
       lease_signers: leaseSignersForLease,
       charges,
+      charges_base,
       property: prop
         ? { ...prop, meters, keys }
         : null,
