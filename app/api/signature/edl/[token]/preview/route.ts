@@ -112,6 +112,28 @@ export async function POST(
         if (signedUrlData?.signedUrl) {
           (sig as any).signature_image_url = signedUrlData.signedUrl;
         }
+      } else if (sig.signer_role === "tenant" && sig.signed_at) {
+        // Fallback: chercher l'image de signature dans le dossier du bail
+        const leaseId = (edl as any).lease_id;
+        const userId = sig.signer_user;
+
+        if (leaseId && userId) {
+          const { data: leaseFiles } = await serviceClient.storage
+            .from("documents")
+            .list(`signatures/${leaseId}`);
+
+          const tenantLeaseFile = leaseFiles?.find((f: any) => f.name.startsWith(userId));
+          if (tenantLeaseFile) {
+            const fallbackPath = `signatures/${leaseId}/${tenantLeaseFile.name}`;
+            const { data: signedUrlData } = await serviceClient.storage
+              .from("documents")
+              .createSignedUrl(fallbackPath, 3600);
+
+            if (signedUrlData?.signedUrl) {
+              (sig as any).signature_image_url = signedUrlData.signedUrl;
+            }
+          }
+        }
       }
     }
 
