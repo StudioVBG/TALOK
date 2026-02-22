@@ -52,10 +52,14 @@ export async function POST(
     const ticketAny = ticket as { created_by_profile_id?: string; property_id?: string };
     const isCreator = ticketAny.created_by_profile_id === profile.id;
     if (!isCreator && profile.role !== "admin" && profile.role !== "owner") {
+      const propertyId = ticketAny.property_id;
+      if (!propertyId) {
+        return NextResponse.json({ error: "Ticket has no property" }, { status: 400 });
+      }
       const { data: property } = await serviceClient
         .from("properties")
         .select("owner_id")
-        .eq("id", ticketAny.property_id)
+        .eq("id", propertyId)
         .single();
       const isOwner = (property as { owner_id?: string } | null)?.owner_id === profile.id;
       if (!isOwner) {
