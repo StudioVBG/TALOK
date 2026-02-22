@@ -39,8 +39,6 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
   // UTILISER SERVICE CLIENT POUR BYPASS RLS
   const serviceClient = getServiceClient();
 
-  console.log("[fetchTenantLease] 🔍 Recherche pour user_id:", userId);
-
   // Récupérer le profil tenant par user_id avec SERVICE CLIENT
   let profile: Pick<ProfileRow, "id" | "email" | "user_id"> | null = null;
   
@@ -52,35 +50,23 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
 
   if (!profileError && profileByUserId) {
     profile = { ...profileByUserId, user_id: profileByUserId.user_id ?? userId };
-    console.log("[fetchTenantLease] ✅ Profil trouvé par user_id:", profile.id);
   } else {
-    console.log("[fetchTenantLease] ⚠️ Profil non trouvé par user_id, recherche par email...");
-    
     // Fallback: chercher l'email de l'utilisateur auth puis le profil
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.email) {
-      console.log("[fetchTenantLease] 🔍 Recherche profil par email:", user.email);
-      
       const { data: profileByEmail, error: emailError } = await serviceClient
         .from("profiles")
         .select("id, email, user_id")
         .eq("email", user.email)
         .maybeSingle() as { data: Pick<ProfileRow, "id" | "email" | "user_id"> | null; error: Error | null };
-      
-      if (emailError) {
-        console.log("[fetchTenantLease] Erreur recherche email:", emailError.message);
-      }
-      
+
       if (profileByEmail) {
         profile = profileByEmail;
-        console.log("[fetchTenantLease] ✅ Profil trouvé par email:", profile.id);
-        
+
         // IMPORTANT: Lier ce profil au user_id pour les prochaines fois
         if (!profileByEmail.user_id) {
           await linkProfileToUser(profileByEmail.id, userId);
         }
-      } else {
-        console.log("[fetchTenantLease] ❌ Aucun profil trouvé avec email:", user.email);
       }
     }
   }
@@ -107,7 +93,7 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
     .order("created_at", { ascending: false }) as { data: Pick<LeaseSignerRow, "lease_id">[] | null; error: Error | null };
 
   if (signerError) {
-    console.log("[fetchTenantLease] ❌ Erreur lease_signers (profile):", signerError.message);
+    console.warn("[fetchTenantLease] Erreur lease_signers (profile):", signerError.message);
   }
 
   const leaseIdsByProfile = (signersByProfile || []).map(ls => ls.lease_id);
@@ -132,11 +118,9 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
   const leaseIds = [...new Set([...leaseIdsByProfile, ...leaseIdsByEmail])];
 
   if (leaseIds.length === 0) {
-    console.log("[fetchTenantLease] ❌ Aucun lease_signer trouvé pour profile:", profile.id, "ou email:", userEmail);
     return null;
   }
 
-  console.log("[fetchTenantLease] ✅ Baux trouvés:", leaseIds.length, "(profile:", leaseIdsByProfile.length, "email:", leaseIdsByEmail.length, ")");
 
   // Récupérer tous les baux complets avec SERVICE CLIENT
   const { data: leases, error: leaseError } = await serviceClient
@@ -221,7 +205,6 @@ export async function fetchTenantLease(userId: string): Promise<MappedLease | nu
     };
   }));
 
-  console.log("[fetchTenantLease] ✅ Baux chargés avec succès:", mappedLeases.length);
   
   return mappedLeases[0];
 }

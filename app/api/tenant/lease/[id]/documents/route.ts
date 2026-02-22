@@ -37,12 +37,24 @@ export async function GET(
 
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
-      .select("id, property_id")
+      .select("id, property_id, property:properties(owner_id)")
       .eq("id", leaseId)
       .single();
 
     if (leaseError || !lease) {
       return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
+    }
+
+    const ownerId = (lease.property as { owner_id?: string } | null)?.owner_id;
+    const { data: signer } = await serviceClient
+      .from("lease_signers")
+      .select("id")
+      .eq("lease_id", leaseId)
+      .eq("profile_id", profile.id)
+      .maybeSingle();
+
+    if (ownerId !== profile.id && !signer) {
+      return NextResponse.json({ error: "Accès non autorisé à ce bail" }, { status: 403 });
     }
 
     // 2. Récupérer tous les documents liés au bail OU à la propriété

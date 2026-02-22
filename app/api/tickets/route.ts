@@ -231,6 +231,45 @@ export const POST = withSecurity(async function POST(request: Request) {
 
     const profileData = profile as any;
 
+    // Vérifier que l'utilisateur a accès à cette propriété (propriétaire ou locataire signataire)
+    if (validated.property_id) {
+      const isAdmin = profileData.role === "admin";
+      const { data: property } = await serviceClient
+        .from("properties")
+        .select("owner_id")
+        .eq("id", validated.property_id)
+        .single();
+      const isOwner = property?.owner_id === profileData.id;
+
+      if (!isAdmin && !isOwner) {
+        const { data: leasesForProperty } = await serviceClient
+          .from("leases")
+          .select("id")
+          .eq("property_id", validated.property_id);
+        const leaseIds = (leasesForProperty || []).map((l: { id: string }) => l.id);
+
+        if (leaseIds.length > 0) {
+          const { data: signer } = await serviceClient
+            .from("lease_signers")
+            .select("id")
+            .eq("profile_id", profileData.id)
+            .in("lease_id", leaseIds)
+            .maybeSingle();
+          if (!signer) {
+            return NextResponse.json(
+              { error: "Vous n'avez pas accès à cette propriété" },
+              { status: 403 }
+            );
+          }
+        } else {
+          return NextResponse.json(
+            { error: "Vous n'avez pas accès à cette propriété" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     // Créer le ticket avec service client
     const { data: ticket, error: insertError } = await serviceClient
       .from("tickets")

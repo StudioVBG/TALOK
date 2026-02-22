@@ -62,6 +62,30 @@ export async function GET(
       return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
     }
 
+    // 1b. Vérifier que l'utilisateur a accès à ce bail (propriétaire, signataire ou admin)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
+    const isOwner = (lease.property as { owner_id?: string } | null)?.owner_id === profile.id;
+    const { data: signer } = await serviceClient
+      .from("lease_signers")
+      .select("id")
+      .eq("lease_id", leaseId)
+      .eq("profile_id", profile.id)
+      .maybeSingle();
+    const isAdmin = profile.role === "admin";
+
+    if (!isOwner && !signer && !isAdmin) {
+      return NextResponse.json({ error: "Accès non autorisé à ce bail" }, { status: 403 });
+    }
+
     // 2. Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
     const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
       leaseId,

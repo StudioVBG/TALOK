@@ -19,8 +19,6 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
   const supabase = await createClient();
   const serviceClient = getServiceClient(); // Pour bypass RLS sur certaines requêtes
 
-  console.log(`[fetchTenantEDL] Starting fetch for edlId: ${edlId}, profileId: ${profileId}`);
-
   // Récupérer le user_id du profil pour la recherche
   const { data: profileData } = await supabase
     .from("profiles")
@@ -29,7 +27,6 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
     .single();
   
   const userId = profileData?.user_id;
-  console.log(`[fetchTenantEDL] User ID: ${userId}`);
 
   // Vérifier que le locataire est bien signataire de cet EDL
   // Recherche par signer_profile_id OU signer_user_id
@@ -45,7 +42,6 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
   
   if (sigByProfile) {
     mySignature = sigByProfile;
-    console.log(`[fetchTenantEDL] Found signature by profile_id`);
   } else if (userId) {
     // Essai 2: par signer_user_id
     const { data: sigByUser } = await supabase
@@ -57,14 +53,11 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
     
     if (sigByUser) {
       mySignature = sigByUser;
-      console.log(`[fetchTenantEDL] Found signature by user_id`);
     }
   }
 
   // Essai 3: Vérifier si le locataire est signataire du bail associé à l'EDL
   if (!mySignature) {
-    console.log(`[fetchTenantEDL] No direct signature found, checking lease signers...`);
-    
     // Récupérer l'EDL pour avoir le lease_id
     const { data: edlForLease } = await supabase
       .from("edl")
@@ -82,7 +75,6 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
         .maybeSingle();
       
       if (leaseSigner) {
-        console.log(`[fetchTenantEDL] Found as lease signer, allowing access`);
         // Créer une signature virtuelle pour permettre l'accès
         mySignature = { id: 'virtual', signer_role: 'tenant', edl_id: edlId };
       }
@@ -114,14 +106,10 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
     return null;
   }
 
-  console.log(`[fetchTenantEDL] EDL loaded, lease_id: ${edl.lease_id}, property_id: ${(edl as any).property_id}`);
-
   let finalProperty = edl.lease?.property;
   
   // Si la propriété n'est pas récupérée via la relation, essayer avec le service client (bypass RLS)
   if (!finalProperty) {
-    console.log("[fetchTenantEDL] Property not found via lease relation, trying with service client...");
-    
     // Essai 1: Via property_id direct de l'EDL
     if ((edl as any).property_id) {
       const { data: propDirect } = await serviceClient
@@ -131,7 +119,6 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
         .single();
       if (propDirect) {
         finalProperty = propDirect;
-        console.log("[fetchTenantEDL] Found property via property_id (service client)");
       }
     }
     
@@ -151,19 +138,16 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
           .single();
         if (propViaLease) {
           finalProperty = propViaLease;
-          console.log("[fetchTenantEDL] Found property via lease.property_id (service client)");
         }
       }
     }
   }
-  
+
   if (!finalProperty) {
     console.error("[fetchTenantEDL] Property definitively not found");
     return null;
   }
-  
-  console.log(`[fetchTenantEDL] Property found: ${finalProperty.adresse_complete}`);
-  
+
   // Mettre à jour l'EDL avec la propriété trouvée
   if (!edl.lease) {
     (edl as any).lease = { property: finalProperty };
@@ -193,7 +177,6 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
           .createSignedUrl(sig.signature_image_path, 3600);
         if (signedUrlData?.signedUrl) {
           (sig as any).signature_image_url = signedUrlData.signedUrl;
-          console.log(`[fetchTenantEDL] ✅ Signed URL generated for ${sig.signer_role}`);
         }
       } catch (err) {
         console.warn("[fetchTenantEDL] Failed to sign URL for signature image", sig.signature_image_path);
@@ -218,7 +201,6 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
             
             if (signedUrlData?.signedUrl) {
               (sig as any).signature_image_url = signedUrlData.signedUrl;
-              console.log("[fetchTenantEDL] ✅ Generated FALLBACK signed URL for tenant signature from lease");
             }
           } catch (e) {}
         }
@@ -254,7 +236,6 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
       console.warn("[fetchTenantEDL] edl_meter_readings fetch error:", readingsError.message);
     } else {
       meterReadings = readings || [];
-      console.log(`[fetchTenantEDL] Fetched ${meterReadings.length} meter readings`);
     }
   } catch (e) {
     console.warn("[fetchTenantEDL] edl_meter_readings fetch failed:", e);
@@ -282,8 +263,6 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
     .select("*, profile:profiles(*)")
     .eq("profile_id", finalProperty.owner_id)
     .single();
-
-  console.log(`[fetchTenantEDL] Owner profile found: ${ownerProfile?.profile?.prenom} ${ownerProfile?.profile?.nom}`);
 
   // Group items by room
   const roomsMap: Record<string, any[]> = {};

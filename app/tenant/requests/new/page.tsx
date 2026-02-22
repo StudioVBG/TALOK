@@ -28,7 +28,9 @@ import {
   MessageCircle,
   AlertCircle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  ImagePlus,
+  X
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
@@ -54,12 +56,17 @@ const priorities = [
   { value: "haute", label: "Haute", description: "Urgent" },
 ];
 
+const MAX_ATTACHMENTS = 5;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp,application/pdf";
+
 export default function NewTenantRequestPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { dashboard } = useTenantData();
   const [mode, setMode] = useState<'classic' | 'tom'>('tom');
   const [loading, setLoading] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
 
   // 🔧 FIX: Protection contre dashboard null ou structure inattendue
   const propertyId = dashboard?.lease?.property_id || (dashboard?.leases && dashboard.leases.length > 0 ? dashboard.leases[0].property_id : null);
@@ -70,6 +77,27 @@ export default function NewTenantRequestPage() {
     categorie: "",
     priorite: "normale",
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || []);
+    const valid: File[] = [];
+    for (const file of selected) {
+      if (files.length + valid.length >= MAX_ATTACHMENTS) break;
+      const ok = file.size <= MAX_FILE_SIZE && (
+        file.type.startsWith("image/") || file.type === "application/pdf"
+      );
+      if (ok) valid.push(file);
+      else if (file.size > MAX_FILE_SIZE) {
+        toast({ title: "Fichier trop volumineux", description: `${file.name} : max 10 Mo`, variant: "destructive" });
+      }
+    }
+    setFiles((prev) => [...prev, ...valid].slice(0, MAX_ATTACHMENTS));
+    e.target.value = "";
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleTomTicketCreated = async (args: CreateTicketArgs) => {
     if (!propertyId) {
@@ -140,8 +168,21 @@ export default function NewTenantRequestPage() {
           property_id: propertyId,
         }),
       });
-      
-      if (!response.ok) throw new Error("Erreur");
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || "Erreur");
+
+      const ticketId = data.ticket?.id;
+      if (ticketId && files.length > 0) {
+        for (const file of files) {
+          const fd = new FormData();
+          fd.append("file", file);
+          await fetch(`/api/tickets/${ticketId}/attachments`, {
+            method: "POST",
+            body: fd,
+          });
+        }
+      }
 
       toast({ title: "Demande envoyée", description: "Votre ticket est en cours de traitement." });
       router.push("/tenant/requests");
@@ -308,6 +349,49 @@ export default function NewTenantRequestPage() {
                           onChange={(e) => setForm({ ...form, description: e.target.value })} 
                           className="rounded-3xl border-border focus:ring-indigo-500 min-h-[200px] p-6 text-lg"
                         />
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+                          Pièces jointes (optionnel)
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Images ou PDF, max 10 Mo par fichier, {MAX_ATTACHMENTS} fichiers maximum.
+                        </p>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept={ACCEPTED_TYPES}
+                              multiple
+                              className="hidden"
+                              onChange={handleFileChange}
+                            />
+                            <Button type="button" variant="outline" size="sm" className="gap-2 rounded-xl" asChild>
+                              <span>
+                                <ImagePlus className="h-4 w-4" />
+                                Ajouter des fichiers
+                              </span>
+                            </Button>
+                          </label>
+                          {files.map((file, index) => (
+                            <Badge
+                              key={index}
+                              variant="secondary"
+                              className="gap-1 pr-1 rounded-lg font-normal"
+                            >
+                              <span className="max-w-[120px] truncate">{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeFile(index)}
+                                className="p-0.5 rounded hover:bg-muted"
+                                aria-label="Supprimer"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
 
                       <Button 

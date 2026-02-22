@@ -155,6 +155,25 @@ export default function TenantLeasePage() {
   const mySigner = signers.find((s: any) => s.profile_id === dashboard.profile_id);
   const isTenantSigned = mySigner?.signature_status === "signed";
   const isFullySigned = lease.statut === 'active' || lease.statut === 'fully_signed';
+  const isDraft = lease.statut === 'draft';
+  const isTerminated = lease.statut === 'terminated';
+  const isPropertyDeleted = !!(property as { deleted_at?: string; etat?: string } | null)?.deleted_at || (property as { deleted_at?: string; etat?: string } | null)?.etat === 'deleted';
+
+  if (isPropertyDeleted) {
+    return (
+      <PageTransition>
+        <div className="container mx-auto py-24 text-center px-4">
+          <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
+            <Building2 className="h-10 w-10 text-muted-foreground/30" />
+          </div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Ce logement n&apos;est plus disponible</h1>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Le bien associé à ce bail a été retiré. Vous pouvez consulter vos documents dans l&apos;onglet Documents.
+          </p>
+        </div>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>
@@ -218,16 +237,30 @@ export default function TenantLeasePage() {
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                     <GlassCard className={cn(
                       "p-6 border-none shadow-xl relative overflow-hidden",
-                      isFullySigned ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white" : "bg-gradient-to-br from-amber-400 to-orange-500 text-white"
+                      isFullySigned && "bg-gradient-to-br from-emerald-500 to-teal-600 text-white",
+                      !isFullySigned && !isDraft && !isTerminated && "bg-gradient-to-br from-amber-400 to-orange-500 text-white",
+                      isDraft && "bg-gradient-to-br from-slate-400 to-slate-600 text-white",
+                      isTerminated && "bg-gradient-to-br from-slate-500 to-slate-700 text-white"
                     )}>
                       <div className="relative z-10 flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
-                            {isFullySigned ? <ShieldCheck className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
+                            {isFullySigned && <ShieldCheck className="h-6 w-6" />}
+                            {!isFullySigned && !isDraft && !isTerminated && <Clock className="h-6 w-6" />}
+                            {isDraft && <FileText className="h-6 w-6" />}
+                            {isTerminated && <CalendarOff className="h-6 w-6" />}
                           </div>
                           <div>
                             <p className="text-sm font-bold uppercase tracking-widest opacity-80">Statut Juridique</p>
-                            <p className="text-2xl font-bold">{isFullySigned ? "Bail Certifié" : "Signature en cours"}</p>
+                            <p className="text-2xl font-bold">
+                              {isFullySigned && "Bail Certifié"}
+                              {!isFullySigned && !isDraft && !isTerminated && "Signature en cours"}
+                              {isDraft && "Bail en cours de préparation"}
+                              {isTerminated && "Bail terminé"}
+                            </p>
+                            {isTerminated && lease.date_fin && (
+                              <p className="text-sm opacity-90 mt-1">Fin du bail : {formatDateShort(lease.date_fin)}</p>
+                            )}
                           </div>
                         </div>
                         {isFullySigned && <CheckCircle2 className="h-8 w-8 opacity-50" />}
@@ -288,60 +321,64 @@ export default function TenantLeasePage() {
                     </GlassCard>
                   </motion.div>
 
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                    <GlassCard className="p-6 border-border bg-card shadow-lg space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-foreground flex items-center gap-2">
-                          <FileSignature className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                          Documents du bail
-                        </h3>
-                      </div>
-                      <div className="space-y-3">
-                        {!isFullySigned ? (
-                          <DocumentDownloadButton 
-                            type="lease" 
-                            leaseId={lease.id} 
-                            label="Bail de location (Original)" 
-                            className="w-full h-12 justify-between px-4 rounded-xl border-border hover:bg-muted font-bold"
-                          />
-                        ) : (
-                          <DocumentDownloadButton 
-                            type="lease" 
-                            leaseId={lease.id} 
-                            signed={true}
-                            variant="default"
-                            className="w-full h-12 justify-between px-4 bg-foreground hover:bg-foreground/90 text-background rounded-xl shadow-lg font-bold"
-                            label="Bail Signé & Certifié"
-                          />
-                        )}
-                      </div>
-                    </GlassCard>
-                  </motion.div>
+                  {!isDraft && (
+                    <>
+                      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                        <GlassCard className="p-6 border-border bg-card shadow-lg space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-foreground flex items-center gap-2">
+                              <FileSignature className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                              Documents du bail
+                            </h3>
+                          </div>
+                          <div className="space-y-3">
+                            {!isFullySigned ? (
+                              <DocumentDownloadButton 
+                                type="lease" 
+                                leaseId={lease.id} 
+                                label="Bail de location (Original)" 
+                                className="w-full h-12 justify-between px-4 rounded-xl border-border hover:bg-muted font-bold"
+                              />
+                            ) : (
+                              <DocumentDownloadButton 
+                                type="lease" 
+                                leaseId={lease.id} 
+                                signed={true}
+                                variant="default"
+                                className="w-full h-12 justify-between px-4 bg-foreground hover:bg-foreground/90 text-background rounded-xl shadow-lg font-bold"
+                                label="Bail Signé & Certifié"
+                              />
+                            )}
+                          </div>
+                        </GlassCard>
+                      </motion.div>
 
-                  {/* NOUVEAU : Checklist de Conformité */}
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                    <GlassCard className="p-6 border-border bg-card shadow-lg space-y-6">
-                      <div className="flex items-center justify-between border-b border-border pb-4">
-                        <h3 className="font-bold text-foreground flex items-center gap-2">
-                          <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                          Conformité du Bail
-                        </h3>
-                        <Badge className={cn(
-                          "font-black uppercase tracking-tighter",
-                          isFullySigned ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                        )}>
-                          {isFullySigned ? "Validé" : "En cours"}
-                        </Badge>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <CheckItem label="Contrat de bail signé" status={isFullySigned ? 'success' : 'pending'} />
-                        <CheckItem label="Dossier Diagnostics (DDT)" status={docs?.diagnostics && docs.diagnostics.length > 0 ? 'success' : 'pending'} />
-                        <CheckItem label="Attestation d'assurance" status={dashboard.insurance?.has_insurance ? 'success' : 'pending'} />
-                        <CheckItem label="État des lieux d'entrée" status={lease.statut === 'active' ? 'success' : 'pending'} />
-                      </div>
-                    </GlassCard>
-                  </motion.div>
+                      {/* NOUVEAU : Checklist de Conformité */}
+                      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                        <GlassCard className="p-6 border-border bg-card shadow-lg space-y-6">
+                          <div className="flex items-center justify-between border-b border-border pb-4">
+                            <h3 className="font-bold text-foreground flex items-center gap-2">
+                              <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                              Conformité du Bail
+                            </h3>
+                            <Badge className={cn(
+                              "font-black uppercase tracking-tighter",
+                              isFullySigned ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                            )}>
+                              {isFullySigned ? "Validé" : "En cours"}
+                            </Badge>
+                          </div>
+                          
+                          <div className="space-y-4">
+                            <CheckItem label="Contrat de bail signé" status={isFullySigned ? 'success' : 'pending'} />
+                            <CheckItem label="Dossier Diagnostics (DDT)" status={docs?.diagnostics && docs.diagnostics.length > 0 ? 'success' : 'pending'} />
+                            <CheckItem label="Attestation d'assurance" status={dashboard.insurance?.has_insurance ? 'success' : 'pending'} />
+                            <CheckItem label="État des lieux d'entrée" status={lease.statut === 'active' ? 'success' : 'pending'} />
+                          </div>
+                        </GlassCard>
+                      </motion.div>
+                    </>
+                  )}
 
                   {/* Section Donner Congé - Visible uniquement si bail actif */}
                   {lease.statut === 'active' && (

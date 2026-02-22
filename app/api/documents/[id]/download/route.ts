@@ -55,16 +55,16 @@ export async function POST(
     const isTenant = docData.tenant_id === profileData?.id;
     const isAdmin = profileData?.role === "admin";
 
-    // Vérifier si membre du bail
+    // Vérifier si signataire du bail (colocataire ou locataire principal)
     let hasAccess = isOwner || isTenant || isAdmin;
     if (docData.lease_id && !hasAccess) {
-      const { data: roommate } = await supabase
-        .from("roommates")
+      const { data: signer } = await supabase
+        .from("lease_signers")
         .select("id")
         .eq("lease_id", docData.lease_id)
-        .eq("user_id", user.id as any)
+        .eq("profile_id", profileData?.id)
         .maybeSingle();
-      hasAccess = !!roommate;
+      hasAccess = !!signer;
     }
 
     if (!hasAccess) {
