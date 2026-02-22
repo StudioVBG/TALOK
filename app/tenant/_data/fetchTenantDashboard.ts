@@ -168,7 +168,7 @@ async function fetchTenantDashboardDirect(
   // Récupérer le profil + email de l'utilisateur
   const { data: profileRaw, error: profileError } = await supabase
     .from("profiles")
-    .select("id, prenom, nom, kyc_status, user_id")
+    .select("id, prenom, nom, user_id")
     .eq("user_id", userId)
     .single();
 
@@ -176,7 +176,7 @@ async function fetchTenantDashboardDirect(
     console.error("[fetchTenantDashboardDirect] Erreur profil:", profileError.message);
   }
 
-  let profile = profileRaw as { id: string; prenom: string | null; nom: string | null; kyc_status?: string | null; user_id: string | null } | null;
+  let profile = profileRaw as { id: string; prenom: string | null; nom: string | null; user_id: string | null } | null;
 
   // Fallback : profil par email (reconnexion à partir des données existantes)
   if (!profile) {
@@ -185,19 +185,19 @@ async function fetchTenantDashboardDirect(
       if (authUser?.email) {
         const { data: profileByEmail, error: emailError } = await supabase
           .from("profiles")
-          .select("id, prenom, nom, kyc_status, user_id")
+          .select("id, prenom, nom, user_id")
           .ilike("email", authUser.email)
           .maybeSingle();
 
         if (!emailError && profileByEmail) {
-          profile = profileByEmail as typeof profile;
-          console.warn("[fetchTenantDashboardDirect] Profil trouvé par email (fallback):", profile.id);
+          profile = profileByEmail as NonNullable<typeof profile>;
+          console.warn("[fetchTenantDashboardDirect] Profil trouvé par email (fallback):", profileByEmail.id);
 
-          if (!profile.user_id) {
+          if (!profileByEmail.user_id) {
             const { error: updateError } = await supabase
               .from("profiles")
               .update({ user_id: userId })
-              .eq("id", profile.id);
+              .eq("id", profileByEmail.id);
             if (updateError) {
               console.error("[fetchTenantDashboardDirect] Erreur sync user_id:", updateError.message);
             } else {
@@ -559,11 +559,21 @@ async function fetchTenantDashboardDirect(
   });
 
   const unpaidInvoices = invoices.filter((i) => i.statut === "sent" || i.statut === "late");
-  const profileKyc = "kyc_status" in profile ? (profile as { kyc_status?: string }).kyc_status : undefined;
+
+  // kyc_status est sur tenant_profiles, pas sur profiles
+  let kycStatus: TenantDashboardData["kyc_status"] = "pending";
+  const { data: tenantProfile } = await supabase
+    .from("tenant_profiles")
+    .select("kyc_status")
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+  if (tenantProfile?.kyc_status) {
+    kycStatus = tenantProfile.kyc_status as TenantDashboardData["kyc_status"];
+  }
 
   return {
     profile_id: profile.id,
-    kyc_status: (profileKyc as TenantDashboardData["kyc_status"]) || "pending",
+    kyc_status: kycStatus,
     tenant: { prenom: profile.prenom ?? "", nom: profile.nom ?? "" },
     leases: enrichedLeases as any[],
     properties: propertiesData,
