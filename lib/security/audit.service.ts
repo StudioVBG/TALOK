@@ -138,8 +138,8 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
       console.error("[Audit] Erreur lors de l'enregistrement:", error.message);
     }
 
-    // Alerter pour les actions critiques
-    if (riskLevel === "critical") {
+    // Alerter pour les actions critiques et à haut risque
+    if (riskLevel === "critical" || riskLevel === "high") {
       await alertCriticalAction(entry, riskLevel);
     }
   } catch (err) {
@@ -148,13 +148,12 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
 }
 
 /**
- * Alerte pour les actions critiques (email/slack/etc.)
+ * Alerte pour les actions critiques — notifie tous les admins en in-app + outbox
  */
 async function alertCriticalAction(
   entry: AuditLogEntry,
   riskLevel: RiskLevel
 ): Promise<void> {
-  // TODO: Intégrer avec système d'alertes (Slack, PagerDuty, etc.)
   console.warn(`[SECURITY ALERT] ${riskLevel.toUpperCase()} risk action detected:`, {
     action: entry.action,
     entity_type: entry.entity_type,
@@ -163,9 +162,62 @@ async function alertCriticalAction(
     time: new Date().toISOString(),
   });
 
-  // Optionnel: Envoyer dans l'outbox pour notification
   try {
     const supabase = createServiceRoleClient();
+
+    // 1. Récupérer tous les profils admin pour les notifier
+    const { data: admins } = await supabase
+      .from("profiles")
+      .select("id, user_id")
+      .eq("role", "admin");
+
+    // 2. Créer une notification in-app pour chaque admin
+    if (admins && admins.length > 0) {
+      const actionLabels: Record<string, string> = {
+        delete: "Suppression",
+        role_change: "Changement de rôle",
+        permission_grant: "Attribution de permission",
+        permission_revoke: "Révocation de permission",
+        "2fa_disabled": "2FA désactivé",
+        decrypt: "Déchiffrement de données",
+        export: "Export de données",
+        failed_login: "Échec de connexion",
+      };
+      const label = actionLabels[entry.action] || entry.action;
+      const isCritical = riskLevel === "critical";
+
+      const notifications = admins.map((admin) => ({
+        user_id: admin.user_id,
+        profile_id: admin.id,
+        type: isCritical ? "audit_critical" : "audit_high",
+        title: isCritical
+          ? `Alerte sécurité critique : ${label}`
+          : `Activité à haut risque : ${label}`,
+        body: `Action ${label} sur ${entry.entity_type}. Utilisateur: ${entry.user_id.slice(0, 8)}...${entry.ip_address ? ` | IP: ${entry.ip_address}` : ""}`,
+        is_read: false,
+        priority: isCritical ? "urgent" : "high",
+        action_url: "/admin/audit-logs",
+        metadata: {
+          audit_action: entry.action,
+          entity_type: entry.entity_type,
+          entity_id: entry.entity_id,
+          actor_user_id: entry.user_id,
+          risk_level: riskLevel,
+          ip_address: entry.ip_address,
+          timestamp: new Date().toISOString(),
+        },
+      }));
+
+      const { error: notifError } = await supabase
+        .from("notifications")
+        .insert(notifications);
+
+      if (notifError) {
+        console.error("[Audit] Erreur création notifications admin:", notifError.message);
+      }
+    }
+
+    // 3. Envoyer dans l'outbox pour traitement asynchrone (email, etc.)
     await supabase.from("outbox").insert({
       event_type: "Security.CriticalAction",
       payload: {
@@ -177,8 +229,8 @@ async function alertCriticalAction(
         timestamp: new Date().toISOString(),
       },
     });
-  } catch {
-    // Ignorer si outbox n'existe pas
+  } catch (err) {
+    console.error("[Audit] Erreur alertCriticalAction:", err);
   }
 }
 
@@ -332,13 +384,14 @@ export async function getAuditLogs(params: {
 
 /**
  * Compte les échecs de connexion récents (pour détection bruteforce)
+ * Alerte les admins si le seuil est dépassé (5 échecs en 15 min)
  */
 export async function countRecentFailedLogins(
   userId: string,
   windowMinutes: number = 15
 ): Promise<number> {
   const supabase = createServiceRoleClient();
-  
+
   const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000);
 
   const { count, error } = await supabase
@@ -353,7 +406,43 @@ export async function countRecentFailedLogins(
     return 0;
   }
 
-  return count || 0;
+  const failCount = count || 0;
+
+  // Alerte brute force si >= 5 tentatives dans la fenêtre
+  if (failCount >= 5) {
+    try {
+      const { data: admins } = await supabase
+        .from("profiles")
+        .select("id, user_id")
+        .eq("role", "admin");
+
+      if (admins && admins.length > 0) {
+        const notifications = admins.map((admin) => ({
+          user_id: admin.user_id,
+          profile_id: admin.id,
+          type: "security_alert",
+          title: "Alerte : tentative de brute force détectée",
+          body: `${failCount} échecs de connexion en ${windowMinutes} min pour l'utilisateur ${userId.slice(0, 8)}...`,
+          is_read: false,
+          priority: "urgent",
+          action_url: "/admin/audit-logs?action=failed_login",
+          metadata: {
+            alert_type: "brute_force",
+            target_user_id: userId,
+            fail_count: failCount,
+            window_minutes: windowMinutes,
+            timestamp: new Date().toISOString(),
+          },
+        }));
+
+        await supabase.from("notifications").insert(notifications);
+      }
+    } catch (err) {
+      console.error("[Audit] Erreur alerte brute force:", err);
+    }
+  }
+
+  return failCount;
 }
 
 // ============================================

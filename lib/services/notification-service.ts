@@ -10,7 +10,7 @@
 import { createClient } from "@/lib/supabase/server";
 
 // Types
-export type NotificationType = 
+export type NotificationType =
   | "payment_received"
   | "payment_due"
   | "payment_late"
@@ -24,6 +24,9 @@ export type NotificationType =
   | "message_received"
   | "maintenance_scheduled"
   | "rent_revision"
+  | "security_alert"
+  | "audit_critical"
+  | "audit_high"
   | "system"
   | "custom";
 
@@ -132,6 +135,21 @@ const notificationConfig: Record<NotificationType, {
     defaultPriority: "high",
     defaultChannels: ["in_app", "email"],
     icon: "📈",
+  },
+  security_alert: {
+    defaultPriority: "urgent",
+    defaultChannels: ["in_app", "email"],
+    icon: "🛡️",
+  },
+  audit_critical: {
+    defaultPriority: "urgent",
+    defaultChannels: ["in_app", "email"],
+    icon: "🚨",
+  },
+  audit_high: {
+    defaultPriority: "high",
+    defaultChannels: ["in_app"],
+    icon: "⚠️",
   },
   system: {
     defaultPriority: "low",
@@ -446,6 +464,91 @@ export async function notifyMessageReceived(
   });
 }
 
+/**
+ * Notifie une action d'audit critique (suppression, changement de rôle, 2FA désactivé, etc.)
+ */
+export async function notifyAuditCritical(
+  adminProfileId: string,
+  action: string,
+  entityType: string,
+  userId: string,
+  details: {
+    ipAddress?: string;
+    entityId?: string;
+    description?: string;
+  } = {}
+): Promise<Notification | null> {
+  const actionLabels: Record<string, string> = {
+    delete: "Suppression",
+    role_change: "Changement de rôle",
+    permission_grant: "Attribution de permission",
+    permission_revoke: "Révocation de permission",
+    "2fa_disabled": "2FA désactivé",
+  };
+  const label = actionLabels[action] || action;
+  const desc = details.description || `${label} sur ${entityType}`;
+
+  return createNotification({
+    type: "audit_critical",
+    priority: "urgent",
+    title: `Alerte sécurité : ${label}`,
+    message: `Action critique détectée — ${desc}. Utilisateur: ${userId.slice(0, 8)}...${details.ipAddress ? ` | IP: ${details.ipAddress}` : ""}`,
+    recipientId: adminProfileId,
+    actionUrl: "/admin/audit-logs",
+    actionLabel: "Voir les logs d'audit",
+    metadata: { action, entityType, userId, ...details },
+  });
+}
+
+/**
+ * Notifie une action d'audit à haut risque (accès IBAN, action admin, etc.)
+ */
+export async function notifyAuditHigh(
+  adminProfileId: string,
+  action: string,
+  entityType: string,
+  userId: string,
+  details: {
+    ipAddress?: string;
+    entityId?: string;
+    description?: string;
+  } = {}
+): Promise<Notification | null> {
+  const desc = details.description || `${action} sur ${entityType}`;
+
+  return createNotification({
+    type: "audit_high",
+    priority: "high",
+    title: "Activité à haut risque détectée",
+    message: `${desc}. Utilisateur: ${userId.slice(0, 8)}...${details.ipAddress ? ` | IP: ${details.ipAddress}` : ""}`,
+    recipientId: adminProfileId,
+    actionUrl: "/admin/audit-logs",
+    actionLabel: "Voir les logs d'audit",
+    metadata: { action, entityType, userId, ...details },
+  });
+}
+
+/**
+ * Notifie une alerte de sécurité (tentatives de brute force, accès suspects, etc.)
+ */
+export async function notifySecurityAlert(
+  adminProfileId: string,
+  alertType: string,
+  message: string,
+  metadata: Record<string, unknown> = {}
+): Promise<Notification | null> {
+  return createNotification({
+    type: "security_alert",
+    priority: "urgent",
+    title: `Alerte sécurité : ${alertType}`,
+    message,
+    recipientId: adminProfileId,
+    actionUrl: "/admin/audit-logs",
+    actionLabel: "Voir les détails",
+    metadata: { alertType, ...metadata },
+  });
+}
+
 export default {
   createNotification,
   getNotifications,
@@ -458,6 +561,9 @@ export default {
   notifyLeaseSigned,
   notifyTicketCreated,
   notifyMessageReceived,
+  notifyAuditCritical,
+  notifyAuditHigh,
+  notifySecurityAlert,
   notificationConfig,
 };
 

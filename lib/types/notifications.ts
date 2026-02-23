@@ -206,6 +206,7 @@ export const NOTIFICATION_CATEGORIES = [
   { value: 'review', label: 'Avis' },
   { value: 'lease', label: 'Baux' },
   { value: 'payment', label: 'Paiements' },
+  { value: 'security', label: 'Sécurité' },
 ];
 
 export const DIGEST_MODE_LABELS: Record<DigestMode, string> = {
@@ -230,6 +231,10 @@ export function getNotificationIcon(type: string): string {
     review: '⭐',
     lease: '📝',
     payment: '💳',
+    security: '🛡️',
+    security_alert: '🛡️',
+    audit_critical: '🚨',
+    audit_high: '⚠️',
   };
   return icons[type] || '🔔';
 }

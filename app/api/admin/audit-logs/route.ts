@@ -36,6 +36,7 @@ export async function GET(request: Request) {
     const entity = searchParams.get("entity");
     const userId = searchParams.get("user");
     const action = searchParams.get("action");
+    const riskLevel = searchParams.get("risk_level");
     const limit = parseInt(searchParams.get("limit") || "100");
     const offset = parseInt(searchParams.get("offset") || "0");
 
@@ -58,6 +59,11 @@ export async function GET(request: Request) {
     if (action) {
       // @ts-ignore - Supabase typing issue
       query = query.eq("action", action);
+    }
+
+    if (riskLevel) {
+      // @ts-ignore - Supabase typing issue
+      query = query.eq("risk_level", riskLevel);
     }
 
     const { data: logs, error, count } = await query;

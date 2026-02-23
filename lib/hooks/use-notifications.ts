@@ -21,20 +21,23 @@ export interface Notification {
   id: string;
   user_id: string;
   recipient_id?: string; // Alias optionnel de user_id
-  type: 
-    | "payment_received" 
-    | "payment_late" 
+  type:
+    | "payment_received"
+    | "payment_late"
     | "payment_reminder"
-    | "lease_signed" 
-    | "lease_pending_signature" 
+    | "lease_signed"
+    | "lease_pending_signature"
     | "lease_expiring"
-    | "ticket_new" 
-    | "ticket_update" 
+    | "ticket_new"
+    | "ticket_update"
     | "ticket_resolved"
     | "message_new"
     | "document_uploaded"
     | "document_signed"
-    | "reminder" 
+    | "security_alert"
+    | "audit_critical"
+    | "audit_high"
+    | "reminder"
     | "alert"
     | "system";
   title: string;
