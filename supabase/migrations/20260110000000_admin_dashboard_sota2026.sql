@@ -402,33 +402,31 @@ BEGIN
         'recentActivity', (
             SELECT COALESCE(json_agg(activity ORDER BY activity.date DESC), '[]'::json)
             FROM (
-                SELECT 'user' as type,
+                (SELECT 'user' as type,
                        CONCAT('Nouvel utilisateur: ', prenom, ' ', nom) as description,
                        created_at as date
                 FROM profiles
                 ORDER BY created_at DESC
-                LIMIT 3
+                LIMIT 3)
 
                 UNION ALL
 
-                SELECT 'property' as type,
+                (SELECT 'property' as type,
                        CONCAT('Nouveau bien: ', COALESCE(adresse_complete, 'Adresse non définie')) as description,
                        created_at as date
                 FROM properties
                 WHERE deleted_at IS NULL
                 ORDER BY created_at DESC
-                LIMIT 3
+                LIMIT 3)
 
                 UNION ALL
 
-                SELECT 'lease' as type,
+                (SELECT 'lease' as type,
                        'Nouveau bail créé' as description,
                        created_at as date
                 FROM leases
                 ORDER BY created_at DESC
-                LIMIT 2
-
-                LIMIT 8
+                LIMIT 2)
             ) activity
         )
 
