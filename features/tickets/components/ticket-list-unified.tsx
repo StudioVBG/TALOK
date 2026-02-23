@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
 interface WorkOrder {
@@ -71,11 +72,12 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
 
   if (tickets.length === 0) {
     return (
-      <div className="text-center py-12 bg-muted rounded-xl border border-dashed border-border">
-        <Hammer className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
-        <h3 className="font-medium text-foreground">Aucun ticket</h3>
-        <p className="text-muted-foreground text-sm">Tout fonctionne parfaitement !</p>
-      </div>
+      <EmptyState
+        icon={Hammer}
+        title="Aucun ticket"
+        description="Tout fonctionne parfaitement ! Signalez un problème si nécessaire."
+        action={variant === "tenant" ? { label: "Signaler un problème", href: "/tenant/requests/new" } : undefined}
+      />
     );
   }
 

@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,11 +88,11 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
   return (
     <div className="space-y-4">
       {optimisticInvoices.length === 0 ? (
-        <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed">
-          <FileText className="h-12 w-12 mx-auto text-slate-300 mb-4" />
-          <h3 className="font-medium text-slate-900">Aucune facture</h3>
-          <p className="text-slate-500 text-sm">Il n'y a pas encore de factures à afficher.</p>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title="Aucune facture"
+          description="Votre première facture apparaîtra ici à la prochaine échéance de votre bail."
+        />
       ) : (
         <div className="grid gap-4">
           {optimisticInvoices.map((invoice) => (

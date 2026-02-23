@@ -160,10 +160,17 @@ export function ConversationsList({ currentProfileId, selectedId, onSelect }: Co
       <ScrollArea className="flex-1">
         <CardContent className="p-2">
           {filteredConversations.length === 0 ? (
-            <div className="text-center py-12">
-              <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
-              <p className="text-muted-foreground">
+            <div className="text-center py-12 px-4">
+              <div className="bg-muted/50 rounded-full p-4 inline-block mb-4">
+                <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
+              </div>
+              <h4 className="font-semibold text-foreground mb-1">
                 {search ? "Aucun résultat" : "Aucune conversation"}
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                {search
+                  ? "Essayez un autre terme de recherche."
+                  : "Les messages de votre propriétaire apparaîtront ici."}
               </p>
             </div>
           ) : (

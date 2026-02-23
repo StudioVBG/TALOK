@@ -55,7 +55,12 @@ export default function TenantNotificationsPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-24"><Loader2 className="animate-spin h-10 w-10 text-indigo-600" /></div>
+          <div className="flex justify-center py-24">
+            <div role="status" aria-label="Chargement des notifications">
+              <Loader2 className="animate-spin h-10 w-10 text-indigo-600" />
+              <span className="sr-only">Chargement en cours…</span>
+            </div>
+          </div>
         ) : error ? (
           <ErrorState
             title="Erreur de chargement"
@@ -105,6 +110,7 @@ export default function TenantNotificationsPage() {
                       size="sm" 
                       onClick={() => handleMarkAsRead(n.id)}
                       className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                      aria-label="Marquer la notification comme lue"
                     >
                       Marquer comme lu
                     </Button>

@@ -265,7 +265,10 @@ export default function TenantMetersPage() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
-            <Loader2 className="w-10 h-10 animate-spin text-amber-500" />
+            <div role="status" aria-label="Chargement des compteurs">
+              <Loader2 className="w-10 h-10 animate-spin text-amber-500" />
+              <span className="sr-only">Chargement en cours…</span>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

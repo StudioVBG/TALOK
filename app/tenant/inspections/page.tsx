@@ -58,6 +58,8 @@ export default function TenantInspectionsPage() {
                 initial={{ opacity: 0, scale: 0.9 }} 
                 animate={{ opacity: 1, scale: 1 }}
                 className="bg-amber-50 text-amber-700 px-4 py-2 rounded-2xl border border-amber-100 shadow-sm flex items-center gap-2"
+                role="status"
+                aria-live="polite"
               >
                 <AlertCircle className="h-5 w-5" />
                 <span className="font-bold text-sm">{pendingCount} signature{pendingCount > 1 ? 's' : ''} en attente</span>
@@ -67,7 +69,12 @@ export default function TenantInspectionsPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-24"><Loader2 className="animate-spin h-10 w-10 text-indigo-600" /></div>
+          <div className="flex justify-center py-24">
+            <div role="status" aria-label="Chargement des états des lieux">
+              <Loader2 className="animate-spin h-10 w-10 text-indigo-600" />
+              <span className="sr-only">Chargement en cours…</span>
+            </div>
+          </div>
         ) : error ? (
           <ErrorState
             title="Erreur de chargement"

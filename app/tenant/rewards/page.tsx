@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/ui/page-transition";
 import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort } from "@/lib/helpers/format";
 import { useTenantRewards } from "@/lib/hooks/queries/use-tenant-rewards";
 
@@ -14,7 +15,14 @@ export default function TenantRewardsPage() {
   const { data, isLoading: loading, error, refetch } = useTenantRewards();
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-indigo-600" /></div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div role="status" aria-label="Chargement des récompenses">
+          <Loader2 className="animate-spin h-8 w-8 text-indigo-600" />
+          <span className="sr-only">Chargement en cours…</span>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
@@ -88,24 +96,32 @@ export default function TenantRewardsPage() {
             <h3 className="text-xl font-bold text-foreground flex items-center gap-2 px-2">
               <History className="h-5 w-5 text-indigo-600" /> Historique des points
             </h3>
-            <GlassCard className="p-0 overflow-hidden border-border bg-card shadow-xl">
-              <div className="divide-y divide-border">
-                {data?.history.map((tx) => (
-                  <div key={tx.id} className="p-5 flex items-center justify-between hover:bg-muted transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                        <Star className="h-5 w-5" />
+            {data?.history && data.history.length > 0 ? (
+              <GlassCard className="p-0 overflow-hidden border-border bg-card shadow-xl">
+                <div className="divide-y divide-border">
+                  {data.history.map((tx) => (
+                    <div key={tx.id} className="p-5 flex items-center justify-between hover:bg-muted transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                          <Star className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-foreground">{tx.description}</p>
+                          <p className="text-xs text-muted-foreground/60 font-medium uppercase tracking-widest">{formatDateShort(tx.created_at)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-foreground">{tx.description}</p>
-                        <p className="text-xs text-muted-foreground/60 font-medium uppercase tracking-widest">{formatDateShort(tx.created_at)}</p>
-                      </div>
+                      <span className="font-black text-emerald-600">+{tx.points}</span>
                     </div>
-                    <span className="font-black text-emerald-600">+{tx.points}</span>
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
+                  ))}
+                </div>
+              </GlassCard>
+            ) : (
+              <EmptyState
+                icon={Star}
+                title="Aucun historique"
+                description="Commencez à gagner des points en payant votre loyer à temps et en adoptant des éco-gestes."
+              />
+            )}
           </div>
 
           {/* Comment gagner - 5/12 */}

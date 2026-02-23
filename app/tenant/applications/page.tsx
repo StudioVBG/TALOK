@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   FileSearch,
   Clock,
@@ -13,14 +15,17 @@ import {
   Loader2,
   ChevronRight,
   Info,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/helpers/format";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { ErrorState } from "@/components/ui/error-state";
+import { useToast } from "@/components/ui/use-toast";
 import { useTenantApplications } from "@/lib/hooks/queries/use-tenant-applications";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -34,6 +39,23 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
 
 export default function TenantApplicationsPage() {
   const { data: applications = [], isLoading, error, refetch } = useTenantApplications();
+  const [propertyCode, setPropertyCode] = useState("");
+  const [isValidating, setIsValidating] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const handleValidateCode = async () => {
+    const code = propertyCode.trim().toUpperCase();
+    if (!code) return;
+    setIsValidating(true);
+    try {
+      router.push(`/invitation/${code}`);
+    } catch {
+      toast({ variant: "destructive", title: "Code invalide", description: "Vérifiez le code et réessayez." });
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   return (
     <PageTransition>
@@ -59,7 +81,10 @@ export default function TenantApplicationsPage() {
 
         {isLoading ? (
           <div className="flex justify-center py-24">
-            <Loader2 className="animate-spin h-10 w-10 text-violet-600" />
+            <div role="status" aria-label="Chargement des candidatures">
+              <Loader2 className="animate-spin h-10 w-10 text-violet-600" />
+              <span className="sr-only">Chargement en cours…</span>
+            </div>
           </div>
         ) : applications.length === 0 ? (
           <GlassCard className="p-12 text-center border-border">
@@ -67,9 +92,29 @@ export default function TenantApplicationsPage() {
               <FileSearch className="h-10 w-10 text-violet-300 dark:text-violet-500" />
             </div>
             <h3 className="text-xl font-bold text-foreground">Aucune candidature</h3>
-            <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
-              Vos candidatures apparaîtront ici lorsque vous postulerez à un logement.
+            <p className="text-muted-foreground mt-2 max-w-sm mx-auto mb-6">
+              Entrez le code logement fourni par votre futur propriétaire pour postuler.
             </p>
+            <div className="flex items-center gap-2 max-w-sm mx-auto">
+              <div className="relative flex-1">
+                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Ex : ABC123"
+                  value={propertyCode}
+                  onChange={(e) => setPropertyCode(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleValidateCode()}
+                  className="pl-10 h-11 font-mono uppercase tracking-widest"
+                  aria-label="Code logement"
+                />
+              </div>
+              <Button
+                onClick={handleValidateCode}
+                disabled={!propertyCode.trim() || isValidating}
+                className="h-11 px-6 font-bold"
+              >
+                {isValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Valider"}
+              </Button>
+            </div>
           </GlassCard>
         ) : (
           <div className="grid grid-cols-1 gap-4">
@@ -136,7 +181,7 @@ export default function TenantApplicationsPage() {
           <div className="space-y-1">
             <p className="font-bold text-foreground">Comment candidater ?</p>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Votre propriétaire vous enverra un code logement ou un lien d&apos;invitation. Vous pouvez aussi saisir un code depuis la page d&apos;accueil.
+              Votre propriétaire vous enverra un <strong>code logement</strong> ou un lien d&apos;invitation. Saisissez-le ci-dessus ou utilisez le lien reçu par email.
             </p>
           </div>
         </motion.div>
