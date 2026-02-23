@@ -66,9 +66,18 @@ function RenewCNIContent() {
       setProfileId(profile.id);
 
       const { data: signer } = await supabase
-        .from("lease_signers").select("id")
-        .eq("lease_id", leaseId!).eq("profile_id", profile.id).single();
-      if (!signer) { setError("Accès non autorisé"); return; }
+        .from("lease_signers")
+        .select("id")
+        .eq("lease_id", leaseId!)
+        .eq("profile_id", profile.id)
+        .in("role", ["locataire_principal", "colocataire"])
+        .single();
+      if (!signer) {
+        setError(
+          "Vous n'êtes pas autorisé à renouveler la CNI pour ce bail. Assurez-vous d'être bien locataire de ce logement et d'avoir accepté l'invitation si vous en avez reçu une."
+        );
+        return;
+      }
 
       const { data: leaseData } = await supabase
         .from("leases")
