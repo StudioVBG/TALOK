@@ -45,3 +45,29 @@ export function useMarkNotificationRead() {
     },
   });
 }
+
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => notificationsService.markAllAsRead(),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["tenant", "notifications"] });
+      const previous = queryClient.getQueryData<Notification[]>(["tenant", "notifications"]);
+      const now = new Date().toISOString();
+      queryClient.setQueryData<Notification[]>(
+        ["tenant", "notifications"],
+        (old) => old?.map((n) => ({ ...n, read_at: now })) ?? []
+      );
+      return { previous };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["tenant", "notifications"], context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenant", "notifications"] });
+    },
+  });
+}

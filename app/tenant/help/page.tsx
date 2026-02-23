@@ -50,7 +50,7 @@ export default function TenantHelpPage() {
   }, [search, activeCategory]);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <main className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Aide & Support</h1>
         <p className="text-muted-foreground mt-1">
@@ -96,7 +96,7 @@ export default function TenantHelpPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Rechercher dans les FAQ…”
+          placeholder={"Rechercher dans les FAQ..."}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9 rounded-xl h-12"
@@ -174,7 +174,7 @@ export default function TenantHelpPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }
 

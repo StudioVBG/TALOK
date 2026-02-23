@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { EDLComparison } from "@/components/edl/EDLComparison";
+import { GitCompare, Loader2 } from "lucide-react";
 
 interface TenantEDLDetailClientProps {
   data: {
@@ -68,6 +70,9 @@ export default function TenantEDLDetailClient({
   const { toast } = useToast();
   const [isSigning, setIsSigning] = useState(false);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [entryEdlData, setEntryEdlData] = useState<{ items: Array<{ id: string; room_name: string; category: string; element: string; condition: string; comment?: string | null; photos_count?: number }>; date?: string } | null>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
 
   const { raw: edl, mySignature, meterReadings, allPropertyMeters, ownerProfile, rooms, stats } = data;
   const property = edl.lease?.property || edl.property_details;
@@ -110,6 +115,45 @@ export default function TenantEDLDetailClient({
     }));
 
   const adaptedMeterReadings = [...existingReadings, ...missingMeters];
+
+  const mapItemsToEDLComparison = useCallback((items: any[]) => {
+    return (items || []).map((i: any) => ({
+      id: i.id,
+      room_name: i.room_name || "",
+      category: i.category || "pièce",
+      element: i.item_name || i.element || "",
+      condition: i.condition || "bon",
+      comment: i.notes ?? i.comment ?? null,
+      photos_count: Array.isArray(i.media) ? i.media.length : 0,
+    }));
+  }, []);
+
+  const handleOpenCompare = useCallback(async () => {
+    const leaseId = edl.lease_id || (edl.lease as any)?.id;
+    if (!leaseId || edl.type !== "sortie") return;
+    setCompareLoading(true);
+    setCompareOpen(true);
+    try {
+      const res = await fetch(`/api/leases/${leaseId}/edl?type=entree`);
+      if (!res.ok) throw new Error("EDL d'entrée introuvable");
+      const data = await res.json();
+      const entryEdl = data.edl ?? data;
+      const items = entryEdl.items ?? entryEdl.edl_items ?? [];
+      setEntryEdlData({
+        items: mapItemsToEDLComparison(items),
+        date: entryEdl.scheduled_at ?? entryEdl.created_at,
+      });
+    } catch {
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible de charger l'EDL d'entrée." });
+      setCompareOpen(false);
+    } finally {
+      setCompareLoading(false);
+    }
+  }, [edl.lease_id, edl.lease, edl.type, mapItemsToEDLComparison, toast]);
+
+  const exitItems = mapItemsToEDLComparison(
+    (edl.edl_items || []).map((i: any) => ({ ...i, media: (edl.edl_media || []).filter((m: any) => m.item_id === i.id) }))
+  );
 
   const adaptedMedia = (edl.edl_media || []).map((m: any) => ({
     id: m.id,
@@ -191,6 +235,17 @@ export default function TenantEDLDetailClient({
           </motion.div>
 
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+            {edl.type === "sortie" && (
+              <Button
+                variant="outline"
+                className="h-10 sm:h-11 px-4 sm:px-6 rounded-xl font-bold border-border flex-1 sm:flex-none"
+                onClick={handleOpenCompare}
+                disabled={compareLoading}
+              >
+                {compareLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <GitCompare className="h-4 w-4 mr-2" />}
+                Comparer avec l&apos;entrée
+              </Button>
+            )}
             {!hasSigned && edl.status !== "draft" && (
               <Button 
                 onClick={() => setIsSignModalOpen(true)} 
@@ -362,6 +417,33 @@ export default function TenantEDLDetailClient({
               onSignatureComplete={handleSignatureSubmit}
               disabled={isSigning}
             />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={compareOpen} onOpenChange={(open) => { setCompareOpen(open); if (!open) setEntryEdlData(null); }}>
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-[2rem] border-none shadow-2xl p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl font-black text-foreground">Comparaison EDL entrée / sortie</DialogTitle>
+            <DialogDescription>
+              État des lieux d&apos;entrée vs état des lieux de sortie pour repérer les dégradations.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {compareLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : entryEdlData ? (
+              <EDLComparison
+                entryItems={entryEdlData.items}
+                exitItems={exitItems}
+                entryDate={entryEdlData.date}
+                exitDate={edl.scheduled_at ?? (edl as any).created_at}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground py-6 text-center">Chargement de l&apos;EDL d&apos;entrée…</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>

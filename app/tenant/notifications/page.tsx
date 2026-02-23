@@ -9,14 +9,21 @@ import { ErrorState } from "@/components/ui/error-state";
 import { formatDateShort } from "@/lib/helpers/format";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useTenantNotifications, useMarkNotificationRead } from "@/lib/hooks/queries/use-tenant-notifications";
+import { useTenantNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from "@/lib/hooks/queries/use-tenant-notifications";
 
 export default function TenantNotificationsPage() {
   const { data: notifications = [], isLoading: loading, error, refetch } = useTenantNotifications();
   const markAsRead = useMarkNotificationRead();
+  const markAllAsRead = useMarkAllNotificationsRead();
+
+  const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   const handleMarkAsRead = (id: string) => {
     markAsRead.mutate(id);
+  };
+
+  const handleMarkAllAsRead = () => {
+    markAllAsRead.mutate();
   };
 
   const getIcon = (type: string) => {
@@ -52,6 +59,17 @@ export default function TenantNotificationsPage() {
               <h1 className="text-3xl font-black tracking-tight text-foreground">Notifications</h1>
             </div>
           </div>
+          {!loading && notifications.length > 0 && unreadCount > 0 && (
+            <Button
+              variant="outline"
+              className="rounded-xl font-bold border-border"
+              onClick={handleMarkAllAsRead}
+              disabled={markAllAsRead.isPending}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Tout marquer comme lu
+            </Button>
+          )}
         </div>
 
         {loading ? (

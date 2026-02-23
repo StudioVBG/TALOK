@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +59,7 @@ const priorities = [
 const MAX_ATTACHMENTS = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp,application/pdf";
+const DRAFT_STORAGE_KEY = "tenant_request_draft";
 
 export default function NewTenantRequestPage() {
   const router = useRouter();
@@ -77,6 +78,48 @@ export default function NewTenantRequestPage() {
     categorie: "",
     priorite: "normale",
   });
+
+  // Brouillon : restauration au montage (une seule fois)
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem(DRAFT_STORAGE_KEY) : null;
+      if (raw) {
+        const draft = JSON.parse(raw) as Partial<typeof form>;
+        if (draft && (draft.titre || draft.description || draft.categorie)) {
+          setForm((prev) => ({
+            titre: draft.titre ?? prev.titre,
+            description: draft.description ?? prev.description,
+            categorie: draft.categorie ?? prev.categorie,
+            priorite: draft.priorite ?? prev.priorite,
+          }));
+          toast({ title: "Brouillon restauré", description: "Votre brouillon a été rechargé." });
+        }
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Brouillon : sauvegarde à chaque changement (mode classique uniquement)
+  useEffect(() => {
+    if (mode !== "classic") return;
+    try {
+      if (form.titre || form.description || form.categorie) {
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(form));
+      } else {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [mode, form]);
+
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    setForm({ titre: "", description: "", categorie: "", priorite: "normale" });
+    toast({ title: "Brouillon effacé", description: "Le formulaire a été réinitialisé." });
+  }, [toast]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
@@ -125,6 +168,7 @@ export default function NewTenantRequestPage() {
 
       if (!response.ok) throw new Error("Erreur");
 
+      try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
       toast({
         title: "Demande créée !",
         description: "Votre ticket a été créé et qualifié par Tom.",
@@ -184,6 +228,7 @@ export default function NewTenantRequestPage() {
         }
       }
 
+      try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
       toast({ title: "Demande envoyée", description: "Votre ticket est en cours de traitement." });
       router.push("/tenant/requests");
     } catch (error) {
@@ -279,11 +324,22 @@ export default function NewTenantRequestPage() {
                   exit={{ opacity: 0, scale: 0.95 }}
                 >
                   <GlassCard className="p-8 border-border bg-card shadow-2xl space-y-8">
-                    <div className="flex items-center gap-4 border-b pb-6">
-                      <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                        <Wrench className="h-6 w-6 text-indigo-600" />
+                    <div className="flex items-center justify-between gap-4 border-b pb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                          <Wrench className="h-6 w-6 text-indigo-600" />
+                        </div>
+                        <h3 className="text-xl font-bold text-foreground">Formulaire de demande</h3>
                       </div>
-                      <h3 className="text-xl font-bold text-foreground">Formulaire de demande</h3>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-destructive rounded-xl"
+                        onClick={clearDraft}
+                      >
+                        Effacer le brouillon
+                      </Button>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-8">

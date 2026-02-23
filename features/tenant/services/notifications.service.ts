@@ -50,6 +50,16 @@ export class NotificationsService {
   }
 
   /**
+   * Marquer toutes les notifications comme lues
+   */
+  async markAllAsRead(): Promise<{ count: number }> {
+    const res = await apiClient.post<{ success: boolean; count: number }>(
+      "/notifications/read-all"
+    );
+    return { count: res?.count ?? 0 };
+  }
+
+  /**
    * Récupérer les paramètres de notifications
    */
   async getSettings(): Promise<NotificationSetting[]> {
