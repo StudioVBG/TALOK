@@ -4,6 +4,8 @@
  * EntityProvider — Initialise le store entité au mount du dashboard owner
  *
  * Wrap le layout owner pour charger les entités et synchroniser l'entité active.
+ * Si aucune entité n'est trouvée après le fetch, appelle ensureDefaultEntity()
+ * pour auto-provisionner une entité "particulier" par défaut.
  */
 
 import { useEffect, type ReactNode } from "react";
@@ -30,6 +32,19 @@ export function EntityProvider({ children }: EntityProviderProps) {
           !lastFetchedAt || Date.now() - lastFetchedAt > 5 * 60 * 1000;
         if (entities.length === 0 || isStale) {
           await fetchEntities(profile.id);
+        }
+
+        // Si toujours vide après fetch, auto-créer l'entité par défaut
+        const currentEntities = useEntityStore.getState().entities;
+        if (currentEntities.length === 0) {
+          const { ensureDefaultEntity } = await import(
+            "@/app/owner/entities/actions"
+          );
+          const result = await ensureDefaultEntity();
+          if (result.success) {
+            // Re-fetch pour alimenter le store avec la nouvelle entité
+            await fetchEntities(profile.id);
+          }
         }
       } catch (err) {
         console.error("[EntityProvider] Error loading entities:", err);

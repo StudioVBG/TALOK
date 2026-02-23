@@ -8,6 +8,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { z } from "zod";
 import { canDeleteEntity } from "@/features/legal-entities/services/legal-entities.service";
 
@@ -337,6 +338,103 @@ export async function deleteEntity(
     return { success: true };
   } catch (error) {
     console.error("[deleteEntity] Unexpected error:", error);
+    return { success: false, error: "Erreur inattendue" };
+  }
+}
+
+// ============================================
+// ENSURE DEFAULT ENTITY
+// ============================================
+
+/**
+ * Garantit qu'au moins une entité juridique "particulier" existe pour le propriétaire.
+ * Crée l'entité si manquante, lie les propriétés orphelines, et retourne l'ID.
+ * Utilise le service client (bypass RLS) pour éviter les problèmes de permissions.
+ */
+export async function ensureDefaultEntity(): Promise<ActionResult<{ id: string }>> {
+  try {
+    const auth = await getAuthenticatedOwnerProfileId();
+    if (!auth) {
+      return { success: false, error: "Non autorisé" };
+    }
+
+    const supabase = await createClient();
+
+    // Vérifier si une entité existe déjà (via le client user, soumis à RLS)
+    const { data: existing } = await supabase
+      .from("legal_entities")
+      .select("id")
+      .eq("owner_profile_id", auth.ownerProfileId)
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      return { success: true, data: { id: existing.id } };
+    }
+
+    // Aucune entité trouvée — créer via service client (bypass RLS)
+    const serviceClient = getServiceClient();
+
+    // Récupérer le nom du profil
+    const { data: profileData } = await serviceClient
+      .from("profiles")
+      .select("prenom, nom")
+      .eq("id", auth.profileId)
+      .single();
+
+    const nom = profileData
+      ? [profileData.prenom, profileData.nom].filter(Boolean).join(" ") || "Patrimoine personnel"
+      : "Patrimoine personnel";
+
+    // Garantir owner_profiles (upsert pour idempotence)
+    const { error: opError } = await serviceClient
+      .from("owner_profiles")
+      .upsert(
+        { profile_id: auth.ownerProfileId, type: "particulier" },
+        { onConflict: "profile_id" }
+      );
+
+    if (opError) {
+      console.error("[ensureDefaultEntity] owner_profiles upsert error:", opError.message);
+    }
+
+    // Créer l'entité
+    const { data: entity, error: leError } = await serviceClient
+      .from("legal_entities")
+      .insert({
+        owner_profile_id: auth.ownerProfileId,
+        entity_type: "particulier",
+        nom,
+        regime_fiscal: "ir",
+        is_active: true,
+      })
+      .select("id")
+      .single();
+
+    if (leError || !entity) {
+      console.error("[ensureDefaultEntity] legal_entities insert error:", leError?.message);
+      return { success: false, error: leError?.message || "Erreur de création" };
+    }
+
+    // Lier les propriétés orphelines à la nouvelle entité
+    const { error: linkError } = await serviceClient
+      .from("properties")
+      .update({ legal_entity_id: entity.id })
+      .eq("owner_id", auth.ownerProfileId)
+      .is("legal_entity_id", null)
+      .is("deleted_at", null);
+
+    if (linkError) {
+      console.error("[ensureDefaultEntity] link properties error:", linkError.message);
+    }
+
+    revalidatePath("/owner/entities");
+    revalidatePath("/owner");
+
+    return { success: true, data: { id: entity.id } };
+  } catch (e) {
+    console.error("[ensureDefaultEntity] Unexpected error:", e);
     return { success: false, error: "Erreur inattendue" };
   }
 }
