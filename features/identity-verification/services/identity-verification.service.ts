@@ -160,6 +160,7 @@ export class IdentityVerificationService {
 
   /**
    * Sauvegarder le résultat de la vérification
+   * Sauvegarde dans tenant_profiles ET dans la table documents pour cohérence
    */
   private async saveVerificationResult(
     documentType: DocumentType,
@@ -173,22 +174,26 @@ export class IdentityVerificationService {
     } = await this.supabase.auth.getUser();
     if (!user) return;
 
-    // Récupérer le profil
     const { data: profile } = await this.supabase
       .from("profiles")
-      .select("id")
+      .select("id, email")
       .eq("user_id", user.id)
       .single();
 
     if (!profile) return;
 
-    // Mettre à jour le profil locataire avec les infos d'identité
-    const updateData: Record<string, any> = {
+    const profileId = (profile as Record<string, unknown>).id as string;
+    const profileEmail = (profile as Record<string, unknown>).email as string | null;
+
+    // 1. Mettre à jour tenant_profiles
+    const updateData: Record<string, unknown> = {
       cni_recto_path: rectoPath,
       cni_verification_method: "ocr_scan",
       cni_verified_at: new Date().toISOString(),
       identity_data: extractedData || {},
       kyc_status: 'verified',
+      cni_number: extractedData?.numero_document || null,
+      cni_expiry_date: extractedData?.date_expiration || null,
     };
 
     if (versoPath) {
@@ -200,37 +205,95 @@ export class IdentityVerificationService {
       updateData.selfie_verified_at = new Date().toISOString();
     }
 
-    // Essayer de mettre à jour tenant_profiles
     const { error } = await this.supabase
       .from("tenant_profiles")
       .update(updateData)
-      .eq("profile_id", (profile as any).id);
+      .eq("profile_id", profileId);
 
     if (error) {
       console.error("Erreur mise à jour tenant_profiles:", error);
-      // Si pas de tenant_profile, créer un enregistrement dans tenant_documents
-      await this.supabase.from("tenant_documents").insert({
-        tenant_profile_id: (profile as any).id,
-        document_type: this.mapDocumentType(documentType),
-        file_path: rectoPath,
-        file_name: rectoPath.split("/").pop() || "document",
-        extracted_data: extractedData,
-        verified_at: new Date().toISOString(),
-        is_valid: true,
-      });
     }
 
-    // Logger l'action dans l'audit
+    // 2. Synchroniser avec la table documents (pour les baux existants)
+    const { data: signerData } = await this.supabase
+      .from("lease_signers")
+      .select("lease_id")
+      .eq("profile_id", profileId)
+      .in("role", ["locataire_principal", "colocataire"]);
+
+    if (signerData && signerData.length > 0) {
+      for (const signer of signerData) {
+        const leaseId = signer.lease_id;
+
+        // Archiver les anciennes CNI
+        await this.supabase
+          .from("documents")
+          .update({ is_archived: true })
+          .eq("lease_id", leaseId)
+          .eq("type", "cni_recto")
+          .eq("is_archived", false);
+
+        // Insérer le recto dans documents
+        const docTitle = extractedData?.prenom && extractedData?.nom
+          ? `CNI Recto - ${extractedData.prenom} ${extractedData.nom}`
+          : "Carte d'Identité (Recto)";
+
+        await this.supabase.from("documents").insert({
+          type: "cni_recto",
+          title: docTitle,
+          lease_id: leaseId,
+          tenant_id: profileId,
+          storage_path: rectoPath,
+          expiry_date: extractedData?.date_expiration || null,
+          verification_status: "verified",
+          is_archived: false,
+          metadata: {
+            nom: extractedData?.nom || null,
+            prenom: extractedData?.prenom || null,
+            date_expiration: extractedData?.date_expiration || null,
+            tenant_email: profileEmail || null,
+            verification_method: "ocr_scan",
+          },
+        });
+
+        // Insérer le verso si présent
+        if (versoPath) {
+          await this.supabase
+            .from("documents")
+            .update({ is_archived: true })
+            .eq("lease_id", leaseId)
+            .eq("type", "cni_verso")
+            .eq("is_archived", false);
+
+          await this.supabase.from("documents").insert({
+            type: "cni_verso",
+            title: extractedData?.prenom && extractedData?.nom
+              ? `CNI Verso - ${extractedData.prenom} ${extractedData.nom}`
+              : "Carte d'Identité (Verso)",
+            lease_id: leaseId,
+            tenant_id: profileId,
+            storage_path: versoPath,
+            verification_status: "verified",
+            is_archived: false,
+            metadata: {
+              tenant_email: profileEmail || null,
+            },
+          });
+        }
+      }
+    }
+
+    // 3. Logger l'action dans l'audit
     await this.supabase.from("audit_log").insert({
       user_id: user.id,
       action: "identity_verified",
       entity_type: "profile",
-      entity_id: (profile as any).id,
+      entity_id: profileId,
       metadata: {
         document_type: documentType,
         verification_method: "ocr_scan",
       },
-    } as any);
+    } as Record<string, unknown>);
   }
 
   /**
@@ -270,13 +333,15 @@ export class IdentityVerificationService {
 
     if (!profile) return false;
 
+    const profileId = (profile as Record<string, unknown>).id as string;
+
     const { data: tenantProfile } = await this.supabase
       .from("tenant_profiles")
       .select("cni_verified_at")
-      .eq("profile_id", (profile as any).id)
+      .eq("profile_id", profileId)
       .single();
 
-    return !!(tenantProfile as any)?.cni_verified_at;
+    return !!(tenantProfile as Record<string, unknown> | null)?.cni_verified_at;
   }
 
   /**
@@ -296,15 +361,18 @@ export class IdentityVerificationService {
 
     if (!profile) return null;
 
+    const profileId = (profile as Record<string, unknown>).id as string;
+
     const { data: tenantProfile } = await this.supabase
       .from("tenant_profiles")
       .select("identity_data, cni_verified_at")
-      .eq("profile_id", (profile as any).id)
+      .eq("profile_id", profileId)
       .single();
 
-    if (!(tenantProfile as any)?.cni_verified_at) return null;
+    const tp = tenantProfile as Record<string, unknown> | null;
+    if (!tp?.cni_verified_at) return null;
 
-    return (tenantProfile as any).identity_data as ExtractedIdentityData;
+    return tp.identity_data as ExtractedIdentityData;
   }
 }
 

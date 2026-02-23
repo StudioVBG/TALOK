@@ -1,7 +1,6 @@
 "use client";
-// @ts-nocheck
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -26,6 +25,23 @@ import Tesseract from "tesseract.js";
 
 type Step = "intro" | "recto" | "verso" | "processing" | "success" | "error";
 
+interface LeaseData {
+  id: string;
+  type_bail: string;
+  statut: string;
+  properties: {
+    adresse_complete: string;
+    ville: string;
+  } | null;
+}
+
+interface OcrExtractedData {
+  nom?: string;
+  prenom?: string;
+  date_expiration?: string;
+  ocr_confidence?: number;
+}
+
 function RenewCNIContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -36,26 +52,22 @@ function RenewCNIContent() {
   const [step, setStep] = useState<Step>("intro");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lease, setLease] = useState<any>(null);
-  const [profileId, setProfileId] = useState<string | null>(null);
+  const [lease, setLease] = useState<LeaseData | null>(null);
   const [rectoFile, setRectoFile] = useState<File | null>(null);
   const [rectoPreview, setRectoPreview] = useState<string | null>(null);
   const [versoFile, setVersoFile] = useState<File | null>(null);
   const [versoPreview, setVersoPreview] = useState<string | null>(null);
   const [ocrProgress, setOcrProgress] = useState(0);
   const [ocrStatus, setOcrStatus] = useState("");
-  const [extractedData, setExtractedData] = useState<any>(null);
+  const [extractedData, setExtractedData] = useState<OcrExtractedData | null>(null);
 
-  useEffect(() => {
+  const fetchLeaseAndProfile = useCallback(async () => {
     if (!leaseId) {
       setError("ID du bail manquant");
       setLoading(false);
       return;
     }
-    fetchLeaseAndProfile();
-  }, [leaseId]);
 
-  const fetchLeaseAndProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setError("Non authentifié"); return; }
@@ -63,15 +75,15 @@ function RenewCNIContent() {
       const { data: profile } = await supabase
         .from("profiles").select("id").eq("user_id", user.id).single();
       if (!profile) { setError("Profil non trouvé"); return; }
-      setProfileId(profile.id);
 
       const { data: signer } = await supabase
         .from("lease_signers")
         .select("id")
-        .eq("lease_id", leaseId!)
+        .eq("lease_id", leaseId)
         .eq("profile_id", profile.id)
         .in("role", ["locataire_principal", "colocataire"])
         .single();
+
       if (!signer) {
         setError(
           "Vous n'êtes pas autorisé à renouveler la CNI pour ce bail. Assurez-vous d'être bien locataire de ce logement et d'avoir accepté l'invitation si vous en avez reçu une."
@@ -81,15 +93,28 @@ function RenewCNIContent() {
 
       const { data: leaseData } = await supabase
         .from("leases")
-        .select(`id, type_bail, statut, loyer, date_debut, properties (id, adresse_complete, ville, code_postal, type, dpe_classe_energie, owner_id)`)
-        .eq("id", leaseId!).single();
-      setLease(leaseData);
-    } catch (err: any) {
-      setError(err.message);
+        .select(`id, type_bail, statut, properties (id, adresse_complete, ville)`)
+        .eq("id", leaseId).single();
+
+      if (leaseData) {
+        const l = leaseData as Record<string, unknown>;
+        setLease({
+          id: l.id as string,
+          type_bail: l.type_bail as string,
+          statut: l.statut as string,
+          properties: l.properties as LeaseData["properties"],
+        });
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
       setLoading(false);
     }
-  };
+  }, [leaseId, supabase]);
+
+  useEffect(() => {
+    fetchLeaseAndProfile();
+  }, [fetchLeaseAndProfile]);
 
   const handleFileSelect = (side: "recto" | "verso", file: File | null) => {
     if (!file) return;
@@ -115,10 +140,10 @@ function RenewCNIContent() {
     reader.readAsDataURL(file);
   };
 
-  const performOCR = async (imageData: string): Promise<any> => {
+  const performOCR = async (imageData: string): Promise<OcrExtractedData> => {
     try {
       const { data: { text, confidence } } = await Tesseract.recognize(imageData, "fra", {
-        logger: (m) => {
+        logger: (m: { status: string; progress: number }) => {
           if (m.status === "recognizing text") setOcrProgress(Math.round(m.progress * 100));
           setOcrStatus(m.status);
         },
@@ -126,12 +151,14 @@ function RenewCNIContent() {
       const result = extractFieldsFromText(text);
       result.ocr_confidence = confidence / 100;
       return result;
-    } catch { return { ocr_confidence: 0 }; }
+    } catch {
+      return { ocr_confidence: 0 };
+    }
   };
 
-  const extractFieldsFromText = (text: string): any => {
+  const extractFieldsFromText = (text: string): OcrExtractedData => {
     const normalized = text.toUpperCase();
-    const result: any = {};
+    const result: OcrExtractedData = {};
     const nomMatch = normalized.match(/NOM\s*[:\-]?\s*([A-ZÀÂÄÉÈÊËÏÎÔÙÛÜÇŒ\-\s]+)/);
     if (nomMatch) result.nom = nomMatch[1].trim().split(/\s+/)[0];
     const prenomMatch = normalized.match(/PR[EÉ]NOM[S]?\s*[:\-]?\s*([A-ZÀÂÄÉÈÊËÏÎÔÙÛÜÇŒ\-\s]+)/);
@@ -174,8 +201,8 @@ function RenewCNIContent() {
 
       setStep("success");
       toast({ title: "CNI renouvelée", description: "Votre nouvelle CNI a été enregistrée" });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
       setStep("error");
     }
   };
@@ -224,11 +251,22 @@ function RenewCNIContent() {
               <CardHeader><CardTitle>Recto de la CNI</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 {rectoPreview ? (
-                  <div className="relative"><img src={rectoPreview} alt="Recto" className="w-full rounded-lg border" /><Button variant="destructive" size="icon" className="absolute top-2 right-2" onClick={() => { setRectoFile(null); setRectoPreview(null); }}><X className="h-4 w-4" /></Button></div>
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={rectoPreview} alt="Recto" className="w-full rounded-lg border" />
+                    <Button variant="destructive" size="icon" className="absolute top-2 right-2" onClick={() => { setRectoFile(null); setRectoPreview(null); }}><X className="h-4 w-4" /></Button>
+                  </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"><Upload className="h-10 w-10 text-muted-foreground mb-2" /><span className="text-sm text-muted-foreground">Cliquez pour importer</span><input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect("recto", e.target.files?.[0] || null)} /></label>
+                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted">
+                    <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                    <span className="text-sm text-muted-foreground">Cliquez pour importer</span>
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect("recto", e.target.files?.[0] || null)} />
+                  </label>
                 )}
-                <div className="flex gap-2"><Button variant="outline" onClick={() => setStep("intro")} className="flex-1">Retour</Button><Button onClick={() => setStep("verso")} disabled={!rectoFile} className="flex-1">Suivant</Button></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setStep("intro")} className="flex-1">Retour</Button>
+                  <Button onClick={() => setStep("verso")} disabled={!rectoFile} className="flex-1">Suivant</Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -240,11 +278,22 @@ function RenewCNIContent() {
               <CardHeader><CardTitle>Verso de la CNI</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 {versoPreview ? (
-                  <div className="relative"><img src={versoPreview} alt="Verso" className="w-full rounded-lg border" /><Button variant="destructive" size="icon" className="absolute top-2 right-2" onClick={() => { setVersoFile(null); setVersoPreview(null); }}><X className="h-4 w-4" /></Button></div>
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={versoPreview} alt="Verso" className="w-full rounded-lg border" />
+                    <Button variant="destructive" size="icon" className="absolute top-2 right-2" onClick={() => { setVersoFile(null); setVersoPreview(null); }}><X className="h-4 w-4" /></Button>
+                  </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"><Upload className="h-10 w-10 text-muted-foreground mb-2" /><span className="text-sm text-muted-foreground">Cliquez pour importer</span><input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect("verso", e.target.files?.[0] || null)} /></label>
+                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted">
+                    <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                    <span className="text-sm text-muted-foreground">Cliquez pour importer</span>
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect("verso", e.target.files?.[0] || null)} />
+                  </label>
                 )}
-                <div className="flex gap-2"><Button variant="outline" onClick={() => setStep("recto")} className="flex-1">Retour</Button><Button onClick={handleSubmit} disabled={!versoFile} className="flex-1">Valider</Button></div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setStep("recto")} className="flex-1">Retour</Button>
+                  <Button onClick={handleSubmit} disabled={!versoFile} className="flex-1">Valider</Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -252,7 +301,12 @@ function RenewCNIContent() {
 
         {step === "processing" && (
           <motion.div key="processing" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Card><CardContent className="py-12 text-center"><Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">Traitement...</h3><p className="text-muted-foreground mb-4">{ocrStatus}</p><Progress value={ocrProgress} className="h-2" /></CardContent></Card>
+            <Card><CardContent className="py-12 text-center">
+              <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Traitement...</h3>
+              <p className="text-muted-foreground mb-4">{ocrStatus}</p>
+              <Progress value={ocrProgress} className="h-2" />
+            </CardContent></Card>
           </motion.div>
         )}
 
@@ -271,8 +325,12 @@ function RenewCNIContent() {
           <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Card><CardContent className="py-12 text-center">
               <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4"><AlertTriangle className="h-8 w-8 text-red-600" /></div>
-              <h3 className="text-xl font-semibold mb-2">Erreur</h3><p className="text-muted-foreground mb-6">{error}</p>
-              <div className="flex gap-2 justify-center"><Link href="/tenant/identity" className={cn(buttonVariants({ variant: "outline" }))}>Annuler</Link><Button onClick={() => setStep("intro")}>Réessayer</Button></div>
+              <h3 className="text-xl font-semibold mb-2">Erreur</h3>
+              <p className="text-muted-foreground mb-6">{error}</p>
+              <div className="flex gap-2 justify-center">
+                <Link href="/tenant/identity" className={cn(buttonVariants({ variant: "outline" }))}>Annuler</Link>
+                <Button onClick={() => setStep("intro")}>Réessayer</Button>
+              </div>
             </CardContent></Card>
           </motion.div>
         )}
@@ -282,6 +340,9 @@ function RenewCNIContent() {
 }
 
 export default function RenewCNIPage() {
-  return <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>}><RenewCNIContent /></Suspense>;
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>}>
+      <RenewCNIContent />
+    </Suspense>
+  );
 }
-
