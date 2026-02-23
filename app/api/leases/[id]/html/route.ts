@@ -6,7 +6,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { LeaseTemplateService } from "@/lib/templates/bail";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
-import type { TypeBail, BailComplet, DiagnosticsTechniques, Logement, Bailleur } from "@/lib/templates/bail/types";
+import type { TypeBail, BailComplet, DiagnosticsTechniques, Logement, Bailleur, Annexe } from "@/lib/templates/bail/types";
 import { resolveTenantDisplay } from "@/lib/helpers/resolve-tenant-display";
 
 /**
@@ -216,21 +216,19 @@ export async function GET(
     }];
 
     // ✅ FIX: Générer les URLs signées AVANT de créer bailData
-    // On s'assure de modifier l'objet lease.signers lui-même
+    // Exposer l'URL dans signature_image (lu par le template) ; garder signature_image_path pour la preuve
     if (lease.signers) {
       for (const signer of lease.signers) {
         if (signer.signature_image_path) {
-          console.log(`[Lease HTML] Generating signed URL for ${signer.role}: ${signer.signature_image_path}`);
+          const path = signer.signature_image_path;
           try {
             const { data: signedUrl, error: urlError } = await serviceClient.storage
               .from("documents")
-              .createSignedUrl(signer.signature_image_path, 3600);
-            
+              .createSignedUrl(path, 3600);
             if (signedUrl?.signedUrl) {
-              signer.signature_image_path = signedUrl.signedUrl;
-              console.log(`[Lease HTML] ✅ Signed URL generated for ${signer.role}`);
-            } else {
-              console.log(`[Lease HTML] ❌ Failed to generate signed URL for ${signer.role}:`, urlError);
+              (signer as any).signature_image = signedUrl.signedUrl;
+            } else if (urlError) {
+              console.warn(`[Lease HTML] Failed to generate signed URL for ${signer.role}:`, urlError);
             }
           } catch (err) {
             console.error(`[Lease HTML] Error signing URL for ${signer.role}:`, err);
@@ -261,24 +259,43 @@ export async function GET(
         representant_qualite: ownerIdentity.representative?.role || (ownerIdentity.entityType === "company" ? "Gérant" : undefined),
       },
       locataires,
-      logement: {
-        adresse_complete: lease.property?.adresse_complete || "",
-        code_postal: lease.property?.code_postal || "",
-        ville: lease.property?.ville || "",
-        type: (lease.property?.type || "appartement") as Logement['type'],
-        surface_habitable: lease.property?.surface || lease.property?.surface_habitable_m2 || 0,
-        nb_pieces_principales: lease.property?.nb_pieces || 1,
-        etage: lease.property?.etage ?? undefined,
-        nb_etages_immeuble: lease.property?.nb_etages_immeuble ?? undefined,
-        ascenseur: lease.property?.ascenseur,
-        regime: (lease.property?.regime || "mono_propriete") as Logement['regime'],
-        annee_construction: lease.property?.annee_construction ?? undefined,
-        chauffage_type: lease.property?.chauffage_type as Logement['chauffage_type'],
-        chauffage_energie: lease.property?.chauffage_energie as Logement['chauffage_energie'],
-        eau_chaude_type: lease.property?.eau_chaude_type as Logement['eau_chaude_type'],
-        equipements_privatifs: (lease.property?.equipments as string[] | null) || [],
-        annexes: [],
-      },
+      logement: (() => {
+        const prop = lease.property as Record<string, unknown> | null;
+        const year = typeof prop?.annee_construction === "number" ? prop.annee_construction : undefined;
+        let epoque_construction: Logement["epoque_construction"] | undefined;
+        if (year != null) {
+          if (year < 1949) epoque_construction = "avant_1949";
+          else if (year <= 1974) epoque_construction = "1949_1974";
+          else if (year <= 1989) epoque_construction = "1975_1989";
+          else if (year <= 2005) epoque_construction = "1990_2005";
+          else epoque_construction = "apres_2005";
+        }
+        const annexes: Annexe[] = [];
+        if (prop?.has_balcon) annexes.push({ type: "balcon" });
+        if (prop?.has_terrasse) annexes.push({ type: "terrasse" });
+        if (prop?.has_cave) annexes.push({ type: "cave" });
+        if (prop?.has_jardin) annexes.push({ type: "jardin" });
+        if (prop?.has_parking) annexes.push({ type: "parking" });
+        return {
+          adresse_complete: lease.property?.adresse_complete || "",
+          code_postal: lease.property?.code_postal || "",
+          ville: lease.property?.ville || "",
+          type: (lease.property?.type || "appartement") as Logement["type"],
+          surface_habitable: lease.property?.surface || lease.property?.surface_habitable_m2 || 0,
+          nb_pieces_principales: lease.property?.nb_pieces || 1,
+          etage: lease.property?.etage ?? undefined,
+          nb_etages_immeuble: lease.property?.nb_etages_immeuble ?? undefined,
+          ascenseur: lease.property?.ascenseur,
+          regime: (lease.property?.regime || "mono_propriete") as Logement["regime"],
+          annee_construction: lease.property?.annee_construction ?? undefined,
+          epoque_construction,
+          chauffage_type: lease.property?.chauffage_type as Logement["chauffage_type"],
+          chauffage_energie: lease.property?.chauffage_energie as Logement["chauffage_energie"],
+          eau_chaude_type: lease.property?.eau_chaude_type as Logement["eau_chaude_type"],
+          equipements_privatifs: (lease.property?.equipments as string[] | null) || [],
+          annexes,
+        };
+      })(),
       conditions: {
         type_bail: typeBail,
         usage: "habitation_principale",

@@ -111,28 +111,47 @@ export class LeaseTemplateService {
           </div>
         `).join('');
 
+      // Helper: URL d'image (signature_image ou signature_image_path selon la source)
+      const getSignatureImageUrl = (s: any): string =>
+        (s?.signature_image || s?.signature_image_path || '') as string;
+
       // Injecter les images de signature pour les templates
-      // ✅ FIX: Détection de rôle plus robuste
       const bailleurSig = allSigned.find(s => {
         const r = (s.role || '').toLowerCase();
         return r === 'proprietaire' || r === 'owner' || r === 'bailleur';
       });
-      
       const locataireSig = allSigned.find(s => {
         const r = (s.role || '').toLowerCase();
         return r === 'locataire' || r === 'locataire_principal' || r === 'tenant' || r === 'principal';
       });
-      
+      const garantSig = allSigned.find(s => {
+        const r = (s.role || '').toLowerCase();
+        return r === 'garant';
+      });
+      const cautionSig = allSigned.find(s => {
+        const r = (s.role || '').toLowerCase();
+        return r === 'caution';
+      });
+
       if (bailleurSig) {
-        variables['BAILLEUR_SIGNATURE_IMAGE'] = (bailleurSig as any).signature_image || '';
+        variables['BAILLEUR_SIGNATURE_IMAGE'] = getSignatureImageUrl(bailleurSig);
         variables['BAILLEUR_DATE_SIGNATURE'] = bailleurSig.signed_at ? this.formatDate(new Date(bailleurSig.signed_at)) : '';
         variables['BAILLEUR_SIGNE'] = 'true';
       }
-      
       if (locataireSig) {
-        variables['LOCATAIRE_SIGNATURE_IMAGE'] = (locataireSig as any).signature_image || '';
+        const locataireUrl = getSignatureImageUrl(locataireSig);
+        variables['LOCATAIRE_SIGNATURE_IMAGE'] = locataireUrl;
+        variables['PRENEUR_SIGNATURE_IMAGE'] = locataireUrl;
         variables['LOCATAIRE_DATE_SIGNATURE'] = locataireSig.signed_at ? this.formatDate(new Date(locataireSig.signed_at)) : '';
         variables['LOCATAIRE_SIGNE'] = 'true';
+      }
+      if (garantSig) {
+        variables['GARANT_SIGNATURE_IMAGE'] = getSignatureImageUrl(garantSig);
+        variables['GARANT_DATE_SIGNATURE'] = garantSig.signed_at ? this.formatDate(new Date(garantSig.signed_at)) : '';
+      }
+      if (cautionSig) {
+        variables['CAUTION_SIGNATURE_IMAGE'] = getSignatureImageUrl(cautionSig);
+        variables['CAUTION_DATE_SIGNATURE'] = cautionSig.signed_at ? this.formatDate(new Date(cautionSig.signed_at)) : '';
       }
     }
 
