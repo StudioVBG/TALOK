@@ -259,6 +259,7 @@ const nextConfig = {
               "img-src 'self' blob: data: https://*.supabase.co https://*.googleapis.com https://images.unsplash.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://unpkg.com https://*.stripe.com",
               "font-src 'self' https://fonts.gstatic.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
+              "worker-src 'self' blob:",
             ].join("; "),
           },
           // Headers de sécurité (anciennement dans netlify.toml)
