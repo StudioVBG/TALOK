@@ -1,44 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Bell, CheckCircle2, Clock, Info, MessageSquare, Loader2, Trash2, ArrowLeft, AlertCircle } from "lucide-react";
+import { Bell, CheckCircle2, Clock, Info, MessageSquare, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/ui/page-transition";
-import { notificationsService, type Notification } from "@/features/tenant/services/notifications.service";
+import { ErrorState } from "@/components/ui/error-state";
 import { formatDateShort } from "@/lib/helpers/format";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useTenantNotifications, useMarkNotificationRead } from "@/lib/hooks/queries/use-tenant-notifications";
 
 export default function TenantNotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: notifications = [], isLoading: loading, error, refetch } = useTenantNotifications();
+  const markAsRead = useMarkNotificationRead();
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await notificationsService.getNotifications();
-        setNotifications(data || []);
-      } catch (error) {
-        console.error("Error loading notifications:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
-
-  const handleMarkAsRead = async (id: string) => {
-    try {
-      await notificationsService.markAsRead(id);
-      setNotifications(prev => 
-        prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n)
-      );
-    } catch (error) {
-      console.error("Error marking as read:", error);
-    }
+  const handleMarkAsRead = (id: string) => {
+    markAsRead.mutate(id);
   };
 
   const getIcon = (type: string) => {
@@ -78,6 +56,12 @@ export default function TenantNotificationsPage() {
 
         {loading ? (
           <div className="flex justify-center py-24"><Loader2 className="animate-spin h-10 w-10 text-indigo-600" /></div>
+        ) : error ? (
+          <ErrorState
+            title="Erreur de chargement"
+            description="Impossible de charger vos notifications."
+            onRetry={() => refetch()}
+          />
         ) : notifications.length === 0 ? (
           <GlassCard className="p-12 text-center border-border">
             <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">

@@ -1,20 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ClipboardCheck,
   Calendar,
   Home,
-  FileSignature,
-  Eye,
   ChevronRight,
-  ShieldCheck,
   AlertCircle,
-  Clock,
   Loader2,
   FileText,
   Info
@@ -26,60 +19,11 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
-import type { TenantEDLListItem, TenantEDLSignatureWithDetails } from "@/lib/types/tenant";
+import { ErrorState } from "@/components/ui/error-state";
+import { useTenantInspections } from "@/lib/hooks/queries/use-tenant-inspections";
 
 export default function TenantInspectionsPage() {
-  const [edlList, setEdlList] = useState<TenantEDLListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const supabase = createClient();
-
-  useEffect(() => {
-    async function fetchEDLs() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", user.id)
-          .single();
-
-        if (!profile) return;
-
-        const { data: signatures } = await supabase
-          .from("edl_signatures")
-          .select(`
-            *,
-            edl:edl_id(
-              *,
-              lease:lease_id(*, property:properties(*)),
-              property_details:property_id(*)
-            )
-          `)
-          .eq("signer_profile_id", profile.id);
-
-        const formatted = (signatures as TenantEDLSignatureWithDetails[] | null)
-          ?.filter((sig): sig is TenantEDLSignatureWithDetails & { edl: NonNullable<TenantEDLSignatureWithDetails["edl"]> } => sig.edl !== null && sig.edl !== undefined)
-          .map((sig) => ({
-            id: sig.edl.id,
-            type: sig.edl.type as "entree" | "sortie",
-            status: sig.edl.status,
-            scheduled_at: sig.edl.scheduled_at ?? null,
-            created_at: sig.edl.created_at,
-            invitation_token: sig.invitation_token,
-            property: sig.edl.lease?.property || sig.edl.property_details || null,
-            isSigned: !!sig.signed_at,
-            needsMySignature: !sig.signed_at && sig.edl.status !== "draft",
-          })) || [];
-
-        setEdlList(formatted.sort((a, b) => b.needsMySignature ? 1 : -1));
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchEDLs();
-  }, []);
+  const { data: edlList = [], isLoading, error, refetch } = useTenantInspections();
 
   const pendingCount = edlList.filter(e => e.needsMySignature).length;
 
@@ -124,6 +68,12 @@ export default function TenantInspectionsPage() {
 
         {isLoading ? (
           <div className="flex justify-center py-24"><Loader2 className="animate-spin h-10 w-10 text-indigo-600" /></div>
+        ) : error ? (
+          <ErrorState
+            title="Erreur de chargement"
+            description="Impossible de charger vos états des lieux."
+            onRetry={() => refetch()}
+          />
         ) : edlList.length === 0 ? (
           <GlassCard className="p-12 text-center border-border">
             <div className="h-20 w-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-6">

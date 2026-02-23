@@ -1,33 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gift, Star, ArrowUpRight, History, Sparkles, ShoppingBag, Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/ui/page-transition";
-import { rewardsService, RewardTransaction } from "@/lib/services/rewards.service";
+import { ErrorState } from "@/components/ui/error-state";
 import { formatDateShort } from "@/lib/helpers/format";
+import { useTenantRewards } from "@/lib/hooks/queries/use-tenant-rewards";
 
 export default function TenantRewardsPage() {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<{ total_points: number; history: RewardTransaction[] } | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await rewardsService.getTenantRewardsSummary();
-        setData(res);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
+  const { data, isLoading: loading, error, refetch } = useTenantRewards();
 
   if (loading) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-indigo-600" /></div>;
+  }
+
+  if (error) {
+    return (
+      <PageTransition>
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
+          <ErrorState title="Erreur de chargement" description="Impossible de charger vos récompenses." onRetry={() => refetch()} />
+        </div>
+      </PageTransition>
+    );
   }
 
   return (
