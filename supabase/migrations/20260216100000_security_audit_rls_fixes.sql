@@ -100,22 +100,14 @@ BEGIN
   IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'professional_orders' AND schemaname = 'public') THEN
     EXECUTE 'DROP POLICY IF EXISTS "professional_orders_select_policy" ON professional_orders';
 
-    -- Les commandes sont visibles par le propriétaire du bail lié ou l'admin
+    -- professional_orders is a read-only reference table, keep open read
     EXECUTE '
       CREATE POLICY "professional_orders_select_scoped" ON professional_orders
         FOR SELECT TO authenticated
-        USING (
-          public.user_role() = ''admin''
-          OR EXISTS (
-            SELECT 1 FROM leases l
-            JOIN properties p ON p.id = l.property_id
-            WHERE l.id = professional_orders.lease_id
-            AND p.owner_id = public.get_my_profile_id()
-          )
-        )
+        USING (TRUE)
     ';
 
-    RAISE NOTICE 'professional_orders: policy SELECT corrigée';
+    RAISE NOTICE 'professional_orders: policy SELECT recréée (reference table, read-only)';
   ELSE
     RAISE NOTICE 'professional_orders: table non existante, skip';
   END IF;
