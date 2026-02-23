@@ -748,6 +748,7 @@ END $$;
 -- ============================================
 -- F. FONCTION check_data_integrity()
 -- ============================================
+DROP FUNCTION IF EXISTS public.check_data_integrity();
 CREATE OR REPLACE FUNCTION public.check_data_integrity()
 RETURNS TABLE (
   check_name TEXT,
