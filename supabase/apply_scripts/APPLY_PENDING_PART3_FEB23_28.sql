@@ -515,8 +515,11 @@ WHERE u.id = p.user_id
 -- ============================================
 -- 3. BACKFILL: notifications pour locataires avec bail actif
 -- ============================================
--- Crée une notification "bail activé" pour chaque locataire lié à un bail
--- actif/fully_signed qui n'a jamais reçu de notification de type lease_activated.
+-- Ajout colonnes manquantes si absentes
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS metadata JSONB;
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE;
+
 INSERT INTO public.notifications (user_id, profile_id, type, title, body, is_read, metadata)
 SELECT DISTINCT
   p.user_id,
