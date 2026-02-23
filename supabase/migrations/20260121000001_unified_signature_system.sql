@@ -251,7 +251,7 @@ COMMENT ON COLUMN signature_participants.signature_image_path IS 'Chemin Supabas
 -- 4. TABLE: signature_proofs
 -- ============================================================================
 
-CREATE TABLE signature_proofs (
+CREATE TABLE IF NOT EXISTS signature_proofs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- LIENS
@@ -311,16 +311,26 @@ CREATE TABLE signature_proofs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE signature_proofs ADD COLUMN IF NOT EXISTS participant_id UUID REFERENCES signature_participants(id) ON DELETE CASCADE;
+ALTER TABLE signature_proofs ADD COLUMN IF NOT EXISTS session_id UUID REFERENCES signature_sessions(id) ON DELETE CASCADE;
+ALTER TABLE signature_proofs ADD COLUMN IF NOT EXISTS proof_id TEXT;
+ALTER TABLE signature_proofs ADD COLUMN IF NOT EXISTS proof_hash TEXT;
+ALTER TABLE signature_proofs ADD COLUMN IF NOT EXISTS metadata JSONB;
+ALTER TABLE signature_proofs ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+ALTER TABLE signature_proofs ADD COLUMN IF NOT EXISTS verification_errors TEXT[];
+ALTER TABLE signature_proofs ADD COLUMN IF NOT EXISTS document_hash TEXT;
+ALTER TABLE signature_proofs ADD COLUMN IF NOT EXISTS signature_hash TEXT;
+
 -- Index pour recherche par proof_id
-CREATE INDEX idx_signature_proofs_proof_id
+CREATE INDEX IF NOT EXISTS idx_signature_proofs_proof_id
 ON signature_proofs(proof_id);
 
 -- Index pour recherche par session
-CREATE INDEX idx_signature_proofs_session
+CREATE INDEX IF NOT EXISTS idx_signature_proofs_session
 ON signature_proofs(session_id);
 
 -- Index pour recherche par participant
-CREATE INDEX idx_signature_proofs_participant
+CREATE INDEX IF NOT EXISTS idx_signature_proofs_participant
 ON signature_proofs(participant_id);
 
 -- Commentaires

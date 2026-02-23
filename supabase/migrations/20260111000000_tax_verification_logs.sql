@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS tax_verification_logs (
 
   -- Références optionnelles au locataire/candidature
   tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
-  application_id UUID REFERENCES applications(id) ON DELETE SET NULL,
+  application_id UUID,
 
   -- Données hachées pour confidentialité (SHA-256)
   numero_fiscal_hash TEXT NOT NULL,
@@ -101,8 +101,8 @@ CREATE POLICY "Admins can view all verification logs"
   FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM users
-      WHERE id = auth.uid()
+      SELECT 1 FROM profiles
+      WHERE user_id = auth.uid()
       AND role = 'admin'
     )
   );

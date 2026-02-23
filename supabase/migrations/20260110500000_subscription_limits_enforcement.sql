@@ -238,6 +238,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 6. Index pour optimiser les requêtes de vérification
 -- =====================================================
 CREATE INDEX IF NOT EXISTS idx_subscriptions_owner_id ON subscriptions(owner_id);
+ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS plan_slug TEXT;
 CREATE INDEX IF NOT EXISTS idx_subscriptions_plan_slug ON subscriptions(plan_slug);
 
 -- =====================================================

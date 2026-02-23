@@ -324,118 +324,123 @@ ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMPTZ;
 -- 9. TEMPLATES DE NOTIFICATION ONBOARDING
 -- ============================================
 
-INSERT INTO notification_templates (code, name, description, category, channels, priority, in_app_title, in_app_message, in_app_icon, email_subject, variables, is_active)
-VALUES
-  (
-    'onboarding_welcome',
-    'Bienvenue',
-    'Notification de bienvenue lors de la première connexion',
-    'onboarding',
-    ARRAY['in_app', 'email']::text[],
-    'normal',
-    'Bienvenue sur Talok !',
-    'Nous sommes ravis de vous accueillir. Complétez votre profil pour commencer.',
-    'wave',
-    'Bienvenue sur Talok !',
-    ARRAY['user_name', 'role']::text[],
-    true
-  ),
-  (
-    'onboarding_step_completed',
-    'Étape complétée',
-    'Notification quand une étape d''onboarding est complétée',
-    'onboarding',
-    ARRAY['in_app']::text[],
-    'low',
-    'Bravo !',
-    'Vous avez complété l''étape {{step_name}}. Continuez !',
-    'check_circle',
-    NULL,
-    ARRAY['step_name', 'progress_percent']::text[],
-    true
-  ),
-  (
-    'onboarding_almost_done',
-    'Presque terminé',
-    'Notification quand l''onboarding est à 80%+',
-    'onboarding',
-    ARRAY['in_app', 'push']::text[],
-    'normal',
-    'Vous y êtes presque !',
-    'Plus que {{remaining_steps}} étape(s) pour finaliser votre profil.',
-    'rocket',
-    NULL,
-    ARRAY['remaining_steps', 'progress_percent']::text[],
-    true
-  ),
-  (
-    'onboarding_completed',
-    'Onboarding terminé',
-    'Notification quand l''onboarding est 100% complété',
-    'onboarding',
-    ARRAY['in_app', 'email', 'push']::text[],
-    'normal',
-    'Profil complété !',
-    'Félicitations ! Votre espace est maintenant entièrement configuré.',
-    'trophy',
-    'Votre profil Talok est complet !',
-    ARRAY['user_name', 'role']::text[],
-    true
-  ),
-  (
-    'onboarding_reminder_24h',
-    'Rappel 24h',
-    'Rappel après 24h d''onboarding incomplet',
-    'onboarding',
-    ARRAY['email']::text[],
-    'normal',
-    'N''oubliez pas de finaliser votre profil',
-    'Vous êtes à {{progress_percent}}% de compléter votre profil.',
-    'bell',
-    'Finalisez votre inscription sur Talok',
-    ARRAY['user_name', 'progress_percent', 'next_step']::text[],
-    true
-  ),
-  (
-    'onboarding_reminder_72h',
-    'Rappel 72h',
-    'Rappel après 72h d''onboarding incomplet',
-    'onboarding',
-    ARRAY['email', 'push']::text[],
-    'normal',
-    'Votre profil vous attend',
-    'Reprenez là où vous en étiez et finalisez votre inscription.',
-    'clock',
-    'Votre compte Talok n''est pas encore complet',
-    ARRAY['user_name', 'progress_percent', 'next_step']::text[],
-    true
-  ),
-  (
-    'onboarding_reminder_7d',
-    'Rappel 7 jours',
-    'Rappel après 7 jours d''onboarding incomplet',
-    'onboarding',
-    ARRAY['email']::text[],
-    'low',
-    'On vous attend !',
-    'Votre espace Talok est presque prêt. Finalisez votre inscription.',
-    'hourglass',
-    'Nous vous attendons sur Talok',
-    ARRAY['user_name', 'progress_percent']::text[],
-    true
-  )
-ON CONFLICT (code) DO UPDATE SET
-  name = EXCLUDED.name,
-  description = EXCLUDED.description,
-  category = EXCLUDED.category,
-  channels = EXCLUDED.channels,
-  priority = EXCLUDED.priority,
-  in_app_title = EXCLUDED.in_app_title,
-  in_app_message = EXCLUDED.in_app_message,
-  in_app_icon = EXCLUDED.in_app_icon,
-  email_subject = EXCLUDED.email_subject,
-  variables = EXCLUDED.variables,
-  is_active = EXCLUDED.is_active;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'notification_templates') THEN
+    INSERT INTO notification_templates (code, name, description, category, channels, priority, in_app_title, in_app_message, in_app_icon, email_subject, variables, is_active)
+    VALUES
+      (
+        'onboarding_welcome',
+        'Bienvenue',
+        'Notification de bienvenue lors de la première connexion',
+        'onboarding',
+        ARRAY['in_app', 'email']::text[],
+        'normal',
+        'Bienvenue sur Talok !',
+        'Nous sommes ravis de vous accueillir. Complétez votre profil pour commencer.',
+        'wave',
+        'Bienvenue sur Talok !',
+        ARRAY['user_name', 'role']::text[],
+        true
+      ),
+      (
+        'onboarding_step_completed',
+        'Étape complétée',
+        'Notification quand une étape d''onboarding est complétée',
+        'onboarding',
+        ARRAY['in_app']::text[],
+        'low',
+        'Bravo !',
+        'Vous avez complété l''étape {{step_name}}. Continuez !',
+        'check_circle',
+        NULL,
+        ARRAY['step_name', 'progress_percent']::text[],
+        true
+      ),
+      (
+        'onboarding_almost_done',
+        'Presque terminé',
+        'Notification quand l''onboarding est à 80%+',
+        'onboarding',
+        ARRAY['in_app', 'push']::text[],
+        'normal',
+        'Vous y êtes presque !',
+        'Plus que {{remaining_steps}} étape(s) pour finaliser votre profil.',
+        'rocket',
+        NULL,
+        ARRAY['remaining_steps', 'progress_percent']::text[],
+        true
+      ),
+      (
+        'onboarding_completed',
+        'Onboarding terminé',
+        'Notification quand l''onboarding est 100% complété',
+        'onboarding',
+        ARRAY['in_app', 'email', 'push']::text[],
+        'normal',
+        'Profil complété !',
+        'Félicitations ! Votre espace est maintenant entièrement configuré.',
+        'trophy',
+        'Votre profil Talok est complet !',
+        ARRAY['user_name', 'role']::text[],
+        true
+      ),
+      (
+        'onboarding_reminder_24h',
+        'Rappel 24h',
+        'Rappel après 24h d''onboarding incomplet',
+        'onboarding',
+        ARRAY['email']::text[],
+        'normal',
+        'N''oubliez pas de finaliser votre profil',
+        'Vous êtes à {{progress_percent}}% de compléter votre profil.',
+        'bell',
+        'Finalisez votre inscription sur Talok',
+        ARRAY['user_name', 'progress_percent', 'next_step']::text[],
+        true
+      ),
+      (
+        'onboarding_reminder_72h',
+        'Rappel 72h',
+        'Rappel après 72h d''onboarding incomplet',
+        'onboarding',
+        ARRAY['email', 'push']::text[],
+        'normal',
+        'Votre profil vous attend',
+        'Reprenez là où vous en étiez et finalisez votre inscription.',
+        'clock',
+        'Votre compte Talok n''est pas encore complet',
+        ARRAY['user_name', 'progress_percent', 'next_step']::text[],
+        true
+      ),
+      (
+        'onboarding_reminder_7d',
+        'Rappel 7 jours',
+        'Rappel après 7 jours d''onboarding incomplet',
+        'onboarding',
+        ARRAY['email']::text[],
+        'low',
+        'On vous attend !',
+        'Votre espace Talok est presque prêt. Finalisez votre inscription.',
+        'hourglass',
+        'Nous vous attendons sur Talok',
+        ARRAY['user_name', 'progress_percent']::text[],
+        true
+      )
+    ON CONFLICT (code) DO UPDATE SET
+      name = EXCLUDED.name,
+      description = EXCLUDED.description,
+      category = EXCLUDED.category,
+      channels = EXCLUDED.channels,
+      priority = EXCLUDED.priority,
+      in_app_title = EXCLUDED.in_app_title,
+      in_app_message = EXCLUDED.in_app_message,
+      in_app_icon = EXCLUDED.in_app_icon,
+      email_subject = EXCLUDED.email_subject,
+      variables = EXCLUDED.variables,
+      is_active = EXCLUDED.is_active;
+  END IF;
+END $$;
 
 COMMENT ON TABLE onboarding_analytics IS 'Analytics détaillées du parcours d''onboarding des utilisateurs';
 COMMENT ON TABLE onboarding_reminders IS 'Rappels programmés pour les utilisateurs n''ayant pas terminé l''onboarding';
