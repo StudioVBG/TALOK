@@ -943,9 +943,12 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- tickets.assigned_provider_id → profiles.id
+-- tickets.assigned_provider_id → profiles.id (skip if column doesn't exist)
 DO $$ BEGIN
-  IF NOT EXISTS (
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'tickets' AND column_name = 'assigned_provider_id'
+  ) AND NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints
     WHERE constraint_name = 'fk_tickets_assigned_provider_id' AND table_name = 'tickets'
   ) THEN
