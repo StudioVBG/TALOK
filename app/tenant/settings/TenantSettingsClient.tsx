@@ -17,7 +17,10 @@ import {
   CheckCircle,
   Shield,
   Camera,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +41,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { buildAvatarUrl } from "@/lib/helpers/format";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { buildAvatarUrl, formatDate } from "@/lib/helpers/format";
 import { RestartTourCard } from "@/components/onboarding/RestartTourCard";
 
 interface Profile {
@@ -63,6 +68,9 @@ interface TenantProfile {
   nb_adultes: number;
   nb_enfants: number;
   garant_required: boolean;
+  cni_verified_at: string | null;
+  cni_expiry_date: string | null;
+  cni_verification_method: string | null;
 }
 
 interface TenantSettingsClientProps {
@@ -205,6 +213,14 @@ export function TenantSettingsClient({
 
   const initials = `${formData.prenom?.[0] || ""}${formData.nom?.[0] || ""}`.toUpperCase() || "?";
 
+  const cniExpiryDate = tenantProfile?.cni_expiry_date;
+  const isCniVerified = !!tenantProfile?.cni_verified_at;
+  const daysUntilExpiry = cniExpiryDate
+    ? Math.ceil((new Date(cniExpiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+  const isCniExpired = daysUntilExpiry !== null && daysUntilExpiry <= 0;
+  const isCniExpiringSoon = daysUntilExpiry !== null && !isCniExpired && daysUntilExpiry <= 30;
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <motion.div
@@ -248,6 +264,57 @@ export function TenantSettingsClient({
             </p>
           </div>
         </div>
+
+        {/* Vérification d'identité - lecture seule, pas d'image CNI affichée */}
+        {tenantProfile && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-green-600" />
+                Vérification d'identité
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {isCniVerified ? (
+                  <>
+                    <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Profil certifié
+                    </Badge>
+                    {cniExpiryDate && (
+                      <span className="text-sm text-muted-foreground">
+                        CNI valide jusqu'au {formatDate(cniExpiryDate)}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <Badge variant="outline" className="text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-600">
+                    <Clock className="h-3 w-3 mr-1" />
+                    En attente de vérification
+                  </Badge>
+                )}
+              </div>
+              {(isCniExpired || isCniExpiringSoon) && (
+                <Alert variant={isCniExpired ? "destructive" : "default"}>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    {isCniExpired
+                      ? "Votre pièce d'identité a expiré. Veuillez la renouveler."
+                      : `Votre pièce d'identité expire dans ${daysUntilExpiry} jour(s). Pensez à la renouveler.`}
+                    {" "}
+                    <Link
+                      href="/tenant/identity/renew"
+                      className="font-medium underline underline-offset-2"
+                    >
+                      Renouveler ma CNI
+                    </Link>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Informations personnelles */}
