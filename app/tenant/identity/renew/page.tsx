@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +21,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Tesseract from "tesseract.js";
+import { extractMRZFromOCR } from "@/lib/identity/mrz-parser";
 
 type Step = "intro" | "recto" | "verso" | "processing" | "success" | "error";
 
@@ -38,16 +38,18 @@ interface LeaseData {
 interface OcrExtractedData {
   nom?: string;
   prenom?: string;
+  date_naissance?: string;
   date_expiration?: string;
+  numero_document?: string;
+  sexe?: string;
   ocr_confidence?: number;
+  mrz_valid?: boolean;
 }
 
 function RenewCNIContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const leaseId = searchParams.get("lease_id");
   const { toast } = useToast();
-  const supabase = createClient();
 
   const [step, setStep] = useState<Step>("intro");
   const [loading, setLoading] = useState(true);
@@ -69,48 +71,23 @@ function RenewCNIContent() {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setError("Non authentifié"); return; }
+      const res = await fetch(`/api/tenant/identity/check-access?lease_id=${encodeURIComponent(leaseId)}`);
+      const data = await res.json();
 
-      const { data: profile } = await supabase
-        .from("profiles").select("id").eq("user_id", user.id).single();
-      if (!profile) { setError("Profil non trouvé"); return; }
-
-      const { data: signer } = await supabase
-        .from("lease_signers")
-        .select("id")
-        .eq("lease_id", leaseId)
-        .eq("profile_id", profile.id)
-        .in("role", ["locataire_principal", "colocataire"])
-        .single();
-
-      if (!signer) {
-        setError(
-          "Vous n'êtes pas autorisé à renouveler la CNI pour ce bail. Assurez-vous d'être bien locataire de ce logement et d'avoir accepté l'invitation si vous en avez reçu une."
-        );
+      if (!data.authorized) {
+        setError(data.reason || "Accès non autorisé");
         return;
       }
 
-      const { data: leaseData } = await supabase
-        .from("leases")
-        .select(`id, type_bail, statut, properties (id, adresse_complete, ville)`)
-        .eq("id", leaseId).single();
-
-      if (leaseData) {
-        const l = leaseData as Record<string, unknown>;
-        setLease({
-          id: l.id as string,
-          type_bail: l.type_bail as string,
-          statut: l.statut as string,
-          properties: l.properties as LeaseData["properties"],
-        });
+      if (data.lease) {
+        setLease(data.lease);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
       setLoading(false);
     }
-  }, [leaseId, supabase]);
+  }, [leaseId]);
 
   useEffect(() => {
     fetchLeaseAndProfile();
@@ -140,7 +117,7 @@ function RenewCNIContent() {
     reader.readAsDataURL(file);
   };
 
-  const performOCR = async (imageData: string): Promise<OcrExtractedData> => {
+  const performOCR = async (imageData: string, side: "recto" | "verso" = "recto"): Promise<OcrExtractedData> => {
     try {
       const { data: { text, confidence } } = await Tesseract.recognize(imageData, "fra", {
         logger: (m: { status: string; progress: number }) => {
@@ -148,6 +125,25 @@ function RenewCNIContent() {
           setOcrStatus(m.status);
         },
       });
+
+      // Tenter l'extraction MRZ sur le verso (nouvelle CNI post-2021)
+      if (side === "verso") {
+        const mrzData = extractMRZFromOCR(text);
+        if (mrzData) {
+          return {
+            nom: mrzData.last_name,
+            prenom: mrzData.first_name,
+            date_naissance: mrzData.date_of_birth,
+            date_expiration: mrzData.expiry_date,
+            numero_document: mrzData.document_number,
+            sexe: mrzData.sex,
+            ocr_confidence: mrzData.is_valid ? 0.95 : confidence / 100,
+            mrz_valid: mrzData.is_valid,
+          };
+        }
+      }
+
+      // Fallback : extraction par regex (ancienne CNI ou recto)
       const result = extractFieldsFromText(text);
       result.ocr_confidence = confidence / 100;
       return result;
@@ -159,15 +155,49 @@ function RenewCNIContent() {
   const extractFieldsFromText = (text: string): OcrExtractedData => {
     const normalized = text.toUpperCase();
     const result: OcrExtractedData = {};
+
+    // Nom
     const nomMatch = normalized.match(/NOM\s*[:\-]?\s*([A-ZÀÂÄÉÈÊËÏÎÔÙÛÜÇŒ\-\s]+)/);
     if (nomMatch) result.nom = nomMatch[1].trim().split(/\s+/)[0];
+
+    // Prénom
     const prenomMatch = normalized.match(/PR[EÉ]NOM[S]?\s*[:\-]?\s*([A-ZÀÂÄÉÈÊËÏÎÔÙÛÜÇŒ\-\s]+)/);
     if (prenomMatch) result.prenom = prenomMatch[1].trim().split(/\s+/)[0];
-    const expiryMatch = normalized.match(/VALABLE\s*JUSQU['\s]?AU\s*[:\-]?\s*(\d{2}[\.\/-]\d{2}[\.\/-]\d{4})/i);
-    if (expiryMatch) {
-      const parts = expiryMatch[1].split(/[\.\/-]/);
-      if (parts.length === 3) result.date_expiration = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+
+    // Date d'expiration — couvre "VALABLE JUSQU'AU", "EXPIRE LE", "DATE D'EXPIRATION"
+    const expiryPatterns = [
+      /VALABLE\s*JUSQU['\s]?AU\s*[:\-]?\s*(\d{2}[\.\/-]\d{2}[\.\/-]\d{4})/,
+      /EXPIRE?\s*LE\s*[:\-]?\s*(\d{2}[\.\/-]\d{2}[\.\/-]\d{4})/,
+      /DATE\s*D['\u2019]?\s*EXPIRATION\s*[:\-]?\s*(\d{2}[\.\/-]\d{2}[\.\/-]\d{4})/,
+    ];
+    for (const pattern of expiryPatterns) {
+      const match = normalized.match(pattern);
+      if (match) {
+        const parts = match[1].split(/[\.\/-]/);
+        if (parts.length === 3) {
+          result.date_expiration = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+        }
+        break;
+      }
     }
+
+    // Numéro de document
+    const docNumMatch = normalized.match(/N[°O]\s*(?:DE\s*)?(?:DOCUMENT|CARTE|CNI)\s*[:\-]?\s*([A-Z0-9]{9,12})/);
+    if (docNumMatch) result.numero_document = docNumMatch[1].trim();
+
+    // Date de naissance
+    const dobMatch = normalized.match(/N[EÉ]\(?E?\)?\s*LE\s*[:\-]?\s*(\d{2}[\.\/-]\d{2}[\.\/-]\d{4})/);
+    if (dobMatch) {
+      const parts = dobMatch[1].split(/[\.\/-]/);
+      if (parts.length === 3) {
+        result.date_naissance = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+      }
+    }
+
+    // Sexe
+    const sexMatch = normalized.match(/SEXE\s*[:\-]?\s*([MF])/);
+    if (sexMatch) result.sexe = sexMatch[1];
+
     return result;
   };
 
@@ -176,10 +206,22 @@ function RenewCNIContent() {
     setStep("processing");
     setOcrProgress(0);
     try {
+      // 1. Analyser le recto (OCR classique)
       setOcrStatus("Analyse du recto...");
-      const ocrData = await performOCR(rectoPreview!);
+      const rectoOcr = await performOCR(rectoPreview!, "recto");
+
+      // 2. Analyser le verso (MRZ prioritaire pour nouvelle CNI)
+      setOcrStatus("Analyse du verso (MRZ)...");
+      setOcrProgress(0);
+      const versoOcr = await performOCR(versoPreview!, "verso");
+
+      // 3. Fusionner les données : priorité MRZ si disponible
+      const ocrData: OcrExtractedData = versoOcr.mrz_valid
+        ? { ...rectoOcr, ...versoOcr }
+        : { ...versoOcr, ...rectoOcr };
       setExtractedData(ocrData);
 
+      // 4. Upload recto
       setOcrStatus("Envoi du recto...");
       const rectoFD = new FormData();
       rectoFD.append("file", rectoFile);
@@ -190,6 +232,7 @@ function RenewCNIContent() {
       const r1 = await fetch("/api/tenant/identity/upload", { method: "POST", body: rectoFD });
       if (!r1.ok) throw new Error((await r1.json()).error || "Erreur upload recto");
 
+      // 5. Upload verso
       setOcrStatus("Envoi du verso...");
       const versoFD = new FormData();
       versoFD.append("file", versoFile);

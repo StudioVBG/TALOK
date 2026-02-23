@@ -47,15 +47,39 @@ export async function POST(request: Request) {
     }
 
     // Vérifier que le locataire est bien signataire de ce bail
-    const { data: signer, error: signerError } = await serviceClient
+    // Chercher d'abord par profile_id (cas nominal)
+    let { data: signer } = await serviceClient
       .from("lease_signers")
-      .select("id")
+      .select("id, profile_id")
       .eq("lease_id", leaseId)
       .eq("profile_id", profile.id)
       .in("role", ["locataire_principal", "colocataire"])
-      .single();
+      .maybeSingle();
 
-    if (signerError || !signer) {
+    // Fallback : chercher par invited_email (cas orphelin profile_id NULL)
+    if (!signer && user.email) {
+      const { data: signerByEmail } = await serviceClient
+        .from("lease_signers")
+        .select("id, profile_id")
+        .eq("lease_id", leaseId)
+        .ilike("invited_email", user.email)
+        .in("role", ["locataire_principal", "colocataire"])
+        .maybeSingle();
+
+      if (signerByEmail) {
+        // Auto-lier le profil si pas encore fait
+        if (!signerByEmail.profile_id) {
+          await serviceClient
+            .from("lease_signers")
+            .update({ profile_id: profile.id })
+            .eq("id", signerByEmail.id);
+          console.log(`[Upload CNI] Auto-link: signer ${signerByEmail.id} -> profile ${profile.id}`);
+        }
+        signer = signerByEmail;
+      }
+    }
+
+    if (!signer) {
       return NextResponse.json(
         { error: "Vous n'êtes pas autorisé à modifier ce bail" },
         { status: 403 }
