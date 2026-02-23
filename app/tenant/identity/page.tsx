@@ -105,6 +105,7 @@ export default function TenantIdentityPage() {
     try {
       setLoading(true);
 
+      // Source 1: Récupérer les données CNI depuis tenant_profiles
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setError("Non authentifié");
@@ -124,7 +125,6 @@ export default function TenantIdentityPage() {
 
       setProfileId(profile.id);
 
-      // Source 1: Récupérer les données CNI depuis tenant_profiles
       const { data: tpData } = await supabase
         .from("tenant_profiles")
         .select("cni_recto_path, cni_verso_path, cni_verified_at, cni_verification_method, cni_number, cni_expiry_date, identity_data, kyc_status")
@@ -135,53 +135,20 @@ export default function TenantIdentityPage() {
         setTenantProfile(tpData as TenantProfileCNI);
       }
 
-      // Source 2: Récupérer les documents CNI depuis la table documents (liés aux baux)
-      const { data: signerData } = await supabase
-        .from("lease_signers")
-        .select(`
-          lease_id,
-          leases (
-            id,
-            type_bail,
-            statut,
-            property:properties (
-              id,
-              adresse_complete,
-              ville
-            )
-          )
-        `)
-        .eq("profile_id", profile.id)
-        .in("role", ["locataire_principal", "colocataire"]);
-
-      const leasesWithCNI: LeaseWithCNI[] = [];
-
-      if (signerData && signerData.length > 0) {
-        for (const signer of signerData) {
-          if (!signer.leases) continue;
-
-          const lease = signer.leases as Record<string, unknown>;
-          const property = lease.property as { adresse_complete: string; ville: string } | null;
-
-          if (!property) continue;
-
-          const { data: documents } = await supabase
-            .from("documents")
-            .select("id, type, storage_path, expiry_date, verification_status, is_archived, created_at, metadata")
-            .eq("lease_id", lease.id as string)
-            .in("type", ["cni_recto", "cni_verso"])
-            .order("created_at", { ascending: false });
-
-          leasesWithCNI.push({
+      // Source 2: Récupérer les baux via l'API server-side (bypass RLS + auto-link)
+      const res = await fetch("/api/tenant/identity/my-leases");
+      if (res.ok) {
+        const data = await res.json();
+        const leasesWithCNI: LeaseWithCNI[] = (data.leases || []).map(
+          (lease: Record<string, unknown>) => ({
             id: lease.id as string,
             type_bail: lease.type_bail as string,
-            property,
-            documents: (documents || []) as CNIDocument[],
-          });
-        }
+            property: lease.property as { adresse_complete: string; ville: string },
+            documents: (lease.documents || []) as CNIDocument[],
+          })
+        );
+        setLeases(leasesWithCNI);
       }
-
-      setLeases(leasesWithCNI);
     } catch (err: unknown) {
       console.error("Erreur chargement CNI:", err);
       setError(err instanceof Error ? err.message : "Erreur inconnue");
