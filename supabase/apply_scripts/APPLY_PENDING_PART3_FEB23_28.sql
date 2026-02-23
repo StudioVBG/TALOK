@@ -183,9 +183,7 @@ DROP TRIGGER IF EXISTS trigger_notify_owner_on_tenant_document ON public.documen
 CREATE TRIGGER trigger_notify_owner_on_tenant_document
   AFTER INSERT ON public.documents
   FOR EACH ROW
-  WHEN (NEW.tenant_id IS NOT NULL AND NEW.owner_id IS NOT NULL
-        AND NEW.uploaded_by IS NOT NULL
-        AND NEW.tenant_id = NEW.uploaded_by)
+  WHEN (NEW.tenant_id IS NOT NULL AND NEW.owner_id IS NOT NULL)
   EXECUTE FUNCTION public.notify_owner_on_tenant_document();
 
 COMMIT;
