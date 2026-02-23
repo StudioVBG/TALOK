@@ -114,7 +114,7 @@ DO $$ BEGIN
     DECLARE
       fk_name TEXT;
     BEGIN
-      SELECT constraint_name INTO fk_name
+      SELECT tc.constraint_name INTO fk_name
       FROM information_schema.table_constraints tc
       JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
       WHERE tc.table_name = 'vetusty_reports'

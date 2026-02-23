@@ -364,12 +364,12 @@ CREATE POLICY "ERP DOM modifiables par propriétaire" ON erp_dom_tom
 DROP TRIGGER IF EXISTS set_updated_at_diagnostics_termites ON diagnostics_termites;
 CREATE TRIGGER set_updated_at_diagnostics_termites
   BEFORE UPDATE ON diagnostics_termites
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS set_updated_at_erp_dom_tom ON erp_dom_tom;
 CREATE TRIGGER set_updated_at_erp_dom_tom
   BEFORE UPDATE ON erp_dom_tom
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
 -- FONCTIONS RPC
@@ -536,7 +536,7 @@ SELECT
   p.adresse_complete,
   p.code_postal,
   p.ville,
-  p.departement,
+  p.departement AS property_departement,
   CASE
     WHEN dt.date_validite < CURRENT_DATE THEN 'expiré'
     WHEN dt.date_validite < CURRENT_DATE + INTERVAL '30 days' THEN 'expire_bientot'

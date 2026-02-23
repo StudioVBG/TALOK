@@ -9,30 +9,9 @@
 -- Ajouter les nouveaux types de bail si pas déjà présents
 DO $$
 BEGIN
-  -- Bail commercial 3/6/9
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum
-    WHERE enumlabel = 'commercial'
-    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'lease_type')
-  ) THEN
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'lease_type') THEN
     ALTER TYPE lease_type ADD VALUE IF NOT EXISTS 'commercial';
-  END IF;
-
-  -- Bail dérogatoire (précaire)
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum
-    WHERE enumlabel = 'commercial_derogatoire'
-    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'lease_type')
-  ) THEN
     ALTER TYPE lease_type ADD VALUE IF NOT EXISTS 'commercial_derogatoire';
-  END IF;
-
-  -- Bail professionnel (pour les professions libérales)
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum
-    WHERE enumlabel = 'professionnel'
-    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'lease_type')
-  ) THEN
     ALTER TYPE lease_type ADD VALUE IF NOT EXISTS 'professionnel';
   END IF;
 END$$;
@@ -200,12 +179,12 @@ DECLARE
   v_loyer DECIMAL(12,2);
 BEGIN
   -- Seulement pour les baux commerciaux 3/6/9
-  IF NEW.type != 'commercial' THEN
+  IF NEW.type_bail != 'commercial' THEN
     RETURN NEW;
   END IF;
 
   -- Récupérer la date de début et le loyer
-  v_start_date := NEW.start_date;
+  v_start_date := NEW.date_debut;
 
   SELECT loyer_annuel_ht INTO v_loyer
   FROM commercial_lease_details
@@ -246,9 +225,9 @@ $$ LANGUAGE plpgsql;
 -- Trigger pour générer les périodes triennales
 DROP TRIGGER IF EXISTS trigger_generate_triennial_periods ON leases;
 CREATE TRIGGER trigger_generate_triennial_periods
-  AFTER INSERT OR UPDATE OF start_date, type ON leases
+  AFTER INSERT OR UPDATE OF date_debut, type_bail ON leases
   FOR EACH ROW
-  WHEN (NEW.type = 'commercial')
+  WHEN (NEW.type_bail = 'commercial')
   EXECUTE FUNCTION generate_triennial_periods();
 
 -- =============================================================================

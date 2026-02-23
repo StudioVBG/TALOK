@@ -9,11 +9,7 @@
 
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum
-    WHERE enumlabel = 'location_gerance'
-    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'lease_type')
-  ) THEN
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'lease_type') THEN
     ALTER TYPE lease_type ADD VALUE IF NOT EXISTS 'location_gerance';
   END IF;
 END$$;

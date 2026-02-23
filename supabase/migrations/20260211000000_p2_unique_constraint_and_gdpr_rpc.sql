@@ -217,6 +217,7 @@ COMMENT ON FUNCTION anonymize_user_cascade IS
 -- 3. RPC POUR NETTOYAGE ORPHELINS (utilisée par le cron)
 -- ============================================
 
+DROP FUNCTION IF EXISTS cleanup_orphan_documents();
 CREATE OR REPLACE FUNCTION cleanup_orphan_documents()
 RETURNS JSONB AS $$
 DECLARE

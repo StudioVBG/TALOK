@@ -10,11 +10,7 @@
 -- Cette section est conservée pour idempotence
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum
-    WHERE enumlabel = 'professionnel'
-    AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'lease_type')
-  ) THEN
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'lease_type') THEN
     ALTER TYPE lease_type ADD VALUE IF NOT EXISTS 'professionnel';
   END IF;
 END$$;

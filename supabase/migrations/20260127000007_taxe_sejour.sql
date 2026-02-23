@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS sejours_touristiques (
     CHECK (moyen_paiement_taxe IN ('especes', 'cb', 'virement', 'inclus_loyer')),
 
   -- Lien vers déclaration
-  declaration_id UUID REFERENCES declarations_taxe_sejour(id),
+  declaration_id UUID,
 
   -- Métadonnées
   observations TEXT,
@@ -380,17 +380,17 @@ CREATE POLICY "Déclarations modifiables par propriétaire" ON declarations_taxe
 DROP TRIGGER IF EXISTS set_updated_at_taxe_sejour_communes ON taxe_sejour_communes;
 CREATE TRIGGER set_updated_at_taxe_sejour_communes
   BEFORE UPDATE ON taxe_sejour_communes
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS set_updated_at_sejours_touristiques ON sejours_touristiques;
 CREATE TRIGGER set_updated_at_sejours_touristiques
   BEFORE UPDATE ON sejours_touristiques
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS set_updated_at_declarations_taxe_sejour ON declarations_taxe_sejour;
 CREATE TRIGGER set_updated_at_declarations_taxe_sejour
   BEFORE UPDATE ON declarations_taxe_sejour
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
 -- FONCTIONS RPC

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS vetusty_reports (
   lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
   edl_entry_id UUID REFERENCES edl(id) ON DELETE SET NULL,
   edl_exit_id UUID REFERENCES edl(id) ON DELETE SET NULL,
-  settlement_id UUID REFERENCES dg_settlements(id) ON DELETE SET NULL,
+  settlement_id UUID,
 
   -- Dates de référence
   edl_entry_date DATE NOT NULL,

@@ -310,23 +310,41 @@ export default function TenantDocumentsPage() {
     return result;
   }, [documents, searchQuery, typeFilter, periodFilter, sortBy]);
 
-  // ── Preview inline (H-04) ──
-  const handlePreview = useCallback((doc: DocumentCardDoc) => {
-    setPreviewUrl(`/api/documents/${doc.id}/download`);
-    setPreviewTitle(getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] ?? DOCUMENT_CONFIG.autre));
-    setPreviewType(doc.metadata?.mime_type);
-    setPreviewOpen(true);
+  const fetchSignedUrl = useCallback(async (docId: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`/api/documents/${docId}/signed-url`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.signedUrl ?? null;
+    } catch {
+      return null;
+    }
   }, []);
 
-  const handleDownload = useCallback((doc: DocumentCardDoc) => {
+  // ── Preview inline (H-04) ──
+  const handlePreview = useCallback(async (doc: DocumentCardDoc) => {
+    setPreviewTitle(getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] ?? DOCUMENT_CONFIG.autre));
+    setPreviewType(doc.metadata?.mime_type);
+    setPreviewUrl(null);
+    setPreviewOpen(true);
+
+    const url = await fetchSignedUrl(doc.id);
+    if (url) {
+      setPreviewUrl(url);
+    }
+  }, [fetchSignedUrl]);
+
+  const handleDownload = useCallback(async (doc: DocumentCardDoc) => {
+    const url = await fetchSignedUrl(doc.id);
+    if (!url) return;
     const link = document.createElement("a");
-    link.href = `/api/documents/${doc.id}/download`;
+    link.href = url;
     link.download = getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] ?? DOCUMENT_CONFIG.autre);
     link.target = "_blank";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, []);
+  }, [fetchSignedUrl]);
 
   const resetFilters = useCallback(() => {
     setSearchQuery("");
@@ -673,14 +691,18 @@ export default function TenantDocumentsPage() {
                   verification_status: doc.verification_status,
                 }))}
                 groupBy="category"
-                onPreview={(doc) => {
-                  setPreviewUrl(`/api/documents/${doc.id}/download`);
+                onPreview={async (doc) => {
                   setPreviewTitle(doc.title || "Document");
+                  setPreviewUrl(null);
                   setPreviewOpen(true);
+                  const url = await fetchSignedUrl(doc.id);
+                  if (url) setPreviewUrl(url);
                 }}
-                onDownload={(doc) => {
+                onDownload={async (doc) => {
+                  const url = await fetchSignedUrl(doc.id);
+                  if (!url) return;
                   const link = document.createElement("a");
-                  link.href = `/api/documents/${doc.id}/download`;
+                  link.href = url;
                   link.download = doc.title || "document";
                   link.target = "_blank";
                   document.body.appendChild(link);

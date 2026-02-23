@@ -59,7 +59,7 @@ INSERT INTO ged_document_types (id, label, label_short, icon, category, is_expir
   ('assurance_pno', 'Assurance PNO', 'PNO', 'Shield', 'insurance', TRUE, 365, FALSE, TRUE, FALSE, FALSE, FALSE, 1095, 31),
 
   -- Financiers
-  ('quittance', 'Quittance de loyer', 'Quittance', 'Receipt', 'financial', FALSE, NULL, FALSE, FALSE, TRUE, TRUE, 1095, 40),
+  ('quittance', 'Quittance de loyer', 'Quittance', 'Receipt', 'financial', FALSE, NULL, FALSE, FALSE, TRUE, TRUE, FALSE, 1095, 40),
   ('facture', 'Facture', 'Facture', 'Receipt', 'financial', FALSE, NULL, TRUE, TRUE, TRUE, FALSE, FALSE, 3650, 41),
   ('rib', 'RIB / Coordonnées bancaires', 'RIB', 'CreditCard', 'financial', FALSE, NULL, TRUE, FALSE, FALSE, FALSE, FALSE, NULL, 42),
   ('avis_imposition', 'Avis d''imposition', 'Impôts', 'FileText', 'financial', FALSE, NULL, FALSE, FALSE, TRUE, FALSE, FALSE, 1095, 43),
@@ -232,7 +232,7 @@ CREATE TABLE IF NOT EXISTS document_shares (
 
 CREATE INDEX IF NOT EXISTS idx_document_shares_token ON document_shares(share_token);
 CREATE INDEX IF NOT EXISTS idx_document_shares_document ON document_shares(document_id);
-CREATE INDEX IF NOT EXISTS idx_document_shares_expires ON document_shares(expires_at) WHERE expires_at > NOW();
+CREATE INDEX IF NOT EXISTS idx_document_shares_expires ON document_shares(expires_at) WHERE expires_at IS NOT NULL;
 
 
 -- ============================================
@@ -297,7 +297,6 @@ SELECT
   d.ged_ai_data,
   d.created_at,
   d.updated_at,
-  d.created_by,
   -- Infos du type de document
   gdt.label AS type_label,
   gdt.label_short AS type_label_short,

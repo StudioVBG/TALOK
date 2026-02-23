@@ -22,15 +22,27 @@ COMMENT ON COLUMN properties.surface_carrez_certifiee IS 'Surface Carrez certifi
 -- Pour les zones tendues avec encadrement (Paris, Lille, Lyon, etc.)
 
 ALTER TABLE properties
-  ADD COLUMN IF NOT EXISTS zone_encadrement TEXT,
   ADD COLUMN IF NOT EXISTS loyer_reference NUMERIC(12,2),
   ADD COLUMN IF NOT EXISTS loyer_reference_majore NUMERIC(12,2),
   ADD COLUMN IF NOT EXISTS complement_loyer NUMERIC(12,2),
   ADD COLUMN IF NOT EXISTS complement_loyer_justification TEXT;
 
--- Contrainte sur zone_encadrement
-ALTER TABLE properties
-  DROP CONSTRAINT IF EXISTS properties_zone_encadrement_check;
+ALTER TABLE properties DROP CONSTRAINT IF EXISTS properties_loyer_reference_check;
+ALTER TABLE properties DROP CONSTRAINT IF EXISTS properties_zone_encadrement_check;
+
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'properties' AND column_name = 'zone_encadrement' AND data_type = 'boolean'
+  ) THEN
+    DROP VIEW IF EXISTS active_properties CASCADE;
+    ALTER TABLE properties ALTER COLUMN zone_encadrement TYPE TEXT USING CASE WHEN zone_encadrement THEN 'aucune' ELSE NULL END;
+    CREATE OR REPLACE VIEW active_properties AS
+      SELECT * FROM properties WHERE deleted_at IS NULL AND (etat IS NULL OR etat != 'deleted');
+  ELSE
+    ALTER TABLE properties ADD COLUMN IF NOT EXISTS zone_encadrement TEXT;
+  END IF;
+END $$;
 
 ALTER TABLE properties
   ADD CONSTRAINT properties_zone_encadrement_check
