@@ -50,35 +50,53 @@ WHERE lease_id IS NOT NULL
   AND lease_id NOT IN (SELECT id FROM leases);
 
 -- 1.9 Supprimer les deposit_movements orphelins
-DELETE FROM deposit_movements
-WHERE lease_id NOT IN (SELECT id FROM leases);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'deposit_movements') THEN
+    DELETE FROM deposit_movements WHERE lease_id NOT IN (SELECT id FROM leases);
+  END IF;
+END $$;
 
--- 1.10 Supprimer les rent_calls orphelins
-DELETE FROM rent_calls
-WHERE lease_id NOT IN (SELECT id FROM leases);
+-- 1.10 Supprimer les rent_calls orphelins (table peut ne pas exister)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'rent_calls') THEN
+    DELETE FROM rent_calls WHERE lease_id NOT IN (SELECT id FROM leases);
+  END IF;
+END $$;
 
 -- 1.11 Supprimer les charge_regularizations orphelines
-DELETE FROM charge_regularizations
-WHERE lease_id NOT IN (SELECT id FROM leases);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'charge_regularizations') THEN
+    DELETE FROM charge_regularizations WHERE lease_id NOT IN (SELECT id FROM leases);
+  END IF;
+END $$;
 
 -- 1.12 Supprimer les lease_events orphelins
-DELETE FROM lease_events
-WHERE lease_id NOT IN (SELECT id FROM leases);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'lease_events') THEN
+    DELETE FROM lease_events WHERE lease_id NOT IN (SELECT id FROM leases);
+  END IF;
+END $$;
 
 -- 1.13 Supprimer les insurance_policies orphelines
-DELETE FROM insurance_policies
-WHERE lease_id NOT IN (SELECT id FROM leases);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'insurance_policies') THEN
+    DELETE FROM insurance_policies WHERE lease_id NOT IN (SELECT id FROM leases);
+  END IF;
+END $$;
 
 -- 1.14 Supprimer les otp_codes orphelins
-DELETE FROM otp_codes
-WHERE lease_id IS NOT NULL 
-  AND lease_id NOT IN (SELECT id FROM leases);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'otp_codes') THEN
+    DELETE FROM otp_codes WHERE lease_id IS NOT NULL AND lease_id NOT IN (SELECT id FROM leases);
+  END IF;
+END $$;
 
 -- 1.15 Supprimer les notifications liées à des baux supprimés
-DELETE FROM notifications
-WHERE related_type = 'lease'
-  AND related_id IS NOT NULL
-  AND related_id::UUID NOT IN (SELECT id FROM leases);
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'related_type') THEN
+    DELETE FROM notifications WHERE related_type = 'lease' AND related_id IS NOT NULL AND related_id::UUID NOT IN (SELECT id FROM leases);
+  END IF;
+END $$;
 
 -- ============================================
 -- PARTIE 2: TRIGGER CASCADE COMPLÈTE
@@ -114,7 +132,7 @@ BEGIN
     AND (OLD.date_fin IS NULL OR created_at <= OLD.date_fin + INTERVAL '1 month')
     AND lease_id IS NULL; -- Documents pas déjà liés à un bail spécifique
   
-  GET DIAGNOSTICS v_deleted_count = v_deleted_count + ROW_COUNT;
+  GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
   
   -- Log pour audit
   RAISE NOTICE 'Cascade delete pour bail %: % documents supprimés', OLD.id, v_deleted_count;

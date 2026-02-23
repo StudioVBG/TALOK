@@ -211,7 +211,7 @@ BEGIN
   WHERE property_id IS NOT NULL
     AND property_id NOT IN (SELECT id FROM properties);
   
-  GET DIAGNOSTICS deleted_count = ROW_COUNT + deleted_count;
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
   
   IF deleted_count > 0 THEN
     RAISE NOTICE '% documents orphelins supprimés', deleted_count;

@@ -32,29 +32,23 @@ ALTER TABLE properties
 
 -- 2. Table buildings (Immeubles)
 -- ============================================
+-- La table buildings peut déjà exister (module copropriété, migration 20251208).
+-- On ajoute les colonnes manquantes pour le support immeuble locatif.
 
 CREATE TABLE IF NOT EXISTS buildings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  owner_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  owner_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
-  
-  -- Identification
-  name TEXT NOT NULL,
-  
-  -- Adresse
-  adresse_complete TEXT NOT NULL,
-  code_postal TEXT NOT NULL,
-  ville TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT 'Immeuble',
+  adresse_complete TEXT,
+  code_postal TEXT,
+  ville TEXT,
   departement TEXT,
   latitude DECIMAL(10, 8),
   longitude DECIMAL(11, 8),
-  
-  -- Structure physique
-  floors INTEGER NOT NULL DEFAULT 1 CHECK (floors >= 1 AND floors <= 50),
-  construction_year INTEGER CHECK (construction_year >= 1800 AND construction_year <= 2100),
+  floors INTEGER DEFAULT 1,
+  construction_year INTEGER,
   surface_totale DECIMAL(10, 2),
-  
-  -- Parties communes
   has_ascenseur BOOLEAN DEFAULT false,
   has_gardien BOOLEAN DEFAULT false,
   has_interphone BOOLEAN DEFAULT false,
@@ -63,12 +57,31 @@ CREATE TABLE IF NOT EXISTS buildings (
   has_local_poubelles BOOLEAN DEFAULT false,
   has_parking_commun BOOLEAN DEFAULT false,
   has_jardin_commun BOOLEAN DEFAULT false,
-  
-  -- Métadonnées
   notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ajouter les colonnes manquantes si la table existait déjà
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES profiles(id) ON DELETE CASCADE;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS adresse_complete TEXT;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS code_postal TEXT;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS ville TEXT;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS departement TEXT;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8);
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8);
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS floors INTEGER DEFAULT 1;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS surface_totale DECIMAL(10, 2);
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS has_ascenseur BOOLEAN DEFAULT false;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS has_gardien BOOLEAN DEFAULT false;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS has_interphone BOOLEAN DEFAULT false;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS has_digicode BOOLEAN DEFAULT false;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS has_local_velo BOOLEAN DEFAULT false;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS has_local_poubelles BOOLEAN DEFAULT false;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS has_parking_commun BOOLEAN DEFAULT false;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS has_jardin_commun BOOLEAN DEFAULT false;
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- Index pour performance
 CREATE INDEX IF NOT EXISTS idx_buildings_owner ON buildings(owner_id);

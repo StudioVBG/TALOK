@@ -329,9 +329,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS trigger_notify_tenant_edl_scheduled ON edls;
+DROP TRIGGER IF EXISTS trigger_notify_tenant_edl_scheduled ON edl;
 CREATE TRIGGER trigger_notify_tenant_edl_scheduled
-  AFTER INSERT OR UPDATE ON edls
+  AFTER INSERT OR UPDATE ON edl
   FOR EACH ROW
   EXECUTE FUNCTION notify_tenant_edl_scheduled();
 

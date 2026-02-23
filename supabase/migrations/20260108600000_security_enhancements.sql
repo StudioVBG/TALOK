@@ -52,6 +52,16 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Ajouter les colonnes manquantes si la table existait déjà
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS profile_id UUID;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS entity_type TEXT;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS entity_id TEXT;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS ip_address INET;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS user_agent TEXT;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS risk_level TEXT DEFAULT 'low';
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS success BOOLEAN DEFAULT true;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS error_message TEXT;
+
 -- Index pour les requêtes fréquentes
 CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC);
@@ -162,6 +172,7 @@ CREATE TRIGGER trigger_check_2fa_on_property_add
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Seuls les admins peuvent lire les logs d'audit
+DROP POLICY IF EXISTS "Admins can view all audit logs" ON audit_log;
 CREATE POLICY "Admins can view all audit logs"
   ON audit_log FOR SELECT
   USING (public.user_role() = 'admin');
