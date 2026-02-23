@@ -506,9 +506,20 @@ async function createDraftProperty({
   profileId: string;
   serviceClient: ServiceSupabaseClient;
 }): Promise<PropertyData> {
+  // Récupérer l'entité par défaut du propriétaire pour lier la propriété
+  const { data: defaultEntity } = await serviceClient
+    .from("legal_entities")
+    .select("id")
+    .eq("owner_profile_id", profileId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
   const uniqueCode = await generateUniquePropertyCode(serviceClient);
   const insertPayload: Record<string, unknown> = {
     owner_id: profileId,
+    legal_entity_id: defaultEntity?.id ?? null,
     // Support V3 : type_bien (nouveau champ)
     type_bien: payload.type_bien,
     // Support Legacy : type (pour rétrocompatibilité)
@@ -650,11 +661,22 @@ export async function POST(request: Request) {
 
     const uniqueCode = await generateUniquePropertyCode(serviceClient);
 
-    // ✅ CRÉATION: Créer la propriété avec le code unique
+    // Récupérer l'entité par défaut pour lier la propriété
+    const { data: defaultEntity } = await serviceClient
+      .from("legal_entities")
+      .select("id")
+      .eq("owner_profile_id", profile.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    // ✅ CRÉATION: Créer la propriété avec le code unique et l'entité par défaut
     const { data: property } = await insertPropertyRecord(serviceClient, {
       ...validated,
       owner_id: profile.id,
       unique_code: uniqueCode,
+      legal_entity_id: (validated as Record<string, unknown>).legal_entity_id ?? defaultEntity?.id ?? null,
     });
 
     // ✅ ÉVÉNEMENTS: Émettre un événement (si la table existe)

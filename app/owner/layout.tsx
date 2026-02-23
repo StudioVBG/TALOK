@@ -58,10 +58,13 @@ export default async function OwnerLayout({
     .maybeSingle();
 
   if (!ownerProfile) {
-    await serviceClient.from("owner_profiles").insert({
+    const { error: opError } = await serviceClient.from("owner_profiles").insert({
       profile_id: profile.id,
       type: "particulier",
     });
+    if (opError) {
+      console.error("[OwnerLayout] Failed to create owner_profiles:", opError.message);
+    }
   }
 
   // Filet de sécurité : s'assurer qu'au moins une entité juridique existe (évite "Aucune entité juridique")
@@ -75,13 +78,32 @@ export default async function OwnerLayout({
 
   if (!hasEntity) {
     const nom = [profile.prenom, profile.nom].filter(Boolean).join(" ") || "Patrimoine personnel";
-    await serviceClient.from("legal_entities").insert({
-      owner_profile_id: profile.id,
-      entity_type: "particulier",
-      nom,
-      regime_fiscal: "ir",
-      is_active: true,
-    });
+    const { data: newEntity, error: leError } = await serviceClient
+      .from("legal_entities")
+      .insert({
+        owner_profile_id: profile.id,
+        entity_type: "particulier",
+        nom,
+        regime_fiscal: "ir",
+        is_active: true,
+      })
+      .select("id")
+      .single();
+
+    if (leError) {
+      console.error("[OwnerLayout] Failed to create legal_entity:", leError.message);
+    } else if (newEntity) {
+      // Lier les propriétés orphelines à la nouvelle entité
+      const { error: linkError } = await serviceClient
+        .from("properties")
+        .update({ legal_entity_id: newEntity.id })
+        .eq("owner_id", profile.id)
+        .is("legal_entity_id", null)
+        .is("deleted_at", null);
+      if (linkError) {
+        console.error("[OwnerLayout] Failed to link orphan properties:", linkError.message);
+      }
+    }
   }
 
   // Charger toutes les données en parallèle
