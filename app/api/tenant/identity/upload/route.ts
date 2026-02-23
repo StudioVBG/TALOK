@@ -154,7 +154,20 @@ export async function POST(request: Request) {
     let expiryDate: string | null = null;
     if (ocrData.date_expiration) {
       const dateMatch = ocrData.date_expiration.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (dateMatch) expiryDate = ocrData.date_expiration;
+      if (dateMatch) {
+        expiryDate = ocrData.date_expiration;
+
+        // Vérifier que la CNI n'est pas déjà expirée
+        const expiryDateObj = new Date(expiryDate + "T12:00:00Z");
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (expiryDateObj < today) {
+          return NextResponse.json(
+            { error: "Ce document d'identité est expiré. Veuillez fournir un document en cours de validité." },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     // Créer le document en base
@@ -184,6 +197,7 @@ export async function POST(request: Request) {
           prenom: ocrData.prenom || null,
           date_expiration: ocrData.date_expiration || null,
           ocr_confidence: ocrData.ocr_confidence || 0,
+          tenant_email: user.email || null,
           uploaded_at: new Date().toISOString(),
           file_size: file.size,
           file_type: file.type,
