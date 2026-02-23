@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +65,7 @@ export default function TenantEDLDetailClient({
   profileId,
 }: TenantEDLDetailClientProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [isSigning, setIsSigning] = useState(false);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
 
@@ -85,15 +87,7 @@ export default function TenantEDLDetailClient({
     profile: s.profile,
   }));
 
-  console.log("[TenantEDLDetail] Adapted signatures:", JSON.stringify(adaptedSignatures.map((s: any) => ({
-    role: s.signer_type,
-    hasUrl: !!s.signature_image_url,
-    url: s.signature_image_url ? s.signature_image_url.substring(0, 50) + '...' : null,
-    signedAt: s.signed_at
-  })), null, 2));
-
-  // 🔧 FIX: Utiliser les compteurs des relevés ET ceux du bien pour éviter les doublons
-  const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
+  const recordedMeterIds = new Set((meterReadings || []).map((r: Record<string, unknown>) => r.meter_id));
 
   // Compteurs avec relevés existants
   const existingReadings = (meterReadings || []).map((r: any) => ({
@@ -157,7 +151,7 @@ export default function TenantEDLDetailClient({
       setIsSignModalOpen(false);
       router.refresh();
     } catch (error: unknown) {
-      alert(error instanceof Error ? error.message : "Erreur lors de la signature");
+      toast({ variant: "destructive", title: "Erreur", description: error instanceof Error ? error.message : "Erreur lors de la signature" });
     } finally {
       setIsSigning(false);
     }

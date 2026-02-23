@@ -78,7 +78,7 @@ export default function TenantApplicationsPage() {
           .eq("tenant_profile_id", profile.id)
           .order("created_at", { ascending: false });
 
-        setApplications((data as any) || []);
+        setApplications((data as unknown as ApplicationWithProperty[]) || []);
       } finally {
         setIsLoading(false);
       }

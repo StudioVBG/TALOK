@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/ui/page-transition";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import type { MarketplaceOffer } from "@/lib/types/tenant";
 
-const OFFERS = [
+const OFFERS: MarketplaceOffer[] = [
   {
     id: 1,
     category: "Assurance",
@@ -63,7 +64,7 @@ const OFFERS = [
 export default function TenantMarketplacePage() {
   const { toast } = useToast();
 
-  const handleOfferClick = (offer: any) => {
+  const handleOfferClick = (offer: MarketplaceOffer) => {
     toast({
       title: "Redirection vers " + offer.provider,
       description: "Vous allez être redirigé vers l'offre négociée. Votre code promo a été automatiquement appliqué.",

@@ -38,6 +38,7 @@ import { formatDateShort } from "@/lib/helpers/format";
 import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
+import { logger } from "@/lib/monitoring";
 
 // Types
 interface Meter {
@@ -75,9 +76,11 @@ interface ConsumptionEstimate {
   unit: string;
 }
 
+import type { LucideIcon } from "lucide-react";
+
 const meterConfig: Record<string, { 
   label: string; 
-  icon: any; 
+  icon: LucideIcon; 
   color: string; 
   bgColor: string;
   gradient: string;
@@ -172,7 +175,7 @@ export default function TenantMetersPage() {
       }
     } catch (error: unknown) {
       if (error instanceof Error && error.name === "AbortError") return;
-      console.error("Erreur chargement compteurs:", error);
+      logger.error("Erreur chargement compteurs", { error: error instanceof Error ? error : String(error) });
     } finally {
       setIsLoading(false);
     }

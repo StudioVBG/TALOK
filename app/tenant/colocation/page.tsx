@@ -24,6 +24,7 @@ import { ColocChores } from "@/features/tenant/components/coloc-chores";
 import { ColocHouseRules } from "@/features/tenant/components/coloc-house-rules";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
+import { logger } from "@/lib/monitoring";
 
 interface Roommate {
   id: string;
@@ -84,7 +85,7 @@ export default function TenantColocationPage() {
         .single();
 
       if (profileError) {
-        console.error("Erreur récupération profil colocation:", profileError.message);
+        logger.error("Erreur récupération profil colocation", { error: profileError.message });
       }
       if (!profile) return;
       setCurrentProfileId(profile.id);
@@ -134,14 +135,14 @@ export default function TenantColocationPage() {
         .single();
 
       if (leaseSignersError) {
-        console.error("Erreur récupération bail colocation:", leaseSignersError.message);
+        logger.error("Erreur récupération bail colocation", { error: leaseSignersError.message });
       }
       if (!leaseSigners) {
         setLoading(false);
         return;
       }
 
-      const leaseData = leaseSigners.leases as any;
+      const leaseData = leaseSigners.leases as { id: string; type_bail: string; loyer: number; charges_forfaitaires: number; properties: { adresse_complete: string; code_postal: string; ville: string } };
       const propertyData = leaseData.properties;
 
       setLease({
@@ -176,23 +177,25 @@ export default function TenantColocationPage() {
         .in("role", ["locataire_principal", "colocataire"]);
 
       if (allSignersError) {
-        console.error("Erreur récupération colocataires:", allSignersError.message);
+        logger.error("Erreur récupération colocataires", { error: allSignersError.message });
       }
       if (allSigners) {
-        const roommatesList: Roommate[] = allSigners.map((signer: any) => ({
-          id: signer.profiles.id,
-          name: `${signer.profiles.prenom || ""} ${signer.profiles.nom || ""}`.trim() || "Non renseigné",
-          email: signer.profiles.email,
-          phone: signer.profiles.telephone,
-          avatar: signer.profiles.avatar_url,
-          role: signer.role,
-          signature_status: signer.signature_status,
-          share_percentage: 100 / allSigners.length,
-        }));
+        const roommatesList: Roommate[] = allSigners
+          .filter((signer) => signer.profiles !== null)
+          .map((signer) => ({
+            id: signer.profiles!.id,
+            name: `${signer.profiles!.prenom || ""} ${signer.profiles!.nom || ""}`.trim() || "Non renseigné",
+            email: signer.profiles!.email ?? undefined,
+            phone: signer.profiles!.telephone ?? undefined,
+            avatar: signer.profiles!.avatar_url ?? undefined,
+            role: signer.role,
+            signature_status: signer.signature_status,
+            share_percentage: 100 / allSigners.length,
+          }));
         setRoommates(roommatesList);
       }
     } catch (error) {
-      console.error("Erreur chargement colocation:", error);
+      logger.error("Erreur chargement colocation", { error: error instanceof Error ? error : String(error) });
     } finally {
       setLoading(false);
     }

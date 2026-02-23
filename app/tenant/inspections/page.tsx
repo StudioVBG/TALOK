@@ -26,9 +26,10 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import type { TenantEDLListItem, TenantEDLSignatureWithDetails } from "@/lib/types/tenant";
 
 export default function TenantInspectionsPage() {
-  const [edlList, setEdlList] = useState<any[]>([]);
+  const [edlList, setEdlList] = useState<TenantEDLListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
 
@@ -58,16 +59,16 @@ export default function TenantInspectionsPage() {
           `)
           .eq("signer_profile_id", profile.id);
 
-        const formatted = signatures
-          ?.filter((sig: any) => sig.edl)
-          .map((sig: any) => ({
+        const formatted = (signatures as TenantEDLSignatureWithDetails[] | null)
+          ?.filter((sig): sig is TenantEDLSignatureWithDetails & { edl: NonNullable<TenantEDLSignatureWithDetails["edl"]> } => sig.edl !== null && sig.edl !== undefined)
+          .map((sig) => ({
             id: sig.edl.id,
-            type: sig.edl.type,
+            type: sig.edl.type as "entree" | "sortie",
             status: sig.edl.status,
-            scheduled_at: sig.edl.scheduled_at,
+            scheduled_at: sig.edl.scheduled_at ?? null,
             created_at: sig.edl.created_at,
             invitation_token: sig.invitation_token,
-            property: sig.edl.lease?.property || sig.edl.property_details,
+            property: sig.edl.lease?.property || sig.edl.property_details || null,
             isSigned: !!sig.signed_at,
             needsMySignature: !sig.signed_at && sig.edl.status !== "draft",
           })) || [];
