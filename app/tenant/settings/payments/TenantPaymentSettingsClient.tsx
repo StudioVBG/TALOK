@@ -245,6 +245,9 @@ export function TenantPaymentSettingsClient({ profileId }: Props) {
                         label: entry.action,
                         icon: <Clock className="h-3.5 w-3.5 text-slate-400" />,
                       };
+                      const details = entry.details as
+                        | { type?: string; last4?: string; [k: string]: unknown }
+                        | undefined;
                       return (
                         <motion.div
                           key={entry.id}
@@ -258,10 +261,10 @@ export function TenantPaymentSettingsClient({ profileId }: Props) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground">{actionInfo.label}</p>
-                            {entry.details && Object.keys(entry.details).length > 0 && (
+                            {details && Object.keys(details).length > 0 && (
                               <p className="text-xs text-muted-foreground truncate">
-                                {entry.details.type && `Type: ${entry.details.type}`}
-                                {entry.details.last4 && ` •••• ${entry.details.last4}`}
+                                {details.type && `Type: ${details.type}`}
+                                {details.last4 && ` •••• ${details.last4}`}
                               </p>
                             )}
                           </div>
