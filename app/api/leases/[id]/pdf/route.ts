@@ -19,7 +19,7 @@ import { LeaseTemplateService } from "@/lib/templates/bail";
 import type { TypeBail, BailComplet } from "@/lib/templates/bail/types";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import { resolveTenantDisplay } from "@/lib/helpers/resolve-tenant-display";
-import type { DiagnosticsTechniques } from "@/lib/templates/bail/types";
+import type { Annexe, DiagnosticsTechniques } from "@/lib/templates/bail/types";
 import crypto from "crypto";
 
 interface RouteParams {
@@ -310,12 +310,12 @@ export async function GET(request: Request, { params }: RouteParams) {
       else if (year <= 1989) epoqueConstruction = "1975_1989";
       else if (year <= 2005) epoqueConstruction = "1990_2005";
     }
-    const annexes: { type: string }[] = [];
-    if (prop?.has_balcon) annexes.push({ type: "Balcon" });
-    if (prop?.has_terrasse) annexes.push({ type: "Terrasse" });
-    if (prop?.has_cave) annexes.push({ type: "Cave" });
-    if (prop?.has_jardin) annexes.push({ type: "Jardin" });
-    if (prop?.has_parking) annexes.push({ type: "Parking" });
+    const annexes: Annexe[] = [];
+    if (prop?.has_balcon) annexes.push({ type: "balcon" });
+    if (prop?.has_terrasse) annexes.push({ type: "terrasse" });
+    if (prop?.has_cave) annexes.push({ type: "cave" });
+    if (prop?.has_jardin) annexes.push({ type: "jardin" });
+    if (prop?.has_parking) annexes.push({ type: "parking" });
 
     const bailData: Partial<BailComplet> = {
       reference: leaseId.slice(0, 8).toUpperCase(),
