@@ -83,8 +83,12 @@ async function processReceiptGeneration(supabase: any, invoiceId: string, paymen
       profileId: property.owner_id,
     });
 
-    const ownerAddress = ownerIdentity.address.street
-      ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
+    const street = ownerIdentity.address.street || "";
+    const cp = ownerIdentity.address.postalCode || "";
+    const city = ownerIdentity.address.city || "";
+    const cpVille = [cp, city].filter(Boolean).join(" ");
+    const ownerAddress = street
+      ? (cp && street.includes(cp) ? street : [street, cpVille].filter(Boolean).join(", "))
       : (ownerIdentity.billingAddress || "Adresse non renseignée");
 
     // 2. Générer le PDF

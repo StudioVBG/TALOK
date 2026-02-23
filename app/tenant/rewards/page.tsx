@@ -1,7 +1,8 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { Gift, Star, ArrowUpRight, History, Sparkles, ShoppingBag, Loader2 } from "lucide-react";
+import { useMemo } from "react";
+import { motion } from "framer-motion";
+import { Gift, Star, History, Sparkles, ShoppingBag, Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +12,27 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort } from "@/lib/helpers/format";
 import { useTenantRewards } from "@/lib/hooks/queries/use-tenant-rewards";
 
+const REWARD_TIERS = [250, 500, 1000, 2000, 5000];
+
 export default function TenantRewardsPage() {
   const { data, isLoading: loading, error, refetch } = useTenantRewards();
+
+  const { pointsThisMonth, pointsToNextTier, nextTier } = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const history = data?.history ?? [];
+    const pointsThisMonth = history
+      .filter((tx) => {
+        const d = new Date(tx.created_at);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      })
+      .reduce((sum, tx) => sum + tx.points, 0);
+    const total = data?.total_points ?? 0;
+    const next = REWARD_TIERS.find((t) => t > total);
+    const pointsToNextTier = next != null ? next - total : 0;
+    return { pointsThisMonth, pointsToNextTier, nextTier: next };
+  }, [data?.total_points, data?.history]);
 
   if (loading) {
     return (
@@ -67,7 +87,12 @@ export default function TenantRewardsPage() {
                 {data?.total_points.toLocaleString()} <span className="text-lg md:text-2xl font-bold opacity-60">Points</span>
               </h2>
               <p className="text-indigo-100 max-w-sm leading-relaxed">
-                Vous avez gagné 120 points ce mois-ci. Vous êtes à 250 points de votre prochain bon d'achat IKEA.
+                {pointsThisMonth > 0
+                  ? `Vous avez gagné ${pointsThisMonth} point${pointsThisMonth > 1 ? "s" : ""} ce mois-ci.`
+                  : "Gagnez des points en payant votre loyer à temps et en complétant votre profil."}
+                {nextTier != null && pointsToNextTier > 0 && (
+                  <> Vous êtes à <strong>{pointsToNextTier} points</strong> de votre prochain palier ({nextTier} pts).</>
+                )}
               </p>
               <Button size="lg" className="bg-white text-indigo-600 hover:bg-muted font-black rounded-2xl h-12 md:h-14 px-6 md:px-10 shadow-xl w-full sm:w-auto">
                 Découvrir la boutique <ShoppingBag className="ml-2 h-5 w-5" />

@@ -130,6 +130,9 @@ export default function TenantMetersPage() {
   const [readingHistory, setReadingHistory] = useState<MeterReading[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [estimates, setEstimates] = useState<ConsumptionEstimate[]>([]);
+  const [lastThreeReadings, setLastThreeReadings] = useState<MeterReading[]>([]);
+  const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
+  const [submitPayload, setSubmitPayload] = useState<{ value: number; overConsumption?: boolean } | null>(null);
 
   const fetchMeters = async (signal?: AbortSignal) => {
     setIsLoading(true);
@@ -187,12 +190,21 @@ export default function TenantMetersPage() {
     return () => controller.abort();
   }, []);
 
-  const handleOpenReadingDialog = (meter: Meter) => {
+  const handleOpenReadingDialog = async (meter: Meter) => {
     setSelectedMeter(meter);
     setNewReading("");
     setPhotoPreview(null);
     setPhotoFile(null);
+    setLastThreeReadings([]);
     setIsDialogOpen(true);
+    try {
+      const res = await fetch(`/api/meters/${meter.id}/history`);
+      const data = await res.json();
+      const readings = (data.readings || []) as MeterReading[];
+      setLastThreeReadings(readings.slice(0, 3));
+    } catch {
+      // optionnel
+    }
   };
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -205,12 +217,38 @@ export default function TenantMetersPage() {
     }
   };
 
-  const handleSubmitReading = async () => {
+  const handleRequestSubmitReading = () => {
     if (!selectedMeter || !newReading) return;
+    const value = Number(newReading.replace(/\s/g, "").replace(",", "."));
+    if (Number.isNaN(value)) {
+      toast({ title: "Valeur invalide", description: "Saisissez un nombre valide.", variant: "destructive" });
+      return;
+    }
+    const lastVal = selectedMeter.last_reading?.value;
+    if (lastVal != null && value <= lastVal) {
+      toast({
+        title: "Relevé invalide",
+        description: "Le nouvel index doit être supérieur au dernier relevé.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const avg =
+      lastThreeReadings.length >= 1
+        ? lastThreeReadings.reduce((s, r) => s + r.value, 0) / lastThreeReadings.length
+        : null;
+    const overConsumption = avg != null && value > avg * 1.3;
+    setSubmitPayload({ value, overConsumption });
+    setConfirmSubmitOpen(true);
+  };
+
+  const handleConfirmSubmitReading = async () => {
+    if (!selectedMeter || !submitPayload) return;
+    setConfirmSubmitOpen(false);
     setIsSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append("reading_value", newReading);
+      formData.append("reading_value", String(submitPayload.value));
       formData.append("reading_date", new Date().toISOString());
       if (photoFile) formData.append("photo", photoFile);
 
@@ -222,6 +260,7 @@ export default function TenantMetersPage() {
       if (response.ok) {
         toast({ title: "Relevé enregistré", description: "Votre consommation a été mise à jour." });
         setIsDialogOpen(false);
+        setSubmitPayload(null);
         fetchMeters();
       }
     } catch (error: unknown) {
@@ -450,11 +489,36 @@ export default function TenantMetersPage() {
             <DialogFooter className="gap-2">
               <Button variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-xl font-bold">Annuler</Button>
               <Button 
-                onClick={handleSubmitReading} 
+                onClick={handleRequestSubmitReading} 
                 disabled={!newReading || isSubmitting}
                 className="bg-amber-500 hover:bg-amber-600 text-white font-bold h-12 rounded-xl px-8 shadow-lg shadow-amber-100"
               >
                 {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Enregistrer"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de confirmation avant soumission */}
+        <Dialog open={confirmSubmitOpen} onOpenChange={setConfirmSubmitOpen}>
+          <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold">Confirmer le relevé</DialogTitle>
+              <DialogDescription>
+                {submitPayload?.overConsumption ? (
+                  <span className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                    <AlertCircle className="h-5 w-5 shrink-0" />
+                    Ce relevé est nettement au-dessus de votre moyenne. Souhaitez-vous tout de même l&apos;enregistrer ?
+                  </span>
+                ) : (
+                  "Êtes-vous sûr de vouloir enregistrer ce relevé ?"
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button variant="ghost" onClick={() => { setConfirmSubmitOpen(false); setSubmitPayload(null); }} className="rounded-xl font-bold">Annuler</Button>
+              <Button onClick={handleConfirmSubmitReading} className="bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl px-6">
+                Confirmer
               </Button>
             </DialogFooter>
           </DialogContent>

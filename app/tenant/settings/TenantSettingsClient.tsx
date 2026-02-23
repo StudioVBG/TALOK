@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -43,6 +43,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import { buildAvatarUrl, formatDate } from "@/lib/helpers/format";
 import { RestartTourCard } from "@/components/onboarding/RestartTourCard";
 
@@ -213,6 +214,23 @@ export function TenantSettingsClient({
 
   const initials = `${formData.prenom?.[0] || ""}${formData.nom?.[0] || ""}`.toUpperCase() || "?";
 
+  // Complétion profil (9 champs : prenom, nom, telephone, date_naissance, lieu_naissance, nationalite, situation_pro, revenus, CNI)
+  const profileCompletion = useMemo(() => {
+    const filled = [
+      !!formData.prenom?.trim(),
+      !!formData.nom?.trim(),
+      !!formData.telephone?.trim(),
+      !!formData.date_naissance?.trim(),
+      !!formData.lieu_naissance?.trim(),
+      !!formData.nationalite?.trim(),
+      !!formData.situation_pro?.trim(),
+      !!formData.revenus_mensuels?.toString()?.trim() && Number(formData.revenus_mensuels) > 0,
+      !!tenantProfile?.cni_verified_at,
+    ];
+    const count = filled.filter(Boolean).length;
+    return { count, total: 9, percentage: Math.round((count / 9) * 100) };
+  }, [formData, tenantProfile?.cni_verified_at]);
+
   const cniExpiryDate = tenantProfile?.cni_expiry_date;
   const isCniVerified = !!tenantProfile?.cni_verified_at;
   const daysUntilExpiry = cniExpiryDate
@@ -228,6 +246,20 @@ export function TenantSettingsClient({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
+        {/* Barre de complétion gamifiée */}
+        <div className="mb-8 p-4 rounded-2xl bg-muted/50 border border-border">
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <span className="text-sm font-bold text-muted-foreground">Profil complété</span>
+            {profileCompletion.percentage === 100 ? (
+              <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold">Profil complet</Badge>
+            ) : (
+              <span className="text-sm font-black text-foreground">{profileCompletion.percentage} %</span>
+            )}
+          </div>
+          <Progress value={profileCompletion.percentage} className="h-3 rounded-full" />
+          <p className="text-xs text-muted-foreground mt-2">{profileCompletion.count} / {profileCompletion.total} champs renseignés</p>
+        </div>
+
         {/* En-tête */}
         <div className="flex items-center gap-4 mb-8">
           <div className="relative">

@@ -178,11 +178,13 @@ export class LeaseTemplateService {
       variables['BAILLEUR_REPRESENTANT'] = b.representant_nom || `${b.prenom || ''} ${b.nom || ''}`.trim();
       variables['BAILLEUR_REPRESENTANT_QUALITE'] = b.representant_qualite || (isSociete ? 'Gérant' : '');
       
-      // ✅ SOTA 2026: Sécuriser les valeurs pour éviter "undefined" dans l'adresse
-      const adresseComponents = [
-        b.adresse || '',
-        [b.code_postal || '', b.ville || ''].filter(Boolean).join(' ')
-      ].filter(Boolean).join(', ');
+      // ✅ SOTA 2026: Sécuriser les valeurs pour éviter "undefined" ou doublons dans l'adresse
+      const baseAdresse = b.adresse || '';
+      const cpVille = [b.code_postal || '', b.ville || ''].filter(Boolean).join(' ');
+      const cpDejaPresent = b.code_postal && baseAdresse.includes(b.code_postal);
+      const adresseComponents = (cpVille && !cpDejaPresent)
+        ? [baseAdresse, cpVille].filter(Boolean).join(', ')
+        : baseAdresse;
       variables['BAILLEUR_ADRESSE'] = adresseComponents || '[Adresse non renseignée]';
       variables['BAILLEUR_QUALITE'] = isSociete ? 'Personne morale' : 'Personne physique';
       variables['BAILLEUR_TYPE'] = b.type;

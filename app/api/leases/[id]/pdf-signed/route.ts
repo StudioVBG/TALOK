@@ -207,7 +207,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         nom: isOwnerSociete ? (ownerProfile.raison_sociale || "") : (ownerProfileData?.nom || ""),
         prenom: isOwnerSociete ? "" : (ownerProfileData?.prenom || ""),
         date_naissance: isOwnerSociete ? undefined : (ownerProfileData?.date_naissance ?? undefined),
-        adresse: ownerAddress || `${property?.adresse_complete}, ${property?.code_postal} ${property?.ville}`,
+        adresse: ownerAddress || property?.adresse_complete || "",
         code_postal: "",
         ville: "",
         telephone: ownerProfileData?.telephone || "",

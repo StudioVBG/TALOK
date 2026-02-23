@@ -244,9 +244,7 @@ export async function GET(
       bailleur: {
         nom: ownerIdentity.entityType === "company" ? (ownerIdentity.companyName || "") : ownerIdentity.lastName,
         prenom: ownerIdentity.entityType === "company" ? "" : ownerIdentity.firstName,
-        adresse: ownerIdentity.address.street
-          ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
-          : (lease.property?.adresse_complete || ""),
+        adresse: ownerIdentity.address.street || lease.property?.adresse_complete || "",
         code_postal: ownerIdentity.address.postalCode || lease.property?.code_postal || "",
         ville: ownerIdentity.address.city || lease.property?.ville || "",
         type: (ownerIdentity.entityType === "company" ? "societe" : "particulier") as Bailleur['type'],

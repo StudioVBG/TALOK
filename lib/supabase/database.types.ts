@@ -481,6 +481,7 @@ export type LeaseSignerRow = {
   proof_id?: string | null
   document_hash?: string | null
   proof_metadata?: Json | null
+  share_percentage?: number | null
   created_at: string
   updated_at: string
 

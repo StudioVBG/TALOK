@@ -292,9 +292,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         : [];
 
     const isOwnerSociete = ownerIdentity.entityType === "company";
-    const ownerAddress = ownerIdentity.address.street
-      ? `${ownerIdentity.address.street}, ${ownerIdentity.address.postalCode} ${ownerIdentity.address.city}`.trim()
-      : "";
+    const ownerAddress = ownerIdentity.address.street || "";
 
     const finalDepot = isDraft
       ? (lease.depot_de_garantie ?? finalLoyer)
@@ -325,9 +323,9 @@ export async function GET(request: Request, { params }: RouteParams) {
         nom: isOwnerSociete ? (ownerIdentity.companyName || "") : ownerIdentity.lastName,
         prenom: isOwnerSociete ? "" : ownerIdentity.firstName,
         date_naissance: isOwnerSociete ? undefined : (ownerIdentity.birthDate ?? undefined),
-        adresse: ownerAddress || `${property?.adresse_complete}, ${property?.code_postal} ${property?.ville}`,
-        code_postal: ownerIdentity.address.postalCode,
-        ville: ownerIdentity.address.city,
+        adresse: ownerAddress || property?.adresse_complete || "",
+        code_postal: ownerIdentity.address.postalCode || property?.code_postal || "",
+        ville: ownerIdentity.address.city || property?.ville || "",
         telephone: ownerIdentity.phone || "",
         type: isOwnerSociete ? "societe" as const : "particulier" as const,
         siret: ownerIdentity.siret ?? undefined,

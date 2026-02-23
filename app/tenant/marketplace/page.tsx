@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ShoppingBag, Shield, Zap, Wifi, Truck, Heart, ArrowRight, Star, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -61,8 +62,16 @@ const OFFERS: MarketplaceOffer[] = [
   }
 ];
 
+const CATEGORIES = ["Tout", "Assurance", "Énergie", "Internet", "Ameublement", "Services"] as const;
+
 export default function TenantMarketplacePage() {
   const { toast } = useToast();
+  const [activeCategory, setActiveCategory] = useState<string>("Tout");
+
+  const filteredOffers = useMemo(() => {
+    if (activeCategory === "Tout") return OFFERS;
+    return OFFERS.filter((o) => o.category === activeCategory);
+  }, [activeCategory]);
 
   const handleOfferClick = (offer: MarketplaceOffer) => {
     toast({
@@ -95,9 +104,16 @@ export default function TenantMarketplacePage() {
         </div>
 
         {/* Categories / Filter SOTA */}
-        <div className="flex flex-wrap justify-center md:justify-start gap-3">
-          {["Tout", "Assurance", "Énergie", "Internet", "Ameublement", "Services"].map((cat, i) => (
-            <Button key={i} variant={i === 0 ? "default" : "outline"} className="rounded-xl font-bold h-10 px-6">
+        <div className="flex flex-wrap justify-center md:justify-start gap-3" role="tablist" aria-label="Filtrer par catégorie">
+          {CATEGORIES.map((cat) => (
+            <Button
+              key={cat}
+              role="tab"
+              aria-selected={activeCategory === cat}
+              variant={activeCategory === cat ? "default" : "outline"}
+              className="rounded-xl font-bold h-10 px-6"
+              onClick={() => setActiveCategory(cat)}
+            >
               {cat}
             </Button>
           ))}
@@ -105,7 +121,7 @@ export default function TenantMarketplacePage() {
 
         {/* Offers Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-          {OFFERS.map((offer, i) => (
+          {filteredOffers.map((offer, i) => (
             <motion.div
               key={offer.id}
               initial={{ opacity: 0, y: 20 }}

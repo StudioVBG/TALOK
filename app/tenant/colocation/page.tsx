@@ -163,6 +163,7 @@ export default function TenantColocationPage() {
           id,
           role,
           signature_status,
+          share_percentage,
           profiles (
             id,
             user_id,
@@ -180,18 +181,22 @@ export default function TenantColocationPage() {
         logger.error("Erreur récupération colocataires", { error: allSignersError.message });
       }
       if (allSigners) {
+        const defaultShare = 100 / allSigners.length;
         const roommatesList: Roommate[] = allSigners
           .filter((signer) => signer.profiles !== null)
-          .map((signer) => ({
-            id: signer.profiles!.id,
-            name: `${signer.profiles!.prenom || ""} ${signer.profiles!.nom || ""}`.trim() || "Non renseigné",
-            email: signer.profiles!.email ?? undefined,
-            phone: signer.profiles!.telephone ?? undefined,
-            avatar: signer.profiles!.avatar_url ?? undefined,
-            role: signer.role,
-            signature_status: signer.signature_status,
-            share_percentage: 100 / allSigners.length,
-          }));
+          .map((signer) => {
+            const share = (signer as { share_percentage?: number | null }).share_percentage;
+            return {
+              id: signer.profiles!.id,
+              name: `${signer.profiles!.prenom || ""} ${signer.profiles!.nom || ""}`.trim() || "Non renseigné",
+              email: signer.profiles!.email ?? undefined,
+              phone: signer.profiles!.telephone ?? undefined,
+              avatar: signer.profiles!.avatar_url ?? undefined,
+              role: signer.role,
+              signature_status: signer.signature_status,
+              share_percentage: typeof share === "number" ? share : defaultShare,
+            };
+          });
         setRoommates(roommatesList);
       }
     } catch (error) {

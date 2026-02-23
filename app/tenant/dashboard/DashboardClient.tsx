@@ -28,6 +28,7 @@ import {
   MapPin,
   Phone,
   Wrench,
+  Zap,
 } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { Badge } from "@/components/ui/badge";
@@ -753,27 +754,8 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
             )}
           </motion.div>
 
-          {/* Row 2: Credit Builder, Energy, Activity - SOTA 2026: Données dynamiques */}
-          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <CreditBuilderCard 
-              data={creditScoreData || undefined}
-              isLoading={isLoadingScores}
-              className="h-full bg-card shadow-xl border-border"
-            />
-          </motion.div>
-
-          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-            <ConsumptionChart 
-              type="electricity" 
-              data={consumptionData?.data}
-              currentValue={consumptionData?.current?.electricity}
-              hasData={consumptionData?.hasData ?? false}
-              lastUpdate={consumptionData?.lastUpdate}
-              className="h-full" 
-            />
-          </motion.div>
-
-          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} data-tour="tenant-activity">
+          {/* Row 2: Activité (urgent) en premier, puis Finances (Credit Builder ou Suggestion), puis Logement (Consumption ou Suggestion) - SOTA 2026 */}
+          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} data-tour="tenant-activity">
             <GlassCard className="h-full p-0 overflow-hidden border-border shadow-xl bg-card">
               <div className="p-6 border-b border-border flex items-center justify-between bg-muted/50">
                 <h3 className="font-bold text-foreground flex items-center gap-2">
@@ -826,6 +808,67 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                 )}
               </div>
             </GlassCard>
+          </motion.div>
+
+          {/* Credit Builder ou SuggestionCard si pas de données */}
+          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            {!isLoadingScores && (!creditScoreData || !creditScoreData.hasData) ? (
+              <GlassCard className="h-full p-6 border-border bg-card shadow-xl flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-100">
+                    <Shield className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-foreground">Credit Builder</h3>
+                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Confiance locative</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Payez votre loyer à temps et complétez votre profil pour construire votre score.
+                </p>
+                <Button className="w-full rounded-xl font-bold" asChild>
+                  <Link href="/tenant/rewards">Découvrir mes récompenses</Link>
+                </Button>
+              </GlassCard>
+            ) : (
+              <CreditBuilderCard 
+                data={creditScoreData || undefined}
+                isLoading={isLoadingScores}
+                className="h-full bg-card shadow-xl border-border"
+              />
+            )}
+          </motion.div>
+
+          {/* Consommation ou SuggestionCard si pas de données */}
+          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+            {!(consumptionData?.hasData && consumptionData?.data && consumptionData.data.length > 0) ? (
+              <GlassCard className="h-full p-6 border-border bg-card shadow-xl flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100">
+                    <Zap className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-foreground">Suivi consommation</h3>
+                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Eau, électricité, gaz</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Saisissez vos relevés de compteurs pour suivre votre consommation.
+                </p>
+                <Button className="w-full rounded-xl font-bold" variant="outline" asChild>
+                  <Link href="/tenant/meters">Mes compteurs</Link>
+                </Button>
+              </GlassCard>
+            ) : (
+              <ConsumptionChart 
+                type="electricity" 
+                data={consumptionData?.data}
+                currentValue={consumptionData?.current?.electricity}
+                hasData={consumptionData?.hasData ?? false}
+                lastUpdate={consumptionData?.lastUpdate}
+                className="h-full" 
+              />
+            )}
           </motion.div>
 
           {/* Row 3: Support & AI Tips */}

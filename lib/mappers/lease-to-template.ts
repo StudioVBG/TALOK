@@ -33,9 +33,7 @@ export function ownerIdentityToProfile(identity: OwnerIdentity): OwnerProfile {
     nom: identity.lastName,
     email: identity.email,
     telephone: identity.phone || undefined,
-    adresse: identity.address.street
-      ? `${identity.address.street}, ${identity.address.postalCode} ${identity.address.city}`.trim()
-      : undefined,
+    adresse: identity.address.street || undefined,
     type: isCompany ? "societe" : "particulier",
     raison_sociale: identity.companyName || undefined,
     forme_juridique: identity.legalForm || undefined,
@@ -52,11 +50,15 @@ export function mapLeaseToTemplate(
   ownerProfile?: OwnerProfile | OwnerIdentity
 ): Partial<BailComplet> {
   // ✅ SOTA 2026: Auto-adapt OwnerIdentity to legacy OwnerProfile
+  const isOwnerIdentity = ownerProfile && "displayName" in ownerProfile;
   const resolvedProfile: OwnerProfile | undefined = ownerProfile
-    ? "displayName" in ownerProfile
+    ? isOwnerIdentity
       ? ownerIdentityToProfile(ownerProfile as OwnerIdentity)
       : (ownerProfile as OwnerProfile)
     : undefined;
+
+  const ownerCodePostal = isOwnerIdentity ? (ownerProfile as OwnerIdentity).address.postalCode : "";
+  const ownerVille = isOwnerIdentity ? (ownerProfile as OwnerIdentity).address.city : "";
   const { lease, property, signers } = details;
 
   // Trier les signataires pour mettre ceux qui ont signé en premier (le plus "réel")
@@ -152,8 +154,8 @@ export function mapLeaseToTemplate(
       nom: resolvedProfile?.nom || "[NOM PROPRIÉTAIRE]",
       prenom: resolvedProfile?.prenom || "",
       adresse: resolvedProfile?.adresse || "[ADRESSE PROPRIÉTAIRE]",
-      code_postal: "",
-      ville: "",
+      code_postal: ownerCodePostal,
+      ville: ownerVille,
       email: resolvedProfile?.email || "",
       telephone: resolvedProfile?.telephone || "",
       type: resolvedProfile?.type === "societe" ? "societe" : "particulier",

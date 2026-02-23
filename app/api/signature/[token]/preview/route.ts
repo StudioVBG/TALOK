@@ -86,9 +86,7 @@ function mapLeaseToTemplateData(
     bailleur: {
       nom: ownerProfile?.displayName || ownerProfile?.nom || "[NOM PROPRIÉTAIRE]",
       prenom: ownerProfile?.entityType === "company" ? "" : (ownerProfile?.firstName || ownerProfile?.prenom || "[PRÉNOM]"),
-      adresse: ownerProfile?.address?.street
-        ? `${ownerProfile.address.street}, ${ownerProfile.address.postalCode} ${ownerProfile.address.city}`.trim()
-        : (ownerProfile?.adresse || ownerProfile?.adresse_facturation || "[ADRESSE PROPRIÉTAIRE]"),
+      adresse: ownerProfile?.address?.street || ownerProfile?.adresse || ownerProfile?.adresse_facturation || "[ADRESSE PROPRIÉTAIRE]",
       code_postal: ownerProfile?.address?.postalCode || "",
       ville: ownerProfile?.address?.city || "",
       email: ownerProfile?.email || "",
