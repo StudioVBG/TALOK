@@ -50,11 +50,12 @@ async function getTenantProfile(tenantId: string, ownerId: string) {
     return null;
   }
 
-  // Récupérer les documents du locataire
+  // Récupérer les documents valides du locataire
   const { data: documents } = await supabase
     .from("tenant_documents")
     .select("*")
     .eq("tenant_profile_id", tenantId)
+    .or("is_valid.is.null,is_valid.eq.true")
     .order("uploaded_at", { ascending: false });
 
   return {

@@ -235,6 +235,14 @@ export async function GET(request: Request) {
             .from("documents")
             .update({ verification_status: "expired" })
             .eq("id", cni.document_id);
+
+          // Révoquer la certification du profil locataire
+          if (tenantProfile?.id) {
+            await serviceClient
+              .from("tenant_profiles")
+              .update({ cni_verified_at: null })
+              .eq("profile_id", tenantProfile.id);
+          }
         }
 
         results.processed++;
