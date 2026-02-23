@@ -224,301 +224,214 @@ CREATE POLICY "ai_conversations_admin" ON ai_conversations
 -- 5. EXTENSION PGVECTOR + TABLES RAG
 -- =====================================================
 
--- pgvector est disponible nativement sur Supabase
-CREATE EXTENSION IF NOT EXISTS vector;
+-- Tenter d'installer pgvector. Si indisponible, on skip toute la section RAG.
+DO $$ BEGIN
+  CREATE EXTENSION IF NOT EXISTS vector;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Extension vector non disponible: %. Section RAG ignorée.', SQLERRM;
+END $$;
 
--- 5a. Legal Embeddings
-CREATE TABLE IF NOT EXISTS legal_embeddings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  content TEXT NOT NULL,
-  category TEXT NOT NULL CHECK (category IN (
-    'loi_alur', 'decret_decence', 'bail_type', 'charges',
-    'depot_garantie', 'conge', 'travaux', 'assurance',
-    'fiscalite', 'copropriete', 'edl', 'indexation'
-  )),
-  source_title TEXT,
-  source_url TEXT,
-  source_date DATE,
-  article_reference TEXT,
-  metadata JSONB DEFAULT '{}',
-  embedding vector(1536),
-  tsv tsvector GENERATED ALWAYS AS (
-    to_tsvector('french', coalesce(content, '') || ' ' || coalesce(source_title, ''))
-  ) STORED,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Si pgvector est disponible, créer les tables RAG avec colonnes vector
+-- Sinon, créer les tables sans colonnes vector (fallback JSONB)
+DO $$
+DECLARE
+  v_has_vector BOOLEAN;
+BEGIN
+  SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') INTO v_has_vector;
 
-CREATE INDEX IF NOT EXISTS idx_legal_embeddings_category
-  ON legal_embeddings(category);
-CREATE INDEX IF NOT EXISTS idx_legal_embeddings_vector
-  ON legal_embeddings USING ivfflat (embedding vector_cosine_ops)
-  WITH (lists = 20);
-CREATE INDEX IF NOT EXISTS idx_legal_embeddings_tsv
-  ON legal_embeddings USING gin(tsv);
+  IF v_has_vector THEN
+    RAISE NOTICE 'pgvector détecté, création des tables RAG avec vector(1536)';
 
+    EXECUTE 'CREATE TABLE IF NOT EXISTS legal_embeddings (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      content TEXT NOT NULL,
+      category TEXT NOT NULL,
+      source_title TEXT,
+      source_url TEXT,
+      source_date DATE,
+      article_reference TEXT,
+      metadata JSONB DEFAULT ''{}'',
+      embedding vector(1536),
+      tsv tsvector GENERATED ALWAYS AS (
+        to_tsvector(''french'', coalesce(content, '''') || '' '' || coalesce(source_title, ''''))
+      ) STORED,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )';
+
+    EXECUTE 'CREATE TABLE IF NOT EXISTS platform_knowledge (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      knowledge_type TEXT NOT NULL,
+      target_roles TEXT[] DEFAULT ''{owner,tenant,provider}'',
+      slug TEXT UNIQUE,
+      priority INTEGER DEFAULT 0,
+      metadata JSONB DEFAULT ''{}'',
+      embedding vector(1536),
+      is_published BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )';
+
+    EXECUTE 'CREATE TABLE IF NOT EXISTS user_context_embeddings (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      entity_type TEXT NOT NULL,
+      entity_id UUID NOT NULL,
+      content TEXT NOT NULL,
+      summary TEXT,
+      embedding vector(1536),
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(entity_type, entity_id)
+    )';
+
+  ELSE
+    RAISE NOTICE 'pgvector absent, création des tables RAG sans vector (fallback JSONB)';
+
+    EXECUTE 'CREATE TABLE IF NOT EXISTS legal_embeddings (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      content TEXT NOT NULL,
+      category TEXT NOT NULL,
+      source_title TEXT,
+      source_url TEXT,
+      source_date DATE,
+      article_reference TEXT,
+      metadata JSONB DEFAULT ''{}'',
+      embedding JSONB,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )';
+
+    EXECUTE 'CREATE TABLE IF NOT EXISTS platform_knowledge (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      knowledge_type TEXT NOT NULL,
+      target_roles TEXT[] DEFAULT ''{owner,tenant,provider}'',
+      slug TEXT UNIQUE,
+      priority INTEGER DEFAULT 0,
+      metadata JSONB DEFAULT ''{}'',
+      embedding JSONB,
+      is_published BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )';
+
+    EXECUTE 'CREATE TABLE IF NOT EXISTS user_context_embeddings (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      entity_type TEXT NOT NULL,
+      entity_id UUID NOT NULL,
+      content TEXT NOT NULL,
+      summary TEXT,
+      embedding JSONB,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(entity_type, entity_id)
+    )';
+  END IF;
+END $$;
+
+-- Index standards (non-vector)
+CREATE INDEX IF NOT EXISTS idx_legal_embeddings_category ON legal_embeddings(category);
+CREATE INDEX IF NOT EXISTS idx_platform_knowledge_type ON platform_knowledge(knowledge_type);
+CREATE INDEX IF NOT EXISTS idx_platform_knowledge_slug ON platform_knowledge(slug) WHERE slug IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_user_context_profile ON user_context_embeddings(profile_id);
+CREATE INDEX IF NOT EXISTS idx_user_context_entity ON user_context_embeddings(entity_type, entity_id);
+
+-- Index vector uniquement si pgvector est disponible
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+    BEGIN
+      EXECUTE 'CREATE INDEX IF NOT EXISTS idx_legal_embeddings_vector ON legal_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 20)';
+      EXECUTE 'CREATE INDEX IF NOT EXISTS idx_platform_knowledge_vector ON platform_knowledge USING ivfflat (embedding vector_cosine_ops) WITH (lists = 20)';
+      EXECUTE 'CREATE INDEX IF NOT EXISTS idx_user_context_vector ON user_context_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 20)';
+    EXCEPTION WHEN OTHERS THEN
+      RAISE NOTICE 'Skip vector indexes: %', SQLERRM;
+    END;
+  END IF;
+END $$;
+
+-- RLS
 ALTER TABLE legal_embeddings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_knowledge ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_context_embeddings ENABLE ROW LEVEL SECURITY;
 
--- Lecture publique (connaissances juridiques)
 DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings;
 CREATE POLICY "legal_embeddings_select_authenticated" ON legal_embeddings
   FOR SELECT USING (auth.uid() IS NOT NULL);
-
 DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings;
 CREATE POLICY "legal_embeddings_admin_manage" ON legal_embeddings
-  FOR ALL USING (
-    public.user_role() = 'admin'
-  );
-
--- 5b. Platform Knowledge
-CREATE TABLE IF NOT EXISTS platform_knowledge (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  knowledge_type TEXT NOT NULL CHECK (knowledge_type IN (
-    'faq', 'tutorial', 'best_practice', 'template', 'glossary', 'workflow'
-  )),
-  target_roles TEXT[] DEFAULT '{owner,tenant,provider}',
-  slug TEXT UNIQUE,
-  priority INTEGER DEFAULT 0,
-  metadata JSONB DEFAULT '{}',
-  embedding vector(1536),
-  is_published BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_platform_knowledge_type
-  ON platform_knowledge(knowledge_type);
-CREATE INDEX IF NOT EXISTS idx_platform_knowledge_vector
-  ON platform_knowledge USING ivfflat (embedding vector_cosine_ops)
-  WITH (lists = 20);
-CREATE INDEX IF NOT EXISTS idx_platform_knowledge_slug
-  ON platform_knowledge(slug) WHERE slug IS NOT NULL;
-
-ALTER TABLE platform_knowledge ENABLE ROW LEVEL SECURITY;
+  FOR ALL USING (public.user_role() = 'admin');
 
 DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge;
 CREATE POLICY "platform_knowledge_select_authenticated" ON platform_knowledge
-  FOR SELECT USING (
-    auth.uid() IS NOT NULL AND is_published = true
-  );
-
+  FOR SELECT USING (auth.uid() IS NOT NULL AND is_published = true);
 DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge;
 CREATE POLICY "platform_knowledge_admin_manage" ON platform_knowledge
-  FOR ALL USING (
-    public.user_role() = 'admin'
-  );
-
--- 5c. User Context Embeddings
-CREATE TABLE IF NOT EXISTS user_context_embeddings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  entity_type TEXT NOT NULL CHECK (entity_type IN (
-    'property', 'lease', 'tenant', 'invoice', 'ticket', 'document'
-  )),
-  entity_id UUID NOT NULL,
-  content TEXT NOT NULL,
-  summary TEXT,
-  embedding vector(1536),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(entity_type, entity_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_user_context_profile
-  ON user_context_embeddings(profile_id);
-CREATE INDEX IF NOT EXISTS idx_user_context_entity
-  ON user_context_embeddings(entity_type, entity_id);
-CREATE INDEX IF NOT EXISTS idx_user_context_vector
-  ON user_context_embeddings USING ivfflat (embedding vector_cosine_ops)
-  WITH (lists = 20);
-
-ALTER TABLE user_context_embeddings ENABLE ROW LEVEL SECURITY;
+  FOR ALL USING (public.user_role() = 'admin');
 
 DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings;
 CREATE POLICY "user_context_select_own" ON user_context_embeddings
-  FOR SELECT USING (
-    profile_id IN (
-      SELECT id FROM profiles WHERE user_id = auth.uid()
-    )
-  );
-
+  FOR SELECT USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
 DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings;
 CREATE POLICY "user_context_manage_own" ON user_context_embeddings
-  FOR ALL USING (
-    profile_id IN (
-      SELECT id FROM profiles WHERE user_id = auth.uid()
-    )
-  );
-
+  FOR ALL USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
 DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings;
 CREATE POLICY "user_context_admin" ON user_context_embeddings
-  FOR ALL USING (
-    public.user_role() = 'admin'
-  );
+  FOR ALL USING (public.user_role() = 'admin');
+
+-- Fonctions RAG (uniquement si pgvector)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+    EXECUTE $fn$
+      CREATE OR REPLACE FUNCTION match_legal_documents(
+        query_embedding vector(1536), match_count INTEGER DEFAULT 5,
+        filter_category TEXT DEFAULT NULL, min_similarity FLOAT DEFAULT 0.7
+      ) RETURNS TABLE (id UUID, content TEXT, category TEXT, source_title TEXT, article_reference TEXT, metadata JSONB, similarity FLOAT)
+      LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $f$
+      BEGIN RETURN QUERY SELECT le.id, le.content, le.category, le.source_title, le.article_reference, le.metadata, 1 - (le.embedding <=> query_embedding) AS similarity FROM legal_embeddings le WHERE (filter_category IS NULL OR le.category = filter_category) AND 1 - (le.embedding <=> query_embedding) >= min_similarity ORDER BY le.embedding <=> query_embedding LIMIT match_count; END; $f$;
+    $fn$;
+
+    EXECUTE $fn$
+      CREATE OR REPLACE FUNCTION hybrid_search_legal(
+        query_text TEXT, query_embedding vector(1536), match_count INTEGER DEFAULT 5,
+        filter_category TEXT DEFAULT NULL, vector_weight FLOAT DEFAULT 0.7
+      ) RETURNS TABLE (id UUID, content TEXT, category TEXT, source_title TEXT, article_reference TEXT, combined_score FLOAT)
+      LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $f$
+      DECLARE text_weight FLOAT := 1.0 - vector_weight;
+      BEGIN RETURN QUERY SELECT le.id, le.content, le.category, le.source_title, le.article_reference, (vector_weight * (1 - (le.embedding <=> query_embedding)) + text_weight * COALESCE(ts_rank_cd(le.tsv, plainto_tsquery('french', query_text)), 0)) AS combined_score FROM legal_embeddings le WHERE (filter_category IS NULL OR le.category = filter_category) AND (1 - (le.embedding <=> query_embedding) >= 0.5 OR le.tsv @@ plainto_tsquery('french', query_text)) ORDER BY combined_score DESC LIMIT match_count; END; $f$;
+    $fn$;
+
+    EXECUTE $fn$
+      CREATE OR REPLACE FUNCTION match_platform_knowledge(
+        query_embedding vector(1536), match_count INTEGER DEFAULT 5,
+        filter_type TEXT DEFAULT NULL, filter_role TEXT DEFAULT NULL
+      ) RETURNS TABLE (id UUID, title TEXT, content TEXT, knowledge_type TEXT, similarity FLOAT)
+      LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $f$
+      BEGIN RETURN QUERY SELECT pk.id, pk.title, pk.content, pk.knowledge_type, 1 - (pk.embedding <=> query_embedding) AS similarity FROM platform_knowledge pk WHERE pk.is_published = true AND (filter_type IS NULL OR pk.knowledge_type = filter_type) AND (filter_role IS NULL OR filter_role = ANY(pk.target_roles)) AND 1 - (pk.embedding <=> query_embedding) >= 0.5 ORDER BY pk.embedding <=> query_embedding LIMIT match_count; END; $f$;
+    $fn$;
+
+    EXECUTE $fn$
+      CREATE OR REPLACE FUNCTION match_user_context(
+        query_embedding vector(1536), p_profile_id UUID,
+        match_count INTEGER DEFAULT 5, filter_entity_type TEXT DEFAULT NULL
+      ) RETURNS TABLE (id UUID, entity_type TEXT, entity_id UUID, content TEXT, summary TEXT, similarity FLOAT)
+      LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $f$
+      BEGIN RETURN QUERY SELECT uce.id, uce.entity_type, uce.entity_id, uce.content, uce.summary, 1 - (uce.embedding <=> query_embedding) AS similarity FROM user_context_embeddings uce WHERE uce.profile_id = p_profile_id AND (filter_entity_type IS NULL OR uce.entity_type = filter_entity_type) AND 1 - (uce.embedding <=> query_embedding) >= 0.5 ORDER BY uce.embedding <=> query_embedding LIMIT match_count; END; $f$;
+    $fn$;
+
+    EXECUTE 'GRANT EXECUTE ON FUNCTION match_legal_documents TO authenticated';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION hybrid_search_legal TO authenticated';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION match_platform_knowledge TO authenticated';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION match_user_context TO authenticated';
+  ELSE
+    RAISE NOTICE 'pgvector absent: fonctions RAG non créées.';
+  END IF;
+END $$;
 
 -- =====================================================
--- 6. FONCTIONS RPC RAG
--- =====================================================
-
--- 6a. match_legal_documents : recherche vectorielle dans legal_embeddings
-CREATE OR REPLACE FUNCTION match_legal_documents(
-  query_embedding vector(1536),
-  match_count INTEGER DEFAULT 5,
-  filter_category TEXT DEFAULT NULL,
-  min_similarity FLOAT DEFAULT 0.7
-)
-RETURNS TABLE (
-  id UUID,
-  content TEXT,
-  category TEXT,
-  source_title TEXT,
-  article_reference TEXT,
-  metadata JSONB,
-  similarity FLOAT
-)
-LANGUAGE plpgsql STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    le.id,
-    le.content,
-    le.category,
-    le.source_title,
-    le.article_reference,
-    le.metadata,
-    1 - (le.embedding <=> query_embedding) AS similarity
-  FROM legal_embeddings le
-  WHERE
-    (filter_category IS NULL OR le.category = filter_category)
-    AND 1 - (le.embedding <=> query_embedding) >= min_similarity
-  ORDER BY le.embedding <=> query_embedding
-  LIMIT match_count;
-END;
-$$;
-
--- 6b. hybrid_search_legal : recherche hybride vectorielle + full-text
-CREATE OR REPLACE FUNCTION hybrid_search_legal(
-  query_text TEXT,
-  query_embedding vector(1536),
-  match_count INTEGER DEFAULT 5,
-  filter_category TEXT DEFAULT NULL,
-  vector_weight FLOAT DEFAULT 0.7
-)
-RETURNS TABLE (
-  id UUID,
-  content TEXT,
-  category TEXT,
-  source_title TEXT,
-  article_reference TEXT,
-  combined_score FLOAT
-)
-LANGUAGE plpgsql STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  text_weight FLOAT := 1.0 - vector_weight;
-BEGIN
-  RETURN QUERY
-  SELECT
-    le.id,
-    le.content,
-    le.category,
-    le.source_title,
-    le.article_reference,
-    (
-      vector_weight * (1 - (le.embedding <=> query_embedding))
-      + text_weight * COALESCE(ts_rank_cd(le.tsv, plainto_tsquery('french', query_text)), 0)
-    ) AS combined_score
-  FROM legal_embeddings le
-  WHERE
-    (filter_category IS NULL OR le.category = filter_category)
-    AND (
-      1 - (le.embedding <=> query_embedding) >= 0.5
-      OR le.tsv @@ plainto_tsquery('french', query_text)
-    )
-  ORDER BY combined_score DESC
-  LIMIT match_count;
-END;
-$$;
-
--- 6c. match_platform_knowledge : recherche dans la base de connaissances
-CREATE OR REPLACE FUNCTION match_platform_knowledge(
-  query_embedding vector(1536),
-  match_count INTEGER DEFAULT 5,
-  filter_type TEXT DEFAULT NULL,
-  filter_role TEXT DEFAULT NULL
-)
-RETURNS TABLE (
-  id UUID,
-  title TEXT,
-  content TEXT,
-  knowledge_type TEXT,
-  similarity FLOAT
-)
-LANGUAGE plpgsql STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    pk.id,
-    pk.title,
-    pk.content,
-    pk.knowledge_type,
-    1 - (pk.embedding <=> query_embedding) AS similarity
-  FROM platform_knowledge pk
-  WHERE
-    pk.is_published = true
-    AND (filter_type IS NULL OR pk.knowledge_type = filter_type)
-    AND (filter_role IS NULL OR filter_role = ANY(pk.target_roles))
-    AND 1 - (pk.embedding <=> query_embedding) >= 0.5
-  ORDER BY pk.embedding <=> query_embedding
-  LIMIT match_count;
-END;
-$$;
-
--- 6d. match_user_context : recherche dans le contexte utilisateur
-CREATE OR REPLACE FUNCTION match_user_context(
-  query_embedding vector(1536),
-  p_profile_id UUID,
-  match_count INTEGER DEFAULT 5,
-  filter_entity_type TEXT DEFAULT NULL
-)
-RETURNS TABLE (
-  id UUID,
-  entity_type TEXT,
-  entity_id UUID,
-  content TEXT,
-  summary TEXT,
-  similarity FLOAT
-)
-LANGUAGE plpgsql STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    uce.id,
-    uce.entity_type,
-    uce.entity_id,
-    uce.content,
-    uce.summary,
-    1 - (uce.embedding <=> query_embedding) AS similarity
-  FROM user_context_embeddings uce
-  WHERE
-    uce.profile_id = p_profile_id
-    AND (filter_entity_type IS NULL OR uce.entity_type = filter_entity_type)
-    AND 1 - (uce.embedding <=> query_embedding) >= 0.5
-  ORDER BY uce.embedding <=> query_embedding
-  LIMIT match_count;
-END;
-$$;
-
--- =====================================================
--- 7. GRANTS
+-- 7. GRANTS (tables non-vector)
 -- =====================================================
 
 GRANT SELECT, INSERT ON tenant_rewards TO authenticated;
@@ -529,11 +442,6 @@ GRANT SELECT, INSERT ON ai_conversations TO authenticated;
 GRANT SELECT ON legal_embeddings TO authenticated;
 GRANT SELECT ON platform_knowledge TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON user_context_embeddings TO authenticated;
-
-GRANT EXECUTE ON FUNCTION match_legal_documents TO authenticated;
-GRANT EXECUTE ON FUNCTION hybrid_search_legal TO authenticated;
-GRANT EXECUTE ON FUNCTION match_platform_knowledge TO authenticated;
-GRANT EXECUTE ON FUNCTION match_user_context TO authenticated;
 
 -- =====================================================
 -- 8. COMMENTS
@@ -546,10 +454,5 @@ COMMENT ON TABLE ai_conversations IS 'Historique analytique des conversations av
 COMMENT ON TABLE legal_embeddings IS 'Embeddings vectoriels des documents juridiques pour RAG';
 COMMENT ON TABLE platform_knowledge IS 'Base de connaissances plateforme avec embeddings pour RAG';
 COMMENT ON TABLE user_context_embeddings IS 'Embeddings du contexte utilisateur pour recherche personnalisee RAG';
-
-COMMENT ON FUNCTION match_legal_documents IS 'Recherche semantique vectorielle dans les documents juridiques';
-COMMENT ON FUNCTION hybrid_search_legal IS 'Recherche hybride (vectorielle + full-text) dans les documents juridiques';
-COMMENT ON FUNCTION match_platform_knowledge IS 'Recherche semantique dans la base de connaissances plateforme';
-COMMENT ON FUNCTION match_user_context IS 'Recherche semantique dans le contexte utilisateur (biens, baux, tickets)';
 
 COMMIT;

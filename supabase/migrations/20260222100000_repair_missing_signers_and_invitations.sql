@@ -121,65 +121,32 @@ WHERE ls.role IN ('locataire_principal', 'colocataire')
 
 -- ========================================================
 -- ÉTAPE 5 : Filet de sécurité — bail da2eb9da (Thomas VOLBERG)
--- Si après les étapes génériques, ce bail n'a toujours pas de locataire,
--- on le crée manuellement avec l'email connu.
+-- Uniquement si ce bail existe (migration de réparation production)
 -- ========================================================
+DO $$ BEGIN
+IF EXISTS (SELECT 1 FROM public.leases WHERE id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7') THEN
 
--- 5a. Créer le locataire signer si manquant
-INSERT INTO public.lease_signers (lease_id, profile_id, invited_email, invited_name, role, signature_status, signed_at)
-SELECT
-  'da2eb9da-1ff1-4020-8682-5f993aa6fde7'::UUID,
-  pr.id,
-  'volberg.thomas@hotmail.fr',
-  'Thomas VOLBERG',
-  'locataire_principal',
-  'signed',
-  NOW()
-FROM (
-  SELECT pr2.id
-  FROM public.profiles pr2
-  JOIN auth.users u ON u.id = pr2.user_id
-  WHERE LOWER(u.email) = 'volberg.thomas@hotmail.fr'
-  LIMIT 1
-) pr
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.lease_signers ls
-  WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
-    AND ls.role IN ('locataire_principal', 'locataire', 'tenant')
-);
+  -- 5a. Créer le locataire signer si manquant
+  INSERT INTO public.lease_signers (lease_id, profile_id, invited_email, invited_name, role, signature_status, signed_at)
+  SELECT
+    'da2eb9da-1ff1-4020-8682-5f993aa6fde7'::UUID, pr.id, 'volberg.thomas@hotmail.fr', 'Thomas VOLBERG', 'locataire_principal', 'signed', NOW()
+  FROM (SELECT pr2.id FROM public.profiles pr2 JOIN auth.users u ON u.id = pr2.user_id WHERE LOWER(u.email) = 'volberg.thomas@hotmail.fr' LIMIT 1) pr
+  WHERE NOT EXISTS (SELECT 1 FROM public.lease_signers ls WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7' AND ls.role IN ('locataire_principal', 'locataire', 'tenant'));
 
--- 5b. Fallback si le profil n'existe pas (signer orphelin avec email)
-INSERT INTO public.lease_signers (lease_id, profile_id, invited_email, invited_name, role, signature_status, signed_at)
-SELECT
-  'da2eb9da-1ff1-4020-8682-5f993aa6fde7'::UUID,
-  NULL,
-  'volberg.thomas@hotmail.fr',
-  'Thomas VOLBERG',
-  'locataire_principal',
-  'signed',
-  NOW()
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.lease_signers ls
-  WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
-    AND ls.role IN ('locataire_principal', 'locataire', 'tenant')
-);
+  -- 5b. Fallback signer orphelin
+  INSERT INTO public.lease_signers (lease_id, profile_id, invited_email, invited_name, role, signature_status, signed_at)
+  SELECT 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'::UUID, NULL, 'volberg.thomas@hotmail.fr', 'Thomas VOLBERG', 'locataire_principal', 'signed', NOW()
+  WHERE NOT EXISTS (SELECT 1 FROM public.lease_signers ls WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7' AND ls.role IN ('locataire_principal', 'locataire', 'tenant'));
 
--- 5c. Créer le proprio signer si manquant pour ce bail spécifique
-INSERT INTO public.lease_signers (lease_id, profile_id, role, signature_status, signed_at)
-SELECT
-  'da2eb9da-1ff1-4020-8682-5f993aa6fde7'::UUID,
-  p.owner_id,
-  'proprietaire',
-  'signed',
-  NOW()
-FROM public.leases l
-JOIN public.properties p ON p.id = l.property_id
-WHERE l.id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
-  AND NOT EXISTS (
-    SELECT 1 FROM public.lease_signers ls
-    WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
-      AND ls.role = 'proprietaire'
-  );
+  -- 5c. Proprio signer
+  INSERT INTO public.lease_signers (lease_id, profile_id, role, signature_status, signed_at)
+  SELECT 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'::UUID, p.owner_id, 'proprietaire', 'signed', NOW()
+  FROM public.leases l JOIN public.properties p ON p.id = l.property_id
+  WHERE l.id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
+    AND NOT EXISTS (SELECT 1 FROM public.lease_signers ls WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7' AND ls.role = 'proprietaire');
+
+END IF;
+END $$;
 
 -- ========================================================
 -- ÉTAPE 6 : Lier les profils tenant sans user_id à auth.users

@@ -1520,6 +1520,74 @@ export type UnifiedMessageRow = {
 }
 
 // ============================================
+// TENANT PAYMENT METHODS TYPES - SOTA 2026
+// ============================================
+
+export type TenantPaymentMethodRow = {
+  id: string
+  tenant_profile_id: string
+  stripe_customer_id: string
+  stripe_payment_method_id: string
+  type: 'card' | 'sepa_debit' | 'apple_pay' | 'google_pay' | 'link'
+  is_default: boolean
+  label: string | null
+  card_brand: string | null
+  card_last4: string | null
+  card_exp_month: number | null
+  card_exp_year: number | null
+  card_fingerprint: string | null
+  sepa_last4: string | null
+  sepa_bank_code: string | null
+  sepa_country: string | null
+  sepa_fingerprint: string | null
+  sepa_mandate_id: string | null
+  status: 'active' | 'expired' | 'revoked' | 'failed'
+  last_used_at: string | null
+  failure_count: number
+  metadata: Json
+  created_at: string
+  updated_at: string
+}
+
+export type PaymentMethodAuditLogRow = {
+  id: string
+  tenant_profile_id: string
+  payment_method_id: string | null
+  action: 'created' | 'set_default' | 'revoked' | 'expired' | 'payment_success' | 'payment_failed' | 'prenotification_sent' | 'mandate_created' | 'mandate_cancelled' | 'data_accessed'
+  details: Json
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
+}
+
+export type SepaMandateRow = {
+  id: string
+  mandate_reference: string
+  tenant_profile_id: string
+  owner_profile_id: string
+  lease_id: string
+  debtor_name: string
+  debtor_iban: string
+  creditor_name: string
+  creditor_iban: string
+  creditor_bic: string | null
+  stripe_customer_id: string | null
+  stripe_payment_method_id: string | null
+  stripe_mandate_id: string | null
+  amount: number
+  signature_date: string
+  signed_at: string | null
+  signature_method: 'electronic' | 'paper' | 'api'
+  first_collection_date: string | null
+  status: 'pending' | 'active' | 'suspended' | 'cancelled' | 'expired' | 'failed'
+  last_prenotification_sent_at: string | null
+  next_collection_date: string | null
+  metadata: Json
+  created_at: string
+  updated_at: string
+}
+
+// ============================================
 // Generic Row type for tables not yet fully typed
 type GenericRowType = Record<string, unknown> & { id?: string; created_at?: string; updated_at?: string }
 
@@ -2232,7 +2300,16 @@ export type Database = {
       repair_cost_grid: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       rooms: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       rule_acceptances: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
-      sepa_mandates: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      sepa_mandates: {
+        Row: SepaMandateRow
+        Insert: Partial<SepaMandateRow>
+        Update: Partial<SepaMandateRow>
+        Relationships: [
+          { foreignKeyName: "sepa_mandates_tenant_profile_id_fkey"; columns: ["tenant_profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "sepa_mandates_owner_profile_id_fkey"; columns: ["owner_profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "sepa_mandates_lease_id_fkey"; columns: ["lease_id"]; isOneToOne: false; referencedRelation: "leases"; referencedColumns: ["id"] }
+        ]
+      }
       signature_request_signers: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       signature_tokens: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       signature_validations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
@@ -2246,6 +2323,24 @@ export type Database = {
       tenant_documents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       tenant_identity_documents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       tenant_profiles: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      tenant_payment_methods: {
+        Row: TenantPaymentMethodRow
+        Insert: Partial<TenantPaymentMethodRow>
+        Update: Partial<TenantPaymentMethodRow>
+        Relationships: [
+          { foreignKeyName: "tenant_payment_methods_tenant_profile_id_fkey"; columns: ["tenant_profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "fk_tpm_sepa_mandate"; columns: ["sepa_mandate_id"]; isOneToOne: false; referencedRelation: "sepa_mandates"; referencedColumns: ["id"] }
+        ]
+      }
+      payment_method_audit_log: {
+        Row: PaymentMethodAuditLogRow
+        Insert: Partial<PaymentMethodAuditLogRow>
+        Update: Partial<PaymentMethodAuditLogRow>
+        Relationships: [
+          { foreignKeyName: "payment_method_audit_log_tenant_profile_id_fkey"; columns: ["tenant_profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "payment_method_audit_log_payment_method_id_fkey"; columns: ["payment_method_id"]; isOneToOne: false; referencedRelation: "tenant_payment_methods"; referencedColumns: ["id"] }
+        ]
+      }
       tenant_rewards: {
         Row: {
           id: string
@@ -2543,6 +2638,11 @@ export type PropertyOwnership = PropertyOwnershipRow
 // Building & Building Units - SOTA 2026 (Immeuble Entier)
 export type Building = BuildingRow
 export type BuildingUnit = BuildingUnitRow
+
+// Tenant Payment Methods - SOTA 2026
+export type TenantPaymentMethod = TenantPaymentMethodRow
+export type PaymentMethodAuditLog = PaymentMethodAuditLogRow
+export type SepaMandate = SepaMandateRow
 
 // ============================================
 // P2: NAMING NORMALIZATION TYPES (SOTA 2026)
