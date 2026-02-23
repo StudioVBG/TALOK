@@ -101,11 +101,14 @@ export const POST = withSecurity(async function POST(request: Request) {
     let resolvedPropertyId = propertyId;
     let resolvedLeaseId = leaseId;
 
+    // Résoudre l'entity_id depuis la propriété ou le bail
+    let resolvedEntityId: string | null = null;
+
     // Vérifier que la propriété appartient bien à l'utilisateur (si property_id fourni)
     if (resolvedPropertyId && profileAny.role === "owner") {
       const { data: property } = await serviceClient
         .from("properties")
-        .select("id, owner_id")
+        .select("id, owner_id, legal_entity_id")
         .eq("id", resolvedPropertyId)
         .single();
 
@@ -115,6 +118,7 @@ export const POST = withSecurity(async function POST(request: Request) {
           { status: 403 }
         );
       }
+      resolvedEntityId = (property as any).legal_entity_id || null;
     }
 
     // ✅ AUTO-RESOLVE: Pour les locataires, résoudre property_id et lease_id
@@ -189,6 +193,29 @@ export const POST = withSecurity(async function POST(request: Request) {
       }
     }
 
+    // Résoudre entity_id depuis le bail si pas encore résolu
+    if (!resolvedEntityId && resolvedLeaseId) {
+      const { data: leaseForEntity } = await serviceClient
+        .from("leases")
+        .select("signatory_entity_id")
+        .eq("id", resolvedLeaseId)
+        .maybeSingle();
+      if (leaseForEntity) {
+        resolvedEntityId = (leaseForEntity as any).signatory_entity_id || null;
+      }
+    }
+    // Fallback: résoudre depuis la propriété si toujours pas d'entity
+    if (!resolvedEntityId && resolvedPropertyId) {
+      const { data: propForEntity } = await serviceClient
+        .from("properties")
+        .select("legal_entity_id")
+        .eq("id", resolvedPropertyId)
+        .maybeSingle();
+      if (propForEntity) {
+        resolvedEntityId = (propForEntity as any).legal_entity_id || null;
+      }
+    }
+
     // Créer l'entrée dans la table documents
     const { data: document, error: docError } = await serviceClient
       .from("documents")
@@ -200,6 +227,7 @@ export const POST = withSecurity(async function POST(request: Request) {
         created_by_profile_id: profileAny.id,
         owner_id: resolvedOwnerId,
         tenant_id: profileAny.role === "tenant" ? profileAny.id : null,
+        entity_id: resolvedEntityId,
       })
       .select()
       .single();

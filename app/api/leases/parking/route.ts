@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
     const { data: property } = await serviceClient
       .from("properties")
-      .select("id, owner_id")
+      .select("id, owner_id, legal_entity_id")
       .eq("id", propertyId)
       .single();
 
@@ -64,6 +64,7 @@ export async function POST(request: Request) {
     const leaseData = {
       property_id: propertyId,
       type_bail: "parking",
+      signatory_entity_id: body.signatory_entity_id || (property as any).legal_entity_id || null,
       loyer: body.loyer || body.rent || 0,
       charges_forfaitaires: body.charges || 0,
       depot_de_garantie: body.depot_de_garantie || body.deposit || 0,
