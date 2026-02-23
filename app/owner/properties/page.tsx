@@ -31,7 +31,7 @@ import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-containe
 
 // Imports SOTA
 import { PageTransition } from "@/components/ui/page-transition";
-import { UsageLimitBanner } from "@/components/subscription";
+import { UsageLimitBanner, useUsageLimit, UpgradeModal } from "@/components/subscription";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -81,6 +81,9 @@ export default function OwnerPropertiesPage() {
   const { data: leases = [], error: leasesError } = useLeases(undefined, {
     enabled: !isLoading && properties.length > 0,
   });
+
+  const { isAtLimit, canAdd } = useUsageLimit("properties");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -473,27 +476,39 @@ export default function OwnerPropertiesPage() {
                   <span className="hidden sm:inline">Exporter</span>
                 </Button>
                 
-                {/* Bouton Ajouter */}
-                <Button
-                  asChild
-                  className="relative overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  <Link href="/owner/properties/new">
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      whileHover={{ x: ["0%", "100%"], transition: { duration: 0.6, repeat: Infinity, repeatType: "reverse" } }}
-                    />
-                    <span className="relative flex items-center">
+                {/* Bouton Ajouter — conditionnel selon limites du forfait */}
+                {canAdd ? (
+                  <Button
+                    asChild
+                    className="relative overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                  >
+                    <Link href="/owner/properties/new">
                       <motion.div
-                        whileHover={{ rotate: 90 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                      </motion.div>
+                        className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        whileHover={{ x: ["0%", "100%"], transition: { duration: 0.6, repeat: Infinity, repeatType: "reverse" } }}
+                      />
+                      <span className="relative flex items-center">
+                        <motion.div
+                          whileHover={{ rotate: 90 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                        </motion.div>
+                        Ajouter un bien
+                      </span>
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="relative overflow-hidden group shadow-lg transition-all duration-300 bg-gradient-to-r from-gray-400 to-gray-500 cursor-pointer"
+                  >
+                    <span className="relative flex items-center">
+                      <Plus className="mr-2 h-4 w-4" />
                       Ajouter un bien
                     </span>
-                  </Link>
-                </Button>
+                  </Button>
+                )}
               </motion.div>
             </motion.div>
 
@@ -714,6 +729,12 @@ export default function OwnerPropertiesPage() {
         </motion.div>
         </PullToRefreshContainer>
       </PageTransition>
+
+      {/* Modal d'upgrade quand limite atteinte */}
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+      />
     </ProtectedRoute>
   );
 }
