@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     // Récupérer le bail
     const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
-      .select("id, loyer, charges_forfaitaires, property_id")
+      .select("id, loyer, charges_forfaitaires, property_id, signatory_entity_id")
       .eq("id", validated.lease_id as any)
       .single();
 
@@ -147,6 +147,7 @@ export async function POST(request: Request) {
         montant_charges: Number(leaseData.charges_forfaitaires || 0),
         montant_total: Number(leaseData.loyer || 0) + Number(leaseData.charges_forfaitaires || 0),
         statut: "draft" as any,
+        issuer_entity_id: leaseData.signatory_entity_id ?? null,
       } as any)
       .select()
       .single();

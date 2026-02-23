@@ -119,11 +119,12 @@ export const POST = withSecurity(async function POST(request: Request) {
     const role = profileData.role as string;
     let resolvedPropertyId = propertyId;
     let ownerId: string | null = null;
+    let resolvedEntityId: string | null = null;
 
     if (resolvedPropertyId) {
       const { data: property, error: propertyError } = await serviceClient
         .from("properties")
-        .select("id, owner_id")
+        .select("id, owner_id, legal_entity_id")
         .eq("id", resolvedPropertyId)
         .single();
 
@@ -132,6 +133,7 @@ export const POST = withSecurity(async function POST(request: Request) {
       }
 
       ownerId = property.owner_id as string;
+      resolvedEntityId = (property as any).legal_entity_id || null;
       const isOwner = ownerId === profileId;
       const isAdmin = role === "admin";
 
@@ -145,7 +147,7 @@ export const POST = withSecurity(async function POST(request: Request) {
       // Récupérer la propriété via le bail
       const { data: lease, error: leaseError } = await serviceClient
         .from("leases")
-        .select("id, property_id")
+        .select("id, property_id, signatory_entity_id")
         .eq("id", leaseId)
         .single();
 
@@ -154,10 +156,11 @@ export const POST = withSecurity(async function POST(request: Request) {
       }
 
       resolvedPropertyId = lease.property_id as string;
+      resolvedEntityId = (lease as any).signatory_entity_id || null;
 
       const { data: property, error: propertyError } = await serviceClient
         .from("properties")
-        .select("id, owner_id")
+        .select("id, owner_id, legal_entity_id")
         .eq("id", resolvedPropertyId)
         .single();
 
@@ -166,6 +169,9 @@ export const POST = withSecurity(async function POST(request: Request) {
       }
 
       ownerId = property.owner_id as string;
+      if (!resolvedEntityId) {
+        resolvedEntityId = (property as any).legal_entity_id || null;
+      }
       const isOwner = ownerId === profileId;
       const isAdmin = role === "admin";
 
@@ -283,6 +289,7 @@ export const POST = withSecurity(async function POST(request: Request) {
         preview_url: previewUrl,
         title: file.name,
         notes: null,
+        entity_id: resolvedEntityId,
       };
 
       if (supportsGallery) {
