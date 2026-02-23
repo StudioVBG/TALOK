@@ -345,6 +345,28 @@ export const usePropertyWizardStore = create<WizardState>()(
       console.info(`[WizardStore] Draft créé avec succès: ${newPropertyId}`);
     } catch (error: unknown) {
       console.error('[WizardStore] Erreur création draft:', error);
+
+      // Détecter erreur de limite d'abonnement (403 SUBSCRIPTION_LIMIT)
+      const errorData = (error as any)?.data;
+      const isSubscriptionLimit = errorData?.error === "SUBSCRIPTION_LIMIT"
+        || (error instanceof Error && error.message === "SUBSCRIPTION_LIMIT");
+
+      if (isSubscriptionLimit) {
+        const limitMessage = errorData?.message
+          || "Limite de biens atteinte pour votre forfait. Passez à un forfait supérieur.";
+        set({
+          syncStatus: 'error',
+          lastError: limitMessage,
+          isInitializing: false
+        });
+        toast({
+          variant: "destructive",
+          title: "Limite atteinte",
+          description: limitMessage,
+        });
+        return;
+      }
+
       const errorMessage = error instanceof Error ? error.message : "Erreur lors de la création du brouillon";
       set({
         syncStatus: 'error',

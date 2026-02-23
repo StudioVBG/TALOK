@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { useSubscription } from "@/components/subscription";
 
 // Composant partagé de visualisation
 import { 
@@ -116,7 +117,8 @@ export function PropertyDetailsWrapper({
 }: PropertyDetailsWrapperProps) {
   const router = useRouter();
   const { toast } = useToast();
-  
+  const { refresh: refreshSubscription } = useSubscription();
+
   const [isEditing, setIsEditing] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -140,6 +142,7 @@ export function PropertyDetailsWrapper({
     errorMessage: "Impossible de supprimer le bien.",
     invalidateQueries: ["properties"],
     onSuccess: () => {
+      refreshSubscription();
       router.push("/owner/properties");
     },
   });

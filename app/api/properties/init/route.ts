@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { generateCode } from "@/lib/helpers/code-generator";
+import { withSubscriptionLimit } from "@/lib/middleware/subscription-check";
 
 /**
  * Extrait le code département depuis un code postal
@@ -58,6 +59,22 @@ export async function POST(request: Request) {
 
     if (profileError || !profile || profile.role !== "owner") {
       return NextResponse.json({ error: "Profil propriétaire requis" }, { status: 403 });
+    }
+
+    // 2b. Vérifier les limites d'abonnement
+    const limitCheck = await withSubscriptionLimit(profile.id, "properties");
+    if (!limitCheck.allowed) {
+      return NextResponse.json({
+        error: "SUBSCRIPTION_LIMIT",
+        message: limitCheck.message,
+        details: {
+          current: limitCheck.current,
+          max: limitCheck.max,
+          remaining: limitCheck.remaining,
+          plan: limitCheck.plan,
+        },
+        upgrade_url: "/settings/billing",
+      }, { status: 403 });
     }
 
     // 3. Valider les données d'entrée

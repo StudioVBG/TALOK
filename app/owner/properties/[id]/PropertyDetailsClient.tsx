@@ -38,6 +38,7 @@ import { PropertyMetersSection } from "@/components/owner/properties/PropertyMet
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { EntityNotes } from "@/components/ui/entity-notes";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { useSubscription } from "@/components/subscription";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Navigation, CheckCircle2 } from "lucide-react";
@@ -122,6 +123,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { refresh: refreshSubscription } = useSubscription();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [property, setProperty] = useState(details.property);
@@ -197,6 +199,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
     errorMessage: "Impossible de supprimer le bien.",
     invalidateQueries: ["property-details", propertyId],
     onSuccess: () => {
+      refreshSubscription();
       router.push("/owner/properties");
     },
   });
