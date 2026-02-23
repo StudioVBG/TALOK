@@ -86,6 +86,18 @@ export async function POST(request: Request, { params }: PageProps) {
     const propertyId = lease.property_id || null;
     const ownerId = (lease.properties as any)?.owner_id || null;
 
+    // Résoudre le profil du locataire via son email (peut être null si pas encore inscrit)
+    let tenantProfileId: string | null = null;
+    const { data: tenantProfileRow } = await serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("email", tenantEmail)
+      .eq("role", "tenant")
+      .maybeSingle();
+    if (tenantProfileRow) {
+      tenantProfileId = tenantProfileRow.id;
+    }
+
     // Récupérer le fichier uploadé et les données OCR
     const formData = await request.formData();
     const file = formData.get("file") as File;
@@ -330,14 +342,15 @@ export async function POST(request: Request, { params }: PageProps) {
       .from("documents")
       .insert({
         type: docType,
-        title: docTitle,                // ✅ Titre enrichi
+        title: docTitle,
         lease_id: lease.id,
-        property_id: propertyId,        // ✅ AJOUT - Permet au propriétaire de voir
-        owner_id: ownerId,              // ✅ AJOUT - Liaison avec le propriétaire
+        property_id: propertyId,
+        owner_id: ownerId,
+        tenant_id: tenantProfileId,
         storage_path: filePath,
-        expiry_date: expiryDate,        // Date d'expiration pour le suivi
-        verification_status: "pending", // En attente de vérification
-        is_archived: false,             // ✅ Explicitement non archivé
+        expiry_date: expiryDate,
+        verification_status: "pending",
+        is_archived: false,
         metadata: {
           ...extractedData,
           tenant_email: tenantEmail,
@@ -372,6 +385,37 @@ export async function POST(request: Request, { params }: PageProps) {
     }
 
     console.log("[Upload CNI] Document créé:", docData?.id, "expiry_date:", expiryDate);
+
+    // Synchroniser tenant_profiles (si le locataire a déjà un compte)
+    if (docData && tenantProfileId) {
+      try {
+        const cniNumber =
+          (ocrData.numero_cni as string)?.trim() ||
+          `CNI_UPLOADED_${docData.id}`;
+
+        if (side === "recto") {
+          await serviceClient
+            .from("tenant_profiles")
+            .upsert(
+              {
+                profile_id: tenantProfileId,
+                cni_number: cniNumber,
+                cni_recto_path: filePath,
+                cni_expiry_date: expiryDate,
+                cni_verified_at: new Date().toISOString(),
+              },
+              { onConflict: "profile_id" }
+            );
+        } else if (side === "verso") {
+          await serviceClient
+            .from("tenant_profiles")
+            .update({ cni_verso_path: filePath })
+            .eq("profile_id", tenantProfileId);
+        }
+      } catch (syncErr) {
+        console.error("[Upload CNI] Erreur sync tenant_profiles:", syncErr);
+      }
+    }
 
     // Retourner les données avec info OCR
     return NextResponse.json({

@@ -98,6 +98,7 @@ export async function fetchDocuments(
     .from("documents")
     .select("*", { count: "exact" })
     .eq("owner_id", options.ownerId)
+    .or("is_archived.is.null,is_archived.eq.false")
     .order("created_at", { ascending: false });
 
   // Filtrer par propriété si spécifié

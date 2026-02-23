@@ -162,29 +162,37 @@ function DocumentGroup({
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
-  // Regrouper CNI recto+verso ensemble
+  // Regrouper CNI recto+verso ensemble (priorité lease_id, puis tenant_id, avec dédup)
   const groupedDocs = useMemo(() => {
     const cniRectos = documents.filter(d => d.type === "cni_recto");
     const cniVersos = documents.filter(d => d.type === "cni_verso");
     const others = documents.filter(d => !["cni_recto", "cni_verso"].includes(d.type));
-    
+
     const cniPairs: { recto?: DocumentRow; verso?: DocumentRow }[] = [];
-    
-    // Apparier les CNI par lease_id ou tenant_id
+    const matchedVersoIds = new Set<string>();
+
     cniRectos.forEach(recto => {
-      const matchingVerso = cniVersos.find(verso => 
-        verso.lease_id === recto.lease_id || verso.tenant_id === recto.tenant_id
-      );
+      const matchingVerso =
+        cniVersos.find(v =>
+          !matchedVersoIds.has(v.id) &&
+          v.lease_id != null &&
+          v.lease_id === recto.lease_id
+        ) ||
+        cniVersos.find(v =>
+          !matchedVersoIds.has(v.id) &&
+          v.tenant_id != null &&
+          v.tenant_id === recto.tenant_id
+        );
+      if (matchingVerso) matchedVersoIds.add(matchingVerso.id);
       cniPairs.push({ recto, verso: matchingVerso });
     });
-    
-    // Ajouter les versos orphelins
+
     cniVersos.forEach(verso => {
-      if (!cniPairs.find(pair => pair.verso?.id === verso.id)) {
+      if (!matchedVersoIds.has(verso.id)) {
         cniPairs.push({ verso });
       }
     });
-    
+
     return { cniPairs, others };
   }, [documents]);
 
@@ -229,8 +237,8 @@ function DocumentGroup({
           aria-label={`Documents de ${title}`}
         >
           {/* CNI groupées */}
-          {groupedDocs.cniPairs.map((pair, idx) => (
-            <div key={`cni-pair-${idx}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+          {groupedDocs.cniPairs.map((pair) => (
+            <div key={`cni-pair-${pair.recto?.id || pair.verso?.id}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
               <div className="flex-1 grid grid-cols-2 gap-3">
                 {pair.recto && (
                   <DocumentMiniCard 
