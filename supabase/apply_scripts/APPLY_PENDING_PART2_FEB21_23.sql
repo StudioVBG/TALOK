@@ -19,6 +19,7 @@
 BEGIN;
 
 DROP POLICY IF EXISTS "EDL signatures creator update" ON edl_signatures;
+DROP POLICY IF EXISTS "EDL signatures update" ON edl_signatures;
 
 CREATE POLICY "EDL signatures update"
   ON edl_signatures FOR UPDATE
@@ -1365,48 +1366,33 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 
 -- === SOURCE: 20260223000000_fix_tenant_documents_rls.sql ===
+-- NOTE: Encapsulé dans DO $$ car tenant_documents peut ne pas exister
 
--- Migration : Corriger les politiques RLS sur tenant_documents
--- Date : 2026-02-23
---
--- Problème : Les politiques RLS existantes utilisent profile_id = auth.uid()
--- mais auth.uid() retourne le user_id (auth.users.id), pas le profile_id (profiles.id).
--- Résultat : les locataires ne peuvent jamais voir leurs propres documents.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'tenant_documents' AND schemaname = 'public') THEN
+    EXECUTE 'DROP POLICY IF EXISTS "tenant_view_own_documents" ON tenant_documents';
+    EXECUTE 'DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents';
 
--- ============================================
--- SUPPRIMER LES POLITIQUES INCORRECTES
--- ============================================
+    EXECUTE '
+      CREATE POLICY "tenant_view_own_documents" ON tenant_documents
+        FOR SELECT USING (
+          tenant_profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
+        )';
 
-DROP POLICY IF EXISTS "tenant_view_own_documents" ON tenant_documents;
-DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
+    EXECUTE '
+      CREATE POLICY "tenant_insert_own_documents" ON tenant_documents
+        FOR INSERT WITH CHECK (
+          tenant_profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
+        )';
 
--- ============================================
--- RECRÉER AVEC LA BONNE LOGIQUE
--- ============================================
+    RAISE NOTICE 'tenant_documents: policies RLS corrigées';
+  ELSE
+    RAISE NOTICE 'tenant_documents: table absente — skip';
+  END IF;
+END $$;
 
--- Le locataire peut voir ses propres documents
-CREATE POLICY "tenant_view_own_documents" ON tenant_documents
-  FOR SELECT USING (
-    tenant_profile_id IN (
-      SELECT id FROM profiles WHERE user_id = auth.uid()
-    )
-  );
-
--- Le locataire peut uploader ses documents
-CREATE POLICY "tenant_insert_own_documents" ON tenant_documents
-  FOR INSERT WITH CHECK (
-    tenant_profile_id IN (
-      SELECT id FROM profiles WHERE user_id = auth.uid()
-    )
-  );
-
--- ============================================
--- AJOUTER tenant_email DANS LES METADATA DE L'EXPIRY CRON
--- La fonction check_expiring_cni() utilise d.metadata->>'tenant_email'
--- mais cette donnée n'était pas toujours présente.
--- Mettre à jour les documents CNI existants pour ajouter le tenant_email.
--- ============================================
-
+-- Backfill tenant_email dans metadata des CNI
 UPDATE documents d
 SET metadata = COALESCE(d.metadata, '{}'::jsonb) || jsonb_build_object(
   'tenant_email', COALESCE(
@@ -1417,15 +1403,6 @@ SET metadata = COALESCE(d.metadata, '{}'::jsonb) || jsonb_build_object(
 WHERE d.type IN ('cni_recto', 'cni_verso')
   AND d.tenant_id IS NOT NULL
   AND (d.metadata->>'tenant_email' IS NULL OR d.metadata->>'tenant_email' = '');
-
--- ============================================
--- COMMENTAIRES
--- ============================================
-
-COMMENT ON POLICY "tenant_view_own_documents" ON tenant_documents
-  IS 'Le locataire peut voir ses documents via la jointure profiles.user_id = auth.uid()';
-COMMENT ON POLICY "tenant_insert_own_documents" ON tenant_documents
-  IS 'Le locataire peut insérer ses documents via la jointure profiles.user_id = auth.uid()';
 
 
 -- === SOURCE: 20260223000001_auto_fill_document_fk.sql ===
