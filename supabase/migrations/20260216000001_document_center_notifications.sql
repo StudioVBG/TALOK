@@ -20,15 +20,17 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_templates') THEN
     -- Remplacer /tenant/receipts par /tenant/documents?type=quittance
     UPDATE email_templates
-    SET body = REPLACE(body, '/tenant/receipts', '/tenant/documents?type=quittance'),
+    SET body_html = REPLACE(body_html, '/tenant/receipts', '/tenant/documents?type=quittance'),
+        body_text = REPLACE(body_text, '/tenant/receipts', '/tenant/documents?type=quittance'),
         updated_at = NOW()
-    WHERE body LIKE '%/tenant/receipts%';
+    WHERE body_html LIKE '%/tenant/receipts%' OR body_text LIKE '%/tenant/receipts%';
 
     -- Remplacer /tenant/signatures par /tenant/documents
     UPDATE email_templates
-    SET body = REPLACE(body, '/tenant/signatures', '/tenant/documents'),
+    SET body_html = REPLACE(body_html, '/tenant/signatures', '/tenant/documents'),
+        body_text = REPLACE(body_text, '/tenant/signatures', '/tenant/documents'),
         updated_at = NOW()
-    WHERE body LIKE '%/tenant/signatures%';
+    WHERE body_html LIKE '%/tenant/signatures%' OR body_text LIKE '%/tenant/signatures%';
 
     RAISE NOTICE 'email_templates updated: receipts → documents, signatures → documents';
   ELSE

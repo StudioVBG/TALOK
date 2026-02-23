@@ -36,7 +36,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'HIGH'::TEXT,
     'Sessions de signature actives sans aucun participant'::TEXT,
-    string_agg(ss.id::TEXT, ', ' ORDER BY ss.created_at LIMIT 5)::TEXT
+    string_agg(ss.id::TEXT, ', ')::TEXT
   FROM signature_sessions ss
   WHERE ss.status IN ('pending', 'ongoing')
     AND NOT EXISTS (SELECT 1 FROM signature_participants sp WHERE sp.session_id = ss.id);
@@ -48,7 +48,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'HIGH'::TEXT,
     'Participants dont la session de signature n''existe plus'::TEXT,
-    string_agg(sp.id::TEXT, ', ' ORDER BY sp.created_at LIMIT 5)::TEXT
+    string_agg(sp.id::TEXT, ', ')::TEXT
   FROM signature_participants sp
   WHERE NOT EXISTS (SELECT 1 FROM signature_sessions ss WHERE ss.id = sp.session_id);
 
@@ -59,7 +59,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'MEDIUM'::TEXT,
     'Preuves de signature dont le participant n''existe plus'::TEXT,
-    string_agg(sp.id::TEXT, ', ' ORDER BY sp.created_at LIMIT 5)::TEXT
+    string_agg(sp.id::TEXT, ', ')::TEXT
   FROM signature_proofs sp
   WHERE NOT EXISTS (SELECT 1 FROM signature_participants pa WHERE pa.id = sp.participant_id);
 
@@ -70,7 +70,7 @@ BEGIN
     COUNT(DISTINCT ss.id)::BIGINT,
     'HIGH'::TEXT,
     'Sessions terminées avec des participants signés sans preuve eIDAS'::TEXT,
-    string_agg(DISTINCT ss.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(DISTINCT ss.id::TEXT, ', ')::TEXT
   FROM signature_sessions ss
   JOIN signature_participants sp ON sp.session_id = ss.id
   WHERE ss.status = 'done'
@@ -86,7 +86,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'MEDIUM'::TEXT,
     'Sessions avec deadline dépassée mais statut non-expiré'::TEXT,
-    string_agg(ss.id::TEXT, ', ' ORDER BY ss.deadline LIMIT 5)::TEXT
+    string_agg(ss.id::TEXT, ', ')::TEXT
   FROM signature_sessions ss
   WHERE ss.deadline < NOW()
     AND ss.status IN ('pending', 'ongoing');
@@ -109,7 +109,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'MEDIUM'::TEXT,
     'Participants avec un profile_id pointant vers un profil inexistant'::TEXT,
-    string_agg(sp.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(sp.id::TEXT, ', ')::TEXT
   FROM signature_participants sp
   WHERE sp.profile_id IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM profiles p WHERE p.id = sp.profile_id);
@@ -143,7 +143,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'HIGH'::TEXT,
     'Organisations dont le propriétaire (auth.users) n''existe plus'::TEXT,
-    string_agg(o.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(o.id::TEXT, ', ')::TEXT
   FROM organizations o
   WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = o.owner_id);
 
@@ -154,7 +154,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'MEDIUM'::TEXT,
     'Membres d''organisation dont l''organisation n''existe plus'::TEXT,
-    string_agg(om.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(om.id::TEXT, ', ')::TEXT
   FROM organization_members om
   WHERE NOT EXISTS (SELECT 1 FROM organizations o WHERE o.id = om.organization_id);
 
@@ -165,7 +165,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'MEDIUM'::TEXT,
     'Membres d''organisation dont le user_id n''existe plus'::TEXT,
-    string_agg(om.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(om.id::TEXT, ', ')::TEXT
   FROM organization_members om
   WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = om.user_id);
 
@@ -176,7 +176,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'LOW'::TEXT,
     'Branding d''organisation dont l''organisation n''existe plus'::TEXT,
-    string_agg(ob.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(ob.id::TEXT, ', ')::TEXT
   FROM organization_branding ob
   WHERE NOT EXISTS (SELECT 1 FROM organizations o WHERE o.id = ob.organization_id);
 
@@ -187,7 +187,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'MEDIUM'::TEXT,
     'Domaines personnalisés dont l''organisation n''existe plus'::TEXT,
-    string_agg(cd.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(cd.id::TEXT, ', ')::TEXT
   FROM custom_domains cd
   WHERE NOT EXISTS (SELECT 1 FROM organizations o WHERE o.id = cd.organization_id);
 
@@ -198,7 +198,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'LOW'::TEXT,
     'Organisations actives en mode white-label sans branding configuré'::TEXT,
-    string_agg(o.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(o.id::TEXT, ', ')::TEXT
   FROM organizations o
   WHERE o.is_active = true
     AND o.white_label_level != 'none'
@@ -211,7 +211,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'HIGH'::TEXT,
     'Domaines actifs avec certificat SSL expiré'::TEXT,
-    string_agg(cd.domain, ', ' LIMIT 5)::TEXT
+    string_agg(cd.domain, ', ')::TEXT
   FROM custom_domains cd
   WHERE cd.is_active = true
     AND cd.verified = true
@@ -247,7 +247,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'HIGH'::TEXT,
     'Fonds de commerce dont le propriétaire n''existe plus'::TEXT,
-    string_agg(fc.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(fc.id::TEXT, ', ')::TEXT
   FROM fonds_commerce fc
   WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = fc.owner_id);
 
@@ -258,7 +258,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'MEDIUM'::TEXT,
     'Fonds avec bail_commercial_id pointant vers un bail inexistant'::TEXT,
-    string_agg(fc.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(fc.id::TEXT, ', ')::TEXT
   FROM fonds_commerce fc
   WHERE fc.bail_commercial_id IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM leases l WHERE l.id = fc.bail_commercial_id);
@@ -270,7 +270,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'MEDIUM'::TEXT,
     'Licences dont le fonds de commerce n''existe plus'::TEXT,
-    string_agg(fcl.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(fcl.id::TEXT, ', ')::TEXT
   FROM fonds_commerce_licences fcl
   WHERE NOT EXISTS (SELECT 1 FROM fonds_commerce fc WHERE fc.id = fcl.fonds_id);
 
@@ -281,7 +281,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'MEDIUM'::TEXT,
     'Équipements dont le fonds de commerce n''existe plus'::TEXT,
-    string_agg(fce.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(fce.id::TEXT, ', ')::TEXT
   FROM fonds_commerce_equipements fce
   WHERE NOT EXISTS (SELECT 1 FROM fonds_commerce fc WHERE fc.id = fce.fonds_id);
 
@@ -292,7 +292,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'HIGH'::TEXT,
     'Contrats de location-gérance dont le fonds n''existe plus'::TEXT,
-    string_agg(lgc.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(lgc.id::TEXT, ', ')::TEXT
   FROM location_gerance_contracts lgc
   WHERE NOT EXISTS (SELECT 1 FROM fonds_commerce fc WHERE fc.id = lgc.fonds_id);
 
@@ -303,7 +303,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'HIGH'::TEXT,
     'Redevances dont le contrat de location-gérance n''existe plus'::TEXT,
-    string_agg(lgr.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(lgr.id::TEXT, ', ')::TEXT
   FROM location_gerance_redevances lgr
   WHERE NOT EXISTS (SELECT 1 FROM location_gerance_contracts lgc WHERE lgc.id = lgr.contract_id);
 
@@ -314,7 +314,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'MEDIUM'::TEXT,
     'Contrats location-gérance actifs avec date_fin dépassée'::TEXT,
-    string_agg(lgc.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(lgc.id::TEXT, ', ')::TEXT
   FROM location_gerance_contracts lgc
   WHERE lgc.status = 'active'
     AND lgc.date_fin IS NOT NULL
@@ -327,7 +327,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'HIGH'::TEXT,
     'Redevances impayées depuis plus de 90 jours'::TEXT,
-    string_agg(lgr.id::TEXT, ', ' LIMIT 5)::TEXT
+    string_agg(lgr.id::TEXT, ', ')::TEXT
   FROM location_gerance_redevances lgr
   WHERE lgr.statut IN ('pending', 'late')
     AND lgr.date_echeance < CURRENT_DATE - INTERVAL '90 days';

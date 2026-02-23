@@ -78,8 +78,8 @@ BEGIN
       CREATE POLICY "audit_log_insert_own" ON document_ged_audit_log
         FOR INSERT TO authenticated
         WITH CHECK (
-          actor_id = public.get_my_profile_id()
-          OR actor_id IS NULL
+          performed_by = auth.uid()
+          OR performed_by IS NULL
         )
     ';
 

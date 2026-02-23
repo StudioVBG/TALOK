@@ -1105,7 +1105,7 @@ DO $$ BEGIN
     SELECT 1 FROM pg_indexes WHERE indexname = 'uq_subscriptions_user_active'
   ) THEN
     CREATE UNIQUE INDEX IF NOT EXISTS uq_subscriptions_user_active
-      ON subscriptions (user_id)
+      ON subscriptions (owner_id)
       WHERE status IN ('active', 'trialing');
   END IF;
 END $$;

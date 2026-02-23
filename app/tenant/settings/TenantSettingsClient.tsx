@@ -19,6 +19,8 @@ import {
   Camera,
   Clock,
   AlertTriangle,
+  CreditCard,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -536,6 +538,28 @@ export function TenantSettingsClient({
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Moyens de paiement SOTA 2026 */}
+          <Card className="border-indigo-100 dark:border-indigo-900/50 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-indigo-600" />
+                Moyens de paiement
+              </CardTitle>
+              <CardDescription>
+                Gérez vos cartes bancaires, comptes SEPA et prélèvements automatiques
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/tenant/settings/payments">
+                <Button variant="outline" className="gap-2 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-950/50">
+                  <CreditCard className="h-4 w-4" />
+                  Gérer mes moyens de paiement
+                  <ChevronRight className="h-4 w-4 ml-auto" />
+                </Button>
+              </Link>
             </CardContent>
           </Card>
 

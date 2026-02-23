@@ -11,6 +11,8 @@ const createIntentSchema = z.object({
   invoiceId: z.string().uuid(),
   amount: z.number().positive(),
   currency: z.string().default("eur"),
+  paymentMethodId: z.string().optional(),
+  customerId: z.string().optional(),
 });
 
 interface Profile {
@@ -53,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Valider les données
     const body = await request.json();
-    const { invoiceId, amount, currency } = createIntentSchema.parse(body);
+    const { invoiceId, amount, currency, paymentMethodId, customerId } = createIntentSchema.parse(body);
 
     // Récupérer la facture pour vérifier les permissions
     const { data: invoice, error: invoiceError } = await supabase
@@ -83,15 +85,22 @@ export async function POST(request: NextRequest) {
       type: "rent",
     };
 
-    const paymentIntent = await stripe.paymentIntents.create({
+    const intentParams: Record<string, unknown> = {
       amount: formatAmountForStripe(amount),
       currency,
       metadata: metadata as unknown as Record<string, string>,
-      automatic_payment_methods: {
-        enabled: true,
-      },
       description: `Paiement facture ${invoiceId.slice(0, 8)}`,
-    });
+    };
+
+    if (paymentMethodId && customerId) {
+      intentParams.payment_method = paymentMethodId;
+      intentParams.customer = customerId;
+      intentParams.automatic_payment_methods = { enabled: true, allow_redirects: "never" };
+    } else {
+      intentParams.automatic_payment_methods = { enabled: true };
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(intentParams as any);
 
     // Créer un enregistrement de paiement en attente
     const { data: payment, error: paymentError } = await supabase

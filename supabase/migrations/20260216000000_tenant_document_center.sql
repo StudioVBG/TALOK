@@ -124,7 +124,7 @@ SELECT
   l.created_at AS action_created_at
 FROM lease_signers ls
 JOIN leases l ON l.id = ls.lease_id
-WHERE ls.signature_status IN ('pending', 'sent')
+WHERE ls.signature_status = 'pending'
   AND ls.signed_at IS NULL
   AND l.statut IN ('pending_signature', 'partially_signed')
   AND ls.role IN ('locataire_principal', 'colocataire')
@@ -143,10 +143,10 @@ SELECT
   ss.created_at AS action_created_at
 FROM signature_participants sp
 JOIN signature_sessions ss ON ss.id = sp.session_id
-WHERE sp.status IN ('pending', 'sent')
+WHERE sp.status IN ('pending', 'notified')
   AND ss.status IN ('pending', 'ongoing')
   AND ss.entity_type = 'edl'
-  AND sp.role IN ('tenant', 'locataire')
+  AND sp.role IN ('locataire_principal', 'colocataire')
 
 UNION ALL
 

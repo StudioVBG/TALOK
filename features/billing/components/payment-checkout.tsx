@@ -6,7 +6,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, CreditCard, CheckCircle, AlertCircle, Info, Receipt } from "lucide-react";
+import { Loader2, CreditCard, CheckCircle, AlertCircle, Info, Receipt, Wallet } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTenantPaymentMethods } from "@/lib/hooks/use-tenant-payment-methods";
+import { toPaymentMethodDisplay } from "@/lib/types/payment-methods";
+import type { TenantPaymentMethod } from "@/lib/types/payment-methods";
+import { cn } from "@/lib/utils";
 
 interface PaymentCheckoutProps {
   invoiceId: string;
@@ -333,12 +337,209 @@ function CheckoutForm({ invoiceId, amount, description, showFees = true, feePerc
   );
 }
 
-export function PaymentCheckout(props: PaymentCheckoutProps) {
+/**
+ * SOTA 2026 : Saved Payment Method quick-pay
+ * Allows paying with a saved card/SEPA without re-entering details
+ */
+function SavedMethodQuickPay({
+  invoiceId,
+  amount,
+  description,
+  showFees = true,
+  feePercentage = 0,
+  onSuccess,
+  onCancel,
+  savedMethods,
+}: PaymentCheckoutProps & { savedMethods: TenantPaymentMethod[] }) {
+  const { toast } = useToast();
+  const [selectedId, setSelectedId] = useState<string | null>(
+    savedMethods.find((m) => m.is_default)?.id ?? savedMethods[0]?.id ?? null
+  );
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
+  const [useNewMethod, setUseNewMethod] = useState(false);
+
+  const displays = useMemo(() => savedMethods.filter((m) => m.status === "active").map(toPaymentMethodDisplay), [savedMethods]);
+
+  const handleQuickPay = async () => {
+    const selected = savedMethods.find((m) => m.id === selectedId);
+    if (!selected) return;
+
+    setIsProcessing(true);
+    setPaymentStatus("processing");
+
+    try {
+      const res = await fetch("/api/payments/create-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId,
+          amount,
+          paymentMethodId: selected.stripe_payment_method_id,
+          customerId: selected.stripe_customer_id,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Erreur de paiement");
+      }
+
+      const { clientSecret, paymentIntentId } = await res.json();
+
+      const stripeInstance = await getStripe();
+      if (!stripeInstance) throw new Error("Stripe non initialisé");
+
+      const { error, paymentIntent } = await stripeInstance.confirmPayment({
+        clientSecret,
+        confirmParams: {
+          payment_method: selected.stripe_payment_method_id,
+          return_url: `${window.location.origin}/tenant/payments?success=true&invoice=${invoiceId}`,
+        },
+        redirect: "if_required",
+      });
+
+      if (error) {
+        setPaymentStatus("error");
+        toast({
+          title: "Paiement échoué",
+          description: error.message || "Veuillez réessayer",
+          variant: "destructive",
+        });
+      } else if (paymentIntent?.status === "succeeded") {
+        setPaymentStatus("success");
+        toast({ title: "Paiement réussi !", description: "Votre quittance sera disponible sous peu." });
+        onSuccess?.();
+      } else if (paymentIntent?.status === "requires_action") {
+        toast({ title: "Authentification requise", description: "Veuillez suivre les instructions de votre banque." });
+        setPaymentStatus("idle");
+      }
+    } catch (err: unknown) {
+      setPaymentStatus("error");
+      toast({ title: "Erreur", description: err instanceof Error ? err.message : "Erreur inconnue", variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  if (useNewMethod) {
+    return <PaymentCheckoutWithNewMethod {...{ invoiceId, amount, description, showFees, feePercentage, onSuccess, onCancel }} />;
+  }
+
+  if (paymentStatus === "success") {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="py-8">
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg shadow-green-500/30">
+              <CheckCircle className="h-10 w-10 text-white" strokeWidth={2.5} />
+            </div>
+            <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-6">Paiement réussi !</p>
+            <p className="text-sm text-muted-foreground mt-1">Votre quittance sera disponible sous peu.</p>
+            <Badge variant="outline" className="mt-4 bg-green-50 text-green-700 border-green-200 px-4 py-1">
+              <Receipt className="h-3.5 w-3.5 mr-1.5" /> Confirmation envoyée par email
+            </Badge>
+          </motion.div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Wallet className="h-5 w-5 text-primary" />
+          Paiement rapide
+        </CardTitle>
+        <CardDescription>{description || `Montant : ${amount.toFixed(2)}€`}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {showFees && paymentStatus === "idle" && (
+          <PaymentFeesBreakdown amount={amount} feePercentage={feePercentage} />
+        )}
+
+        {paymentStatus === "processing" ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center py-8">
+            <div className="relative">
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <CreditCard className="h-6 w-6 text-primary" />
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mt-4">Traitement en cours...</p>
+          </motion.div>
+        ) : paymentStatus === "error" ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center py-6">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+              <AlertCircle className="h-8 w-8 text-red-500" />
+            </div>
+            <p className="font-semibold text-red-600 mt-3">Paiement échoué</p>
+            <Button variant="outline" size="sm" onClick={() => setPaymentStatus("idle")} className="mt-3">
+              Réessayer
+            </Button>
+          </motion.div>
+        ) : (
+          <div className="space-y-2">
+            {displays.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setSelectedId(d.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left",
+                  selectedId === d.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30",
+                )}
+              >
+                <CreditCard className="h-5 w-5 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{d.displayName}</p>
+                  {d.expiresAt && <p className="text-xs text-muted-foreground">Exp. {d.expiresAt}</p>}
+                </div>
+                {d.is_default && (
+                  <Badge variant="secondary" className="text-[10px] shrink-0">Défaut</Badge>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </CardContent>
+      <CardFooter className="flex flex-col gap-3">
+        <div className="flex gap-3 w-full">
+          <Button variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1">
+            Annuler
+          </Button>
+          {paymentStatus === "idle" && (
+            <Button onClick={handleQuickPay} disabled={!selectedId || isProcessing} className="flex-1">
+              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Payer {amount.toFixed(2)}€
+            </Button>
+          )}
+        </div>
+        {paymentStatus === "idle" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground"
+            onClick={() => setUseNewMethod(true)}
+          >
+            Utiliser un autre moyen de paiement
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
+  );
+}
+
+/**
+ * Original Stripe Elements checkout for new payment methods
+ */
+function PaymentCheckoutWithNewMethod(props: PaymentCheckoutProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Créer le Payment Intent au chargement
   useEffect(() => {
     let isMounted = true;
 
@@ -359,25 +560,16 @@ export function PaymentCheckout(props: PaymentCheckoutProps) {
         }
 
         const { clientSecret } = await response.json();
-        if (isMounted) {
-          setClientSecret(clientSecret);
-        }
-      } catch (err: any) {
-        if (isMounted) {
-          setError(err.message);
-        }
+        if (isMounted) setClientSecret(clientSecret);
+      } catch (err: unknown) {
+        if (isMounted) setError(err instanceof Error ? err.message : "Erreur inconnue");
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     }
 
     createIntent();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [props.invoiceId, props.amount]);
 
   if (isLoading) {
@@ -396,54 +588,29 @@ export function PaymentCheckout(props: PaymentCheckoutProps) {
         <CardContent className="flex flex-col items-center py-8">
           <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
           <p className="text-red-600">{error}</p>
-          <Button onClick={props.onCancel} className="mt-4">
-            Retour
-          </Button>
+          <Button onClick={props.onCancel} className="mt-4">Retour</Button>
         </CardContent>
       </Card>
     );
   }
 
-  if (!clientSecret) {
-    return null;
-  }
-
-  const stripePromise = getStripe();
+  if (!clientSecret) return null;
 
   return (
     <Elements
-      stripe={stripePromise}
+      stripe={getStripe()}
       options={{
         clientSecret,
-        locale: "fr", // Interface Stripe en français
+        locale: "fr",
         appearance: {
           theme: "stripe",
-          variables: {
-            colorPrimary: "#2563eb",
-            borderRadius: "8px",
-            fontFamily: "system-ui, -apple-system, sans-serif",
-          },
+          variables: { colorPrimary: "#2563eb", borderRadius: "8px", fontFamily: "system-ui, -apple-system, sans-serif" },
           rules: {
-            ".Label": {
-              color: "#374151",
-              fontWeight: "500",
-            },
-            ".Input": {
-              borderColor: "#e5e7eb",
-              boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-            },
-            ".Input:focus": {
-              borderColor: "#2563eb",
-              boxShadow: "0 0 0 3px rgba(37, 99, 235, 0.1)",
-            },
-            ".Tab": {
-              borderColor: "#e5e7eb",
-              boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-            },
-            ".Tab--selected": {
-              borderColor: "#2563eb",
-              color: "#2563eb",
-            },
+            ".Label": { color: "#374151", fontWeight: "500" },
+            ".Input": { borderColor: "#e5e7eb", boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)" },
+            ".Input:focus": { borderColor: "#2563eb", boxShadow: "0 0 0 3px rgba(37, 99, 235, 0.1)" },
+            ".Tab": { borderColor: "#e5e7eb", boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)" },
+            ".Tab--selected": { borderColor: "#2563eb", color: "#2563eb" },
           },
         },
       }}
@@ -451,5 +618,31 @@ export function PaymentCheckout(props: PaymentCheckoutProps) {
       <CheckoutForm {...props} />
     </Elements>
   );
+}
+
+/**
+ * SOTA 2026 : Smart PaymentCheckout
+ * Auto-detects saved methods → quick pay, or falls back to Stripe Elements
+ */
+export function PaymentCheckout(props: PaymentCheckoutProps) {
+  const { data: savedMethods, isLoading } = useTenantPaymentMethods();
+
+  if (isLoading) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const activeMethods = (savedMethods ?? []).filter((m) => m.status === "active");
+
+  if (activeMethods.length > 0) {
+    return <SavedMethodQuickPay {...props} savedMethods={activeMethods} />;
+  }
+
+  return <PaymentCheckoutWithNewMethod {...props} />;
 }
 
