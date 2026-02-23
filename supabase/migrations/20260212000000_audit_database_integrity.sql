@@ -912,7 +912,7 @@ BEGIN
     COUNT(*)::BIGINT,
     'LOW'::TEXT,
     'Notifications dupliquées (même user, type, titre, même minute)'::TEXT,
-    string_agg(n.id::TEXT, ', ' ORDER BY n.created_at LIMIT 5)::TEXT
+    string_agg(n.id::TEXT, ', ' ORDER BY n.created_at)::TEXT
   FROM notifications n
   GROUP BY n.user_id, n.type, n.title, date_trunc('minute', n.created_at)
   HAVING COUNT(*) > 1;

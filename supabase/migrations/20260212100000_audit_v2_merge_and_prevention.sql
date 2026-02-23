@@ -925,9 +925,12 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- leases.owner_id → profiles.id
+-- leases.owner_id → profiles.id (skip if column doesn't exist)
 DO $$ BEGIN
-  IF NOT EXISTS (
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'leases' AND column_name = 'owner_id'
+  ) AND NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints
     WHERE constraint_name = 'fk_leases_owner_id' AND table_name = 'leases'
   ) THEN

@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS guarantor_profiles (
 -- RLS pour guarantor_profiles
 ALTER TABLE guarantor_profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "guarantor_profiles_select_own" ON guarantor_profiles;
 CREATE POLICY "guarantor_profiles_select_own" ON guarantor_profiles
   FOR SELECT USING (
     profile_id IN (
@@ -87,6 +88,7 @@ CREATE POLICY "guarantor_profiles_select_own" ON guarantor_profiles
     )
   );
 
+DROP POLICY IF EXISTS "guarantor_profiles_insert_own" ON guarantor_profiles;
 CREATE POLICY "guarantor_profiles_insert_own" ON guarantor_profiles
   FOR INSERT WITH CHECK (
     profile_id IN (
@@ -94,6 +96,7 @@ CREATE POLICY "guarantor_profiles_insert_own" ON guarantor_profiles
     )
   );
 
+DROP POLICY IF EXISTS "guarantor_profiles_update_own" ON guarantor_profiles;
 CREATE POLICY "guarantor_profiles_update_own" ON guarantor_profiles
   FOR UPDATE USING (
     profile_id IN (
@@ -120,7 +123,7 @@ CREATE TABLE IF NOT EXISTS user_consents (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_user_consents_user_id ON user_consents(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_consents_user_id ON user_consents(user_id);
 
 -- RLS pour user_consents
 ALTER TABLE user_consents ENABLE ROW LEVEL SECURITY;
