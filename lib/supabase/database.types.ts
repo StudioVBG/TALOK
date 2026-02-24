@@ -1601,6 +1601,18 @@ export type PaymentMethodAuditLogRow = {
   created_at: string
 }
 
+/** SOTA 2026: Audit PSD3 pour les moyens de paiement propriétaire (abonnement) */
+export type OwnerPaymentAuditLogRow = {
+  id: string
+  owner_id: string
+  action: string
+  payment_method_type: string | null
+  metadata: Json
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
+}
+
 export type SepaMandateRow = {
   id: string
   mandate_reference: string
@@ -2381,6 +2393,14 @@ export type Database = {
         Relationships: [
           { foreignKeyName: "payment_method_audit_log_tenant_profile_id_fkey"; columns: ["tenant_profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "payment_method_audit_log_payment_method_id_fkey"; columns: ["payment_method_id"]; isOneToOne: false; referencedRelation: "tenant_payment_methods"; referencedColumns: ["id"] }
+        ]
+      }
+      owner_payment_audit_log: {
+        Row: OwnerPaymentAuditLogRow
+        Insert: Partial<OwnerPaymentAuditLogRow>
+        Update: Partial<OwnerPaymentAuditLogRow>
+        Relationships: [
+          { foreignKeyName: "owner_payment_audit_log_owner_id_fkey"; columns: ["owner_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
         ]
       }
       tenant_rewards: {
