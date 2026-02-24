@@ -58,6 +58,31 @@ export const profileUpdateSchema = z
     }
   );
 
+// ============================================
+// IBAN — Validation checksum ISO 13616 (mod 97)
+// ============================================
+
+/**
+ * Valide l'IBAN selon l'algorithme mod 97 (ISO 13616).
+ * Les 4 premiers caractères sont déplacés à la fin, les lettres converties en chiffres (A=10…Z=35), puis mod 97 === 1.
+ */
+export function validateIBANChecksum(iban: string): boolean {
+  const cleaned = iban.replace(/\s/g, "").toUpperCase();
+  if (cleaned.length < 15 || cleaned.length > 34) return false;
+  if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(cleaned)) return false;
+
+  const rearranged = cleaned.slice(4) + cleaned.slice(0, 4);
+  const numeric = rearranged.replace(/[A-Z]/g, (c) =>
+    String(c.charCodeAt(0) - 55)
+  );
+
+  let remainder = numeric.slice(0, 9);
+  for (let i = 9; i < numeric.length; i += 7) {
+    remainder = String(parseInt(remainder, 10) % 97) + numeric.slice(i, i + 7);
+  }
+  return parseInt(remainder, 10) % 97 === 1;
+}
+
 // Validation des propriétaires
 // Note: Utiliser uniquement les champs de base qui existent dans la table owner_profiles
 export const ownerProfileSchema = z.object({
@@ -69,7 +94,12 @@ export const ownerProfileSchema = z.object({
     .regex(/^[A-Z]{2}[0-9]{2}[A-Z0-9]{4,}$/, "Format IBAN invalide")
     .optional()
     .nullable()
-    .or(z.literal("")),
+    .or(z.literal(""))
+    .refine(
+      (val) =>
+        !val || val === "" || validateIBANChecksum(val),
+      "IBAN invalide (checksum incorrect)"
+    ),
   bic: z
     .string()
     .regex(/^[A-Z]{6}[A-Z0-9]{2,5}$/, "Format BIC invalide")
