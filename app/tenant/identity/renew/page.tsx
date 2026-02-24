@@ -116,12 +116,36 @@ function RenewCNIContent() {
         body: JSON.stringify({ lease_id: leaseId, action: "renew" }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((data.error as string) || "Erreur envoi du code");
+      if (!res.ok) {
+        const errMsg = (data.error as string) || "Erreur envoi du code";
+        const failedDetails = Array.isArray(data.channels_failed) && data.channels_failed.length > 0
+          ? data.channels_failed.map((f: { channel: string; error: string }) => `${f.channel}: ${f.error}`).join(". ")
+          : "";
+        setError(errMsg);
+        toast({
+          title: "Erreur",
+          description: failedDetails ? `${errMsg} (${failedDetails})` : errMsg,
+          variant: "destructive",
+        });
+        return;
+      }
       setTwoFaToken((data.token as string) || null);
-      toast({ title: "Code envoyé", description: "Vérifiez votre SMS et votre email." });
+      const successMsg = data.message as string || "Code envoyé";
+      const channelsFailed = data.channels_failed as { channel: string; error: string }[] | undefined;
+      const hasPartialFailure = Array.isArray(channelsFailed) && channelsFailed.length > 0;
+      toast({
+        title: "Code envoyé",
+        description: hasPartialFailure
+          ? `${successMsg}. Un canal n'a pas fonctionné : ${channelsFailed.map((f) => f.channel).join(", ")}.`
+          : "Vérifiez votre SMS et/ou votre email.",
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
-      toast({ title: "Erreur", description: err instanceof Error ? err.message : "Impossible d'envoyer le code", variant: "destructive" });
+      toast({
+        title: "Erreur",
+        description: err instanceof Error ? err.message : "Impossible d'envoyer le code",
+        variant: "destructive",
+      });
     } finally {
       setTwoFaSending(false);
     }

@@ -3,9 +3,6 @@
  * 
  * Compatible avec :
  * - Resend (recommandé)
- * - SendGrid
- * - Postmark
- * - SMTP générique
  * 
  * Récupère automatiquement les credentials depuis la DB (Admin > Intégrations)
  * ou utilise les variables d'environnement en fallback.
@@ -14,7 +11,7 @@
 import { getResendCredentials } from "./credentials-service";
 
 // Types
-export type EmailProvider = "resend" | "sendgrid" | "postmark" | "smtp";
+export type EmailProvider = "resend";
 
 export interface EmailAttachment {
   filename: string;
@@ -162,51 +159,6 @@ async function sendViaResend(options: EmailOptions): Promise<EmailResult> {
 }
 
 /**
- * Envoie un email via SendGrid
- */
-async function sendViaSendGrid(options: EmailOptions): Promise<EmailResult> {
-  try {
-    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.apiKey}`,
-      },
-      body: JSON.stringify({
-        personalizations: [
-          {
-            to: (Array.isArray(options.to) ? options.to : [options.to]).map((email) => ({ email })),
-            cc: options.cc?.map((email) => ({ email })),
-            bcc: options.bcc?.map((email) => ({ email })),
-          },
-        ],
-        from: { email: options.from || config.from },
-        reply_to: options.replyTo ? { email: options.replyTo } : undefined,
-        subject: options.subject,
-        content: [
-          options.text && { type: "text/plain", value: options.text },
-          options.html && { type: "text/html", value: options.html },
-        ].filter(Boolean),
-        attachments: options.attachments?.map((a) => ({
-          filename: a.filename,
-          content: typeof a.content === "string" ? Buffer.from(a.content).toString("base64") : a.content.toString("base64"),
-          type: a.contentType,
-        })),
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      return { success: false, error: error || "Erreur SendGrid" };
-    }
-
-    return { success: true, messageId: response.headers.get("x-message-id") || undefined };
-  } catch (error) {
-    return { success: false, error: String(error) };
-  }
-}
-
-/**
  * Envoie un email (abstraction du provider)
  */
 export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
@@ -259,8 +211,6 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
   switch (config.provider) {
     case "resend":
       return sendViaResend(options);
-    case "sendgrid":
-      return sendViaSendGrid(options);
     default:
       return { success: false, error: `Provider non supporté: ${config.provider}` };
   }

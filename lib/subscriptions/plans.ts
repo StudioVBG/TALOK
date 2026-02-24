@@ -813,7 +813,7 @@ export const FEATURE_LABELS: Record<string, {
 }> = {
   signatures: {
     label: 'Signature électronique',
-    description: 'Signez vos documents en ligne (Yousign)',
+    description: 'Signez vos documents en ligne',
     icon: 'PenTool',
     category: 'documents',
   },

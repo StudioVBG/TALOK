@@ -45,16 +45,6 @@ async function runMigration() {
         },
       },
       {
-        name: "SendGrid",
-        category: "email",
-        pricing_model: "tiered",
-        status: "inactive",
-        metadata: {
-          free_quota: 100,
-          docs: "https://docs.sendgrid.com",
-        },
-      },
-      {
         name: "Google Maps",
         category: "maps",
         pricing_model: "per_request",

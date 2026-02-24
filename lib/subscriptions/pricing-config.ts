@@ -84,8 +84,8 @@ export const SIGNATURE_PRICES = {
   enterprise_xl: 0, // Inclus (illimité)
   enterprise: 0, // Legacy - Inclus (illimité)
   
-  // Coût réel Yousign
-  YOUSIGN_COST: 150, // ~1,50€/signature (volume négocié)
+  // Coût réel signature (interne)
+  SIGNATURE_COST: 150, // ~1,50€/signature (référence)
 } as const;
 
 // ============================================
@@ -427,7 +427,7 @@ export function getSignaturePrice(planSlug: keyof typeof SIGNATURE_PRICES): numb
 export function calculateSignatureMargin(planSlug: keyof typeof SIGNATURE_PRICES): number {
   const price = getSignaturePrice(planSlug);
   if (price === 0) return 0; // Inclus, pas de marge directe
-  return price - SIGNATURE_PRICES.YOUSIGN_COST;
+  return price - SIGNATURE_PRICES.SIGNATURE_COST;
 }
 
 /**

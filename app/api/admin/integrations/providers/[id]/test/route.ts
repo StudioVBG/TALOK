@@ -113,9 +113,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       case "twilio":
         testResult = await testTwilio(apiKey, config);
         break;
-      case "yousign":
-        testResult = await testYousign(apiKey);
-        break;
       default:
         testResult = { success: true, message: "Provider non testable automatiquement" };
     }
@@ -264,36 +261,6 @@ async function testTwilio(apiKey: string, config: any): Promise<{ success: boole
     return {
       success: false,
       message: error instanceof Error ? error.message : "Erreur de connexion à Twilio",
-    };
-  }
-}
-
-// Test Yousign
-async function testYousign(apiKey: string): Promise<{ success: boolean; message: string; details?: any }> {
-  try {
-    const response = await fetch("https://api.yousign.app/v3/users", {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      return {
-        success: false,
-        message: error.detail || "Erreur Yousign",
-        details: error,
-      };
-    }
-
-    return {
-      success: true,
-      message: "Connexion Yousign OK",
-    };
-  } catch (error: unknown) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Erreur de connexion à Yousign",
     };
   }
 }

@@ -79,11 +79,6 @@ const ENV_VARS: EnvVar[] = [
 
   // Webhooks - Requis en production
   {
-    name: "YOUSIGN_WEBHOOK_SECRET",
-    required: isProduction,
-    description: "Yousign webhook signing secret",
-  },
-  {
     name: "CRON_SECRET",
     required: isProduction,
     minLength: 16,

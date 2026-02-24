@@ -82,19 +82,26 @@ export async function POST(request: Request) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
     const verifyUrl = `${appUrl}/api/tenant/identity/verify-2fa?token=${encodeURIComponent(token)}${leaseId ? `&lease_id=${encodeURIComponent(leaseId)}` : ""}`;
 
+    let smsSent = false;
+    let emailSent = false;
+    const channelsFailed: { channel: string; error: string }[] = [];
+
     if (phone) {
       const smsResult = await sendOTPSMS(phone, otpCode, {
         appName: "Talok",
         expiryMinutes: OTP_EXPIRY_MINUTES,
       });
-      if (!smsResult.success) {
+      if (smsResult.success) {
+        smsSent = true;
+      } else {
+        channelsFailed.push({ channel: "sms", error: smsResult.error || "Échec SMS" });
         console.warn("[request-2fa] SMS failed:", smsResult.error);
       }
     }
 
     if (email) {
       try {
-        await sendEmail({
+        const emailResult = await sendEmail({
           to: email,
           subject: "Vérification d'identité - Code et lien Talok",
           html: `
@@ -115,14 +122,38 @@ export async function POST(request: Request) {
             </div>
           `,
         });
+        if (emailResult.success) {
+          emailSent = true;
+        } else {
+          channelsFailed.push({ channel: "email", error: emailResult.error || "Échec email" });
+        }
       } catch (emailErr) {
+        channelsFailed.push({ channel: "email", error: String(emailErr) });
         console.warn("[request-2fa] Email failed:", emailErr);
       }
     }
 
+    if (!smsSent && !emailSent) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Impossible d'envoyer le code. Vérifiez la configuration SMS et email (Admin > Intégrations).",
+          channels_failed: channelsFailed,
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Code envoyé par SMS et/ou email",
+      message:
+        smsSent && emailSent
+          ? "Code envoyé par SMS et email"
+          : smsSent
+            ? "Code envoyé par SMS"
+            : "Code envoyé par email",
+      channels_sent: [smsSent && "sms", emailSent && "email"].filter(Boolean),
+      channels_failed: channelsFailed,
       expires_in: OTP_EXPIRY_MINUTES * 60,
       token,
     });

@@ -189,7 +189,7 @@ export function PartnerLogos({ className }: PartnerLogosProps) {
   // Partenaires avec icônes (à remplacer par de vrais logos si disponibles)
   const partners = [
     { name: "Stripe", icon: CreditCard, description: "Paiements sécurisés" },
-    { name: "Yousign", icon: FileSignature, description: "E-signatures" },
+    { name: "Signature intégrée", icon: FileSignature, description: "E-signatures" },
     { name: "Open Banking", icon: Landmark, description: "Synchronisation bancaire" },
     { name: "Supabase", icon: Lock, description: "Infrastructure cloud" },
   ];

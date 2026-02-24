@@ -33,9 +33,7 @@ export type ProviderName =
   | "Stripe"
   | "Veriff"
   | "GoCardless"
-  | "Google Maps"
-  | "Brevo"
-  | "SendGrid";
+  | "Google Maps";
 
 export interface ProviderCredentials {
   apiKey: string;

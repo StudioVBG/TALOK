@@ -16,9 +16,7 @@ import * as crypto from "crypto";
 // Types
 export type ProviderName = 
   | "mindee" 
-  | "yousign" 
   | "stripe" 
-  | "brevo" 
   | "twilio" 
   | "google_vision"
   | "aws_textract"
@@ -45,9 +43,7 @@ interface ApiKeyResult {
 // Mapping des variables d'environnement par provider
 const ENV_VAR_MAP: Record<ProviderName, string> = {
   mindee: "MINDEE_API_KEY",
-  yousign: "YOUSIGN_API_KEY",
   stripe: "STRIPE_SECRET_KEY",
-  brevo: "BREVO_API_KEY",
   twilio: "TWILIO_AUTH_TOKEN",
   google_vision: "GOOGLE_VISION_API_KEY",
   aws_textract: "AWS_TEXTRACT_ACCESS_KEY",
