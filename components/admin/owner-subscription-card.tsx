@@ -54,6 +54,7 @@ import {
   Rocket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PLANS } from "@/lib/subscriptions/plans";
 
 // ============================================
 // TYPES
@@ -350,19 +351,19 @@ function PlanChangeDialog({
                 <SelectItem value="starter">
                   <div className="flex items-center gap-2">
                     <Shield className="h-4 w-4 text-slate-500" />
-                    <span>Starter — 9€/mois</span>
+                    <span>Starter — {formatPrice(PLANS.starter.price_monthly ?? 0)}</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="confort">
                   <div className="flex items-center gap-2">
                     <Star className="h-4 w-4 text-blue-500" />
-                    <span>Confort — 29€/mois</span>
+                    <span>Confort — {formatPrice(PLANS.confort.price_monthly ?? 0)}</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="pro">
                   <div className="flex items-center gap-2">
                     <Rocket className="h-4 w-4 text-violet-500" />
-                    <span>Pro — 59€/mois</span>
+                    <span>Pro — {formatPrice(PLANS.pro.price_monthly ?? 0)}</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="enterprise">

@@ -861,6 +861,28 @@ export default function BillingPage() {
           </motion.div>
         )}
 
+        {/* Alerte : actif sans moyen de paiement */}
+        {subscription?.status === "active" && !ownerPaymentMethod && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-start gap-4"
+          >
+            <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="flex-1">
+              <p className="text-blue-300 font-medium">
+                Aucun moyen de paiement enregistre
+              </p>
+              <p className="text-sm text-slate-400 mt-0.5">
+                Ajoutez une carte pour securiser le renouvellement de votre abonnement.
+              </p>
+            </div>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-500 flex-shrink-0" asChild>
+              <Link href="/owner/settings/payments">Ajouter un moyen de paiement</Link>
+            </Button>
+          </motion.div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Current Plan Card */}
           <Card className="lg:col-span-2 bg-slate-800/50 border-slate-700">
