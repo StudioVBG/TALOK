@@ -53,8 +53,8 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const validated = workOrderSchema.parse(body);
+    const validatedData = validated as any;
 
-    const validatedData = validated as { ticket_id: string };
     const { data: ticket } = await supabaseClient
       .from("tickets")
       .select("property_id")
@@ -88,7 +88,6 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     // Mettre à jour le statut du ticket
-    const validatedData = validated as any;
     await supabaseClient
       .from("tickets")
       .update({ statut: "in_progress" } as any)
