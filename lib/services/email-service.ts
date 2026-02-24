@@ -144,9 +144,10 @@ async function sendViaResend(options: EmailOptions): Promise<EmailResult> {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({}));
       console.error("[Email] ❌ Erreur Resend:", error);
-      return { success: false, error: error instanceof Error ? error.message : "Erreur Resend" };
+      const errMsg = (error as Record<string, unknown>)?.message;
+      return { success: false, error: typeof errMsg === "string" ? errMsg : (JSON.stringify(error) || "Erreur Resend") };
     }
 
     const data = await response.json();

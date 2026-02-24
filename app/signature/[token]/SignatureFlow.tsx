@@ -1038,7 +1038,7 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
 
               {/* Dialog Plein Écran pour l'aperçu */}
               <Dialog open={fullscreenPreview} onOpenChange={setFullscreenPreview}>
-                <DialogContent className="max-w-[95vw] h-[95vh] p-0 flex flex-col">
+                <DialogContent className="max-w-[95vw] h-[95vh] p-0 flex flex-col" aria-describedby={undefined}>
                   <DialogHeader className="p-4 border-b shrink-0">
                     <div className="flex items-center justify-between">
                       <DialogTitle className="flex items-center gap-2">

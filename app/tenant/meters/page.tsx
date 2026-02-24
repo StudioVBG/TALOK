@@ -538,7 +538,7 @@ export default function TenantMetersPage() {
 
         {/* Dialog Historique */}
         <Dialog open={showHistory} onOpenChange={setShowHistory}>
-          <DialogContent className="sm:max-w-lg rounded-3xl border-none shadow-2xl">
+          <DialogContent className="sm:max-w-lg rounded-3xl border-none shadow-2xl" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold">Historique des relevés</DialogTitle>
             </DialogHeader>

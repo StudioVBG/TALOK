@@ -431,7 +431,7 @@ export function EDLPreview({
                   <Maximize2 className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[95vh] sm:max-h-[90vh] p-0">
+              <DialogContent className="max-w-[95vw] sm:max-w-[90vw] max-h-[95vh] sm:max-h-[90vh] p-0" aria-describedby={undefined}>
                 <DialogHeader className="p-3 sm:p-4 border-b">
                   <DialogTitle className="flex items-center gap-2 text-sm sm:text-base">
                     <ClipboardCheck className="h-4 w-4 sm:h-5 sm:w-5" />

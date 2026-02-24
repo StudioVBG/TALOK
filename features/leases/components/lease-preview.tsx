@@ -444,7 +444,7 @@ export function LeasePreview({
                   <span className="hidden sm:inline">Plein écran</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] h-[95vh] p-0 flex flex-col">
+              <DialogContent className="max-w-[95vw] h-[95vh] p-0 flex flex-col" aria-describedby={undefined}>
                 <DialogHeader className="p-4 border-b shrink-0">
                   <div className="flex items-center justify-between">
                     <DialogTitle>

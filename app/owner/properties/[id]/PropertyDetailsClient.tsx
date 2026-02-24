@@ -1264,7 +1264,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
       {/* ========== GALERIE PHOTOS POPUP ========== */}
       <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
-        <DialogContent hideClose className="max-w-6xl w-[95vw] h-[90vh] p-0 bg-black/95 border-none text-white overflow-hidden flex flex-col">
+        <DialogContent hideClose className="max-w-6xl w-[95vw] h-[90vh] p-0 bg-black/95 border-none text-white overflow-hidden flex flex-col" aria-describedby={undefined}>
           {/* Header avec compteur et bouton fermer */}
           <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between">
             <span className="text-white/80 text-sm bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full">

@@ -344,7 +344,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
 
         {/* Dialog de paiement */}
         <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
-          <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl">
+          <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl" aria-describedby={undefined}>
             {selectedInvoice && (
               <PaymentCheckout 
                 invoiceId={selectedInvoice.id}

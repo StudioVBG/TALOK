@@ -5,9 +5,8 @@
  * ou utilise les variables d'environnement en fallback
  */
 
-import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import crypto from "crypto";
+import { decryptKey } from "@/lib/helpers/encryption";
 
 /**
  * Crée un client Supabase avec le service role key (bypass RLS)
@@ -46,35 +45,6 @@ const credentialsCache = new Map<string, { data: ProviderCredentials | null; exp
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Déchiffre une clé API chiffrée avec AES-256-GCM
- */
-function decryptKey(encryptedKey: string): string {
-  const masterKey = process.env.API_KEY_MASTER_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!masterKey) {
-    throw new Error("[CRITICAL] API_KEY_MASTER_KEY or SUPABASE_SERVICE_ROLE_KEY must be set for encryption");
-  }
-  const algorithm = "aes-256-gcm";
-  const key = crypto.scryptSync(masterKey, "external-api-salt", 32);
-  
-  const parts = encryptedKey.split(":");
-  if (parts.length !== 3) {
-    throw new Error("Format de clé chiffrée invalide");
-  }
-  
-  const [ivHex, authTagHex, encrypted] = parts;
-  const iv = Buffer.from(ivHex, "hex");
-  const authTag = Buffer.from(authTagHex, "hex");
-
-  const decipher = crypto.createDecipheriv(algorithm, key, iv);
-  decipher.setAuthTag(authTag);
-
-  let decrypted = decipher.update(encrypted, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-
-  return decrypted;
-}
-
-/**
  * Récupère les credentials d'un provider depuis la DB
  */
 export async function getProviderCredentials(
@@ -92,11 +62,11 @@ export async function getProviderCredentials(
     // Utiliser le service client pour bypass RLS
     const supabase = getServiceClient();
     
-    // Récupérer le provider
+    // Récupérer le provider (ilike pour robustesse si noms non normalisés)
     const { data: provider, error: providerError } = await supabase
       .from("api_providers")
       .select("id, status")
-      .eq("name", providerName)
+      .ilike("name", providerName)
       .single();
 
     if (providerError || !provider) {
