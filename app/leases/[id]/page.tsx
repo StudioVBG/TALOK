@@ -38,13 +38,17 @@ const LEASE_TYPE_LABELS: Record<LeaseType, string> = {
 // Labels pour les statuts de bail — alignés avec @/lib/types/status.ts
 const LEASE_STATUS_LABELS: Record<LeaseStatus, string> = {
   draft: "Brouillon",
+  sent: "Envoyé",
   pending_signature: "En attente de signature",
   partially_signed: "Partiellement signé",
+  pending_owner_signature: "Attente signature propriétaire",
   fully_signed: "Entièrement signé",
   active: "Actif",
   notice_given: "Préavis en cours",
+  amended: "Avenant",
   terminated: "Terminé",
   archived: "Archivé",
+  cancelled: "Annulé",
 };
 
 function LeaseDetailPageContent() {

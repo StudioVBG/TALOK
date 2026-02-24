@@ -185,13 +185,15 @@ export async function POST(request: Request) {
             .select("property_id")
             .eq("id", leaseId)
             .single();
-          const { data: propertyRow } = leaseRow
-            ? await serviceClient
-                .from("properties")
-                .select("owner_id")
-                .eq("id", leaseRow.property_id)
-                .single()
-            : { data: null };
+          const propertyId = leaseRow?.property_id;
+          const { data: propertyRow } =
+            propertyId != null
+              ? await serviceClient
+                  .from("properties")
+                  .select("owner_id")
+                  .eq("id", propertyId)
+                  .single()
+              : { data: null };
           const ownerId = propertyRow?.owner_id;
           if (ownerId) {
             const tenantName = [profile?.prenom, profile?.nom].filter(Boolean).join(" ") || user.email || "Un locataire";
@@ -211,10 +213,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // 11. Audit log
+    // 11. Audit log (user_id = auth user id, pas profile_id)
     try {
       await serviceClient.from("audit_log").insert({
-        user_id: profileId,
+        user_id: user.id,
         action: "invitation_accepted",
         entity_type: "invitation",
         entity_id: invitation.id ?? "",
