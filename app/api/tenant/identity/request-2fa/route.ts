@@ -68,10 +68,11 @@ export async function POST(request: Request) {
     expiresAt.setMinutes(expiresAt.getMinutes() + OTP_EXPIRY_MINUTES);
     const token = generateToken();
     const otpHash = hashOtp(otpCode);
+    const dbAction = (action === "upload" ? "update" : action) as "renew" | "initial" | "update";
 
     await serviceClient.from("identity_2fa_requests").insert({
       profile_id: profile.id,
-      action,
+      action: dbAction,
       lease_id: leaseId || null,
       otp_hash: otpHash,
       token,
