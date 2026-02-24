@@ -179,8 +179,11 @@ export default function AdminIntegrationsPage() {
     setSelectedProvider(provider);
     setFormData({});
     
-    // Pré-remplir avec la config existante si disponible
-    const existingCredential = provider.credentials?.find(c => c.is_active);
+    // Pré-remplir avec la config existante (préférer prod, puis dev)
+    const existingCredential =
+      provider.credentials?.find(c => c.is_active && c.env === "prod") ||
+      provider.credentials?.find(c => c.is_active && c.env === "dev") ||
+      provider.credentials?.find(c => c.is_active);
     if (existingCredential?.config) {
       setFormData(existingCredential.config);
       setSelectedEnv(existingCredential.env);
@@ -195,11 +198,13 @@ export default function AdminIntegrationsPage() {
 
     const fields = providerFields[selectedProvider.name] || [];
     const apiKeyField = fields.find(f => f.key === "api_key");
-    
-    if (apiKeyField?.required && !formData.api_key) {
+    const isFirstConfig = !selectedProvider.is_configured;
+
+    // Clé API obligatoire uniquement pour une première configuration
+    if (isFirstConfig && apiKeyField?.required && !formData.api_key) {
       toast({
         title: "Erreur",
-        description: "La clé API est requise",
+        description: "La clé API est requise pour la première configuration",
         variant: "destructive",
       });
       return;
@@ -220,7 +225,7 @@ export default function AdminIntegrationsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider_id: selectedProvider.id,
-          api_key: formData.api_key,
+          api_key: formData.api_key || undefined,
           config,
           env: selectedEnv,
           name: `${selectedProvider.name} - ${selectedEnv}`,

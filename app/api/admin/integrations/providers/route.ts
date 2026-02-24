@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { encryptKey } from "@/lib/helpers/encryption";
+import { invalidateCredentialsCache, type ProviderName } from "@/lib/services/credentials-service";
 
 /**
  * GET /api/admin/integrations/providers
@@ -61,13 +62,25 @@ export async function GET() {
         ...provider,
         is_configured: hasCredentials,
         active_env: prodCredential ? "prod" : devCredential ? "dev" : null,
-        credentials: provider.credentials?.map((c: any) => ({
-          id: c.id,
-          env: c.env,
-          scope: c.scope,
-          created_at: c.created_at,
-          has_key: !!c.secret_ref,
-        })) || [],
+        credentials: provider.credentials?.map((c: any) => {
+          let config: Record<string, string> = {};
+          if (typeof c.scope === "string" && c.scope) {
+            try {
+              config = JSON.parse(c.scope) as Record<string, string>;
+            } catch {
+              // scope non-JSON, laisser config vide
+            }
+          }
+          return {
+            id: c.id,
+            env: c.env,
+            scope: c.scope,
+            config,
+            is_active: true,
+            created_at: c.created_at,
+            has_key: !!c.secret_ref,
+          };
+        }) || [],
       };
     });
 
@@ -120,9 +133,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { provider_id, api_key, config, env = "prod" } = body;
 
-    if (!provider_id || !api_key) {
+    if (!provider_id) {
       return NextResponse.json(
-        { error: "provider_id et api_key sont requis" },
+        { error: "provider_id est requis" },
         { status: 400 }
       );
     }
@@ -141,52 +154,91 @@ export async function POST(request: Request) {
       );
     }
 
-    // Chiffrer la clé API
-    const encryptedKey = encryptKey(api_key);
+    const providerName = provider.name as ProviderName;
+    const scopeValue = config && Object.keys(config).length > 0 ? JSON.stringify(config) : null;
 
-    // Supprimer les anciennes credentials pour ce provider/env (car pas de colonne is_active)
-    await supabase
-      .from("api_credentials")
-      .delete()
-      .eq("provider_id", provider_id)
-      .eq("env", env);
+    if (api_key) {
+      // Cas 1 : api_key fourni — remplacement complet
+      const encryptedKey = encryptKey(api_key);
 
-    // Créer la nouvelle credential avec les colonnes qui existent
-    // Structure de base: provider_id, env, scope, secret_ref, expires_at, owner_user_id
-    const { data: credential, error: credentialError } = await supabase
-      .from("api_credentials")
-      .insert({
-        provider_id,
-        env,
-        scope: config ? JSON.stringify(config) : null, // Stocker la config dans scope
-        secret_ref: encryptedKey, // Stocker la clé chiffrée dans secret_ref
-        owner_user_id: user.id,
-      })
-      .select()
-      .single();
+      await supabase
+        .from("api_credentials")
+        .delete()
+        .eq("provider_id", provider_id)
+        .eq("env", env);
 
-    if (credentialError) {
-      console.error("Erreur création credential:", credentialError);
-      throw credentialError;
+      const { data: credential, error: credentialError } = await supabase
+        .from("api_credentials")
+        .insert({
+          provider_id,
+          env,
+          scope: scopeValue,
+          secret_ref: encryptedKey,
+          owner_user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (credentialError) {
+        console.error("Erreur création credential:", credentialError);
+        throw credentialError;
+      }
+
+      await supabase.from("audit_log").insert({
+        user_id: user.id,
+        action: "provider_configured",
+        entity_type: "api_credential",
+        entity_id: credential.id,
+        metadata: { provider_name: provider.name, env },
+      });
+
+      invalidateCredentialsCache(providerName);
+
+      return NextResponse.json({
+        success: true,
+        credential: {
+          id: credential.id,
+          env: credential.env,
+          key_preview: `${api_key.substring(0, 6)}...${api_key.substring(api_key.length - 4)}`,
+        },
+        message: `${provider.name} configuré avec succès`,
+      });
     }
 
-    // Logger l'action
-    await supabase.from("audit_log").insert({
-      user_id: user.id,
-      action: "provider_configured",
-      entity_type: "api_credential",
-      entity_id: credential.id,
-      metadata: { provider_name: provider.name, env },
-    });
+    // Cas 2 : api_key absent — mise à jour de la config (scope) uniquement
+    const { data: existingCredential, error: fetchError } = await supabase
+      .from("api_credentials")
+      .select("id")
+      .eq("provider_id", provider_id)
+      .eq("env", env)
+      .maybeSingle();
+
+    if (fetchError || !existingCredential) {
+      return NextResponse.json(
+        {
+          error:
+            "Fournissez la clé API pour une première configuration, ou modifiez un environnement déjà configuré.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { error: updateError } = await supabase
+      .from("api_credentials")
+      .update({ scope: scopeValue })
+      .eq("id", existingCredential.id);
+
+    if (updateError) {
+      console.error("Erreur mise à jour credential:", updateError);
+      throw updateError;
+    }
+
+    invalidateCredentialsCache(providerName);
 
     return NextResponse.json({
       success: true,
-      credential: {
-        id: credential.id,
-        env: credential.env,
-        key_preview: `${api_key.substring(0, 6)}...${api_key.substring(api_key.length - 4)}`,
-      },
-      message: `${provider.name} configuré avec succès`,
+      credential: { id: existingCredential.id, env },
+      message: `${provider.name} mis à jour (config uniquement)`,
     });
   } catch (error: unknown) {
     console.error("Erreur POST provider:", error);
