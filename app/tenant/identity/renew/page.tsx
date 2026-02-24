@@ -7,6 +7,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
   ArrowLeft,
@@ -23,7 +25,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Tesseract from "tesseract.js";
 import { extractMRZFromOCR } from "@/lib/identity/mrz-parser";
 
-type Step = "intro" | "recto" | "verso" | "processing" | "success" | "error";
+type Step = "verify_2fa" | "intro" | "recto" | "verso" | "processing" | "success" | "error";
 
 interface LeaseData {
   id: string;
@@ -49,9 +51,11 @@ interface OcrExtractedData {
 function RenewCNIContent() {
   const searchParams = useSearchParams();
   const leaseId = searchParams.get("lease_id");
+  const redirectTo = searchParams.get("redirect_to");
+  const verified2fa = searchParams.get("verified_2fa") === "true";
   const { toast } = useToast();
 
-  const [step, setStep] = useState<Step>("intro");
+  const [step, setStep] = useState<Step>(verified2fa ? "intro" : "verify_2fa");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lease, setLease] = useState<LeaseData | null>(null);
@@ -62,6 +66,10 @@ function RenewCNIContent() {
   const [ocrProgress, setOcrProgress] = useState(0);
   const [ocrStatus, setOcrStatus] = useState("");
   const [extractedData, setExtractedData] = useState<OcrExtractedData | null>(null);
+  const [twoFaToken, setTwoFaToken] = useState<string | null>(null);
+  const [twoFaOtp, setTwoFaOtp] = useState("");
+  const [twoFaSending, setTwoFaSending] = useState(false);
+  const [twoFaVerifying, setTwoFaVerifying] = useState(false);
 
   const fetchLeaseAndProfile = useCallback(async () => {
     if (!leaseId) {
@@ -92,6 +100,62 @@ function RenewCNIContent() {
   useEffect(() => {
     fetchLeaseAndProfile();
   }, [fetchLeaseAndProfile]);
+
+  useEffect(() => {
+    if (verified2fa && step === "verify_2fa") setStep("intro");
+  }, [verified2fa, step]);
+
+  const handleRequest2Fa = async () => {
+    if (!leaseId) return;
+    setTwoFaSending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/tenant/identity/request-2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lease_id: leaseId, action: "renew" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data.error as string) || "Erreur envoi du code");
+      setTwoFaToken((data.token as string) || null);
+      toast({ title: "Code envoyé", description: "Vérifiez votre SMS et votre email." });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+      toast({ title: "Erreur", description: err instanceof Error ? err.message : "Impossible d'envoyer le code", variant: "destructive" });
+    } finally {
+      setTwoFaSending(false);
+    }
+  };
+
+  const handleVerify2Fa = async () => {
+    if (!twoFaToken || twoFaOtp.length !== 6) {
+      toast({ title: "Code invalide", description: "Saisissez les 6 chiffres reçus.", variant: "destructive" });
+      return;
+    }
+    setTwoFaVerifying(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/tenant/identity/verify-2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: twoFaToken, otp_code: twoFaOtp }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data.error as string) || "Code incorrect");
+      const redirectUrl = data.redirect_url as string | undefined;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+        return;
+      }
+      setStep("intro");
+      toast({ title: "Vérification réussie" });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+      toast({ title: "Erreur", description: err instanceof Error ? err.message : "Code incorrect", variant: "destructive" });
+    } finally {
+      setTwoFaVerifying(false);
+    }
+  };
 
   const handleFileSelect = (side: "recto" | "verso", file: File | null) => {
     if (!file) return;
@@ -221,6 +285,12 @@ function RenewCNIContent() {
         : { ...versoOcr, ...rectoOcr };
       setExtractedData(ocrData);
 
+      // Normaliser les champs pour l'API (numero_document -> numero_cni)
+      const normalizedOcrData = {
+        ...ocrData,
+        numero_cni: ocrData.numero_document || (ocrData as Record<string, unknown>).numero_cni,
+      };
+
       // 4. Upload recto
       setOcrStatus("Envoi du recto...");
       const rectoFD = new FormData();
@@ -228,19 +298,26 @@ function RenewCNIContent() {
       rectoFD.append("side", "recto");
       rectoFD.append("lease_id", leaseId);
       rectoFD.append("is_renewal", "true");
-      rectoFD.append("ocr_data", JSON.stringify(ocrData));
+      rectoFD.append("ocr_data", JSON.stringify(normalizedOcrData));
       const r1 = await fetch("/api/tenant/identity/upload", { method: "POST", body: rectoFD });
-      if (!r1.ok) throw new Error((await r1.json()).error || "Erreur upload recto");
+      if (!r1.ok) {
+        const errBody = await r1.json().catch(() => ({}));
+        throw new Error((errBody.error as string) || "Erreur upload recto");
+      }
 
-      // 5. Upload verso
+      // 5. Upload verso (avec ocr_data pour cohérence)
       setOcrStatus("Envoi du verso...");
       const versoFD = new FormData();
       versoFD.append("file", versoFile);
       versoFD.append("side", "verso");
       versoFD.append("lease_id", leaseId);
       versoFD.append("is_renewal", "true");
+      versoFD.append("ocr_data", JSON.stringify(normalizedOcrData));
       const r2 = await fetch("/api/tenant/identity/upload", { method: "POST", body: versoFD });
-      if (!r2.ok) throw new Error((await r2.json()).error || "Erreur upload verso");
+      if (!r2.ok) {
+        const errBody = await r2.json().catch(() => ({}));
+        throw new Error((errBody.error as string) || "Erreur upload verso");
+      }
 
       setStep("success");
       toast({ title: "CNI renouvelée", description: "Votre nouvelle CNI a été enregistrée" });
@@ -269,6 +346,51 @@ function RenewCNIContent() {
       </div>
 
       <AnimatePresence mode="wait">
+        {step === "verify_2fa" && (
+          <motion.div key="verify_2fa" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Vérification en deux étapes</CardTitle>
+                <CardDescription>Pour renouveler votre CNI, nous devons vérifier votre identité. Un code sera envoyé à votre téléphone et à votre email.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!twoFaToken ? (
+                  <Button onClick={handleRequest2Fa} disabled={twoFaSending} className="w-full">
+                    {twoFaSending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Envoyer le code
+                  </Button>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="otp">Code à 6 chiffres</Label>
+                      <Input
+                        id="otp"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={twoFaOtp}
+                        onChange={(e) => setTwoFaOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        className="text-center text-lg tracking-widest font-mono"
+                      />
+                    </div>
+                    <Button onClick={handleVerify2Fa} disabled={twoFaVerifying || twoFaOtp.length !== 6} className="w-full">
+                      {twoFaVerifying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Valider
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleRequest2Fa} disabled={twoFaSending} className="w-full">
+                      Renvoyer le code
+                    </Button>
+                  </>
+                )}
+                <Link href={redirectTo || "/tenant/identity"} className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-center")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+                </Link>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {step === "intro" && (
           <motion.div key="intro" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
             <Card>
@@ -359,7 +481,9 @@ function RenewCNIContent() {
               <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4"><CheckCircle className="h-8 w-8 text-green-600" /></div>
               <h3 className="text-xl font-semibold mb-2">CNI renouvelée !</h3>
               {extractedData?.date_expiration && <p className="text-muted-foreground mb-4">Expire le: {extractedData.date_expiration}</p>}
-              <Link href="/tenant/identity" className={cn(buttonVariants({ variant: "default" }))}>Retour</Link>
+              <Link href={redirectTo || "/tenant/identity"} className={cn(buttonVariants({ variant: "default" }))}>
+                {redirectTo ? "Retour à la signature" : "Retour"}
+              </Link>
             </CardContent></Card>
           </motion.div>
         )}

@@ -38,6 +38,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { cn } from "@/lib/utils";
 import { getStatusBadgeProps } from "@/lib/types/status";
+import { isIdentityVerified } from "@/lib/helpers/identity-check";
 import { CreditBuilderCard, CreditScoreData } from "@/features/tenant/components/credit-builder-card";
 import { ConsumptionChart, ConsumptionDataPoint } from "@/features/tenant/components/consumption-chart";
 
@@ -297,14 +298,14 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     
     // Étape 4: Identité vérifiée
     steps++;
-    if (dashboard?.kyc_status === 'verified') completed++;
+    if (isIdentityVerified({ kyc_status: dashboard?.kyc_status })) completed++;
     
     // Étape 5: Bail signé
     steps++;
     if (currentLease?.statut === 'active' || currentLease?.statut === 'fully_signed') completed++;
     
     return { steps, completed, percentage: Math.round((completed / steps) * 100) };
-  }, [hasLeaseData, dashboard?.kyc_status, currentLease?.statut]);
+  }, [hasLeaseData, dashboard?.kyc_status, currentLease?.statut, dashboard]);
 
   if (error) {
     return (
@@ -468,7 +469,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                   { label: "Compte créé", done: true, href: "#" },
                   { label: "Logement lié", done: hasLeaseData, href: "/tenant/onboarding/context" },
                   { label: "Assurance déposée", done: !!dashboard?.insurance?.has_insurance, href: "/tenant/documents" },
-                  { label: "Identité vérifiée", done: dashboard?.kyc_status === 'verified', href: "/tenant/onboarding/identity" },
+                  { label: "Identité vérifiée", done: isIdentityVerified({ kyc_status: dashboard?.kyc_status }), href: "/tenant/onboarding/identity" },
                   { label: "Bail signé", done: currentLease?.statut === 'active' || currentLease?.statut === 'fully_signed', href: "/tenant/onboarding/sign" },
                 ].map((step) => (
                   <Link

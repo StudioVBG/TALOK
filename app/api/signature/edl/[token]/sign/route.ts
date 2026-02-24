@@ -71,7 +71,7 @@ export async function POST(
       return NextResponse.json({ error: "Ce document a déjà été signé" }, { status: 400 });
     }
 
-    // P0-1: CNI recommandé mais non bloquant (alignement avec /api/edl/[id]/sign)
+    // P0-1: CNI obligatoire pour les locataires (alignement avec /api/edl/[id]/sign)
     const signerRole = (signatureEntry as any).signer_role;
     const isTenant = ["tenant", "locataire", "locataire_principal"].includes(signerRole);
     const signerProfileId = (signatureEntry as any).signer_profile_id;
@@ -83,6 +83,12 @@ export async function POST(
         .eq("profile_id", signerProfileId)
         .maybeSingle();
       identityVerified = !!(tenantProfile as { cni_number?: string | null } | null)?.cni_number?.trim?.();
+    }
+    if (isTenant && !identityVerified) {
+      return NextResponse.json(
+        { error: "Votre identité (CNI) doit être vérifiée avant de signer" },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();

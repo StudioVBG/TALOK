@@ -97,8 +97,15 @@ export async function POST(request: Request) {
       .eq("id", leaseId)
       .single();
 
-    const propertyId = leaseWithProperty?.property_id || null;
-    const ownerId = (leaseWithProperty?.properties as any)?.owner_id || null;
+    if (!leaseWithProperty) {
+      return NextResponse.json(
+        { error: "Bail non trouvé ou vous n'avez pas accès à ce bail" },
+        { status: 404 }
+      );
+    }
+
+    const propertyId = leaseWithProperty.property_id ?? null;
+    const ownerId = (leaseWithProperty.properties as { owner_id?: string } | null)?.owner_id ?? null;
 
     // Vérifier le type de fichier
     const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
@@ -245,7 +252,11 @@ export async function POST(request: Request) {
     if (docError) {
       console.error("[Upload CNI] Erreur DB:", docError);
       return NextResponse.json(
-        { error: "Erreur lors de l'enregistrement" },
+        {
+          error: `Erreur lors de l'enregistrement: ${docError.message}`,
+          code: docError.code,
+          hint: docError.hint ?? undefined,
+        },
         { status: 500 }
       );
     }
@@ -256,6 +267,7 @@ export async function POST(request: Request) {
       const cniNumber =
         (ocrData.numero_cni as string)?.trim() ||
         (ocrData.numero as string)?.trim() ||
+        (ocrData.numero_document as string)?.trim() ||
         `CNI_UPLOADED_${newDoc.id}`;
 
       if (side === "recto") {
@@ -268,6 +280,11 @@ export async function POST(request: Request) {
               cni_recto_path: filePath,
               cni_expiry_date: expiryDate,
               cni_verified_at: new Date().toISOString(),
+              cni_verification_method: "ocr_scan",
+              kyc_status: "verified",
+              nb_adultes: 1,
+              nb_enfants: 0,
+              garant_required: false,
             },
             { onConflict: "profile_id" }
           );

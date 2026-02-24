@@ -746,6 +746,47 @@ export type ProviderProfileRow = {
 }
 
 // ============================================
+// IDENTITY 2FA - SOTA 2026
+// ============================================
+
+export type Identity2FaRequestRow = {
+  id: string
+  profile_id: string
+  action: "renew" | "initial" | "update"
+  lease_id: string | null
+  otp_hash: string
+  token: string
+  verified_at: string | null
+  expires_at: string
+  ip_address: string | null
+  created_at: string
+}
+
+export type Identity2FaRequestInsert = {
+  id?: string
+  profile_id: string
+  action: "renew" | "initial" | "update"
+  lease_id?: string | null
+  otp_hash: string
+  token: string
+  verified_at?: string | null
+  expires_at: string
+  ip_address?: string | null
+  created_at?: string
+}
+
+export type Identity2FaRequestUpdate = {
+  profile_id?: string
+  action?: "renew" | "initial" | "update"
+  lease_id?: string | null
+  otp_hash?: string
+  token?: string
+  verified_at?: string | null
+  expires_at?: string
+  ip_address?: string | null
+}
+
+// ============================================
 // UNIFIED SIGNATURE SYSTEM TYPES - P1 SOTA 2026
 // ============================================
 
@@ -2230,6 +2271,7 @@ export type Database = {
       guarantors: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       house_rule_versions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       idempotency_keys: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      identity_2fa_requests: { Row: Identity2FaRequestRow; Insert: Identity2FaRequestInsert; Update: Identity2FaRequestUpdate; Relationships: [] }
       impersonation_sessions: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       insurance_policies: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       invitations: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }

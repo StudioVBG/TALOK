@@ -23,6 +23,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import { isIdentityVerified } from "@/lib/helpers/identity-check";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,6 +75,8 @@ interface TenantProfile {
   cni_verified_at: string | null;
   cni_expiry_date: string | null;
   cni_verification_method: string | null;
+  kyc_status?: string | null;
+  cni_number?: string | null;
 }
 
 interface TenantSettingsClientProps {
@@ -227,14 +230,14 @@ export function TenantSettingsClient({
       !!formData.nationalite?.trim(),
       !!formData.situation_pro?.trim(),
       !!formData.revenus_mensuels?.toString()?.trim() && Number(formData.revenus_mensuels) > 0,
-      !!tenantProfile?.cni_verified_at,
+      isIdentityVerified(tenantProfile),
     ];
     const count = filled.filter(Boolean).length;
     return { count, total: 9, percentage: Math.round((count / 9) * 100) };
-  }, [formData, tenantProfile?.cni_verified_at]);
+  }, [formData, tenantProfile]);
 
   const cniExpiryDate = tenantProfile?.cni_expiry_date;
-  const isCniVerified = !!tenantProfile?.cni_verified_at;
+  const isCniVerified = isIdentityVerified(tenantProfile);
   const daysUntilExpiry = cniExpiryDate
     ? Math.ceil((new Date(cniExpiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;

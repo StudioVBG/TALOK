@@ -391,6 +391,7 @@ export async function POST(request: Request, { params }: PageProps) {
       try {
         const cniNumber =
           (ocrData.numero_cni as string)?.trim() ||
+          (ocrData.numero_document as string)?.trim() ||
           `CNI_UPLOADED_${docData.id}`;
 
         if (side === "recto") {
@@ -403,6 +404,8 @@ export async function POST(request: Request, { params }: PageProps) {
                 cni_recto_path: filePath,
                 cni_expiry_date: expiryDate,
                 cni_verified_at: new Date().toISOString(),
+                cni_verification_method: "ocr_scan",
+                kyc_status: "verified",
               },
               { onConflict: "profile_id" }
             );

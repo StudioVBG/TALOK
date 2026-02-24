@@ -174,7 +174,7 @@ export default function EDLSignatureClient({
             </CardHeader>
             <CardContent className="pt-4">
               <Link
-                href={leaseId ? `/tenant/identity/renew?lease_id=${leaseId}` : "/tenant/identity"}
+                href={leaseId ? `/tenant/identity/renew?lease_id=${leaseId}&redirect_to=${encodeURIComponent(`/signature-edl/${token}`)}` : "/tenant/identity"}
                 className={cn(
                   "inline-flex items-center justify-center rounded-xl font-bold text-lg h-14 px-8",
                   "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30"

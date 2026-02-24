@@ -56,7 +56,7 @@ async function fetchEDLByToken(token: string) {
     serviceClient.from("edl_signatures").select("*, profile:profiles(*)").eq("edl_id", edl.id),
     serviceClient.from("owner_profiles").select("*, profile:profiles(*)").eq("profile_id", property.owner_id).single(),
     tenantProfileId
-      ? serviceClient.from("tenant_profiles").select("cni_number").eq("profile_id", tenantProfileId).maybeSingle()
+      ? serviceClient.from("tenant_profiles").select("cni_number, cni_recto_path, cni_verso_path").eq("profile_id", tenantProfileId).maybeSingle()
       : Promise.resolve({ data: null }),
     leaseId && tenantProfileId
       ? serviceClient
@@ -69,10 +69,11 @@ async function fetchEDLByToken(token: string) {
       : Promise.resolve({ data: [] })
   ]);
 
-  const hasCniNumber = !!(tenantProfile as { cni_number?: string | null } | null)?.cni_number?.trim?.();
-  const hasRecto = (cniDocs || []).some((d: { type: string }) => d.type === "cni_recto");
-  const hasVerso = (cniDocs || []).some((d: { type: string }) => d.type === "cni_verso");
-  const identityComplete = hasCniNumber && hasRecto && hasVerso;
+  const tp = tenantProfile as { cni_number?: string | null; cni_recto_path?: string | null; cni_verso_path?: string | null } | null;
+  const hasCniNumber = !!(tp?.cni_number?.trim?.());
+  const hasRectoPath = !!(tp?.cni_recto_path?.trim?.());
+  const hasVersoPath = !!(tp?.cni_verso_path?.trim?.());
+  const identityComplete = hasCniNumber && hasRectoPath && hasVersoPath;
 
   // Générer l'aperçu HTML côté serveur (évite un second fetch côté client)
   const signaturesWithUrls = (signaturesRaw || []).slice();

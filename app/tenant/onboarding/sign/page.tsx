@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SignaturePad, type SignatureData } from "@/components/signature/SignaturePad";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { isIdentityVerified } from "@/lib/helpers/identity-check";
 
 export default function TenantSignLeasePage() {
   const router = useRouter();
@@ -28,22 +29,13 @@ export default function TenantSignLeasePage() {
   const kycStatus = dashboard?.kyc_status || 'pending';
   const signerName = dashboard?.tenant ? `${dashboard.tenant.prenom} ${dashboard.tenant.nom}` : "Locataire";
 
-  // ✅ FIX: Un locataire est considéré "vérifié" s'il a un compte créé (via invitation)
-  // OU si son kyc_status est explicitement "verified"
-  // Le simple fait d'avoir un compte + tenant profile = identité validée
-  const isKycVerified = useMemo(() => {
-    // Si kyc_status est 'verified', c'est OK
-    if (kycStatus === 'verified') return true;
-    
-    // Si le locataire a un profil avec prénom et nom = il a créé son compte via invitation
-    // Donc son identité a été implicitement vérifiée (email vérifié)
-    if (dashboard?.tenant?.prenom && dashboard?.tenant?.nom) return true;
-    
-    // Si le locataire a un profile_id, il a un compte créé
-    if (dashboard?.profile_id) return true;
-    
-    return false;
-  }, [kycStatus, dashboard]);
+  const isKycVerified = useMemo(
+    () =>
+      isIdentityVerified({ kyc_status: dashboard?.kyc_status }) ||
+      !!(dashboard?.tenant?.prenom && dashboard?.tenant?.nom) ||
+      !!dashboard?.profile_id,
+    [dashboard?.kyc_status, dashboard?.tenant?.prenom, dashboard?.tenant?.nom, dashboard?.profile_id]
+  );
 
   // ✅ FIX: Vérifier si le locataire a déjà signé ce bail
   const hasAlreadySigned = useMemo(() => {

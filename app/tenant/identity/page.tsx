@@ -24,6 +24,7 @@ import {
   Plus,
 } from "lucide-react";
 import { formatDate } from "@/lib/helpers/format";
+import { isIdentityVerified } from "@/lib/helpers/identity-check";
 import { motion } from "framer-motion";
 
 interface CNIDocument {
@@ -200,10 +201,9 @@ export default function TenantIdentityPage() {
   const hasLeaseCNI = leases.some(l => l.documents.some(d => d.type === "cni_recto" && !d.is_archived));
   const hasAnyCNI = hasProfileCNI || hasLeaseCNI;
 
-  // Déterminer le statut global de vérification
+  // Déterminer le statut global de vérification (helper centralisé)
   const getGlobalKycStatus = (): string => {
-    if (tenantProfile?.kyc_status === "verified") return "verified";
-    if (tenantProfile?.cni_verified_at) return "verified";
+    if (isIdentityVerified(tenantProfile)) return "verified";
     if (hasLeaseCNI) {
       const firstRecto = leases
         .flatMap(l => l.documents)
