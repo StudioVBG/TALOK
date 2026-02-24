@@ -48,7 +48,13 @@ export function useOwnerPaymentMethods() {
     queryKey: [QUERY_KEY, profile?.id],
     queryFn: async () => {
       const res = await fetch("/api/owner/payment-methods");
-      if (!res.ok) throw new Error("Impossible de charger les moyens de paiement");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 503 || data?.code === "STRIPE_CONFIG_ERROR") {
+          throw new Error(typeof data?.error === "string" ? data.error : "Impossible de charger les moyens de paiement");
+        }
+        throw new Error("Impossible de charger les moyens de paiement");
+      }
       const data = await res.json();
       return data.methods ?? [];
     },
@@ -64,7 +70,13 @@ export function useOwnerCurrentPaymentMethod() {
     queryKey: [CURRENT_KEY, profile?.id],
     queryFn: async () => {
       const res = await fetch("/api/owner/payment-methods/current");
-      if (!res.ok) throw new Error("Impossible de charger le moyen de paiement");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 503 || data?.code === "STRIPE_CONFIG_ERROR") {
+          throw new Error(typeof data?.error === "string" ? data.error : "Impossible de charger le moyen de paiement");
+        }
+        throw new Error("Impossible de charger le moyen de paiement");
+      }
       const data = await res.json();
       return data.payment_method ?? null;
     },

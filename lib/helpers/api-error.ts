@@ -84,6 +84,22 @@ export function handleApiError(error: unknown): NextResponse {
     }
   }
 
+  // Erreur Stripe configuration / authentification (clé API invalide, etc.)
+  const isStripeConfigError =
+    (error && typeof error === "object" && (error as any).type === "StripeAuthenticationError") ||
+    (error instanceof Error && error.message?.includes("Invalid API Key"));
+
+  if (isStripeConfigError) {
+    return NextResponse.json(
+      {
+        error:
+          "Nous rencontrons un problème technique pour afficher le formulaire de paiement. Veuillez réessayer plus tard. Si le problème persiste, contactez le support.",
+        code: "STRIPE_CONFIG_ERROR",
+      },
+      { status: 503 }
+    );
+  }
+
   // Erreur générique
   const errorMessage =
     error instanceof Error ? error.message : "Erreur serveur inattendue";

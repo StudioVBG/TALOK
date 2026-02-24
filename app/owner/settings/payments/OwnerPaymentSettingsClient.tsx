@@ -24,6 +24,7 @@ import {
   Ban,
   Clock,
   Wallet,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { PaymentMethodSetup } from "@/features/billing/components/v2/PaymentMethodSetup";
+import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import {
   useOwnerPaymentMethods,
   useOwnerCurrentPaymentMethod,
@@ -76,8 +78,8 @@ export function OwnerPaymentSettingsClient({ profileId }: Props) {
     } | null;
   } | null>(null);
 
-  const { data: methods, isLoading: methodsLoading } = useOwnerPaymentMethods();
-  const { data: currentPm, isLoading: currentLoading } = useOwnerCurrentPaymentMethod();
+  const { data: methods, isLoading: methodsLoading, isError: methodsError, refetch: refetchMethods } = useOwnerPaymentMethods();
+  const { data: currentPm, isLoading: currentLoading, isError: currentError, refetch: refetchCurrent } = useOwnerCurrentPaymentMethod();
   const addMutation = useAddOwnerPaymentMethod();
   const removeMutation = useRemoveOwnerPaymentMethod();
   const setDefaultMutation = useSetDefaultOwnerPaymentMethod();
@@ -213,6 +215,29 @@ export function OwnerPaymentSettingsClient({ profileId }: Props) {
               {methodsLoading || currentLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : methodsError || currentError ? (
+                <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+                  <p className="text-sm font-medium text-destructive">
+                    Impossible de charger vos moyens de paiement. Veuillez réessayer ou contacter le support si le problème persiste.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        refetchMethods();
+                        refetchCurrent();
+                      }}
+                      className="gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Réessayer
+                    </Button>
+                    <Button variant="link" size="sm" asChild className="px-0">
+                      <Link href={OWNER_ROUTES.support.path}>Contacter le support</Link>
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <>

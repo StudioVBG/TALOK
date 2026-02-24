@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useStripe, useElements, PaymentElement, Elements } from "@stripe/react-stripe-js";
 import { getStripe } from "@/lib/stripe/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, ShieldCheck, RefreshCw, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 
 /**
  * Dictionnaire de traduction des erreurs Stripe en français
@@ -224,11 +226,13 @@ export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
   const initSetup = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setErrorCode(null);
 
     try {
       const response = await fetch(setupIntentEndpoint, {
@@ -237,8 +241,14 @@ export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Impossible d'initialiser le tunnel sécurisé");
+        const data = await response.json().catch(() => ({}));
+        const userMessage =
+          (typeof data?.error === "string" && data.error) || "Impossible d'initialiser le tunnel sécurisé";
+        const code = data?.code ?? (response.status === 503 ? "STRIPE_CONFIG_ERROR" : null);
+        setError(userMessage);
+        setErrorCode(code);
+        setIsLoading(false);
+        return;
       }
 
       const { clientSecret } = await response.json();
@@ -258,6 +268,7 @@ export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
       }
 
       setError(translateStripeError(err.message));
+      setErrorCode(null);
     } finally {
       setIsLoading(false);
     }
@@ -289,24 +300,37 @@ export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
   }
 
   if (error) {
+    const isConfigError = errorCode === "STRIPE_CONFIG_ERROR";
     return (
       <div className="p-6 text-center border-2 border-dashed border-red-200 rounded-2xl bg-red-50/50">
         <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
           <AlertTriangle className="w-6 h-6 text-red-600" />
         </div>
-        <p className="text-red-700 font-medium mb-2">Impossible de charger le formulaire</p>
+        <p className="text-red-700 font-medium mb-2">
+          {isConfigError ? "Problème technique" : "Impossible de charger le formulaire"}
+        </p>
         <p className="text-sm text-red-600/80 mb-4">{error}</p>
-        <Button
-          onClick={() => {
-            setRetryCount(0);
-            initSetup();
-          }}
-          variant="outline"
-          className="gap-2"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Réessayer
-        </Button>
+        <div className="flex flex-col gap-3 items-center">
+          <Button
+            onClick={() => {
+              setRetryCount(0);
+              initSetup();
+            }}
+            variant="outline"
+            className="gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Réessayer
+          </Button>
+          {isConfigError && (
+            <Link
+              href={OWNER_ROUTES.support.path}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Contacter le support
+            </Link>
+          )}
+        </div>
       </div>
     );
   }
