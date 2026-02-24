@@ -186,14 +186,15 @@ export async function POST(request: Request) {
             .eq("id", leaseId)
             .single();
           const propertyId = leaseRow?.property_id;
-          const { data: propertyRow } =
-            propertyId != null
-              ? await serviceClient
-                  .from("properties")
-                  .select("owner_id")
-                  .eq("id", propertyId)
-                  .single()
-              : { data: null };
+          if (typeof propertyId !== "string") {
+            throw new Error("Lease has no property_id");
+          }
+
+          const { data: propertyRow } = await serviceClient
+            .from("properties")
+            .select("owner_id")
+            .eq("id", propertyId)
+            .single();
           const ownerId = propertyRow?.owner_id;
           if (ownerId) {
             const tenantName = [profile?.prenom, profile?.nom].filter(Boolean).join(" ") || user.email || "Un locataire";
