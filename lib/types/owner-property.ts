@@ -75,8 +75,8 @@ export interface OwnerProperty extends Omit<PropertyRow, 'surface' | 'nb_pieces'
   // DPE (Diagnostic de Performance Énergétique)
   dpe_classe_energie?: DpeClasse;
   dpe_classe_climat?: DpeClasse;
-  energie?: string;
-  ges?: string;
+  energie?: string | null;
+  ges?: string | null;
 
   // Chauffage et climatisation
   chauffage_type?: "individuel" | "collectif" | "aucun" | null;

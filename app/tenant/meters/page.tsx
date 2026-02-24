@@ -157,7 +157,7 @@ export default function TenantMetersPage() {
           const last = readings[0];
           return {
             id: m.id,
-            property_id: m.property_id ?? undefined,
+            property_id: m.property_id ?? "",
             type: (m.type || "electricity") as Meter["type"],
             serial_number: m.meter_number ?? m.id.slice(0, 8),
             location: null,

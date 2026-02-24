@@ -1200,7 +1200,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                       property={property as any}
                       onPropertyUpdate={async (updates) => {
                         await apiClient.patch(`/properties/${propertyId}`, updates);
-                        setProperty((prev) => ({ ...prev, ...updates }));
+                        setProperty((prev): OwnerProperty => ({ ...prev, ...updates } as OwnerProperty));
                       }}
                     />
                   </TabsContent>

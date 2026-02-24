@@ -8,6 +8,7 @@ import { useState, useCallback } from "react";
 // @ts-ignore
 import useSWR, { mutate } from "swr";
 import { apiClient } from "@/lib/api-client";
+import type { SituationLocataire } from "@/features/accounting/types";
 
 // ============================================================================
 // Types
@@ -288,10 +289,16 @@ function getTauxTVA(codePostal: string): number {
 // Hook de situation locataire
 // ============================================================================
 
+interface SituationApiResponse {
+  success: boolean;
+  data: SituationLocataire;
+  meta: unknown;
+}
+
 export function useTenantSituation(tenantId?: string) {
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR<SituationApiResponse>(
     tenantId ? `/api/accounting/situation/${tenantId}` : null,
-    apiClient.get
+    (url: string) => apiClient.get<SituationApiResponse>(url)
   );
 
   return {

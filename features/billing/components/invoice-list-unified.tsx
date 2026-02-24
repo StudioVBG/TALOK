@@ -217,7 +217,7 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
                             <Send className="mr-2 h-4 w-4" /> Envoyer
                           </DropdownMenuItem>
                         )}
-                        {variant === "owner" && (invoice.statut === "late" || invoice.statut === "sent") && invoice.statut !== "paid" && (
+                        {variant === "owner" && (invoice.statut === "late" || invoice.statut === "sent") && (
                           <DropdownMenuItem
                             onClick={() => handleSendReminder(invoice.id)}
                             disabled={sendingReminderId === invoice.id}
