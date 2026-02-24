@@ -59,9 +59,21 @@ export default function OwnerIdentityPage() {
     verso: null,
   });
 
+  // Helper: fetch signed URL via server-side API route (same pattern as GED & Documents pages)
+  const fetchSignedUrl = async (documentId: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`/api/documents/${documentId}/signed-url`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.signedUrl || null;
+    } catch {
+      return null;
+    }
+  };
+
   const loadDocuments = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       const supabase = createClient();
       
@@ -95,22 +107,14 @@ export default function OwnerIdentityPage() {
           verso: (verso || null) as IdentityDocument | null,
         });
 
-        // Générer les URLs signées pour l'aperçu
-        if (recto?.storage_path) {
-          const { data: signedRecto } = await supabase.storage
-            .from("documents")
-            .createSignedUrl(recto.storage_path, 3600);
-          if (signedRecto) {
-            setPreviewUrls(prev => ({ ...prev, recto: signedRecto.signedUrl }));
-          }
+        // Générer les URLs signées via l'API route server-side
+        if (recto?.id) {
+          const url = await fetchSignedUrl(recto.id);
+          if (url) setPreviewUrls(prev => ({ ...prev, recto: url }));
         }
-        if (verso?.storage_path) {
-          const { data: signedVerso } = await supabase.storage
-            .from("documents")
-            .createSignedUrl(verso.storage_path, 3600);
-          if (signedVerso) {
-            setPreviewUrls(prev => ({ ...prev, verso: signedVerso.signedUrl }));
-          }
+        if (verso?.id) {
+          const url = await fetchSignedUrl(verso.id);
+          if (url) setPreviewUrls(prev => ({ ...prev, verso: url }));
         }
       }
     } catch (error) {
@@ -188,14 +192,12 @@ export default function OwnerIdentityPage() {
 
       if (docError) throw docError;
 
-      // Générer l'URL signée pour l'aperçu
-      const { data: signedUrl } = await supabase.storage
-        .from("documents")
-        .createSignedUrl(storagePath, 3600);
-
       setDocuments(prev => ({ ...prev, [side]: newDoc }));
-      if (signedUrl) {
-        setPreviewUrls(prev => ({ ...prev, [side]: signedUrl.signedUrl }));
+
+      // Générer l'URL signée via l'API route server-side
+      if (newDoc?.id) {
+        const url = await fetchSignedUrl(newDoc.id);
+        if (url) setPreviewUrls(prev => ({ ...prev, [side]: url }));
       }
 
       toast({
