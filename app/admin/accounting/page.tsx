@@ -74,6 +74,9 @@ import {
 } from "@/components/ui/tooltip";
 import { formatCurrency, formatDate } from "@/lib/helpers/format";
 import { cn } from "@/lib/utils";
+import { HonorairesCalculator } from "@/features/accounting/components/honoraires-calculator";
+import { CRGSummary } from "@/features/accounting/components/crg-summary";
+import { Calculator, FileCheck } from "lucide-react";
 
 // Types
 interface AccountingSummary {
@@ -503,7 +506,7 @@ export default function AdminAccountingPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 flex-wrap h-auto gap-1">
             <TabsTrigger value="overview" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Vue d'ensemble
@@ -516,6 +519,14 @@ export default function AdminAccountingPage() {
                   {lateInvoices.length}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="honoraires" className="gap-2">
+              <Calculator className="h-4 w-4" />
+              Honoraires
+            </TabsTrigger>
+            <TabsTrigger value="crg" className="gap-2">
+              <FileCheck className="h-4 w-4" />
+              CRG
             </TabsTrigger>
             <TabsTrigger value="exports" className="gap-2">
               <Download className="h-4 w-4" />
@@ -796,6 +807,37 @@ export default function AdminAccountingPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Honoraires Tab */}
+          <TabsContent value="honoraires" className="space-y-6">
+            <HonorairesCalculator />
+          </TabsContent>
+
+          {/* CRG Tab */}
+          <TabsContent value="crg" className="space-y-6">
+            {(() => {
+              const endDate = new Date();
+              let startDate = new Date();
+              switch (dateRange) {
+                case "month":
+                  startDate.setMonth(startDate.getMonth() - 1);
+                  break;
+                case "quarter":
+                  startDate.setMonth(startDate.getMonth() - 3);
+                  break;
+                case "year":
+                default:
+                  startDate.setFullYear(startDate.getFullYear() - 1);
+                  break;
+              }
+              return (
+                <CRGSummary
+                  startDate={startDate.toISOString().split("T")[0]}
+                  endDate={endDate.toISOString().split("T")[0]}
+                />
+              );
+            })()}
           </TabsContent>
 
           {/* Exports Tab */}

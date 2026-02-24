@@ -44,8 +44,14 @@ import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, Navigation, CheckCircle2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import type { OwnerProperty, PropertyPhoto, LeaseInfo, TenantInfo, EdlInfo } from "@/lib/types/owner-property";
+import type { Ticket } from "@/lib/types";
 import { PropertyCharacteristicsBadges } from "./components/PropertyCharacteristicsBadges";
 import { PropertyEditForm } from "./components/PropertyEditForm";
+import { TicketListUnified } from "@/features/tickets/components/ticket-list-unified";
+import { ticketsService } from "@/features/tickets/services/tickets.service";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PropertyAnnouncementTab } from "@/features/properties/components/v3/property-announcement-tab";
+import { PropertyRoomsPhotosTab } from "@/features/properties/components/v3/property-rooms-photos-tab";
 
 // Import dynamique de la carte pour éviter les erreurs SSR
 const PropertyMap = dynamic(
@@ -156,6 +162,15 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
   const [pendingPhotoUrls, setPendingPhotoUrls] = useState<string[]>([]);
   const [photosToDelete, setPhotosToDelete] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    ticketsService.getTicketsByProperty(propertyId).then((data) => {
+      if (!cancelled) setTickets(data);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [propertyId]);
 
   const { leases = [] } = details;
   // Chercher un bail existant (tous les statuts sauf terminated/archived)
@@ -1151,6 +1166,48 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
               )}
             </CardContent>
           </Card>
+
+          {/* Maintenance & Tickets */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Maintenance & Tickets</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TicketListUnified tickets={tickets} variant="owner" />
+            </CardContent>
+          </Card>
+
+          {/* Pièces & Photos / Annonce */}
+          {!["parking", "box"].includes(property.type || "") && (
+            <Card>
+              <Tabs defaultValue="rooms" className="w-full">
+                <CardHeader className="pb-2">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="rooms">Pièces & Photos</TabsTrigger>
+                    <TabsTrigger value="announcement">Annonce</TabsTrigger>
+                  </TabsList>
+                </CardHeader>
+                <CardContent>
+                  <TabsContent value="rooms" className="mt-0">
+                    <PropertyRoomsPhotosTab
+                      propertyId={propertyId}
+                      property={property as any}
+                      isHabitation={!["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(property.type || "")}
+                    />
+                  </TabsContent>
+                  <TabsContent value="announcement" className="mt-0">
+                    <PropertyAnnouncementTab
+                      property={property as any}
+                      onPropertyUpdate={async (updates) => {
+                        await apiClient.patch(`/properties/${propertyId}`, updates);
+                        setProperty((prev) => ({ ...prev, ...updates }));
+                      }}
+                    />
+                  </TabsContent>
+                </CardContent>
+              </Tabs>
+            </Card>
+          )}
 
           {/* ========== VISITE VIRTUELLE (si renseignée) ========== */}
           {property.visite_virtuelle_url && !isEditing && (

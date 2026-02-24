@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { 
@@ -11,7 +12,10 @@ import {
   Download, 
   CheckCircle2, 
   AlertCircle,
-  Clock
+  Clock,
+  Trash2,
+  Loader2,
+  FileCheck
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -31,6 +35,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/helpers/format";
 
 import { sendInvoiceAction, updateInvoiceStatusAction } from "../actions/invoices";
+import { invoicesService } from "../services/invoices.service";
 
 // Types
 interface Invoice {
@@ -39,6 +44,7 @@ interface Invoice {
   montant_total: number;
   statut: "draft" | "sent" | "viewed" | "partial" | "paid" | "late" | "cancelled";
   created_at: string;
+  lease_id?: string;
   lease?: {
     property?: {
       adresse_complete: string;
@@ -55,6 +61,8 @@ interface InvoiceListProps {
 export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
   const { toast } = useToast();
   const [optimisticInvoices, setOptimisticInvoices] = useState(invoices);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
   // Fonction pour formater la période (YYYY-MM -> Mois Année)
   const formatPeriod = (period: string) => {
@@ -85,6 +93,38 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cette facture ?")) return;
+    setDeletingId(id);
+    try {
+      await invoicesService.deleteInvoice(id);
+      setOptimisticInvoices((prev) => prev.filter((i) => i.id !== id));
+      toast({ title: "Facture supprimée", description: "La facture a été supprimée avec succès." });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression";
+      toast({ title: "Erreur", description: msg, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleSendReminder = async (id: string) => {
+    setSendingReminderId(id);
+    try {
+      const response = await fetch(`/api/invoices/${id}/remind`, { method: "POST" });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Erreur lors de l'envoi");
+      }
+      toast({ title: "Relance envoyée", description: "Un email de rappel a été envoyé au locataire." });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Impossible d'envoyer la relance";
+      toast({ title: "Erreur", description: msg, variant: "destructive" });
+    } finally {
+      setSendingReminderId(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {optimisticInvoices.length === 0 ? (
@@ -110,9 +150,15 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
 
                 {/* Infos Principales */}
                 <div className="flex-1 text-center sm:text-left">
-                  <h4 className="font-semibold text-lg capitalize">
-                    {formatPeriod(invoice.periode)}
-                  </h4>
+                  {variant === "owner" ? (
+                    <Link href={`/owner/invoices/${invoice.id}`} className="font-semibold text-lg capitalize hover:underline block">
+                      {formatPeriod(invoice.periode)}
+                    </Link>
+                  ) : (
+                    <h4 className="font-semibold text-lg capitalize">
+                      {formatPeriod(invoice.periode)}
+                    </h4>
+                  )}
                   <div className="flex flex-col sm:flex-row gap-1 sm:gap-4 text-sm text-slate-500">
                     <span>{invoice.lease?.property?.adresse_complete || "Adresse inconnue"}</span>
                     {variant === "owner" && (
@@ -153,19 +199,56 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        
-                        {invoice.statut === 'draft' && (
+                        <DropdownMenuItem asChild>
+                          <Link href={`/owner/invoices/${invoice.id}`}>
+                            <FileText className="mr-2 h-4 w-4" /> Voir le détail
+                          </Link>
+                        </DropdownMenuItem>
+                        {invoice.lease_id && (
+                          <DropdownMenuItem asChild>
+                            <Link href={`/owner/leases/${invoice.lease_id}`}>
+                              <FileCheck className="mr-2 h-4 w-4" /> Voir le bail
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        {invoice.statut === "draft" && (
                           <DropdownMenuItem onClick={() => handleSend(invoice.id)}>
                             <Send className="mr-2 h-4 w-4" /> Envoyer
                           </DropdownMenuItem>
                         )}
-                        
-                        {invoice.statut !== 'paid' && (
+                        {variant === "owner" && (invoice.statut === "late" || invoice.statut === "sent") && invoice.statut !== "paid" && (
+                          <DropdownMenuItem
+                            onClick={() => handleSendReminder(invoice.id)}
+                            disabled={sendingReminderId === invoice.id}
+                          >
+                            {sendingReminderId === invoice.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Send className="mr-2 h-4 w-4" />
+                            )}
+                            Envoyer une relance
+                          </DropdownMenuItem>
+                        )}
+                        {invoice.statut !== "paid" && (invoice.statut as string) !== "cancelled" && (
                           <DropdownMenuItem onClick={() => handleMarkPaid(invoice.id)}>
                             <CheckCircle2 className="mr-2 h-4 w-4" /> Marquer payé
                           </DropdownMenuItem>
                         )}
-                        
+                        {invoice.statut === "draft" && (
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(invoice.id)}
+                            disabled={deletingId === invoice.id}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            {deletingId === invoice.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="mr-2 h-4 w-4" />
+                            )}
+                            Supprimer
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>
                           <Download className="mr-2 h-4 w-4" /> Télécharger PDF

@@ -22,6 +22,7 @@ import {
 import { ColocExpenseSplit } from "@/features/tenant/components/coloc-expense-split";
 import { ColocChores } from "@/features/tenant/components/coloc-chores";
 import { ColocHouseRules } from "@/features/tenant/components/coloc-house-rules";
+import { ColocBoard } from "@/features/tenant/components/coloc-board";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { logger } from "@/lib/monitoring";
@@ -265,8 +266,14 @@ export default function TenantColocationPage() {
           </div>
         </motion.div>
 
-        {/* Roommates overview */}
-        <motion.div variants={itemVariants}>
+        {/* Roommates overview: ColocBoard (payment status) + legacy list from lease_signers */}
+        <motion.div variants={itemVariants} className="space-y-4">
+          {lease?.id && (
+            <ColocBoard
+              leaseId={lease.id}
+              month={new Date().toISOString().slice(0, 7) + "-01"}
+            />
+          )}
           <GlassCard gradient className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">

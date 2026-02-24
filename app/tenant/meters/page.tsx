@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { logger } from "@/lib/monitoring";
+import { metersService } from "@/features/tenant/services/meters.service";
 
 // Types
 interface Meter {
@@ -144,37 +145,58 @@ export default function TenantMetersPage() {
         return;
       }
       const leaseData = await leaseResponse.json();
-      if (!leaseData.lease?.property_id) {
+      const leaseId = leaseData.lease?.id;
+      if (!leaseId) {
         setMeters([]);
         return;
       }
-      const metersResponse = await fetch(`/api/properties/${leaseData.lease.property_id}/meters`, { signal });
-      if (!metersResponse.ok) {
-        setMeters([]);
-        return;
-      }
-      const metersData = await metersResponse.json();
-      setMeters(metersData.meters || []);
+      const metersList = await metersService.getMeters(leaseId);
+      const metersWithLastReading: Meter[] = await Promise.all(
+        metersList.map(async (m) => {
+          const readings = await metersService.getMeterReadings(m.id, 1);
+          const last = readings[0];
+          return {
+            id: m.id,
+            property_id: m.property_id ?? undefined,
+            type: (m.type || "electricity") as Meter["type"],
+            serial_number: m.meter_number ?? m.id.slice(0, 8),
+            location: null,
+            provider: m.provider ?? null,
+            unit: m.unit,
+            is_active: m.is_connected,
+            last_reading: last
+              ? { value: last.reading_value, date: last.reading_date }
+              : null,
+          };
+        })
+      );
+      setMeters(metersWithLastReading);
 
-      // Charger les estimations de consommation pour chaque compteur
-      const meterIds = (metersData.meters || []).map((m: Meter) => m.id);
+      const meterIds = metersList.map((m) => m.id);
       if (meterIds.length > 0) {
         try {
-          const estResponses = await Promise.allSettled(
-            meterIds.map((id: string) =>
-              fetch(`/api/meters/${id}/history?include_estimates=true`, { signal })
-                .then(r => r.ok ? r.json() : null)
-            )
-          );
           const allEstimates: ConsumptionEstimate[] = [];
+          const estResponses = await Promise.allSettled(
+            meterIds.map((id: string) => metersService.getConsumptionEstimates(id))
+          );
           for (const r of estResponses) {
-            if (r.status === "fulfilled" && r.value?.estimates) {
-              allEstimates.push(...r.value.estimates);
+            if (r.status === "fulfilled" && Array.isArray(r.value)) {
+              allEstimates.push(
+                ...r.value.map((e) => ({
+                  id: e.id,
+                  meter_id: e.meter_id,
+                  period_start: e.period_start,
+                  period_end: e.period_end,
+                  estimated_value: e.estimated_consumption,
+                  actual_value: null,
+                  unit: "kwh" as const,
+                }))
+              );
             }
           }
           setEstimates(allEstimates);
         } catch {
-          // Non bloquant : les estimations sont optionnelles
+          // Non bloquant
         }
       }
     } catch (error: unknown) {
@@ -199,10 +221,18 @@ export default function TenantMetersPage() {
     setLastThreeReadings([]);
     setIsDialogOpen(true);
     try {
-      const res = await fetch(`/api/meters/${meter.id}/history`);
-      const data = await res.json();
-      const readings = (data.readings || []) as MeterReading[];
-      setLastThreeReadings(readings.slice(0, 3));
+      const readings = await metersService.getMeterReadings(meter.id, 12);
+      setLastThreeReadings(
+        readings.slice(0, 3).map((r) => ({
+          id: r.id,
+          meter_id: r.meter_id,
+          value: r.reading_value,
+          reading_date: r.reading_date,
+          photo_url: r.photo_url,
+          recorded_by: r.created_by ?? "",
+          created_at: r.created_at,
+        }))
+      );
     } catch {
       // optionnel
     }
@@ -276,9 +306,18 @@ export default function TenantMetersPage() {
     setHistoryLoading(true);
     setShowHistory(true);
     try {
-      const response = await fetch(`/api/meters/${meter.id}/history`);
-      const data = await response.json();
-      setReadingHistory(data.readings || []);
+      const readings = await metersService.getMeterReadings(meter.id, 24);
+      setReadingHistory(
+        readings.map((r) => ({
+          id: r.id,
+          meter_id: r.meter_id,
+          value: r.reading_value,
+          reading_date: r.reading_date,
+          photo_url: r.photo_url,
+          recorded_by: r.created_by ?? "",
+          created_at: r.created_at,
+        }))
+      );
     } finally {
       setHistoryLoading(false);
     }
