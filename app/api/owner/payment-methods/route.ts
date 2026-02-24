@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
 import { z } from "zod";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import type { Json } from "@/lib/supabase/database.types";
 
 async function getOwnerContext(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -68,7 +69,7 @@ async function insertAudit(
     owner_id: ownerId,
     action,
     payment_method_type: paymentMethodType,
-    metadata,
+    metadata: metadata as Json,
     ip_address: ipAddress,
     user_agent: userAgent,
   });
