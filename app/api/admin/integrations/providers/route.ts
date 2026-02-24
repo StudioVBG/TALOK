@@ -223,6 +223,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!existingCredential.id) {
+      return NextResponse.json(
+        { error: "Missing credential id" },
+        { status: 400 }
+      );
+    }
+
     const { error: updateError } = await supabase
       .from("api_credentials")
       .update({ scope: scopeValue })
