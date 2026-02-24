@@ -61,40 +61,44 @@ export async function GET(request: Request) {
     }
 
     const dataArray = (data || []) as any[];
+    const userIds = dataArray.map((p) => p.user_id).filter(Boolean);
 
-    const items = await Promise.all(
-      dataArray.map(async (profile) => {
-        const providerProfile =
-          Array.isArray(profile.provider_profiles) && profile.provider_profiles.length > 0
-            ? profile.provider_profiles[0]
-            : null;
-        const name = `${profile.prenom || ""} ${profile.nom || ""}`.trim();
-
-        let email: string | undefined;
-        if (profile.user_id) {
-          try {
-            const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
-              profile.user_id
-            );
-            if (!userError && userData?.user) {
-              email = userData.user.email ?? undefined;
+    const emailsMap = new Map<string, string>();
+    if (userIds.length > 0) {
+      try {
+        const { data: authUsersData } = await supabase.auth.admin.listUsers({
+          perPage: 1000,
+        });
+        if (authUsersData?.users) {
+          for (const authUser of authUsersData.users) {
+            if (userIds.includes(authUser.id) && authUser.email) {
+              emailsMap.set(authUser.id, authUser.email);
             }
-          } catch (err) {
-            console.error("Error fetching vendor email:", err);
           }
         }
+      } catch (authErr) {
+        console.error("Error fetching vendor emails from auth:", authErr);
+      }
+    }
 
-        return {
-          id: profile.id,
-          profile_id: profile.id,
-          name: name || "Sans nom",
-          email,
-          phone: profile.telephone || undefined,
-          type_services: providerProfile?.type_services || [],
-          zones_intervention: providerProfile?.zones_intervention || undefined,
-        };
-      })
-    );
+    const items = dataArray.map((profile) => {
+      const providerProfile =
+        Array.isArray(profile.provider_profiles) && profile.provider_profiles.length > 0
+          ? profile.provider_profiles[0]
+          : null;
+      const name = `${profile.prenom || ""} ${profile.nom || ""}`.trim();
+      const email = profile.user_id ? emailsMap.get(profile.user_id) : undefined;
+
+      return {
+        id: profile.id,
+        profile_id: profile.id,
+        name: name || "Sans nom",
+        email,
+        phone: profile.telephone || undefined,
+        type_services: providerProfile?.type_services || [],
+        zones_intervention: providerProfile?.zones_intervention || undefined,
+      };
+    });
 
     return NextResponse.json({
       items,

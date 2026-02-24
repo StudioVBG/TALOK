@@ -1,6 +1,6 @@
 // Types TypeScript pour le domaine métier
 
-export type UserRole = "admin" | "owner" | "tenant" | "provider" | "guarantor";
+export type UserRole = "admin" | "platform_admin" | "owner" | "tenant" | "provider" | "guarantor";
 
 // ============================================
 // PROPERTY TYPES - Migration V3

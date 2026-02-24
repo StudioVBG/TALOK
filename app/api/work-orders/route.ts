@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 import { workOrderSchema } from "@/lib/validations";
+import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 
 export async function GET(request: Request) {
   try {
@@ -52,6 +53,28 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const validated = workOrderSchema.parse(body);
+
+    const validatedData = validated as { ticket_id: string };
+    const { data: ticket } = await supabaseClient
+      .from("tickets")
+      .select("property_id")
+      .eq("id", validatedData.ticket_id)
+      .single();
+
+    if (ticket?.property_id) {
+      const { data: property } = await supabaseClient
+        .from("properties")
+        .select("owner_id")
+        .eq("id", (ticket as { property_id: string }).property_id)
+        .single();
+
+      if (property?.owner_id) {
+        const featureCheck = await withFeatureAccess(property.owner_id, "work_orders");
+        if (!featureCheck.allowed) {
+          return createSubscriptionErrorResponse(featureCheck);
+        }
+      }
+    }
 
     const { data: workOrder, error } = await supabaseClient
       .from("work_orders")

@@ -6,6 +6,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { createEDL } from "@/lib/services/edl-creation.service";
+import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 import { z } from "zod";
 
 /** Schéma Zod pour la création d'un EDL */
@@ -222,6 +223,13 @@ export async function POST(request: Request) {
 
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
+    if (profile.role === "owner") {
+      const featureCheck = await withFeatureAccess((profile as { id: string }).id, "edl_digital");
+      if (!featureCheck.allowed) {
+        return createSubscriptionErrorResponse(featureCheck);
+      }
     }
 
     const result = await createEDL(serviceClient, {

@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { validateFile, ALLOWED_MIME_TYPES } from "@/lib/security/file-validation";
 import { withSecurity } from "@/lib/api/with-security";
+import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 
 /**
  * POST /api/documents/upload - Upload un document
@@ -100,6 +101,7 @@ export const POST = withSecurity(async function POST(request: Request) {
     // Variables mutables pour résolution automatique
     let resolvedPropertyId = propertyId;
     let resolvedLeaseId = leaseId;
+    let resolvedOwnerId: string | null = profileAny.role === "owner" ? profileAny.id : null;
 
     // Résoudre l'entity_id depuis la propriété ou le bail
     let resolvedEntityId: string | null = null;
@@ -151,6 +153,23 @@ export const POST = withSecurity(async function POST(request: Request) {
       }
     }
 
+    // Résoudre owner_id pour les locataires (avant vérification limite)
+    if (profileAny.role === "tenant" && resolvedPropertyId && !resolvedOwnerId) {
+      const { data: prop } = await serviceClient
+        .from("properties")
+        .select("owner_id")
+        .eq("id", resolvedPropertyId)
+        .maybeSingle();
+      if (prop) resolvedOwnerId = (prop as any).owner_id;
+    }
+
+    if (resolvedOwnerId) {
+      const limitCheck = await withSubscriptionLimit(resolvedOwnerId, "documents_gb");
+      if (!limitCheck.allowed) {
+        return createSubscriptionErrorResponse(limitCheck);
+      }
+    }
+
     // Créer un nom de fichier unique
     const fileExt = file.name.split(".").pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -172,25 +191,6 @@ export const POST = withSecurity(async function POST(request: Request) {
         { error: uploadError.message || "Erreur lors de l'upload" },
         { status: 500 }
       );
-    }
-
-    // ✅ Résoudre le owner_id quand c'est un locataire qui upload
-    // (nécessaire pour que le propriétaire voie le document)
-    let resolvedOwnerId: string | null = profileAny.role === "owner" ? profileAny.id : null;
-    if (profileAny.role === "tenant" && resolvedPropertyId && !resolvedOwnerId) {
-      try {
-        const { data: prop, error: propError } = await serviceClient
-          .from("properties")
-          .select("owner_id")
-          .eq("id", resolvedPropertyId)
-          .maybeSingle();
-        if (propError) {
-          console.error("[POST /api/documents/upload] owner_id resolution failed:", propError);
-        }
-        if (prop) resolvedOwnerId = (prop as any).owner_id;
-      } catch (err) {
-        console.error("[POST /api/documents/upload] owner_id resolution error:", err);
-      }
     }
 
     // Résoudre entity_id depuis le bail si pas encore résolu

@@ -16,6 +16,7 @@
     "lint": "next lint",
     "test": "vitest",
     "test:e2e": "playwright test",
+    "test:sms": "tsx scripts/test-sms.ts",
     "type-check": "tsc --noEmit",
     "setup": "bash scripts/setup.sh",
     "check-env": "bash scripts/check-env.sh",

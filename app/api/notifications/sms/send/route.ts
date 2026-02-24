@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
+import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 import { z } from "zod";
 
 const sendSmsSchema = z.object({
@@ -63,6 +64,13 @@ export async function POST(request: NextRequest) {
 
     if (!profile || !["admin", "owner"].includes(profile.role)) {
       return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    }
+
+    if (profile.role === "owner") {
+      const featureCheck = await withFeatureAccess(profile.id, "auto_reminders_sms");
+      if (!featureCheck.allowed) {
+        return createSubscriptionErrorResponse(featureCheck);
+      }
     }
 
     // Valider les données

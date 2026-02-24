@@ -34,9 +34,11 @@ export type SignerRole = typeof SIGNER_ROLES[keyof typeof SIGNER_ROLES];
 
 export const USER_ROLES = {
   ADMIN: "admin",
+  PLATFORM_ADMIN: "platform_admin",
   OWNER: "owner",
   TENANT: "tenant",
   PROVIDER: "provider",
+  GUARANTOR: "guarantor",
 } as const;
 
 export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
@@ -164,9 +166,11 @@ export function getSignerRoleLabel(role: string | null | undefined): string {
 export function getUserRoleLabel(role: string | null | undefined): string {
   switch (role) {
     case USER_ROLES.ADMIN: return "Administrateur";
+    case USER_ROLES.PLATFORM_ADMIN: return "Admin plateforme";
     case USER_ROLES.OWNER: return "Propriétaire";
     case USER_ROLES.TENANT: return "Locataire";
     case USER_ROLES.PROVIDER: return "Prestataire";
+    case USER_ROLES.GUARANTOR: return "Garant";
     default: return "Utilisateur";
   }
 }

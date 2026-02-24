@@ -35,36 +35,21 @@ export async function POST(request: Request) {
 
     const { reason, feedback, immediately } = parsed.data;
 
-    // Récupérer l'abonnement (supporter les deux cas: user_id ou owner_id via profile)
-    let subscription = null;
-
-    // D'abord essayer avec user_id
-    const { data: subByUser } = await supabase
-      .from("subscriptions")
-      .select("id, stripe_subscription_id, status, plan_slug")
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
       .eq("user_id", user.id)
       .single();
 
-    if (subByUser) {
-      subscription = subByUser;
-    } else {
-      // Fallback: chercher via owner_id (ancien système)
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (profile) {
-        const { data: subByOwner } = await supabase
-          .from("subscriptions")
-          .select("id, stripe_subscription_id, status, plan_slug")
-          .eq("owner_id", profile.id)
-          .single();
-
-        subscription = subByOwner;
-      }
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
+
+    const { data: subscription } = await supabase
+      .from("subscriptions")
+      .select("id, stripe_subscription_id, status, plan_slug")
+      .eq("owner_id", profile.id)
+      .single();
 
     if (!subscription) {
       return NextResponse.json({ error: "Abonnement non trouvé" }, { status: 404 });
@@ -102,7 +87,7 @@ export async function POST(request: Request) {
 
     if (immediately) {
       updateData.status = "canceled";
-      updateData.plan_slug = "starter";
+      updateData.plan_slug = "gratuit";
     }
 
     await serviceClient
@@ -116,7 +101,7 @@ export async function POST(request: Request) {
       user_id: user.id,
       event_type: "canceled",
       from_plan: subscription.plan_slug,
-      to_plan: immediately ? "starter" : subscription.plan_slug,
+      to_plan: immediately ? "gratuit" : subscription.plan_slug,
       metadata: { reason, feedback, immediately },
     });
 

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createServerClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { CreateSignatureRequestDTO, SignatureRequest } from "@/lib/signatures/types";
+import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 
 // Schema de validation
 const createRequestSchema = z.object({
@@ -60,6 +61,13 @@ export async function POST(request: NextRequest) {
 
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
+    if (profile.role === "owner") {
+      const limitCheck = await withSubscriptionLimit(profile.id, "signatures");
+      if (!limitCheck.allowed) {
+        return createSubscriptionErrorResponse(limitCheck);
+      }
     }
 
     // Valider les données

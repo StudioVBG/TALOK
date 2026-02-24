@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
-import { getStripe } from "@/lib/stripe-client";
+import { createClient } from "@/lib/supabase/server";
+import { stripe } from "@/lib/stripe";
 import { z } from "zod";
 
 const DowngradeSchema = z.object({
@@ -17,7 +17,7 @@ type PlanRow = {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -32,10 +32,20 @@ export async function POST(request: NextRequest) {
 
     const { new_plan_id } = parsed.data;
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
     const { data: subscription } = await supabase
       .from("subscriptions")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("owner_id", profile.id)
       .single();
 
     if (!subscription?.stripe_subscription_id) {
@@ -43,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: newPlan } = await supabase
-      .from("plans")
+      .from("subscription_plans")
       .select("*")
       .eq("slug", new_plan_id)
       .single();
@@ -84,7 +94,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Prix Stripe non configure pour ce plan" }, { status: 400 });
     }
 
-    const stripe = getStripe();
     const stripeSub = await stripe.subscriptions.retrieve(subscription.stripe_subscription_id);
     const itemId = stripeSub.items.data[0]?.id;
 
@@ -101,7 +110,8 @@ export async function POST(request: NextRequest) {
     await supabase
       .from("subscriptions")
       .update({
-        plan_id: new_plan_id,
+        plan_id: newPlan.id,
+        plan_slug: new_plan_id,
         updated_at: new Date().toISOString(),
       })
       .eq("id", subscription.id);
@@ -111,7 +121,7 @@ export async function POST(request: NextRequest) {
       action: "update",
       entity_type: "subscription",
       entity_id: subscription.id,
-      metadata: { from_plan: subscription.plan_id, to_plan: new_plan_id, type: "downgrade" },
+      metadata: { from_plan: subscription.plan_slug ?? subscription.plan_id, to_plan: new_plan_id, type: "downgrade" },
       risk_level: "medium",
       success: true,
     });

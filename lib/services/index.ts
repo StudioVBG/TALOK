@@ -28,7 +28,6 @@ export {
 } from "./email-service";
 
 // Service SMS (Twilio)
-// Note: sms-service.ts is deprecated, use sms.service.ts instead
 export {
   sendSMS,
   sendSMS as sendSms, // Backward compatibility alias

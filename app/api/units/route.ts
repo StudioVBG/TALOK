@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 import { z } from "zod";
 
 /** Schéma Zod pour la création d'un lot */
@@ -178,6 +179,13 @@ export async function POST(request: Request) {
 
     if (profile.role !== "admin" && property.owner_id !== profile.id) {
       throw new ApiError(403, "Vous n'avez pas accès à cette propriété");
+    }
+
+    if (profile.role === "owner") {
+      const featureCheck = await withFeatureAccess(property.owner_id, "colocation");
+      if (!featureCheck.allowed) {
+        return createSubscriptionErrorResponse(featureCheck);
+      }
     }
 
     // Créer le lot

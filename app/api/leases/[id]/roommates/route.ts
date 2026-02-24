@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 import { z } from "zod";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
 
@@ -148,6 +149,14 @@ export async function POST(
 
     if ((lease.property as any)?.owner_id !== profile.id && profile.role !== "admin") {
       return NextResponse.json({ error: "Ce bail ne vous appartient pas" }, { status: 403 });
+    }
+
+    const ownerId = (lease.property as { owner_id?: string })?.owner_id;
+    if (ownerId && profile.role === "owner") {
+      const featureCheck = await withFeatureAccess(ownerId, "colocation");
+      if (!featureCheck.allowed) {
+        return createSubscriptionErrorResponse(featureCheck);
+      }
     }
 
     // Vérifier le nombre de places disponibles

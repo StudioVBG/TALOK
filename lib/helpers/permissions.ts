@@ -3,7 +3,7 @@ import type { UserRole } from "@/lib/types";
 // Helpers pour vérifier les permissions
 
 export function canAccessAdmin(userRole: UserRole | null | undefined): boolean {
-  return userRole === "admin";
+  return userRole === "admin" || userRole === "platform_admin";
 }
 
 export function canManageProperties(userRole: UserRole | null | undefined): boolean {
