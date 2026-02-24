@@ -138,22 +138,26 @@ export async function POST(request: Request) {
     // 9. Lier le profile_id au lease_signers si un bail existe
     let leaseLinked = false;
     if (invitation.lease_id) {
+      if (typeof invitation.lease_id !== "string") {
+        throw new Error("Invalid invitation: lease_id is not a string");
+      }
+      const leaseId: string = invitation.lease_id;
+
       const { data: updatedSigners, error: signerError } = await serviceClient
         .from("lease_signers")
         .update({ profile_id: profileId })
-        .eq("lease_id", String(invitation.lease_id ?? ""))
+        .eq("lease_id", leaseId)
         .ilike("invited_email", invitationEmail)
         .is("profile_id", null)
         .select("id");
 
       if (signerError) {
         console.error("[accept-invitation] Erreur liaison lease_signers:", signerError);
-        // Ne pas bloquer — l'invitation est quand même consommée
       } else {
         leaseLinked = (updatedSigners?.length || 0) > 0;
         if (leaseLinked) {
           console.log(
-            `[accept-invitation] Profile ${profile.id} lié au lease_signers pour bail ${invitation.lease_id}`
+            `[accept-invitation] Profile ${profile.id} lié au lease_signers pour bail ${leaseId}`
           );
         }
       }
@@ -165,7 +169,7 @@ export async function POST(request: Request) {
           user_id: user.id,
           invitation_status: "accepted",
         })
-        .eq("lease_id", String(invitation.lease_id ?? ""))
+        .eq("lease_id", leaseId)
         .ilike("invited_email", String(invitationEmail))
         .is("user_id", null);
 
@@ -179,7 +183,7 @@ export async function POST(request: Request) {
           const { data: leaseRow } = await serviceClient
             .from("leases")
             .select("property_id")
-            .eq("id", invitation.lease_id)
+            .eq("id", leaseId)
             .single();
           const { data: propertyRow } = leaseRow
             ? await serviceClient
@@ -197,7 +201,7 @@ export async function POST(request: Request) {
               p_title: "Invitation acceptée",
               p_message: `${tenantName} a accepté l'invitation et est maintenant lié au bail.`,
               p_link: "/owner/tenants",
-              p_related_id: invitation.lease_id ?? undefined,
+              p_related_id: leaseId,
               p_related_type: "lease",
             });
           }
