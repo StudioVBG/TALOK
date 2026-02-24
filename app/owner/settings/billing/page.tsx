@@ -83,6 +83,9 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import type { SubscriptionInvoice } from "@/lib/subscriptions/types";
+import { PaymentMethod } from "@/components/billing/PaymentMethod";
+import { useOwnerCurrentPaymentMethod } from "@/lib/hooks/use-owner-payment-methods";
+import { isExpiringSoon } from "@/lib/billing-utils";
 
 // ============================================
 // CONSTANTS
@@ -618,9 +621,9 @@ export default function BillingPage() {
 
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
-  const [portalLoading, setPortalLoading] = useState(false);
   const [showFeatures, setShowFeatures] = useState(false);
 
+  const { data: ownerPaymentMethod } = useOwnerCurrentPaymentMethod();
   const plan = PLANS[currentPlan];
   const isPaid = currentPlan !== "gratuit";
   const canUpgrade = getPlanLevel(currentPlan) < getPlanLevel("enterprise_xl");
@@ -665,29 +668,6 @@ export default function BillingPage() {
 
     return items;
   }, [usage]);
-
-  const openStripePortal = async () => {
-    setPortalLoading(true);
-    try {
-      const res = await fetch("/api/subscriptions/portal", { method: "POST" });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Erreur");
-      }
-
-      window.location.href = data.url;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Erreur lors de l'ouverture du portail";
-      toast({
-        title: "Erreur",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setPortalLoading(false);
-    }
-  };
 
   const handleExportData = async () => {
     try {
@@ -782,18 +762,11 @@ export default function BillingPage() {
           </div>
           <div className="flex gap-2">
             {isPaid && (
-              <Button
-                variant="outline"
-                onClick={openStripePortal}
-                disabled={portalLoading}
-                className="border-slate-600 text-slate-300 hover:text-white"
-              >
-                {portalLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
+              <Button variant="outline" asChild className="border-slate-600 text-slate-300 hover:text-white">
+                <Link href="/owner/settings/payments">
                   <CreditCard className="w-4 h-4 mr-2" />
-                )}
-                Gerer le paiement
+                  Moyens de paiement
+                </Link>
               </Button>
             )}
             <Button variant="outline" asChild className="border-slate-600 text-slate-300 hover:text-white">
@@ -825,12 +798,35 @@ export default function BillingPage() {
                 fonctionnalites {plan.name}. Ajoutez un moyen de paiement pour continuer apres l&apos;essai.
               </p>
             </div>
-            <Button
-              size="sm"
-              className="bg-violet-600 hover:bg-violet-500 flex-shrink-0"
-              onClick={openStripePortal}
-            >
-              Ajouter un moyen de paiement
+            <Button size="sm" className="bg-violet-600 hover:bg-violet-500 flex-shrink-0" asChild>
+              <Link href="/owner/settings/payments">Ajouter un moyen de paiement</Link>
+            </Button>
+          </motion.div>
+        )}
+
+        {/* Alerte expiration carte */}
+        {ownerPaymentMethod && isExpiringSoon(ownerPaymentMethod.exp_month, ownerPaymentMethod.exp_year, 30) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+              "p-4 rounded-lg border flex items-start gap-4",
+              isExpiringSoon(ownerPaymentMethod.exp_month, ownerPaymentMethod.exp_year, 7)
+                ? "bg-red-500/10 border-red-500/30"
+                : "bg-amber-500/10 border-amber-500/30"
+            )}
+          >
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-400" aria-hidden="true" />
+            <div className="flex-1">
+              <p className={cn("font-medium text-sm", isExpiringSoon(ownerPaymentMethod.exp_month, ownerPaymentMethod.exp_year, 7) ? "text-red-300" : "text-amber-300")}>
+                Votre carte expire bientot
+              </p>
+              <p className="text-sm text-slate-400 mt-0.5">
+                Mettez a jour votre moyen de paiement pour eviter toute interruption de votre abonnement.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" className="flex-shrink-0 border-slate-500 text-slate-300" asChild>
+              <Link href="/owner/settings/payments">Mettre a jour</Link>
             </Button>
           </motion.div>
         )}
@@ -1068,8 +1064,27 @@ export default function BillingPage() {
             </CardContent>
           </Card>
 
-          {/* Usage Card */}
-          <UsageCard />
+          {/* Right column: Moyen de paiement + Usage */}
+          <div className="space-y-6">
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-lg text-white flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-violet-400" aria-hidden="true" />
+                  Moyen de paiement
+                </CardTitle>
+                <CardDescription className="text-slate-400">
+                  Carte utilisee pour votre abonnement
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PaymentMethod
+                  paymentMethod={ownerPaymentMethod ?? null}
+                  manageUrl="/owner/settings/payments"
+                />
+              </CardContent>
+            </Card>
+            <UsageCard />
+          </div>
         </div>
 
         {/* Invoices */}

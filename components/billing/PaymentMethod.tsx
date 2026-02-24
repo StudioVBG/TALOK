@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useStripePortal } from "@/hooks/useStripePortal";
 import { isExpiringSoon } from "@/lib/billing-utils";
 import type { BillingPaymentMethod as PaymentMethodType } from "@/types/billing";
+import Link from "next/link";
 
 const BRAND_DISPLAY: Record<string, { label: string }> = {
   visa: { label: "Visa" },
@@ -17,10 +18,35 @@ const BRAND_DISPLAY: Record<string, { label: string }> = {
 
 interface PaymentMethodProps {
   paymentMethod: PaymentMethodType | null;
+  /** Quand défini, les boutons "Ajouter" / "Modifier" redirigent vers cette URL au lieu d'ouvrir le portail Stripe (ex: /owner/settings/payments). */
+  manageUrl?: string;
 }
 
-export function PaymentMethod({ paymentMethod }: PaymentMethodProps) {
+export function PaymentMethod({ paymentMethod, manageUrl }: PaymentMethodProps) {
   const { mutate: openPortal, isPending } = useStripePortal();
+
+  const actionButton = (label: string, icon: React.ReactNode) => {
+    if (manageUrl) {
+      return (
+        <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:text-white flex-shrink-0" asChild>
+          <Link href={manageUrl}>{icon}{icon ? " " : ""}{label}</Link>
+        </Button>
+      );
+    }
+    return (
+      <Button
+        size="sm"
+        className={label === "Ajouter" ? "bg-red-600 hover:bg-red-500 flex-shrink-0" : "border-slate-600 text-slate-300 hover:text-white flex-shrink-0"}
+        variant={label === "Ajouter" ? "default" : "outline"}
+        onClick={() => openPortal()}
+        disabled={isPending}
+      >
+        {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" aria-hidden="true" /> : icon}
+        {(isPending || icon) && <span className="ml-1.5" />}
+        {label}
+      </Button>
+    );
+  };
 
   if (!paymentMethod) {
     return (
@@ -33,19 +59,7 @@ export function PaymentMethod({ paymentMethod }: PaymentMethodProps) {
               Ajoutez une carte bancaire pour maintenir votre abonnement actif.
             </p>
           </div>
-          <Button
-            size="sm"
-            className="bg-red-600 hover:bg-red-500 flex-shrink-0"
-            onClick={() => openPortal()}
-            disabled={isPending}
-          >
-            {isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
-            ) : (
-              <CreditCard className="w-4 h-4 mr-1.5" aria-hidden="true" />
-            )}
-            Ajouter
-          </Button>
+          {actionButton("Ajouter", <CreditCard className="w-4 h-4" aria-hidden="true" />)}
         </div>
       </div>
     );
@@ -87,19 +101,7 @@ export function PaymentMethod({ paymentMethod }: PaymentMethodProps) {
             {!expiring7 && expiring30 && " — Expire bientot"}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="border-slate-600 text-slate-300 hover:text-white flex-shrink-0"
-          onClick={() => openPortal()}
-          disabled={isPending}
-        >
-          {isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            "Modifier"
-          )}
-        </Button>
+        {actionButton("Modifier", null)}
       </div>
     </div>
   );

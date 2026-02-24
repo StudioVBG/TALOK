@@ -26,6 +26,7 @@ import {
   ClipboardCheck,
   Search,
   Briefcase,
+  Wallet,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { SharedBottomNav } from "./shared-bottom-nav";
@@ -83,6 +84,7 @@ const navigationGroups: NavGroup[] = [
     label: "Finances",
     items: [
       { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
+      { name: "Moyens de paiement", href: "/owner/settings/payments", icon: Wallet },
       { name: "Facturation", href: "/owner/settings/billing", icon: CreditCard },
     ],
   },
@@ -493,6 +495,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
               { href: "/owner/entities", label: "Entités", icon: Briefcase },
               { href: "/owner/legal-protocols", label: "Protocoles juridiques", icon: Shield },
+              { href: "/owner/settings/payments", label: "Moyens de paiement", icon: Wallet },
               { href: "/owner/settings/billing", label: "Facturation", icon: CreditCard },
               { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
             ]}

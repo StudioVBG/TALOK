@@ -63,6 +63,8 @@ interface PaymentMethodSetupProps {
   onCancel?: () => void;
   /** Types de paiement autorisés */
   allowedTypes?: ("card" | "sepa_debit")[];
+  /** Endpoint pour créer le SetupIntent (défaut: /api/payments/setup-intent). Utiliser /api/owner/payment-methods/setup-intent pour le propriétaire. */
+  setupIntentEndpoint?: string;
 }
 
 /**
@@ -218,6 +220,7 @@ function SetupForm({ onSuccess, onCancel }: PaymentMethodSetupProps) {
 }
 
 export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
+  const { setupIntentEndpoint = "/api/payments/setup-intent" } = props;
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -228,7 +231,7 @@ export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
     setError(null);
 
     try {
-      const response = await fetch("/api/payments/setup-intent", {
+      const response = await fetch(setupIntentEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -258,7 +261,7 @@ export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [retryCount]);
+  }, [retryCount, setupIntentEndpoint]);
 
   useEffect(() => {
     initSetup();
