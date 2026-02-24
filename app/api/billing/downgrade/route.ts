@@ -11,8 +11,8 @@ type PlanRow = {
   max_properties?: number;
   max_leases?: number;
   max_tenants?: number;
-  stripe_price_yearly?: string | null;
-  stripe_price_monthly?: string | null;
+  stripe_price_yearly_id?: string | null;
+  stripe_price_monthly_id?: string | null;
 };
 
 export async function POST(request: NextRequest) {
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cycle = subscription.billing_cycle || "monthly";
-    const newPriceId = (cycle === "yearly" ? plan.stripe_price_yearly : plan.stripe_price_monthly) ?? null;
+    const newPriceId = (cycle === "yearly" ? plan.stripe_price_yearly_id : plan.stripe_price_monthly_id) ?? null;
 
     if (!newPriceId) {
       return NextResponse.json({ error: "Prix Stripe non configure pour ce plan" }, { status: 400 });

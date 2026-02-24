@@ -127,6 +127,7 @@ export default function AccountCreationPage() {
     provider: "/provider/onboarding/profile",
     guarantor: inviteToken ? `/guarantor/onboarding/context?invite=${inviteToken}` : "/guarantor/onboarding/context",
     admin: "/dashboard",
+    platform_admin: "/admin",
   };
 
   // Helper pour sauvegarder en arrière-plan

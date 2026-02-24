@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cycle = billing_cycle || subscription.billing_cycle || "monthly";
-    const newPriceId = cycle === "yearly" ? newPlan.stripe_price_yearly : newPlan.stripe_price_monthly;
+    const newPriceId = cycle === "yearly" ? newPlan.stripe_price_yearly_id : newPlan.stripe_price_monthly_id;
 
     if (!newPriceId) {
       return NextResponse.json({ error: "Prix Stripe non configure pour ce plan" }, { status: 400 });
