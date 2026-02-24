@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     // 3. Récupérer le profil de l'utilisateur connecté
     const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
-      .select("id, role, email")
+      .select("id, role, email, prenom, nom")
       .eq("user_id", user.id)
       .single();
 
@@ -171,6 +171,39 @@ export async function POST(request: Request) {
 
       if (roommateError) {
         console.warn("[accept-invitation] Roommate update échoué (normal si pas coloc):", roommateError.message);
+      }
+
+      // 10b. Notifier le propriétaire quand un locataire accepte l'invitation
+      if (leaseLinked) {
+        try {
+          const { data: leaseRow } = await serviceClient
+            .from("leases")
+            .select("property_id")
+            .eq("id", invitation.lease_id)
+            .single();
+          const { data: propertyRow } = leaseRow
+            ? await serviceClient
+                .from("properties")
+                .select("owner_id")
+                .eq("id", leaseRow.property_id)
+                .single()
+            : { data: null };
+          const ownerId = propertyRow?.owner_id;
+          if (ownerId) {
+            const tenantName = [profile?.prenom, profile?.nom].filter(Boolean).join(" ") || user.email || "Un locataire";
+            await serviceClient.rpc("create_notification", {
+              p_recipient_id: ownerId,
+              p_type: "tenant_invitation_accepted",
+              p_title: "Invitation acceptée",
+              p_message: `${tenantName} a accepté l'invitation et est maintenant lié au bail.`,
+              p_link: "/owner/tenants",
+              p_related_id: invitation.lease_id ?? undefined,
+              p_related_type: "lease",
+            });
+          }
+        } catch (notifErr) {
+          console.warn("[accept-invitation] Notification propriétaire non-bloquante:", notifErr);
+        }
       }
     }
 

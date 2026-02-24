@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Gift, Star, History, Sparkles, ShoppingBag, Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/ui/page-transition";
 import { ErrorState } from "@/components/ui/error-state";
@@ -94,9 +95,20 @@ export default function TenantRewardsPage() {
                   <> Vous êtes à <strong>{pointsToNextTier} points</strong> de votre prochain palier ({nextTier} pts).</>
                 )}
               </p>
-              <Button size="lg" className="bg-white text-indigo-600 hover:bg-muted font-black rounded-2xl h-12 md:h-14 px-6 md:px-10 shadow-xl w-full sm:w-auto">
-                Découvrir la boutique <ShoppingBag className="ml-2 h-5 w-5" />
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-block">
+                      <Button size="lg" disabled className="bg-white text-indigo-600 font-black rounded-2xl h-12 md:h-14 px-6 md:px-10 shadow-xl w-full sm:w-auto opacity-70 cursor-not-allowed">
+                        Découvrir la boutique <ShoppingBag className="ml-2 h-5 w-5" />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Bientôt disponible</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <div className="hidden md:flex justify-center">
               <div className="relative">

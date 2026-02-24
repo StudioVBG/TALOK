@@ -401,7 +401,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
           <EmptyState
             icon={Users}
             title="Aucun locataire"
-            description="Vos locataires apparaîtront ici une fois qu'un bail sera signé."
+            description="Aucun locataire pour le moment. Créez un bail et invitez vos locataires pour les voir ici."
             action={{
               label: "Créer un bail",
               href: "/owner/leases/new",

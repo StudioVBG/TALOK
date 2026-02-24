@@ -6,6 +6,7 @@ import { ShoppingBag, Shield, Zap, Wifi, Truck, Heart, ArrowRight, Star, Sparkle
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PageTransition } from "@/components/ui/page-transition";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
@@ -180,9 +181,20 @@ export default function TenantMarketplacePage() {
               <p className="text-muted-foreground/60 text-lg leading-relaxed">
                 Notre assistant <strong>Tom</strong> peut s'occuper de toutes les démarches administratives liées à votre emménagement.
               </p>
-              <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl h-14 px-10">
-                Lancer l'assistant emménagement
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-block">
+                      <Button size="lg" disabled className="bg-indigo-600 text-white font-black rounded-2xl h-14 px-10 opacity-70 cursor-not-allowed">
+                        Lancer l'assistant emménagement
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Bientôt disponible</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <div className="hidden md:block">
               <div className="aspect-square rounded-full border-2 border-white/5 flex items-center justify-center relative">

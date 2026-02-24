@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Gauge,
   Plus,
@@ -407,9 +408,20 @@ export default function TenantMetersPage() {
                       Effectuez un relevé tous les 1ers du mois pour identifier les fuites d'eau ou les surconsommations électriques.
                     </p>
                     <div className="pt-2">
-                      <Button variant="secondary" className="w-full bg-white/10 hover:bg-white/20 border-white/30 text-white backdrop-blur-md font-bold">
-                        Voir les éco-gestes
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="block">
+                              <Button variant="secondary" disabled className="w-full bg-white/10 border-white/30 text-white backdrop-blur-md font-bold opacity-70 cursor-not-allowed">
+                                Voir les éco-gestes
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Bientôt disponible</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </div>
                   <div className="absolute -right-10 -bottom-10 h-40 w-40 bg-white/5 rounded-full blur-3xl" />

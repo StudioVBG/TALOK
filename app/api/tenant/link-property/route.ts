@@ -227,7 +227,7 @@ export const POST = withSecurity(
 
         if (ownerProfile?.user_id) {
           await serviceClient.rpc("create_notification", {
-            p_recipient_id: property.owner_id,
+            p_recipient_id: ownerProfile.user_id,
             p_type: "tenant_linked",
             p_title: "Nouveau locataire lié",
             p_message: `${tenantName} s'est lié à ${property.adresse_complete} via le code logement.`,

@@ -45,6 +45,30 @@ describe("getStatusBadgeProps", () => {
       expect(result.type).toBe("neutral");
     });
 
+    it("retourne 'Envoyé' + info pour sent", () => {
+      const result = getStatusBadgeProps("lease", "sent");
+      expect(result.label).toBe("Envoyé");
+      expect(result.type).toBe("info");
+    });
+
+    it("retourne 'Attente signature propriétaire' + warning pour pending_owner_signature", () => {
+      const result = getStatusBadgeProps("lease", "pending_owner_signature");
+      expect(result.label).toBe("Attente signature propriétaire");
+      expect(result.type).toBe("warning");
+    });
+
+    it("retourne 'Avenant' + info pour amended", () => {
+      const result = getStatusBadgeProps("lease", "amended");
+      expect(result.label).toBe("Avenant");
+      expect(result.type).toBe("info");
+    });
+
+    it("retourne 'Annulé' + error pour cancelled", () => {
+      const result = getStatusBadgeProps("lease", "cancelled");
+      expect(result.label).toBe("Annulé");
+      expect(result.type).toBe("error");
+    });
+
     it("retourne le statut brut si inconnu", () => {
       const result = getStatusBadgeProps("lease", "unknown_status");
       expect(result.label).toBe("unknown_status");
@@ -109,7 +133,7 @@ describe("getStatusBadgeProps", () => {
       const validTypes = ["success", "warning", "error", "neutral", "info"];
       
       const testCases = [
-        { entity: "lease" as const, statuses: ["draft", "pending_signature", "active", "terminated"] },
+        { entity: "lease" as const, statuses: ["draft", "sent", "pending_signature", "pending_owner_signature", "active", "amended", "terminated", "cancelled"] },
         { entity: "invoice" as const, statuses: ["draft", "paid", "late", "sent"] },
         { entity: "ticket" as const, statuses: ["open", "resolved", "closed"] },
         { entity: "edl" as const, statuses: ["draft", "signed", "disputed"] },

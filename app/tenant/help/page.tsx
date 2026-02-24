@@ -14,6 +14,7 @@ import {
   Search
 } from "lucide-react";
 import Link from "next/link";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const FAQ_CATEGORIES = ["Tout", "Loyer", "Documents", "Bail", "Technique"] as const;
 
@@ -60,15 +61,24 @@ export default function TenantHelpPage() {
 
       {/* Contact rapide */}
       <div className="grid gap-4 md:grid-cols-3 mb-8">
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent className="pt-6 text-center">
-            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
-              <MessageSquare className="h-6 w-6 text-blue-600" />
-            </div>
-            <h3 className="font-semibold mb-1">Chat en ligne</h3>
-            <p className="text-sm text-muted-foreground">Réponse en quelques minutes</p>
-          </CardContent>
-        </Card>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card className="transition-shadow opacity-70 cursor-not-allowed pointer-events-none">
+                <CardContent className="pt-6 text-center">
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+                    <MessageSquare className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <h3 className="font-semibold mb-1">Chat en ligne</h3>
+                  <p className="text-sm text-muted-foreground">Réponse en quelques minutes</p>
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Bientôt disponible</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         <Card className="hover:shadow-md transition-shadow cursor-pointer">
           <CardContent className="pt-6 text-center">
@@ -80,15 +90,24 @@ export default function TenantHelpPage() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent className="pt-6 text-center">
-            <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
-              <BookOpen className="h-6 w-6 text-purple-600" />
-            </div>
-            <h3 className="font-semibold mb-1">Centre d'aide</h3>
-            <p className="text-sm text-muted-foreground">Articles et guides</p>
-          </CardContent>
-        </Card>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card className="transition-shadow opacity-70 cursor-not-allowed pointer-events-none">
+                <CardContent className="pt-6 text-center">
+                  <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
+                    <BookOpen className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <h3 className="font-semibold mb-1">Centre d'aide</h3>
+                  <p className="text-sm text-muted-foreground">Articles et guides</p>
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Bientôt disponible</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Recherche FAQ */}

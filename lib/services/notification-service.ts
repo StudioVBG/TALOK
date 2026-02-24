@@ -146,28 +146,42 @@ const notificationConfig: Record<NotificationType, {
 };
 
 /**
- * Crée une notification in-app
+ * Crée une notification in-app.
+ * recipientId est traité comme profile_id : on résout user_id pour la RLS.
  */
 export async function createNotification(
   input: CreateNotificationInput
 ): Promise<Notification | null> {
   const supabase = await createClient();
   const config = notificationConfig[input.type];
-  
-  const notification = {
+
+  let userId: string | null = null;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("id", input.recipientId)
+    .single();
+  if (profile?.user_id) {
+    userId = profile.user_id;
+  }
+
+  const notification: Record<string, unknown> = {
     type: input.type,
     priority: input.priority || config.defaultPriority,
     title: input.title,
     message: input.message,
     profile_id: input.recipientId,
     channels: input.channels || config.defaultChannels,
-    read: false,
+    is_read: false,
     action_url: input.actionUrl,
     action_label: input.actionLabel,
     image_url: input.imageUrl,
     metadata: input.metadata,
     expires_at: input.expiresAt,
   };
+  if (userId) {
+    notification.user_id = userId;
+  }
 
   const { data, error } = await supabase
     .from("notifications")
@@ -189,7 +203,7 @@ export async function createNotification(
     message: data.message ?? '',
     recipientId: data.profile_id ?? '',
     channels: (data.channels ?? []) as NotificationChannel[],
-    read: data.read ?? false,
+    read: data.is_read ?? data.read ?? false,
     actionUrl: data.action_url ?? undefined,
     actionLabel: data.action_label ?? undefined,
     imageUrl: data.image_url ?? undefined,

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { Suspense } from "react";
@@ -7,7 +6,33 @@ import { redirect } from "next/navigation";
 import { TenantsClient } from "./TenantsClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { resolveTenantDisplay } from "@/lib/helpers/resolve-tenant-display";
+import { computeTenantScore, getTenantDisplayId, getTenantLeaseStatus } from "@/lib/helpers/tenant-score";
 
+interface LeaseSignerProfile {
+  id: string;
+  prenom?: string | null;
+  nom?: string | null;
+  email?: string | null;
+  telephone?: string | null;
+  avatar_url?: string | null;
+}
+
+interface LeaseSignerRow {
+  role?: string;
+  invited_email?: string | null;
+  invited_name?: string | null;
+  signature_status?: string;
+  profile?: LeaseSignerProfile | null;
+}
+
+interface InvoiceRow {
+  lease_id: string;
+  tenant_id: string;
+  statut: string;
+  montant_total: number;
+  date_paiement: string | null;
+  date_echeance: string | null;
+}
 
 export const metadata = {
   title: "Mes Locataires | Talok",
@@ -94,70 +119,95 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
     return [];
   }
 
+  // Batch: collect lease_ids pour tous les signers avec profil (une requête invoices par lot)
+  const leaseIds: string[] = [];
+  for (const lease of leases || []) {
+    const signers = (lease.lease_signers as LeaseSignerRow[] | undefined)?.filter(
+      (s) => (s.role === "locataire_principal" || s.role === "colocataire") && s.profile?.id
+    ) || [];
+    for (const s of signers) {
+      if (s.profile?.id) {
+        leaseIds.push(lease.id);
+      }
+    }
+  }
+
+  // Une seule requête invoices pour tous les (lease_id, tenant_id) concernés
+  const invoiceStatsByKey = new Map<string, { paymentsOnTime: number; paymentsLate: number; lastPaymentDate: string | null; currentBalance: number }>();
+
+  if (leaseIds.length > 0) {
+    const uniqueLeaseIds = [...new Set(leaseIds)];
+    const { data: allInvoices, error: invError } = await supabase
+      .from("invoices")
+      .select("lease_id, tenant_id, statut, montant_total, date_paiement, date_echeance")
+      .in("lease_id", uniqueLeaseIds);
+
+    if (invError) {
+      console.warn("[fetchOwnerTenants] Erreur requête invoices (non bloquante):", invError);
+    } else {
+      for (const inv of (allInvoices || []) as InvoiceRow[]) {
+        const tenantId = inv.tenant_id;
+        if (!tenantId) continue;
+        const key = `${inv.lease_id}-${tenantId}`;
+        let stats = invoiceStatsByKey.get(key);
+        if (!stats) {
+          stats = { paymentsOnTime: 0, paymentsLate: 0, lastPaymentDate: null, currentBalance: 0 };
+          invoiceStatsByKey.set(key, stats);
+        }
+        const statut = inv.statut;
+        const montant_total = inv.montant_total ?? 0;
+        const date_paiement = inv.date_paiement;
+        const date_echeance = inv.date_echeance;
+        if (statut === "paid") {
+          if (date_paiement && date_echeance) {
+            if (new Date(date_paiement) <= new Date(date_echeance)) {
+              stats.paymentsOnTime++;
+            } else {
+              stats.paymentsLate++;
+            }
+          } else {
+            stats.paymentsOnTime++;
+          }
+          if (!stats.lastPaymentDate || (date_paiement && date_paiement > stats.lastPaymentDate)) {
+            stats.lastPaymentDate = date_paiement;
+          }
+        } else if (statut === "sent" || statut === "late") {
+          stats.currentBalance += montant_total;
+        }
+      }
+    }
+  }
+
   const tenants: TenantWithDetails[] = [];
 
   for (const lease of leases || []) {
     // Trouver le locataire principal ou colocataires
-    const tenantSigners = lease.lease_signers?.filter(
-      (s: any) => s.role === "locataire_principal" || s.role === "colocataire"
+    const tenantSigners = (lease.lease_signers as LeaseSignerRow[] | undefined)?.filter(
+      (s) => s.role === "locataire_principal" || s.role === "colocataire"
     ) || [];
 
     for (const signer of tenantSigners) {
       // ✅ FIX: Afficher aussi les locataires invités mais pas encore inscrits
-      // Avant: if (!signer.profile) continue; → les locataires en attente étaient invisibles
       if (!signer.profile && !signer.invited_email) continue;
 
-      let paymentsOnTime = 0;
-      let paymentsLate = 0;
-      let lastPaymentDate: string | null = null;
-      let currentBalance = 0;
-
-      // Récupérer les stats de paiement uniquement si le profil est lié
-      if (signer.profile) {
-        const { data: invoices } = await supabase
-          .from("invoices")
-          .select("id, statut, montant_total, date_paiement, date_echeance")
-          .eq("lease_id", lease.id)
-          .eq("tenant_id", signer.profile.id);
-
-        (invoices || []).forEach((inv: any) => {
-          if (inv.statut === "paid") {
-            if (inv.date_paiement && inv.date_echeance) {
-              if (new Date(inv.date_paiement) <= new Date(inv.date_echeance)) {
-                paymentsOnTime++;
-              } else {
-                paymentsLate++;
-              }
-            } else {
-              paymentsOnTime++;
-            }
-            if (!lastPaymentDate || inv.date_paiement > lastPaymentDate) {
-              lastPaymentDate = inv.date_paiement;
-            }
-          } else if (inv.statut === "sent" || inv.statut === "late") {
-            currentBalance += inv.montant_total || 0;
-          }
-        });
-      }
+      const key = signer.profile ? `${lease.id}-${signer.profile.id}` : "";
+      const stats = key ? invoiceStatsByKey.get(key) : null;
+      const paymentsOnTime = stats?.paymentsOnTime ?? 0;
+      const paymentsLate = stats?.paymentsLate ?? 0;
+      const lastPaymentDate = stats?.lastPaymentDate ?? null;
+      const currentBalance = stats?.currentBalance ?? 0;
 
       const paymentsTotal = paymentsOnTime + paymentsLate;
-
-      // Calculer le score locataire (0-5 étoiles)
-      let score = 5;
-      if (paymentsTotal > 0) {
-        const onTimeRate = paymentsOnTime / paymentsTotal;
-        score = Math.round(onTimeRate * 5);
-      }
-      if (currentBalance > 0) {
-        score = Math.max(1, score - 1);
-      }
-
-      // SOTA 2026: Résolution centralisée (profile → invited_name → invited_email)
+      const score = computeTenantScore(paymentsOnTime, paymentsLate, currentBalance);
       const display = resolveTenantDisplay(signer);
-      const tenantId = display.isLinked && signer.profile
-        ? `${lease.id}-${signer.profile.id}`
-        : `${lease.id}-invited-${signer.invited_email ?? ""}`;
+      const tenantId = getTenantDisplayId(
+        lease.id,
+        display.isLinked,
+        signer.profile?.id ?? "",
+        signer.invited_email ?? ""
+      );
       const profileId = signer.profile?.id || "";
+      const leaseStatus = getTenantLeaseStatus(display.isLinked, lease.statut);
 
       tenants.push({
         id: tenantId,
@@ -168,7 +218,7 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
         telephone: display.telephone || signer.profile?.telephone || null,
         avatar_url: signer.profile?.avatar_url || null,
         lease_id: lease.id,
-        lease_status: !display.isLinked ? "invitation_pending" : lease.statut,
+        lease_status: leaseStatus,
         lease_start: lease.date_debut,
         lease_end: lease.date_fin,
         lease_type: lease.type_bail,

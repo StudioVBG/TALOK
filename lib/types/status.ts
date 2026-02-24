@@ -39,13 +39,17 @@ export type PropertyOperationalStatus =
  */
 export type LeaseStatus =
   | "draft"                   // Brouillon
+  | "sent"                    // Envoyé
   | "pending_signature"       // En attente de signatures
   | "partially_signed"        // Partiellement signé
+  | "pending_owner_signature" // Attente signature propriétaire
   | "fully_signed"            // Entièrement signé (avant EDL)
   | "active"                  // Bail actif
   | "notice_given"            // Congé donné (préavis en cours)
+  | "amended"                 // Avenant en cours
   | "terminated"              // Terminé
-  | "archived";               // Archivé
+  | "archived"                // Archivé
+  | "cancelled";              // Annulé
 
 // ============================================
 // INVOICE STATUS
@@ -201,13 +205,17 @@ export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {
 
 export const LEASE_STATUS_LABELS: Record<LeaseStatus, string> = {
   draft: "Brouillon",
+  sent: "Envoyé",
   pending_signature: "En attente de signature",
   partially_signed: "Partiellement signé",
+  pending_owner_signature: "Attente signature propriétaire",
   fully_signed: "Entièrement signé",
   active: "Actif",
   notice_given: "Préavis",
+  amended: "Avenant",
   terminated: "Terminé",
   archived: "Archivé",
+  cancelled: "Annulé",
 };
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -260,13 +268,17 @@ export const PROPERTY_STATUS_VARIANTS: Record<PropertyStatus, StatusVariant> = {
 
 export const LEASE_STATUS_VARIANTS: Record<LeaseStatus, StatusVariant> = {
   draft: "muted",
+  sent: "info",
   pending_signature: "warning",
   partially_signed: "info",
+  pending_owner_signature: "warning",
   fully_signed: "info",
   active: "success",
   notice_given: "warning",
+  amended: "info",
   terminated: "muted",
   archived: "muted",
+  cancelled: "danger",
 };
 
 export const INVOICE_STATUS_VARIANTS: Record<InvoiceStatus, StatusVariant> = {
