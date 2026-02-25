@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { randomInt, createHmac, randomBytes } from "crypto";
-import { sendOTPSMS } from "@/lib/services/sms.service";
 import { sendEmail } from "@/lib/email/send-email";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
@@ -22,12 +21,12 @@ function generateToken(): string {
 
 /**
  * POST /api/tenant/identity/request-2fa
- * Demande une vérification 2FA (SMS OTP + email avec lien) pour renouvellement / mise à jour CNI.
+ * Demande une vérification 2FA par email uniquement (code + lien) pour renouvellement / mise à jour CNI.
  * Body: { lease_id: string, action: "renew" | "upload" }
  */
 export async function POST(request: Request) {
   try {
-    const rateLimitResponse = applyRateLimit(request, "sms");
+    const rateLimitResponse = applyRateLimit(request, "email");
     if (rateLimitResponse) return rateLimitResponse;
 
     const supabase = await createClient();
@@ -54,11 +53,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const phone = (profile as { telephone?: string | null }).telephone;
     const email = (profile as { email?: string | null }).email;
-    if (!phone && !email) {
+    if (!email) {
       return NextResponse.json(
-        { error: "Ajoutez un numéro de téléphone ou un email à votre profil pour recevoir le code de vérification." },
+        { error: "Ajoutez une adresse email à votre profil pour recevoir le code de vérification." },
         { status: 400 }
       );
     }
@@ -82,26 +80,11 @@ export async function POST(request: Request) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
     const verifyUrl = `${appUrl}/api/tenant/identity/verify-2fa?token=${encodeURIComponent(token)}${leaseId ? `&lease_id=${encodeURIComponent(leaseId)}` : ""}`;
 
-    let smsSent = false;
     let emailSent = false;
     const channelsFailed: { channel: string; error: string }[] = [];
 
-    if (phone) {
-      const smsResult = await sendOTPSMS(phone, otpCode, {
-        appName: "Talok",
-        expiryMinutes: OTP_EXPIRY_MINUTES,
-      });
-      if (smsResult.success) {
-        smsSent = true;
-      } else {
-        channelsFailed.push({ channel: "sms", error: smsResult.error || "Échec SMS" });
-        console.warn("[request-2fa] SMS failed:", smsResult.error);
-      }
-    }
-
-    if (email) {
-      try {
-        const emailResult = await sendEmail({
+    try {
+      const emailResult = await sendEmail({
           to: email,
           subject: "Vérification d'identité - Code et lien Talok",
           html: `
@@ -122,22 +105,21 @@ export async function POST(request: Request) {
             </div>
           `,
         });
-        if (emailResult.success) {
-          emailSent = true;
-        } else {
-          channelsFailed.push({ channel: "email", error: emailResult.error || "Échec email" });
-        }
-      } catch (emailErr) {
-        channelsFailed.push({ channel: "email", error: String(emailErr) });
-        console.warn("[request-2fa] Email failed:", emailErr);
+      if (emailResult.success) {
+        emailSent = true;
+      } else {
+        channelsFailed.push({ channel: "email", error: emailResult.error || "Échec email" });
       }
+    } catch (emailErr) {
+      channelsFailed.push({ channel: "email", error: String(emailErr) });
+      console.warn("[request-2fa] Email failed:", emailErr);
     }
 
-    if (!smsSent && !emailSent) {
+    if (!emailSent) {
       return NextResponse.json(
         {
           success: false,
-          error: "Impossible d'envoyer le code. Vérifiez la configuration SMS et email (Admin > Intégrations).",
+          error: "Impossible d'envoyer le code par email. Vérifiez la configuration email (Admin > Intégrations).",
           channels_failed: channelsFailed,
         },
         { status: 500 }
@@ -146,13 +128,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message:
-        smsSent && emailSent
-          ? "Code envoyé par SMS et email"
-          : smsSent
-            ? "Code envoyé par SMS"
-            : "Code envoyé par email",
-      channels_sent: [smsSent && "sms", emailSent && "email"].filter(Boolean),
+      message: "Code envoyé par email",
+      channels_sent: ["email"],
       channels_failed: channelsFailed,
       expires_in: OTP_EXPIRY_MINUTES * 60,
       token,

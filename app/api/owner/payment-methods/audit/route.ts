@@ -40,7 +40,9 @@ export async function GET(request: Request) {
       .limit(100);
 
     if (error) {
-      throw new ApiError(500, error.message);
+      // Table peut être absente si la migration n'est pas appliquée : ne pas faire 500, renvoyer liste vide
+      console.warn("[owner/payment-methods/audit] Erreur lecture audit:", error.message);
+      return NextResponse.json({ audit: [] });
     }
 
     return NextResponse.json({ audit: rows ?? [] });

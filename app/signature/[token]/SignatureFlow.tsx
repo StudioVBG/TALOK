@@ -18,8 +18,6 @@ import {
   Building2,
   Euro,
   Calendar,
-  AlertCircle,
-  Smartphone,
   Maximize2,
   X,
   Download,
@@ -124,10 +122,8 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [verificationMethod, setVerificationMethod] = useState<"sms" | "email">("sms");
-  const [smsError, setSmsError] = useState<string | null>(null);
-  
-  // Mode de signature : "otp" (code SMS/email) ou "pad" (tracé au doigt/texte)
+
+  // Mode de signature : "otp" (code par email) ou "pad" (tracé au doigt/texte)
   const [signatureMode, setSignatureMode] = useState<"pad" | "otp">("pad");
 
   // Aperçu du bail A4
@@ -268,19 +264,10 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
     }
   };
 
-  // Envoyer le code OTP (SMS ou Email)
-  const handleSendOtp = async (method: "sms" | "email" = verificationMethod) => {
-    // Validation selon la méthode
-    if (method === "sms" && !profileData.telephone) {
-      toast({
-        title: "Téléphone requis",
-        description: "Veuillez renseigner votre numéro de téléphone",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (method === "email" && !profileData.email) {
+  // Envoyer le code OTP par email
+  const handleSendOtp = async () => {
+    const email = (profileData.email || tenantEmail)?.trim();
+    if (!email) {
       toast({
         title: "Email requis",
         description: "Veuillez renseigner votre adresse email",
@@ -290,46 +277,23 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
     }
 
     setIsSubmitting(true);
-    setSmsError(null);
-    
     try {
-      const payload: any = { method };
-      
-      if (method === "sms") {
-        payload.phone = profileData.telephone;
-        payload.countryCode = profileData.countryCode || undefined;
-      } else {
-        payload.email = profileData.email;
-      }
-
       const response = await fetch(`/api/signature/${token}/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        // Si erreur SMS avec suggestion email
-        if (data.allow_email_fallback) {
-          setSmsError(data.error);
-          toast({
-            title: "⚠️ SMS non reçu ?",
-            description: "Vous pouvez essayer par email",
-            variant: "destructive",
-          });
-          return;
-        }
         throw new Error(data.error || "Erreur lors de l'envoi du code");
       }
 
       setOtpSent(true);
-      setVerificationMethod(method);
-      
       toast({
-        title: method === "sms" ? "📱 Code envoyé" : "📧 Code envoyé",
-        description: data.message,
+        title: "Code envoyé",
+        description: data.message ?? "Code envoyé par email",
       });
     } catch (error: unknown) {
       toast({
@@ -1121,8 +1085,8 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                           onClick={() => setSignatureMode("otp")}
                           className="text-sm text-blue-600 hover:text-blue-700 hover:underline flex items-center justify-center gap-1 mx-auto"
                         >
-                          <Smartphone className="h-3 w-3" />
-                          Signer par code SMS/Email
+                          <FileText className="h-3 w-3" />
+                          Signer par code (email)
                         </button>
                       </div>
                       
@@ -1137,10 +1101,9 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                     </div>
                   )}
 
-                  {/* Mode OTP (code SMS/Email) */}
+                  {/* Mode OTP (code par email) */}
                   {signatureMode === "otp" && !otpSent && (
                     <div className="space-y-4">
-                      {/* Bouton retour vers signature rapide */}
                       <button
                         type="button"
                         onClick={() => setSignatureMode("pad")}
@@ -1150,105 +1113,24 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                         ← Retour à la signature rapide (recommandé)
                       </button>
 
-                      {/* Choix SMS ou Email */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant={verificationMethod === "sms" ? "default" : "outline"}
-                          onClick={() => setVerificationMethod("sms")}
-                          className="gap-2"
-                          size="sm"
-                        >
-                          <Smartphone className="h-4 w-4" />
-                          SMS
-                        </Button>
-                        <Button
-                          variant={verificationMethod === "email" ? "default" : "outline"}
-                          onClick={() => setVerificationMethod("email")}
-                          className="gap-2"
-                          size="sm"
-                        >
-                          <FileText className="h-4 w-4" />
-                          Email
-                        </Button>
+                      <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-6 w-6 text-purple-600" />
+                          <div>
+                            <p className="font-medium text-purple-900 dark:text-purple-100">
+                              Vérification par email
+                            </p>
+                            <p className="text-sm text-purple-700 dark:text-purple-300">
+                              Un code sera envoyé à {profileData.email || tenantEmail}
+                            </p>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Info méthode SMS */}
-                      {verificationMethod === "sms" && (
-                        <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                          <div className="flex items-center gap-3">
-                            <Smartphone className="h-6 w-6 text-blue-600" />
-                            <div>
-                              <p className="font-medium text-blue-900 dark:text-blue-100">
-                                Vérification par SMS
-                              </p>
-                              <p className="text-sm text-blue-700 dark:text-blue-300">
-                                Un code sera envoyé au {profileData.countryCode ? `+${profileData.countryCode} ` : ""}{profileData.telephone}
-                              </p>
-                              {detectedTerritory && (
-                                <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
-                                  <CheckCircle className="h-3 w-3" />
-                                  {detectedTerritory}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Info méthode Email */}
-                      {verificationMethod === "email" && (
-                        <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
-                          <div className="flex items-center gap-3">
-                            <FileText className="h-6 w-6 text-purple-600" />
-                            <div>
-                              <p className="font-medium text-purple-900 dark:text-purple-100">
-                                Vérification par email
-                              </p>
-                              <p className="text-sm text-purple-700 dark:text-purple-300">
-                                Un code sera envoyé à {profileData.email}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Message d'erreur SMS avec suggestion email */}
-                      {smsError && (
-                        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                                SMS non reçu ?
-                              </p>
-                              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                                {smsError}
-                              </p>
-                              <Button
-                                variant="link"
-                                size="sm"
-                                onClick={() => {
-                                  setVerificationMethod("email");
-                                  setSmsError(null);
-                                }}
-                                className="text-amber-700 p-0 h-auto mt-1"
-                              >
-                                → Essayer par email
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
                       <Button
-                        onClick={() => handleSendOtp(verificationMethod)}
+                        onClick={() => handleSendOtp()}
                         disabled={isSubmitting}
-                        className={cn(
-                          "w-full gap-2",
-                          verificationMethod === "sms" 
-                            ? "bg-gradient-to-r from-green-600 to-emerald-600"
-                            : "bg-gradient-to-r from-purple-600 to-indigo-600"
-                        )}
+                        className="w-full gap-2 bg-gradient-to-r from-purple-600 to-indigo-600"
                       >
                         {isSubmitting ? (
                           <>
@@ -1257,16 +1139,12 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                           </>
                         ) : (
                           <>
-                            {verificationMethod === "sms" ? (
-                              <Smartphone className="h-4 w-4" />
-                            ) : (
-                              <FileText className="h-4 w-4" />
-                            )}
-                            Envoyer le code par {verificationMethod === "sms" ? "SMS" : "email"}
+                            <FileText className="h-4 w-4" />
+                            Envoyer le code par email
                           </>
                         )}
                       </Button>
-                      
+
                       <Button
                         variant="outline"
                         onClick={() => setCurrentStep(3)}
@@ -1289,10 +1167,7 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                               Code envoyé !
                             </p>
                             <p className="text-sm text-green-700 dark:text-green-300">
-                              {verificationMethod === "sms" 
-                                ? `Entrez le code reçu au ${profileData.countryCode ? `+${profileData.countryCode} ` : ""}${profileData.telephone}`
-                                : `Entrez le code reçu à ${profileData.email}`
-                              }
+                              Entrez le code reçu à {profileData.email || tenantEmail}
                             </p>
                           </div>
                         </div>
@@ -1330,12 +1205,12 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
 
                       <button
                         type="button"
-                        onClick={() => handleSendOtp(verificationMethod)}
+                        onClick={() => handleSendOtp()}
                         className="text-sm text-blue-600 hover:underline w-full text-center"
                       >
                         Renvoyer le code
                       </button>
-                      
+
                       <div className="flex gap-2">
                         <Button
                           variant="ghost"
