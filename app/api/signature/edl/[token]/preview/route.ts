@@ -97,6 +97,20 @@ export async function POST(
       }
     }
 
+    // 🔧 Générer des URLs signées pour les photos des pièces (bucket privé) — sinon les photos ne s'affichent pas
+    const mediaList = media || [];
+    for (const m of mediaList) {
+      if (m.storage_path) {
+        const { data: signedUrlData, error: signError } = await serviceClient.storage
+          .from("documents")
+          .createSignedUrl(m.storage_path, 3600);
+        if (signError) console.warn("[EDL Token Preview] Error signing URL for", m.storage_path, signError);
+        if (signedUrlData?.signedUrl) {
+          (m as { signed_url?: string }).signed_url = signedUrlData.signedUrl;
+        }
+      }
+    }
+
     // Mapper les données (on pourrait exporter mapDatabaseToEDLComplet mais ici on simplifie)
     const fullEdlData = mapDatabaseToEDLComplet(
       edl,
