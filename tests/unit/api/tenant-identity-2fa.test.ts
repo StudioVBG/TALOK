@@ -115,7 +115,12 @@ describe("POST /api/tenant/identity/request-2fa", () => {
     expect(json.error).toContain("Profil");
   });
 
-  it("retourne 400 si pas de téléphone ni email", async () => {
+  it("retourne 400 si pas d'email (profil et auth vides)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    vi.mocked(createClient).mockResolvedValueOnce({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1", email: null } }, error: null }) },
+    } as any);
+
     profilesChain.single.mockResolvedValueOnce({
       data: { id: "profile-1", email: null, telephone: null },
       error: null,
@@ -130,10 +135,30 @@ describe("POST /api/tenant/identity/request-2fa", () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toMatch(/téléphone|email|profil/);
+    expect(json.error).toMatch(/email|profil/);
   });
 
-  it("retourne 200 avec token si envoi SMS et/ou email réussi", async () => {
+  it("retourne 200 quand profile.email est null mais user.email est présent (fallback auth)", async () => {
+    profilesChain.single.mockResolvedValueOnce({
+      data: { id: "profile-1", email: null, telephone: null },
+      error: null,
+    });
+
+    const { POST } = await import("@/app/api/tenant/identity/request-2fa/route");
+    const req = new Request("http://localhost/api/tenant/identity/request-2fa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lease_id: "lease-1", action: "renew" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    expect(json.message).toBe("Code envoyé par email");
+    expect(typeof json.token).toBe("string");
+  });
+
+  it("retourne 200 avec token si envoi email réussi", async () => {
     const { POST } = await import("@/app/api/tenant/identity/request-2fa/route");
     const req = new Request("http://localhost/api/tenant/identity/request-2fa", {
       method: "POST",

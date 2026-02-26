@@ -53,7 +53,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const email = (profile as { email?: string | null }).email;
+    const profileEmail = (profile as { email?: string | null }).email?.trim();
+    const email = (profileEmail && profileEmail !== "") ? profileEmail : (user?.email?.trim() || null);
     if (!email) {
       return NextResponse.json(
         { error: "Ajoutez une adresse email à votre profil pour recevoir le code de vérification." },
