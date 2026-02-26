@@ -420,7 +420,11 @@ export async function POST(
         .maybeSingle() as { data: TenantProfileIdentityFields | null; error: unknown };
 
       if (tpError) {
-        console.warn("[sign-edl] ⚠️ Erreur récupération tenant_profile:", tpError.message);
+        const errorMessage =
+          tpError instanceof Error
+            ? tpError.message
+            : (tpError as { message?: string }).message ?? String(tpError);
+        console.warn("[sign-edl] ⚠️ Erreur récupération tenant_profile:", errorMessage);
       }
 
       tenantProfileRow = tenantProfile;

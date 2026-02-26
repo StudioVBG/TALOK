@@ -77,6 +77,7 @@ export async function POST(
     // P0-1: Identité valide pour signature (KYC + CNI non expirée) pour les locataires
     const signerRole = (signatureEntry as any).signer_role;
     const isTenant = ["tenant", "locataire", "locataire_principal"].includes(signerRole);
+    let identityVerified = true; // true pour propriétaire / non-locataire
     let signerProfileId = (signatureEntry as any).signer_profile_id as string | null | undefined;
     if (isTenant) {
       if (!signerProfileId) {
@@ -114,6 +115,7 @@ export async function POST(
           { status: 403 }
         );
       }
+      identityVerified = true;
     }
 
     const body = await request.json();
