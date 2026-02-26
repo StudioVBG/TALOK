@@ -216,9 +216,10 @@ export async function POST(request: Request) {
         type: side === "recto" ? "cni_recto" : "cni_verso",
         title: docTitle,
         lease_id: leaseId,
-        property_id: propertyId,    // ✅ AJOUT - Permet au propriétaire de voir
-        owner_id: ownerId,          // ✅ AJOUT - Liaison avec le propriétaire
+        property_id: propertyId,
+        owner_id: ownerId,
         tenant_id: profile.id,
+        uploaded_by: profile.id,
         storage_path: filePath,
         expiry_date: expiryDate,
         verification_status: "pending",
@@ -238,17 +239,6 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    // 🔗 Mettre à jour les anciens docs avec le lien vers le nouveau
-    if (newDoc && existingDocs && existingDocs.length > 0) {
-      await serviceClient
-        .from("documents")
-        .update({ replaced_by: newDoc.id })
-        .eq("lease_id", leaseId)
-        .eq("type", docType)
-        .eq("is_archived", true)
-        .is("replaced_by", null);
-    }
-
     if (docError) {
       console.error("[Upload CNI] Erreur DB:", docError);
       return NextResponse.json(
@@ -259,6 +249,17 @@ export async function POST(request: Request) {
         },
         { status: 500 }
       );
+    }
+
+    // 🔗 Mettre à jour les anciens docs avec le lien vers le nouveau
+    if (newDoc && existingDocs && existingDocs.length > 0) {
+      await serviceClient
+        .from("documents")
+        .update({ replaced_by: newDoc.id })
+        .eq("lease_id", leaseId)
+        .eq("type", docType)
+        .eq("is_archived", true)
+        .is("replaced_by", null);
     }
 
     // SOTA 2026: Synchroniser tenant_profiles pour débloquer la signature EDL
@@ -293,28 +294,6 @@ export async function POST(request: Request) {
           .from("tenant_profiles")
           .update({ cni_verso_path: filePath })
           .eq("profile_id", profile.id);
-      }
-    }
-
-    // Si ancienne CNI archivée, lier la nouvelle
-    if (isRenewal && newDoc) {
-      const docType = side === "recto" ? "cni_recto" : "cni_verso";
-      
-      const { data: archivedDoc } = await serviceClient
-        .from("documents")
-        .select("id")
-        .eq("lease_id", leaseId)
-        .eq("type", docType)
-        .eq("is_archived", true)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (archivedDoc) {
-        await serviceClient
-          .from("documents")
-          .update({ replaced_by: newDoc.id })
-          .eq("id", archivedDoc.id);
       }
     }
 

@@ -280,4 +280,145 @@ describe("POST /api/tenant/identity/verify-2fa", () => {
     const json = await res.json();
     expect(json.error).toMatch(/[Cc]ode incorrect/);
   });
+
+  it("retourne 200 avec redirect_url si déjà vérifié (verified_at non null)", async () => {
+    identityChain.single.mockResolvedValueOnce({
+      data: {
+        ...mockRequestRow,
+        verified_at: new Date().toISOString(),
+        lease_id: "lease-1",
+      },
+      error: null,
+    });
+
+    const { POST } = await import("@/app/api/tenant/identity/verify-2fa/route");
+    const req = new Request("http://localhost/api/tenant/identity/verify-2fa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: "valid-token", otp_code: "123456" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.success).toBe(true);
+    expect(json.redirect_url).toBeDefined();
+    expect(json.redirect_url).toContain("lease_id=lease-1");
+    expect(json.redirect_url).toContain("verified_2fa");
+  });
+
+  it("retourne 410 si code expiré", async () => {
+    identityChain.single.mockResolvedValueOnce({
+      data: {
+        ...mockRequestRow,
+        expires_at: new Date(Date.now() - 60 * 1000).toISOString(),
+      },
+      error: null,
+    });
+
+    const { POST } = await import("@/app/api/tenant/identity/verify-2fa/route");
+    const req = new Request("http://localhost/api/tenant/identity/verify-2fa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: "expired-token", otp_code: "123456" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(410);
+    const json = await res.json();
+    expect(json.error).toMatch(/expiré|nouveau/);
+  });
+});
+
+describe("GET /api/tenant/identity/verify-2fa (magic link)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    profilesChain.single.mockResolvedValue({
+      data: { user_id: mockUser.id },
+      error: null,
+    });
+    identityChain.single.mockResolvedValue({
+      data: {
+        id: "req-1",
+        profile_id: "profile-1",
+        lease_id: "lease-1",
+        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        verified_at: null,
+      },
+      error: null,
+    });
+    identityChain.update.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+  });
+
+  it("redirige vers login si non authentifié", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    vi.mocked(createClient).mockResolvedValueOnce({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }) },
+    } as any);
+
+    const { GET } = await import("@/app/api/tenant/identity/verify-2fa/route");
+    const req = new Request("http://localhost/api/tenant/identity/verify-2fa?token=abc&lease_id=lease-1");
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("Location") ?? "";
+    expect(location).toMatch(/auth\/login|redirect_to/);
+  });
+
+  it("redirige vers page renew avec lease_id et verified_2fa si token valide", async () => {
+    const { GET } = await import("@/app/api/tenant/identity/verify-2fa/route");
+    const req = new Request("http://localhost/api/tenant/identity/verify-2fa?token=valid-token&lease_id=lease-1");
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("Location") ?? "";
+    expect(location).toContain("tenant/identity/renew");
+    expect(location).toContain("lease_id=lease-1");
+    expect(location).toContain("verified_2fa=true");
+  });
+
+  it("redirige vers renew sans token si token absent", async () => {
+    const { GET } = await import("@/app/api/tenant/identity/verify-2fa/route");
+    const req = new Request("http://localhost/api/tenant/identity/verify-2fa?lease_id=lease-1");
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("Location") ?? "";
+    expect(location).toContain("tenant/identity/renew");
+  });
+
+  it("redirige sans marquer vérifié si déjà verified_at", async () => {
+    identityChain.single.mockResolvedValueOnce({
+      data: {
+        id: "req-1",
+        profile_id: "profile-1",
+        lease_id: "lease-1",
+        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        verified_at: new Date().toISOString(),
+      },
+      error: null,
+    });
+
+    const { GET } = await import("@/app/api/tenant/identity/verify-2fa/route");
+    const req = new Request("http://localhost/api/tenant/identity/verify-2fa?token=valid&lease_id=lease-1");
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("Location") ?? "";
+    expect(location).toContain("verified_2fa=true");
+  });
+
+  it("redirige vers renew si code expiré (sans marquer vérifié)", async () => {
+    identityChain.single.mockResolvedValueOnce({
+      data: {
+        id: "req-1",
+        profile_id: "profile-1",
+        lease_id: "lease-1",
+        expires_at: new Date(Date.now() - 1000).toISOString(),
+        verified_at: null,
+      },
+      error: null,
+    });
+
+    const { GET } = await import("@/app/api/tenant/identity/verify-2fa/route");
+    const req = new Request("http://localhost/api/tenant/identity/verify-2fa?token=expired&lease_id=lease-1");
+    const res = await GET(req);
+    expect(res.status).toBe(302);
+    const location = res.headers.get("Location") ?? "";
+    expect(location).toContain("tenant/identity/renew");
+  });
 });

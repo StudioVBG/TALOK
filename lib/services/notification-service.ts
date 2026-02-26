@@ -236,7 +236,7 @@ export async function getNotifications(
     .order("created_at", { ascending: false });
 
   if (options?.unreadOnly) {
-    query = query.eq("read", false);
+    query = query.eq("is_read", false);
   }
 
   if (options?.types && options.types.length > 0) {
@@ -263,7 +263,7 @@ export async function getNotifications(
     .from("notifications")
     .select("*", { count: "exact", head: true })
     .eq("profile_id", profileId)
-    .eq("read", false);
+    .eq("is_read", false);
 
   const notifications: Notification[] = (data || []).map((n: any) => ({
     id: n.id,
@@ -273,7 +273,7 @@ export async function getNotifications(
     message: n.message,
     recipientId: n.profile_id,
     channels: n.channels,
-    read: n.read,
+    read: n.is_read ?? n.read ?? false,
     actionUrl: n.action_url,
     actionLabel: n.action_label,
     imageUrl: n.image_url,
@@ -297,7 +297,7 @@ export async function markAsRead(notificationId: string): Promise<boolean> {
   
   const { error } = await supabase
     .from("notifications")
-    .update({ read: true, read_at: new Date().toISOString() })
+    .update({ is_read: true, read_at: new Date().toISOString() })
     .eq("id", notificationId);
 
   return !error;
@@ -311,9 +311,9 @@ export async function markAllAsRead(profileId: string): Promise<boolean> {
   
   const { error } = await supabase
     .from("notifications")
-    .update({ read: true, read_at: new Date().toISOString() })
+    .update({ is_read: true, read_at: new Date().toISOString() })
     .eq("profile_id", profileId)
-    .eq("read", false);
+    .eq("is_read", false);
 
   return !error;
 }
