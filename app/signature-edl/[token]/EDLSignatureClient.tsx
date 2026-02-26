@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +30,7 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
 interface EDLSignatureClientProps {
@@ -56,32 +57,44 @@ export default function EDLSignatureClient({
   previewHtml: initialPreviewHtml = "",
 }: EDLSignatureClientProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [isSigning, setIsSigning] = useState(false);
   const [step, setStep] = useState<"preview" | "sign">("preview");
   const [html, setHtml] = useState<string>(initialPreviewHtml);
   const [loadingPreview, setLoadingPreview] = useState(!initialPreviewHtml);
+  const [previewLoadError, setPreviewLoadError] = useState<string | null>(null);
   const [signError, setSignError] = useState<string | null>(null);
+
+  const loadPreview = useCallback(async () => {
+    setPreviewLoadError(null);
+    setLoadingPreview(true);
+    try {
+      const response = await fetch(`/api/signature/edl/${token}/preview`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setPreviewLoadError((data.error as string) || "Impossible de charger l'aperçu");
+        return;
+      }
+      if (data.html) {
+        setHtml(data.html);
+      } else {
+        setPreviewLoadError("Aperçu indisponible. Réessayez.");
+      }
+    } catch (err) {
+      console.error("Preview load failed", err);
+      setPreviewLoadError("Erreur de chargement. Vérifiez votre connexion et réessayez.");
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, [token]);
 
   // Si le serveur n'a pas fourni de HTML (fallback), charger l'aperçu via l'API
   useEffect(() => {
     if (initialPreviewHtml) return;
-    let cancelled = false;
-    async function loadPreview() {
-      try {
-        const response = await fetch(`/api/signature/edl/${token}/preview`, {
-          method: "POST",
-        });
-        const data = await response.json();
-        if (!cancelled && data.html) setHtml(data.html);
-      } catch (err) {
-        if (!cancelled) console.error("Preview load failed", err);
-      } finally {
-        if (!cancelled) setLoadingPreview(false);
-      }
-    }
     loadPreview();
-    return () => { cancelled = true; };
-  }, [token, initialPreviewHtml]);
+  }, [initialPreviewHtml, loadPreview]);
 
   const handleSign = async (signatureData: SignatureData) => {
     setSignError(null);
@@ -106,6 +119,8 @@ export default function EDLSignatureClient({
         return;
       }
 
+      toast({ title: "État des lieux signé avec succès !", description: "Redirection en cours..." });
+      await new Promise((r) => setTimeout(r, 2000));
       router.push(`/tenant/inspections/${edl.id}`);
     } catch (error: unknown) {
       console.error("Erreur signature:", error);
@@ -236,6 +251,14 @@ export default function EDLSignatureClient({
                     <div className="p-12 text-center text-slate-400 space-y-4">
                       <Loader2 className="h-12 w-12 animate-spin mx-auto text-indigo-600" />
                       <p className="font-bold">Génération de l'aperçu sécurisé...</p>
+                    </div>
+                  ) : previewLoadError ? (
+                    <div className="p-12 text-center space-y-4">
+                      <AlertCircle className="h-12 w-12 mx-auto text-amber-500" />
+                      <p className="font-bold text-slate-700">{previewLoadError}</p>
+                      <Button onClick={loadPreview} variant="outline" size="lg">
+                        Réessayer
+                      </Button>
                     </div>
                   ) : (
                     <iframe
