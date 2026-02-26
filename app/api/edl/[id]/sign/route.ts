@@ -409,6 +409,7 @@ export async function POST(
     // RÉCUPÉRATION SÉPARÉE DE tenant_profiles (uniquement pour les locataires) + vérification identité valide pour signature
     // ===============================
     let identityVerified = isOwner;
+    let tenantProfileRow: { kyc_status?: string | null; cni_verified_at?: string | null; cni_number?: string | null; cni_expiry_date?: string | null } | null = null;
 
     if (!isOwner) {
       const { data: tenantProfile, error: tpError } = await serviceClient
@@ -421,10 +422,10 @@ export async function POST(
         console.warn("[sign-edl] ⚠️ Erreur récupération tenant_profile:", tpError.message);
       }
 
-      const tp = tenantProfile as { kyc_status?: string | null; cni_verified_at?: string | null; cni_number?: string | null; cni_expiry_date?: string | null } | null;
-      identityVerified = isIdentityValidForSignature(tp, { requireNotExpired: true });
+      tenantProfileRow = tenantProfile as typeof tenantProfileRow;
+      identityVerified = isIdentityValidForSignature(tenantProfileRow, { requireNotExpired: true });
       if (!identityVerified) {
-        const expired = tp && isCniExpiredOrExpiringSoon(tp);
+        const expired = tenantProfileRow && isCniExpiredOrExpiringSoon(tenantProfileRow);
         return NextResponse.json(
           {
             error: expired
@@ -436,7 +437,7 @@ export async function POST(
       }
     }
 
-    const cniNumber = !isOwner && tp ? (tp.cni_number ?? null) : null;
+    const cniNumber = !isOwner && tenantProfileRow ? (tenantProfileRow.cni_number ?? null) : null;
 
     // 4. Uploader l'image de signature dans Storage (utiliser serviceClient pour éviter RLS)
     const base64Data = stripBase64Prefix(signatureBase64);
