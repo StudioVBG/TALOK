@@ -631,9 +631,13 @@ export async function POST(
       ...(!identityVerified && { identity_warning: true }),
     });
   } catch (error: unknown) {
-    console.error("[sign-edl] Error:", error);
+    const errMessage =
+      error instanceof Error
+        ? error.message
+        : (error as { message?: string })?.message ?? "Erreur serveur";
+    console.error("[sign-edl] Error:", errMessage, error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: errMessage },
       { status: 500 }
     );
   }
