@@ -18,6 +18,7 @@ import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { createSignatureLogger } from "@/lib/utils/signature-logger";
 import { isIdentityValidForSignature, isCniExpiredOrExpiringSoon } from "@/lib/helpers/identity-check";
+import type { TenantProfileIdentityFields } from "@/lib/helpers/identity-check";
 
 /**
  * POST /api/signature/edl/[token]/sign - Signer un EDL via token d'invitation
@@ -100,11 +101,10 @@ export async function POST(
         .from("tenant_profiles")
         .select("kyc_status, cni_verified_at, cni_number, cni_expiry_date")
         .eq("profile_id", signerProfileId)
-        .maybeSingle();
-      const tp = tenantProfile as { kyc_status?: string | null; cni_verified_at?: string | null; cni_number?: string | null; cni_expiry_date?: string | null } | null;
-      const valid = isIdentityValidForSignature(tp, { requireNotExpired: true });
+        .maybeSingle() as { data: TenantProfileIdentityFields | null; error: unknown };
+      const valid = isIdentityValidForSignature(tenantProfile, { requireNotExpired: true });
       if (!valid) {
-        const expired = tp && isCniExpiredOrExpiringSoon(tp);
+        const expired = tenantProfile && isCniExpiredOrExpiringSoon(tenantProfile);
         return NextResponse.json(
           {
             error: expired

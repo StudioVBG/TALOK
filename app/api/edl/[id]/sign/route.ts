@@ -12,6 +12,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { createSignatureLogger } from "@/lib/utils/signature-logger";
 import { isIdentityValidForSignature, isCniExpiredOrExpiringSoon } from "@/lib/helpers/identity-check";
+import type { TenantProfileIdentityFields } from "@/lib/helpers/identity-check";
 
 /**
  * POST /api/edl/[id]/sign - Signer un EDL avec Audit Trail
@@ -409,20 +410,20 @@ export async function POST(
     // RÉCUPÉRATION SÉPARÉE DE tenant_profiles (uniquement pour les locataires) + vérification identité valide pour signature
     // ===============================
     let identityVerified = isOwner;
-    let tenantProfileRow: { kyc_status?: string | null; cni_verified_at?: string | null; cni_number?: string | null; cni_expiry_date?: string | null } | null = null;
+    let tenantProfileRow: TenantProfileIdentityFields | null = null;
 
     if (!isOwner) {
       const { data: tenantProfile, error: tpError } = await serviceClient
         .from("tenant_profiles")
         .select("kyc_status, cni_verified_at, cni_number, cni_expiry_date")
         .eq("profile_id", profile.id)
-        .maybeSingle();
+        .maybeSingle() as { data: TenantProfileIdentityFields | null; error: unknown };
 
       if (tpError) {
         console.warn("[sign-edl] ⚠️ Erreur récupération tenant_profile:", tpError.message);
       }
 
-      tenantProfileRow = tenantProfile as typeof tenantProfileRow;
+      tenantProfileRow = tenantProfile;
       identityVerified = isIdentityValidForSignature(tenantProfileRow, { requireNotExpired: true });
       if (!identityVerified) {
         const expired = tenantProfileRow && isCniExpiredOrExpiringSoon(tenantProfileRow);
