@@ -52,8 +52,8 @@ export interface EmailTemplate {
 const config = {
   provider: (process.env.EMAIL_PROVIDER as EmailProvider) || "resend",
   apiKey: process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || "",
-  from: process.env.EMAIL_FROM || "Talok <noreply@talok.fr>",
-  replyTo: process.env.EMAIL_REPLY_TO,
+  from: process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "Talok <noreply@talok.fr>",
+  replyTo: process.env.EMAIL_REPLY_TO || process.env.RESEND_REPLY_TO,
   // Forcer l'envoi même en dev si cette variable est définie
   forceSend: process.env.EMAIL_FORCE_SEND === "true",
 };

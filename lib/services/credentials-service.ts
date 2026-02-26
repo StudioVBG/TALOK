@@ -162,7 +162,7 @@ export async function getResendCredentials(): Promise<{
   if (!credentials) {
     // Fallback sur les variables d'environnement
     const envApiKey = process.env.RESEND_API_KEY;
-    const envEmailFrom = process.env.EMAIL_FROM;
+    const envEmailFrom = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL;
     
     if (envApiKey) {
       return {
@@ -175,7 +175,7 @@ export async function getResendCredentials(): Promise<{
 
   return {
     apiKey: credentials.apiKey,
-    emailFrom: credentials.config.email_from || process.env.EMAIL_FROM || "Talok <onboarding@resend.dev>",
+    emailFrom: credentials.config.email_from || process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "Talok <onboarding@resend.dev>",
   };
 }
 
