@@ -250,17 +250,19 @@ export async function POST(
     }
 
     // FIX P1-8: Audit log (manquait totalement)
+    // FIX AUDIT 2026-02-26: Utiliser les colonnes correctes (audit_log, pas _audit_log)
     try {
       await serviceClient.from("audit_log").insert({
-        actor_type: "user",
-        actor_id: (signatureEntry as any).signer_profile_id || null,
+        user_id: (signatureEntry as any).signer_user || "00000000-0000-0000-0000-000000000000",
+        profile_id: (signatureEntry as any).signer_profile_id || null,
         action: "edl_signed_via_token",
-        resource: "edl",
-        resource_id: signatureEntry.edl_id,
-        after: {
+        entity_type: "edl",
+        entity_id: signatureEntry.edl_id,
+        ip_address: proof.metadata.ipAddress || null,
+        user_agent: proof.metadata.userAgent || null,
+        metadata: {
           signer_role: signatureEntry.signer_role,
           proof_id: proof.proofId,
-          ip: proof.metadata.ipAddress,
           correlation_id: log.getCorrelationId(),
         },
       } as any);
@@ -272,12 +274,15 @@ export async function POST(
 
     return NextResponse.json({ success: true, proof_id: proof.proofId });
   } catch (error: unknown) {
-    const errMessage = error instanceof Error ? error.message : String(error);
+    const errMessage =
+      error instanceof Error
+        ? error.message
+        : (error as { message?: string })?.message ?? "Erreur serveur";
     const errStack = error instanceof Error ? error.stack : undefined;
     log.complete(false, { error: errMessage });
     console.error("[EDL Sign] 500", errMessage, errStack);
     return NextResponse.json(
-      { error: errMessage || "Erreur serveur" },
+      { error: errMessage },
       { status: 500 }
     );
   }
