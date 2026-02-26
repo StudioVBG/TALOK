@@ -71,19 +71,19 @@ describe("isIdentityValidForSignature", () => {
     ).toBe(true);
   });
 
-  it("retourne false si identité vérifiée mais cni_expiry_date manquant et requireNotExpired true", () => {
+  it("retourne true si identité vérifiée mais cni_expiry_date manquant et requireNotExpired true (OCR non extrait)", () => {
     expect(
       isIdentityValidForSignature(
         { kyc_status: "verified", cni_expiry_date: null },
         { requireNotExpired: true }
       )
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isIdentityValidForSignature(
         { kyc_status: "verified", cni_expiry_date: "" },
         { requireNotExpired: true }
       )
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("retourne true si identité vérifiée et date expiration dans le futur", () => {

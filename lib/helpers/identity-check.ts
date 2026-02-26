@@ -53,7 +53,7 @@ export function isIdentityValidForSignature(
   const { requireNotExpired = true, expiryGraceDays = CNI_EXPIRY_GRACE_DAYS } = options;
   if (!requireNotExpired) return true;
   const expiry = tenantProfile?.cni_expiry_date;
-  if (!expiry || typeof expiry !== "string" || !expiry.trim()) return false;
+  if (!expiry || typeof expiry !== "string" || !expiry.trim()) return true;
   const expiryDate = new Date(expiry.trim());
   if (Number.isNaN(expiryDate.getTime())) return false;
   const cutoff = new Date();

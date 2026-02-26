@@ -169,12 +169,12 @@ export default function EDLSignatureClient({
                   <CardTitle className="text-xl text-slate-900 dark:text-slate-100">
                     {identityExpired
                       ? "Pièce d'identité expirée"
-                      : "Vérification d&apos;identité requise"}
+                      : "Vérification d'identité requise"}
                   </CardTitle>
                   <CardDescription className="text-slate-600 dark:text-slate-400 mt-1">
                     {identityExpired
                       ? "Votre pièce d'identité a expiré ou doit être renouvelée. Merci de la renouveler avant de signer l'état des lieux."
-                      : "Avant de signer l&apos;état des lieux, vous devez valider votre identité en fournissant votre CNI (recto + verso)."}
+                      : "Avant de signer l'état des lieux, vous devez valider votre identité en fournissant votre CNI (recto + verso)."}
                   </CardDescription>
                 </div>
               </div>
