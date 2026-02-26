@@ -256,6 +256,30 @@ async function processEvent(supabase: any, event: any) {
       }
       break;
 
+    case "Identity.CniExpiryReminder":
+      if (payload.tenant_user_id) {
+        const expiryDate = payload.cni_expiry_date ? new Date(payload.cni_expiry_date) : null;
+        const isExpired = expiryDate && expiryDate < new Date();
+        const title = isExpired
+          ? "Pièce d'identité expirée"
+          : "Rappel : pièce d'identité à renouveler";
+        const message = isExpired
+          ? "Votre pièce d'identité a expiré. Merci de la renouveler pour continuer à signer des documents (bail, EDL)."
+          : "Votre pièce d'identité arrive à expiration. Pensez à la renouveler depuis votre espace locataire.";
+        await sendNotification(supabase, {
+          type: "cni_expiry_reminder",
+          user_id: payload.tenant_user_id,
+          title,
+          message,
+          metadata: {
+            profile_id: payload.profile_id,
+            cni_expiry_date: payload.cni_expiry_date,
+            expired: isExpired,
+          },
+        });
+      }
+      break;
+
     // Calcul d'âge depuis OCR
     case "application.ocr.completed":
       if (payload.extracted_fields?.birthdate) {
