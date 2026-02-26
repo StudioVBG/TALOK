@@ -169,6 +169,7 @@ export async function createNotification(
     type: input.type,
     priority: input.priority || config.defaultPriority,
     title: input.title,
+    body: input.message,
     message: input.message,
     profile_id: input.recipientId,
     channels: input.channels || config.defaultChannels,
