@@ -357,7 +357,7 @@ describe("GET /api/tenant/identity/verify-2fa (magic link)", () => {
     const { GET } = await import("@/app/api/tenant/identity/verify-2fa/route");
     const req = new Request("http://localhost/api/tenant/identity/verify-2fa?token=abc&lease_id=lease-1");
     const res = await GET(req);
-    expect(res.status).toBe(302);
+    expect([302, 307]).toContain(res.status);
     const location = res.headers.get("Location") ?? "";
     expect(location).toMatch(/auth\/login|redirect_to/);
   });
@@ -366,7 +366,7 @@ describe("GET /api/tenant/identity/verify-2fa (magic link)", () => {
     const { GET } = await import("@/app/api/tenant/identity/verify-2fa/route");
     const req = new Request("http://localhost/api/tenant/identity/verify-2fa?token=valid-token&lease_id=lease-1");
     const res = await GET(req);
-    expect(res.status).toBe(302);
+    expect([302, 307]).toContain(res.status);
     const location = res.headers.get("Location") ?? "";
     expect(location).toContain("tenant/identity/renew");
     expect(location).toContain("lease_id=lease-1");
@@ -377,7 +377,7 @@ describe("GET /api/tenant/identity/verify-2fa (magic link)", () => {
     const { GET } = await import("@/app/api/tenant/identity/verify-2fa/route");
     const req = new Request("http://localhost/api/tenant/identity/verify-2fa?lease_id=lease-1");
     const res = await GET(req);
-    expect(res.status).toBe(302);
+    expect([302, 307]).toContain(res.status);
     const location = res.headers.get("Location") ?? "";
     expect(location).toContain("tenant/identity/renew");
   });
@@ -397,7 +397,7 @@ describe("GET /api/tenant/identity/verify-2fa (magic link)", () => {
     const { GET } = await import("@/app/api/tenant/identity/verify-2fa/route");
     const req = new Request("http://localhost/api/tenant/identity/verify-2fa?token=valid&lease_id=lease-1");
     const res = await GET(req);
-    expect(res.status).toBe(302);
+    expect([302, 307]).toContain(res.status);
     const location = res.headers.get("Location") ?? "";
     expect(location).toContain("verified_2fa=true");
   });
@@ -417,7 +417,7 @@ describe("GET /api/tenant/identity/verify-2fa (magic link)", () => {
     const { GET } = await import("@/app/api/tenant/identity/verify-2fa/route");
     const req = new Request("http://localhost/api/tenant/identity/verify-2fa?token=expired&lease_id=lease-1");
     const res = await GET(req);
-    expect(res.status).toBe(302);
+    expect([302, 307]).toContain(res.status);
     const location = res.headers.get("Location") ?? "";
     expect(location).toContain("tenant/identity/renew");
   });

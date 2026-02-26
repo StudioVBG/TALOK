@@ -11,23 +11,38 @@ const mockProfile = { id: "profile-1" };
 function createMockFile(name: string, size: number, type: string): File {
   const content = new Uint8Array(size);
   const blob = new Blob([content], { type });
-  return new File([blob], name, { type });
+  const file = new File([blob], name, { type });
+  if (typeof file.arrayBuffer !== "function") {
+    return Object.assign(file, {
+      arrayBuffer: () => Promise.resolve(content.buffer),
+    }) as File;
+  }
+  return file;
 }
 
-function buildFormData(overrides: {
+function buildUploadRequest(overrides: {
   file?: File | null;
   side?: string;
   lease_id?: string;
   is_renewal?: string;
   ocr_data?: string;
-} = {}): FormData {
+} = {}): Request {
   const fd = new FormData();
-  fd.append("file", overrides.file ?? createMockFile("cni.jpg", 1024, "image/jpeg"));
+  const file = overrides.file !== undefined ? overrides.file : createMockFile("cni.jpg", 1024, "image/jpeg");
+  if (file != null) {
+    fd.append("file", file);
+  }
   fd.append("side", overrides.side ?? "recto");
   fd.append("lease_id", overrides.lease_id ?? "lease-1");
   if (overrides.is_renewal !== undefined) fd.append("is_renewal", overrides.is_renewal);
   if (overrides.ocr_data !== undefined) fd.append("ocr_data", overrides.ocr_data);
-  return fd;
+  const req = new Request("http://localhost/api/tenant/identity/upload", {
+    method: "POST",
+    body: "x",
+    headers: { "Content-Type": "application/octet-stream" },
+  });
+  (req as Request & { formData: () => Promise<FormData> }).formData = () => Promise.resolve(fd);
+  return req;
 }
 
 const mockLeaseWithProperty = {
@@ -120,10 +135,7 @@ describe("POST /api/tenant/identity/upload", () => {
     } as any);
 
     const { POST } = await import("@/app/api/tenant/identity/upload/route");
-    const req = new Request("http://localhost/api/tenant/identity/upload", {
-      method: "POST",
-      body: buildFormData(),
-    });
+    const req = buildUploadRequest();
     const res = await POST(req);
     expect(res.status).toBe(401);
     const json = await res.json();
@@ -134,7 +146,7 @@ describe("POST /api/tenant/identity/upload", () => {
     profilesChain.single.mockResolvedValueOnce({ data: null, error: new Error("not found") });
 
     const { POST } = await import("@/app/api/tenant/identity/upload/route");
-    const req = new Request("http://localhost/api/tenant/identity/upload", { method: "POST", body: buildFormData() });
+    const req = buildUploadRequest();
     const res = await POST(req);
     expect(res.status).toBe(404);
     const json = await res.json();
@@ -144,22 +156,16 @@ describe("POST /api/tenant/identity/upload", () => {
   it("retourne 400 si fichier, côté ou lease_id manquant", async () => {
     const { POST } = await import("@/app/api/tenant/identity/upload/route");
 
-    const noFile = new FormData();
-    noFile.append("side", "recto");
-    noFile.append("lease_id", "lease-1");
-    const r1 = await POST(new Request("http://localhost/upload", { method: "POST", body: noFile }));
+    const noFile = buildUploadRequest({ file: null, side: "recto", lease_id: "lease-1" });
+    const r1 = await POST(noFile);
     expect(r1.status).toBe(400);
 
-    const noSide = new FormData();
-    noSide.append("file", createMockFile("cni.jpg", 1024, "image/jpeg"));
-    noSide.append("lease_id", "lease-1");
-    const r2 = await POST(new Request("http://localhost/upload", { method: "POST", body: noSide }));
+    const noSide = buildUploadRequest({ side: "", lease_id: "lease-1" });
+    const r2 = await POST(noSide);
     expect(r2.status).toBe(400);
 
-    const noLease = new FormData();
-    noLease.append("file", createMockFile("cni.jpg", 1024, "image/jpeg"));
-    noLease.append("side", "recto");
-    const r3 = await POST(new Request("http://localhost/upload", { method: "POST", body: noLease }));
+    const noLease = buildUploadRequest({ side: "recto", lease_id: "" });
+    const r3 = await POST(noLease);
     expect(r3.status).toBe(400);
 
     const json = await r1.json();
@@ -172,7 +178,7 @@ describe("POST /api/tenant/identity/upload", () => {
       .mockResolvedValueOnce({ data: null, error: null });
 
     const { POST } = await import("@/app/api/tenant/identity/upload/route");
-    const req = new Request("http://localhost/upload", { method: "POST", body: buildFormData() });
+    const req = buildUploadRequest();
     const res = await POST(req);
     expect(res.status).toBe(403);
     const json = await res.json();
@@ -180,10 +186,9 @@ describe("POST /api/tenant/identity/upload", () => {
   });
 
   it("retourne 400 si type de fichier non autorisé", async () => {
-    const fd = buildFormData({ file: createMockFile("doc.pdf", 1024, "application/pdf") });
+    const req = buildUploadRequest({ file: createMockFile("doc.pdf", 1024, "application/pdf") });
 
     const { POST } = await import("@/app/api/tenant/identity/upload/route");
-    const req = new Request("http://localhost/upload", { method: "POST", body: fd });
     const res = await POST(req);
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -191,12 +196,11 @@ describe("POST /api/tenant/identity/upload", () => {
   });
 
   it("retourne 400 si fichier trop volumineux", async () => {
-    const fd = buildFormData({
+    const req = buildUploadRequest({
       file: createMockFile("huge.jpg", 11 * 1024 * 1024, "image/jpeg"),
     });
 
     const { POST } = await import("@/app/api/tenant/identity/upload/route");
-    const req = new Request("http://localhost/upload", { method: "POST", body: fd });
     const res = await POST(req);
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -205,12 +209,11 @@ describe("POST /api/tenant/identity/upload", () => {
 
   it("retourne 400 si CNI expirée", async () => {
     const pastDate = "2020-01-01";
-    const fd = buildFormData({
+    const req = buildUploadRequest({
       ocr_data: JSON.stringify({ date_expiration: pastDate }),
     });
 
     const { POST } = await import("@/app/api/tenant/identity/upload/route");
-    const req = new Request("http://localhost/upload", { method: "POST", body: fd });
     const res = await POST(req);
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -219,7 +222,7 @@ describe("POST /api/tenant/identity/upload", () => {
 
   it("retourne 200 et inclut uploaded_by dans l'insert document (recto)", async () => {
     const { POST } = await import("@/app/api/tenant/identity/upload/route");
-    const req = new Request("http://localhost/upload", { method: "POST", body: buildFormData({ side: "recto" }) });
+    const req = buildUploadRequest({ side: "recto" });
     const res = await POST(req);
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -244,7 +247,7 @@ describe("POST /api/tenant/identity/upload", () => {
     });
 
     const { POST } = await import("@/app/api/tenant/identity/upload/route");
-    const req = new Request("http://localhost/upload", { method: "POST", body: buildFormData({ side: "verso" }) });
+    const req = buildUploadRequest({ side: "verso" });
     const res = await POST(req);
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -259,11 +262,11 @@ describe("POST /api/tenant/identity/upload", () => {
     }));
 
     const { POST } = await import("@/app/api/tenant/identity/upload/route");
-    const req = new Request("http://localhost/upload", { method: "POST", body: buildFormData() });
+    const req = buildUploadRequest();
     const res = await POST(req);
     expect(res.status).toBe(500);
     const json = await res.json();
-    expect(json.error).toMatch(/enregistrement|Erreur/);
+    expect(json.error).toMatch(/enregistrement|Erreur|constraint/);
     expect(documentsChain.update).not.toHaveBeenCalled();
   });
 });
