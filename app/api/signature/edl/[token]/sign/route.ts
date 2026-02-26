@@ -272,9 +272,12 @@ export async function POST(
 
     return NextResponse.json({ success: true, proof_id: proof.proofId });
   } catch (error: unknown) {
-    log.complete(false, { error: error instanceof Error ? error.message : String(error) });
+    const errMessage = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : undefined;
+    log.complete(false, { error: errMessage });
+    console.error("[EDL Sign] 500", errMessage, errStack);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: errMessage || "Erreur serveur" },
       { status: 500 }
     );
   }

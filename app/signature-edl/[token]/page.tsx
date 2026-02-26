@@ -115,11 +115,24 @@ async function fetchEDLByToken(token: string) {
       if (signedUrlData?.signedUrl) sig.signature_image_url = signedUrlData.signedUrl;
     }
   }
+  // URLs signées pour les photos des pièces (sinon img src = storage_path → 404)
+  const mediaList = edl_media || [];
+  for (const m of mediaList) {
+    if (m.storage_path) {
+      const { data: signedUrlData, error: signError } = await serviceClient.storage
+        .from("documents")
+        .createSignedUrl(m.storage_path, 3600);
+      if (signError) console.warn("[fetchEDLByToken] Error signing media URL", m.storage_path, signError);
+      if (signedUrlData?.signedUrl) {
+        (m as { signed_url?: string }).signed_url = signedUrlData.signedUrl;
+      }
+    }
+  }
   const fullEdlData = mapDatabaseToEDLComplet(
     edl,
     ownerProfile,
     edl_items || [],
-    edl_media || [],
+    mediaList,
     signaturesWithUrls
   );
   const previewHtml = generateEDLHTML(fullEdlData);
