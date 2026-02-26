@@ -607,9 +607,9 @@ function PaymentCheckoutWithNewMethod(props: PaymentCheckoutProps) {
           variables: { colorPrimary: "#2563eb", borderRadius: "8px", fontFamily: "system-ui, -apple-system, sans-serif" },
           rules: {
             ".Label": { color: "#374151", fontWeight: "500" },
-            ".Input": { borderColor: "#e5e7eb", boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)" },
+            ".Input": { borderColor: "#e5e7eb", boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" },
             ".Input:focus": { borderColor: "#2563eb", boxShadow: "0 0 0 3px rgba(37, 99, 235, 0.1)" },
-            ".Tab": { borderColor: "#e5e7eb", boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)" },
+            ".Tab": { borderColor: "#e5e7eb", boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" },
             ".Tab--selected": { borderColor: "#2563eb", color: "#2563eb" },
           },
         },

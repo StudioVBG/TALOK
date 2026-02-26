@@ -358,7 +358,7 @@ export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
             },
             ".Input": {
               borderColor: "#e5e7eb",
-              boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+              boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
             },
             ".Input:focus": {
               borderColor: "#2563eb",
