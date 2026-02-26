@@ -33,10 +33,25 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
+interface EdlMinimal {
+  id: string;
+  type?: string;
+  scheduled_at?: string | null;
+  created_at?: string | null;
+  tenant_name?: string | null;
+  signer_name?: string | null;
+}
+
+interface PropertyMinimal {
+  adresse_complete?: string | null;
+  code_postal?: string | null;
+  ville?: string | null;
+}
+
 interface EDLSignatureClientProps {
   token: string;
-  edl: any;
-  property: any;
+  edl: EdlMinimal;
+  property: PropertyMinimal | null;
   signatureId: string;
   identityComplete: boolean;
   /** Identité vérifiée mais CNI expirée ou à renouveler */
@@ -154,10 +169,10 @@ export default function EDLSignatureClient({
             </div>
             <div>
               <p className="font-bold text-slate-900 text-lg">
-                {property.adresse_complete}
+                {property?.adresse_complete}
               </p>
               <p className="text-slate-500">
-                {property.code_postal} {property.ville}
+                {property?.code_postal} {property?.ville}
               </p>
               <div className="flex items-center gap-3 mt-3">
                 <Badge variant="secondary" className="font-bold">
@@ -165,7 +180,7 @@ export default function EDLSignatureClient({
                 </Badge>
                 <span className="text-sm text-slate-400 flex items-center gap-1.5 font-medium">
                   <Calendar className="h-4 w-4" />
-                  {formatDateShort(edl.scheduled_at || edl.created_at)}
+                  {formatDateShort(edl.scheduled_at || edl.created_at || new Date().toISOString())}
                 </span>
               </div>
             </div>
