@@ -38,6 +38,8 @@ interface EDLSignatureClientProps {
   property: any;
   signatureId: string;
   identityComplete: boolean;
+  /** Identité vérifiée mais CNI expirée ou à renouveler */
+  identityExpired?: boolean;
   leaseId: string;
   /** HTML pré-généré côté serveur (évite un second fetch) */
   previewHtml?: string;
@@ -49,6 +51,7 @@ export default function EDLSignatureClient({
   property,
   signatureId,
   identityComplete,
+  identityExpired = false,
   leaseId,
   previewHtml: initialPreviewHtml = "",
 }: EDLSignatureClientProps) {
@@ -154,7 +157,7 @@ export default function EDLSignatureClient({
           </div>
         </GlassCard>
 
-        {/* CTA bloquant : vérification d'identité requise */}
+        {/* CTA bloquant : vérification d'identité requise ou CNI expirée */}
         {!identityComplete && (
           <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 overflow-hidden">
             <CardHeader className="pb-2">
@@ -164,10 +167,14 @@ export default function EDLSignatureClient({
                 </div>
                 <div>
                   <CardTitle className="text-xl text-slate-900 dark:text-slate-100">
-                    Vérification d&apos;identité requise
+                    {identityExpired
+                      ? "Pièce d'identité expirée"
+                      : "Vérification d&apos;identité requise"}
                   </CardTitle>
                   <CardDescription className="text-slate-600 dark:text-slate-400 mt-1">
-                    Avant de signer l&apos;état des lieux, vous devez valider votre identité en fournissant votre CNI (recto + verso).
+                    {identityExpired
+                      ? "Votre pièce d'identité a expiré ou doit être renouvelée. Merci de la renouveler avant de signer l'état des lieux."
+                      : "Avant de signer l&apos;état des lieux, vous devez valider votre identité en fournissant votre CNI (recto + verso)."}
                   </CardDescription>
                 </div>
               </div>
@@ -181,7 +188,7 @@ export default function EDLSignatureClient({
                 )}
               >
                 <ShieldCheck className="mr-2 h-5 w-5" />
-                Vérifier mon identité
+                {identityExpired ? "Renouveler ma pièce d'identité" : "Vérifier mon identité"}
               </Link>
             </CardContent>
           </Card>

@@ -10,12 +10,14 @@
 export const runtime = 'nodejs';
 
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { extractClientIP } from "@/lib/utils/ip-address";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { createSignatureLogger } from "@/lib/utils/signature-logger";
+import { isIdentityValidForSignature, isCniExpiredOrExpiringSoon } from "@/lib/helpers/identity-check";
 
 /**
  * POST /api/signature/edl/[token]/sign - Signer un EDL via token d'invitation
@@ -71,24 +73,47 @@ export async function POST(
       return NextResponse.json({ error: "Ce document a déjà été signé" }, { status: 400 });
     }
 
-    // P0-1: CNI obligatoire pour les locataires (alignement avec /api/edl/[id]/sign)
+    // P0-1: Identité valide pour signature (KYC + CNI non expirée) pour les locataires
     const signerRole = (signatureEntry as any).signer_role;
     const isTenant = ["tenant", "locataire", "locataire_principal"].includes(signerRole);
-    const signerProfileId = (signatureEntry as any).signer_profile_id;
-    let identityVerified = true;
-    if (isTenant && signerProfileId) {
+    let signerProfileId = (signatureEntry as any).signer_profile_id as string | null | undefined;
+    if (isTenant) {
+      if (!signerProfileId) {
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await serviceClient
+            .from("profiles")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (profile?.id) signerProfileId = profile.id;
+        }
+      }
+      if (!signerProfileId) {
+        return NextResponse.json(
+          { error: "Votre identité doit être vérifiée avant de signer. Connectez-vous avec le compte invité." },
+          { status: 403 }
+        );
+      }
       const { data: tenantProfile } = await serviceClient
         .from("tenant_profiles")
-        .select("cni_number")
+        .select("kyc_status, cni_verified_at, cni_number, cni_expiry_date")
         .eq("profile_id", signerProfileId)
         .maybeSingle();
-      identityVerified = !!(tenantProfile as { cni_number?: string | null } | null)?.cni_number?.trim?.();
-    }
-    if (isTenant && !identityVerified) {
-      return NextResponse.json(
-        { error: "Votre identité (CNI) doit être vérifiée avant de signer" },
-        { status: 403 }
-      );
+      const tp = tenantProfile as { kyc_status?: string | null; cni_verified_at?: string | null; cni_number?: string | null; cni_expiry_date?: string | null } | null;
+      const valid = isIdentityValidForSignature(tp, { requireNotExpired: true });
+      if (!valid) {
+        const expired = tp && isCniExpiredOrExpiringSoon(tp);
+        return NextResponse.json(
+          {
+            error: expired
+              ? "Votre pièce d'identité a expiré. Merci de la renouveler avant de signer."
+              : "Votre identité doit être vérifiée avant de signer (CNI recto + verso).",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const body = await request.json();

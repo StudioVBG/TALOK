@@ -3,10 +3,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import EDLSignatureClient from "./EDLSignatureClient";
 import { generateEDLHTML } from "@/lib/templates/edl";
 import { mapDatabaseToEDLComplet } from "@/lib/mappers/edl-to-template";
+import {
+  isIdentityValidForSignature,
+  isIdentityVerified,
+  isCniExpiredOrExpiringSoon,
+} from "@/lib/helpers/identity-check";
 
 export async function generateMetadata({ params }: { params: { token: string } }) {
   return {
@@ -38,7 +44,21 @@ async function fetchEDLByToken(token: string) {
   const edl = signatureEntry.edl;
   const property = edl.lease?.property || edl.property;
   const leaseId = edl.lease_id || edl.lease?.id || null;
-  const tenantProfileId = signatureEntry.signer_profile_id || null;
+  let tenantProfileId = signatureEntry.signer_profile_id || null;
+
+  // Fallback : si pas de signer_profile_id, utiliser le profil de l'utilisateur connecté
+  if (!tenantProfileId) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await serviceClient
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (profile?.id) tenantProfileId = profile.id;
+    }
+  }
 
   // 3. Récupérer les données liées pour l'aperçu complet + vérification identité (CNI)
   const [
@@ -56,7 +76,11 @@ async function fetchEDLByToken(token: string) {
     serviceClient.from("edl_signatures").select("*, profile:profiles(*)").eq("edl_id", edl.id),
     serviceClient.from("owner_profiles").select("*, profile:profiles(*)").eq("profile_id", property.owner_id).single(),
     tenantProfileId
-      ? serviceClient.from("tenant_profiles").select("cni_number, cni_recto_path, cni_verso_path").eq("profile_id", tenantProfileId).maybeSingle()
+      ? serviceClient
+          .from("tenant_profiles")
+          .select("kyc_status, cni_verified_at, cni_number, cni_recto_path, cni_verso_path, cni_expiry_date")
+          .eq("profile_id", tenantProfileId)
+          .maybeSingle()
       : Promise.resolve({ data: null }),
     leaseId && tenantProfileId
       ? serviceClient
@@ -69,11 +93,17 @@ async function fetchEDLByToken(token: string) {
       : Promise.resolve({ data: [] })
   ]);
 
-  const tp = tenantProfile as { cni_number?: string | null; cni_recto_path?: string | null; cni_verso_path?: string | null } | null;
-  const hasCniNumber = !!(tp?.cni_number?.trim?.());
-  const hasRectoPath = !!(tp?.cni_recto_path?.trim?.());
-  const hasVersoPath = !!(tp?.cni_verso_path?.trim?.());
-  const identityComplete = hasCniNumber && hasRectoPath && hasVersoPath;
+  const tp = tenantProfile as {
+    kyc_status?: string | null;
+    cni_verified_at?: string | null;
+    cni_number?: string | null;
+    cni_recto_path?: string | null;
+    cni_verso_path?: string | null;
+    cni_expiry_date?: string | null;
+  } | null;
+  const identityComplete = isIdentityValidForSignature(tp, { requireNotExpired: true });
+  const identityExpired =
+    !!tp && isIdentityVerified(tp) && isCniExpiredOrExpiringSoon(tp);
 
   // Générer l'aperçu HTML côté serveur (évite un second fetch côté client)
   const signaturesWithUrls = (signaturesRaw || []).slice();
@@ -100,6 +130,7 @@ async function fetchEDLByToken(token: string) {
     property,
     leaseId,
     identityComplete,
+    identityExpired,
     alreadySigned: false,
     previewHtml,
     edlFullData: {
@@ -144,6 +175,7 @@ export default async function EDLSignaturePage({ params }: { params: { token: st
         property={data.property}
         signatureId={data.signature.id}
         identityComplete={data.identityComplete}
+        identityExpired={data.identityExpired ?? false}
         leaseId={data.leaseId ?? ""}
         previewHtml={data.previewHtml ?? ""}
       />

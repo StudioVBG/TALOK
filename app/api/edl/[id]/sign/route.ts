@@ -11,6 +11,7 @@ import { verifyEDLAccess } from "@/lib/helpers/edl-auth";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { createSignatureLogger } from "@/lib/utils/signature-logger";
+import { isIdentityValidForSignature, isCniExpiredOrExpiringSoon } from "@/lib/helpers/identity-check";
 
 /**
  * POST /api/edl/[id]/sign - Signer un EDL avec Audit Trail
@@ -405,14 +406,14 @@ export async function POST(
     const signerRole = isOwner ? "owner" : "tenant";
 
     // ===============================
-    // RÉCUPÉRATION SÉPARÉE DE tenant_profiles (uniquement pour les locataires)
+    // RÉCUPÉRATION SÉPARÉE DE tenant_profiles (uniquement pour les locataires) + vérification identité valide pour signature
     // ===============================
-    let cniNumber: string | null = null;
+    let identityVerified = isOwner;
 
     if (!isOwner) {
       const { data: tenantProfile, error: tpError } = await serviceClient
         .from("tenant_profiles")
-        .select("cni_number")
+        .select("kyc_status, cni_verified_at, cni_number, cni_expiry_date")
         .eq("profile_id", profile.id)
         .maybeSingle();
 
@@ -420,19 +421,22 @@ export async function POST(
         console.warn("[sign-edl] ⚠️ Erreur récupération tenant_profile:", tpError.message);
       }
 
-      cniNumber = (tenantProfile as { cni_number?: string | null } | null)?.cni_number ?? null;
-      console.log("[sign-edl] ℹ️ CNI locataire:", cniNumber ? "présent" : "absent");
+      const tp = tenantProfile as { kyc_status?: string | null; cni_verified_at?: string | null; cni_number?: string | null; cni_expiry_date?: string | null } | null;
+      identityVerified = isIdentityValidForSignature(tp, { requireNotExpired: true });
+      if (!identityVerified) {
+        const expired = tp && isCniExpiredOrExpiringSoon(tp);
+        return NextResponse.json(
+          {
+            error: expired
+              ? "Votre pièce d'identité a expiré. Merci de la renouveler avant de signer."
+              : "Votre identité doit être vérifiée avant de signer (CNI recto + verso).",
+          },
+          { status: 403 }
+        );
+      }
     }
 
-    // Vérifier l'identité pour les locataires (CNI obligatoire)
-    if (!isOwner && !cniNumber) {
-      return NextResponse.json(
-        { error: "Votre identité (CNI) doit être vérifiée avant de signer" },
-        { status: 403 }
-      );
-    }
-
-    const identityVerified = isOwner ? true : !!cniNumber;
+    const cniNumber = !isOwner && tp ? (tp.cni_number ?? null) : null;
 
     // 4. Uploader l'image de signature dans Storage (utiliser serviceClient pour éviter RLS)
     const base64Data = stripBase64Prefix(signatureBase64);
