@@ -97,6 +97,13 @@ async function sendViaResend(options: EmailOptions): Promise<EmailResult> {
       console.warn("[Email] Impossible de récupérer les credentials DB, utilisation de l'environnement:", credError);
     }
 
+    // Garde-fou : le sous-domaine send.talok.fr n'est pas un domaine d'envoi vérifié sur Resend
+    if (fromAddress.includes("@send.")) {
+      const corrected = fromAddress.replace(/@send\./, "@");
+      console.warn(`[Email] Correction auto domaine: ${fromAddress} -> ${corrected}`);
+      fromAddress = corrected;
+    }
+
     if (!apiKey) {
       console.error("[Email] ❌ Pas de clé API configurée");
       return { 
