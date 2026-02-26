@@ -126,10 +126,11 @@ export default function EDLSignatureClient({
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
+        const rawError = err.error;
         const message =
           response.status === 410
             ? "Ce lien a expiré. Demandez un nouveau lien à votre propriétaire."
-            : (err.error as string) || "Erreur lors de la signature";
+            : (typeof rawError === "string" && rawError) || "Erreur lors de la signature";
         setSignError(message);
         return;
       }
@@ -139,7 +140,9 @@ export default function EDLSignatureClient({
       router.push(`/tenant/inspections/${edl.id}`);
     } catch (error: unknown) {
       console.error("Erreur signature:", error);
-      setSignError((error as Error).message);
+      const errMsg =
+        error instanceof Error ? error.message : "Erreur inattendue. Veuillez réessayer.";
+      setSignError(errMsg);
     } finally {
       setIsSigning(false);
     }
