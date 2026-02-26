@@ -198,7 +198,14 @@ export default function EDLSignatureClient({
         {identityComplete && (
         <>
         {/* Stepper */}
-        <div className="flex items-center justify-center gap-4">
+        <div
+          className="flex items-center justify-center gap-4"
+          role="progressbar"
+          aria-label={`Étape ${step === "preview" ? 1 : 2} sur 2`}
+          aria-valuenow={step === "preview" ? 1 : 2}
+          aria-valuemin={1}
+          aria-valuemax={2}
+        >
           <div className={cn(
             "h-2 w-24 rounded-full transition-all",
             step === "preview" ? "bg-indigo-600" : "bg-emerald-500"
@@ -231,19 +238,20 @@ export default function EDLSignatureClient({
                       <p className="font-bold">Génération de l'aperçu sécurisé...</p>
                     </div>
                   ) : (
-                    <iframe 
-                      srcDoc={html} 
-                      className="w-full h-full border-none bg-white" 
-                      style={{ minHeight: '800px' }}
+                    <iframe
+                      srcDoc={html}
+                      className="w-full h-full border-none bg-white min-h-[400px] sm:min-h-[800px]"
+                      title="Aperçu de l'état des lieux"
                     />
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            <Button 
+            <Button
               onClick={() => setStep("sign")}
               className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xl rounded-2xl shadow-xl shadow-indigo-100 group transition-all"
+              aria-label="Continuer vers la signature de l'état des lieux"
             >
               Continuer vers la signature
               <ChevronRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
@@ -277,7 +285,8 @@ export default function EDLSignatureClient({
             <Button
               variant="ghost"
               onClick={() => { setStep("preview"); setSignError(null); }}
-              className="w-full text-slate-400 font-bold hover:text-slate-600"
+              className="w-full h-11 text-slate-400 font-bold hover:text-slate-600"
+              aria-label="Retour à l'aperçu"
             >
               Retour à l&apos;aperçu
             </Button>

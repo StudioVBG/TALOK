@@ -25,7 +25,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Tesseract from "tesseract.js";
 import { extractMRZFromOCR } from "@/lib/identity/mrz-parser";
 
-type Step = "verify_2fa" | "intro" | "recto" | "verso" | "processing" | "success" | "error";
+type Step = "verify_2fa" | "intro" | "recto" | "verso" | "enter_expiry" | "processing" | "success" | "error";
 
 interface LeaseData {
   id: string;
@@ -72,6 +72,7 @@ function RenewCNIContent() {
   const [twoFaOtp, setTwoFaOtp] = useState("");
   const [twoFaSending, setTwoFaSending] = useState(false);
   const [twoFaVerifying, setTwoFaVerifying] = useState(false);
+  const [manualExpiryDate, setManualExpiryDate] = useState("");
 
   const fetchLeaseAndProfile = useCallback(async () => {
     if (!leaseId) {
@@ -292,33 +293,27 @@ function RenewCNIContent() {
     return result;
   };
 
-  const handleSubmit = async () => {
-    if (!rectoFile || !versoFile || !leaseId) return;
+  const isValidExpiryDate = (dateStr: string | undefined): boolean => {
+    if (!dateStr || typeof dateStr !== "string" || !dateStr.trim()) return false;
+    const m = dateStr.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return false;
+    const d = new Date(dateStr + "T12:00:00Z");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return d >= today;
+  };
+
+  const doUpload = async (expiryDateOverride: string | null, ocrDataOverride?: OcrExtractedData | null) => {
+    const data = ocrDataOverride ?? extractedData;
+    if (!rectoFile || !versoFile || !leaseId || !data) return;
     setStep("processing");
-    setOcrProgress(0);
+    setError(null);
     try {
-      // 1. Analyser le recto (OCR classique)
-      setOcrStatus("Analyse du recto...");
-      const rectoOcr = await performOCR(rectoPreview!, "recto");
-
-      // 2. Analyser le verso (MRZ prioritaire pour nouvelle CNI)
-      setOcrStatus("Analyse du verso (MRZ)...");
-      setOcrProgress(0);
-      const versoOcr = await performOCR(versoPreview!, "verso");
-
-      // 3. Fusionner les données : priorité MRZ si disponible
-      const ocrData: OcrExtractedData = versoOcr.mrz_valid
-        ? { ...rectoOcr, ...versoOcr }
-        : { ...versoOcr, ...rectoOcr };
-      setExtractedData(ocrData);
-
-      // Normaliser les champs pour l'API (numero_document -> numero_cni)
       const normalizedOcrData = {
-        ...ocrData,
-        numero_cni: ocrData.numero_document || (ocrData as Record<string, unknown>).numero_cni,
+        ...data,
+        numero_cni: data.numero_document || (data as Record<string, unknown>).numero_cni,
       };
 
-      // 4. Upload recto
       setOcrStatus("Envoi du recto...");
       const rectoFD = new FormData();
       rectoFD.append("file", rectoFile);
@@ -326,13 +321,13 @@ function RenewCNIContent() {
       rectoFD.append("lease_id", leaseId);
       rectoFD.append("is_renewal", "true");
       rectoFD.append("ocr_data", JSON.stringify(normalizedOcrData));
+      if (expiryDateOverride) rectoFD.append("manual_expiry_date", expiryDateOverride);
       const r1 = await fetch("/api/tenant/identity/upload", { method: "POST", body: rectoFD });
       if (!r1.ok) {
         const errBody = await r1.json().catch(() => ({}));
         throw new Error((errBody.error as string) || "Erreur upload recto");
       }
 
-      // 5. Upload verso (avec ocr_data pour cohérence)
       setOcrStatus("Envoi du verso...");
       const versoFD = new FormData();
       versoFD.append("file", versoFile);
@@ -340,6 +335,7 @@ function RenewCNIContent() {
       versoFD.append("lease_id", leaseId);
       versoFD.append("is_renewal", "true");
       versoFD.append("ocr_data", JSON.stringify(normalizedOcrData));
+      if (expiryDateOverride) versoFD.append("manual_expiry_date", expiryDateOverride);
       const r2 = await fetch("/api/tenant/identity/upload", { method: "POST", body: versoFD });
       if (!r2.ok) {
         const errBody = await r2.json().catch(() => ({}));
@@ -352,6 +348,48 @@ function RenewCNIContent() {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
       setStep("error");
     }
+  };
+
+  const handleSubmit = async () => {
+    if (!rectoFile || !versoFile || !leaseId) return;
+    setOcrProgress(0);
+    setError(null);
+    try {
+      setOcrStatus("Analyse du recto...");
+      const rectoOcr = await performOCR(rectoPreview!, "recto");
+
+      setOcrStatus("Analyse du verso (MRZ)...");
+      setOcrProgress(0);
+      const versoOcr = await performOCR(versoPreview!, "verso");
+
+      const ocrData: OcrExtractedData = versoOcr.mrz_valid
+        ? { ...rectoOcr, ...versoOcr }
+        : { ...versoOcr, ...rectoOcr };
+      setExtractedData(ocrData);
+
+      const expiryFromOcr = ocrData.date_expiration && isValidExpiryDate(ocrData.date_expiration) ? ocrData.date_expiration : null;
+      if (expiryFromOcr) {
+        await doUpload(expiryFromOcr, ocrData);
+        return;
+      }
+      setManualExpiryDate(ocrData.date_expiration?.trim() || "");
+      setStep("enter_expiry");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+      setStep("error");
+    }
+  };
+
+  const handleConfirmExpiry = async () => {
+    if (!manualExpiryDate.trim()) {
+      toast({ title: "Date requise", description: "Saisissez la date d'expiration de votre CNI.", variant: "destructive" });
+      return;
+    }
+    if (!isValidExpiryDate(manualExpiryDate)) {
+      toast({ title: "Date invalide", description: "La date d'expiration doit être dans le futur.", variant: "destructive" });
+      return;
+    }
+    await doUpload(manualExpiryDate.trim());
   };
 
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>;
@@ -516,6 +554,38 @@ function RenewCNIContent() {
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setStep("recto")} className="flex-1">Retour</Button>
                   <Button onClick={handleSubmit} disabled={!versoFile} className="flex-1">Valider</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {step === "enter_expiry" && (
+          <motion.div key="enter_expiry" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Date d&apos;expiration de la CNI</CardTitle>
+                <CardDescription>L&apos;analyse n&apos;a pas pu extraire la date d&apos;expiration (ou elle est invalide). Saisissez-la manuellement.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="manual_expiry">Date d&apos;expiration</Label>
+                  <Input
+                    id="manual_expiry"
+                    type="date"
+                    value={manualExpiryDate}
+                    onChange={(e) => setManualExpiryDate(e.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="w-full"
+                    aria-describedby="manual_expiry_help"
+                  />
+                  <p id="manual_expiry_help" className="text-sm text-muted-foreground">
+                    Indiquez la date au format indiqué sur votre carte.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setStep("verso")} className="flex-1">Retour</Button>
+                  <Button onClick={handleConfirmExpiry} className="flex-1">Confirmer et continuer</Button>
                 </div>
               </CardContent>
             </Card>

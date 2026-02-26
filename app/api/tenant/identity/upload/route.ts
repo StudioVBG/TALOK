@@ -38,6 +38,7 @@ export async function POST(request: Request) {
     const leaseId = formData.get("lease_id") as string;
     const isRenewal = formData.get("is_renewal") === "true";
     const ocrDataRaw = formData.get("ocr_data") as string | null;
+    const manualExpiryDateRaw = formData.get("manual_expiry_date") as string | null;
 
     if (!file || !side || !leaseId) {
       return NextResponse.json(
@@ -181,7 +182,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Parser la date d'expiration
+    // Parser la date d'expiration (OCR puis fallback saisie manuelle)
     let expiryDate: string | null = null;
     if (ocrData.date_expiration) {
       const dateMatch = ocrData.date_expiration.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -195,6 +196,23 @@ export async function POST(request: Request) {
         if (expiryDateObj < today) {
           return NextResponse.json(
             { error: "Ce document d'identité est expiré. Veuillez fournir un document en cours de validité." },
+            { status: 400 }
+          );
+        }
+      }
+    }
+    if (!expiryDate && manualExpiryDateRaw && typeof manualExpiryDateRaw === "string") {
+      const trimmed = manualExpiryDateRaw.trim();
+      const manualMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (manualMatch) {
+        const manualDateObj = new Date(trimmed + "T12:00:00Z");
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (manualDateObj >= today) {
+          expiryDate = trimmed;
+        } else {
+          return NextResponse.json(
+            { error: "La date d'expiration saisie est déjà passée." },
             { status: 400 }
           );
         }

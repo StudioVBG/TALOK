@@ -262,6 +262,7 @@ export function SignaturePad({
                 canvasProps={{
                   className: "w-full h-40 touch-none",
                   style: { width: "100%", height: "160px" },
+                  "aria-label": "Zone de signature manuscrite",
                 }}
                 penColor="#1e3a5f"
                 minWidth={1.5}
@@ -275,9 +276,9 @@ export function SignaturePad({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={clearSignature}
-                className="gap-1"
+                className="gap-1 min-h-[44px]"
               >
                 <Eraser className="h-4 w-4" />
                 Effacer
@@ -319,8 +320,9 @@ export function SignaturePad({
                     key={font.name}
                     type="button"
                     onClick={() => setSelectedFont(index)}
+                    aria-pressed={selectedFont === index}
                     className={cn(
-                      "p-3 rounded-lg border-2 transition-all text-left",
+                      "p-3 rounded-lg border-2 transition-all text-left min-h-[44px]",
                       selectedFont === index
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
                         : "border-slate-200 dark:border-slate-700 hover:border-slate-300"

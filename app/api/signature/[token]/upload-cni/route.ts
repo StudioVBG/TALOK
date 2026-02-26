@@ -105,6 +105,7 @@ export async function POST(request: Request, { params }: PageProps) {
     
     // Données OCR extraites côté client (optionnelles)
     const ocrDataRaw = formData.get("ocr_data") as string | null;
+    const manualExpiryDateRaw = formData.get("manual_expiry_date") as string | null;
     const ocrAttempted = formData.get("ocr_attempted") === "true";
     const ocrClientError = formData.get("ocr_client_error") as string | null;
     
@@ -298,13 +299,25 @@ export async function POST(request: Request, { params }: PageProps) {
       ocr_confidence: ocrData.ocr_confidence || 0,
     };
 
-    // Parser la date d'expiration pour la colonne SQL
+    // Parser la date d'expiration pour la colonne SQL (OCR puis fallback saisie manuelle)
     let expiryDate: string | null = null;
     if (ocrData.date_expiration) {
       // Format attendu: YYYY-MM-DD
       const dateMatch = ocrData.date_expiration.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (dateMatch) {
         expiryDate = ocrData.date_expiration;
+      }
+    }
+    if (!expiryDate && manualExpiryDateRaw && typeof manualExpiryDateRaw === "string") {
+      const trimmed = manualExpiryDateRaw.trim();
+      const manualMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (manualMatch) {
+        const manualDateObj = new Date(trimmed + "T12:00:00Z");
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (manualDateObj >= today) {
+          expiryDate = trimmed;
+        }
       }
     }
 
