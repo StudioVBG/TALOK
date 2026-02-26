@@ -158,7 +158,7 @@ describe("POST /api/tenant/identity/request-2fa", () => {
     expect(typeof json.token).toBe("string");
   });
 
-  it("retourne 200 avec token si envoi email réussi", async () => {
+  it("retourne 200 avec token et masked_email si envoi email réussi", async () => {
     const { POST } = await import("@/app/api/tenant/identity/request-2fa/route");
     const req = new Request("http://localhost/api/tenant/identity/request-2fa", {
       method: "POST",
@@ -172,6 +172,8 @@ describe("POST /api/tenant/identity/request-2fa", () => {
     expect(typeof json.token).toBe("string");
     expect(json.token.length).toBeGreaterThan(0);
     expect(json.message).toBeDefined();
+    expect(typeof json.masked_email).toBe("string");
+    expect(json.masked_email).toMatch(/@/);
   });
 });
 

@@ -19,6 +19,15 @@ function generateToken(): string {
   return randomBytes(32).toString("hex");
 }
 
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  const local = email.slice(0, at);
+  const domain = email.slice(at);
+  const visible = local.length >= 2 ? local.slice(0, 2) : local.slice(0, 1) || "";
+  return `${visible}***${domain}`;
+}
+
 /**
  * POST /api/tenant/identity/request-2fa
  * Demande une vérification 2FA par email uniquement (code + lien) pour renouvellement / mise à jour CNI.
@@ -87,21 +96,21 @@ export async function POST(request: Request) {
     try {
       const emailResult = await sendEmail({
           to: email,
-          subject: "Vérification d'identité - Code et lien Talok",
+          subject: "Validez votre identité – Talok",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <div style="background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
                 <h1 style="margin: 0;">Vérification d'identité</h1>
               </div>
               <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px;">
-                <p>Voici votre code de vérification à 6 chiffres :</p>
-                <div style="background: white; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; border-radius: 8px; margin: 20px 0;">
-                  ${otpCode}
-                </div>
-                <p>Ce code est valable ${OTP_EXPIRY_MINUTES} minutes.</p>
-                <p>Vous pouvez aussi cliquer sur le lien ci-dessous pour valider directement :</p>
-                <p><a href="${verifyUrl}" style="color: #2563eb; word-break: break-all;">${verifyUrl}</a></p>
-                <p style="color: #64748b; font-size: 14px;">Si vous n'avez pas demandé cette vérification, ignorez cet email.</p>
+                <p>Pour continuer, cliquez sur le bouton ci-dessous. Ce lien est valable ${OTP_EXPIRY_MINUTES} minutes.</p>
+                <p style="text-align: center; margin: 28px 0;">
+                  <a href="${verifyUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Valider mon identité</a>
+                </p>
+                <p style="color: #64748b; font-size: 14px;">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :</p>
+                <p style="word-break: break-all; font-size: 14px;"><a href="${verifyUrl}" style="color: #2563eb;">${verifyUrl}</a></p>
+                <p style="color: #94a3b8; font-size: 13px; margin-top: 20px;">Vous pouvez aussi utiliser ce code à 6 chiffres dans l'application : <strong>${otpCode}</strong></p>
+                <p style="color: #64748b; font-size: 14px; margin-top: 24px;">Si vous n'avez pas demandé cette vérification, ignorez cet email.</p>
               </div>
             </div>
           `,
@@ -130,6 +139,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: "Code envoyé par email",
+      masked_email: maskEmail(email),
       channels_sent: ["email"],
       channels_failed: channelsFailed,
       expires_in: OTP_EXPIRY_MINUTES * 60,

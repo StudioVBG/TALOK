@@ -67,6 +67,8 @@ function RenewCNIContent() {
   const [ocrStatus, setOcrStatus] = useState("");
   const [extractedData, setExtractedData] = useState<OcrExtractedData | null>(null);
   const [twoFaToken, setTwoFaToken] = useState<string | null>(null);
+  const [twoFaMaskedEmail, setTwoFaMaskedEmail] = useState<string | null>(null);
+  const [showOtpFallback, setShowOtpFallback] = useState(false);
   const [twoFaOtp, setTwoFaOtp] = useState("");
   const [twoFaSending, setTwoFaSending] = useState(false);
   const [twoFaVerifying, setTwoFaVerifying] = useState(false);
@@ -130,14 +132,15 @@ function RenewCNIContent() {
         return;
       }
       setTwoFaToken((data.token as string) || null);
+      setTwoFaMaskedEmail((data.masked_email as string) || null);
       const successMsg = data.message as string || "Code envoyé";
       const channelsFailed = data.channels_failed as { channel: string; error: string }[] | undefined;
       const hasPartialFailure = Array.isArray(channelsFailed) && channelsFailed.length > 0;
       toast({
-        title: "Code envoyé",
+        title: "Email envoyé",
         description: hasPartialFailure
           ? `${successMsg}. Un canal n'a pas fonctionné : ${channelsFailed.map((f) => f.channel).join(", ")}.`
-          : "Vérifiez votre SMS et/ou votre email.",
+          : "Cliquez sur le lien dans l'email pour continuer.",
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -375,36 +378,67 @@ function RenewCNIContent() {
             <Card>
               <CardHeader>
                 <CardTitle>Vérification en deux étapes</CardTitle>
-                <CardDescription>Pour renouveler votre CNI, nous devons vérifier votre identité. Un code sera envoyé à votre téléphone et à votre email.</CardDescription>
+                <CardDescription>Pour renouveler votre CNI, nous devons vérifier votre identité. Un email contenant un lien de vérification vous sera envoyé. Cliquez sur le lien pour continuer.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {!twoFaToken ? (
                   <Button onClick={handleRequest2Fa} disabled={twoFaSending} className="w-full">
                     {twoFaSending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Envoyer le code
+                    Envoyer le lien par email
                   </Button>
                 ) : (
                   <>
-                    <div className="space-y-2">
-                      <Label htmlFor="otp">Code à 6 chiffres</Label>
-                      <Input
-                        id="otp"
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        placeholder="000000"
-                        value={twoFaOtp}
-                        onChange={(e) => setTwoFaOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                        className="text-center text-lg tracking-widest font-mono"
-                      />
-                    </div>
-                    <Button onClick={handleVerify2Fa} disabled={twoFaVerifying || twoFaOtp.length !== 6} className="w-full">
-                      {twoFaVerifying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      Valider
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={handleRequest2Fa} disabled={twoFaSending} className="w-full">
-                      Renvoyer le code
-                    </Button>
+                    {!showOtpFallback ? (
+                      <>
+                        <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
+                          <p className="font-medium">Vérifiez votre boîte mail</p>
+                          <p className="text-sm text-muted-foreground">
+                            Un email vous a été envoyé{twoFaMaskedEmail ? ` à ${twoFaMaskedEmail}` : ""}. <strong>Cliquez sur le lien dans l&apos;email</strong> pour continuer. Vous pouvez laisser cette page ouverte ou la fermer.
+                          </p>
+                        </div>
+                        <Button variant="outline" onClick={handleRequest2Fa} disabled={twoFaSending} className="w-full">
+                          {twoFaSending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                          Renvoyer l&apos;email
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => setShowOtpFallback(true)}
+                          className="text-sm text-muted-foreground hover:text-foreground underline w-full text-center"
+                        >
+                          Le lien ne fonctionne pas ? Saisir le code
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="otp">Code à 6 chiffres</Label>
+                          <Input
+                            id="otp"
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={twoFaOtp}
+                            onChange={(e) => setTwoFaOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            className="text-center text-lg tracking-widest font-mono"
+                          />
+                        </div>
+                        <Button onClick={handleVerify2Fa} disabled={twoFaVerifying || twoFaOtp.length !== 6} className="w-full">
+                          {twoFaVerifying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                          Valider
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={handleRequest2Fa} disabled={twoFaSending} className="w-full">
+                          Renvoyer le code
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => setShowOtpFallback(false)}
+                          className="text-sm text-muted-foreground hover:text-foreground underline w-full text-center"
+                        >
+                          Retour au message
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
                 <Link href={redirectTo || "/tenant/identity"} className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-center")}>
