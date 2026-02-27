@@ -235,6 +235,15 @@ export default function TenantEDLDetailClient({
           </motion.div>
 
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+            {edl.status === "signed" && (
+              <Button
+                onClick={handleDownloadPDF}
+                className="h-10 sm:h-11 px-4 sm:px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-100 rounded-xl flex-1 sm:flex-none"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Télécharger le PDF signé
+              </Button>
+            )}
             {edl.type === "sortie" && (
               <Button
                 variant="outline"
@@ -246,9 +255,9 @@ export default function TenantEDLDetailClient({
                 Comparer avec l&apos;entrée
               </Button>
             )}
-            {!hasSigned && edl.status !== "draft" && (
-              <Button 
-                onClick={() => setIsSignModalOpen(true)} 
+            {!hasSigned && edl.status !== "draft" && edl.status !== "signed" && (
+              <Button
+                onClick={() => setIsSignModalOpen(true)}
                 disabled={isSigning}
                 className="h-10 sm:h-11 px-4 sm:px-6 bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-lg shadow-amber-100 rounded-xl flex-1 sm:flex-none"
               >
@@ -258,6 +267,25 @@ export default function TenantEDLDetailClient({
             )}
           </div>
         </div>
+
+        {/* Bandeau document signé */}
+        {edl.status === "signed" && (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-emerald-800">Document signé — version finale</p>
+              <p className="text-xs text-emerald-600">Ce document est signé par toutes les parties. Seul le PDF fait foi.</p>
+            </div>
+            <Button
+              onClick={handleDownloadPDF}
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex-shrink-0"
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              PDF
+            </Button>
+          </div>
+        )}
 
         {/* État de Signature SOTA — responsive */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8">

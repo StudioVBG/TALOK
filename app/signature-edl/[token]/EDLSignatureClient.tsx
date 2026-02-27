@@ -74,6 +74,7 @@ export default function EDLSignatureClient({
   const router = useRouter();
   const { toast } = useToast();
   const [isSigning, setIsSigning] = useState(false);
+  const [signSuccess, setSignSuccess] = useState(false);
   const [step, setStep] = useState<"preview" | "sign">("preview");
   const [html, setHtml] = useState<string>(initialPreviewHtml);
   const [loadingPreview, setLoadingPreview] = useState(!initialPreviewHtml);
@@ -134,9 +135,7 @@ export default function EDLSignatureClient({
         return;
       }
 
-      toast({ title: "État des lieux signé avec succès !", description: "Redirection en cours..." });
-      await new Promise((r) => setTimeout(r, 2000));
-      router.push(`/tenant/inspections/${edl.id}`);
+      setSignSuccess(true);
     } catch (error: unknown) {
       console.error("Erreur signature:", error);
       setSignError((error as Error).message);
@@ -144,6 +143,98 @@ export default function EDLSignatureClient({
       setIsSigning(false);
     }
   };
+
+  // ── Vue succès post-signature ──
+  if (signSuccess) {
+    return (
+      <PageTransition>
+        <div className="container mx-auto px-4 max-w-2xl py-12 space-y-8">
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center justify-center p-4 bg-emerald-100 rounded-full mb-2">
+              <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900">
+              État des lieux signé !
+            </h1>
+            <p className="text-slate-500 text-lg max-w-md mx-auto">
+              Votre signature a été enregistrée avec succès. Le document est maintenant disponible dans votre espace.
+            </p>
+          </div>
+
+          <GlassCard className="p-6 border-slate-200 bg-white shadow-xl space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-slate-50 rounded-xl">
+                <Home className="h-6 w-6 text-slate-400" />
+              </div>
+              <div>
+                <p className="font-bold text-slate-900 text-lg">
+                  {property?.adresse_complete}
+                </p>
+                <p className="text-slate-500">
+                  {property?.code_postal} {property?.ville}
+                </p>
+                <Badge variant="secondary" className="font-bold mt-2">
+                  EDL {edl.type === "entree" ? "d'entrée" : "de sortie"} — Signé
+                </Badge>
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* Prochaines étapes */}
+          <GlassCard className="p-6 border-slate-200 bg-slate-50 shadow-lg space-y-4">
+            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+              Prochaines étapes
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm text-slate-600">
+                <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                <span>Bail signé</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-slate-600">
+                <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                <span>État des lieux signé</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-slate-600">
+                <div className="h-5 w-5 rounded-full border-2 border-indigo-400 flex items-center justify-center flex-shrink-0">
+                  <div className="h-2 w-2 rounded-full bg-indigo-400" />
+                </div>
+                <span className="font-medium text-slate-800">Premier paiement (loyer + dépôt de garantie)</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-slate-400">
+                <div className="h-5 w-5 rounded-full border-2 border-slate-300 flex-shrink-0" />
+                <span>Remise des clés</span>
+              </div>
+            </div>
+          </GlassCard>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              onClick={() => window.open(`/api/edl/${edl.id}/pdf`, "_blank")}
+              variant="outline"
+              className="flex-1 h-12 rounded-xl font-bold"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Télécharger le PDF
+            </Button>
+            <Button
+              onClick={() => router.push("/tenant/dashboard")}
+              className="flex-1 h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200"
+            >
+              Accéder à mon espace
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 text-slate-400 text-sm font-medium">
+              <ShieldCheck className="h-4 w-4" />
+              Signature électronique sécurisée conforme eIDAS
+            </div>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>

@@ -247,6 +247,41 @@ export async function POST(
           all_signed: true,
         },
       } as any);
+
+      // Auto-insert signed EDL into documents table for both owner and tenant
+      const edlData = signatureEntry.edl as any;
+      const edlType = edlData?.type === "entree" ? "EDL_entree" : "EDL_sortie";
+      const edlLabel = edlData?.type === "entree" ? "d'entrée" : "de sortie";
+      try {
+        // Check for existing document to avoid duplicates
+        const { data: existingDoc } = await serviceClient
+          .from("documents")
+          .select("id")
+          .eq("type", edlType)
+          .eq("metadata->>edl_id", signatureEntry.edl_id)
+          .maybeSingle();
+
+        if (!existingDoc) {
+          await serviceClient.from("documents").insert({
+            type: edlType,
+            property_id: propertyId || null,
+            lease_id: edlData?.lease_id || null,
+            owner_id: edlData?.lease?.property?.owner_id || (edlData as any)?.property?.owner_id || null,
+            tenant_id: signerProfileId || null,
+            title: `État des lieux ${edlLabel} — Signé`,
+            storage_path: `edl/${signatureEntry.edl_id}/signed_document.pdf`,
+            is_archived: false,
+            metadata: {
+              edl_id: signatureEntry.edl_id,
+              signed_at: new Date().toISOString(),
+              all_signers_signed: true,
+              final: true,
+            },
+          } as any);
+        }
+      } catch (docErr) {
+        log.warn("Erreur insertion document EDL (non bloquant)", { error: String(docErr) });
+      }
     }
 
     // FIX P1-8: Audit log (manquait totalement)
