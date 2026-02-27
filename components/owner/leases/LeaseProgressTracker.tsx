@@ -37,14 +37,16 @@ interface LeaseProgressTrackerProps {
   status: LeaseProgressStatus;
   hasSignedEdl: boolean;
   hasPaidInitial: boolean;
+  hasKeysHandedOver?: boolean;
   className?: string;
   compact?: boolean;
 }
 
-export function LeaseProgressTracker({ 
-  status, 
-  hasSignedEdl, 
+export function LeaseProgressTracker({
+  status,
+  hasSignedEdl,
   hasPaidInitial,
+  hasKeysHandedOver = false,
   className,
   compact = false
 }: LeaseProgressTrackerProps) {
@@ -91,11 +93,11 @@ export function LeaseProgressTracker({
       label: "Remise des clés",
       description: "Bail actif",
       detailDone: "Le locataire est installé !",
-      detailInProgress: "Prêt pour la remise des clés",
+      detailInProgress: "Prêt pour la remise des clés — Générez le QR code",
       detailPending: "Étape finale",
       icon: Key,
-      isDone: status === "active" && hasSignedEdl && hasPaidInitial,
-      isInProgress: (status === "active" && (!hasSignedEdl || !hasPaidInitial)) || (hasSignedEdl && hasPaidInitial && status === "fully_signed")
+      isDone: hasKeysHandedOver || (status === "active" && hasSignedEdl && hasPaidInitial && hasKeysHandedOver),
+      isInProgress: !hasKeysHandedOver && ((status === "active" && hasSignedEdl && hasPaidInitial) || (hasSignedEdl && hasPaidInitial && status === "fully_signed"))
     }
   ];
 

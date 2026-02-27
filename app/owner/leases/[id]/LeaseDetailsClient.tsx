@@ -53,6 +53,7 @@ import { OwnerSignatureModal } from "./OwnerSignatureModal";
 import { dpeService } from "@/features/diagnostics/services/dpe.service";
 import { useEffect } from "react";
 import { LeaseProgressTracker, type LeaseProgressStatus } from "@/components/owner/leases/LeaseProgressTracker";
+import { KeyHandoverQRGenerator } from "@/components/key-handover/KeyHandoverQRGenerator";
 import { LeaseTimeline } from "@/components/owner/leases/LeaseTimeline";
 import { Celebration, useCelebration } from "@/components/ui/celebration";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -357,10 +358,18 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     }
     // 2. Fallback: Vérifier les paiements
     if (!payments || payments.length === 0) return false;
-    return payments.some((p: any) => 
+    return payments.some((p: any) =>
       p.statut === "succeeded" || p.statut === "paid"
     );
   }, [lease, payments]);
+
+  // Remise des clés confirmée
+  const hasKeysHandedOver = useMemo(() => {
+    if (typeof (lease as any).has_keys_handed_over === "boolean") {
+      return (lease as any).has_keys_handed_over;
+    }
+    return false;
+  }, [lease]);
 
   // ✅ SOTA 2026: Déterminer l'action prioritaire
   const nextAction = useMemo(() => {
@@ -776,10 +785,11 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         {/* 🚀 SOTA 2026: Tracker de progression */}
         <div className="mb-6">
-          <LeaseProgressTracker 
+          <LeaseProgressTracker
             status={lease.statut as LeaseProgressStatus}
             hasSignedEdl={hasSignedEdl}
             hasPaidInitial={hasPaidInitial}
+            hasKeysHandedOver={hasKeysHandedOver}
           />
         </div>
 
@@ -1117,6 +1127,11 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               </CardContent>
             </Card>
             
+            {/* Remise des clés QR — affiché quand EDL signé et paiement reçu */}
+            {hasSignedEdl && hasPaidInitial && !hasKeysHandedOver && (
+              <KeyHandoverQRGenerator leaseId={leaseId} />
+            )}
+
             {/* Carte Info Rapide */}
             <Card className="border-none shadow-sm bg-white">
               <CardHeader className="pb-3 border-b border-slate-50">

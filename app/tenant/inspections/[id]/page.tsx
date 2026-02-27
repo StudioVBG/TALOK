@@ -64,7 +64,7 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
       .select("lease_id")
       .eq("id", edlId)
       .single();
-    
+
     if (edlForLease?.lease_id) {
       // Vérifier si le locataire est signataire du bail
       const { data: leaseSigner } = await supabase
@@ -73,11 +73,29 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
         .eq("lease_id", edlForLease.lease_id)
         .eq("profile_id", profileId)
         .maybeSingle();
-      
+
       if (leaseSigner) {
         // Créer une signature virtuelle pour permettre l'accès
         mySignature = { id: 'virtual', signer_role: 'tenant', edl_id: edlId };
       }
+    }
+  }
+
+  // Essai 4: Bypass RLS — Rechercher dans edl_signatures via serviceClient
+  // Couvre le cas où la signature via token n'a pas correctement rattaché le profil
+  if (!mySignature) {
+    const orFilters = [`signer_profile_id.eq.${profileId}`];
+    if (userId) orFilters.push(`signer_user_id.eq.${userId}`);
+
+    const { data: sigByService } = await serviceClient
+      .from("edl_signatures")
+      .select("*")
+      .eq("edl_id", edlId)
+      .or(orFilters.join(","))
+      .maybeSingle();
+
+    if (sigByService) {
+      mySignature = sigByService;
     }
   }
 
