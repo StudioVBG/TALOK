@@ -14,7 +14,7 @@ import { extractClientIP } from "@/lib/utils/ip-address";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { revalidatePath } from "next/cache";
-import { verifyHandoverToken } from "../route";
+import { verifyHandoverToken } from "@/lib/services/handover-token.service";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -56,17 +56,26 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     // Trouver la remise des clés en DB
-    const { data: handover } = await serviceClient
-      .from("key_handovers")
+    const { data: handoverRaw } = await (serviceClient
+      .from("key_handovers") as any)
       .select("*")
       .eq("lease_id", leaseId)
       .eq("token", token)
       .is("confirmed_at", null)
       .single();
 
-    if (!handover) {
+    if (!handoverRaw) {
       return NextResponse.json({ error: "Remise des clés introuvable ou déjà confirmée" }, { status: 404 });
     }
+
+    const handover = handoverRaw as {
+      id: string;
+      lease_id: string;
+      property_id: string | null;
+      owner_profile_id: string | null;
+      keys_list: any[];
+      token: string;
+    };
 
     // Upload de la signature du locataire
     const base64Data = stripBase64Prefix(signature);
@@ -108,8 +117,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     });
 
     // Mettre à jour la remise des clés
-    const { error: updateError } = await serviceClient
-      .from("key_handovers")
+    const { error: updateError } = await (serviceClient
+      .from("key_handovers") as any)
       .update({
         confirmed_at: new Date().toISOString(),
         tenant_profile_id: profile.id,
@@ -122,7 +131,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           ...proof,
           signature: { ...proof.signature, imageData: `[STORED:${fileName}]` },
         },
-      } as any)
+      })
       .eq("id", handover.id);
 
     if (updateError) {

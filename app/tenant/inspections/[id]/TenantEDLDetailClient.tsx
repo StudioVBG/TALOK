@@ -30,7 +30,8 @@ import {
   ChevronRight,
   ShieldCheck,
   History,
-  Info
+  Info,
+  Loader2
 } from "lucide-react";
 import { formatDateShort, formatCurrency } from "@/lib/helpers/format";
 import { EDLPreview } from "@/features/edl/components/edl-preview";
@@ -42,7 +43,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { EDLComparison } from "@/components/edl/EDLComparison";
-import { GitCompare, Loader2 } from "lucide-react";
+import { GitCompare } from "lucide-react";
 
 interface TenantEDLDetailClientProps {
   data: {
