@@ -46,6 +46,7 @@ import {
 import { SkipLinks } from "@/components/ui/skip-links";
 import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
+import { useTenantNavBadges } from "@/lib/hooks/use-tenant-nav-badges";
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
@@ -92,6 +93,13 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
     redirectTo: "/auth/signin",
   });
 
+  // AUDIT UX: Badges de notification pour la sidebar
+  const navBadges = useTenantNavBadges();
+  const badgeMap: Record<string, number> = {
+    "/tenant/messages": navBadges.messages,
+    "/tenant/requests": navBadges.requests,
+  };
+
   const profile = serverProfile || clientProfile;
 
   const isCurrent = (href: string) =>
@@ -133,6 +141,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         <nav className="flex flex-1 flex-col items-center gap-1 py-3 overflow-y-auto">
           {allNavItems.map((item) => {
             const isActive = isCurrent(item.href);
+            const badgeCount = badgeMap[item.href] || 0;
             return (
               <Tooltip key={item.name}>
                 <TooltipTrigger asChild>
@@ -140,7 +149,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
                     href={item.href}
                     data-tour={item.tourId}
                     className={cn(
-                      "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
+                      "relative flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 touch-target focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
                       isActive
                         ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -148,6 +157,11 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
                     aria-current={isActive ? "page" : undefined}
                   >
                     <item.icon className="h-5 w-5" />
+                    {badgeCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1">
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </span>
+                    )}
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="font-medium">
@@ -206,7 +220,9 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
                 {group.title}
               </p>
-              {group.items.map((item) => (
+              {group.items.map((item) => {
+                const badgeCount = badgeMap[item.href] || 0;
+                return (
                 <Link
                   key={item.name}
                   href={item.href}
@@ -226,9 +242,15 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
                         : "text-muted-foreground"
                     )}
                   />
-                  {item.name}
+                  <span className="flex-1">{item.name}</span>
+                  {badgeCount > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1.5">
+                      {badgeCount > 99 ? "99+" : badgeCount}
+                    </span>
+                  )}
                 </Link>
-              ))}
+                );
+              })}
             </div>
           ))}
         </nav>

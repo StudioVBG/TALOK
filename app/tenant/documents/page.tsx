@@ -75,6 +75,8 @@ function detectType(doc: any): string {
   const storagePath = (doc.storage_path || "").toLowerCase();
   const searchText = `${title} ${storagePath}`;
 
+  // AUDIT UX: Identité détectée en priorité pour éviter qu'une CNI soit classée comme "bail"
+  if (searchText.includes("cni") || searchText.includes("identité") || searchText.includes("identite") || searchText.includes("passeport") || searchText.includes("carte d'identité") || searchText.includes("carte d'identite") || searchText.includes("carte_identite") || searchText.includes("carte nationale")) return "cni";
   if (searchText.includes("quittance") || (searchText.includes("loyer") && !searchText.includes("attestation"))) return "quittance";
   if (searchText.includes("bail") || searchText.includes("contrat") || searchText.includes("lease")) return "bail";
   if (searchText.includes("assurance") || (searchText.includes("attestation") && searchText.includes("habitation"))) return "attestation_assurance";
@@ -88,7 +90,6 @@ function detectType(doc: any): string {
   if (searchText.includes("amiante")) return "amiante";
   if (searchText.includes("électric") || searchText.includes("electric")) return "electricite";
   if (searchText.includes("gaz")) return "gaz";
-  if (searchText.includes("cni") || searchText.includes("identité") || searchText.includes("passeport")) return "cni";
   if (searchText.includes("fiche de paie") || searchText.includes("bulletin") || searchText.includes("revenu")) return "justificatif_revenus";
   if (searchText.includes("facture") || searchText.includes("invoice")) return "facture";
 

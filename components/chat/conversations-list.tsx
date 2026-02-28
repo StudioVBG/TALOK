@@ -167,10 +167,10 @@ export function ConversationsList({ currentProfileId, selectedId, onSelect }: Co
               <h4 className="font-semibold text-foreground mb-1">
                 {search ? "Aucun résultat" : "Aucune conversation"}
               </h4>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
                 {search
                   ? "Essayez un autre terme de recherche."
-                  : "Les messages de votre propriétaire apparaîtront ici."}
+                  : "Votre propriétaire n'a pas encore envoyé de message. Utilisez le bouton ci-dessus pour initier la conversation."}
               </p>
             </div>
           ) : (

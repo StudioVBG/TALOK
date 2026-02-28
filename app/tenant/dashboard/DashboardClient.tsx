@@ -908,13 +908,14 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                 </Button>
               </GlassCard>
             ) : (
-              <ConsumptionChart 
-                type="electricity" 
+              <ConsumptionChart
+                type="electricity"
                 data={consumptionData?.data}
                 currentValue={consumptionData?.current?.electricity}
                 hasData={consumptionData?.hasData ?? false}
                 lastUpdate={consumptionData?.lastUpdate}
-                className="h-full" 
+                ctaHref="/tenant/meters"
+                className="h-full"
               />
             )}
           </motion.div>
