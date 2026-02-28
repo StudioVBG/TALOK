@@ -306,6 +306,13 @@ export default function TenantLeasePage() {
                             {formatCurrency((lease.loyer || 0) + (lease.charges_forfaitaires || 0))}
                           </span>
                         </div>
+                        {/* AUDIT UX: Dépôt de garantie */}
+                        {lease.depot_de_garantie > 0 && (
+                          <div className="flex justify-between items-center py-2 mt-2">
+                            <span className="text-muted-foreground font-medium">Dépôt de garantie</span>
+                            <span className="font-bold text-foreground">{formatCurrency(lease.depot_de_garantie)}</span>
+                          </div>
+                        )}
                         {/* Régularisation de charges si disponible */}
                         {(lease as any).charges_base && (lease as any).charges_base.length > 0 && (
                           <div className="mt-4 pt-4 border-t border-border space-y-2">
@@ -321,6 +328,38 @@ export default function TenantLeasePage() {
                       </div>
                     </GlassCard>
                   </motion.div>
+
+                  {/* AUDIT UX: Durée du bail — dates clés */}
+                  {lease.date_debut && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                      <GlassCard className="p-6 border-border bg-card shadow-lg space-y-3">
+                        <h3 className="font-bold text-foreground flex items-center gap-2">
+                          <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                          Durée du bail
+                        </h3>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center py-2">
+                            <span className="text-muted-foreground font-medium">Début du bail</span>
+                            <span className="font-bold text-foreground">{formatDateShort(lease.date_debut)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2 border-t border-border">
+                            <span className="text-muted-foreground font-medium">Fin du bail</span>
+                            <span className="font-bold text-foreground">
+                              {lease.date_fin ? formatDateShort(lease.date_fin) : "Reconduction tacite"}
+                            </span>
+                          </div>
+                          {lease.type_bail && (
+                            <div className="flex justify-between items-center py-2 border-t border-border">
+                              <span className="text-muted-foreground font-medium">Type</span>
+                              <Badge variant="outline" className="bg-card font-bold">
+                                {LEASE_TYPE_LABELS[lease.type_bail] || lease.type_bail}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      </GlassCard>
+                    </motion.div>
+                  )}
 
                   {!isDraft && (
                     <>
@@ -577,7 +616,7 @@ export default function TenantLeasePage() {
                             </div>
                             <span className="text-sm font-bold text-foreground/80">Digicode</span>
                           </div>
-                          <span className="font-mono font-black text-indigo-600 dark:text-indigo-400 tracking-widest">{property?.digicode || "—"}</span>
+                          <span className="font-mono font-black text-indigo-600 dark:text-indigo-400 tracking-widest">{property?.digicode || "Non communiqué"}</span>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-xl bg-muted border border-border">
                           <div className="flex items-center gap-3">
@@ -586,7 +625,7 @@ export default function TenantLeasePage() {
                             </div>
                             <span className="text-sm font-bold text-foreground/80">Interphone</span>
                           </div>
-                          <span className="text-sm font-bold text-foreground">{property?.interphone || "—"}</span>
+                          <span className="text-sm font-bold text-foreground">{property?.interphone || "Non communiqué"}</span>
                         </div>
                       </div>
                     </GlassCard>
@@ -602,7 +641,14 @@ export default function TenantLeasePage() {
                       <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
                         <Gauge className="h-5 w-5 text-indigo-600 dark:text-indigo-400" /> Relevés de Compteurs
                       </h3>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Source : États des lieux</p>
+                      <div className="flex items-center gap-3">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] hidden sm:block">Source : EDL</p>
+                        <Button variant="outline" size="sm" className="h-8 text-xs font-bold rounded-lg" asChild>
+                          <Link href="/tenant/meters">
+                            <Gauge className="h-3.5 w-3.5 mr-1.5" /> Saisir un relevé
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {property?.meters && property.meters.length > 0 ? (

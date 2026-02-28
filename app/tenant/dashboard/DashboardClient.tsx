@@ -29,6 +29,7 @@ import {
   Phone,
   Wrench,
   Zap,
+  Calendar,
 } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { Badge } from "@/components/ui/badge";
@@ -136,6 +137,18 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
   }, [dashboard, selectedLeaseIndex]);
 
   const currentProperty = useMemo(() => currentLease?.property, [currentLease]);
+
+  // AUDIT UX: Prochaine échéance avec countdown (visible directement sur le Dashboard)
+  const nextDue = useMemo(() => {
+    if (!currentLease) return null;
+    const now = new Date();
+    const nextFirst = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const amount = (currentLease.loyer ?? 0) + (currentLease.charges_forfaitaires ?? 0);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffMs = nextFirst.getTime() - today.getTime();
+    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    return { date: nextFirst, amount, daysLeft };
+  }, [currentLease]);
 
   // ✅ SOTA 2026: Vérifier si la propriété a été supprimée (soft-delete)
   const isPropertyDeleted = useMemo(() => {
@@ -559,6 +572,43 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
           </AnimatePresence>
         </div>
 
+        {/* --- AUDIT UX: Prochaine échéance avec countdown --- */}
+        {hasLeaseData && nextDue && nextDue.amount > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <GlassCard className="p-5 border-border bg-card shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-indigo-50 to-emerald-50 dark:from-indigo-950/30 dark:to-emerald-950/30 border-indigo-100 dark:border-indigo-900/50">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shrink-0">
+                  <Calendar className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Prochaine échéance</p>
+                  <p className="text-2xl font-black text-foreground">
+                    {formatCurrency(nextDue.amount)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Le {nextDue.date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-background/80 border border-border">
+                  <Clock className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  <span className="font-bold text-sm text-foreground">
+                    {nextDue.daysLeft > 0
+                      ? `Dans ${nextDue.daysLeft} jour${nextDue.daysLeft > 1 ? "s" : ""}`
+                      : nextDue.daysLeft === 0
+                        ? "Aujourd'hui"
+                        : "Échéance passée"}
+                  </span>
+                </div>
+                <Button className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 h-10 px-5" asChild>
+                  <Link href="/tenant/payments">Payer</Link>
+                </Button>
+              </div>
+            </GlassCard>
+          </motion.div>
+        )}
+
         {/* --- SECTION 2 : BENTO GRID SOTA 2026 --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
@@ -805,7 +855,11 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                     <ChevronRight className="h-3 w-3 text-muted-foreground/50 group-hover:text-indigo-600" />
                   </motion.div>
                 )) : (
-                  <div className="p-8 text-center text-muted-foreground text-sm">Aucune activité</div>
+                  <div className="p-8 text-center space-y-2">
+                    <History className="h-8 w-8 text-muted-foreground/30 mx-auto" />
+                    <p className="text-sm font-medium text-muted-foreground">Aucune activité récente</p>
+                    <p className="text-xs text-muted-foreground/70">Vos paiements, documents et messages apparaîtront ici.</p>
+                  </div>
                 )}
               </div>
             </GlassCard>

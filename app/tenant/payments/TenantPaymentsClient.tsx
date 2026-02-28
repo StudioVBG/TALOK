@@ -261,6 +261,20 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
           </div>
 
           <div className="grid grid-cols-1 gap-4">
+            {/* AUDIT UX: Empty state quand 0 transactions */}
+            {filteredInvoices.length === 0 && (
+              <div className="py-16 text-center">
+                <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Receipt className="h-8 w-8 text-muted-foreground/30" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground mb-2">Aucun paiement enregistré</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  {nextDue.hasLease
+                    ? "Votre historique de paiements apparaîtra ici après votre premier règlement."
+                    : "Liez votre logement pour accéder à vos factures et paiements."}
+                </p>
+              </div>
+            )}
             <AnimatePresence mode="popLayout">
               {filteredInvoices.map((invoice, index) => (
                 <motion.div 

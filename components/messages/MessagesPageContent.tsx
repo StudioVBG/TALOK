@@ -1,29 +1,50 @@
 "use client";
 
-import { useState, useEffect } from "react";
+/**
+ * AUDIT UX: Composant de messagerie unifié
+ * - Ajout du bouton "Nouvelle conversation" (prop newConversationData)
+ * - Amélioration du empty state central avec CTA contextuel
+ * - Sous-titre élargi aux prestataires
+ */
+
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConversationsList } from "@/components/chat/conversations-list";
 import { ChatWindow } from "@/components/chat/chat-window";
 import { Card, CardContent } from "@/components/ui/card";
-import { MessageSquare, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, PenSquare, Loader2 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
-import type { Conversation } from "@/lib/services/chat.service";
+import { chatService, type Conversation } from "@/lib/services/chat.service";
+import { useToast } from "@/components/ui/use-toast";
+
+export interface NewConversationData {
+  property_id: string;
+  owner_profile_id: string;
+  tenant_profile_id: string;
+  lease_id: string;
+  ownerName: string;
+}
 
 interface MessagesPageContentProps {
   /** Sous-titre sous le titre "Messages" */
   subtitle: string;
   /** Si fourni, appelé quand l'utilisateur n'est pas authentifié (ex: redirect signin) */
   onNotAuthenticated?: () => void;
+  /** AUDIT UX: Données pour créer une nouvelle conversation (tenant) */
+  newConversationData?: NewConversationData;
 }
 
-export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPageContentProps) {
+export function MessagesPageContent({ subtitle, onNotAuthenticated, newConversationData }: MessagesPageContentProps) {
   const [loading, setLoading] = useState(true);
   const [currentProfileId, setCurrentProfileId] = useState<string>("");
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const supabase = createClient();
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -71,6 +92,31 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
     setSelectedConversation(null);
   };
 
+  // AUDIT UX: Créer ou ouvrir une conversation avec le propriétaire
+  const handleNewConversation = useCallback(async () => {
+    if (!newConversationData) return;
+    setIsCreatingConversation(true);
+    try {
+      const conversation = await chatService.getOrCreateConversation({
+        property_id: newConversationData.property_id,
+        owner_profile_id: newConversationData.owner_profile_id,
+        tenant_profile_id: newConversationData.tenant_profile_id,
+        lease_id: newConversationData.lease_id,
+        subject: "Conversation avec mon propriétaire",
+      });
+      setSelectedConversation(conversation);
+    } catch (error) {
+      console.error("Erreur création conversation:", error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de créer la conversation. Veuillez réessayer.",
+      });
+    } finally {
+      setIsCreatingConversation(false);
+    }
+  }, [newConversationData, toast]);
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -103,6 +149,21 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
     );
   }
 
+  // AUDIT UX: Bouton nouvelle conversation réutilisable
+  const NewConversationButton = newConversationData ? (
+    <Button
+      onClick={handleNewConversation}
+      disabled={isCreatingConversation}
+      className="bg-indigo-600 hover:bg-indigo-700 font-bold rounded-xl h-10 px-5 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30"
+    >
+      {isCreatingConversation ? (
+        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Ouverture...</>
+      ) : (
+        <><PenSquare className="h-4 w-4 mr-2" /> Nouvelle conversation</>
+      )}
+    </Button>
+  ) : null;
+
   if (isMobile) {
     return (
       <PageTransition>
@@ -117,7 +178,10 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
             </div>
           ) : (
             <div className="p-4">
-              <h1 className="text-2xl font-bold mb-4">Messages</h1>
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-2xl font-bold">Messages</h1>
+                {NewConversationButton}
+              </div>
               <ConversationsList
                 currentProfileId={currentProfileId}
                 selectedId={undefined}
@@ -136,12 +200,15 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
+          className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
         >
-          <h1 className="text-3xl font-bold">Messages</h1>
-          <p className="text-muted-foreground mt-1">
-            {subtitle}
-          </p>
+          <div>
+            <h1 className="text-3xl font-bold">Messages</h1>
+            <p className="text-muted-foreground mt-1">
+              {subtitle}
+            </p>
+          </div>
+          {NewConversationButton}
         </motion.div>
 
         <motion.div
@@ -175,12 +242,24 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
                     Sélectionnez une conversation
                   </h3>
                   <p className="text-muted-foreground max-w-sm">
-                    Choisissez une conversation dans la liste pour commencer à discuter
+                    Choisissez une conversation dans la liste ou démarrez une nouvelle discussion.
                   </p>
-                  <div className="flex items-center justify-center gap-2 mt-6 text-sm text-muted-foreground">
-                    <ArrowRight className="h-4 w-4" />
-                    <span>Cliquez sur une conversation à gauche</span>
-                  </div>
+                  {newConversationData && (
+                    <div className="mt-6">
+                      <Button
+                        variant="outline"
+                        onClick={handleNewConversation}
+                        disabled={isCreatingConversation}
+                        className="font-bold"
+                      >
+                        {isCreatingConversation ? (
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Ouverture...</>
+                        ) : (
+                          <><PenSquare className="h-4 w-4 mr-2" /> Écrire à {newConversationData.ownerName}</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

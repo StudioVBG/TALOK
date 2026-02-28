@@ -170,7 +170,7 @@ export function ConversationsList({ currentProfileId, selectedId, onSelect }: Co
               <p className="text-sm text-muted-foreground">
                 {search
                   ? "Essayez un autre terme de recherche."
-                  : "Les messages de votre propriétaire apparaîtront ici."}
+                  : "Envoyez un premier message à votre propriétaire pour commencer la discussion."}
               </p>
             </div>
           ) : (

@@ -30,6 +30,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { Badge } from "@/components/ui/badge";
+import { useTenantData } from "@/app/tenant/_data/TenantDataProvider";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UnifiedFAB } from "@/components/layout/unified-fab";
 import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
@@ -93,6 +94,16 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
   });
 
   const profile = serverProfile || clientProfile;
+
+  // AUDIT UX: Badges de notification pour la sidebar
+  const tenantData = useTenantData();
+  const sidebarBadges: Record<string, number> = {};
+  if (tenantData?.dashboard) {
+    const openTickets = tenantData.dashboard.tickets?.filter(
+      (t) => t.statut !== "closed" && t.statut !== "resolved"
+    ).length ?? 0;
+    if (openTickets > 0) sidebarBadges["/tenant/requests"] = openTickets;
+  }
 
   const isCurrent = (href: string) =>
     pathname === href || pathname?.startsWith(href + "/");
@@ -206,29 +217,37 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">
                 {group.title}
               </p>
-              {group.items.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  data-tour={item.tourId}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
-                    isCurrent(item.href)
-                      ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
-                      : "text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  <item.icon
+              {group.items.map((item) => {
+                const badgeCount = sidebarBadges[item.href] ?? 0;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    data-tour={item.tourId}
                     className={cn(
-                      "h-5 w-5",
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
                       isCurrent(item.href)
-                        ? "text-blue-600 dark:text-blue-400"
-                        : "text-muted-foreground"
+                        ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm"
+                        : "text-muted-foreground hover:bg-muted"
                     )}
-                  />
-                  {item.name}
-                </Link>
-              ))}
+                  >
+                    <item.icon
+                      className={cn(
+                        "h-5 w-5",
+                        isCurrent(item.href)
+                          ? "text-blue-600 dark:text-blue-400"
+                          : "text-muted-foreground"
+                      )}
+                    />
+                    <span className="flex-1">{item.name}</span>
+                    {badgeCount > 0 && (
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1.5">
+                        {badgeCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           ))}
         </nav>
