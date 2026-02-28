@@ -7,8 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConversationsList } from "@/components/chat/conversations-list";
 import { ChatWindow } from "@/components/chat/chat-window";
 import { Card, CardContent } from "@/components/ui/card";
-import { MessageSquare, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, ArrowRight, Plus, Loader2 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
+import { chatService } from "@/lib/services/chat.service";
 import type { Conversation } from "@/lib/services/chat.service";
 
 interface MessagesPageContentProps {
@@ -23,6 +25,12 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
   const [currentProfileId, setCurrentProfileId] = useState<string>("");
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [leaseContext, setLeaseContext] = useState<{
+    propertyId: string;
+    ownerId: string;
+    leaseId: string;
+  } | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -52,6 +60,35 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
 
         if (profile) {
           setCurrentProfileId(profile.id);
+
+          // Charger le contexte du bail pour le bouton "Nouvelle conversation"
+          try {
+            const { data: signerData } = await supabase
+              .from("lease_signers")
+              .select("lease_id")
+              .eq("profile_id", profile.id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .single();
+
+            if (signerData?.lease_id) {
+              const { data: leaseData } = await supabase
+                .from("leases")
+                .select("id, property_id, properties(owner_id)")
+                .eq("id", signerData.lease_id)
+                .single();
+
+              if (leaseData?.property_id && (leaseData as any).properties?.owner_id) {
+                setLeaseContext({
+                  propertyId: leaseData.property_id,
+                  ownerId: (leaseData as any).properties.owner_id,
+                  leaseId: leaseData.id,
+                });
+              }
+            }
+          } catch {
+            // Silently ignore — no new conversation button if no lease
+          }
         }
       } catch (error) {
         console.error("Erreur initialisation:", error);
@@ -69,6 +106,24 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
 
   const handleBack = () => {
     setSelectedConversation(null);
+  };
+
+  const handleNewConversation = async () => {
+    if (!currentProfileId || !leaseContext || isCreatingConversation) return;
+    setIsCreatingConversation(true);
+    try {
+      const conversation = await chatService.getOrCreateConversation({
+        property_id: leaseContext.propertyId,
+        lease_id: leaseContext.leaseId,
+        owner_profile_id: leaseContext.ownerId,
+        tenant_profile_id: currentProfileId,
+      });
+      setSelectedConversation(conversation);
+    } catch (error) {
+      console.error("Erreur création conversation:", error);
+    } finally {
+      setIsCreatingConversation(false);
+    }
   };
 
   if (loading) {
@@ -117,7 +172,19 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
             </div>
           ) : (
             <div className="p-4">
-              <h1 className="text-2xl font-bold mb-4">Messages</h1>
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-2xl font-bold">Messages</h1>
+                {leaseContext && (
+                  <Button
+                    size="sm"
+                    onClick={handleNewConversation}
+                    disabled={isCreatingConversation}
+                    className="rounded-xl font-bold"
+                  >
+                    {isCreatingConversation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
               <ConversationsList
                 currentProfileId={currentProfileId}
                 selectedId={undefined}
@@ -136,12 +203,26 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
+          className="mb-6 flex items-end justify-between"
         >
-          <h1 className="text-3xl font-bold">Messages</h1>
-          <p className="text-muted-foreground mt-1">
-            {subtitle}
-          </p>
+          <div>
+            <h1 className="text-3xl font-bold">Messages</h1>
+            <p className="text-muted-foreground mt-1">{subtitle}</p>
+          </div>
+          {leaseContext && (
+            <Button
+              onClick={handleNewConversation}
+              disabled={isCreatingConversation}
+              className="rounded-xl font-bold"
+            >
+              {isCreatingConversation ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Nouvelle conversation
+            </Button>
+          )}
         </motion.div>
 
         <motion.div

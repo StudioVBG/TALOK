@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   Calendar,
   Clock,
+  Wallet,
 } from "lucide-react";
 import { PaymentCheckout } from "@/features/billing/components/payment-checkout";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useTenantData } from "../_data/TenantDataProvider";
 import { useTenantRealtime } from "@/lib/hooks/use-realtime-tenant";
+import { useTenantPaymentMethodsDisplay } from "@/lib/hooks/use-tenant-payment-methods";
 
 interface TenantPaymentsClientProps {
   invoices: any[];
@@ -64,6 +66,9 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
 
   // SOTA 2026: Temps réel pour synchronisation des factures avec le propriétaire
   const realtime = useTenantRealtime({ showToasts: true, enableSound: false });
+
+  // Moyen de paiement configuré
+  const { defaultMethod, isLoading: isLoadingMethods } = useTenantPaymentMethodsDisplay();
 
   // Fusionner les factures initiales avec les données temps réel
   const invoices = useMemo(() => {
@@ -186,8 +191,18 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                         : "Échéance passée"}
                   </span>
                 </div>
-                <Button className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700" asChild>
-                  <Link href="/tenant/payments">Payer</Link>
+                <Button
+                  className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700"
+                  onClick={() => {
+                    const firstUnpaid = invoices.find((i: any) => i.statut !== 'paid');
+                    if (firstUnpaid) {
+                      setSelectedInvoice(firstUnpaid);
+                      setIsPaymentOpen(true);
+                    }
+                  }}
+                  disabled={!invoices.some((i: any) => i.statut !== 'paid')}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" /> Payer
                 </Button>
               </div>
             </GlassCard>
@@ -250,6 +265,34 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
             </GlassCard>
           </motion.div>
         </div>
+
+        {/* Moyen de paiement configuré */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+          <GlassCard className="p-6 border-border bg-card shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                  <Wallet className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Moyen de paiement</p>
+                  {isLoadingMethods ? (
+                    <p className="text-sm text-muted-foreground animate-pulse">Chargement...</p>
+                  ) : defaultMethod ? (
+                    <p className="font-bold text-foreground">{defaultMethod.displayName}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucun moyen de paiement configuré</p>
+                  )}
+                </div>
+              </div>
+              <Button variant="outline" size="sm" className="rounded-xl font-bold" asChild>
+                <Link href="/tenant/settings/payments">
+                  {defaultMethod ? "Gérer" : "Ajouter"}
+                </Link>
+              </Button>
+            </div>
+          </GlassCard>
+        </motion.div>
 
         {/* Liste des Paiements - Timeline Style */}
         <div className="space-y-4">
@@ -339,6 +382,24 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                 </motion.div>
               ))}
             </AnimatePresence>
+
+            {filteredInvoices.length === 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <GlassCard className="p-12 text-center border-dashed border-2 border-border bg-muted/30">
+                  <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 mb-4">
+                    <Receipt className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-2">
+                    {searchQuery ? "Aucun résultat" : "Aucune facture"}
+                  </h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    {searchQuery
+                      ? "Aucune facture ne correspond à votre recherche. Essayez un autre terme."
+                      : "Votre historique de paiements apparaîtra ici après l'émission de votre première facture par le propriétaire."}
+                  </p>
+                </GlassCard>
+              </motion.div>
+            )}
           </div>
         </div>
 

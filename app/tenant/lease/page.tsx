@@ -269,11 +269,53 @@ export default function TenantLeasePage() {
                     </GlassCard>
                   </motion.div>
 
+                  {/* Durée du bail */}
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+                    <GlassCard className="p-0 border-border bg-card shadow-lg overflow-hidden">
+                      <div className="p-6 border-b border-border bg-muted/50">
+                        <h3 className="font-bold text-foreground flex items-center gap-2">
+                          <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                          Durée du bail
+                        </h3>
+                      </div>
+                      <div className="p-6 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground font-medium">Date de début</span>
+                          <span className="font-bold text-foreground">
+                            {(lease as any).date_debut ? formatDateShort((lease as any).date_debut) : "Non renseignée"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground font-medium">Date de fin</span>
+                          <span className="font-bold text-foreground">
+                            {lease.date_fin ? formatDateShort(lease.date_fin) : "Reconduction tacite"}
+                          </span>
+                        </div>
+                        {(lease as any).date_debut && (
+                          <div className="flex justify-between items-center pt-3 border-t border-border">
+                            <span className="text-muted-foreground font-medium text-sm">Ancienneté</span>
+                            <Badge variant="outline" className="font-bold">
+                              {(() => {
+                                const start = new Date((lease as any).date_debut);
+                                const now = new Date();
+                                const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+                                const years = Math.floor(months / 12);
+                                const rem = months % 12;
+                                if (years > 0) return `${years} an${years > 1 ? "s" : ""}${rem > 0 ? ` et ${rem} mois` : ""}`;
+                                return `${months} mois`;
+                              })()}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    </GlassCard>
+                  </motion.div>
+
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                     <GlassCard className="p-0 border-border bg-card shadow-lg overflow-hidden">
                       <div className="p-6 border-b border-border bg-muted/50 flex justify-between items-center">
                         <h3 className="font-bold text-foreground flex items-center gap-2">
-                          <Euro className="h-5 w-5 text-indigo-600 dark:text-indigo-400" /> 
+                          <Euro className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                           Synthèse Mensuelle
                         </h3>
                         <Badge variant="outline" className="bg-card">{LEASE_TYPE_LABELS[lease.type_bail] || "Location"}</Badge>
@@ -306,6 +348,16 @@ export default function TenantLeasePage() {
                             {formatCurrency((lease.loyer || 0) + (lease.charges_forfaitaires || 0))}
                           </span>
                         </div>
+                        {/* Dépôt de garantie */}
+                        {(lease as any).depot_de_garantie > 0 && (
+                          <div className="flex justify-between items-center pt-4 border-t border-border mt-2">
+                            <span className="text-muted-foreground font-medium flex items-center gap-2">
+                              <ShieldCheck className="h-4 w-4 text-indigo-400" />
+                              Dépôt de garantie
+                            </span>
+                            <span className="font-bold text-foreground">{formatCurrency((lease as any).depot_de_garantie)}</span>
+                          </div>
+                        )}
                         {/* Régularisation de charges si disponible */}
                         {(lease as any).charges_base && (lease as any).charges_base.length > 0 && (
                           <div className="mt-4 pt-4 border-t border-border space-y-2">
