@@ -27,21 +27,7 @@ function generateHandoverToken(leaseId: string, expiresAt: string): string {
   return `${b64}.${hmac}`;
 }
 
-export function verifyHandoverToken(token: string): { leaseId: string; expiresAt: string } | null {
-  try {
-    const [b64, hmac] = token.split(".");
-    if (!b64 || !hmac) return null;
-    const payload = Buffer.from(b64, "base64url").toString("utf-8");
-    const secret = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || "talok-key-handover-secret";
-    const expectedHmac = createHmac("sha256", secret).update(payload).digest("hex");
-    if (hmac !== expectedHmac) return null;
-    const data = JSON.parse(payload);
-    if (new Date(data.expiresAt) < new Date()) return null;
-    return { leaseId: data.leaseId, expiresAt: data.expiresAt };
-  } catch {
-    return null;
-  }
-}
+// verifyHandoverToken is in ./utils.ts (exported helpers are not allowed in Next.js route files)
 
 /**
  * GET — Statut de la remise des clés pour ce bail
@@ -58,8 +44,8 @@ export async function GET(_request: Request, { params }: RouteParams) {
     const serviceClient = getServiceClient();
 
     // Chercher une remise des clés existante
-    const { data: handover } = await serviceClient
-      .from("key_handovers")
+    const { data: handover } = await (serviceClient
+      .from("key_handovers") as any)
       .select("*")
       .eq("lease_id", leaseId)
       .order("created_at", { ascending: false })
@@ -108,7 +94,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     // Vérifier que le bail existe et est en état approprié
     const { data: lease } = await serviceClient
       .from("leases")
-      .select("id, statut, property_id, loyer_mensuel")
+      .select("id, statut, property_id")
       .eq("id", leaseId)
       .single();
 
@@ -123,9 +109,13 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
+    if (!lease.property_id) {
+      return NextResponse.json({ error: "Bail sans bien associé" }, { status: 400 });
+    }
+
     // Récupérer les clés depuis le dernier EDL d'entrée
-    const { data: edl } = await serviceClient
-      .from("edl")
+    const { data: edl } = await (serviceClient
+      .from("edl") as any)
       .select("id, keys, status")
       .eq("lease_id", leaseId)
       .eq("type", "entree")
@@ -143,8 +133,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       .single();
 
     // Vérifier s'il y a déjà une remise non confirmée
-    const { data: existingHandover } = await serviceClient
-      .from("key_handovers")
+    const { data: existingHandover } = await (serviceClient
+      .from("key_handovers") as any)
       .select("id, token, expires_at, confirmed_at")
       .eq("lease_id", leaseId)
       .is("confirmed_at", null)
@@ -168,8 +158,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     const token = generateHandoverToken(leaseId, expiresAt);
 
     // Enregistrer en DB
-    const { data: handover, error: insertError } = await serviceClient
-      .from("key_handovers")
+    const { data: handover, error: insertError } = await (serviceClient
+      .from("key_handovers") as any)
       .insert({
         lease_id: leaseId,
         property_id: lease.property_id,
@@ -177,7 +167,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         token,
         keys_list: keys,
         expires_at: expiresAt,
-      } as any)
+      })
       .select()
       .single();
 
