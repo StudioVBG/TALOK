@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { isRegimeFiscalLocked } from "@/lib/entities/entity-form-utils";
+import { isValidSiret, siretToSiren, formatSiren } from "@/lib/entities/siret-validation";
 import type { EntityFormData } from "@/lib/entities/entity-form-utils";
 
 interface StepLegalInfoProps {
@@ -29,6 +31,24 @@ const REGIME_FISCAL_OPTIONS = [
 
 export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps) {
   const regimeLocked = isRegimeFiscalLocked(formData.entityType);
+
+  // Auto-derive SIREN from SIRET for display
+  const derivedSiren = useMemo(() => {
+    const digits = formData.siret.replace(/\D/g, "");
+    if (digits.length >= 9) {
+      const siren = siretToSiren(digits);
+      return siren ? formatSiren(siren) : null;
+    }
+    return null;
+  }, [formData.siret]);
+
+  // Validate SIRET in real-time for visual feedback
+  const siretStatus = useMemo(() => {
+    const digits = formData.siret.replace(/\D/g, "");
+    if (digits.length === 0) return null;
+    if (digits.length < 14) return "incomplete";
+    return isValidSiret(digits) ? "valid" : "invalid";
+  }, [formData.siret]);
 
   return (
     <div className="space-y-4">
@@ -117,10 +137,19 @@ export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps
             }}
             placeholder="123 456 789 01234"
             maxLength={17}
-            className={errors?.siret ? "border-destructive" : ""}
+            className={errors?.siret ? "border-destructive" : siretStatus === "valid" ? "border-green-500" : ""}
           />
           {errors?.siret && (
             <p className="text-xs text-destructive">{errors.siret}</p>
+          )}
+          {!errors?.siret && derivedSiren && (
+            <p className="text-xs text-muted-foreground">
+              SIREN : {derivedSiren}
+              {siretStatus === "valid" && " \u2713"}
+              {siretStatus === "invalid" && (
+                <span className="text-destructive ml-1">(cl\u00e9 de contr\u00f4le invalide)</span>
+              )}
+            </p>
           )}
         </div>
 
@@ -135,6 +164,34 @@ export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps
             value={formData.capitalSocial}
             onChange={(e) => onChange({ capitalSocial: e.target.value })}
             placeholder="1000"
+          />
+        </div>
+
+        {/* Nombre de parts */}
+        <div className="space-y-2">
+          <Label htmlFor="nombreParts">Nombre de parts sociales</Label>
+          <Input
+            id="nombreParts"
+            type="number"
+            min="1"
+            step="1"
+            value={formData.nombreParts}
+            onChange={(e) => onChange({ nombreParts: e.target.value })}
+            placeholder="100"
+          />
+          <p className="text-xs text-muted-foreground">
+            Nombre total de parts émises (statuts)
+          </p>
+        </div>
+
+        {/* RCS Ville */}
+        <div className="space-y-2">
+          <Label htmlFor="rcsVille">RCS (ville d&apos;immatriculation)</Label>
+          <Input
+            id="rcsVille"
+            value={formData.rcsVille}
+            onChange={(e) => onChange({ rcsVille: e.target.value })}
+            placeholder="Paris, Lyon, Marseille..."
           />
         </div>
 

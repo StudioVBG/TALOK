@@ -44,6 +44,7 @@ export {
   canDeleteEntity,
   getEntityFiscalSummary,
   searchEntitiesBySiren,
+  checkSiretExists,
 } from "./services/legal-entities.service";
 
 // Types réexportés pour faciliter les imports

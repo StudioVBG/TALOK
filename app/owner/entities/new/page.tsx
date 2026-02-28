@@ -24,6 +24,7 @@ import { StepAddress } from "@/components/entities/create/StepAddress";
 import { StepRepresentative } from "@/components/entities/create/StepRepresentative";
 import { StepBankDetails } from "@/components/entities/create/StepBankDetails";
 import { cn } from "@/lib/utils";
+import { isValidSiret } from "@/lib/entities/siret-validation";
 
 // ============================================
 // TYPES
@@ -40,6 +41,8 @@ const INITIAL_DATA: EntityFormData = {
   regimeFiscal: "ir",
   siret: "",
   capitalSocial: "",
+  nombreParts: "",
+  rcsVille: "",
   dateCreation: "",
   numeroTva: "",
   objetSocial: "Gestion de biens immobiliers",
@@ -168,6 +171,8 @@ export default function NewEntityPage() {
             const digits = formData.siret.replace(/\D/g, "");
             if (digits.length > 0 && digits.length !== 14) {
               newErrors.siret = "Le SIRET doit contenir 14 chiffres";
+            } else if (digits.length === 14 && !isValidSiret(digits)) {
+              newErrors.siret = "SIRET invalide (clé de contrôle incorrecte)";
             }
           }
           break;
@@ -294,6 +299,10 @@ export default function NewEntityPage() {
         capital_social: formData.capitalSocial
           ? parseFloat(formData.capitalSocial)
           : undefined,
+        nombre_parts: formData.nombreParts
+          ? parseInt(formData.nombreParts, 10)
+          : undefined,
+        rcs_ville: formData.rcsVille || undefined,
         date_creation: formData.dateCreation || undefined,
         numero_tva: formData.numeroTva || undefined,
         adresse_siege: formData.adresseSiege || undefined,

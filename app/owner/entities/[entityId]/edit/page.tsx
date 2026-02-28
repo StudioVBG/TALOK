@@ -17,6 +17,7 @@ import { StepAddress } from "@/components/entities/create/StepAddress";
 import { StepRepresentative } from "@/components/entities/create/StepRepresentative";
 import { StepBankDetails } from "@/components/entities/create/StepBankDetails";
 import { cn } from "@/lib/utils";
+import { isValidSiret } from "@/lib/entities/siret-validation";
 import type { EntityFormData } from "@/lib/entities/entity-form-utils";
 
 const STEPS = [
@@ -36,6 +37,7 @@ export default function EditEntityPage() {
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<EntityFormData | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -76,6 +78,9 @@ export default function EditEntityPage() {
         // Check if representative is the owner (has profile_id) or external
         const hasSelfRepresentant = gerant?.profile_id != null;
 
+        // Extract email/telephone from metadata
+        const metadata = (e.metadata as Record<string, unknown>) || {};
+
         setFormData({
           entityType: (e.entity_type as string) || "",
           nom: (e.nom as string) || "",
@@ -83,14 +88,16 @@ export default function EditEntityPage() {
           regimeFiscal: (e.regime_fiscal as string) || "ir",
           siret: (e.siret as string) || "",
           capitalSocial: e.capital_social != null ? String(e.capital_social) : "",
+          nombreParts: e.nombre_parts != null ? String(e.nombre_parts) : "",
+          rcsVille: (e.rcs_ville as string) || "",
           dateCreation: (e.date_creation as string) || "",
           numeroTva: (e.numero_tva as string) || "",
           objetSocial: "Gestion de biens immobiliers",
           adresseSiege: (e.adresse_siege as string) || "",
           codePostalSiege: (e.code_postal_siege as string) || "",
           villeSiege: (e.ville_siege as string) || "",
-          emailEntite: "",
-          telephoneEntite: "",
+          emailEntite: (metadata.email as string) || "",
+          telephoneEntite: (metadata.telephone as string) || "",
           representantMode: hasSelfRepresentant ? "self" : "other",
           representantPrenom: (gerant?.prenom as string) || "",
           representantNom: (gerant?.nom as string) || "",
@@ -118,8 +125,95 @@ export default function EditEntityPage() {
   const updateFormData = useCallback(
     (updates: Partial<EntityFormData>) => {
       setFormData((prev) => (prev ? { ...prev, ...updates } : prev));
+      // Clear errors for changed fields
+      const keys = Object.keys(updates);
+      if (keys.length > 0) {
+        setErrors((prev) => {
+          const next = { ...prev };
+          for (const key of keys) {
+            delete next[key];
+          }
+          return next;
+        });
+      }
     },
     []
+  );
+
+  // Validate a specific step
+  const validateStep = useCallback(
+    (stepNum: number): boolean => {
+      if (!formData) return false;
+      const newErrors: Record<string, string> = {};
+      const isParticulier = formData.entityType === "particulier";
+
+      switch (stepNum) {
+        case 1:
+          if (!formData.entityType) {
+            newErrors.entityType = "Veuillez sélectionner un type de structure";
+          }
+          break;
+        case 2:
+          if (isParticulier) break;
+          if (!formData.nom.trim()) {
+            newErrors.nom = "La raison sociale est obligatoire";
+          }
+          if (!formData.formeJuridique) {
+            newErrors.formeJuridique = "La forme juridique est obligatoire";
+          }
+          if (formData.siret) {
+            const digits = formData.siret.replace(/\D/g, "");
+            if (digits.length > 0 && digits.length !== 14) {
+              newErrors.siret = "Le SIRET doit contenir 14 chiffres";
+            } else if (digits.length === 14 && !isValidSiret(digits)) {
+              newErrors.siret = "SIRET invalide (clé de contrôle incorrecte)";
+            }
+          }
+          break;
+        case 3:
+          if (isParticulier) break;
+          if (!formData.adresseSiege.trim()) {
+            newErrors.adresseSiege = "L'adresse est obligatoire";
+          }
+          if (!formData.codePostalSiege) {
+            newErrors.codePostalSiege = "Le code postal est obligatoire";
+          } else if (!/^\d{5}$/.test(formData.codePostalSiege)) {
+            newErrors.codePostalSiege = "Le code postal doit contenir 5 chiffres";
+          }
+          if (!formData.villeSiege.trim()) {
+            newErrors.villeSiege = "La ville est obligatoire";
+          }
+          if (
+            formData.emailEntite &&
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailEntite)
+          ) {
+            newErrors.emailEntite = "Format d'email invalide";
+          }
+          break;
+        case 4:
+          if (formData.representantMode === "other") {
+            if (!formData.representantPrenom.trim()) {
+              newErrors.representantPrenom = "Le prénom est obligatoire";
+            }
+            if (!formData.representantNom.trim()) {
+              newErrors.representantNom = "Le nom est obligatoire";
+            }
+          }
+          break;
+        case 5:
+          if (formData.iban) {
+            const cleanIban = formData.iban.replace(/\s/g, "");
+            if (cleanIban.length < 15 || cleanIban.length > 34) {
+              newErrors.iban = "L'IBAN doit contenir entre 15 et 34 caractères";
+            }
+          }
+          break;
+      }
+
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    },
+    [formData]
   );
 
   const canProceed = useCallback((): boolean => {
@@ -144,6 +238,7 @@ export default function EditEntityPage() {
 
   const handleNext = () => {
     if (!formData) return;
+    if (!validateStep(step)) return;
     if (step < 5) {
       if (step === 1 && formData.entityType === "particulier") {
         setStep(5);
@@ -155,6 +250,7 @@ export default function EditEntityPage() {
 
   const handleBack = () => {
     if (!formData) return;
+    setErrors({});
     if (step > 1) {
       if (step === 5 && formData.entityType === "particulier") {
         setStep(1);
@@ -168,6 +264,7 @@ export default function EditEntityPage() {
 
   const handleSubmit = async () => {
     if (!formData) return;
+    if (!validateStep(step)) return;
     setIsSubmitting(true);
 
     try {
@@ -182,6 +279,8 @@ export default function EditEntityPage() {
         regime_fiscal: formData.regimeFiscal || "ir",
         siret: formData.siret.replace(/\s/g, "") || undefined,
         capital_social: formData.capitalSocial ? parseFloat(formData.capitalSocial) : undefined,
+        nombre_parts: formData.nombreParts ? parseInt(formData.nombreParts, 10) : undefined,
+        rcs_ville: formData.rcsVille || undefined,
         date_creation: formData.dateCreation || undefined,
         numero_tva: formData.numeroTva || undefined,
         adresse_siege: formData.adresseSiege || undefined,
@@ -190,6 +289,8 @@ export default function EditEntityPage() {
         iban: formData.iban.replace(/\s/g, "") || undefined,
         bic: formData.bic || undefined,
         banque_nom: formData.banqueNom || undefined,
+        email_entite: formData.emailEntite || undefined,
+        telephone_entite: formData.telephoneEntite || undefined,
       };
 
       const result = await updateEntity(entityPayload as any);
@@ -297,16 +398,16 @@ export default function EditEntityPage() {
           />
         )}
         {step === 2 && (
-          <StepLegalInfo formData={formData} onChange={updateFormData} />
+          <StepLegalInfo formData={formData} onChange={updateFormData} errors={errors} />
         )}
         {step === 3 && (
-          <StepAddress formData={formData} onChange={updateFormData} />
+          <StepAddress formData={formData} onChange={updateFormData} errors={errors} />
         )}
         {step === 4 && (
-          <StepRepresentative formData={formData} onChange={updateFormData} />
+          <StepRepresentative formData={formData} onChange={updateFormData} errors={errors} />
         )}
         {step === 5 && (
-          <StepBankDetails formData={formData} onChange={updateFormData} />
+          <StepBankDetails formData={formData} onChange={updateFormData} errors={errors} />
         )}
       </div>
 
@@ -323,7 +424,7 @@ export default function EditEntityPage() {
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button onClick={handleSubmit} disabled={isSubmitting || !canProceed()}>
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
