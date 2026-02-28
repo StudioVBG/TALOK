@@ -14,7 +14,7 @@ import { extractClientIP } from "@/lib/utils/ip-address";
 import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { revalidatePath } from "next/cache";
-import { verifyHandoverToken } from "../route";
+import { verifyHandoverToken } from "../utils";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -56,8 +56,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     // Trouver la remise des clés en DB
-    const { data: handover } = await serviceClient
-      .from("key_handovers")
+    const { data: handover } = await (serviceClient
+      .from("key_handovers") as any)
       .select("*")
       .eq("lease_id", leaseId)
       .eq("token", token)
@@ -108,8 +108,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     });
 
     // Mettre à jour la remise des clés
-    const { error: updateError } = await serviceClient
-      .from("key_handovers")
+    const { error: updateError } = await (serviceClient
+      .from("key_handovers") as any)
       .update({
         confirmed_at: new Date().toISOString(),
         tenant_profile_id: profile.id,
@@ -122,7 +122,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           ...proof,
           signature: { ...proof.signature, imageData: `[STORED:${fileName}]` },
         },
-      } as any)
+      })
       .eq("id", handover.id);
 
     if (updateError) {
@@ -132,7 +132,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Créer l'entrée document "Attestation de remise des clés"
     try {
-      await serviceClient.from("documents").insert({
+      await (serviceClient.from("documents") as any).insert({
         type: "attestation_remise_cles",
         property_id: handover.property_id,
         lease_id: leaseId,
@@ -148,14 +148,14 @@ export async function POST(request: Request, { params }: RouteParams) {
           proof_id: proof.proofId,
           final: true,
         },
-      } as any);
+      });
     } catch (docErr) {
       console.warn("[key-handover confirm] Document insert error (non-blocking):", docErr);
     }
 
     // Audit log
     try {
-      await serviceClient.from("audit_log").insert({
+      await (serviceClient.from("audit_log") as any).insert({
         user_id: user.id,
         profile_id: profile.id,
         action: "key_handover_confirmed",
@@ -169,13 +169,13 @@ export async function POST(request: Request, { params }: RouteParams) {
           keys_count: Array.isArray(handover.keys_list) ? handover.keys_list.length : 0,
           geolocation: geolocation || null,
         },
-      } as any);
+      });
     } catch (auditErr) {
       console.warn("[key-handover confirm] Audit error (non-blocking):", auditErr);
     }
 
     // Outbox event
-    await serviceClient.from("outbox").insert({
+    await (serviceClient.from("outbox") as any).insert({
       event_type: "KeyHandover.Confirmed",
       payload: {
         lease_id: leaseId,
@@ -183,7 +183,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         tenant_profile_id: profile.id,
         confirmed_at: new Date().toISOString(),
       },
-    } as any);
+    });
 
     // Invalider le cache
     revalidatePath(`/owner/leases/${leaseId}`);
