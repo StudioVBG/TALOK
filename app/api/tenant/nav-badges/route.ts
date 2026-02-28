@@ -49,8 +49,8 @@ export async function GET() {
         .in("statut", ["open", "in_progress", "assigned"]),
     ]);
 
-    const messagesCount = (messagesResult.data || []).reduce(
-      (sum: number, c: { tenant_unread_count: number }) => sum + (c.tenant_unread_count || 0),
+    const messagesCount = (messagesResult.data ?? []).reduce(
+      (sum, { tenant_unread_count }) => sum + (tenant_unread_count ?? 0),
       0
     );
     const requestsCount = requestsResult.count || 0;
