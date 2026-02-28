@@ -51,7 +51,7 @@ export interface Transfer {
 }
 
 export interface PayoutSchedule {
-  delay_days: number;
+  delay_days: number | "minimum";
   interval: "manual" | "daily" | "weekly" | "monthly";
   weekly_anchor?: string;
   monthly_anchor?: number;
@@ -147,7 +147,7 @@ export async function createConnectAccount(params: {
       payouts: {
         schedule: {
           interval: "daily", // Virements quotidiens
-          delay_days: 2, // Délai minimum pour la France
+          delay_days: "minimum", // Stripe choisit le délai minimum autorisé pour le pays/compte
         },
       },
     },

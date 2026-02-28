@@ -31,6 +31,16 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1);
 
     if (error) {
+      // Table doesn't exist (dev/staging) — return empty results instead of 500
+      if (error.code === "42P01" || error.message?.includes("does not exist")) {
+        console.warn("[Invoices GET] Table subscription_invoices not found, returning empty results");
+        return NextResponse.json({
+          invoices: [],
+          total: 0,
+          limit,
+          offset,
+        });
+      }
       throw error;
     }
 
