@@ -1,42 +1,23 @@
 /**
  * Client Supabase typé avec les types générés depuis la BDD
- * 
+ *
  * Utilise les types Database générés via MCP Supabase
  * pour une connexion type-safe entre BDD et Frontend
+ *
+ * NOTE : Plus de validation d'env vars au top-level du module.
+ * La config est validée paresseusement dans getSupabaseConfig()
+ * (build-safe : renvoie un placeholder pendant `next build`).
  */
 
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 import { createClient as createBrowserClient } from "./client";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-// Validation des variables d'environnement
-if (!supabaseUrl) {
-  throw new Error(
-    "NEXT_PUBLIC_SUPABASE_URL is not set. Please configure it in your environment variables."
-  );
-}
-
-if (supabaseUrl.includes("supabase.com/dashboard") || supabaseUrl.includes("/settings/api-keys")) {
-  throw new Error(
-    `Invalid NEXT_PUBLIC_SUPABASE_URL: "${supabaseUrl}". ` +
-    `It should be your Supabase API URL (e.g., https://xxxxx.supabase.co), ` +
-    `not the dashboard URL. Get it from: Supabase Dashboard → Settings → API → Project URL`
-  );
-}
-
-if (!supabaseAnonKey) {
-  throw new Error(
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Please configure it in your environment variables."
-  );
-}
+import { getSupabaseConfig } from "./config";
 
 /**
  * Client Supabase typé pour le frontend
  * Utilise le singleton createClient() pour éviter les instances multiples
- * 
+ *
  * @deprecated Utiliser createClient() de ./client.ts à la place pour éviter les instances multiples
  */
 export const typedSupabaseClient = createBrowserClient() as ReturnType<typeof createClient<Database>>;
@@ -46,12 +27,13 @@ export const typedSupabaseClient = createBrowserClient() as ReturnType<typeof cr
  * ⚠️ Ne jamais exposer ce client au frontend
  */
 export function createTypedServiceClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const { url, serviceRoleKey } = getSupabaseConfig();
+
   if (!serviceRoleKey) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for service client");
   }
-  
-  return createClient<Database>(supabaseUrl!, serviceRoleKey, {
+
+  return createClient<Database>(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -91,4 +73,3 @@ export type TicketUpdate = Database["public"]["Tables"]["tickets"]["Update"];
 // TODO: Créer les tables rooms et photos dans la BDD, puis utiliser :
 // export type RoomRow = Database["public"]["Tables"]["rooms"]["Row"];
 // export type PhotoRow = Database["public"]["Tables"]["photos"]["Row"];
-
