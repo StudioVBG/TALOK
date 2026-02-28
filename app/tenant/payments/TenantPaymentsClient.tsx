@@ -61,6 +61,8 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
       amount,
       daysLeft,
       hasLease: !!lease,
+      loyer: lease?.loyer ?? 0,
+      charges: lease?.charges_forfaitaires ?? 0,
     };
   }, [dashboard?.lease, dashboard?.leases]);
 
@@ -178,6 +180,11 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                   <p className="text-sm text-muted-foreground mt-0.5">
                     Le {nextDue.date.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
                   </p>
+                  {(nextDue.loyer > 0 || nextDue.charges > 0) && (
+                    <p className="text-xs text-muted-foreground/70 mt-1">
+                      Loyer {formatCurrency(nextDue.loyer)} + Charges {formatCurrency(nextDue.charges)}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-4">
