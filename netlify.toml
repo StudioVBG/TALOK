@@ -5,7 +5,7 @@
 
 [build]
   command = "npm run build"
-  # Ne pas spécifier publish - le plugin Next.js le gère automatiquement
+  publish = ".next"
 
 # Plugin Next.js pour Netlify (requis)
 [[plugins]]
