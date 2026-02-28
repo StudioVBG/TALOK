@@ -132,8 +132,19 @@ export async function GET() {
     }
   } catch (error) {
     console.error("[Stripe Connect] Erreur GET:", error);
+
+    // If Stripe is not configured, return a clean "no account" response instead of 500
+    const errorMessage = error instanceof Error ? error.message : "";
+    if (errorMessage.includes("Stripe non configurée") || errorMessage.includes("Clé API Stripe")) {
+      return NextResponse.json({
+        has_account: false,
+        account: null,
+        not_configured: true,
+      });
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: errorMessage || "Erreur serveur" },
       { status: 500 }
     );
   }
@@ -235,8 +246,18 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("[Stripe Connect] Erreur POST:", error);
+
+    // If Stripe is not configured, return a user-friendly error instead of 500
+    const errorMessage = error instanceof Error ? error.message : "";
+    if (errorMessage.includes("Stripe non configurée") || errorMessage.includes("Clé API Stripe")) {
+      return NextResponse.json(
+        { error: "Le paiement en ligne n'est pas encore configuré. Contactez l'administrateur." },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: errorMessage || "Erreur serveur" },
       { status: 500 }
     );
   }
