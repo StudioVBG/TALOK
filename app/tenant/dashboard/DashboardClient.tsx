@@ -307,6 +307,18 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     return { steps, completed, percentage: Math.round((completed / steps) * 100) };
   }, [hasLeaseData, dashboard?.kyc_status, currentLease?.statut, dashboard]);
 
+  // Prochaine échéance : 1er du mois suivant (même logique que TenantPaymentsClient)
+  const nextDue = useMemo(() => {
+    if (!currentLease) return null;
+    const now = new Date();
+    const nextFirst = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const amount = (currentLease.loyer ?? 0) + (currentLease.charges_forfaitaires ?? 0);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffMs = nextFirst.getTime() - today.getTime();
+    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    return { date: nextFirst, amount, daysLeft };
+  }, [currentLease]);
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] p-4">
@@ -558,6 +570,41 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
             )}
           </AnimatePresence>
         </div>
+
+        {/* Prochaine échéance avec countdown */}
+        {hasLeaseData && !isPropertyDeleted && nextDue && nextDue.amount > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+            <GlassCard className="p-6 border-border bg-card shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-gradient-to-r from-indigo-50 to-emerald-50 dark:from-indigo-950/30 dark:to-emerald-950/30 border-indigo-100 dark:border-indigo-900/50">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg">
+                  <CreditCard className="h-7 w-7" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Prochaine échéance</p>
+                  <p className="text-2xl font-black text-foreground">{formatCurrency(nextDue.amount)}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Le {nextDue.date.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-background/80 border border-border">
+                  <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  <span className="font-bold text-foreground">
+                    {nextDue.daysLeft > 0
+                      ? `Dans ${nextDue.daysLeft} jour${nextDue.daysLeft > 1 ? "s" : ""}`
+                      : nextDue.daysLeft === 0
+                        ? "Aujourd\u0027hui"
+                        : "Échéance passée"}
+                  </span>
+                </div>
+                <Button className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700" asChild>
+                  <Link href="/tenant/payments">Payer</Link>
+                </Button>
+              </div>
+            </GlassCard>
+          </motion.div>
+        )}
 
         {/* --- SECTION 2 : BENTO GRID SOTA 2026 --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

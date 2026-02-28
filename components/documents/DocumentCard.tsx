@@ -116,7 +116,7 @@ export function DocumentCard({
           <Icon className={cn("h-5 w-5", config.color)} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-foreground truncate">{displayTitle}</p>
+          <p className="text-sm font-bold text-foreground truncate" title={displayTitle}>{displayTitle}</p>
           <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
             <Calendar className="h-3 w-3" />
             {new Date(doc.created_at).toLocaleDateString("fr-FR", { day: 'numeric', month: 'short', year: 'numeric' })}
