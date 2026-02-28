@@ -45,8 +45,8 @@ export async function GET() {
       serviceClient
         .from("tickets")
         .select("id", { count: "exact", head: true })
-        .eq("created_by", profile.id)
-        .in("statut", ["open", "in_progress", "assigned"]),
+        .eq("created_by_profile_id", profile.id)
+        .in("statut", ["open", "in_progress", "paused"]),
     ]);
 
     const messagesCount = (messagesResult.data ?? []).reduce(
