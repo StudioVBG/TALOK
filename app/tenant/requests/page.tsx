@@ -72,16 +72,22 @@ export default async function TenantRequestsPage() {
         </div>
 
         {/* Note informative SOTA */}
-        <div className="p-6 bg-muted rounded-3xl border border-border flex items-start gap-4">
-          <div className="p-2 bg-card rounded-xl shadow-sm border border-border">
+        <div className="p-6 bg-muted rounded-3xl border border-border flex flex-col sm:flex-row items-start gap-4">
+          <div className="p-2 bg-card rounded-xl shadow-sm border border-border shrink-0">
             <MessageSquare className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 flex-1">
             <p className="font-bold text-foreground">Une assistance intelligente</p>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Utilisez notre assistant <strong>Tom</strong> lors de la création d'un ticket pour un diagnostic automatique et une prise en charge prioritaire par votre gestionnaire.
             </p>
           </div>
+          <Button variant="outline" size="sm" className="shrink-0 rounded-xl font-bold border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/30" asChild>
+            <Link href="/tenant/requests/new">
+              <Wrench className="h-3.5 w-3.5 mr-1.5" />
+              Diagnostiquer avec Tom
+            </Link>
+          </Button>
         </div>
 
         {/* Liste des Tickets */}

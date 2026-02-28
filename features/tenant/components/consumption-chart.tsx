@@ -9,8 +9,10 @@ import {
   AreaChart,
   Area
 } from "recharts";
+import Link from "next/link";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Zap, Droplet, Flame, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Zap, Droplet, Flame, BarChart3, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -32,6 +34,8 @@ interface ConsumptionChartProps {
   hasData?: boolean;
   /** Date de dernière mise à jour */
   lastUpdate?: string | null;
+  /** Lien CTA pour saisir un relevé */
+  ctaHref?: string;
 }
 
 const CONFIG = {
@@ -40,13 +44,14 @@ const CONFIG = {
   gas: { label: "Gaz", color: "#ef4444", icon: Flame, dataKey: "gas", unit: "kWh" },
 };
 
-export function ConsumptionChart({ 
-  type, 
-  className, 
-  data, 
+export function ConsumptionChart({
+  type,
+  className,
+  data,
   currentValue,
   hasData = false,
-  lastUpdate
+  lastUpdate,
+  ctaHref
 }: ConsumptionChartProps) {
   const config = CONFIG[type];
   const Icon = config.icon;
@@ -94,6 +99,13 @@ export function ConsumptionChart({
           <p className="text-xs text-slate-300 mt-1">
             Les données apparaîtront après un état des lieux
           </p>
+          {ctaHref && (
+            <Button variant="outline" size="sm" className="mt-4 rounded-xl font-bold text-slate-500 border-slate-200 hover:bg-slate-50" asChild>
+              <Link href={ctaHref}>
+                Saisir un relevé <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
+              </Link>
+            </Button>
+          )}
         </motion.div>
       </GlassCard>
     );
