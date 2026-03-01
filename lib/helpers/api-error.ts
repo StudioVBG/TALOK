@@ -85,9 +85,7 @@ export function handleApiError(error: unknown): NextResponse {
   }
 
   // Erreur Stripe configuration / authentification (clé API invalide, etc.)
-  const isStripeConfigError =
-    (error && typeof error === "object" && (error as any).type === "StripeAuthenticationError") ||
-    (error instanceof Error && error.message?.includes("Invalid API Key"));
+  const isStripeConfigError = isStripeConfigurationError(error);
 
   if (isStripeConfigError) {
     return NextResponse.json(
@@ -198,5 +196,22 @@ export function requireQuotaAvailable(
   if (current >= max) {
     throw new QuotaExceededError(resourceType, current, max, plan);
   }
+}
+
+/**
+ * Détecte si une erreur est liée à la configuration Stripe (clés API manquantes,
+ * Supabase non configuré pour les credentials, etc.)
+ */
+export function isStripeConfigurationError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return (
+    message.includes("Stripe non configurée") ||
+    message.includes("Clé API Stripe") ||
+    message.includes("Missing Supabase URL") ||
+    message.includes("Invalid API Key") ||
+    (error !== null &&
+      typeof error === "object" &&
+      (error as any).type === "StripeAuthenticationError")
+  );
 }
 

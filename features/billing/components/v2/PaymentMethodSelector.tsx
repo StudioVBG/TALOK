@@ -60,7 +60,6 @@ export function PaymentMethodSelector({
     try {
       const res = await addMutation.mutateAsync({
         stripe_payment_method_id: stripePaymentMethodId,
-        type: "card",
         is_default: methods.length === 0,
       });
       setShowAddForm(false);

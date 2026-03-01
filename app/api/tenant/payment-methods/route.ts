@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 // ───────── POST ─────────
 const addSchema = z.object({
   stripe_payment_method_id: z.string().min(3),
-  type: z.enum(["card", "sepa_debit", "apple_pay", "google_pay", "link"]),
+  type: z.enum(["card", "sepa_debit", "apple_pay", "google_pay", "link"]).optional(),
   is_default: z.boolean().optional().default(false),
   label: z.string().optional(),
 });
@@ -106,15 +106,45 @@ export async function POST(request: NextRequest) {
     }
 
     // Attach the payment method to the Stripe customer
-    await stripe.paymentMethods.attach(payload.stripe_payment_method_id, {
-      customer: stripeCustomerId,
-    });
+    try {
+      await stripe.paymentMethods.attach(payload.stripe_payment_method_id, {
+        customer: stripeCustomerId,
+      });
+    } catch (attachError: any) {
+      // If already attached to this customer, continue gracefully
+      if (attachError?.code !== "resource_already_attached") {
+        throw attachError;
+      }
+    }
 
     // Retrieve details from Stripe
     const pm = await stripe.paymentMethods.retrieve(payload.stripe_payment_method_id);
 
-    const isCard = ["card", "apple_pay", "google_pay"].includes(payload.type);
-    const isSepa = payload.type === "sepa_debit";
+    // Auto-detect payment method type from Stripe (authoritative source).
+    // Fall back to frontend-provided type only for wallet sub-types (apple_pay, google_pay)
+    // which Stripe reports as "card" but we distinguish in our database.
+    const stripeType = pm.type;
+    const actualType: string = stripeType === "card"
+      ? (payload.type && ["apple_pay", "google_pay"].includes(payload.type) ? payload.type : "card")
+      : stripeType === "sepa_debit"
+        ? "sepa_debit"
+        : (payload.type || stripeType);
+
+    const isCard = ["card", "apple_pay", "google_pay"].includes(actualType);
+    const isSepa = actualType === "sepa_debit";
+
+    // Check for existing active payment method with the same Stripe ID (prevent duplicates)
+    const { data: existingPm } = await supabase
+      .from("tenant_payment_methods")
+      .select("id")
+      .eq("stripe_payment_method_id", payload.stripe_payment_method_id)
+      .eq("tenant_profile_id", profile.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (existingPm) {
+      return NextResponse.json({ method: existingPm }, { status: 200 });
+    }
 
     // Check if this is the first method → auto-default
     const { count } = await supabase
@@ -131,7 +161,7 @@ export async function POST(request: NextRequest) {
         tenant_profile_id: profile.id,
         stripe_customer_id: stripeCustomerId,
         stripe_payment_method_id: payload.stripe_payment_method_id,
-        type: payload.type,
+        type: actualType,
         is_default: isFirst || payload.is_default,
         label: payload.label ?? null,
         card_brand: isCard ? (pm.card?.brand ?? null) : null,
@@ -155,7 +185,7 @@ export async function POST(request: NextRequest) {
       tenant_profile_id: profile.id,
       payment_method_id: method.id,
       action: "created",
-      details: { type: payload.type, last4: isCard ? pm.card?.last4 : pm.sepa_debit?.last4 },
+      details: { type: actualType, last4: isCard ? pm.card?.last4 : pm.sepa_debit?.last4 },
       ip_address: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
       user_agent: request.headers.get("user-agent") ?? null,
     });
