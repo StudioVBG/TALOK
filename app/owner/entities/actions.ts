@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { z } from "zod";
 import { canDeleteEntity } from "@/features/legal-entities/services/legal-entities.service";
+import { isValidSiret, siretToSiren } from "@/lib/entities/siret-validation";
 
 // ============================================
 // SCHEMAS
@@ -46,11 +47,14 @@ const createEntitySchema = z.object({
       (val) => {
         if (!val) return true;
         const digits = val.replace(/\D/g, "");
-        return digits.length === 14;
+        if (digits.length !== 14) return false;
+        return isValidSiret(digits);
       },
-      { message: "Le SIRET doit contenir 14 chiffres" }
+      { message: "Le SIRET est invalide (14 chiffres, clé de Luhn incorrecte)" }
     ),
   capital_social: z.number().min(0).optional(),
+  nombre_parts: z.number().int().min(1).optional(),
+  rcs_ville: z.string().optional(),
   date_creation: z.string().optional(),
   numero_tva: z.string().optional(),
   adresse_siege: z.string().optional(),
@@ -159,6 +163,29 @@ export async function createEntity(
     const supabase = await createClient();
     const data = parsed.data;
 
+    const cleanSiret = data.siret?.replace(/\s/g, "") || null;
+
+    // Check for SIRET duplicates (only if SIRET is provided)
+    if (cleanSiret) {
+      const { data: existing } = await supabase
+        .from("legal_entities")
+        .select("id, nom")
+        .eq("siret", cleanSiret)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        return {
+          success: false,
+          error: `Ce SIRET est déjà utilisé par l'entité "${existing.nom}".`,
+        };
+      }
+    }
+
+    // Auto-derive SIREN from SIRET
+    const derivedSiren = cleanSiret ? siretToSiren(cleanSiret) : null;
+
     // Build metadata for fields without dedicated DB columns
     const metadata: Record<string, unknown> = {};
     if (data.email_entite) metadata.email = data.email_entite;
@@ -172,8 +199,11 @@ export async function createEntity(
         nom: data.nom,
         forme_juridique: data.forme_juridique || null,
         regime_fiscal: data.regime_fiscal || undefined,
-        siret: data.siret?.replace(/\s/g, "") || null,
+        siret: cleanSiret,
+        siren: derivedSiren,
         capital_social: data.capital_social || null,
+        nombre_parts: data.nombre_parts || null,
+        rcs_ville: data.rcs_ville || null,
         date_creation: data.date_creation || null,
         numero_tva: data.numero_tva || null,
         adresse_siege: data.adresse_siege || null,
@@ -249,14 +279,64 @@ export async function updateEntity(
     const supabase = await createClient();
     const { id, ...data } = parsed.data;
 
+    // Guard: prevent entity_type change if active leases exist
+    if (data.entity_type !== undefined) {
+      const { data: current } = await supabase
+        .from("legal_entities")
+        .select("entity_type")
+        .eq("id", id)
+        .single();
+
+      if (current && current.entity_type !== data.entity_type) {
+        const { count: activeLeases } = await supabase
+          .from("leases")
+          .select("id", { count: "exact", head: true })
+          .eq("signatory_entity_id", id)
+          .in("statut", ["active", "pending_signature", "fully_signed"]);
+
+        if (activeLeases && activeLeases > 0) {
+          return {
+            success: false,
+            error: `Impossible de changer le type d'entité : ${activeLeases} bail(aux) actif(s). Clôturez les baux avant de modifier le type.`,
+          };
+        }
+      }
+    }
+
+    const cleanSiret = data.siret !== undefined ? (data.siret?.replace(/\s/g, "") || null) : undefined;
+
+    // Check for SIRET duplicates on update (exclude current entity)
+    if (cleanSiret) {
+      const { data: existing } = await supabase
+        .from("legal_entities")
+        .select("id, nom")
+        .eq("siret", cleanSiret)
+        .eq("is_active", true)
+        .neq("id", id)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        return {
+          success: false,
+          error: `Ce SIRET est déjà utilisé par l'entité "${existing.nom}".`,
+        };
+      }
+    }
+
     // Build update object, filtering out undefined values
     const updateData: Record<string, unknown> = {};
     if (data.nom !== undefined) updateData.nom = data.nom;
     if (data.entity_type !== undefined) updateData.entity_type = data.entity_type;
     if (data.forme_juridique !== undefined) updateData.forme_juridique = data.forme_juridique || null;
     if (data.regime_fiscal !== undefined) updateData.regime_fiscal = data.regime_fiscal || null;
-    if (data.siret !== undefined) updateData.siret = data.siret?.replace(/\s/g, "") || null;
+    if (cleanSiret !== undefined) {
+      updateData.siret = cleanSiret;
+      updateData.siren = cleanSiret ? siretToSiren(cleanSiret) : null;
+    }
     if (data.capital_social !== undefined) updateData.capital_social = data.capital_social || null;
+    if (data.nombre_parts !== undefined) updateData.nombre_parts = data.nombre_parts || null;
+    if (data.rcs_ville !== undefined) updateData.rcs_ville = data.rcs_ville || null;
     if (data.date_creation !== undefined) updateData.date_creation = data.date_creation || null;
     if (data.numero_tva !== undefined) updateData.numero_tva = data.numero_tva || null;
     if (data.adresse_siege !== undefined) updateData.adresse_siege = data.adresse_siege || null;
@@ -268,6 +348,21 @@ export async function updateEntity(
     if (data.banque_nom !== undefined) updateData.banque_nom = data.banque_nom || null;
     if (data.couleur !== undefined) updateData.couleur = data.couleur || null;
 
+    // Handle metadata (email/telephone)
+    if (data.email_entite !== undefined || data.telephone_entite !== undefined) {
+      const { data: currentEntity } = await supabase
+        .from("legal_entities")
+        .select("metadata")
+        .eq("id", id)
+        .single();
+
+      const existingMetadata = (currentEntity?.metadata as Record<string, unknown>) || {};
+      const newMetadata = { ...existingMetadata };
+      if (data.email_entite !== undefined) newMetadata.email = data.email_entite || undefined;
+      if (data.telephone_entite !== undefined) newMetadata.telephone = data.telephone_entite || undefined;
+      updateData.metadata = Object.keys(newMetadata).length > 0 ? newMetadata : null;
+    }
+
     const { error } = await supabase
       .from("legal_entities")
       .update(updateData)
@@ -276,6 +371,9 @@ export async function updateEntity(
 
     if (error) {
       console.error("[updateEntity] Error:", error);
+      if (error.message?.includes("idx_legal_entities_siret_unique")) {
+        return { success: false, error: "Ce SIRET est déjà utilisé par une autre entité." };
+      }
       return { success: false, error: "Erreur lors de la mise à jour" };
     }
 
@@ -338,6 +436,52 @@ export async function deleteEntity(
     return { success: true };
   } catch (error) {
     console.error("[deleteEntity] Unexpected error:", error);
+    return { success: false, error: "Erreur inattendue" };
+  }
+}
+
+/**
+ * Désactive une entité (soft delete) — alternative quand la suppression est bloquée
+ */
+export async function deactivateEntity(
+  input: z.infer<typeof deleteEntitySchema> & { motif?: string }
+): Promise<ActionResult> {
+  try {
+    const parsed = deleteEntitySchema.safeParse({ id: input.id });
+    if (!parsed.success) {
+      return { success: false, error: "ID invalide" };
+    }
+
+    const auth = await getAuthenticatedOwnerProfileId();
+    if (!auth) {
+      return { success: false, error: "Non autorisé" };
+    }
+
+    const supabase = await createClient();
+    const { id } = parsed.data;
+
+    const { error } = await supabase
+      .from("legal_entities")
+      .update({
+        is_active: false,
+        date_radiation: new Date().toISOString().split("T")[0],
+        motif_radiation: input.motif || "Désactivation manuelle",
+      })
+      .eq("id", id)
+      .eq("owner_profile_id", auth.ownerProfileId);
+
+    if (error) {
+      console.error("[deactivateEntity] Error:", error);
+      return { success: false, error: "Erreur lors de la désactivation" };
+    }
+
+    revalidatePath("/owner/entities");
+    revalidatePath(`/owner/entities/${id}`);
+    revalidatePath("/owner/profile");
+
+    return { success: true };
+  } catch (error) {
+    console.error("[deactivateEntity] Unexpected error:", error);
     return { success: false, error: "Erreur inattendue" };
   }
 }

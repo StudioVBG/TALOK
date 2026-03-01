@@ -14,6 +14,8 @@ export interface EntityFormData {
   regimeFiscal: string;
   siret: string;
   capitalSocial: string;
+  nombreParts: string;
+  rcsVille: string;
   dateCreation: string;
   numeroTva: string;
   objetSocial: string;

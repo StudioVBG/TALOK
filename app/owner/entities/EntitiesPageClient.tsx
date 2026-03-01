@@ -16,11 +16,14 @@ interface EntitiesPageClientProps {
 }
 
 export function EntitiesPageClient({ entities: serverEntities }: EntitiesPageClientProps) {
-  const { entities: storeEntities, activeEntityId } = useEntityStore();
+  const { entities: storeEntities, activeEntityId, lastFetchedAt } = useEntityStore();
 
-  // Prefer store entities (more up-to-date), fall back to server
+  // Use store entities if recently fetched (within 30s), otherwise use server data
+  const STALE_THRESHOLD = 30_000; // 30 seconds
+  const storeIsFresh = lastFetchedAt && (Date.now() - lastFetchedAt) < STALE_THRESHOLD;
+
   const entities: LegalEntitySummary[] = useMemo(() => {
-    if (storeEntities.length > 0) return storeEntities;
+    if (storeEntities.length > 0 && storeIsFresh) return storeEntities;
 
     return serverEntities.map((e, i) => ({
       id: e.id as string,
@@ -38,7 +41,7 @@ export function EntitiesPageClient({ entities: serverEntities }: EntitiesPageCli
       activeLeaseCount: 0,
       hasIban: !!(e.iban as string),
     }));
-  }, [storeEntities, serverEntities]);
+  }, [storeEntities, serverEntities, storeIsFresh]);
 
   if (entities.length === 0) {
     return (

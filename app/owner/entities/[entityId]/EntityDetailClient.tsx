@@ -42,8 +42,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { isDomTomPostalCode, getTvaRate } from "@/lib/entities/resolveOwnerIdentity";
 import { useEntityStore } from "@/stores/useEntityStore";
-import { deleteEntity } from "../actions";
+import { deleteEntity, deactivateEntity } from "../actions";
 import { getEntityTypeLabel } from "@/lib/entities/entity-constants";
+import { createClient } from "@/lib/supabase/client";
 
 // ============================================
 // TYPES
@@ -78,9 +79,11 @@ export function EntityDetailClient({
   const { removeEntity } = useEntityStore();
   const [activeTab, setActiveTab] = useState<TabId>("info");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleDelete = async () => {
     setIsDeleting(true);
+    setDeleteError(null);
     try {
       const result = await deleteEntity({ id: entity.id as string });
       if (result.success) {
@@ -91,16 +94,41 @@ export function EntityDetailClient({
         });
         router.push("/owner/entities");
       } else {
+        setDeleteError(result.error || "Une erreur est survenue.");
+      }
+    } catch {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'entité.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deactivateEntity({ id: entity.id as string });
+      if (result.success) {
+        removeEntity(entity.id as string);
         toast({
-          title: "Suppression impossible",
-          description: result.error || "Une erreur est survenue.",
+          title: "Entité désactivée",
+          description: `${entity.nom as string} a été désactivée. Elle n'apparaîtra plus dans les sélecteurs.`,
+        });
+        router.push("/owner/entities");
+      } else {
+        toast({
+          title: "Erreur",
+          description: result.error || "Impossible de désactiver.",
           variant: "destructive",
         });
       }
     } catch {
       toast({
         title: "Erreur",
-        description: "Impossible de supprimer l'entité.",
+        description: "Impossible de désactiver l'entité.",
         variant: "destructive",
       });
     } finally {
@@ -180,30 +208,57 @@ export function EntityDetailClient({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Supprimer cette entité ?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Vous êtes sur le point de supprimer <strong>{entity.nom as string}</strong>.
-                    Cette action est irréversible. Les associés liés seront également supprimés.
-                    Si l&apos;entité possède encore des biens, la suppression sera refusée.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {isDeleting ? (
+                    {deleteError ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Suppression...
+                        <span className="text-destructive font-medium block mb-2">{deleteError}</span>
+                        Vous pouvez <strong>désactiver</strong> l&apos;entité à la place.
+                        Elle ne sera plus visible dans les sélecteurs mais restera consultable.
                       </>
                     ) : (
                       <>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Supprimer
+                        Vous êtes sur le point de supprimer <strong>{entity.nom as string}</strong>.
+                        Cette action est irréversible. Les associés liés seront également supprimés.
+                        Si l&apos;entité possède encore des biens ou baux actifs, la suppression sera refusée.
                       </>
                     )}
-                  </AlertDialogAction>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setDeleteError(null)}>Annuler</AlertDialogCancel>
+                  {deleteError ? (
+                    <AlertDialogAction
+                      onClick={handleDeactivate}
+                      disabled={isDeleting}
+                      className="bg-amber-600 text-white hover:bg-amber-700"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Désactivation...
+                        </>
+                      ) : (
+                        "Désactiver l'entité"
+                      )}
+                    </AlertDialogAction>
+                  ) : (
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Suppression...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Supprimer
+                        </>
+                      )}
+                    </AlertDialogAction>
+                  )}
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -248,7 +303,7 @@ export function EntityDetailClient({
         {activeTab === "associates" && (
           <AssociatesTab associates={associates} />
         )}
-        {activeTab === "documents" && <DocumentsTab />}
+        {activeTab === "documents" && <DocumentsTab entityId={entity.id as string} />}
       </div>
     </div>
   );
@@ -278,9 +333,12 @@ function InfoTab({ entity }: { entity: Record<string, unknown> }) {
           <InfoRow
             label="Régime fiscal"
             value={
-              (entity.regime_fiscal as string) === "ir"
-                ? "Impôt sur le Revenu (IR)"
-                : "Impôt sur les Sociétés (IS)"
+              {
+                ir: "Impôt sur le Revenu (IR)",
+                is: "Impôt sur les Sociétés (IS)",
+                ir_option_is: "IR avec option IS",
+                is_option_ir: "IS avec option IR",
+              }[(entity.regime_fiscal as string) ?? ""] ?? (entity.regime_fiscal as string)
             }
           />
           <InfoRow
@@ -291,6 +349,12 @@ function InfoTab({ entity }: { entity: Record<string, unknown> }) {
                 : null
             }
           />
+          {entity.nombre_parts && (
+            <InfoRow
+              label="Nombre de parts"
+              value={`${Number(entity.nombre_parts).toLocaleString("fr-FR")} parts`}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -448,18 +512,204 @@ function AssociatesTab({
   );
 }
 
-function DocumentsTab() {
+interface EntityDocument {
+  id: string;
+  type: string;
+  nom: string;
+  created_at: string;
+  property_id: string | null;
+  lease_id: string | null;
+  url: string | null;
+}
+
+interface AuditLogEntry {
+  id: string;
+  action: string;
+  changed_fields: Record<string, { old?: string; new?: string }> | null;
+  created_at: string;
+}
+
+function DocumentsTab({ entityId }: { entityId: string }) {
+  const [documents, setDocuments] = useState<EntityDocument[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(true);
+  const [isLoadingAudit, setIsLoadingAudit] = useState(true);
+
+  useEffect(() => {
+    async function fetchDocuments() {
+      setIsLoadingDocs(true);
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("documents")
+          .select("id, type, nom, created_at, property_id, lease_id, url")
+          .eq("entity_id", entityId)
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        setDocuments((data || []) as EntityDocument[]);
+      } catch {
+        // silently fail - documents tab just shows empty
+      } finally {
+        setIsLoadingDocs(false);
+      }
+    }
+
+    async function fetchAuditLog() {
+      setIsLoadingAudit(true);
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("entity_audit_log")
+          .select("id, action, changed_fields, created_at")
+          .eq("entity_id", entityId)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        setAuditLog((data || []) as AuditLogEntry[]);
+      } catch {
+        // silently fail
+      } finally {
+        setIsLoadingAudit(false);
+      }
+    }
+
+    fetchDocuments();
+    fetchAuditLog();
+  }, [entityId]);
+
+  const ACTION_LABELS: Record<string, string> = {
+    create: "Cr\u00e9ation",
+    update: "Modification",
+    delete: "Suppression",
+    deactivate: "D\u00e9sactivation",
+    reactivate: "R\u00e9activation",
+  };
+
+  const FIELD_LABELS: Record<string, string> = {
+    nom: "Raison sociale",
+    entity_type: "Type d'entit\u00e9",
+    forme_juridique: "Forme juridique",
+    regime_fiscal: "R\u00e9gime fiscal",
+    siret: "SIRET",
+    adresse_siege: "Adresse",
+    code_postal_siege: "Code postal",
+    ville_siege: "Ville",
+    capital_social: "Capital social",
+    iban: "IBAN",
+    is_active: "Statut",
+  };
+
   return (
-    <Card>
-      <CardContent className="text-center py-8">
-        <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-        <p className="font-medium">Documents de l&apos;entité</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          Les baux, quittances et EDL associés à cette entité
-          apparaîtront ici.
-        </p>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      {/* Documents */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Documents ({documents.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingDocs ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
+              ))}
+            </div>
+          ) : documents.length === 0 ? (
+            <div className="text-center py-6">
+              <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">
+                Aucun document li\u00e9 \u00e0 cette entit\u00e9.
+                Les baux, quittances et \u00e9tats des lieux appara\u00eetront ici.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center gap-3 p-2.5 rounded-lg border hover:bg-muted/50 transition-colors"
+                >
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {doc.nom || doc.type}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(doc.created_at).toLocaleDateString("fr-FR")}
+                    </p>
+                  </div>
+                  {doc.url && (
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                        Voir
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Historique des modifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Historique des modifications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingAudit ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-10 rounded-lg bg-muted animate-pulse" />
+              ))}
+            </div>
+          ) : auditLog.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Aucune modification enregistr\u00e9e.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {auditLog.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="flex items-start gap-3 text-sm border-l-2 border-muted pl-3 py-1"
+                >
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {ACTION_LABELS[entry.action] || entry.action}
+                    </p>
+                    {entry.changed_fields && Object.keys(entry.changed_fields).length > 0 && (
+                      <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
+                        {Object.entries(entry.changed_fields).map(
+                          ([field, change]) => (
+                            <p key={field}>
+                              {FIELD_LABELS[field] || field}
+                              {change && typeof change === "object" && "old" in change && "new" in change
+                                ? ` : ${change.old || "vide"} \u2192 ${change.new || "vide"}`
+                                : ""}
+                            </p>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {new Date(entry.created_at).toLocaleDateString("fr-FR", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

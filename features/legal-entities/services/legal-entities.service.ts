@@ -617,7 +617,8 @@ export async function createPropertyOwnership(
 }
 
 /**
- * Transfère un bien à une autre entité
+ * Transfère un bien à une autre entité.
+ * Vérifie les baux actifs et met à jour signatory_entity_id si nécessaire.
  */
 export async function transferPropertyOwnership(
   propertyId: string,
@@ -632,9 +633,51 @@ export async function transferPropertyOwnership(
     mode_acquisition?: string;
     notaire_nom?: string;
     reference_acte?: string;
+    /** Si true, met à jour les baux actifs avec la nouvelle entité signataire */
+    updateActiveLeases?: boolean;
   }
 ): Promise<void> {
   const supabase = await createClient();
+
+  // Vérifier les baux en cours de signature (bloquant)
+  if (fromEntityId) {
+    const { count: pendingCount } = await supabase
+      .from("leases")
+      .select("id", { count: "exact", head: true })
+      .eq("property_id", propertyId)
+      .eq("signatory_entity_id", fromEntityId)
+      .in("statut", ["pending_signature", "fully_signed"]);
+
+    if (pendingCount && pendingCount > 0) {
+      throw new Error(
+        `Transfert impossible : ${pendingCount} bail(aux) en cours de signature sur ce bien. Finalisez ou annulez les signatures avant de transférer.`
+      );
+    }
+
+    // Vérifier les baux actifs (avertissement mais autorisé avec flag)
+    const { data: activeLeases, count: activeCount } = await supabase
+      .from("leases")
+      .select("id", { count: "exact" })
+      .eq("property_id", propertyId)
+      .eq("signatory_entity_id", fromEntityId)
+      .eq("statut", "active");
+
+    if (activeCount && activeCount > 0 && !transferData.updateActiveLeases) {
+      throw new Error(
+        `Ce bien a ${activeCount} bail(aux) actif(s) sous l'ancienne entité. ` +
+        `Passez updateActiveLeases: true pour mettre à jour le signataire des baux.`
+      );
+    }
+
+    // Mettre à jour les baux actifs si demandé
+    if (activeLeases && activeLeases.length > 0 && transferData.updateActiveLeases) {
+      const leaseIds = activeLeases.map((l) => l.id);
+      await supabase
+        .from("leases")
+        .update({ signatory_entity_id: toEntityId })
+        .in("id", leaseIds);
+    }
+  }
 
   // 1. Clôturer l'ancienne détention
   if (fromEntityId) {
@@ -715,7 +758,21 @@ export async function canDeleteEntity(
   if (leasesCount && leasesCount > 0) {
     return {
       canDelete: false,
-      reason: `${leasesCount} bail(aux) actif(s) sont associés à cette entité`,
+      reason: `${leasesCount} bail(aux) actif(s) sont associés à cette entité. Vous pouvez désactiver l'entité à la place.`,
+    };
+  }
+
+  // Vérifier les factures non payées
+  const { count: invoicesCount } = await supabase
+    .from("invoices")
+    .select("id", { count: "exact", head: true })
+    .eq("issuer_entity_id", entityId)
+    .in("statut", ["draft", "sent", "overdue"]);
+
+  if (invoicesCount && invoicesCount > 0) {
+    return {
+      canDelete: false,
+      reason: `${invoicesCount} facture(s) impayée(s) sont émises par cette entité. Vous pouvez désactiver l'entité à la place.`,
     };
   }
 
@@ -772,30 +829,55 @@ export async function getEntityFiscalSummary(
 }
 
 /**
- * Recherche d'entités par SIREN/SIRET
+ * Recherche d'entités par SIREN/SIRET.
+ * ownerProfileId est obligatoire pour éviter les fuites cross-tenant.
  */
 export async function searchEntitiesBySiren(
   siren: string,
-  ownerProfileId?: string
+  ownerProfileId: string
 ): Promise<LegalEntity[]> {
   const supabase = await createClient();
 
-  let query = supabase
+  const { data, error } = await supabase
     .from("legal_entities")
     .select("*")
+    .eq("owner_profile_id", ownerProfileId)
     .or(`siren.eq.${siren},siret.ilike.${siren}%`);
-
-  if (ownerProfileId) {
-    query = query.eq("owner_profile_id", ownerProfileId);
-  }
-
-  const { data, error } = await query;
 
   if (error) {
     throw new Error(`Erreur: ${error.message}`);
   }
 
   return data as LegalEntity[];
+}
+
+/**
+ * Vérifie si un SIRET existe déjà (cross-tenant, pour détection de doublons globaux).
+ * Retourne uniquement le nom de l'entité existante, pas de données sensibles.
+ */
+export async function checkSiretExists(
+  siret: string,
+  excludeEntityId?: string
+): Promise<{ exists: boolean; entityName?: string }> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("legal_entities")
+    .select("nom")
+    .eq("siret", siret)
+    .eq("is_active", true)
+    .limit(1);
+
+  if (excludeEntityId) {
+    query = query.neq("id", excludeEntityId);
+  }
+
+  const { data } = await query.maybeSingle();
+
+  return {
+    exists: !!data,
+    entityName: data?.nom as string | undefined,
+  };
 }
 
 // ============================================
@@ -828,6 +910,7 @@ export const legalEntitiesService = {
   canDeleteEntity,
   getEntityFiscalSummary,
   searchEntitiesBySiren,
+  checkSiretExists,
 };
 
 export default legalEntitiesService;
