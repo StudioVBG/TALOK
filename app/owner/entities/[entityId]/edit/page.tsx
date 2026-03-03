@@ -20,11 +20,16 @@ import { cn } from "@/lib/utils";
 import { isValidSiret } from "@/lib/entities/siret-validation";
 import type { EntityFormData } from "@/lib/entities/entity-form-utils";
 
-const STEPS = [
+const ALL_STEPS = [
   { id: 1, label: "Type" },
   { id: 2, label: "Légal" },
   { id: 3, label: "Adresse" },
   { id: 4, label: "Représentant" },
+  { id: 5, label: "Bancaire" },
+];
+
+const PARTICULIER_STEPS = [
+  { id: 1, label: "Type" },
   { id: 5, label: "Bancaire" },
 ];
 
@@ -239,7 +244,7 @@ export default function EditEntityPage() {
   const handleNext = () => {
     if (!formData) return;
     if (!validateStep(step)) return;
-    if (step < 5) {
+    if (step < lastStepId) {
       if (step === 1 && formData.entityType === "particulier") {
         setStep(5);
         return;
@@ -326,6 +331,11 @@ export default function EditEntityPage() {
     }
   };
 
+  // Adaptive stepper: 2 steps for "particulier", 5 for all others
+  const isParticulier = formData?.entityType === "particulier";
+  const steps = isParticulier ? PARTICULIER_STEPS : ALL_STEPS;
+  const lastStepId = steps[steps.length - 1].id;
+
   if (isLoading || !formData) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -353,7 +363,7 @@ export default function EditEntityPage() {
 
       {/* Progress bar */}
       <div className="flex items-center gap-2">
-        {STEPS.map((s) => (
+        {steps.map((s, idx) => (
           <div key={s.id} className="flex items-center gap-2 flex-1">
             <div
               className={cn(
@@ -365,7 +375,7 @@ export default function EditEntityPage() {
                     : "bg-muted text-muted-foreground"
               )}
             >
-              {step > s.id ? <Check className="h-4 w-4" /> : s.id}
+              {step > s.id ? <Check className="h-4 w-4" /> : idx + 1}
             </div>
             <span
               className={cn(
@@ -377,7 +387,7 @@ export default function EditEntityPage() {
             >
               {s.label}
             </span>
-            {s.id < STEPS.length && (
+            {idx < steps.length - 1 && (
               <div
                 className={cn(
                   "flex-1 h-0.5 rounded-full",
@@ -418,7 +428,7 @@ export default function EditEntityPage() {
           Retour
         </Button>
 
-        {step < 5 ? (
+        {step < lastStepId ? (
           <Button onClick={handleNext} disabled={!canProceed()}>
             Suivant
             <ChevronRight className="h-4 w-4 ml-1" />

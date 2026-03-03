@@ -526,12 +526,12 @@ export interface PropertyOwnershipWithDetails extends PropertyOwnership {
 // ============================================
 
 /**
- * Labels des types d'entités
+ * Labels des types d'entités — unifiés avec lib/entities/entity-constants.ts
  */
 export const ENTITY_TYPE_LABELS: Record<LegalEntityType, string> = {
-  particulier: "Particulier",
-  sci_ir: "SCI (IR)",
-  sci_is: "SCI (IS)",
+  particulier: "Personnel",
+  sci_ir: "SCI · IR",
+  sci_is: "SCI · IS",
   sci_construction_vente: "SCCV",
   sarl: "SARL",
   sarl_famille: "SARL de famille",

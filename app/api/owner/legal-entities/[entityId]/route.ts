@@ -16,6 +16,7 @@ import {
   getEntityAssociates,
 } from "@/features/legal-entities/services/legal-entities.service";
 import type { UpdateLegalEntityDTO } from "@/lib/types/legal-entity";
+import { isValidSiret, isValidSiren } from "@/lib/entities/siret-validation";
 
 interface RouteParams {
   params: Promise<{ entityId: string }>;
@@ -129,23 +130,27 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const body: UpdateLegalEntityDTO = await request.json();
 
-    // Validation du SIREN si modifié
-    if (body.siren !== undefined && body.siren && body.siren.length !== 9) {
-      return NextResponse.json(
-        { error: "Le SIREN doit contenir 9 chiffres" },
-        { status: 400 }
-      );
+    // Validation du SIREN si modifié (format + Luhn)
+    if (body.siren !== undefined && body.siren) {
+      if (body.siren.length !== 9 || !isValidSiren(body.siren)) {
+        return NextResponse.json(
+          { error: "Le SIREN est invalide (9 chiffres, clé de contrôle Luhn)" },
+          { status: 400 }
+        );
+      }
     }
 
-    // Validation du SIRET si modifié
-    if (body.siret !== undefined && body.siret && body.siret.length !== 14) {
-      return NextResponse.json(
-        { error: "Le SIRET doit contenir 14 chiffres" },
-        { status: 400 }
-      );
+    // Validation du SIRET si modifié (format + Luhn)
+    if (body.siret !== undefined && body.siret) {
+      if (body.siret.length !== 14 || !isValidSiret(body.siret)) {
+        return NextResponse.json(
+          { error: "Le SIRET est invalide (14 chiffres, clé de contrôle Luhn)" },
+          { status: 400 }
+        );
+      }
     }
 
-    const entity = await updateLegalEntity(entityId, body);
+    const entity = await updateLegalEntity(entityId, body, access.profileId!);
 
     return NextResponse.json({
       entity,
