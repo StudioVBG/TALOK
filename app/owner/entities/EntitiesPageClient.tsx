@@ -25,9 +25,9 @@ const FILTER_GROUPS = [
   { key: "all", label: "Toutes" },
   { key: "sci", label: "SCI", types: ["sci_ir", "sci_is", "sci_construction_vente"] },
   { key: "commercial", label: "Sociétés", types: ["sarl", "sarl_famille", "eurl", "sas", "sasu", "sa", "snc", "holding"] },
-  { key: "special", label: "Spéciales", types: ["indivision", "demembrement_usufruit", "demembrement_nue_propriete", "association"] },
-  { key: "personal", label: "Personnel", types: ["particulier", "micro_entrepreneur"] },
-] as const;
+  { key: "special", label: "Spéciales", types: ["indivision", "demembrement_usufruit", "demembrement_nue_propriete"] },
+  { key: "personal", label: "Personnel", types: ["particulier"] },
+];
 
 export function EntitiesPageClient({ entities: serverEntities }: EntitiesPageClientProps) {
   const { entities: storeEntities, activeEntityId, lastFetchedAt } = useEntityStore();
@@ -61,13 +61,13 @@ export function EntitiesPageClient({ entities: serverEntities }: EntitiesPageCli
 
   // Filtered entities
   const filteredEntities = useMemo(() => {
-    let result = allEntities;
+    let result: LegalEntitySummary[] = allEntities;
 
     // Apply type filter
     if (activeFilter !== "all") {
       const group = FILTER_GROUPS.find((g) => g.key === activeFilter);
-      if (group && "types" in group) {
-        result = result.filter((e) => group.types.includes(e.entityType as any));
+      if (group?.types) {
+        result = result.filter((e) => group.types!.includes(e.entityType));
       }
     }
 
@@ -159,8 +159,8 @@ export function EntitiesPageClient({ entities: serverEntities }: EntitiesPageCli
               const count =
                 group.key === "all"
                   ? allEntities.length
-                  : "types" in group
-                    ? allEntities.filter((e) => group.types.includes(e.entityType as any)).length
+                  : group.types
+                    ? allEntities.filter((e) => group.types!.includes(e.entityType)).length
                     : 0;
               if (count === 0 && group.key !== "all") return null;
               return (

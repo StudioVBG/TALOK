@@ -28,9 +28,7 @@ export type LegalEntityType =
   | "indivision"               // Indivision (héritage, achat commun)
   | "demembrement_usufruit"    // Usufruit seul
   | "demembrement_nue_propriete" // Nue-propriété seule
-  | "holding"                  // Société holding
-  | "micro_entrepreneur"       // Micro-entrepreneur / Auto-entrepreneur
-  | "association";             // Association loi 1901
+  | "holding";                 // Société holding
 
 /**
  * Régimes fiscaux possibles
@@ -596,18 +594,16 @@ export const ENTITY_TYPE_COLORS: Record<LegalEntityType, string> = {
   demembrement_usufruit: "#eab308",    // Yellow
   demembrement_nue_propriete: "#84cc16", // Lime
   holding: "#64748b",         // Slate
-  micro_entrepreneur: "#f59e0b", // Amber
-  association: "#06b6d4",     // Cyan
 };
 
 /**
  * Groupes d'entités par catégorie
  */
 export const ENTITY_TYPE_GROUPS = {
-  personnel: ["particulier", "micro_entrepreneur"] as LegalEntityType[],
+  personnel: ["particulier"] as LegalEntityType[],
   sci: ["sci_ir", "sci_is", "sci_construction_vente"] as LegalEntityType[],
   commerciale: ["sarl", "sarl_famille", "eurl", "sas", "sasu", "sa", "snc"] as LegalEntityType[],
-  speciale: ["indivision", "demembrement_usufruit", "demembrement_nue_propriete", "holding", "association"] as LegalEntityType[],
+  speciale: ["indivision", "demembrement_usufruit", "demembrement_nue_propriete", "holding"] as LegalEntityType[],
 };
 
 /**
@@ -625,7 +621,6 @@ export const ENTITIES_REQUIRING_SIRET: LegalEntityType[] = [
   "sa",
   "snc",
   "holding",
-  "micro_entrepreneur",
 ];
 
 /**
@@ -641,7 +636,6 @@ export const ENTITIES_MIN_2_ASSOCIATES: LegalEntityType[] = [
   "sa",
   "snc",
   "indivision",
-  "association",
 ];
 
 /**
@@ -652,7 +646,6 @@ export const ENTITIES_IR_OPTION: LegalEntityType[] = [
   "sci_ir",
   "sarl_famille",
   "indivision",
-  "micro_entrepreneur",
 ];
 
 /**

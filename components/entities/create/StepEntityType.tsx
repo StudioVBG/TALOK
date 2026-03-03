@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, User, Users, ArrowUpDown, Briefcase, Heart } from "lucide-react";
+import { Building2, User, Users, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StepEntityTypeProps {
@@ -110,21 +110,7 @@ const ENTITY_TYPES = [
     icon: ArrowUpDown,
     group: "special",
   },
-  {
-    id: "association",
-    label: "Association",
-    description: "Association loi 1901 (propriété immobilière)",
-    icon: Heart,
-    group: "special",
-  },
   // Personnel
-  {
-    id: "micro_entrepreneur",
-    label: "Micro-entrepreneur",
-    description: "Auto-entrepreneur / micro-entreprise",
-    icon: Briefcase,
-    group: "personal",
-  },
   {
     id: "particulier",
     label: "En nom propre",

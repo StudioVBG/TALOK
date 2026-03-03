@@ -33,8 +33,6 @@ const entityTypeSchema = z.enum([
   "demembrement_usufruit",
   "demembrement_nue_propriete",
   "holding",
-  "micro_entrepreneur",
-  "association",
 ]);
 
 const createEntitySchema = z.object({
