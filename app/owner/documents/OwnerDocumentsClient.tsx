@@ -31,6 +31,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 // React Query hooks pour la réactivité
 import { useDocuments, useDeleteDocument } from "@/lib/hooks/use-documents";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 // SOTA Imports
 import { PageTransition } from "@/components/ui/page-transition";
@@ -51,6 +52,7 @@ interface OwnerDocumentsClientProps {
 
 export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientProps) {
   const { toast } = useToast();
+  const { profile } = useAuth();
   const searchParams = useSearchParams();
   const propertyIdFilter = searchParams.get("property_id");
   const leaseIdFilter = searchParams.get("lease_id");
@@ -62,11 +64,12 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
     leaseId: leaseIdFilter,
   });
   const deleteDocumentMutation = useDeleteDocument();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   
   // 🎨 Mode d'affichage : "table" (tableau) ou "cascade" (groupé par bien)
   const [viewMode, setViewMode] = useState<"table" | "cascade">("cascade");
@@ -234,6 +237,14 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
     filteredDocuments = filteredDocuments.filter((doc: any) => doc.statut === statusFilter || doc.status === statusFilter);
   }
 
+  // Filtre par source (inter-compte)
+  if (sourceFilter !== "all") {
+    filteredDocuments = filteredDocuments.filter((doc: any) => {
+      const isFromTenant = doc.tenant_id && doc.tenant_id !== profile?.id;
+      return sourceFilter === "tenant" ? isFromTenant : !isFromTenant;
+    });
+  }
+
   if (searchQuery) {
     filteredDocuments = filteredDocuments.filter((doc: any) =>
       (doc.type?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -290,9 +301,9 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
                           {category.label}
                         </Badge>
                         {tenantName && category.filterValue !== "identite" && (
-                          <span className="text-[10px] text-muted-foreground">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-violet-50 text-violet-700 border-violet-200">
                             👤 {tenantName}
-                          </span>
+                          </Badge>
                         )}
                         {!tenantName && (
                           <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{typeLabel}</span>
@@ -454,7 +465,7 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
 
           {/* Filtres */}
           <GlassCard className="p-4">
-            <div className="grid gap-4 md:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-6">
                 <div className="md:col-span-2">
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -479,6 +490,17 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
                         {cat.label}
                     </SelectItem>
                     ))}
+                </SelectContent>
+                </Select>
+                {/* Filtre par source (inter-compte) */}
+                <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                <SelectTrigger className="bg-white border-slate-200">
+                    <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Toutes les sources</SelectItem>
+                    <SelectItem value="owner">Mes documents</SelectItem>
+                    <SelectItem value="tenant">Documents locataires</SelectItem>
                 </SelectContent>
                 </Select>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>

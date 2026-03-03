@@ -54,6 +54,7 @@ import { DocumentGroups } from "@/components/documents/document-groups";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentUploadModal } from "@/components/documents/DocumentUploadModal";
 import { useTenantData } from "../_data/TenantDataProvider";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { PDFPreviewModal } from "@/components/documents/pdf-preview-modal";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -115,6 +116,25 @@ function isRecent(doc: any): boolean {
   return diff < 7 * 24 * 60 * 60 * 1000;
 }
 
+/** Détermine la source d'un document pour le locataire */
+function getDocumentSource(doc: any, profileId: string): "self" | "shared" {
+  // Si uploaded_by correspond au profil courant → document uploadé par le locataire
+  if (doc.uploaded_by === profileId) return "self";
+  // Si uploaded_by est renseigné et différent → partagé par le propriétaire
+  if (doc.uploaded_by && doc.uploaded_by !== profileId) return "shared";
+  // Fallback: les types typiquement déposés par le locataire
+  if (doc.tenant_id === profileId) {
+    const selfTypes = [
+      "attestation_assurance", "cni_recto", "cni_verso", "piece_identite",
+      "passeport", "justificatif_revenus", "avis_imposition", "bulletin_paie",
+      "rib", "titre_sejour", "cni",
+    ];
+    const type = detectType(doc);
+    if (selfTypes.includes(type)) return "self";
+  }
+  return "shared";
+}
+
 // ──────────────────────────────────────────────
 // Squelette de chargement
 // ──────────────────────────────────────────────
@@ -156,8 +176,10 @@ function DocumentsSkeleton() {
 export default function TenantDocumentsPage() {
   const { data: documents = [], isLoading, error, refetch } = useDocuments();
   const { dashboard } = useTenantData();
+  const { profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [periodFilter, setPeriodFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "type">("date_desc");
   const [viewMode, setViewMode] = useState<"grid" | "cascade">("grid");
@@ -299,7 +321,15 @@ export default function TenantDocumentsPage() {
       }
     }
 
-    // 5. Tri (H-09)
+    // 5. Filtre par source (inter-compte)
+    if (sourceFilter !== "all" && profile?.id) {
+      result = result.filter((doc: any) => {
+        const source = getDocumentSource(doc, profile.id);
+        return sourceFilter === "self" ? source === "self" : source === "shared";
+      });
+    }
+
+    // 6. Tri (H-09)
     if (sortBy === "date_desc") {
       result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } else if (sortBy === "date_asc") {
@@ -309,7 +339,7 @@ export default function TenantDocumentsPage() {
     }
 
     return result;
-  }, [documents, searchQuery, typeFilter, periodFilter, sortBy]);
+  }, [documents, searchQuery, typeFilter, sourceFilter, periodFilter, sortBy, profile?.id]);
 
   const fetchSignedUrl = useCallback(async (docId: string): Promise<string | null> => {
     try {
@@ -350,6 +380,7 @@ export default function TenantDocumentsPage() {
   const resetFilters = useCallback(() => {
     setSearchQuery("");
     setTypeFilter("all");
+    setSourceFilter("all");
     setPeriodFilter("all");
     setSortBy("date_desc");
   }, []);
@@ -597,6 +628,20 @@ export default function TenantDocumentsPage() {
                     </SelectContent>
                   </Select>
 
+                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    <SelectTrigger className="w-full sm:w-44 h-10 bg-background/80 border-border text-sm">
+                      <div className="flex items-center gap-2">
+                        <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                        <SelectValue placeholder="Source" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les sources</SelectItem>
+                      <SelectItem value="self">Mes documents</SelectItem>
+                      <SelectItem value="shared">Du propriétaire</SelectItem>
+                    </SelectContent>
+                  </Select>
+
                   <Select value={periodFilter} onValueChange={setPeriodFilter}>
                     <SelectTrigger className="w-full sm:w-44 h-10 bg-background/80 border-border text-sm">
                       <SelectValue placeholder="Période" />
@@ -624,7 +669,7 @@ export default function TenantDocumentsPage() {
                     </SelectContent>
                   </Select>
 
-                  {(searchQuery || typeFilter !== "all" || periodFilter !== "all") && (
+                  {(searchQuery || typeFilter !== "all" || sourceFilter !== "all" || periodFilter !== "all") && (
                     <Button variant="ghost" size="sm" className="h-10 text-muted-foreground" onClick={resetFilters}>
                       <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Réinitialiser
                     </Button>
@@ -717,6 +762,8 @@ export default function TenantDocumentsPage() {
                 {filteredDocuments.map((doc: any) => {
                   const type = detectType(doc);
                   const config = DOCUMENT_CONFIG[type] || DOCUMENT_CONFIG.autre;
+                  const source = profile?.id ? getDocumentSource(doc, profile.id) : undefined;
+                  const isCrossAccountNew = source === "shared" && isRecent(doc);
                   return (
                     <DocumentCard
                       key={doc.id}
@@ -725,7 +772,8 @@ export default function TenantDocumentsPage() {
                       displayTitle={getDocumentTitle(doc, config)}
                       onPreview={handlePreview}
                       onDownload={handleDownload}
-                      isNew={isRecent(doc)}
+                      isNew={isCrossAccountNew || isRecent(doc)}
+                      sourceLabel={source === "shared" ? "Du propriétaire" : undefined}
                     />
                   );
                 })}

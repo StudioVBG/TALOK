@@ -81,6 +81,8 @@ interface DocumentCardProps {
   compact?: boolean;
   /** Badge "Nouveau" si < 7 jours */
   isNew?: boolean;
+  /** Badge provenance inter-compte ("Du propriétaire", "Déposé par X", etc.) */
+  sourceLabel?: string;
   className?: string;
 }
 
@@ -92,6 +94,7 @@ export function DocumentCard({
   onDownload,
   compact = false,
   isNew = false,
+  sourceLabel,
   className,
 }: DocumentCardProps) {
   const config = DOCUMENT_CONFIG[resolvedType] || DOCUMENT_CONFIG.autre;
@@ -123,6 +126,9 @@ export function DocumentCard({
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {sourceLabel && (
+            <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 text-[10px] h-5">{sourceLabel}</Badge>
+          )}
           {isNew && (
             <Badge className="bg-blue-600 text-white text-[10px] h-5 border-none">Nouveau</Badge>
           )}
@@ -180,6 +186,9 @@ export function DocumentCard({
           <Badge variant="outline" className="bg-muted text-[10px] uppercase tracking-wider font-bold">
             {config.label}
           </Badge>
+          {sourceLabel && (
+            <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 text-[10px] h-5">{sourceLabel}</Badge>
+          )}
           {isNew && (
             <Badge className="bg-blue-600 text-white text-[10px] h-5 border-none">Nouveau</Badge>
           )}

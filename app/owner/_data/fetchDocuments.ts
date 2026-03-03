@@ -37,10 +37,16 @@ export interface DocumentRow {
   created_at: string;
   updated_at: string;
   title?: string | null;
+  uploaded_by?: string | null;
   // Relations
   property?: {
       adresse_complete: string;
   }
+  tenant?: {
+      id: string;
+      prenom: string | null;
+      nom: string | null;
+  } | null;
 }
 
 export interface FetchDocumentsOptions {
@@ -93,11 +99,25 @@ export async function fetchDocuments(
     throw new Error("Accès non autorisé");
   }
 
+  // Récupérer les propriétés du propriétaire pour inclure les documents locataires
+  const { data: ownerProperties } = await serviceClient
+    .from("properties")
+    .select("id, adresse_complete")
+    .eq("owner_id", options.ownerId);
+
+  const ownerPropertyIds = (ownerProperties || []).map((p: any) => p.id);
+
+  // Filtre OR : documents du propriétaire OU documents liés à ses propriétés (locataires)
+  let orFilter = `owner_id.eq.${options.ownerId}`;
+  if (ownerPropertyIds.length > 0) {
+    orFilter += `,property_id.in.(${ownerPropertyIds.join(",")})`;
+  }
+
   // Requête SANS jointure pour éviter la récursion RLS
   let query = serviceClient
     .from("documents")
     .select("*", { count: "exact" })
-    .eq("owner_id", options.ownerId)
+    .or(orFilter)
     .or("is_archived.is.null,is_archived.eq.false")
     .order("created_at", { ascending: false });
 
@@ -127,31 +147,54 @@ export async function fetchDocuments(
     throw new Error(`Erreur lors de la récupération des documents: ${error.message}`);
   }
 
-  // Si des documents ont des property_id, récupérer les adresses séparément
   const docs = (documents || []) as DocumentRow[];
-  const propertyIds = [...new Set(docs.filter(d => d.property_id).map(d => d.property_id).filter(Boolean))];
-  
-  let propertiesMap: Record<string, string> = {};
-  
-  if (propertyIds.length > 0) {
-    const { data: properties } = await serviceClient
+
+  // Map des propriétés pour enrichissement
+  const propertiesMap: Record<string, string> = {};
+  for (const p of (ownerProperties || []) as PropertyRow[]) {
+    propertiesMap[p.id] = p.adresse_complete;
+  }
+
+  // Propriétés supplémentaires non encore mappées
+  const unmappedPropertyIds = [...new Set(
+    docs.filter(d => d.property_id && !propertiesMap[d.property_id]).map(d => d.property_id!).filter(Boolean)
+  )];
+
+  if (unmappedPropertyIds.length > 0) {
+    const { data: extraProperties } = await serviceClient
       .from("properties")
       .select("id, adresse_complete")
-      .in("id", propertyIds);
-    
-    if (properties) {
-      const propertyRows = properties as PropertyRow[];
-      propertiesMap = propertyRows.reduce((acc: Record<string, string>, p) => {
-        acc[p.id] = p.adresse_complete;
-        return acc;
-      }, {});
+      .in("id", unmappedPropertyIds);
+
+    if (extraProperties) {
+      for (const p of extraProperties as PropertyRow[]) {
+        propertiesMap[p.id] = p.adresse_complete;
+      }
     }
   }
 
-  // Enrichir les documents avec l'adresse de la propriété
+  // Récupérer les profils des locataires pour enrichissement
+  const tenantIds = [...new Set(docs.filter(d => d.tenant_id).map(d => d.tenant_id!).filter(Boolean))];
+  let tenantsMap: Record<string, { id: string; prenom: string | null; nom: string | null }> = {};
+
+  if (tenantIds.length > 0) {
+    const { data: tenants } = await serviceClient
+      .from("profiles")
+      .select("id, prenom, nom")
+      .in("id", tenantIds);
+
+    if (tenants) {
+      for (const t of tenants as Array<{ id: string; prenom: string | null; nom: string | null }>) {
+        tenantsMap[t.id] = t;
+      }
+    }
+  }
+
+  // Enrichir les documents avec l'adresse de la propriété et le profil locataire
   const enrichedDocuments = docs.map(doc => ({
     ...doc,
     property: doc.property_id ? { adresse_complete: propertiesMap[doc.property_id] || "" } : undefined,
+    tenant: doc.tenant_id ? tenantsMap[doc.tenant_id] || null : null,
   }));
 
   return {
