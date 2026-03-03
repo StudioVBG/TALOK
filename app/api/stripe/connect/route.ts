@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { connectService } from "@/lib/stripe/connect.service";
+import { isStripeConfigurationError } from "@/lib/helpers/api-error";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
 
@@ -134,8 +135,7 @@ export async function GET() {
     console.error("[Stripe Connect] Erreur GET:", error);
 
     // If Stripe is not configured, return a clean "no account" response instead of 500
-    const errorMessage = error instanceof Error ? error.message : "";
-    if (errorMessage.includes("Stripe non configurée") || errorMessage.includes("Clé API Stripe")) {
+    if (isStripeConfigurationError(error)) {
       return NextResponse.json({
         has_account: false,
         account: null,
@@ -143,6 +143,7 @@ export async function GET() {
       });
     }
 
+    const errorMessage = error instanceof Error ? error.message : "";
     return NextResponse.json(
       { error: errorMessage || "Erreur serveur" },
       { status: 500 }
@@ -248,14 +249,14 @@ export async function POST(request: NextRequest) {
     console.error("[Stripe Connect] Erreur POST:", error);
 
     // If Stripe is not configured, return a user-friendly error instead of 500
-    const errorMessage = error instanceof Error ? error.message : "";
-    if (errorMessage.includes("Stripe non configurée") || errorMessage.includes("Clé API Stripe")) {
+    if (isStripeConfigurationError(error)) {
       return NextResponse.json(
         { error: "Le paiement en ligne n'est pas encore configuré. Contactez l'administrateur." },
         { status: 503 }
       );
     }
 
+    const errorMessage = error instanceof Error ? error.message : "";
     return NextResponse.json(
       { error: errorMessage || "Erreur serveur" },
       { status: 500 }

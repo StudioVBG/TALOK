@@ -58,7 +58,7 @@ export function useAddPaymentMethod() {
   return useMutation({
     mutationFn: async (payload: {
       stripe_payment_method_id: string;
-      type: string;
+      type?: string;
       is_default?: boolean;
       label?: string;
     }) => {

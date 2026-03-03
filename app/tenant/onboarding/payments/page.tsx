@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PaymentMethodSetup } from "@/features/billing/components/v2/PaymentMethodSetup";
+import { useAddPaymentMethod } from "@/lib/hooks/use-tenant-payment-methods";
 import { cn } from "@/lib/utils";
 
 export default function TenantPaymentsPage() {
@@ -26,6 +27,7 @@ export default function TenantPaymentsPage() {
   const [loading, setLoading] = useState(false);
   const [isColocation, setIsColocation] = useState(false);
   const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
+  const addPaymentMethodMutation = useAddPaymentMethod();
 
   const [formData, setFormData] = useState({
     moyen_encaissement: "sepa_sdd" as "sepa_sdd" | "virement_sct" | "virement_inst" | "pay_by_bank" | "carte_wallet",
@@ -175,10 +177,22 @@ export default function TenantPaymentsPage() {
                         <ShieldCheck className="w-5 h-5 text-blue-600" />
                         <span className="text-sm font-semibold text-blue-900">Configuration sécurisée Stripe</span>
                       </div>
-                      <PaymentMethodSetup 
-                        onSuccess={(id) => {
-                          setPaymentMethodId(id);
-                          toast({ title: "Succès", description: "Moyen de paiement enregistré." });
+                      <PaymentMethodSetup
+                        onSuccess={async (id) => {
+                          try {
+                            await addPaymentMethodMutation.mutateAsync({
+                              stripe_payment_method_id: id,
+                              is_default: true,
+                            });
+                            setPaymentMethodId(id);
+                            toast({ title: "Succès", description: "Moyen de paiement enregistré." });
+                          } catch (err: unknown) {
+                            toast({
+                              title: "Erreur",
+                              description: err instanceof Error ? err.message : "Impossible de sauvegarder le moyen de paiement.",
+                              variant: "destructive",
+                            });
+                          }
                         }}
                       />
                     </div>

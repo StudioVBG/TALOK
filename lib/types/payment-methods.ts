@@ -95,7 +95,7 @@ export interface PaymentMethodAuditEntry {
 
 export interface AddPaymentMethodPayload {
   stripe_payment_method_id: string;
-  type: PaymentMethodType;
+  type?: PaymentMethodType;
   is_default?: boolean;
   label?: string;
 }
