@@ -506,6 +506,117 @@ Système d'alertes proactives pour le propriétaire :
 
 ---
 
+## 8. Audit connexion Front-End / Back-End
+
+### 8.1 Matrice de connexion — Locataire
+
+| Composant | Connecté ? | Preuve |
+|-----------|-----------|--------|
+| Affichage factures | **OUI** | `getTenantInvoices()` → vraie requête Supabase |
+| Bouton "Payer" | **OUI** | `PaymentCheckout` → Stripe Elements, `POST /api/payments/create-intent` |
+| Quick Pay (carte sauvée) | **OUI** | `SavedMethodQuickPay` → Stripe `confirmPayment()` |
+| Temps réel WebSocket | **OUI** | `useTenantRealtime()` → 7 channels Postgres Changes |
+| Montant impayé live | **OUI** | `realtime.unpaidAmount` dans carte "Total à régulariser" |
+| Score ponctualité | **OUI** | Calculé : `(total - late) / total * 100` |
+| Alerte impayé dashboard | **OUI** | Bloc rouge "Impayé en cours" + CTA "Régulariser" |
+| Cloche notifications | **OUI** | `NotificationBell` → `GET /api/notifications` polling 30s |
+| Statut "Impayé" visible | **NON** | Affiche "À régler" pour TOUT (`TenantPaymentsClient.tsx:356`) |
+| Jours de retard affichés | **NON** | Jamais montré au locataire |
+| Push Web navigateur | **NON** | `PushNotificationPrompt` absent du layout locataire |
+| Historique relances | **NON** | Aucun historique des relances reçues |
+
+### 8.2 Matrice de connexion — Propriétaire
+
+| Composant | Connecté ? | Preuve |
+|-----------|-----------|--------|
+| Affichage factures | **OUI** | `getOwnerInvoices()` → vraie requête Supabase |
+| Badge "En retard" | **OUI** | `statut === "late"` correctement affiché |
+| Graphique Collecté/Attente/Retard | **OUI** | Données réelles agrégées par mois |
+| Dashboard alertes impayés | **OUI** | "X loyer(s) en retard" + lien Money |
+| Cloche notifications | **OUI** | `NotificationBell` dans header |
+| Push Web navigateur | **OUI** | `PushNotificationPrompt` dans `DashboardClient.tsx:406` |
+| Bouton "Relancer" | **PARTIEL** | Insère en DB, **email = TODO** (`actions.ts:124`) |
+| Bouton "Marquer payé" | **OUI** | `ManualPaymentDialog` → `invoices.statut = 'paid'` |
+| API `/api/invoices/reminders` | **JAMAIS APPELÉE** | Existe mais aucun composant UI ne l'invoque |
+
+### 8.3 Matrice de connexion — Automatisations
+
+| Système | Planifié ? | Exécuté ? | Raison |
+|---------|-----------|-----------|--------|
+| `cron/payment-reminders` | **NON** | **JAMAIS** | Pas de `vercel.json` |
+| `cron/rent-reminders` | **NON** | **JAMAIS** | Pas de `vercel.json` |
+| `cron/generate-invoices` | **NON** | **JAMAIS** | Pas de `vercel.json` |
+| `cron/process-outbox` | **NON** | **JAMAIS** | Pas de `vercel.json` |
+| Edge Function `payment-reminders` | **NON** | **JAMAIS** | Pas de schedule Supabase, non déployé |
+| Edge Function `process-outbox` | **NON** | **JAMAIS** | Pas de schedule Supabase, non déployé |
+| Edge Function `monthly-invoicing` | **NON** | **JAMAIS** | Non déployé |
+
+### 8.4 Matrice de connexion — Services de notification
+
+| Service | Code réel ? | API connectée ? | Utilisé ? |
+|---------|------------|----------------|-----------|
+| Email (Resend) | **OUI** | `https://api.resend.com/emails` | **NON** — jamais appelé depuis les relances |
+| SMS (Twilio) | **OUI** | Twilio API réelle | **NON** — `enableSms: false` |
+| Push Web (VAPID) | **OUI** | `web-push` library | **PARTIEL** — browser-only, serveur = TODO |
+| In-app | **OUI** | Table `notifications` | **OUI** — si quelqu'un insère dedans |
+| `notification-service.ts` | **OUI** | DB uniquement | **JAMAIS APPELÉ** — fonctions exportées mais jamais importées |
+
+### 8.5 Schéma de la chaîne cassée
+
+```
+CRON payment-reminders ──→ PAS DE VERCEL.JSON ──→ ❌ Jamais exécuté
+                                                        │
+                                                        ▼ (si exécuté manuellement)
+                                                  Écrit dans table outbox
+                                                        │
+                                                        ▼
+process-outbox ─────────→ PAS DE SCHEDULE ───→ ❌ Jamais exécuté
+                                                        │
+                                                        ▼ (si exécuté manuellement)
+                                          sendPaymentReminderEmail() → Resend API ✅
+                                          sendNotification() → table notifications ✅
+                                          Push → console.log("TODO") ❌
+                                                        │
+                                                        ▼
+                                          NotificationBell → polling /api/notifications ✅
+
+═══════════════════════════════════════════════════════════════════
+Bouton "Relancer" (propriétaire)
+       │
+       ▼
+sendPaymentReminder() → INSERT invoice_reminders ✅
+       │
+       ▼
+Email au locataire → ❌ TODO (commentaire dans le code ligne 124)
+```
+
+### 8.6 Analyse cause racine
+
+**Pourquoi rien ne fonctionne malgré le code complet :**
+
+1. **Pas de scheduler** : `vercel.json` n'existe pas → aucun cron Vercel
+2. **Edge functions non déployées** : Instructions "À déployer avec supabase functions deploy" jamais exécutées
+3. **Configuration manquante** : `CRON_SECRET` absent de `.env.example`, `EMAIL_SERVICE_URL` non défini
+4. **Architecture fragmentée** : 3 systèmes de relance indépendants, aucun branché
+5. **Server action incomplète** : Le bouton "Relancer" appelle une server action avec un TODO au lieu de l'API route complète
+6. **Push serveur = TODO** : Le process-outbox a `console.log("Push notification à envoyer...")` au lieu du code réel
+
+### 8.7 Verdict
+
+| Couche | Note | Commentaire |
+|--------|------|-------------|
+| UI/UX (composants) | A | Design SOTA, bonne ergonomie |
+| Requêtes de lecture Supabase | A | Données réelles, temps réel fonctionnel |
+| Paiement Stripe | A | Intégration complète, quick-pay, cartes sauvées |
+| Notifications in-app (cloche) | B | Fonctionne mais dépend de données insérées manuellement |
+| Relance automatique | F | Code mort — aucun scheduler configuré |
+| Envoi d'emails de relance | F | Code complet mais jamais déclenché |
+| Push notifications serveur | F | Infrastructure VAPID prête, envoi = TODO |
+| SMS | F | Twilio intégré mais désactivé |
+| Détection impayé côté locataire | D | Le locataire ne voit jamais "Impayé", seulement "À régler" |
+
+---
+
 ## Annexe : Cartographie des fichiers
 
 ### Fichiers de détection des impayés
