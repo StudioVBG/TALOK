@@ -351,12 +351,12 @@ function InfoTab({ entity }: { entity: LegalEntity }) {
                 : null
             }
           />
-          {entity.nombre_parts && (
+          {entity.nombre_parts ? (
             <InfoRow
               label="Nombre de parts"
-              value={`${Number(entity.nombre_parts).toLocaleString("fr-FR")} parts`}
+              value={`${Number(entity.nombre_parts as number).toLocaleString("fr-FR")} parts`}
             />
-          )}
+          ) : null}
         </CardContent>
       </Card>
 

@@ -20,6 +20,11 @@ interface OwnerProfile {
   siret?: string;
   representant_nom?: string;
   representant_qualite?: string;
+  // Mentions légales obligatoires
+  capital_social?: number;
+  rcs_ville?: string;
+  rcs_numero?: string;
+  numero_tva?: string;
 }
 
 /**
@@ -42,6 +47,10 @@ export function ownerIdentityToProfile(identity: OwnerIdentity): OwnerProfile {
       ? `${identity.representative.firstName} ${identity.representative.lastName}`.trim()
       : undefined,
     representant_qualite: identity.representative?.role || undefined,
+    capital_social: identity.capitalSocial || undefined,
+    rcs_ville: identity.rcsVille || undefined,
+    rcs_numero: identity.rcsNumero || undefined,
+    numero_tva: identity.tvaNumber || undefined,
   };
 }
 

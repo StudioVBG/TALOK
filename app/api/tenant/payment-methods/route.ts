@@ -124,11 +124,12 @@ export async function POST(request: NextRequest) {
     // Fall back to frontend-provided type only for wallet sub-types (apple_pay, google_pay)
     // which Stripe reports as "card" but we distinguish in our database.
     const stripeType = pm.type;
-    const actualType: string = stripeType === "card"
+    type PaymentMethodType = "card" | "sepa_debit" | "apple_pay" | "google_pay" | "link";
+    const actualType = (stripeType === "card"
       ? (payload.type && ["apple_pay", "google_pay"].includes(payload.type) ? payload.type : "card")
       : stripeType === "sepa_debit"
         ? "sepa_debit"
-        : (payload.type || stripeType);
+        : (payload.type || stripeType)) as PaymentMethodType;
 
     const isCard = ["card", "apple_pay", "google_pay"].includes(actualType);
     const isSepa = actualType === "sepa_debit";
