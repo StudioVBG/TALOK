@@ -25,7 +25,7 @@ export default function RoleChoicePage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<"owner" | "tenant" | "provider" | "guarantor" | null>(null);
+  const [selectedRole, setSelectedRole] = useState<"owner" | "tenant" | "provider" | "guarantor" | "syndic" | null>(null);
 
   // Vérifier si on a un token d'invitation (rôle verrouillé)
   const inviteToken = searchParams.get("invite");
@@ -43,7 +43,7 @@ export default function RoleChoicePage() {
   }, [inviteToken, lockedRole, router]);
 
   const handleRoleChoice = async (
-    role: "owner" | "tenant" | "provider" | "guarantor",
+    role: "owner" | "tenant" | "provider" | "guarantor" | "syndic",
     options?: { propertyCode?: string }
   ) => {
     setLoading(true);
@@ -147,6 +147,14 @@ export default function RoleChoicePage() {
       features: ["Planning interventions", "Facturation automatique", "Suivi temps réel", "Paiements sécurisés"],
       gradient: "from-emerald-300/30 via-emerald-400/10 to-transparent",
     },
+    {
+      role: "syndic" as const,
+      title: "Syndic / Copropriété",
+      pitch: "Je gère ma copropriété avec Talok.",
+      icon: Building2,
+      features: ["Gestion des lots & tantièmes", "Assemblées générales", "Appels de fonds", "Suivi des charges"],
+      gradient: "from-violet-300/30 via-violet-400/10 to-transparent",
+    },
   ];
 
   return (
@@ -168,7 +176,7 @@ export default function RoleChoicePage() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {roleOptions.map((option, index) => {
             const Icon = option.icon;
             const isActive = selectedRole === option.role;

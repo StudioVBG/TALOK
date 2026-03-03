@@ -239,6 +239,18 @@ export class OnboardingService {
           "guarantor_financial",
           "guarantor_sign",
         ];
+      case "syndic":
+        return [
+          "role_choice",
+          "account_creation",
+          "email_verification",
+          "syndic_profile",
+          "syndic_site",
+          "syndic_units",
+          "syndic_tantiemes",
+          "syndic_owners",
+          "syndic_review",
+        ];
       default:
         return [];
     }

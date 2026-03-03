@@ -20,6 +20,7 @@ import confetti from "canvas-confetti";
 
 interface OnboardingData {
   site: {
+    id: string;
     name: string;
     type: string;
     address: string;
@@ -90,31 +91,62 @@ export default function OnboardingCompletePage() {
     setProgress(0);
 
     try {
-      // Simuler la création progressive
-      const steps = [
-        { label: "Création du site...", progress: 15 },
-        { label: "Création des bâtiments...", progress: 30 },
-        { label: "Création des lots...", progress: 50 },
-        { label: "Configuration des tantièmes...", progress: 70 },
-        { label: "Création des copropriétaires...", progress: 85 },
-        { label: "Envoi des invitations...", progress: 95 },
-        { label: "Finalisation...", progress: 100 },
-      ];
+      const siteId = (data.site as any)?.id;
 
-      for (const step of steps) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setProgress(step.progress);
+      if (!siteId) {
+        throw new Error("ID du site manquant. Veuillez reprendre depuis l'étape de création du site.");
       }
 
-      // TODO: Appeler les APIs pour créer les données en base
-      // const siteResponse = await fetch('/api/copro/sites', {
-      //   method: 'POST',
-      //   body: JSON.stringify(data.site)
-      // });
-      // ...
+      // Étape 1: Créer les lots en batch
+      setProgress(30);
+      if (data.units.length > 0) {
+        const unitsPayload = data.units.map((unit) => ({
+          site_id: siteId,
+          lot_number: unit.lot_number,
+          unit_type: unit.type || "appartement",
+          tantieme_general: data.tantiemes.find((t) => t.unit_id === unit.id)?.tantieme_general ?? 0,
+        }));
+
+        const unitsRes = await fetch("/api/copro/units", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ units: unitsPayload }),
+        });
+
+        if (!unitsRes.ok) {
+          const err = await unitsRes.json().catch(() => ({}));
+          throw new Error(err.error || "Erreur création des lots");
+        }
+      }
+
+      // Étape 2: Envoyer les invitations aux copropriétaires
+      setProgress(70);
+      const invitableOwners = data.owners.filter((o) => o.send_invite && o.email);
+      if (invitableOwners.length > 0) {
+        const invitesRes = await fetch("/api/copro/invites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            site_id: siteId,
+            invites: invitableOwners.map((owner) => ({
+              email: owner.email,
+              first_name: owner.first_name,
+              last_name: owner.last_name,
+              target_role: "coproprietaire_occupant",
+            })),
+            send_emails: true,
+          }),
+        });
+
+        if (!invitesRes.ok) {
+          console.error("Erreur envoi invitations (non bloquant)");
+        }
+      }
+
+      setProgress(100);
 
       // Nettoyer le localStorage
-      localStorage.removeItem('syndic_onboarding_profile');
+      localStorage.removeItem('syndic_profile');
       localStorage.removeItem('syndic_onboarding_site');
       localStorage.removeItem('syndic_onboarding_buildings');
       localStorage.removeItem('syndic_onboarding_units');
