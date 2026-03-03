@@ -58,6 +58,10 @@ export interface OwnerIdentity {
   tvaNumber: string | null;
   capitalSocial: number | null;
   registrationDate: string | null;
+  /** Ville du RCS (ex: "Paris") */
+  rcsVille: string | null;
+  /** Numéro RCS complet */
+  rcsNumero: string | null;
 
   // Adresse
   address: OwnerAddress;
@@ -151,7 +155,8 @@ function mapFiscalRegime(
 }
 
 /**
- * Construit le legalCaption selon le type d'entité
+ * Construit le legalCaption selon le type d'entité.
+ * Inclut les mentions légales obligatoires : capital, RCS, SIRET, représentant.
  */
 function buildLegalCaption(
   entityType: OwnerEntityType,
@@ -159,21 +164,64 @@ function buildLegalCaption(
   legalForm: string | null,
   representative: OwnerRepresentative | null,
   firstName: string,
-  lastName: string
+  lastName: string,
+  options?: {
+    capitalSocial?: number | null;
+    rcsVille?: string | null;
+    rcsNumero?: string | null;
+    siret?: string | null;
+    /** All current associates for indivision listing */
+    indivisaires?: Array<{ firstName: string; lastName: string }>;
+  }
 ): string {
   if (entityType === "individual") {
     return `${firstName} ${lastName}`.trim();
   }
 
   if (entityType === "company" && companyName) {
-    const prefix = legalForm ? `${legalForm} ${companyName}` : companyName;
-    if (representative) {
-      return `${prefix}, représentée par ${representative.firstName} ${representative.lastName}, ${representative.role}`;
+    const parts: string[] = [];
+
+    // Raison sociale avec forme juridique
+    parts.push(legalForm ? `${legalForm} ${companyName}` : companyName);
+
+    // Capital social (mention obligatoire pour SCI, SARL, SAS, etc.)
+    if (options?.capitalSocial) {
+      parts.push(`au capital de ${new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(options.capitalSocial)}`);
     }
-    return prefix;
+
+    // RCS (mention obligatoire pour sociétés commerciales)
+    if (options?.rcsVille) {
+      const rcs = options.rcsNumero
+        ? `RCS ${options.rcsVille} ${options.rcsNumero}`
+        : `RCS ${options.rcsVille}`;
+      parts.push(rcs);
+    }
+
+    // SIRET
+    if (options?.siret) {
+      parts.push(`SIRET ${options.siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, "$1 $2 $3 $4")}`);
+    }
+
+    let caption = parts.join(", ");
+
+    // Représentant légal
+    if (representative) {
+      caption += `, représentée par ${representative.firstName} ${representative.lastName}, ${representative.role}`;
+    }
+
+    return caption;
   }
 
   if (entityType === "indivision" && companyName) {
+    // List all indivisaires if available (legal obligation)
+    if (options?.indivisaires && options.indivisaires.length > 0) {
+      const names = options.indivisaires
+        .map((i) => `${i.firstName} ${i.lastName}`.trim())
+        .filter(Boolean);
+      if (names.length > 0) {
+        return `Indivision ${companyName} (${names.join(", ")})`;
+      }
+    }
     if (representative) {
       return `Indivision ${companyName}, représentée par ${representative.firstName} ${representative.lastName}`;
     }
@@ -312,35 +360,34 @@ async function resolveFromEntity(
 
   if (error || !entity) return null;
 
-  // Fetch gérant
-  const { data: associates } = await supabase
-    .from("entity_associates")
-    .select("nom, prenom, is_gerant, is_president")
-    .eq("legal_entity_id", entityId)
-    .eq("is_current", true)
-    .order("is_gerant", { ascending: false });
+  // ✅ Optimisation : exécuter associés + Stripe en parallèle (réduit N+1)
+  const ownerProfileId = (entity.owner_profile as Record<string, unknown>)
+    ?.profile_id as string | undefined;
 
+  const [associatesResult, stripeResult] = await Promise.all([
+    supabase
+      .from("entity_associates")
+      .select("nom, prenom, is_gerant, is_president")
+      .eq("legal_entity_id", entityId)
+      .eq("is_current", true)
+      .order("is_gerant", { ascending: false }),
+    ownerProfileId
+      ? supabase
+          .from("stripe_connect_accounts")
+          .select("stripe_account_id, payouts_enabled")
+          .eq("profile_id", ownerProfileId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const associates = associatesResult.data;
   const gerant =
     associates?.find((a: Record<string, unknown>) => a.is_gerant) ||
     associates?.find((a: Record<string, unknown>) => a.is_president);
 
-  // Fetch Stripe
-  const ownerProfileId = (entity.owner_profile as Record<string, unknown>)
-    ?.profile_id as string | undefined;
-  let stripeAccountId: string | null = null;
-  let stripePayoutsEnabled = false;
-
-  if (ownerProfileId) {
-    const { data: stripe } = await supabase
-      .from("stripe_connect_accounts")
-      .select("stripe_account_id, payouts_enabled")
-      .eq("profile_id", ownerProfileId)
-      .maybeSingle();
-
-    stripeAccountId =
-      (stripe?.stripe_account_id as string | null) ?? null;
-    stripePayoutsEnabled = (stripe?.payouts_enabled as boolean) ?? false;
-  }
+  const stripe = stripeResult.data as Record<string, unknown> | null;
+  const stripeAccountId = (stripe?.stripe_account_id as string | null) ?? null;
+  const stripePayoutsEnabled = (stripe?.payouts_enabled as boolean) ?? false;
 
   const ownerProfile = entity.owner_profile as Record<string, unknown> | null;
   const profile = (ownerProfile?.profile ?? null) as Record<
@@ -364,13 +411,34 @@ async function resolveFromEntity(
   const companyName = (entity.nom as string) || null;
   const legalForm = (entity.forme_juridique as string) || null;
 
+  // Build indivisaires list for indivision entities (legal obligation)
+  const indivisaires =
+    entityType === "indivision" && associates
+      ? (associates as Array<Record<string, unknown>>)
+          .filter((a) => a.is_current !== false)
+          .map((a) => ({
+            firstName: (a.prenom as string) || "",
+            lastName: (a.nom as string) || "",
+          }))
+      : undefined;
+
+  const rcsVille = (entity.rcs_ville as string) || null;
+  const rcsNumero = (entity.rcs_numero as string) || null;
+
   const legalCaption = buildLegalCaption(
     entityType,
     companyName,
     legalForm,
     representative,
     firstName,
-    lastName
+    lastName,
+    {
+      capitalSocial: entity.capital_social as number | null,
+      rcsVille,
+      rcsNumero,
+      siret: (entity.siret as string) || null,
+      indivisaires,
+    }
   );
 
   const identity: OwnerIdentity = {
@@ -400,6 +468,8 @@ async function resolveFromEntity(
     tvaNumber: (entity.numero_tva as string) || null,
     capitalSocial: (entity.capital_social as number) || null,
     registrationDate: (entity.date_creation as string) || null,
+    rcsVille,
+    rcsNumero,
 
     address: {
       street: (entity.adresse_siege as string) || "",
@@ -503,34 +573,32 @@ async function resolveFromOwnerProfile(
   supabase: SupabaseClient,
   profileId: string
 ): Promise<OwnerIdentity> {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, prenom, nom, email, telephone, date_naissance")
-    .eq("id", profileId)
-    .single();
+  // ✅ Optimisation : exécuter les 3 requêtes en parallèle
+  const [profileResult, ownerProfileResult, stripeResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, prenom, nom, email, telephone, date_naissance")
+      .eq("id", profileId)
+      .single(),
+    supabase
+      .from("owner_profiles")
+      .select(
+        "type, raison_sociale, forme_juridique, siret, tva, iban, adresse_facturation, adresse_siege, representant_nom, representant_qualite"
+      )
+      .eq("profile_id", profileId)
+      .single(),
+    supabase
+      .from("stripe_connect_accounts")
+      .select("stripe_account_id, payouts_enabled")
+      .eq("profile_id", profileId)
+      .maybeSingle(),
+  ]);
 
-  const { data: ownerProfile } = await supabase
-    .from("owner_profiles")
-    .select(
-      "type, raison_sociale, forme_juridique, siret, tva, iban, adresse_facturation, adresse_siege, representant_nom, representant_qualite"
-    )
-    .eq("profile_id", profileId)
-    .single();
-
-  // Stripe
-  let stripeAccountId: string | null = null;
-  let stripePayoutsEnabled = false;
-  const { data: stripe } = await supabase
-    .from("stripe_connect_accounts")
-    .select("stripe_account_id, payouts_enabled")
-    .eq("profile_id", profileId)
-    .maybeSingle();
-
-  if (stripe) {
-    stripeAccountId =
-      (stripe.stripe_account_id as string | null) ?? null;
-    stripePayoutsEnabled = (stripe.payouts_enabled as boolean) ?? false;
-  }
+  const profile = profileResult.data;
+  const ownerProfile = ownerProfileResult.data;
+  const stripe = stripeResult.data as Record<string, unknown> | null;
+  const stripeAccountId = (stripe?.stripe_account_id as string | null) ?? null;
+  const stripePayoutsEnabled = (stripe?.payouts_enabled as boolean) ?? false;
 
   const firstName = (profile?.prenom as string) || "";
   const lastName = (profile?.nom as string) || "";
@@ -602,6 +670,8 @@ async function resolveFromOwnerProfile(
     tvaNumber: (ownerProfile?.tva as string) || null,
     capitalSocial: null,
     registrationDate: null,
+    rcsVille: null,
+    rcsNumero: null,
 
     address: {
       street: addressStr,
@@ -657,6 +727,8 @@ function buildEmptyIdentity(): OwnerIdentity {
     tvaNumber: null,
     capitalSocial: null,
     registrationDate: null,
+    rcsVille: null,
+    rcsNumero: null,
     address: { street: "", postalCode: "", city: "", country: "France" },
     iban: null,
     bic: null,

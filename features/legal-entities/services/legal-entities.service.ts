@@ -92,14 +92,17 @@ export async function getLegalEntitiesWithStats(
 ): Promise<LegalEntityWithStats[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc("get_entity_stats", {
-    p_owner_profile_id: ownerProfileId,
-  });
+  // ✅ Optimisation : exécuter les 2 requêtes en parallèle au lieu de séquentiellement
+  const [statsResult, entities] = await Promise.all([
+    supabase.rpc("get_entity_stats", { p_owner_profile_id: ownerProfileId }),
+    getLegalEntities(ownerProfileId),
+  ]);
 
-  if (error) {
-    console.error("Error fetching entity stats:", error);
-    // Fallback: récupérer les entités sans stats
-    const entities = await getLegalEntities(ownerProfileId);
+  const { data: statsData, error: statsError } = statsResult;
+
+  if (statsError) {
+    console.error("Error fetching entity stats:", statsError);
+    // Fallback: retourner les entités sans stats
     return entities.map((e) => ({
       ...e,
       properties_count: 0,
@@ -110,19 +113,24 @@ export async function getLegalEntitiesWithStats(
     }));
   }
 
-  // Récupérer les entités complètes
-  const entities = await getLegalEntities(ownerProfileId);
+  // Indexer les stats par entity_id pour un lookup O(1) au lieu de O(n)
+  const statsById: Record<string, Record<string, unknown>> = {};
+  if (Array.isArray(statsData)) {
+    for (const s of statsData as Array<Record<string, unknown>>) {
+      statsById[s.entity_id as string] = s;
+    }
+  }
 
   // Fusionner les stats
   return entities.map((entity) => {
-    const stats = (data as any[])?.find((s: Record<string, unknown>) => s.entity_id === entity.id);
+    const stats = statsById[entity.id];
     return {
       ...entity,
-      properties_count: stats?.properties_count ?? 0,
-      total_value: stats?.total_value ?? 0,
-      monthly_rent: stats?.monthly_rent ?? 0,
-      active_leases: stats?.active_leases ?? 0,
-      associates_count: stats?.associates_count ?? 0,
+      properties_count: (stats?.properties_count as number) ?? 0,
+      total_value: (stats?.total_value as number) ?? 0,
+      monthly_rent: (stats?.monthly_rent as number) ?? 0,
+      active_leases: (stats?.active_leases as number) ?? 0,
+      associates_count: (stats?.associates_count as number) ?? 0,
     };
   });
 }
@@ -177,30 +185,28 @@ export async function createLegalEntity(
 }
 
 /**
- * Met à jour une entité juridique
+ * Met à jour une entité juridique.
+ * ownerProfileId est requis pour garantir la vérification d'ownership côté serveur,
+ * même si la RLS Supabase protège déjà. Cela prévient les accès croisés
+ * en cas d'appel via un service client bypass-RLS.
  */
 export async function updateLegalEntity(
   entityId: string,
   data: UpdateLegalEntityDTO,
-  ownerProfileId?: string
+  ownerProfileId: string
 ): Promise<LegalEntity> {
   const supabase = await createClient();
 
-  // Construire la requête avec filtre ownership si fourni
-  let query = supabase
+  const { data: entity, error } = await supabase
     .from("legal_entities")
     .update({
       ...data,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", entityId);
-
-  // Sécurité : filtrer par owner_profile_id si fourni
-  if (ownerProfileId) {
-    query = query.eq("owner_profile_id", ownerProfileId);
-  }
-
-  const { data: entity, error } = await query.select().single();
+    .eq("id", entityId)
+    .eq("owner_profile_id", ownerProfileId)
+    .select()
+    .single();
 
   if (error) {
     console.error("Error updating legal entity:", error);
@@ -235,23 +241,19 @@ export async function deactivateLegalEntity(
 }
 
 /**
- * Supprime définitivement une entité juridique
- * (uniquement si pas de biens associés)
+ * Supprime définitivement une entité juridique.
+ * Utilise canDeleteEntity pour vérifier TOUTES les dépendances
+ * (biens, property_ownership, baux actifs, factures impayées).
  */
 export async function deleteLegalEntity(entityId: string, ownerProfileId?: string): Promise<void> {
-  const supabase = await createClient();
+  // Vérifier toutes les dépendances via canDeleteEntity
+  const { canDelete, reason } = await canDeleteEntity(entityId);
 
-  // Vérifier qu'il n'y a pas de biens associés
-  const { count } = await supabase
-    .from("properties")
-    .select("id", { count: "exact", head: true })
-    .eq("legal_entity_id", entityId);
-
-  if (count && count > 0) {
-    throw new Error(
-      "Impossible de supprimer cette entité: des biens y sont associés"
-    );
+  if (!canDelete) {
+    throw new Error(reason || "Impossible de supprimer cette entité: des dépendances existent");
   }
+
+  const supabase = await createClient();
 
   let query = supabase
     .from("legal_entities")

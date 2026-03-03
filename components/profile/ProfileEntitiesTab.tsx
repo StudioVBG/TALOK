@@ -22,22 +22,8 @@ import { Button } from "@/components/ui/button";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { useAuth } from "@/lib/hooks/use-auth";
 
-const ENTITY_TYPE_LABELS: Record<string, string> = {
-  particulier: "Personnel",
-  sci_ir: "SCI IR",
-  sci_is: "SCI IS",
-  sarl: "SARL",
-  sarl_famille: "SARL fam.",
-  eurl: "EURL",
-  sas: "SAS",
-  sasu: "SASU",
-  sa: "SA",
-  snc: "SNC",
-  indivision: "Indivision",
-  demembrement_usufruit: "Usufruit",
-  demembrement_nue_propriete: "Nue-prop.",
-  holding: "Holding",
-};
+// Use shared labels from entity-constants (single source of truth)
+import { ENTITY_TYPE_LABELS_SHORT as ENTITY_TYPE_LABELS } from "@/lib/entities/entity-constants";
 
 export function ProfileEntitiesTab() {
   const { entities, isLoading, fetchEntities, lastFetchedAt } = useEntityStore();

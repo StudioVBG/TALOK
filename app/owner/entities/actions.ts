@@ -12,6 +12,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { z } from "zod";
 import { canDeleteEntity } from "@/features/legal-entities/services/legal-entities.service";
 import { isValidSiret, siretToSiren } from "@/lib/entities/siret-validation";
+import { isValidIban } from "@/lib/entities/iban-validation";
 
 // ============================================
 // SCHEMAS
@@ -73,9 +74,10 @@ const createEntitySchema = z.object({
       (val) => {
         if (!val) return true;
         const clean = val.replace(/\s/g, "");
-        return clean.length >= 15 && clean.length <= 34;
+        if (clean.length < 15 || clean.length > 34) return false;
+        return isValidIban(clean);
       },
-      { message: "L'IBAN doit contenir entre 15 et 34 caractères" }
+      { message: "L'IBAN est invalide (format ou clé de contrôle ISO 13616 incorrecte)" }
     ),
   bic: z.string().optional(),
   banque_nom: z.string().optional(),
