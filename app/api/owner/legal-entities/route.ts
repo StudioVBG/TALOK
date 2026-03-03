@@ -49,18 +49,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Vérifier si owner_profile existe
+    // Garantir que owner_profiles existe (auto-provisionnement si manquant)
     const { data: ownerProfile } = await supabase
       .from("owner_profiles")
       .select("profile_id")
       .eq("profile_id", profile.id)
-      .single();
+      .maybeSingle();
 
     if (!ownerProfile) {
-      return NextResponse.json(
-        { error: "Profil propriétaire non trouvé" },
-        { status: 404 }
-      );
+      const { getServiceClient } = await import("@/lib/supabase/service-client");
+      const serviceClient = getServiceClient();
+      await serviceClient
+        .from("owner_profiles")
+        .upsert(
+          { profile_id: profile.id, type: "particulier" },
+          { onConflict: "profile_id" }
+        );
     }
 
     // Options de filtrage
