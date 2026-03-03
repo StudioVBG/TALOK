@@ -44,15 +44,17 @@ import { isDomTomPostalCode, getTvaRate } from "@/lib/entities/resolveOwnerIdent
 import { useEntityStore } from "@/stores/useEntityStore";
 import { deleteEntity, deactivateEntity } from "../actions";
 import { getEntityTypeLabel } from "@/lib/entities/entity-constants";
+import { maskIban, formatIban } from "@/lib/entities/siret-validation";
 import { createClient } from "@/lib/supabase/client";
+import type { LegalEntity, EntityAssociate } from "@/lib/types/legal-entity";
 
 // ============================================
 // TYPES
 // ============================================
 
 interface EntityDetailClientProps {
-  entity: Record<string, unknown>;
-  associates: Record<string, unknown>[];
+  entity: LegalEntity;
+  associates: EntityAssociate[];
 }
 
 type TabId = "info" | "patrimoine" | "bank" | "stripe" | "associates" | "documents";
@@ -85,12 +87,12 @@ export function EntityDetailClient({
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      const result = await deleteEntity({ id: entity.id as string });
+      const result = await deleteEntity({ id: entity.id });
       if (result.success) {
-        removeEntity(entity.id as string);
+        removeEntity(entity.id);
         toast({
           title: "Entité supprimée",
-          description: `${entity.nom as string} a été supprimée.`,
+          description: `${entity.nom} a été supprimée.`,
         });
         router.push("/owner/entities");
       } else {
@@ -110,12 +112,12 @@ export function EntityDetailClient({
   const handleDeactivate = async () => {
     setIsDeleting(true);
     try {
-      const result = await deactivateEntity({ id: entity.id as string });
+      const result = await deactivateEntity({ id: entity.id });
       if (result.success) {
-        removeEntity(entity.id as string);
+        removeEntity(entity.id);
         toast({
           title: "Entité désactivée",
-          description: `${entity.nom as string} a été désactivée. Elle n'apparaîtra plus dans les sélecteurs.`,
+          description: `${entity.nom} a été désactivée. Elle n'apparaîtra plus dans les sélecteurs.`,
         });
         router.push("/owner/entities");
       } else {
@@ -136,10 +138,10 @@ export function EntityDetailClient({
     }
   };
 
-  const entityType = (entity.entity_type as string) || "sci_ir";
+  const entityType = entity.entity_type || "sci_ir";
   const typeLabel = getEntityTypeLabel(entityType);
-  const siret = entity.siret as string | null;
-  const postalCode = entity.code_postal_siege as string | null;
+  const siret = entity.siret;
+  const postalCode = entity.code_postal_siege;
   const isDom = isDomTomPostalCode(postalCode);
 
   return (
@@ -160,20 +162,20 @@ export function EntityDetailClient({
               className="h-12 w-12 rounded-lg flex items-center justify-center shrink-0"
               style={{
                 backgroundColor: entity.couleur
-                  ? `${entity.couleur as string}20`
+                  ? `${entity.couleur}20`
                   : "hsl(var(--muted))",
               }}
             >
               <Building2
                 className="h-6 w-6"
                 style={{
-                  color: (entity.couleur as string) || undefined,
+                  color: entity.couleur || undefined,
                 }}
               />
             </div>
             <div>
               <h1 className="text-2xl font-bold">
-                {entity.nom as string}
+                {entity.nom}
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="secondary">{typeLabel}</Badge>
@@ -216,7 +218,7 @@ export function EntityDetailClient({
                       </>
                     ) : (
                       <>
-                        Vous êtes sur le point de supprimer <strong>{entity.nom as string}</strong>.
+                        Vous êtes sur le point de supprimer <strong>{entity.nom}</strong>.
                         Cette action est irréversible. Les associés liés seront également supprimés.
                         Si l&apos;entité possède encore des biens ou baux actifs, la suppression sera refusée.
                       </>
@@ -296,14 +298,14 @@ export function EntityDetailClient({
       <div>
         {activeTab === "info" && <InfoTab entity={entity} />}
         {activeTab === "patrimoine" && (
-          <PatrimoineTab entityId={entity.id as string} entityType={entityType} />
+          <PatrimoineTab entityId={entity.id} entityType={entityType} />
         )}
         {activeTab === "bank" && <BankTab entity={entity} />}
         {activeTab === "stripe" && <StripeTab />}
         {activeTab === "associates" && (
           <AssociatesTab associates={associates} />
         )}
-        {activeTab === "documents" && <DocumentsTab entityId={entity.id as string} />}
+        {activeTab === "documents" && <DocumentsTab entityId={entity.id} />}
       </div>
     </div>
   );
@@ -313,7 +315,7 @@ export function EntityDetailClient({
 // TAB COMPONENTS
 // ============================================
 
-function InfoTab({ entity }: { entity: Record<string, unknown> }) {
+function InfoTab({ entity }: { entity: LegalEntity }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Card>
@@ -321,14 +323,14 @@ function InfoTab({ entity }: { entity: Record<string, unknown> }) {
           <CardTitle className="text-base">Identité</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <InfoRow label="Raison sociale" value={entity.nom as string} />
+          <InfoRow label="Raison sociale" value={entity.nom} />
           <InfoRow
             label="Forme juridique"
-            value={entity.forme_juridique as string}
+            value={entity.forme_juridique}
           />
           <InfoRow
             label="Type d'entité"
-            value={getEntityTypeLabel((entity.entity_type as string) ?? "")}
+            value={getEntityTypeLabel(entity.entity_type ?? "")}
           />
           <InfoRow
             label="Régime fiscal"
@@ -338,7 +340,7 @@ function InfoTab({ entity }: { entity: Record<string, unknown> }) {
                 is: "Impôt sur les Sociétés (IS)",
                 ir_option_is: "IR avec option IS",
                 is_option_ir: "IS avec option IR",
-              }[(entity.regime_fiscal as string) ?? ""] ?? (entity.regime_fiscal as string)
+              }[entity.regime_fiscal ?? ""] ?? entity.regime_fiscal
             }
           />
           <InfoRow
@@ -363,13 +365,13 @@ function InfoTab({ entity }: { entity: Record<string, unknown> }) {
           <CardTitle className="text-base">Immatriculation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <InfoRow label="SIREN" value={entity.siren as string} />
-          <InfoRow label="SIRET" value={entity.siret as string} />
-          <InfoRow label="RCS" value={entity.rcs_ville as string} />
-          <InfoRow label="N° TVA" value={entity.numero_tva as string} />
+          <InfoRow label="SIREN" value={entity.siren} />
+          <InfoRow label="SIRET" value={entity.siret} />
+          <InfoRow label="RCS" value={entity.rcs_ville} />
+          <InfoRow label="N° TVA" value={entity.numero_tva} />
           <InfoRow
             label="Date de création"
-            value={entity.date_creation as string}
+            value={entity.date_creation}
           />
         </CardContent>
       </Card>
@@ -381,21 +383,23 @@ function InfoTab({ entity }: { entity: Record<string, unknown> }) {
         <CardContent className="space-y-3">
           <InfoRow
             label="Adresse"
-            value={entity.adresse_siege as string}
+            value={entity.adresse_siege}
           />
           <InfoRow
             label="Code postal"
-            value={entity.code_postal_siege as string}
+            value={entity.code_postal_siege}
           />
-          <InfoRow label="Ville" value={entity.ville_siege as string} />
+          <InfoRow label="Ville" value={entity.ville_siege} />
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function BankTab({ entity }: { entity: Record<string, unknown> }) {
-  const hasIban = !!(entity.iban as string);
+function BankTab({ entity }: { entity: LegalEntity }) {
+  const [showIban, setShowIban] = useState(false);
+  const hasIban = !!entity.iban;
+  const ibanRaw = entity.iban || "";
 
   return (
     <Card>
@@ -405,15 +409,25 @@ function BankTab({ entity }: { entity: Record<string, unknown> }) {
       <CardContent>
         {hasIban ? (
           <div className="space-y-3">
-            <InfoRow
-              label="IBAN"
-              value={entity.iban as string}
-              mono
-            />
-            <InfoRow label="BIC" value={entity.bic as string} mono />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">IBAN</p>
+                <p className="font-mono text-sm mt-0.5">
+                  {showIban ? formatIban(ibanRaw) : maskIban(ibanRaw)}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowIban(!showIban)}
+              >
+                {showIban ? "Masquer" : "Afficher"}
+              </Button>
+            </div>
+            <InfoRow label="BIC" value={entity.bic} mono />
             <InfoRow
               label="Banque"
-              value={entity.banque_nom as string}
+              value={entity.banque_nom}
             />
           </div>
         ) : (
@@ -452,7 +466,7 @@ function StripeTab() {
 function AssociatesTab({
   associates,
 }: {
-  associates: Record<string, unknown>[];
+  associates: EntityAssociate[];
 }) {
   if (associates.length === 0) {
     return (
@@ -479,7 +493,7 @@ function AssociatesTab({
         <div className="space-y-3">
           {associates.map((a) => (
             <div
-              key={a.id as string}
+              key={a.id}
               className="flex items-center gap-3 p-3 rounded-lg border"
             >
               <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
@@ -487,11 +501,11 @@ function AssociatesTab({
               </div>
               <div className="flex-1">
                 <p className="font-medium text-sm">
-                  {[String(a.prenom ?? ""), String(a.nom ?? "")].filter(Boolean).join(" ") ||
+                  {[a.prenom ?? "", a.nom ?? ""].filter(Boolean).join(" ") ||
                     "Associé"}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  {Boolean(a.is_gerant) && (
+                  {a.is_gerant && (
                     <Badge variant="secondary" className="text-xs">
                       <Star className="h-3 w-3 mr-1" />
                       Gérant
@@ -499,7 +513,7 @@ function AssociatesTab({
                   )}
                   {a.pourcentage_capital != null && (
                     <span className="text-xs text-muted-foreground">
-                      {Number(a.pourcentage_capital)}% du capital
+                      {a.pourcentage_capital}% du capital
                     </span>
                   )}
                 </div>
@@ -534,22 +548,26 @@ function DocumentsTab({ entityId }: { entityId: string }) {
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(true);
   const [isLoadingAudit, setIsLoadingAudit] = useState(true);
+  const [docsError, setDocsError] = useState<string | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchData = () => {
     async function fetchDocuments() {
       setIsLoadingDocs(true);
+      setDocsError(null);
       try {
         const supabase = createClient();
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("documents")
           .select("id, type, nom, created_at, property_id, lease_id, url")
           .eq("entity_id", entityId)
           .order("created_at", { ascending: false })
           .limit(50);
 
+        if (error) throw error;
         setDocuments((data || []) as EntityDocument[]);
       } catch {
-        // silently fail - documents tab just shows empty
+        setDocsError("Impossible de charger les documents");
       } finally {
         setIsLoadingDocs(false);
       }
@@ -557,18 +575,20 @@ function DocumentsTab({ entityId }: { entityId: string }) {
 
     async function fetchAuditLog() {
       setIsLoadingAudit(true);
+      setAuditError(null);
       try {
         const supabase = createClient();
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("entity_audit_log")
           .select("id, action, changed_fields, created_at")
           .eq("entity_id", entityId)
           .order("created_at", { ascending: false })
           .limit(20);
 
+        if (error) throw error;
         setAuditLog((data || []) as AuditLogEntry[]);
       } catch {
-        // silently fail
+        setAuditError("Impossible de charger l'historique");
       } finally {
         setIsLoadingAudit(false);
       }
@@ -576,7 +596,11 @@ function DocumentsTab({ entityId }: { entityId: string }) {
 
     fetchDocuments();
     fetchAuditLog();
-  }, [entityId]);
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [entityId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ACTION_LABELS: Record<string, string> = {
     create: "Cr\u00e9ation",
@@ -613,6 +637,14 @@ function DocumentsTab({ entityId }: { entityId: string }) {
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
               ))}
+            </div>
+          ) : docsError ? (
+            <div className="text-center py-6">
+              <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-3" />
+              <p className="text-sm text-destructive font-medium">{docsError}</p>
+              <Button variant="ghost" size="sm" className="mt-2" onClick={fetchData}>
+                Réessayer
+              </Button>
             </div>
           ) : documents.length === 0 ? (
             <div className="text-center py-6">
@@ -663,6 +695,13 @@ function DocumentsTab({ entityId }: { entityId: string }) {
               {[1, 2].map((i) => (
                 <div key={i} className="h-10 rounded-lg bg-muted animate-pulse" />
               ))}
+            </div>
+          ) : auditError ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-destructive">{auditError}</p>
+              <Button variant="ghost" size="sm" className="mt-2" onClick={fetchData}>
+                Réessayer
+              </Button>
             </div>
           ) : auditLog.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">

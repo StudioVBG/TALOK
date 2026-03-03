@@ -15,7 +15,7 @@ export interface Bailleur {
   ville: string;
   telephone?: string;
   email?: string;
-  type: 'particulier' | 'societe';
+  type: 'particulier' | 'societe' | 'indivision' | 'demembrement';
   date_naissance?: string;
   lieu_naissance?: string;
   // Si société
@@ -23,11 +23,30 @@ export interface Bailleur {
   siret?: string;
   representant_nom?: string;
   representant_qualite?: string;
+  forme_juridique?: string;
+  capital_social?: number;
+  rcs_ville?: string;
+  rcs_numero?: string;
+  numero_tva?: string;
+  // Si indivision — liste des indivisaires (art. 815-3 Code civil)
+  indivisaires?: Indivisaire[];
+  // Si démembrement
+  type_demembrement?: 'usufruit' | 'nue_propriete';
   // Si mandataire
   est_mandataire: boolean;
   mandataire_nom?: string;
   mandataire_adresse?: string;
   mandataire_siret?: string;
+}
+
+export interface Indivisaire {
+  nom: string;
+  prenom: string;
+  quote_part_numerateur: number;
+  quote_part_denominateur: number;
+  adresse?: string;
+  date_naissance?: string;
+  lieu_naissance?: string;
 }
 
 export interface Locataire {

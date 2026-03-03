@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { z } from "zod";
 import { canDeleteEntity } from "@/features/legal-entities/services/legal-entities.service";
-import { isValidSiret, siretToSiren } from "@/lib/entities/siret-validation";
+import { isValidSiret, siretToSiren, isValidIban } from "@/lib/entities/siret-validation";
 
 // ============================================
 // SCHEMAS
@@ -33,6 +33,8 @@ const entityTypeSchema = z.enum([
   "demembrement_usufruit",
   "demembrement_nue_propriete",
   "holding",
+  "micro_entrepreneur",
+  "association",
 ]);
 
 const createEntitySchema = z.object({
@@ -72,10 +74,9 @@ const createEntitySchema = z.object({
     .refine(
       (val) => {
         if (!val) return true;
-        const clean = val.replace(/\s/g, "");
-        return clean.length >= 15 && clean.length <= 34;
+        return isValidIban(val);
       },
-      { message: "L'IBAN doit contenir entre 15 et 34 caractères" }
+      { message: "L'IBAN est invalide (vérification MOD-97 échouée)" }
     ),
   bic: z.string().optional(),
   banque_nom: z.string().optional(),
@@ -412,13 +413,7 @@ export async function deleteEntity(
       };
     }
 
-    // Delete associates first (cascade would handle this but being explicit)
-    await supabase
-      .from("entity_associates")
-      .delete()
-      .eq("legal_entity_id", id);
-
-    // Delete entity
+    // Delete entity (CASCADE on FK handles associate cleanup automatically)
     const { error } = await supabase
       .from("legal_entities")
       .delete()

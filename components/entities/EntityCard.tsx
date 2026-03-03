@@ -16,9 +16,11 @@ import { ENTITY_TYPE_LABELS, getEntityIcon } from "@/lib/entities/entity-constan
 interface EntityCardProps {
   entity: LegalEntitySummary;
   isActive?: boolean;
+  /** Compact mode for profile tab — hides stats and status rows */
+  compact?: boolean;
 }
 
-export function EntityCard({ entity, isActive }: EntityCardProps) {
+export function EntityCard({ entity, isActive, compact }: EntityCardProps) {
   const Icon = getEntityIcon(entity.entityType);
   const typeLabel = ENTITY_TYPE_LABELS[entity.entityType] || entity.entityType;
   const hasWarnings = !entity.hasIban || !entity.siret;
@@ -30,11 +32,14 @@ export function EntityCard({ entity, isActive }: EntityCardProps) {
         isActive && "ring-2 ring-primary"
       )}
     >
-      <CardContent className="p-5">
+      <CardContent className={cn("p-5", compact && "p-4")}>
         {/* Header */}
-        <div className="flex items-start gap-3 mb-4">
+        <div className={cn("flex items-start gap-3", !compact && "mb-4")}>
           <div
-            className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0"
+            className={cn(
+              "rounded-lg flex items-center justify-center shrink-0",
+              compact ? "h-8 w-8" : "h-10 w-10"
+            )}
             style={{
               backgroundColor: entity.couleur
                 ? `${entity.couleur}20`
@@ -42,13 +47,15 @@ export function EntityCard({ entity, isActive }: EntityCardProps) {
             }}
           >
             <Icon
-              className="h-5 w-5"
+              className={cn(compact ? "h-4 w-4" : "h-5 w-5")}
               style={{ color: entity.couleur || undefined }}
             />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base truncate">{entity.nom}</h3>
-            <p className="text-sm text-muted-foreground">{typeLabel}</p>
+            <h3 className={cn("font-semibold truncate", compact ? "text-sm" : "text-base")}>
+              {entity.nom}
+            </h3>
+            <p className="text-xs text-muted-foreground">{typeLabel}</p>
           </div>
           {entity.isDefault && (
             <Badge variant="secondary" className="text-xs shrink-0">
@@ -57,58 +64,62 @@ export function EntityCard({ entity, isActive }: EntityCardProps) {
           )}
         </div>
 
-        {/* Info */}
-        <div className="space-y-2 mb-4">
-          {entity.siret && (
-            <p className="text-xs text-muted-foreground font-mono">
-              SIRET {entity.siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, "$1 $2 $3 $4")}
-            </p>
-          )}
-          {entity.villeSiege && (
-            <p className="text-xs text-muted-foreground">
-              {entity.codePostalSiege} {entity.villeSiege}
-            </p>
-          )}
-        </div>
+        {!compact && (
+          <>
+            {/* Info */}
+            <div className="space-y-2 mb-4">
+              {entity.siret && (
+                <p className="text-xs text-muted-foreground font-mono">
+                  SIRET {entity.siret.replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, "$1 $2 $3 $4")}
+                </p>
+              )}
+              {entity.villeSiege && (
+                <p className="text-xs text-muted-foreground">
+                  {entity.codePostalSiege} {entity.villeSiege}
+                </p>
+              )}
+            </div>
 
-        {/* Stats */}
-        <div className="flex gap-3 mb-4">
-          <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
-            <p className="text-lg font-bold">{entity.propertyCount}</p>
-            <p className="text-xs text-muted-foreground">
-              bien{entity.propertyCount > 1 ? "s" : ""}
-            </p>
-          </div>
-          <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
-            <p className="text-lg font-bold">{entity.activeLeaseCount}</p>
-            <p className="text-xs text-muted-foreground">
-              ba{entity.activeLeaseCount > 1 ? "ux" : "il"}
-            </p>
-          </div>
-        </div>
+            {/* Stats */}
+            <div className="flex gap-3 mb-4">
+              <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
+                <p className="text-lg font-bold">{entity.propertyCount}</p>
+                <p className="text-xs text-muted-foreground">
+                  bien{entity.propertyCount > 1 ? "s" : ""}
+                </p>
+              </div>
+              <div className="flex-1 bg-muted/50 rounded-md p-2 text-center">
+                <p className="text-lg font-bold">{entity.activeLeaseCount}</p>
+                <p className="text-xs text-muted-foreground">
+                  ba{entity.activeLeaseCount > 1 ? "ux" : "il"}
+                </p>
+              </div>
+            </div>
 
-        {/* Status indicators */}
-        <div className="space-y-1.5 mb-4">
-          <StatusRow
-            label="IBAN"
-            ok={entity.hasIban}
-            okLabel="Configuré"
-            koLabel="Non configuré"
-          />
-          <StatusRow
-            label="SIRET"
-            ok={!!entity.siret}
-            okLabel="Renseigné"
-            koLabel="Manquant"
-          />
-        </div>
+            {/* Status indicators */}
+            <div className="space-y-1.5 mb-4">
+              <StatusRow
+                label="IBAN"
+                ok={entity.hasIban}
+                okLabel="Configuré"
+                koLabel="Non configuré"
+              />
+              <StatusRow
+                label="SIRET"
+                ok={!!entity.siret}
+                okLabel="Renseigné"
+                koLabel="Manquant"
+              />
+            </div>
 
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" asChild>
-            <Link href={`/owner/entities/${entity.id}`}>Gérer</Link>
-          </Button>
-        </div>
+            {/* Actions */}
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1" asChild>
+                <Link href={`/owner/entities/${entity.id}`}>Gérer</Link>
+              </Button>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

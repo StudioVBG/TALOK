@@ -84,3 +84,72 @@ export function formatSiren(siren: string): string {
   const digits = siren.replace(/\D/g, "");
   return digits.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
 }
+
+// ============================================
+// IBAN VALIDATION (ISO 7064 / MOD-97-10)
+// ============================================
+
+/**
+ * Valide un IBAN selon la norme ISO 13616 (MOD-97-10).
+ *
+ * Étapes :
+ * 1. Retirer les espaces, mettre en majuscules
+ * 2. Vérifier la longueur (15-34) et le format (2 lettres + 2 chiffres + alphanum)
+ * 3. Déplacer les 4 premiers caractères à la fin
+ * 4. Remplacer les lettres par leur valeur numérique (A=10, B=11, ..., Z=35)
+ * 5. Calculer le modulo 97 — doit être égal à 1
+ */
+export function isValidIban(iban: string): boolean {
+  const clean = iban.replace(/\s/g, "").toUpperCase();
+
+  // Longueur: 15-34 caractères
+  if (clean.length < 15 || clean.length > 34) return false;
+
+  // Format: 2 lettres (pays) + 2 chiffres (clé) + reste alphanumérique
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(clean)) return false;
+
+  // Déplacer les 4 premiers caractères à la fin
+  const rearranged = clean.substring(4) + clean.substring(0, 4);
+
+  // Convertir les lettres en chiffres (A=10, B=11, ..., Z=35)
+  let numericStr = "";
+  for (const ch of rearranged) {
+    const code = ch.charCodeAt(0);
+    if (code >= 65 && code <= 90) {
+      // A-Z → 10-35
+      numericStr += (code - 55).toString();
+    } else {
+      numericStr += ch;
+    }
+  }
+
+  // Calculer MOD-97 en morceaux (pour éviter les dépassements de Number)
+  let remainder = 0;
+  for (let i = 0; i < numericStr.length; i += 7) {
+    const chunk = numericStr.substring(i, i + 7);
+    remainder = parseInt(remainder.toString() + chunk, 10) % 97;
+  }
+
+  return remainder === 1;
+}
+
+/**
+ * Formate un IBAN pour l'affichage : FR76 1234 5678 9012 3456 7890 123
+ */
+export function formatIban(iban: string): string {
+  const clean = iban.replace(/\s/g, "").toUpperCase();
+  return clean.replace(/(.{4})/g, "$1 ").trim();
+}
+
+/**
+ * Masque un IBAN pour l'affichage sécurisé : FR76 •••• •••• •••• •••• •••• 123
+ */
+export function maskIban(iban: string): string {
+  const clean = iban.replace(/\s/g, "").toUpperCase();
+  if (clean.length < 7) return "••••";
+  const prefix = clean.substring(0, 4);
+  const suffix = clean.substring(clean.length - 3);
+  const maskedMiddle = "•".repeat(clean.length - 7);
+  const full = prefix + maskedMiddle + suffix;
+  return full.replace(/(.{4})/g, "$1 ").trim();
+}

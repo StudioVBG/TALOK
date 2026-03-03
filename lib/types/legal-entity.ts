@@ -28,7 +28,9 @@ export type LegalEntityType =
   | "indivision"               // Indivision (héritage, achat commun)
   | "demembrement_usufruit"    // Usufruit seul
   | "demembrement_nue_propriete" // Nue-propriété seule
-  | "holding";                 // Société holding
+  | "holding"                  // Société holding
+  | "micro_entrepreneur"       // Micro-entrepreneur / Auto-entrepreneur
+  | "association";             // Association loi 1901
 
 /**
  * Régimes fiscaux possibles
@@ -527,24 +529,9 @@ export interface PropertyOwnershipWithDetails extends PropertyOwnership {
 
 /**
  * Labels des types d'entités
+ * Source unique : @/lib/entities/entity-constants.ts
  */
-export const ENTITY_TYPE_LABELS: Record<LegalEntityType, string> = {
-  particulier: "Particulier",
-  sci_ir: "SCI (IR)",
-  sci_is: "SCI (IS)",
-  sci_construction_vente: "SCCV",
-  sarl: "SARL",
-  sarl_famille: "SARL de famille",
-  eurl: "EURL",
-  sas: "SAS",
-  sasu: "SASU",
-  sa: "SA",
-  snc: "SNC",
-  indivision: "Indivision",
-  demembrement_usufruit: "Usufruit",
-  demembrement_nue_propriete: "Nue-propriété",
-  holding: "Holding",
-};
+export { ENTITY_TYPE_LABELS } from "@/lib/entities/entity-constants";
 
 /**
  * Labels des régimes fiscaux
@@ -609,16 +596,18 @@ export const ENTITY_TYPE_COLORS: Record<LegalEntityType, string> = {
   demembrement_usufruit: "#eab308",    // Yellow
   demembrement_nue_propriete: "#84cc16", // Lime
   holding: "#64748b",         // Slate
+  micro_entrepreneur: "#f59e0b", // Amber
+  association: "#06b6d4",     // Cyan
 };
 
 /**
  * Groupes d'entités par catégorie
  */
 export const ENTITY_TYPE_GROUPS = {
-  personnel: ["particulier"] as LegalEntityType[],
+  personnel: ["particulier", "micro_entrepreneur"] as LegalEntityType[],
   sci: ["sci_ir", "sci_is", "sci_construction_vente"] as LegalEntityType[],
   commerciale: ["sarl", "sarl_famille", "eurl", "sas", "sasu", "sa", "snc"] as LegalEntityType[],
-  speciale: ["indivision", "demembrement_usufruit", "demembrement_nue_propriete", "holding"] as LegalEntityType[],
+  speciale: ["indivision", "demembrement_usufruit", "demembrement_nue_propriete", "holding", "association"] as LegalEntityType[],
 };
 
 /**
@@ -636,6 +625,7 @@ export const ENTITIES_REQUIRING_SIRET: LegalEntityType[] = [
   "sa",
   "snc",
   "holding",
+  "micro_entrepreneur",
 ];
 
 /**
@@ -651,6 +641,7 @@ export const ENTITIES_MIN_2_ASSOCIATES: LegalEntityType[] = [
   "sa",
   "snc",
   "indivision",
+  "association",
 ];
 
 /**
@@ -661,6 +652,7 @@ export const ENTITIES_IR_OPTION: LegalEntityType[] = [
   "sci_ir",
   "sarl_famille",
   "indivision",
+  "micro_entrepreneur",
 ];
 
 /**
