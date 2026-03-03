@@ -238,6 +238,11 @@ export type LeaseRow = {
   next_indexation_date?: string | null
   sealed_at?: string | null
   depot_garantie?: number | null
+  // Multi-entity architecture columns (migration 20260115010000)
+  signatory_entity_id?: string | null
+  bailleur_nom?: string | null
+  bailleur_adresse?: string | null
+  bailleur_siret?: string | null
   created_at: string
   updated_at: string
 
@@ -264,6 +269,12 @@ export type InvoiceRow = {
   paid_at?: string | null
   amount?: number | null
   due_date?: string | null
+  // Multi-entity architecture columns (migration 20260115010000)
+  issuer_entity_id?: string | null
+  issuer_nom?: string | null
+  issuer_adresse?: string | null
+  issuer_siret?: string | null
+  issuer_tva?: string | null
   created_at: string
   updated_at: string
 
