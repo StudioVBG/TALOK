@@ -29,6 +29,7 @@ type DocumentRow = {
   tenant_id?: string | null;
   property_id?: string | null;
   lease_id?: string | null;
+  uploaded_by?: string | null;
   type: string;
   title?: string | null;
   storage_path: string;

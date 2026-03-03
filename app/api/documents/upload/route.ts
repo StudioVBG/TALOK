@@ -225,6 +225,7 @@ export const POST = withSecurity(async function POST(request: Request) {
         type: type || "autre",
         storage_path: filePath,
         created_by_profile_id: profileAny.id,
+        uploaded_by: profileAny.id,
         owner_id: resolvedOwnerId,
         tenant_id: profileAny.role === "tenant" ? profileAny.id : null,
         entity_id: resolvedEntityId,
