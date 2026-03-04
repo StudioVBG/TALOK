@@ -100,6 +100,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
   
   const [loading, setLoading] = useState(true);
   const [leaseIds, setLeaseIds] = useState<string[]>(options.leaseIds || []);
+  const [propertyIds, setPropertyIds] = useState<string[]>([]);
   const channelsRef = useRef<RealtimeChannel[]>([]);
   const addEventRef = useRef<typeof addEvent>(null!);
   const supabaseRef = useRef(createClient());
@@ -233,7 +234,11 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       const currentRent = activeLease?.loyer || 0;
       const currentCharges = activeLease?.charges_forfaitaires || 0;
       const unpaidAmount = invoices?.reduce((sum, inv) => sum + (inv.montant_total || 0), 0) || 0;
-      
+
+      // Stocker les property IDs pour le filtre realtime
+      const pIds = [...new Set(leases?.map(l => l.property_id).filter(Boolean) || [])];
+      setPropertyIds(pIds);
+
       setData(prev => ({
         ...prev,
         currentRent,
@@ -459,9 +464,38 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       }
 
       // 3. Écouter les NOUVEAUX DOCUMENTS
-      // FIX AUDIT 2026-03-04: Filtre par tenant_id + invalider React Query cache
-      const documentsChannel = supabaseRef.current
-        .channel(`tenant-documents:${profile.id}`)
+      // FIX AUDIT 2026-03-04: Écouter par tenant_id ET par lease_id
+      // Le proprio upload souvent avec lease_id (quittances, EDL) sans tenant_id
+
+      const docTypeLabels: Record<string, string> = {
+        quittance: "Quittance de loyer",
+        bail: "Contrat de bail",
+        EDL_entree: "État des lieux d'entrée",
+        EDL_sortie: "État des lieux de sortie",
+        attestation_assurance: "Attestation d'assurance",
+      };
+
+      const handleNewDocument = (payload: RealtimePostgresChangesPayload<any>) => {
+        const doc = payload.new as Record<string, any>;
+
+        addEvent({
+          type: "document",
+          action: "created",
+          title: "Nouveau document",
+          description: docTypeLabels[doc.type] || `Document: ${doc.type}`,
+          importance: doc.type === "quittance" ? "high" : "medium",
+          data: doc,
+        });
+
+        // Notify React Query to refetch documents list
+        if (onDocumentChangeRef.current) {
+          onDocumentChangeRef.current();
+        }
+      };
+
+      // Channel par tenant_id (documents directement assignés au locataire)
+      const docsByTenantCh = supabaseRef.current
+        .channel(`tenant-docs-profile:${profile.id}`)
         .on(
           "postgres_changes",
           {
@@ -470,37 +504,34 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             table: "documents",
             filter: `tenant_id=eq.${profile.id}`,
           },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const doc = payload.new as Record<string, any>;
-
-            const docTypeLabels: Record<string, string> = {
-              quittance: "Quittance de loyer",
-              bail: "Contrat de bail",
-              EDL_entree: "État des lieux d'entrée",
-              EDL_sortie: "État des lieux de sortie",
-              attestation_assurance: "Attestation d'assurance",
-            };
-
-            addEvent({
-              type: "document",
-              action: "created",
-              title: "Nouveau document",
-              description: docTypeLabels[doc.type] || `Document: ${doc.type}`,
-              importance: doc.type === "quittance" ? "high" : "medium",
-              data: doc,
-            });
-
-            // FIX AUDIT 2026-03-04: Notify React Query to refetch documents list
-            if (onDocumentChangeRef.current) {
-              onDocumentChangeRef.current();
-            }
-          }
+          handleNewDocument
         )
         .subscribe((status) => {
-          updateConnectionStatus("documents", status);
+          updateConnectionStatus("docs-tenant", status);
         });
 
-      channelsRef.current.push(documentsChannel);
+      channelsRef.current.push(docsByTenantCh);
+
+      // Channels par lease_id (quittances, EDL uploadés par le proprio sur le bail)
+      for (const leaseId of leaseIds) {
+        const docsByLeaseCh = supabaseRef.current
+          .channel(`tenant-docs-lease:${leaseId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "documents",
+              filter: `lease_id=eq.${leaseId}`,
+            },
+            handleNewDocument
+          )
+          .subscribe((status) => {
+            updateConnectionStatus(`docs-lease:${leaseId}`, status);
+          });
+
+        channelsRef.current.push(docsByLeaseCh);
+      }
 
       // 4. Écouter les MISES À JOUR DE TICKETS
       // FIX AUDIT 2026-03-04: Ajouter filtre par created_by_profile_id
@@ -550,75 +581,93 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
 
       channelsRef.current.push(ticketsChannel);
 
-      // 5. Écouter les SIGNATURES
-      const signersChannel = supabaseRef.current
-        .channel(`tenant-signers:${profile.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "lease_signers",
-            filter: `profile_id=eq.${profile.id}`,
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const signer = payload.new as Record<string, any>;
-            const oldSigner = payload.old as Record<string, any>;
+      // 5. Écouter les SIGNATURES (par lease_id, pas profile_id)
+      // FIX AUDIT 2026-03-04: Le filtre profile_id excluait les autres signataires.
+      // On écoute par lease_id pour détecter quand le propriétaire/co-locataire signe.
+      for (const leaseId of leaseIds) {
+        const signersCh = supabaseRef.current
+          .channel(`tenant-signers:${leaseId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "lease_signers",
+              filter: `lease_id=eq.${leaseId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const signer = payload.new as Record<string, any>;
+              const oldSigner = payload.old as Record<string, any>;
 
-            // Autre signataire a signé (ex: propriétaire)
-            if (signer.profile_id !== profile.id && 
-                oldSigner.signature_status === "pending" && 
-                signer.signature_status === "signed") {
-              addEvent({
-                type: "lease",
-                action: "updated",
-                title: "Nouvelle signature",
-                description: "Une autre partie a signé le bail",
-                importance: "high",
-                data: signer,
-              });
+              // Autre signataire a signé (ex: propriétaire)
+              if (signer.profile_id !== profile.id &&
+                  oldSigner.signature_status === "pending" &&
+                  signer.signature_status === "signed") {
+                addEvent({
+                  type: "lease",
+                  action: "updated",
+                  title: "Nouvelle signature",
+                  description: "Une autre partie a signé le bail",
+                  importance: "high",
+                  data: signer,
+                });
+              }
+
+              // Le tenant lui-même a signé (confirmation)
+              if (signer.profile_id === profile.id &&
+                  oldSigner.signature_status === "pending" &&
+                  signer.signature_status === "signed") {
+                setData(prev => ({
+                  ...prev,
+                  pendingSignatures: Math.max(0, prev.pendingSignatures - 1),
+                }));
+              }
             }
-          }
-        )
-        .subscribe((status) => {
-          updateConnectionStatus("signers", status);
-        });
+          )
+          .subscribe((status) => {
+            updateConnectionStatus(`signers:${leaseId}`, status);
+          });
 
-      channelsRef.current.push(signersChannel);
+        channelsRef.current.push(signersCh);
+      }
 
       // 6. Écouter les MODIFICATIONS DE PROPRIÉTÉ (adresse, etc.)
-      const propertyChannel = supabaseRef.current
-        .channel(`tenant-properties:${profile.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "properties",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const property = payload.new as Record<string, any>;
-            const oldProperty = payload.old as Record<string, any>;
+      // FIX AUDIT 2026-03-04: Filtrer par property_id pour ne pas recevoir les events de toutes les propriétés
+      for (const propId of propertyIds) {
+        const propertyCh = supabaseRef.current
+          .channel(`tenant-property:${propId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "properties",
+              filter: `id=eq.${propId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const property = payload.new as Record<string, any>;
+              const oldProperty = payload.old as Record<string, any>;
 
-            // Changements importants
-            if (oldProperty.adresse_complete !== property.adresse_complete ||
-                oldProperty.ville !== property.ville) {
-              addEvent({
-                type: "property",
-                action: "updated",
-                title: "Adresse mise à jour",
-                description: `Nouvelle adresse: ${property.adresse_complete}`,
-                importance: "low",
-                data: property,
-              });
+              // Changements importants
+              if (oldProperty.adresse_complete !== property.adresse_complete ||
+                  oldProperty.ville !== property.ville) {
+                addEvent({
+                  type: "property",
+                  action: "updated",
+                  title: "Adresse mise à jour",
+                  description: `Nouvelle adresse: ${property.adresse_complete}`,
+                  importance: "low",
+                  data: property,
+                });
+              }
             }
-          }
-        )
-        .subscribe((status) => {
-          updateConnectionStatus("properties", status);
-        });
+          )
+          .subscribe((status) => {
+            updateConnectionStatus(`property:${propId}`, status);
+          });
 
-      channelsRef.current.push(propertyChannel);
+        channelsRef.current.push(propertyCh);
+      }
 
       // 7. Écouter les CHANGEMENTS D'EDL (états des lieux)
       // FIX AUDIT 2026-03-04: Filtre par lease, corrige edl.statut → edl.status, supprime owner_signed
@@ -706,7 +755,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
     };
   // FIX AUDIT 2026-02-16: Retirer supabase (singleton stable) et addEvent (ref-based)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.id, leaseIds]);
+  }, [profile?.id, leaseIds, propertyIds]);
 
   // Effacer les indicateurs de changements récents
   const clearRecentIndicators = useCallback(() => {
