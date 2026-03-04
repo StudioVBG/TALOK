@@ -3,6 +3,7 @@
 **Date** : 3 mars 2026
 **Version** : SOTA 2026
 **Statut** : Analyse exhaustive du codebase TALOK
+**Hébergement** : Netlify (Next.js via `@netlify/plugin-nextjs`)
 
 ---
 
@@ -543,10 +544,10 @@ Système d'alertes proactives pour le propriétaire :
 
 | Système | Planifié ? | Exécuté ? | Raison |
 |---------|-----------|-----------|--------|
-| `cron/payment-reminders` | **NON** | **JAMAIS** | Pas de `vercel.json` |
-| `cron/rent-reminders` | **NON** | **JAMAIS** | Pas de `vercel.json` |
-| `cron/generate-invoices` | **NON** | **JAMAIS** | Pas de `vercel.json` |
-| `cron/process-outbox` | **NON** | **JAMAIS** | Pas de `vercel.json` |
+| `cron/payment-reminders` | **NON** | **JAMAIS** | Pas de Netlify Scheduled Function configurée |
+| `cron/rent-reminders` | **NON** | **JAMAIS** | Pas de Netlify Scheduled Function configurée |
+| `cron/generate-invoices` | **NON** | **JAMAIS** | Pas de Netlify Scheduled Function configurée |
+| `cron/process-outbox` | **NON** | **JAMAIS** | Pas de Netlify Scheduled Function configurée |
 | Edge Function `payment-reminders` | **NON** | **JAMAIS** | Pas de schedule Supabase, non déployé |
 | Edge Function `process-outbox` | **NON** | **JAMAIS** | Pas de schedule Supabase, non déployé |
 | Edge Function `monthly-invoicing` | **NON** | **JAMAIS** | Non déployé |
@@ -564,7 +565,7 @@ Système d'alertes proactives pour le propriétaire :
 ### 8.5 Schéma de la chaîne cassée
 
 ```
-CRON payment-reminders ──→ PAS DE VERCEL.JSON ──→ ❌ Jamais exécuté
+CRON payment-reminders ──→ PAS DE NETLIFY SCHEDULED FUNCTION ──→ ❌ Jamais exécuté
                                                         │
                                                         ▼ (si exécuté manuellement)
                                                   Écrit dans table outbox
@@ -594,7 +595,7 @@ Email au locataire → ❌ TODO (commentaire dans le code ligne 124)
 
 **Pourquoi rien ne fonctionne malgré le code complet :**
 
-1. **Pas de scheduler** : `vercel.json` n'existe pas → aucun cron Vercel
+1. **Pas de scheduler** : Aucune Netlify Scheduled Function configurée dans `netlify.toml` → aucun cron actif
 2. **Edge functions non déployées** : Instructions "À déployer avec supabase functions deploy" jamais exécutées
 3. **Configuration manquante** : `CRON_SECRET` absent de `.env.example`, `EMAIL_SERVICE_URL` non défini
 4. **Architecture fragmentée** : 3 systèmes de relance indépendants, aucun branché
@@ -609,7 +610,7 @@ Email au locataire → ❌ TODO (commentaire dans le code ligne 124)
 | Requêtes de lecture Supabase | A | Données réelles, temps réel fonctionnel |
 | Paiement Stripe | A | Intégration complète, quick-pay, cartes sauvées |
 | Notifications in-app (cloche) | B | Fonctionne mais dépend de données insérées manuellement |
-| Relance automatique | F | Code mort — aucun scheduler configuré |
+| Relance automatique | F | Code mort — aucune Netlify Scheduled Function |
 | Envoi d'emails de relance | F | Code complet mais jamais déclenché |
 | Push notifications serveur | F | Infrastructure VAPID prête, envoi = TODO |
 | SMS | F | Twilio intégré mais désactivé |
