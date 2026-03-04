@@ -6,7 +6,7 @@ const isoDateString = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Format date invalide (YYYY-MM-DD)");
 
 // Validation des rôles
-export const userRoleSchema = z.enum(["admin", "owner", "tenant", "provider", "guarantor"]);
+export const userRoleSchema = z.enum(["admin", "owner", "tenant", "provider", "guarantor", "syndic"]);
 
 // Validation des profils
 export const profileSchema = z.object({

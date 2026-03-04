@@ -52,7 +52,7 @@ export interface SupabaseError {
  */
 export interface ProfileData {
   id: string;
-  role: "admin" | "owner" | "tenant" | "provider";
+  role: "admin" | "owner" | "tenant" | "provider" | "guarantor" | "syndic";
   user_id: string;
   prenom?: string | null;
   nom?: string | null;

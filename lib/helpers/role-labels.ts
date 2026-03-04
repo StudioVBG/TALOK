@@ -11,6 +11,7 @@ const ROLE_LABELS: Record<string, string> = {
   platform_admin: "Admin plateforme",
   provider: "Prestataire",
   guarantor: "Garant",
+  syndic: "Syndic",
   agent: "Agent",
   manager: "Gestionnaire",
   colocataire: "Colocataire",

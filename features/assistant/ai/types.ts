@@ -9,7 +9,7 @@ import { BaseMessage } from "@langchain/core/messages";
 // CONTEXT TYPES
 // ============================================
 
-export type UserRole = "owner" | "tenant" | "provider" | "admin";
+export type UserRole = "owner" | "tenant" | "provider" | "admin" | "syndic";
 
 export interface AssistantContext {
   userId: string;

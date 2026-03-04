@@ -45,7 +45,7 @@ export function useIdentifyUser() {
   const identifyUser = (user: {
     id: string;
     email?: string;
-    role?: "owner" | "tenant" | "provider" | "admin";
+    role?: "owner" | "tenant" | "provider" | "admin" | "syndic";
     plan?: string;
     properties_count?: number;
     created_at?: string;

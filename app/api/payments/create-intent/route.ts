@@ -17,7 +17,7 @@ const createIntentSchema = z.object({
 
 interface Profile {
   id: string;
-  role: "admin" | "owner" | "tenant" | "provider";
+  role: "admin" | "owner" | "tenant" | "provider" | "syndic";
 }
 
 interface InvoiceWithLease {

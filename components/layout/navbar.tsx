@@ -64,6 +64,7 @@ const getRoleLabel = (role: string) => {
     tenant: "Locataire",
     provider: "Prestataire",
     guarantor: "Garant",
+    syndic: "Syndic",
   };
   return labels[role] || role;
 };
@@ -75,6 +76,7 @@ const getRoleColor = (role: string) => {
     tenant: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
     provider: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
     guarantor: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+    syndic: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
   };
   return colors[role] || "bg-gray-100 text-gray-800";
 };

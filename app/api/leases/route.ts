@@ -17,7 +17,7 @@ export const maxDuration = 10;
 
 interface Profile {
   id: string;
-  role: "admin" | "owner" | "tenant" | "provider";
+  role: "admin" | "owner" | "tenant" | "provider" | "syndic";
 }
 
 interface PropertyWithId {

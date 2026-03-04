@@ -139,6 +139,32 @@ export class DashboardGatingService {
         });
 
         break;
+
+      case "syndic":
+        // Email vérifié
+        const syndicEmailVerified = !!user.email_confirmed_at;
+        items.push({
+          id: "email_verified",
+          label: "Email vérifié",
+          completed: syndicEmailVerified,
+        });
+
+        // Au moins un site créé
+        const { data: syndicSites } = await this.supabase
+          .from("user_site_roles")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("role_code", "syndic")
+          .limit(1);
+
+        items.push({
+          id: "first_site",
+          label: "Première copropriété créée",
+          completed: (syndicSites?.length || 0) > 0,
+          route: "/syndic/onboarding/site",
+        });
+
+        break;
     }
 
     const allCompleted = items.every((item) => item.completed);

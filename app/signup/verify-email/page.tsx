@@ -177,6 +177,9 @@ export default function VerifyEmailOnboardingPage() {
       case "guarantor":
         router.push("/guarantor/onboarding/context");
         break;
+      case "syndic":
+        router.push("/syndic/onboarding/profile");
+        break;
       default:
         router.push("/dashboard");
     }
