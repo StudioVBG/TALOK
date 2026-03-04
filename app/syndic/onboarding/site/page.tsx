@@ -51,20 +51,42 @@ export default function SyndicOnboardingSitePage() {
 
     setLoading(true);
     try {
+      // Récupérer les infos du cabinet syndic depuis le profil (étape précédente)
+      const syndicProfileRaw = localStorage.getItem("syndic_profile");
+      const syndicProfile = syndicProfileRaw ? JSON.parse(syndicProfileRaw) : {};
+
       const response = await fetch("/api/copro/sites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
-          total_units: parseInt(form.total_units) || 0,
-          total_floors: parseInt(form.total_floors) || 0,
-          construction_year: parseInt(form.construction_year) || null,
+          name: form.name,
+          type: "copropriete",
+          address_line1: form.address,
+          postal_code: form.postal_code,
+          city: form.city,
+          syndic_type: "benevole",
+          syndic_company_name: syndicProfile.company_name || undefined,
+          syndic_siret: syndicProfile.siret || undefined,
+          syndic_address: syndicProfile.address ? `${syndicProfile.address}, ${syndicProfile.postal_code || ""} ${syndicProfile.city || ""}`.trim() : undefined,
+          syndic_email: syndicProfile.email || undefined,
+          syndic_phone: syndicProfile.phone || undefined,
         }),
       });
 
       if (!response.ok) throw new Error("Erreur création");
 
       const data = await response.json();
+      const siteId = data.site?.id || data.id;
+
+      // Persister le site créé dans localStorage pour les étapes suivantes
+      localStorage.setItem("syndic_onboarding_site", JSON.stringify({
+        id: siteId,
+        name: form.name,
+        address: form.address,
+        postal_code: form.postal_code,
+        city: form.city,
+        type: "copropriete",
+      }));
 
       toast({
         title: "Site créé",
@@ -72,7 +94,7 @@ export default function SyndicOnboardingSitePage() {
       });
 
       // Passer à l'étape suivante avec l'ID du site
-      router.push(`/syndic/onboarding/units?siteId=${data.site?.id || data.id}`);
+      router.push(`/syndic/onboarding/units?siteId=${siteId}`);
     } catch (error) {
       toast({
         title: "Erreur",

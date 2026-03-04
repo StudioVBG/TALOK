@@ -51,18 +51,28 @@ export default function SyndicOnboardingProfilePage() {
 
     setLoading(true);
     try {
-      // Sauvegarder le profil syndic
-      const response = await fetch("/api/me/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          role: "syndic",
-          onboarding_step: "profile_completed",
-        }),
-      });
+      // Sauvegarder les infos cabinet dans localStorage (utilisées lors de la création du site)
+      localStorage.setItem("syndic_profile", JSON.stringify(form));
 
-      if (!response.ok) throw new Error("Erreur sauvegarde");
+      // Mettre à jour le profil utilisateur avec les champs supportés par l'API
+      const nameParts = form.contact_name.trim().split(/\s+/);
+      const prenom = nameParts[0] || "";
+      const nom = nameParts.slice(1).join(" ") || "";
+
+      const profileUpdate: Record<string, string> = {};
+      if (prenom) profileUpdate.prenom = prenom;
+      if (nom) profileUpdate.nom = nom;
+      if (form.phone) profileUpdate.telephone = form.phone;
+
+      if (Object.keys(profileUpdate).length > 0) {
+        const response = await fetch("/api/me/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(profileUpdate),
+        });
+
+        if (!response.ok) throw new Error("Erreur sauvegarde profil");
+      }
 
       toast({
         title: "Profil enregistré",

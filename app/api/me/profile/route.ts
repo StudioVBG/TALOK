@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 
     // Lire le rôle et les metadata de l'utilisateur
     const metadata = user.user_metadata || {};
-    const role = metadata.role && ["admin", "owner", "tenant", "provider"].includes(metadata.role)
+    const role = metadata.role && ["admin", "owner", "tenant", "provider", "guarantor", "syndic"].includes(metadata.role)
       ? metadata.role
       : "tenant";
 

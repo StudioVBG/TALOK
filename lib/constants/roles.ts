@@ -39,6 +39,7 @@ export const USER_ROLES = {
   TENANT: "tenant",
   PROVIDER: "provider",
   GUARANTOR: "guarantor",
+  SYNDIC: "syndic",
 } as const;
 
 export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
@@ -171,6 +172,7 @@ export function getUserRoleLabel(role: string | null | undefined): string {
     case USER_ROLES.TENANT: return "Locataire";
     case USER_ROLES.PROVIDER: return "Prestataire";
     case USER_ROLES.GUARANTOR: return "Garant";
+    case USER_ROLES.SYNDIC: return "Syndic";
     default: return "Utilisateur";
   }
 }
