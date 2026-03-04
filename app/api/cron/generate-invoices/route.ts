@@ -6,15 +6,16 @@ import { NextResponse } from "next/server";
 
 /**
  * API Route pour la génération automatique des factures
- * Destinée à être appelée par un cron job (ex: GitHub Actions, Supabase Cron)
- * GET /api/cron/generate-invoices?key=CRON_SECRET_KEY
+ * Destinée à être appelée par un cron job (ex: Upstash QStash, cron-job.org)
+ * GET /api/cron/generate-invoices
+ * Header requis: Authorization: Bearer <CRON_SECRET>
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const key = searchParams.get("key");
+  // Sécurité : vérifier le Bearer token (cohérent avec les autres routes cron)
+  const authHeader = request.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
 
-  // Sécurité : vérifier la clé secrète
-  if (key !== process.env.CRON_SECRET_KEY) {
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 

@@ -169,6 +169,7 @@ export async function POST(
     }
 
     // 7bis. Générer la facture initiale (Loyer + Dépôt de garantie)
+    let invoiceWarning: string | null = null;
     try {
       const { data: leaseFull } = await serviceClient
         .from("leases")
@@ -218,7 +219,7 @@ export async function POST(
           // SSOT : Utiliser les données du bien par défaut
           const baseRent = leaseFull.property?.loyer_hc ?? leaseFull.loyer ?? 0;
           const baseCharges = leaseFull.property?.charges_mensuelles ?? leaseFull.charges_forfaitaires ?? 0;
-          const monthStr = new Date().toISOString().slice(0, 7);
+          const monthStr = leaseFull.date_debut?.slice(0, 7) || new Date().toISOString().slice(0, 7);
 
           // Calcul du prorata
           const startDate = new Date(leaseFull.date_debut);
@@ -270,6 +271,7 @@ export async function POST(
       }
     } catch (invoiceErr) {
       console.error("[Activate Lease] Failed to generate initial invoice:", invoiceErr);
+      invoiceWarning = "La première facture n'a pas pu être créée automatiquement. Elle sera générée par le cron mensuel.";
     }
     
     // 8. Créer un événement dans l'outbox
@@ -307,13 +309,15 @@ export async function POST(
     }
     revalidatePath("/owner/leases");
 
+    const warnings = [dateWarning, invoiceWarning].filter(Boolean);
+
     return NextResponse.json({
       success: true,
       message: "Bail activé avec succès",
       lease_id: leaseId,
       new_status: "active",
       edl_status: edl?.status || null,
-      warning: dateWarning
+      ...(warnings.length > 0 ? { warnings } : {})
     });
     
   } catch (error: unknown) {

@@ -46,6 +46,7 @@ import {
 import { SkipLinks } from "@/components/ui/skip-links";
 import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
+import { PushNotificationPrompt } from "@/components/notifications/push-notification-prompt";
 import { useTenantNavBadges } from "@/lib/hooks/use-tenant-nav-badges";
 
 interface TenantAppLayoutProps {
@@ -430,6 +431,9 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         hideAbove="md"
         hiddenOnPaths={['/tenant/onboarding']}
       />
+
+      {/* Push notification prompt pour le locataire */}
+      <PushNotificationPrompt />
 
       {/* SOTA 2026 - FAB Unifié (Assistant + Actions) */}
       <UnifiedFAB />

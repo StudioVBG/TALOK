@@ -93,10 +93,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Importer web-push
-    // @ts-ignore — web-push has no declaration file
-    const webPush = await import("web-push");
-    webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    // Séparer les subscriptions web (VAPID) et natives (FCM)
+    const webSubs = subscriptions.filter((s) => (s as any).device_type === "web" || !(s as any).device_type);
+    const nativeSubs = subscriptions.filter((s) => (s as any).device_type === "android" || (s as any).device_type === "ios");
 
     const payload = JSON.stringify({
       title: validatedData.title,
@@ -110,33 +109,90 @@ export async function POST(request: NextRequest) {
       tag: validatedData.tag,
     });
 
-    // Envoyer les notifications
-    const results = await Promise.allSettled(
-      subscriptions.map(async (sub) => {
-        try {
-          await webPush.sendNotification(
-            {
-              endpoint: sub.endpoint,
-              keys: {
-                p256dh: sub.p256dh_key,
-                auth: sub.auth_key,
+    const allResults: PromiseSettledResult<any>[] = [];
+
+    // Web Push via VAPID
+    if (webSubs.length > 0) {
+      // @ts-ignore — web-push has no declaration file
+      const webPush = await import("web-push");
+      webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+      const webResults = await Promise.allSettled(
+        webSubs.map(async (sub) => {
+          try {
+            await webPush.sendNotification(
+              {
+                endpoint: sub.endpoint,
+                keys: {
+                  p256dh: sub.p256dh_key,
+                  auth: sub.auth_key,
+                },
               },
-            },
-            payload
-          );
-          return { success: true, subscriptionId: sub.id };
-        } catch (error: unknown) {
-          // Si l'abonnement est invalide, le désactiver
-          if ((error as any).statusCode === 410 || (error as any).statusCode === 404) {
-            await serviceClient
-              .from("push_subscriptions")
-              .update({ is_active: false } as any)
-              .eq("id", sub.id as string);
+              payload
+            );
+            return { success: true, subscriptionId: sub.id };
+          } catch (error: unknown) {
+            if ((error as any).statusCode === 410 || (error as any).statusCode === 404) {
+              await serviceClient
+                .from("push_subscriptions")
+                .update({ is_active: false } as any)
+                .eq("id", sub.id as string);
+            }
+            return { success: false, subscriptionId: sub.id, error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" };
           }
-          return { success: false, subscriptionId: sub.id, error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" };
+        })
+      );
+      allResults.push(...webResults);
+    }
+
+    // FCM natif via Firebase Admin
+    if (nativeSubs.length > 0) {
+      const firebaseServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+      if (firebaseServiceAccount) {
+        const admin = await import("firebase-admin");
+        if (!admin.default.apps?.length) {
+          admin.default.initializeApp({
+            credential: admin.default.credential.cert(JSON.parse(firebaseServiceAccount)),
+          });
         }
-      })
-    );
+
+        const fcmResults = await Promise.allSettled(
+          nativeSubs.map(async (sub: any) => {
+            const fcmToken = sub.endpoint.startsWith("fcm://")
+              ? sub.endpoint.slice(6)
+              : sub.endpoint;
+            try {
+              await admin.default.messaging().send({
+                token: fcmToken,
+                notification: {
+                  title: validatedData.title,
+                  body: validatedData.body,
+                },
+                data: {
+                  url: validatedData.action_url || "",
+                  ...(validatedData.data as Record<string, string> || {}),
+                },
+              });
+              return { success: true, subscriptionId: sub.id };
+            } catch (error: any) {
+              if (
+                error?.code === "messaging/invalid-registration-token" ||
+                error?.code === "messaging/registration-token-not-registered"
+              ) {
+                await serviceClient
+                  .from("push_subscriptions")
+                  .update({ is_active: false } as any)
+                  .eq("id", sub.id as string);
+              }
+              return { success: false, subscriptionId: sub.id, error: error?.message || "FCM error" };
+            }
+          })
+        );
+        allResults.push(...fcmResults);
+      }
+    }
+
+    const results = allResults;
 
     const sent = results.filter(
       (r) => r.status === "fulfilled" && (r.value as any).success

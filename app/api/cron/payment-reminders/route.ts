@@ -4,18 +4,24 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { addDays, format, startOfDay, endOfDay } from "date-fns";
+import { notifyPaymentLate } from "@/lib/services/notification-service";
 
 /**
  * GET /api/cron/payment-reminders
  *
  * Cron job pour envoyer des rappels de paiement automatiques.
- * À exécuter quotidiennement via Vercel Cron ou un service externe.
+ * À exécuter quotidiennement via Supabase pg_cron + pg_net.
  *
  * Envoie des rappels:
  * - J-3: Rappel amical avant échéance
  * - J-1: Rappel urgent
- * - J+1: Notification de retard
+ * - J+1: Notification de retard (→ statut "late")
  * - J+7: Relance formelle
+ * - J+15: Mise en demeure
+ * - J+30: Dernier avertissement avant procédure
+ *
+ * SYSTÈME CANONIQUE : remplace rent-reminders et l'edge function payment-reminders.
+ * Utilise due_date (pas created_at) comme base de calcul.
  *
  * Header requis pour authentification CRON:
  * Authorization: Bearer <CRON_SECRET>
@@ -40,6 +46,8 @@ export async function GET(request: Request) {
       j_minus_1: 0,
       j_plus_1: 0,
       j_plus_7: 0,
+      j_plus_15: 0,
+      j_plus_30: 0,
       errors: 0,
     };
 
@@ -59,7 +67,7 @@ export async function GET(request: Request) {
           property:properties!inner(owner_id, address)
         )
       `)
-      .eq("statut", "pending")
+      .eq("statut", "sent")
       .gte("due_date", format(startOfDay(targetDateJ3), "yyyy-MM-dd"))
       .lte("due_date", format(endOfDay(targetDateJ3), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.1");
@@ -92,7 +100,7 @@ export async function GET(request: Request) {
           property:properties!inner(owner_id, address)
         )
       `)
-      .eq("statut", "pending")
+      .eq("statut", "sent")
       .gte("due_date", format(startOfDay(targetDateJ1), "yyyy-MM-dd"))
       .lte("due_date", format(endOfDay(targetDateJ1), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.2");
@@ -125,7 +133,7 @@ export async function GET(request: Request) {
           property:properties!inner(owner_id, address)
         )
       `)
-      .in("statut", ["pending", "late"])
+      .in("statut", ["sent", "late"])
       .gte("due_date", format(startOfDay(targetDatePlus1), "yyyy-MM-dd"))
       .lte("due_date", format(endOfDay(targetDatePlus1), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.3");
@@ -181,8 +189,72 @@ export async function GET(request: Request) {
       }
     }
 
+    // ===== MISE EN DEMEURE J+15 =====
+    const targetDatePlus15 = addDays(today, -15);
+    const { data: invoicesPlus15 } = await supabase
+      .from("invoices")
+      .select(`
+        id,
+        montant_total,
+        periode,
+        due_date,
+        lease_id,
+        reminder_count,
+        lease:leases!inner(
+          id,
+          property:properties!inner(owner_id, address)
+        )
+      `)
+      .eq("statut", "late")
+      .lte("due_date", format(endOfDay(targetDatePlus15), "yyyy-MM-dd"))
+      .or("reminder_count.is.null,reminder_count.lt.5");
+
+    if (invoicesPlus15) {
+      for (const invoice of invoicesPlus15) {
+        try {
+          await sendReminder(supabase, invoice as any, "j_plus_15");
+          stats.j_plus_15++;
+        } catch (e) {
+          console.error(`Erreur mise en demeure J+15 pour ${(invoice as any).id}:`, e);
+          stats.errors++;
+        }
+      }
+    }
+
+    // ===== DERNIER AVERTISSEMENT J+30 =====
+    const targetDatePlus30 = addDays(today, -30);
+    const { data: invoicesPlus30 } = await supabase
+      .from("invoices")
+      .select(`
+        id,
+        montant_total,
+        periode,
+        due_date,
+        lease_id,
+        reminder_count,
+        lease:leases!inner(
+          id,
+          property:properties!inner(owner_id, address)
+        )
+      `)
+      .eq("statut", "late")
+      .lte("due_date", format(endOfDay(targetDatePlus30), "yyyy-MM-dd"))
+      .or("reminder_count.is.null,reminder_count.lt.6");
+
+    if (invoicesPlus30) {
+      for (const invoice of invoicesPlus30) {
+        try {
+          await sendReminder(supabase, invoice as any, "j_plus_30");
+          stats.j_plus_30++;
+        } catch (e) {
+          console.error(`Erreur avertissement J+30 pour ${(invoice as any).id}:`, e);
+          stats.errors++;
+        }
+      }
+    }
+
     // Log résumé
-    console.log(`[CRON] Rappels envoyés: J-3=${stats.j_minus_3}, J-1=${stats.j_minus_1}, J+1=${stats.j_plus_1}, J+7=${stats.j_plus_7}, Erreurs=${stats.errors}`);
+    console.log(`[CRON] Rappels envoyés: J-3=${stats.j_minus_3}, J-1=${stats.j_minus_1}, J+1=${stats.j_plus_1}, J+7=${stats.j_plus_7}, J+15=${stats.j_plus_15}, J+30=${stats.j_plus_30}, Erreurs=${stats.errors}`);
 
     return NextResponse.json({
       success: true,
@@ -216,19 +288,19 @@ async function sendReminder(
       property: { owner_id: string; address: string };
     };
   },
-  type: "j_minus_3" | "j_minus_1" | "j_plus_1" | "j_plus_7"
+  type: "j_minus_3" | "j_minus_1" | "j_plus_1" | "j_plus_7" | "j_plus_15" | "j_plus_30"
 ) {
-  // Récupérer les locataires du bail
-  const { data: roommates } = await supabase
-    .from("roommates")
+  // Récupérer les locataires du bail via lease_signers (pas roommates qui peut être vide)
+  const { data: tenantSigners } = await supabase
+    .from("lease_signers")
     .select(`
       profile_id,
-      profile:profiles!inner(id, user_id, first_name, last_name, email)
+      profile:profiles!inner(id, user_id, prenom, nom, email)
     `)
     .eq("lease_id", invoice.lease_id)
-    .is("left_on", null);
+    .in("role", ["locataire_principal", "locataire", "colocataire"]);
 
-  if (!roommates || roommates.length === 0) {
+  if (!tenantSigners || tenantSigners.length === 0) {
     return;
   }
 
@@ -254,23 +326,35 @@ async function sendReminder(
       urgency: "critical",
       title: "Relance formelle - Impayé",
     },
+    j_plus_15: {
+      event_type: "Payment.MiseEnDemeure",
+      urgency: "critical",
+      title: "Mise en demeure - Loyer impayé",
+    },
+    j_plus_30: {
+      event_type: "Payment.DernierAvertissement",
+      urgency: "critical",
+      title: "Dernier avertissement - Procédure de recouvrement",
+    },
   };
 
   const config = eventConfig[type];
 
+  const daysLateMap: Record<string, number> = { j_plus_1: 1, j_plus_7: 7, j_plus_15: 15, j_plus_30: 30 };
+
   // Émettre un événement pour chaque locataire
-  for (const roommate of roommates) {
-    const roommateData = roommate as any;
+  for (const signer of tenantSigners) {
+    const signerData = signer as any;
 
     await supabase.from("outbox").insert({
       event_type: config.event_type,
       payload: {
         invoice_id: invoice.id,
         lease_id: invoice.lease_id,
-        tenant_id: roommateData.profile?.id,
-        tenant_user_id: roommateData.profile?.user_id,
-        tenant_email: roommateData.profile?.email,
-        tenant_name: `${roommateData.profile?.first_name || ""} ${roommateData.profile?.last_name || ""}`.trim(),
+        tenant_id: signerData.profile?.id,
+        tenant_user_id: signerData.profile?.user_id,
+        tenant_email: signerData.profile?.email,
+        tenant_name: `${signerData.profile?.prenom || ""} ${signerData.profile?.nom || ""}`.trim(),
         amount: invoice.montant_total,
         month: invoice.periode,
         due_date: invoice.due_date,
@@ -280,10 +364,24 @@ async function sendReminder(
         reminder_type: type,
       },
     });
+
+    // Créer une notification in-app directe pour les factures en retard
+    if (daysLateMap[type] && signerData.profile?.id) {
+      try {
+        await notifyPaymentLate(
+          signerData.profile.id,
+          invoice.montant_total,
+          daysLateMap[type],
+          invoice.id
+        );
+      } catch (notifErr) {
+        console.warn(`[CRON] notifyPaymentLate failed for ${signerData.profile.id}:`, notifErr);
+      }
+    }
   }
 
-  // Notifier aussi le propriétaire pour J+1 et J+7
-  if (type === "j_plus_1" || type === "j_plus_7") {
+  // Notifier aussi le propriétaire pour J+1, J+7, J+15, J+30
+  if (daysLateMap[type]) {
     await supabase.from("outbox").insert({
       event_type: "Owner.TenantPaymentLate",
       payload: {
@@ -293,8 +391,8 @@ async function sendReminder(
         amount: invoice.montant_total,
         month: invoice.periode,
         due_date: invoice.due_date,
-        days_late: type === "j_plus_1" ? 1 : 7,
-        tenant_count: roommates.length,
+        days_late: daysLateMap[type] ?? 0,
+        tenant_count: tenantSigners.length,
       },
     });
   }

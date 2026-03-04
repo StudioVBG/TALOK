@@ -37,11 +37,29 @@
 #   - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY - pour les paiements
 #   - RESEND_API_KEY (🔒 secret) - pour les emails
 #   - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (🔒 secrets) - pour les SMS
+#   - CRON_SECRET (🔒 secret) - pour authentifier les appels cron
 #   - NEXT_PUBLIC_SENTRY_DSN - pour le monitoring
 #   - NEXT_PUBLIC_POSTHOG_KEY - pour les analytics
 #
 # ⚠️  IMPORTANT: Les variables marquées 🔒 sont secrètes et ne doivent
 #     JAMAIS commencer par NEXT_PUBLIC_ pour éviter l'exposition au client.
+# ==============================================================================
+
+# ==============================================================================
+# CRON SCHEDULING (Supabase pg_cron + pg_net)
+# ==============================================================================
+# Les routes /api/cron/* sont des API routes Next.js standard.
+# Elles sont déclenchées automatiquement par Supabase pg_cron + pg_net.
+#
+# Configuration via la migration SQL :
+#   supabase/migrations/20260304100000_activate_pg_cron_schedules.sql
+#
+# Prérequis dans le dashboard Supabase (SQL Editor) :
+#   ALTER DATABASE postgres SET app.settings.app_url = 'https://votre-site.netlify.app';
+#   ALTER DATABASE postgres SET app.settings.cron_secret = 'votre-cron-secret';
+#
+# Header requis par chaque endpoint :
+#   Authorization: Bearer $CRON_SECRET
 # ==============================================================================
 
 # ==============================================================================

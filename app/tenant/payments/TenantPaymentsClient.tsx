@@ -94,7 +94,11 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
 
   // Statistiques financières SOTA - score de ponctualité calculé réellement
   const stats = useMemo(() => {
-    const unpaid = invoices.filter(i => i.statut !== 'paid');
+    const now = new Date();
+    const unpaid = invoices.filter(i =>
+      i.statut !== 'paid' && i.statut !== 'draft' &&
+      (!i.due_date || new Date(i.due_date) <= now)
+    );
     const totalUnpaid = unpaid.reduce((acc, curr) => acc + (curr.montant_total || 0), 0);
     const paidInvoices = invoices.filter(i => i.statut === 'paid');
     const paidCount = paidInvoices.length;
@@ -338,10 +342,20 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                             <FileText className="h-6 w-6" />
                           </div>
                           <div>
-                            <p className="font-black text-foreground text-lg">Loyer {invoice.periode}</p>
-                            <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-0.5">
-                              Échéance : {formatDateShort(invoice.created_at)}
+                            <p className="font-black text-foreground text-lg">
+                              Loyer {invoice.periode}
+                              {(invoice as any).metadata?.is_prorated && (
+                                <span className="ml-2 text-xs font-medium text-amber-600">(prorata)</span>
+                              )}
                             </p>
+                            <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-0.5">
+                              Échéance : {invoice.due_date ? formatDateShort(invoice.due_date) : formatDateShort(invoice.created_at)}
+                            </p>
+                            {(invoice as any).metadata?.includes_deposit && (
+                              <p className="text-xs text-muted-foreground">
+                                Inclut dépôt de garantie : {formatCurrency((invoice as any).metadata.deposit_amount)}
+                              </p>
+                            )}
                           </div>
                         </div>
 
@@ -352,12 +366,27 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                           </div>
 
                           <div className="flex items-center gap-3">
-                            <StatusBadge 
-                              status={invoice.statut === 'paid' ? 'Payé' : 'À régler'} 
-                              type={invoice.statut === 'paid' ? 'success' : 'error'}
+                            <StatusBadge
+                              status={
+                                invoice.statut === 'paid' ? 'Payé'
+                                : invoice.statut === 'late' ? 'En retard'
+                                : invoice.statut === 'draft' ? 'Brouillon'
+                                : 'À régler'
+                              }
+                              type={
+                                invoice.statut === 'paid' ? 'success'
+                                : invoice.statut === 'late' ? 'error'
+                                : invoice.statut === 'draft' ? 'neutral'
+                                : 'warning'
+                              }
                               className="h-7 px-3 text-[10px] font-black uppercase tracking-widest"
                             />
-                            
+                            {invoice.statut === 'late' && invoice.due_date && (
+                              <span className="text-xs text-red-600 font-bold">
+                                {Math.max(1, Math.floor((Date.now() - new Date(invoice.due_date).getTime()) / 86400000))}j de retard
+                              </span>
+                            )}
+
                             <div className="flex gap-2">
                               {invoice.statut !== 'paid' ? (
                                 <Button 

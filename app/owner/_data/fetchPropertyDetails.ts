@@ -44,10 +44,9 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
     { data: leasesData },
     { data: edlsData },
     { data: tickets },
-    { data: invoices },
     { data: photosData },
     { data: documentsData },
-    { data: rooms } // ✅ Ajout de la récupération des rooms
+    { data: rooms }
   ] = await Promise.all([
     // Units
     supabase.from("units").select("*").eq("property_id", propertyId),
@@ -57,8 +56,6 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
     supabase.from("edl").select("id, lease_id, type, status, scheduled_at, completed_date").eq("property_id", propertyId),
     // Tickets
     supabase.from("tickets").select("*").eq("property_id", propertyId).order("created_at", { ascending: false }).limit(5),
-    // Invoices (dernières factures)
-    supabase.from("invoices").select("*").eq("lease_id", propertyId).order("created_at", { ascending: false }).limit(5),
     // Photos (table photos)
     supabase.from("photos").select("*").eq("property_id", propertyId).order("ordre", { ascending: true }),
     // Documents (table documents - pour fallback photos)
@@ -66,6 +63,19 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
     // Rooms (table rooms - pièces du logement)
     supabase.from("rooms").select("*").eq("property_id", propertyId).order("ordre", { ascending: true })
   ]);
+
+  // 2b. Récupérer les factures via les lease_id (pas property_id !)
+  const leaseIds = (leasesData || []).map((l: any) => l.id);
+  let invoices: any[] = [];
+  if (leaseIds.length > 0) {
+    const { data: invoicesData } = await supabase
+      .from("invoices")
+      .select("*")
+      .in("lease_id", leaseIds)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    invoices = invoicesData || [];
+  }
 
   // 3. Traiter les médias
   let photos = photosData || [];

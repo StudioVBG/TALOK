@@ -37,6 +37,7 @@ interface LeaseForInvoice {
   id: string;
   loyer: number;
   charges_forfaitaires: number;
+  jour_paiement: number | null;
   properties: {
     id: string;
     adresse_complete: string;
@@ -81,6 +82,7 @@ export async function GET(request: NextRequest) {
         id,
         loyer,
         charges_forfaitaires,
+        jour_paiement,
         properties!inner(
           id,
           adresse_complete,
@@ -172,8 +174,11 @@ export async function GET(request: NextRequest) {
         const charges = Number(lease.charges_forfaitaires) || 0;
         const montantTotal = loyerHC + charges;
         
-        // Calculer la date d'échéance (5 du mois courant)
-        const dateEcheance = new Date(now.getFullYear(), now.getMonth(), 5);
+        // Calculer la date d'échéance basée sur jour_paiement du bail (défaut: 5)
+        const jourPaiement = lease.jour_paiement ?? 5;
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const clampedDay = Math.min(jourPaiement, daysInMonth);
+        const dateEcheance = new Date(now.getFullYear(), now.getMonth(), clampedDay);
         
         // Générer le numéro de facture
         const invoiceNumber = `QUI-${currentMonth.replace("-", "")}-${lease.id.slice(0, 8).toUpperCase()}`;
