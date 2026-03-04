@@ -375,8 +375,8 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                               }
                               type={
                                 invoice.statut === 'paid' ? 'success'
-                                : invoice.statut === 'late' ? 'destructive'
-                                : invoice.statut === 'draft' ? 'secondary'
+                                : invoice.statut === 'late' ? 'error'
+                                : invoice.statut === 'draft' ? 'neutral'
                                 : 'warning'
                               }
                               className="h-7 px-3 text-[10px] font-black uppercase tracking-widest"

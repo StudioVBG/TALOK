@@ -224,7 +224,7 @@ async function dispatchPush(
         }
 
         await Promise.allSettled(
-          nativeSubs.map(async (sub) => {
+          nativeSubs.map(async (sub: any) => {
             // Le token FCM est stocké dans endpoint sous forme fcm://TOKEN
             const fcmToken = sub.endpoint.startsWith("fcm://")
               ? sub.endpoint.slice(6)
