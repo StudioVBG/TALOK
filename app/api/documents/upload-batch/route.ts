@@ -290,13 +290,13 @@ export const POST = withSecurity(async function POST(request: Request) {
         title: file.name,
         notes: null,
         entity_id: resolvedEntityId,
+        uploaded_by: profileId,
       };
 
       if (supportsGallery) {
         record.collection = effectiveCollection;
         record.position = currentMaxPosition + index + 1;
         record.is_cover = !hasCover && index === 0;
-        record.uploaded_by = profileId;
       }
 
       const { data: document, error: insertError } = await serviceClient
