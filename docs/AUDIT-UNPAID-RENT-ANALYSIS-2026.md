@@ -618,6 +618,41 @@ Email au locataire → ❌ TODO (commentaire dans le code ligne 124)
 
 ---
 
+## 9. Corrections appliquées (4 mars 2026)
+
+### Phase 1 — Modèle de données & prorata
+| # | Correction | Fichiers modifiés |
+|---|-----------|-------------------|
+| 1.1 | `jour_paiement` du bail utilisé pour `date_echeance` (au lieu de hardcoder 5) | `generate-monthly-invoices/route.ts`, migration SQL |
+| 1.2 | Sélecteur `jour_paiement` (1-28) ajouté dans LeaseWizard + envoyé via API invite | `LeaseWizard.tsx`, `invite/route.ts` |
+| 1.3 | `periode` de la 1ère facture utilise `date_debut` du bail | `activate/route.ts` |
+| 1.4 | Trigger SQL `trg_sync_jour_paiement` pour propager vers SEPA `collection_day` | migration SQL |
+
+### Phase 2 — Unification des relances & envoi d'email
+| # | Correction | Fichiers modifiés |
+|---|-----------|-------------------|
+| 2.1 | Système canonique `payment-reminders` enrichi J+15/J+30. `rent-reminders` deprecated avec redirect | `payment-reminders/route.ts`, `rent-reminders/route.ts` |
+| 2.2 | Bouton "Relancer" envoie un vrai email via Resend | `money/actions.ts` |
+| 2.3 | `notifyPaymentLate()` appelé dans le cron → notification in-app cloche | `payment-reminders/route.ts` |
+| 2.4 | Auth uniformisée Bearer CRON_SECRET. `CRON_SECRET` ajouté à `.env.example` | `generate-invoices/route.ts`, `.env.example` |
+
+### Phase 3 — Scheduling Upstash QStash
+| # | Correction | Fichiers modifiés |
+|---|-----------|-------------------|
+| 3.1 | Documentation complète du scheduling QStash dans `netlify.toml` | `netlify.toml` |
+| 3.2 | Variables QStash ajoutées à `.env.example` | `.env.example` |
+
+### Phase 4 — UX locataire
+| # | Correction | Fichiers modifiés |
+|---|-----------|-------------------|
+| 4.1 | Badge "En retard" (destructive) au lieu de "À régler" pour les `late` | `TenantPaymentsClient.tsx` |
+| 4.2 | Affichage "Xj de retard" pour les factures `late` | `TenantPaymentsClient.tsx` |
+| 4.3 | "Total à régulariser" ne compte plus les factures non échues | `TenantPaymentsClient.tsx` |
+| 4.4 | Détail prorata + dépôt visible sur la première facture | `TenantPaymentsClient.tsx` |
+| 4.5 | `PushNotificationPrompt` ajouté au layout locataire | `tenant-app-layout.tsx` |
+
+---
+
 ## Annexe : Cartographie des fichiers
 
 ### Fichiers de détection des impayés
