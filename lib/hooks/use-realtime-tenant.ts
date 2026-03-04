@@ -15,7 +15,7 @@
  * - EDLs planifiés
  */
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useToast } from "@/components/ui/use-toast";
@@ -66,6 +66,10 @@ interface UseTenantRealtimeOptions {
   maxEvents?: number;
   /** IDs des baux à écouter (optionnel, récupéré automatiquement sinon) */
   leaseIds?: string[];
+  /** Callback appelé quand un document est créé/modifié (pour invalider le cache React Query) */
+  onDocumentChange?: () => void;
+  /** Callback appelé quand des données importantes changent (pour refetch le dashboard) */
+  onDataChange?: () => void;
 }
 
 export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
@@ -99,6 +103,12 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
   const channelsRef = useRef<RealtimeChannel[]>([]);
   const addEventRef = useRef<typeof addEvent>(null!);
   const supabaseRef = useRef(createClient());
+
+  // FIX AUDIT 2026-03-04: Refs for callbacks to bridge realtime → React Query/refetch
+  const onDocumentChangeRef = useRef(options.onDocumentChange);
+  onDocumentChangeRef.current = options.onDocumentChange;
+  const onDataChangeRef = useRef(options.onDataChange);
+  onDataChangeRef.current = options.onDataChange;
 
   // Jouer un son de notification
   const playNotificationSound = useCallback(() => {
@@ -262,16 +272,28 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       });
       channelsRef.current = [];
 
+      // Helper: track connection status across all channels
+      const channelStatuses = new Map<string, boolean>();
+      const updateConnectionStatus = (name: string, status: string) => {
+        channelStatuses.set(name, status === "SUBSCRIBED");
+        const allConnected = channelStatuses.size > 0 &&
+          Array.from(channelStatuses.values()).every(Boolean);
+        setData(prev => ({ ...prev, isConnected: allConnected }));
+      };
+
       // 1. Écouter les changements sur les BAUX (loyer, charges, statut)
-      const leasesChannel = supabaseRef.current
-        .channel(`tenant-leases:${profile.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "leases",
-          },
+      // FIX AUDIT 2026-03-04: Ajouter filtre serveur pour chaque lease
+      for (const leaseId of leaseIds) {
+        const leaseCh = supabaseRef.current
+          .channel(`tenant-lease:${leaseId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "leases",
+              filter: `id=eq.${leaseId}`,
+            },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const lease = payload.new as Record<string, any>;
             const oldLease = payload.old as Record<string, any>;
@@ -339,24 +361,33 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
                 leaseStatus: lease.statut,
               }));
             }
+
+            // FIX AUDIT 2026-03-04: Bridge realtime → dashboard refetch
+            if (onDataChangeRef.current) {
+              onDataChangeRef.current();
+            }
           }
-        )
-        .subscribe((status) => {
-          setData(prev => ({ ...prev, isConnected: status === "SUBSCRIBED" }));
-        });
-      
-      channelsRef.current.push(leasesChannel);
+          )
+          .subscribe((status) => {
+            updateConnectionStatus(`lease:${leaseId}`, status);
+          });
+
+        channelsRef.current.push(leaseCh);
+      }
 
       // 2. Écouter les NOUVELLES FACTURES
-      const invoicesChannel = supabaseRef.current
-        .channel(`tenant-invoices:${profile.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "invoices",
-          },
+      // FIX AUDIT 2026-03-04: Ajouter filtre par lease_id pour chaque bail
+      for (const leaseId of leaseIds) {
+        const invoiceCh = supabaseRef.current
+          .channel(`tenant-invoices:${leaseId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "invoices",
+              filter: `lease_id=eq.${leaseId}`,
+            },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const invoice = payload.new as Record<string, any>;
 
@@ -378,6 +409,11 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
                 unpaidAmount: prev.unpaidAmount + (invoice.montant_total || 0),
               }));
             }
+
+            // FIX AUDIT 2026-03-04: Bridge realtime → dashboard refetch
+            if (onDataChangeRef.current) {
+              onDataChangeRef.current();
+            }
           }
         )
         .on(
@@ -386,13 +422,12 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             event: "UPDATE",
             schema: "public",
             table: "invoices",
+            filter: `lease_id=eq.${leaseId}`,
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const invoice = payload.new as Record<string, any>;
             const oldInvoice = payload.old as Record<string, any>;
 
-            if (!leaseIds.includes(invoice.lease_id)) return;
-            
             // Facture payée
             if (oldInvoice.statut !== "paid" && invoice.statut === "paid") {
               addEvent({
@@ -403,19 +438,28 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
                 importance: "high",
                 data: invoice,
               });
-              
+
               setData(prev => ({
                 ...prev,
                 unpaidAmount: Math.max(0, prev.unpaidAmount - (invoice.montant_total || 0)),
               }));
             }
+
+            // FIX AUDIT 2026-03-04: Bridge realtime → dashboard refetch
+            if (onDataChangeRef.current) {
+              onDataChangeRef.current();
+            }
           }
         )
-        .subscribe();
-      
-      channelsRef.current.push(invoicesChannel);
+        .subscribe((status) => {
+          updateConnectionStatus(`invoices:${leaseId}`, status);
+        });
+
+        channelsRef.current.push(invoiceCh);
+      }
 
       // 3. Écouter les NOUVEAUX DOCUMENTS
+      // FIX AUDIT 2026-03-04: Filtre par tenant_id + invalider React Query cache
       const documentsChannel = supabaseRef.current
         .channel(`tenant-documents:${profile.id}`)
         .on(
@@ -424,13 +468,11 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             event: "INSERT",
             schema: "public",
             table: "documents",
+            filter: `tenant_id=eq.${profile.id}`,
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const doc = payload.new as Record<string, any>;
 
-            // Vérifier que c'est pour nous ou un de nos baux
-            if (doc.tenant_id !== profile.id && !leaseIds.includes(doc.lease_id)) return;
-            
             const docTypeLabels: Record<string, string> = {
               quittance: "Quittance de loyer",
               bail: "Contrat de bail",
@@ -438,7 +480,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
               EDL_sortie: "État des lieux de sortie",
               attestation_assurance: "Attestation d'assurance",
             };
-            
+
             addEvent({
               type: "document",
               action: "created",
@@ -447,13 +489,21 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
               importance: doc.type === "quittance" ? "high" : "medium",
               data: doc,
             });
+
+            // FIX AUDIT 2026-03-04: Notify React Query to refetch documents list
+            if (onDocumentChangeRef.current) {
+              onDocumentChangeRef.current();
+            }
           }
         )
-        .subscribe();
-      
+        .subscribe((status) => {
+          updateConnectionStatus("documents", status);
+        });
+
       channelsRef.current.push(documentsChannel);
 
       // 4. Écouter les MISES À JOUR DE TICKETS
+      // FIX AUDIT 2026-03-04: Ajouter filtre par created_by_profile_id
       const ticketsChannel = supabaseRef.current
         .channel(`tenant-tickets:${profile.id}`)
         .on(
@@ -462,14 +512,12 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             event: "UPDATE",
             schema: "public",
             table: "tickets",
+            filter: `created_by_profile_id=eq.${profile.id}`,
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const ticket = payload.new as Record<string, any>;
             const oldTicket = payload.old as Record<string, any>;
 
-            // Seulement les tickets créés par ce locataire
-            if (ticket.created_by_profile_id !== profile.id) return;
-            
             // Changement de statut
             if (oldTicket.statut !== ticket.statut) {
               const statusMessages: Record<string, string> = {
@@ -496,8 +544,10 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             }
           }
         )
-        .subscribe();
-      
+        .subscribe((status) => {
+          updateConnectionStatus("tickets", status);
+        });
+
       channelsRef.current.push(ticketsChannel);
 
       // 5. Écouter les SIGNATURES
@@ -509,6 +559,7 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             event: "UPDATE",
             schema: "public",
             table: "lease_signers",
+            filter: `profile_id=eq.${profile.id}`,
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const signer = payload.new as Record<string, any>;
@@ -529,12 +580,13 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             }
           }
         )
-        .subscribe();
-      
+        .subscribe((status) => {
+          updateConnectionStatus("signers", status);
+        });
+
       channelsRef.current.push(signersChannel);
 
       // 6. Écouter les MODIFICATIONS DE PROPRIÉTÉ (adresse, etc.)
-      // On écoute toutes les propriétés liées aux baux
       const propertyChannel = supabaseRef.current
         .channel(`tenant-properties:${profile.id}`)
         .on(
@@ -562,74 +614,69 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
             }
           }
         )
-        .subscribe();
-      
+        .subscribe((status) => {
+          updateConnectionStatus("properties", status);
+        });
+
       channelsRef.current.push(propertyChannel);
 
       // 7. Écouter les CHANGEMENTS D'EDL (états des lieux)
-      const edlChannel = supabaseRef.current
-        .channel(`tenant-edl:${profile.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "edl",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const edl = payload.new as Record<string, any>;
-            // Vérifier que c'est pour un de nos baux
-            if (!leaseIds.includes(edl.lease_id)) return;
+      // FIX AUDIT 2026-03-04: Filtre par lease, corrige edl.statut → edl.status, supprime owner_signed
+      for (const leaseId of leaseIds) {
+        const edlChannel = supabaseRef.current
+          .channel(`tenant-edl:${leaseId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "edl",
+              filter: `lease_id=eq.${leaseId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const edl = payload.new as Record<string, any>;
 
-            addEvent({
-              type: "edl",
-              action: "created",
-              title: "Nouvel état des lieux",
-              description: `EDL ${edl.type === "entree" ? "d'entrée" : "de sortie"} planifié`,
-              importance: "high",
-              data: edl,
-            });
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "edl",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const edl = payload.new as Record<string, any>;
-            const oldEdl = payload.old as Record<string, any>;
-            if (!leaseIds.includes(edl.lease_id)) return;
-
-            // EDL complété
-            if (oldEdl.statut !== "completed" && edl.statut === "completed") {
               addEvent({
                 type: "edl",
-                action: "updated",
-                title: "EDL terminé",
-                description: "L'état des lieux est terminé, vérifiez le résultat",
+                action: "created",
+                title: "Nouvel état des lieux",
+                description: `EDL ${edl.type === "entree" ? "d'entrée" : "de sortie"} planifié`,
                 importance: "high",
                 data: edl,
               });
             }
-            // EDL signé par le propriétaire
-            if (!oldEdl.owner_signed && edl.owner_signed) {
-              addEvent({
-                type: "edl",
-                action: "updated",
-                title: "EDL validé",
-                description: "Le propriétaire a signé l'état des lieux",
-                importance: "high",
-                data: edl,
-              });
-            }
-          }
-        )
-        .subscribe();
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "edl",
+              filter: `lease_id=eq.${leaseId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const edl = payload.new as Record<string, any>;
+              const oldEdl = payload.old as Record<string, any>;
 
-      channelsRef.current.push(edlChannel);
+              // FIX: La colonne s'appelle "status" et non "statut"
+              if (oldEdl.status !== "completed" && edl.status === "completed") {
+                addEvent({
+                  type: "edl",
+                  action: "updated",
+                  title: "EDL terminé",
+                  description: "L'état des lieux est terminé, vérifiez le résultat",
+                  importance: "high",
+                  data: edl,
+                });
+              }
+            }
+          )
+          .subscribe((status) => {
+            updateConnectionStatus(`edl:${leaseId}`, status);
+          });
+
+        channelsRef.current.push(edlChannel);
+      }
     };
 
     setupRealtime();

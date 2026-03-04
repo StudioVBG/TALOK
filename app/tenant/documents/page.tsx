@@ -54,6 +54,7 @@ import { DocumentGroups } from "@/components/documents/document-groups";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentUploadModal } from "@/components/documents/DocumentUploadModal";
 import { useTenantData } from "../_data/TenantDataProvider";
+import { useTenantRealtime } from "@/lib/hooks/use-realtime-tenant";
 import { PDFPreviewModal } from "@/components/documents/pdf-preview-modal";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -156,6 +157,13 @@ function DocumentsSkeleton() {
 export default function TenantDocumentsPage() {
   const { data: documents = [], isLoading, error, refetch } = useDocuments();
   const { dashboard } = useTenantData();
+
+  // FIX AUDIT 2026-03-04: Auto-refresh documents when owner uploads a new document
+  useTenantRealtime({
+    showToasts: true,
+    enableSound: false,
+    onDocumentChange: refetch,
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [periodFilter, setPeriodFilter] = useState<string>("all");

@@ -92,7 +92,12 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
   const [isLoadingScores, setIsLoadingScores] = useState(true);
   
   // 🔴 SOTA 2026: Hook temps réel pour synchronisation avec propriétaire
-  const realtime = useTenantRealtime({ showToasts: true, enableSound: false });
+  // FIX AUDIT 2026-03-04: Bridge realtime → dashboard refetch when data changes
+  const realtime = useTenantRealtime({
+    showToasts: true,
+    enableSound: false,
+    onDataChange: refetch,
+  });
   
   // EDLs en attente : priorité aux données du context (RPC), puis fallback sur les données du Server Component
   const pendingEDLs = useMemo(() => {
