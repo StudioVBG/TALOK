@@ -67,7 +67,7 @@ export async function GET(request: Request) {
           property:properties!inner(owner_id, address)
         )
       `)
-      .eq("statut", "pending")
+      .eq("statut", "sent")
       .gte("due_date", format(startOfDay(targetDateJ3), "yyyy-MM-dd"))
       .lte("due_date", format(endOfDay(targetDateJ3), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.1");
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
           property:properties!inner(owner_id, address)
         )
       `)
-      .eq("statut", "pending")
+      .eq("statut", "sent")
       .gte("due_date", format(startOfDay(targetDateJ1), "yyyy-MM-dd"))
       .lte("due_date", format(endOfDay(targetDateJ1), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.2");
@@ -133,7 +133,7 @@ export async function GET(request: Request) {
           property:properties!inner(owner_id, address)
         )
       `)
-      .in("statut", ["pending", "late"])
+      .in("statut", ["sent", "late"])
       .gte("due_date", format(startOfDay(targetDatePlus1), "yyyy-MM-dd"))
       .lte("due_date", format(endOfDay(targetDatePlus1), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.3");
@@ -290,17 +290,17 @@ async function sendReminder(
   },
   type: "j_minus_3" | "j_minus_1" | "j_plus_1" | "j_plus_7" | "j_plus_15" | "j_plus_30"
 ) {
-  // Récupérer les locataires du bail
-  const { data: roommates } = await supabase
-    .from("roommates")
+  // Récupérer les locataires du bail via lease_signers (pas roommates qui peut être vide)
+  const { data: tenantSigners } = await supabase
+    .from("lease_signers")
     .select(`
       profile_id,
-      profile:profiles!inner(id, user_id, first_name, last_name, email)
+      profile:profiles!inner(id, user_id, prenom, nom, email)
     `)
     .eq("lease_id", invoice.lease_id)
-    .is("left_on", null);
+    .in("role", ["locataire_principal", "locataire", "colocataire"]);
 
-  if (!roommates || roommates.length === 0) {
+  if (!tenantSigners || tenantSigners.length === 0) {
     return;
   }
 
@@ -343,18 +343,18 @@ async function sendReminder(
   const daysLateMap: Record<string, number> = { j_plus_1: 1, j_plus_7: 7, j_plus_15: 15, j_plus_30: 30 };
 
   // Émettre un événement pour chaque locataire
-  for (const roommate of roommates) {
-    const roommateData = roommate as any;
+  for (const signer of tenantSigners) {
+    const signerData = signer as any;
 
     await supabase.from("outbox").insert({
       event_type: config.event_type,
       payload: {
         invoice_id: invoice.id,
         lease_id: invoice.lease_id,
-        tenant_id: roommateData.profile?.id,
-        tenant_user_id: roommateData.profile?.user_id,
-        tenant_email: roommateData.profile?.email,
-        tenant_name: `${roommateData.profile?.first_name || ""} ${roommateData.profile?.last_name || ""}`.trim(),
+        tenant_id: signerData.profile?.id,
+        tenant_user_id: signerData.profile?.user_id,
+        tenant_email: signerData.profile?.email,
+        tenant_name: `${signerData.profile?.prenom || ""} ${signerData.profile?.nom || ""}`.trim(),
         amount: invoice.montant_total,
         month: invoice.periode,
         due_date: invoice.due_date,
@@ -366,16 +366,16 @@ async function sendReminder(
     });
 
     // Créer une notification in-app directe pour les factures en retard
-    if (daysLateMap[type] && roommateData.profile?.id) {
+    if (daysLateMap[type] && signerData.profile?.id) {
       try {
         await notifyPaymentLate(
-          roommateData.profile.id,
+          signerData.profile.id,
           invoice.montant_total,
           daysLateMap[type],
           invoice.id
         );
       } catch (notifErr) {
-        console.warn(`[CRON] notifyPaymentLate failed for ${roommateData.profile.id}:`, notifErr);
+        console.warn(`[CRON] notifyPaymentLate failed for ${signerData.profile.id}:`, notifErr);
       }
     }
   }
@@ -392,7 +392,7 @@ async function sendReminder(
         month: invoice.periode,
         due_date: invoice.due_date,
         days_late: daysLateMap[type] ?? 0,
-        tenant_count: roommates.length,
+        tenant_count: tenantSigners.length,
       },
     });
   }

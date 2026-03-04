@@ -307,16 +307,20 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     return { steps, completed, percentage: Math.round((completed / steps) * 100) };
   }, [hasLeaseData, dashboard?.kyc_status, currentLease?.statut, dashboard]);
 
-  // Prochaine échéance : 1er du mois suivant (même logique que TenantPaymentsClient)
+  // Prochaine échéance basée sur jour_paiement du bail
   const nextDue = useMemo(() => {
     if (!currentLease) return null;
     const now = new Date();
-    const nextFirst = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const jourPaiement = (currentLease as any).jour_paiement ?? 5;
+    let nextDate = new Date(now.getFullYear(), now.getMonth(), jourPaiement);
+    if (nextDate <= now) {
+      nextDate = new Date(now.getFullYear(), now.getMonth() + 1, jourPaiement);
+    }
+    const daysInMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+    if (jourPaiement > daysInMonth) nextDate.setDate(daysInMonth);
     const amount = (currentLease.loyer ?? 0) + (currentLease.charges_forfaitaires ?? 0);
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const diffMs = nextFirst.getTime() - today.getTime();
-    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    return { date: nextFirst, amount, daysLeft };
+    const daysLeft = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return { date: nextDate, amount, daysLeft };
   }, [currentLease]);
 
   if (error) {
@@ -650,6 +654,11 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                         <p className="text-2xl font-black text-red-700">
                           {formatCurrency(realtime.unpaidAmount > 0 ? realtime.unpaidAmount : dashboard.stats?.unpaid_amount)}
                         </p>
+                      </div>
+                    ) : (!dashboard.invoices || dashboard.invoices.length === 0) && currentLease?.statut === 'active' ? (
+                      <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-center gap-3">
+                        <Clock className="h-5 w-5 text-amber-600" />
+                        <p className="text-sm font-bold text-amber-700">En attente de facturation</p>
                       </div>
                     ) : (
                       <div className="mt-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-3">
