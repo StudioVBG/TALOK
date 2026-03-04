@@ -8,6 +8,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 
 // Types
 export type NotificationType = 
@@ -146,7 +147,117 @@ const notificationConfig: Record<NotificationType, {
 };
 
 /**
- * Crée une notification in-app.
+ * Envoie un push réel (web VAPID + FCM natif) aux appareils enregistrés du destinataire.
+ * Ne lance pas d'erreur si l'envoi échoue — les push sont best-effort.
+ */
+async function dispatchPush(
+  profileId: string,
+  title: string,
+  body: string,
+  actionUrl?: string,
+) {
+  try {
+    const serviceClient = createServiceRoleClient();
+
+    const { data: subs } = await serviceClient
+      .from("push_subscriptions")
+      .select("id, endpoint, p256dh_key, auth_key, device_type")
+      .eq("profile_id", profileId)
+      .eq("is_active", true);
+
+    if (!subs || subs.length === 0) return;
+
+    const webSubs = subs.filter((s) => s.device_type === "web");
+    const nativeSubs = subs.filter((s) => s.device_type === "android" || s.device_type === "ios");
+
+    // Web Push via VAPID
+    if (webSubs.length > 0) {
+      const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
+      const vapidSubject = process.env.VAPID_SUBJECT || "mailto:support@talok.fr";
+
+      if (vapidPublic && vapidPrivate) {
+        // @ts-ignore — web-push has no declaration file
+        const webPush = await import("web-push");
+        webPush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
+
+        const payload = JSON.stringify({
+          title,
+          body,
+          icon: "/icons/icon-192x192.png",
+          badge: "/icons/badge-72x72.png",
+          data: { url: actionUrl },
+        });
+
+        await Promise.allSettled(
+          webSubs.map(async (sub) => {
+            try {
+              await webPush.sendNotification(
+                { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
+                payload,
+              );
+            } catch (err: any) {
+              if (err?.statusCode === 410 || err?.statusCode === 404) {
+                await serviceClient
+                  .from("push_subscriptions")
+                  .update({ is_active: false } as any)
+                  .eq("id", sub.id as string);
+              }
+            }
+          }),
+        );
+      }
+    }
+
+    // FCM natif via Firebase Admin
+    if (nativeSubs.length > 0) {
+      const firebaseServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+      if (firebaseServiceAccount) {
+        const admin = await import("firebase-admin");
+
+        if (!admin.default.apps?.length) {
+          admin.default.initializeApp({
+            credential: admin.default.credential.cert(
+              JSON.parse(firebaseServiceAccount),
+            ),
+          });
+        }
+
+        await Promise.allSettled(
+          nativeSubs.map(async (sub) => {
+            // Le token FCM est stocké dans endpoint sous forme fcm://TOKEN
+            const fcmToken = sub.endpoint.startsWith("fcm://")
+              ? sub.endpoint.slice(6)
+              : sub.endpoint;
+
+            try {
+              await admin.default.messaging().send({
+                token: fcmToken,
+                notification: { title, body },
+                data: { url: actionUrl || "" },
+              });
+            } catch (err: any) {
+              if (
+                err?.code === "messaging/invalid-registration-token" ||
+                err?.code === "messaging/registration-token-not-registered"
+              ) {
+                await serviceClient
+                  .from("push_subscriptions")
+                  .update({ is_active: false } as any)
+                  .eq("id", sub.id as string);
+              }
+            }
+          }),
+        );
+      }
+    }
+  } catch (e) {
+    console.warn("[notification-service] Push dispatch failed:", e);
+  }
+}
+
+/**
+ * Crée une notification in-app et envoie un push réel si le canal push est activé.
  * recipientId est traité comme profile_id : on résout user_id pour la RLS.
  */
 export async function createNotification(
@@ -165,6 +276,8 @@ export async function createNotification(
     userId = profile.user_id;
   }
 
+  const channels = input.channels || config.defaultChannels;
+
   const notification: Record<string, unknown> = {
     type: input.type,
     priority: input.priority || config.defaultPriority,
@@ -172,7 +285,7 @@ export async function createNotification(
     body: input.message,
     message: input.message,
     profile_id: input.recipientId,
-    channels: input.channels || config.defaultChannels,
+    channels,
     is_read: false,
     action_url: input.actionUrl,
     action_label: input.actionLabel,
@@ -193,6 +306,12 @@ export async function createNotification(
   if (error) {
     console.error("Erreur création notification:", error);
     return null;
+  }
+
+  // Envoyer un push réel si le canal push est activé
+  if (channels.includes("push")) {
+    dispatchPush(input.recipientId, input.title, input.message, input.actionUrl)
+      .catch((e) => console.warn("[notification-service] dispatchPush error:", e));
   }
 
   // Convertir au format Notification

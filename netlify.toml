@@ -46,29 +46,20 @@
 # ==============================================================================
 
 # ==============================================================================
-# CRON SCHEDULING (Upstash QStash)
+# CRON SCHEDULING (Supabase pg_cron + pg_net)
 # ==============================================================================
 # Les routes /api/cron/* sont des API routes Next.js standard.
-# Elles sont déclenchées par Upstash QStash (https://console.upstash.com/qstash).
+# Elles sont déclenchées automatiquement par Supabase pg_cron + pg_net.
 #
-# Configuration dans le dashboard QStash:
-# | Endpoint                                | Schedule            |
-# |-----------------------------------------|---------------------|
-# | $APP_URL/api/cron/payment-reminders     | 0 8 * * *           |
-# | $APP_URL/api/cron/generate-monthly-invoices | 0 6 1 * *       |
-# | $APP_URL/api/cron/generate-invoices     | 0 6 1 * *           |
-# | $APP_URL/api/cron/notifications         | 0 7 * * *           |
-# | $APP_URL/api/cron/process-webhooks      | */5 * * * *         |
-# | $APP_URL/api/cron/lease-expiry-alerts   | 0 8 * * 1           |
-# | $APP_URL/api/cron/check-cni-expiry      | 0 10 * * *          |
-# | $APP_URL/api/cron/subscription-alerts   | 0 10 * * *          |
-# | $APP_URL/api/cron/irl-indexation        | 0 7 1 * *           |
-# | $APP_URL/api/cron/visit-reminders       | */30 * * * *        |
+# Configuration via la migration SQL :
+#   supabase/migrations/20260304100000_activate_pg_cron_schedules.sql
 #
-# Header requis par chaque endpoint:
+# Prérequis dans le dashboard Supabase (SQL Editor) :
+#   ALTER DATABASE postgres SET app.settings.app_url = 'https://votre-site.netlify.app';
+#   ALTER DATABASE postgres SET app.settings.cron_secret = 'votre-cron-secret';
+#
+# Header requis par chaque endpoint :
 #   Authorization: Bearer $CRON_SECRET
-#
-# Alternative gratuite: cron-job.org (HTTP GET avec header Authorization)
 # ==============================================================================
 
 # ==============================================================================

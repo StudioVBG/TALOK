@@ -10,7 +10,7 @@ import { notifyPaymentLate } from "@/lib/services/notification-service";
  * GET /api/cron/payment-reminders
  *
  * Cron job pour envoyer des rappels de paiement automatiques.
- * À exécuter quotidiennement via Vercel Cron ou un service externe.
+ * À exécuter quotidiennement via Supabase pg_cron + pg_net.
  *
  * Envoie des rappels:
  * - J-3: Rappel amical avant échéance
