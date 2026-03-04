@@ -145,6 +145,9 @@ export default function OnboardingCompletePage() {
 
       setProgress(100);
 
+      // Marquer l'onboarding comme terminé (évite la boucle de redirection)
+      await fetch("/api/me/onboarding-complete", { method: "POST" }).catch(() => {});
+
       // Nettoyer le localStorage
       localStorage.removeItem('syndic_profile');
       localStorage.removeItem('syndic_onboarding_site');

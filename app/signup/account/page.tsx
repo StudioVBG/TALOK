@@ -90,7 +90,7 @@ export default function AccountCreationPage() {
   const [draft, setDraft] = useState<AccountDraft>(INITIAL_DRAFT);
 
   useEffect(() => {
-    if (!role || !["owner", "tenant", "provider", "guarantor"].includes(role)) {
+    if (!role || !["owner", "tenant", "provider", "guarantor", "syndic"].includes(role)) {
       router.push("/signup/role");
     }
   }, [role, router]);
@@ -126,6 +126,7 @@ export default function AccountCreationPage() {
     tenant: inviteToken ? `/tenant/onboarding/context?invite=${inviteToken}` : "/tenant/onboarding/context",
     provider: "/provider/onboarding/profile",
     guarantor: inviteToken ? `/guarantor/onboarding/context?invite=${inviteToken}` : "/guarantor/onboarding/context",
+    syndic: "/syndic/onboarding/profile",
     admin: "/dashboard",
     platform_admin: "/admin",
   };
