@@ -163,6 +163,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   const [charges, setCharges] = useState<number>(0);
   const [depot, setDepot] = useState<number>(0);
   const [chargesType, setChargesType] = useState<"forfait" | "provisions">("forfait");
+  const [jourPaiement, setJourPaiement] = useState<number>(5);
   const [dateDebut, setDateDebut] = useState<string>(new Date().toISOString().split("T")[0]);
   
   // ✅ États pour la colocation
@@ -394,7 +395,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         depot_garantie_en_lettres: numberToWords(depot),
         mode_paiement: "virement",
         periodicite_paiement: "mensuelle",
-        jour_paiement: 5,
+        jour_paiement: jourPaiement,
         paiement_avance: true,
         revision_autorisee: true,
       },
@@ -843,6 +844,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
           depot_garantie: depot,
           date_debut: dateDebut,
           date_fin: dateFin,
+          jour_paiement: jourPaiement,
           custom_clauses: customClauses.length > 0 ? customClauses : undefined,
           // ✅ BIC Compliance: envoyer inventaire + régime fiscal
           ...(isFurnishedLease ? {
@@ -1138,6 +1140,25 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         <div className="space-y-2">
                           <Label>Date de début</Label>
                           <Input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div className="space-y-2">
+                          <Label>Jour de paiement</Label>
+                          <Select value={String(jourPaiement)} onValueChange={(v) => setJourPaiement(Number(v))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                                <SelectItem key={day} value={String(day)}>Le {day} du mois</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            Date d&apos;échéance mensuelle du loyer
+                          </p>
                         </div>
                       </div>
 

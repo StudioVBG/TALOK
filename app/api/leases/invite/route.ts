@@ -42,6 +42,7 @@ const inviteSchema = z.object({
   depot_garantie: z.number().min(0).default(0),
   date_debut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format de date invalide"),
   date_fin: z.string().nullable().optional(),
+  jour_paiement: z.number().int().min(1).max(28).default(5),
   // Bail standard
   tenant_email: z.string().email("Email du locataire invalide").nullable().optional(), // Nullable pour manual draft
   tenant_name: z.string().nullable().optional(),
@@ -291,6 +292,7 @@ export async function POST(request: Request) {
       depot_de_garantie: depotFinal,
       date_debut: validated.date_debut,
       date_fin: validated.date_fin || null,
+      jour_paiement: validated.jour_paiement,
       // Si manuel, le statut est "draft", sinon "pending_signature"
       statut: isManualDraft ? "draft" : "pending_signature",
       // P2-6: Clauses personnalisées → colonne clauses_particulieres (TEXT)

@@ -218,7 +218,7 @@ export async function POST(
           // SSOT : Utiliser les données du bien par défaut
           const baseRent = leaseFull.property?.loyer_hc ?? leaseFull.loyer ?? 0;
           const baseCharges = leaseFull.property?.charges_mensuelles ?? leaseFull.charges_forfaitaires ?? 0;
-          const monthStr = new Date().toISOString().slice(0, 7);
+          const monthStr = leaseFull.date_debut?.slice(0, 7) || new Date().toISOString().slice(0, 7);
 
           // Calcul du prorata
           const startDate = new Date(leaseFull.date_debut);
