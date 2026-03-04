@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { EntitiesPageClient } from "./EntitiesPageClient";
+import type { LegalEntity } from "@/lib/types/legal-entity";
 
 export default async function EntitiesPage() {
   const supabase = await createClient();
@@ -97,7 +98,7 @@ export default async function EntitiesPage() {
     }
   }
 
-  const entities: Record<string, unknown>[] = (data || []) as Record<string, unknown>[];
+  const entities = (data || []) as LegalEntity[];
 
   return <EntitiesPageClient entities={entities} />;
 }

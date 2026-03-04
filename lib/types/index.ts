@@ -980,6 +980,9 @@ export type {
 
 export {
   ENTITY_TYPE_LABELS,
+} from "@/lib/entities/entity-constants";
+
+export {
   FISCAL_REGIME_LABELS as LEGAL_ENTITY_FISCAL_REGIME_LABELS,
   DETENTION_TYPE_LABELS,
   ACQUISITION_MODE_LABELS,

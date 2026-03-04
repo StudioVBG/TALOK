@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EntityDetailClient } from "./EntityDetailClient";
+import type { LegalEntity, EntityAssociate } from "@/lib/types/legal-entity";
 
 interface PageProps {
   params: Promise<{ entityId: string }>;
@@ -41,8 +42,8 @@ export default async function EntityDetailPage({ params }: PageProps) {
 
   return (
     <EntityDetailClient
-      entity={entity as Record<string, unknown>}
-      associates={(associates || []) as Record<string, unknown>[]}
+      entity={entity as LegalEntity}
+      associates={(associates || []) as EntityAssociate[]}
     />
   );
 }

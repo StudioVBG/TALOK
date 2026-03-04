@@ -221,11 +221,12 @@ export async function updateLegalEntity(
  */
 export async function deactivateLegalEntity(
   entityId: string,
-  motif?: string
+  motif?: string,
+  ownerProfileId?: string
 ): Promise<void> {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  let query = supabase
     .from("legal_entities")
     .update({
       is_active: false,
@@ -234,6 +235,13 @@ export async function deactivateLegalEntity(
       updated_at: new Date().toISOString(),
     })
     .eq("id", entityId);
+
+  // Sécurité : filtrer par owner_profile_id si fourni
+  if (ownerProfileId) {
+    query = query.eq("owner_profile_id", ownerProfileId);
+  }
+
+  const { error } = await query;
 
   if (error) {
     throw new Error(`Erreur lors de la désactivation: ${error.message}`);

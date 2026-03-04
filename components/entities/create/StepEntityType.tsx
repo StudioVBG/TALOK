@@ -9,20 +9,29 @@ interface StepEntityTypeProps {
 }
 
 const ENTITY_TYPES = [
+  // Sociétés civiles
   {
     id: "sci_ir",
     label: "SCI à l'IR",
     description: "Société Civile Immobilière, transparence fiscale",
     icon: Building2,
-    group: "company",
+    group: "sci",
   },
   {
     id: "sci_is",
     label: "SCI à l'IS",
     description: "Société Civile Immobilière, impôt sur les sociétés",
     icon: Building2,
-    group: "company",
+    group: "sci",
   },
+  {
+    id: "sci_construction_vente",
+    label: "SCCV",
+    description: "SCI de construction-vente (promotion immobilière)",
+    icon: Building2,
+    group: "sci",
+  },
+  // Sociétés commerciales
   {
     id: "sarl",
     label: "SARL",
@@ -31,9 +40,9 @@ const ENTITY_TYPES = [
     group: "company",
   },
   {
-    id: "sas",
-    label: "SAS / SASU",
-    description: "Société par actions simplifiée",
+    id: "sarl_famille",
+    label: "SARL de famille",
+    description: "SARL familiale avec option IR possible",
     icon: Building2,
     group: "company",
   },
@@ -45,6 +54,42 @@ const ENTITY_TYPES = [
     group: "company",
   },
   {
+    id: "sas",
+    label: "SAS",
+    description: "Société par actions simplifiée (2+ associés)",
+    icon: Building2,
+    group: "company",
+  },
+  {
+    id: "sasu",
+    label: "SASU",
+    description: "SAS unipersonnelle (associé unique)",
+    icon: Building2,
+    group: "company",
+  },
+  {
+    id: "sa",
+    label: "SA",
+    description: "Société anonyme",
+    icon: Building2,
+    group: "company",
+  },
+  {
+    id: "snc",
+    label: "SNC",
+    description: "Société en nom collectif",
+    icon: Building2,
+    group: "company",
+  },
+  {
+    id: "holding",
+    label: "Holding",
+    description: "Société holding de participations",
+    icon: Building2,
+    group: "company",
+  },
+  // Structures spéciales
+  {
     id: "indivision",
     label: "Indivision",
     description: "Plusieurs copropriétaires d'un même bien",
@@ -53,11 +98,19 @@ const ENTITY_TYPES = [
   },
   {
     id: "demembrement_usufruit",
-    label: "Démembrement",
-    description: "Usufruit / Nue-propriété",
+    label: "Usufruit",
+    description: "Usufruit seul (démembrement de propriété)",
     icon: ArrowUpDown,
     group: "special",
   },
+  {
+    id: "demembrement_nue_propriete",
+    label: "Nue-propriété",
+    description: "Nue-propriété seule (démembrement de propriété)",
+    icon: ArrowUpDown,
+    group: "special",
+  },
+  // Personnel
   {
     id: "particulier",
     label: "En nom propre",

@@ -196,6 +196,31 @@ export class LeaseTemplateService {
         variables['MANDATAIRE_NOM'] = b.mandataire_nom;
         variables['MANDATAIRE_ADRESSE'] = b.mandataire_adresse || '';
       }
+
+      // Société enrichie (SIRET, capital, RCS, TVA)
+      variables['BAILLEUR_SIRET'] = b.siret || '';
+      variables['BAILLEUR_CAPITAL_SOCIAL'] = b.capital_social ? `${b.capital_social.toLocaleString('fr-FR')} €` : '';
+      variables['BAILLEUR_RCS'] = [b.rcs_numero, b.rcs_ville].filter(Boolean).join(' ') || '';
+      variables['BAILLEUR_TVA'] = b.numero_tva || '';
+
+      // Indivision — mention des indivisaires (art. 815-3 Code civil)
+      if (b.type === 'indivision' && b.indivisaires && b.indivisaires.length > 0) {
+        variables['BAILLEUR_EST_INDIVISION'] = 'true';
+        variables['BAILLEUR_INDIVISAIRES'] = b.indivisaires
+          .map((ind) => {
+            const name = `${ind.prenom || ''} ${ind.nom || ''}`.trim();
+            const quotePart = `${ind.quote_part_numerateur}/${ind.quote_part_denominateur}`;
+            return `${name} (${quotePart})`;
+          })
+          .join(', ');
+        variables['BAILLEUR_NB_INDIVISAIRES'] = String(b.indivisaires.length);
+      }
+
+      // Démembrement
+      if (b.type === 'demembrement' && b.type_demembrement) {
+        variables['BAILLEUR_EST_DEMEMBREMENT'] = 'true';
+        variables['BAILLEUR_TYPE_DEMEMBREMENT'] = b.type_demembrement === 'usufruit' ? 'Usufruit' : 'Nue-propriété';
+      }
     }
 
     // Locataire(s) - ✅ FIX: Meilleure gestion des fallbacks
