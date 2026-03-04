@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { calculateTaxes } from "@/lib/services/tax-engine";
+import { sendRentReminderEmail } from "@/lib/services/email-service";
 
 // ============================================
 // TYPES
@@ -121,8 +122,7 @@ export async function sendPaymentReminder(
     return { success: false, error: "Cette facture est déjà payée" };
   }
 
-  // TODO: Intégrer avec un service d'email (Resend, SendGrid, etc.)
-  // Pour l'instant, enregistrer la demande de rappel
+  // Enregistrer la relance en DB
   try {
     await supabase.from("invoice_reminders").insert({
       invoice_id: invoiceId,
@@ -132,6 +132,27 @@ export async function sendPaymentReminder(
   } catch {
     // Table invoice_reminders peut ne pas exister encore — non bloquant
     console.warn(`[REMINDER] invoice_reminders table not available for invoice ${invoiceId}`);
+  }
+
+  // Envoyer l'email de relance via Resend
+  const tenant = (invoice as any).profiles;
+  if (tenant?.email) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    try {
+      const emailResult = await sendRentReminderEmail(
+        tenant.email,
+        `${tenant.prenom || ""} ${tenant.nom || ""}`.trim() || "Locataire",
+        invoice.periode || "",
+        invoice.montant_total,
+        invoice.periode || "",
+        `${appUrl}/tenant/payments`
+      );
+      if (!emailResult.success) {
+        console.warn(`[REMINDER] Email envoi échoué pour ${tenant.email}:`, emailResult.error);
+      }
+    } catch (emailError) {
+      console.error(`[REMINDER] Erreur envoi email à ${tenant.email}:`, emailError);
+    }
   }
 
   return { success: true };
