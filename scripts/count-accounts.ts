@@ -40,7 +40,7 @@ async function countAccounts() {
   console.log(`\n📈 Total des comptes : ${totalProfiles || 0}\n`);
 
   // Compter par rôle
-  const roles = ["admin", "owner", "tenant", "provider"];
+  const roles = ["admin", "owner", "tenant", "provider", "syndic"];
   
   console.log("Répartition par rôle :");
   console.log("-".repeat(30));

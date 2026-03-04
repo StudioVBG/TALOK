@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     const fullContext = {
       userId: user.id,
       profileId: profile.id,
-      role: profile.role as "owner" | "tenant" | "provider" | "admin",
+      role: profile.role as "owner" | "tenant" | "provider" | "admin" | "syndic",
       locale: "fr" as const,
       ...context,
     };

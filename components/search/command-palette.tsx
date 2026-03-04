@@ -334,6 +334,8 @@ export function CommandPalette({ userRole = "owner" }: CommandPaletteProps) {
         return tenantCommands;
       case "admin":
         return adminCommands;
+      case "syndic":
+        return [];
       default:
         return [];
     }

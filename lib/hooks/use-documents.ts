@@ -20,7 +20,7 @@ import { useAuth } from "@/lib/hooks/use-auth";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
 // Rôles autorisés à voir des documents
-const ALLOWED_ROLES = ["owner", "tenant", "provider", "admin"] as const;
+const ALLOWED_ROLES = ["owner", "tenant", "provider", "admin", "syndic"] as const;
 type AllowedRole = typeof ALLOWED_ROLES[number];
 
 type DocumentRow = {

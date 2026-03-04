@@ -334,7 +334,7 @@ ${list}`
     description: "Recherche un utilisateur par nom, prénom ou email. Accès admin uniquement.",
     schema: z.object({
       query: z.string().describe("Terme de recherche (nom, prénom ou email)"),
-      role: z.enum(["owner", "tenant", "provider", "admin"]).optional().describe("Filtrer par rôle"),
+      role: z.enum(["owner", "tenant", "provider", "admin", "syndic"]).optional().describe("Filtrer par rôle"),
     }),
   }
 );
