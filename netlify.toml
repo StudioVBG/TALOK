@@ -37,11 +37,38 @@
 #   - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY - pour les paiements
 #   - RESEND_API_KEY (🔒 secret) - pour les emails
 #   - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (🔒 secrets) - pour les SMS
+#   - CRON_SECRET (🔒 secret) - pour authentifier les appels cron
 #   - NEXT_PUBLIC_SENTRY_DSN - pour le monitoring
 #   - NEXT_PUBLIC_POSTHOG_KEY - pour les analytics
 #
 # ⚠️  IMPORTANT: Les variables marquées 🔒 sont secrètes et ne doivent
 #     JAMAIS commencer par NEXT_PUBLIC_ pour éviter l'exposition au client.
+# ==============================================================================
+
+# ==============================================================================
+# CRON SCHEDULING (Upstash QStash)
+# ==============================================================================
+# Les routes /api/cron/* sont des API routes Next.js standard.
+# Elles sont déclenchées par Upstash QStash (https://console.upstash.com/qstash).
+#
+# Configuration dans le dashboard QStash:
+# | Endpoint                                | Schedule            |
+# |-----------------------------------------|---------------------|
+# | $APP_URL/api/cron/payment-reminders     | 0 8 * * *           |
+# | $APP_URL/api/cron/generate-monthly-invoices | 0 6 1 * *       |
+# | $APP_URL/api/cron/generate-invoices     | 0 6 1 * *           |
+# | $APP_URL/api/cron/notifications         | 0 7 * * *           |
+# | $APP_URL/api/cron/process-webhooks      | */5 * * * *         |
+# | $APP_URL/api/cron/lease-expiry-alerts   | 0 8 * * 1           |
+# | $APP_URL/api/cron/check-cni-expiry      | 0 10 * * *          |
+# | $APP_URL/api/cron/subscription-alerts   | 0 10 * * *          |
+# | $APP_URL/api/cron/irl-indexation        | 0 7 1 * *           |
+# | $APP_URL/api/cron/visit-reminders       | */30 * * * *        |
+#
+# Header requis par chaque endpoint:
+#   Authorization: Bearer $CRON_SECRET
+#
+# Alternative gratuite: cron-job.org (HTTP GET avec header Authorization)
 # ==============================================================================
 
 # ==============================================================================
