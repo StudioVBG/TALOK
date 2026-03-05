@@ -176,7 +176,7 @@ export async function POST(request: Request) {
 
       if (docsToDelete.length > 0) {
         // Supprimer les fichiers du storage
-        const storagePaths = docsToDelete.map(d => d.storage_path).filter((p): p is string => Boolean(p));
+        const storagePaths = docsToDelete.map((d: any) => d.storage_path).filter((p): p is string => Boolean(p));
         if (storagePaths.length > 0) {
           await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove(storagePaths);
         }
@@ -185,7 +185,7 @@ export async function POST(request: Request) {
         const { error } = await supabase
           .from("documents")
           .delete()
-          .in("id", docsToDelete.map(d => d.id));
+          .in("id", docsToDelete.map((d: any) => d.id));
 
         if (!error) {
           results.push({ type: "documents_lease_orphan", deleted: docsToDelete.length });
