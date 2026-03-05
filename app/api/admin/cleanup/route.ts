@@ -171,8 +171,8 @@ export async function POST(request: Request) {
         .from("leases")
         .select("id");
 
-      const validLeaseIds = new Set((validLeases || []).map(l => l.id));
-      const docsToDelete = (orphanDocs || []).filter(d => d.lease_id && !validLeaseIds.has(d.lease_id));
+      const validLeaseIds = new Set((validLeases || []).map((l: any) => l.id));
+      const docsToDelete = (orphanDocs || []).filter((d: any) => d.lease_id && !validLeaseIds.has(d.lease_id));
 
       if (docsToDelete.length > 0) {
         // Supprimer les fichiers du storage
