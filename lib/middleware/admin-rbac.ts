@@ -114,7 +114,7 @@ export function getAdminPermissions(role: string): AdminPermission[] {
 
 // Info utilisateur authentifie
 interface AdminAuthResult {
-  user: { id: string };
+  user: { id: string; email?: string };
   profile: { id: string; role: string };
   permissions: AdminPermission[];
 }
