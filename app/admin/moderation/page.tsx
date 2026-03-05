@@ -423,7 +423,7 @@ export default function AdminModerationPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={fetchData}>
+            <Button variant="outline" size="sm" onClick={() => fetchData()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Actualiser
             </Button>
