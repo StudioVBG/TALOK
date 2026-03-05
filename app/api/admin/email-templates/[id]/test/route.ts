@@ -24,7 +24,7 @@ export async function POST(
 
     const supabase = await createClient();
 
-    const body = await request.json();
+    const body = (await request.json()) as { email?: string };
     const recipientEmail = body.email || auth.user.email;
 
     if (!recipientEmail) {
