@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
     // Compter les souscriptions actives pour chaque add-on
     const addonsWithStats = await Promise.all(
-      (addons || []).map(async (addon) => {
+      (addons || []).map(async (addon: Record<string, unknown>) => {
         const { count } = await supabase
           .from("subscription_addon_subscriptions")
           .select("id", { count: "exact", head: true })
