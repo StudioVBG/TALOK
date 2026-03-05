@@ -274,6 +274,96 @@ export function useAdminRealtimeSync(options?: { debug?: boolean }) {
 }
 
 /**
+ * Hook pré-configuré pour les agences
+ */
+export function useAgencyRealtimeSync(options?: { debug?: boolean }) {
+  return useRealtimeSync({
+    tables: [
+      "properties",
+      "leases",
+      "invoices",
+      "payments",
+      "notifications",
+      "tickets",
+    ],
+    queryKeyMapping: {
+      ...DEFAULT_QUERY_KEY_MAPPING,
+      properties: ["properties", "agency:properties"],
+      leases: ["leases", "agency:leases"],
+      invoices: ["invoices", "agency:invoices"],
+      payments: ["payments", "agency:payments"],
+    },
+    debug: options?.debug,
+  });
+}
+
+/**
+ * Hook pré-configuré pour les syndics
+ */
+export function useSyndicRealtimeSync(options?: { debug?: boolean }) {
+  return useRealtimeSync({
+    tables: [
+      "copro_sites",
+      "copro_units",
+      "charges_copro",
+      "assemblies",
+      "notifications",
+      "tickets",
+    ],
+    queryKeyMapping: {
+      ...DEFAULT_QUERY_KEY_MAPPING,
+      copro_sites: ["copro-sites", "syndic:sites"],
+      copro_units: ["copro-units", "syndic:units"],
+      charges_copro: ["charges-copro", "syndic:charges"],
+      assemblies: ["assemblies", "syndic:assemblies"],
+    },
+    debug: options?.debug,
+  });
+}
+
+/**
+ * Hook pré-configuré pour les copropriétaires
+ */
+export function useCoproRealtimeSync(options?: { debug?: boolean }) {
+  return useRealtimeSync({
+    tables: [
+      "copro_sites",
+      "copro_units",
+      "charges_copro",
+      "assemblies",
+      "documents",
+      "notifications",
+    ],
+    queryKeyMapping: {
+      ...DEFAULT_QUERY_KEY_MAPPING,
+      copro_sites: ["copro-sites", "copro:sites"],
+      copro_units: ["copro-units", "copro:units"],
+      charges_copro: ["charges-copro", "copro:charges"],
+      assemblies: ["assemblies", "copro:assemblies"],
+    },
+    debug: options?.debug,
+  });
+}
+
+/**
+ * Hook pré-configuré pour les garants
+ */
+export function useGuarantorRealtimeSync(options?: { debug?: boolean }) {
+  return useRealtimeSync({
+    tables: [
+      "leases",
+      "guarantees",
+      "notifications",
+    ],
+    queryKeyMapping: {
+      ...DEFAULT_QUERY_KEY_MAPPING,
+      guarantees: ["guarantees", "guarantor:engagements"],
+    },
+    debug: options?.debug,
+  });
+}
+
+/**
  * Hook pour écouter une table spécifique avec un filtre
  */
 export function useTableRealtimeSync(

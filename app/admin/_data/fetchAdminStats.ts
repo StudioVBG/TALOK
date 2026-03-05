@@ -23,7 +23,11 @@ export interface AdminStatsData {
   totalDocuments: number;
   totalBlogPosts: number;
   publishedBlogPosts: number;
-  recentActivity: any[];
+  recentActivity: Array<{
+    type: string;
+    description: string;
+    date: string;
+  }>;
 }
 
 export async function fetchAdminStats(): Promise<AdminStatsData | null> {
