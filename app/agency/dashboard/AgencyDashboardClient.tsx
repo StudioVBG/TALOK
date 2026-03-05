@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/helpers/format";
 
 // Animation variants
 const containerVariants = {
@@ -38,96 +39,6 @@ const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
-
-// Données de démonstration
-const mockStats = {
-  mandatsActifs: 12,
-  mandatsTotal: 15,
-  proprietaires: 12,
-  biensGeres: 47,
-  biensOccupes: 42,
-  locataires: 58,
-  commissionsEncaissees: 8450,
-  commissionsEnAttente: 2340,
-  loyersEncaissesMois: 52800,
-  tauxOccupation: 89,
-  ticketsOuverts: 5,
-};
-
-const recentMandates = [
-  {
-    id: "1",
-    owner: "Jean Dupont",
-    type: "Gestion",
-    biens: 3,
-    status: "active",
-    commission: "7%",
-  },
-  {
-    id: "2",
-    owner: "Marie Martin",
-    type: "Gestion",
-    biens: 5,
-    status: "active",
-    commission: "6.5%",
-  },
-  {
-    id: "3",
-    owner: "SCI Les Oliviers",
-    type: "Gestion",
-    biens: 8,
-    status: "pending_signature",
-    commission: "6%",
-  },
-];
-
-const recentPayments = [
-  {
-    id: "1",
-    property: "Apt. 3 - Rue Victor Hugo",
-    tenant: "Sophie Bernard",
-    amount: 950,
-    status: "paid",
-    date: "05/12/2025",
-  },
-  {
-    id: "2",
-    property: "Studio - Av. de la République",
-    tenant: "Lucas Petit",
-    amount: 650,
-    status: "paid",
-    date: "04/12/2025",
-  },
-  {
-    id: "3",
-    property: "T3 - Bd Gambetta",
-    tenant: "Emma Durand",
-    amount: 1100,
-    status: "pending",
-    date: "01/12/2025",
-  },
-];
-
-const pendingTasks = [
-  {
-    id: "1",
-    title: "EDL sortie - 15 rue des Lilas",
-    type: "edl",
-    dueDate: "10/12/2025",
-  },
-  {
-    id: "2",
-    title: "Signature bail - M. Rousseau",
-    type: "signature",
-    dueDate: "08/12/2025",
-  },
-  {
-    id: "3",
-    title: "Révision loyer - Apt. Beaumont",
-    type: "revision",
-    dueDate: "15/12/2025",
-  },
-];
 
 interface StatCardProps {
   title: string;
@@ -241,8 +152,8 @@ export function AgencyDashboardClient({ data }: { data: any }) {
         />
         <StatCard
           title="Commissions du mois"
-          value={`${(stats.commissionsEncaissees || 0).toLocaleString("fr-FR")}€`}
-          subtitle={`${(stats.commissionsEnAttente || 0).toLocaleString("fr-FR")}€ en attente`}
+          value={formatCurrency(stats.commissionsEncaissees || 0)}
+          subtitle={`${formatCurrency(stats.commissionsEnAttente || 0)} en attente`}
           icon={Euro}
           gradient="from-emerald-500 to-emerald-600"
           href="/agency/commissions"
@@ -287,7 +198,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
               <PiggyBank className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{(stats.loyersEncaissesMois || 0).toLocaleString("fr-FR")}€</p>
+              <p className="text-2xl font-bold">{formatCurrency(stats.loyersEncaissesMois || 0)}</p>
               <p className="text-sm text-muted-foreground">Loyers encaissés ce mois</p>
             </div>
           </CardContent>
@@ -389,8 +300,10 @@ export function AgencyDashboardClient({ data }: { data: any }) {
                   Aucune tâche en attente
                 </div>
               )}
-              <Button variant="outline" className="w-full mt-2" size="sm">
-                Voir toutes les tâches
+              <Button variant="outline" className="w-full mt-2" size="sm" asChild>
+                <Link href="/agency/tasks">
+                  Voir toutes les tâches
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -500,23 +413,23 @@ export function AgencyDashboardClient({ data }: { data: any }) {
               <div className="space-y-2">
                 <h3 className="text-xl font-bold">Performance ce mois</h3>
                 <p className="text-white/80 text-sm">
-                  Vous avez encaissé {mockStats.loyersEncaissesMois.toLocaleString("fr-FR")}€ de loyers
-                  pour une commission de {mockStats.commissionsEncaissees.toLocaleString("fr-FR")}€
+                  Vous avez encaissé {formatCurrency(stats.loyersEncaissesMois || 0)} de loyers
+                  pour une commission de {formatCurrency(stats.commissionsEncaissees || 0)}
                 </p>
               </div>
               <div className="flex items-center gap-6">
                 <div className="text-center">
-                  <p className="text-3xl font-bold">{mockStats.tauxOccupation}%</p>
+                  <p className="text-3xl font-bold">{stats.tauxOccupation || 0}%</p>
                   <p className="text-xs text-white/70">Taux occupation</p>
                 </div>
                 <div className="h-12 w-px bg-white/20" />
                 <div className="text-center">
-                  <p className="text-3xl font-bold">98%</p>
+                  <p className="text-3xl font-bold">{stats.tauxRecouvrement ?? "—"}%</p>
                   <p className="text-xs text-white/70">Taux recouvrement</p>
                 </div>
                 <div className="h-12 w-px bg-white/20" />
                 <div className="text-center">
-                  <p className="text-3xl font-bold">4.8</p>
+                  <p className="text-3xl font-bold">{stats.noteClients ?? "—"}</p>
                   <p className="text-xs text-white/70">Note clients</p>
                 </div>
               </div>

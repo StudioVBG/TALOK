@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { guarantorProfilesService } from "@/features/profiles/services/guarantor-profiles.service";
+import { formatCurrency, formatDate } from "@/lib/helpers/format";
 import type {
   GuarantorDashboardData,
   GuarantorDashboardEngagement,
@@ -30,20 +32,18 @@ import {
   INCIDENT_TYPE_LABELS,
 } from "@/lib/types/guarantor";
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-  }).format(amount);
-}
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 },
+  },
+};
 
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+};
 
 function EngagementCard({ engagement }: { engagement: GuarantorDashboardEngagement }) {
   const statusColors: Record<string, string> = {
@@ -193,9 +193,14 @@ export default function GuarantorDashboardPage() {
   const unresolvedIncidents = incidents.filter((i) => !i.resolved_at);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="container mx-auto p-6 space-y-6"
+    >
       {/* En-tête */}
-      <div className="flex items-center justify-between">
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Tableau de bord garant</h1>
           <p className="text-muted-foreground">
@@ -208,7 +213,7 @@ export default function GuarantorDashboardPage() {
             Mon profil
           </Button>
         </Link>
-      </div>
+      </motion.div>
 
       {/* Alertes */}
       {pendingEngagements.length > 0 && (
@@ -232,7 +237,7 @@ export default function GuarantorDashboardPage() {
       )}
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Engagements actifs</CardDescription>
@@ -297,10 +302,10 @@ export default function GuarantorDashboardPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* Contenu principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Engagements */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -395,9 +400,10 @@ export default function GuarantorDashboardPage() {
             </Card>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Actions rapides */}
+      <motion.div variants={itemVariants}>
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Actions rapides</CardTitle>
@@ -425,7 +431,8 @@ export default function GuarantorDashboardPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
