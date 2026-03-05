@@ -15,7 +15,6 @@ import { AssemblyCard } from "@/components/copro/assembly-card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { usePermissions } from "@/lib/hooks/use-permissions";
-import { formatCurrency } from "@/lib/helpers/format";
 import {
   Building2, Users, Euro, Calendar,
   Plus, TrendingUp, AlertTriangle,
