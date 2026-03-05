@@ -47,24 +47,56 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Prochaine échéance : 1er du mois suivant, montant loyer+charges, countdown
+  // Prochaine échéance basée sur la prochaine invoice non payée (source de vérité)
+  // Fallback : calcul basé sur jour_paiement du bail si aucune invoice n'existe encore
   const nextDue = useMemo(() => {
     const now = new Date();
-    const nextFirst = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const lease = dashboard?.lease ?? (dashboard?.leases && dashboard.leases.length > 0 ? dashboard.leases[0] : null);
+
+    // Chercher la prochaine facture non payée parmi les invoices
+    const nextInvoice = initialInvoices
+      .filter((i: any) => i.statut !== 'paid' && i.statut !== 'cancelled' && i.statut !== 'draft')
+      .sort((a: any, b: any) => {
+        const dateA = a.date_echeance ? new Date(a.date_echeance).getTime() : 0;
+        const dateB = b.date_echeance ? new Date(b.date_echeance).getTime() : 0;
+        return dateA - dateB;
+      })[0];
+
+    if (nextInvoice?.date_echeance) {
+      // Source de vérité : la facture réelle
+      const dueDate = new Date(nextInvoice.date_echeance);
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffMs = dueDate.getTime() - today.getTime();
+      const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      return {
+        date: dueDate,
+        amount: Number(nextInvoice.montant_total) || 0,
+        daysLeft,
+        hasLease: !!lease,
+        loyer: Number(nextInvoice.montant_loyer) || 0,
+        charges: Number(nextInvoice.montant_charges) || 0,
+      };
+    }
+
+    // Fallback : calcul basé sur jour_paiement du bail
+    const jourPaiement = (lease as any)?.jour_paiement ?? 5;
+    let nextDate = new Date(now.getFullYear(), now.getMonth(), jourPaiement);
+    if (nextDate <= now) {
+      nextDate = new Date(now.getFullYear(), now.getMonth() + 1, jourPaiement);
+    }
+    const daysInMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+    if (jourPaiement > daysInMonth) nextDate.setDate(daysInMonth);
     const amount = (lease?.loyer ?? 0) + (lease?.charges_forfaitaires ?? 0);
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const diffMs = nextFirst.getTime() - today.getTime();
-    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return {
-      date: nextFirst,
+      date: nextDate,
       amount,
       daysLeft,
       hasLease: !!lease,
       loyer: lease?.loyer ?? 0,
       charges: lease?.charges_forfaitaires ?? 0,
     };
-  }, [dashboard?.lease, dashboard?.leases]);
+  }, [dashboard?.lease, dashboard?.leases, initialInvoices]);
 
   // SOTA 2026: Temps réel pour synchronisation des factures avec le propriétaire
   const realtime = useTenantRealtime({ showToasts: true, enableSound: false });
@@ -105,16 +137,17 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
     const totalCount = invoices.length;
     
     // Calcul du score de ponctualité réel
-    // 100% = tous payés à temps, diminue si des factures sont en retard
-    const lateCount = invoices.filter(i => i.statut === 'late').length;
-    const punctualityScore = totalCount > 0 
-      ? Math.round(((totalCount - lateCount) / totalCount) * 100) 
-      : 100;
-    const punctualityLabel = punctualityScore >= 90 ? "Excellent" 
-      : punctualityScore >= 70 ? "Bon" 
-      : punctualityScore >= 50 ? "Moyen" 
+    // null = pas de données (0 transactions), sinon pourcentage payés à temps
+    const lateCount = invoices.filter(i => i.statut === 'late' || i.statut === 'overdue' || i.statut === 'unpaid').length;
+    const punctualityScore = totalCount > 0
+      ? Math.round(((totalCount - lateCount) / totalCount) * 100)
+      : null;
+    const punctualityLabel = punctualityScore === null ? "En construction"
+      : punctualityScore >= 90 ? "Excellent"
+      : punctualityScore >= 70 ? "Bon"
+      : punctualityScore >= 50 ? "Moyen"
       : "À améliorer";
-    
+
     return { totalUnpaid, unpaidCount: unpaid.length, paidCount, punctualityScore, punctualityLabel, totalCount };
   }, [invoices]);
 
@@ -247,28 +280,36 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
               <div className="flex items-center gap-6">
                 <div className={cn(
                   "h-16 w-16 rounded-3xl flex items-center justify-center shadow-inner",
-                  stats.punctualityScore >= 70 ? "bg-emerald-50 dark:bg-emerald-900/30" : "bg-amber-50 dark:bg-amber-900/30"
+                  stats.punctualityScore === null ? "bg-slate-50 dark:bg-slate-900/30"
+                    : stats.punctualityScore >= 70 ? "bg-emerald-50 dark:bg-emerald-900/30"
+                    : "bg-amber-50 dark:bg-amber-900/30"
                 )}>
                   <TrendingUp className={cn(
                     "h-8 w-8",
-                    stats.punctualityScore >= 70 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                    stats.punctualityScore === null ? "text-slate-400 dark:text-slate-500"
+                      : stats.punctualityScore >= 70 ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-amber-600 dark:text-amber-400"
                   )} />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">Score de ponctualité</h3>
                   <p className="text-muted-foreground text-sm">
-                    {stats.paidCount > 0 
-                      ? `Vous avez payé ${stats.paidCount} loyer${stats.paidCount > 1 ? 's' : ''} sur ${stats.totalCount}. ${stats.punctualityScore >= 90 ? 'Continuez ainsi !' : 'Vous pouvez mieux faire !'}`
-                      : 'Aucun paiement enregistré pour le moment.'
+                    {stats.punctualityScore === null
+                      ? 'Votre score sera calculé après votre premier paiement.'
+                      : stats.paidCount > 0
+                        ? `Vous avez payé ${stats.paidCount} loyer${stats.paidCount > 1 ? 's' : ''} sur ${stats.totalCount}. ${stats.punctualityScore >= 90 ? 'Continuez ainsi !' : 'Vous pouvez mieux faire !'}`
+                        : 'Aucun paiement enregistré pour le moment.'
                     }
                   </p>
                 </div>
                 <div className="ml-auto text-center hidden sm:block">
                   <p className={cn(
                     "text-3xl font-black",
-                    stats.punctualityScore >= 70 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                    stats.punctualityScore === null ? "text-slate-400 dark:text-slate-500"
+                      : stats.punctualityScore >= 70 ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-amber-600 dark:text-amber-400"
                   )}>
-                    {stats.punctualityScore}%
+                    {stats.punctualityScore !== null ? `${stats.punctualityScore}%` : '—'}
                   </p>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">{stats.punctualityLabel}</p>
                 </div>
@@ -370,13 +411,18 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                               status={
                                 invoice.statut === 'paid' ? 'Payé'
                                 : invoice.statut === 'late' ? 'En retard'
+                                : invoice.statut === 'overdue' ? 'Impayé'
+                                : invoice.statut === 'unpaid' ? 'Impayé critique'
+                                : invoice.statut === 'partial' ? 'Paiement partiel'
+                                : invoice.statut === 'cancelled' ? 'Annulée'
                                 : invoice.statut === 'draft' ? 'Brouillon'
                                 : 'À régler'
                               }
                               type={
                                 invoice.statut === 'paid' ? 'success'
-                                : invoice.statut === 'late' ? 'error'
-                                : invoice.statut === 'draft' ? 'neutral'
+                                : invoice.statut === 'late' || invoice.statut === 'overdue' || invoice.statut === 'unpaid' ? 'error'
+                                : invoice.statut === 'partial' ? 'warning'
+                                : invoice.statut === 'draft' || invoice.statut === 'cancelled' ? 'neutral'
                                 : 'warning'
                               }
                               className="h-7 px-3 text-[10px] font-black uppercase tracking-widest"

@@ -98,6 +98,11 @@ export interface TenantInvoice {
   montant_charges: number;
   statut: string;
   due_date?: string;
+  date_echeance?: string;
+  period_start?: string;
+  period_end?: string;
+  paid_at?: string;
+  notes?: string;
   property_type: string;
   property_address: string;
 }

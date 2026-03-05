@@ -90,12 +90,34 @@ export async function POST(request: NextRequest) {
           0
         );
 
-        if (totalPaid >= Number(payment.invoices?.montant_total || 0)) {
-          // Mark invoice as paid
+        const invoiceTotal = Number(payment.invoices?.montant_total || 0);
+
+        if (totalPaid >= invoiceTotal) {
+          // Mark invoice as fully paid
           await supabase
             .from("invoices")
-            .update({ statut: "paid" })
+            .update({
+              statut: "paid",
+              paid_at: new Date().toISOString(),
+              stripe_payment_intent_id: providerIntentId,
+            })
             .eq("id", payment.invoice_id);
+
+          // Trigger receipt generation via Edge Function
+          const receiptUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/receipt-generator`;
+          fetch(receiptUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            },
+            body: JSON.stringify({
+              invoice_id: payment.invoice_id,
+              payment_id: payment.id,
+            }),
+          }).catch((err) =>
+            console.error("[webhook] Receipt generation failed:", err)
+          );
 
           // Emit Receipt.Issued event
           await supabase.from("outbox").insert({
@@ -103,6 +125,26 @@ export async function POST(request: NextRequest) {
             payload: {
               invoice_id: payment.invoice_id,
               payment_id: payment.id,
+            },
+          });
+        } else if (totalPaid > 0 && totalPaid < invoiceTotal) {
+          // Partial payment
+          await supabase
+            .from("invoices")
+            .update({
+              statut: "partial",
+              stripe_payment_intent_id: providerIntentId,
+            })
+            .eq("id", payment.invoice_id);
+
+          // Emit partial payment event
+          await supabase.from("outbox").insert({
+            event_type: "Payment.Partial",
+            payload: {
+              invoice_id: payment.invoice_id,
+              payment_id: payment.id,
+              paid: totalPaid,
+              remaining: invoiceTotal - totalPaid,
             },
           });
         }
@@ -163,6 +205,58 @@ export async function POST(request: NextRequest) {
           { statut: "failed" }
         );
 
+        break;
+      }
+
+      case "payment_intent.requires_action": {
+        // 3DS/SCA requires additional authentication
+        await supabase.from("outbox").insert({
+          event_type: "Payment.RequiresAction",
+          payload: {
+            payment_id: payment.id,
+            invoice_id: payment.invoice_id,
+            tenant_id: payment.invoices?.tenant_id,
+            client_secret: body.data?.object?.client_secret,
+          },
+        });
+        break;
+      }
+
+      case "charge.dispute.created": {
+        // Dispute/chargeback — alert owner, block receipt generation
+        const disputeAmount = body.data?.object?.amount
+          ? body.data.object.amount / 100
+          : payment.montant;
+
+        await supabase.from("outbox").insert({
+          event_type: "Payment.Disputed",
+          payload: {
+            payment_id: payment.id,
+            invoice_id: payment.invoice_id,
+            owner_id: payment.invoices?.owner_id,
+            tenant_id: payment.invoices?.tenant_id,
+            dispute_amount: disputeAmount,
+            dispute_reason: body.data?.object?.reason || "unknown",
+          },
+        });
+
+        // Revert invoice status if it was paid
+        if (payment.invoices?.statut === "paid") {
+          await supabase
+            .from("invoices")
+            .update({ statut: "sent" })
+            .eq("id", payment.invoice_id);
+        }
+
+        await logAudit(
+          supabase,
+          "payment.disputed",
+          "payments",
+          payment.id,
+          "system",
+          { statut: payment.invoices?.statut },
+          { dispute: true }
+        );
         break;
       }
 
