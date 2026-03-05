@@ -1,9 +1,13 @@
 "use client";
 
 /**
- * Hook SOTA 2026 - Dashboard temps réel
+ * Hook SOTA 2026 - Dashboard temps réel (propriétaire)
  * Écoute les changements en temps réel sur les données critiques du propriétaire
- * 
+ *
+ * FIX AUDIT 2026-03-05: Ajout de filtres serveur sur TOUS les channels
+ * Avant: 8 channels sans filtre → fuite de données cross-owner
+ * Après: filtres par owner_id, property_id, lease_id selon la table
+ *
  * Features:
  * - Revenus live (paiements reçus)
  * - Statuts de baux actualisés
@@ -27,10 +31,10 @@ export interface RealtimeDashboardData {
   activeLeases: number;
   pendingSignatures: number;
   openTickets: number;
-  
+
   // Événements récents
   recentEvents: RealtimeEvent[];
-  
+
   // État de connexion
   isConnected: boolean;
   lastUpdate: Date | null;
@@ -57,16 +61,16 @@ interface UseRealtimeDashboardOptions {
 
 export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) {
   const { showToasts = true, maxEvents = 10 } = options;
-  
+
   const { profile } = useAuth();
   const { toast } = useToast();
-  
+
   // FIX AUDIT 2026-02-16: Stabiliser toast dans un ref
   const toastRef = useRef(toast);
   toastRef.current = toast;
-  
+
   const ownerId = options.ownerId || profile?.id;
-  
+
   const [data, setData] = useState<RealtimeDashboardData>({
     totalRevenue: 0,
     pendingPayments: 0,
@@ -78,8 +82,11 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
     isConnected: false,
     lastUpdate: null,
   });
-  
+
   const [loading, setLoading] = useState(true);
+  // FIX AUDIT 2026-03-05: Stocker les IDs pour les filtres realtime
+  const [propertyIds, setPropertyIds] = useState<string[]>([]);
+  const [leaseIds, setLeaseIds] = useState<string[]>([]);
 
   // Ajouter un événement récent
   const addEvent = useCallback((event: Omit<RealtimeEvent, "id" | "timestamp">) => {
@@ -88,13 +95,13 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
       id: crypto.randomUUID(),
       timestamp: new Date(),
     };
-    
+
     setData(prev => ({
       ...prev,
       recentEvents: [newEvent, ...prev.recentEvents].slice(0, maxEvents),
       lastUpdate: new Date(),
     }));
-    
+
     if (showToasts && event.type === "payment" && event.action === "created") {
       toastRef.current({
         title: "💰 " + event.title,
@@ -108,71 +115,71 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
   // Charger les données initiales
   const fetchInitialData = useCallback(async () => {
     if (!ownerId) return;
-    
+
     setLoading(true);
-    
+
     try {
       // Récupérer les propriétés du propriétaire
       const { data: properties } = await supabase
         .from("properties")
         .select("id")
         .eq("owner_id", ownerId);
-      
-      const propertyIds = properties?.map(p => p.id) || [];
-      
-      if (propertyIds.length === 0) {
+
+      const propIds = properties?.map(p => p.id) || [];
+      setPropertyIds(propIds);
+
+      if (propIds.length === 0) {
         setLoading(false);
         return;
       }
-      
+
       // Récupérer les stats en parallèle
-      // Calculer la période du mois en cours au format YYYY-MM pour le filtre sur invoices
       const currentPeriod = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-      
+
       const [
         { data: invoices },
         { data: leases },
         { data: signers },
         { data: tickets },
       ] = await Promise.all([
-        // Factures du mois en cours (utiliser owner_id et periode, pas property_id/created_at)
         supabase
           .from("invoices")
           .select("montant_total, statut")
           .eq("owner_id", ownerId)
           .eq("periode", currentPeriod),
-        // Baux actifs
         supabase
           .from("leases")
           .select("id, statut")
-          .in("property_id", propertyIds),
-        // Signatures en attente
+          .in("property_id", propIds),
         supabase
           .from("lease_signers")
           .select("id, signature_status, lease:leases!inner(property_id)")
           .eq("signature_status", "pending"),
-        // Tickets ouverts
         supabase
           .from("tickets")
           .select("id, statut")
-          .in("property_id", propertyIds)
+          .in("property_id", propIds)
           .in("statut", ["open", "in_progress"]),
       ]);
-      
+
+      // Stocker les lease IDs pour les filtres realtime
+      const lIds = leases?.map(l => l.id) || [];
+      setLeaseIds(lIds);
+
       // Calculer les stats
       const paidInvoices = invoices?.filter(i => i.statut === "paid") || [];
       const totalRevenue = paidInvoices.reduce((sum, i) => sum + (i.montant_total || 0), 0);
       const pendingPayments = invoices?.filter(i => i.statut === "sent" || i.statut === "draft").length || 0;
       const latePayments = invoices?.filter(i => i.statut === "late").length || 0;
       const activeLeases = leases?.filter(l => l.statut === "active").length || 0;
-      
+
       // Filtrer les signataires pour les propriétés du propriétaire
-      const pendingSignatures = signers?.filter(s => 
-        propertyIds.includes((s.lease as any)?.property_id)
+      const pendingSignatures = signers?.filter(s =>
+        propIds.includes((s.lease as any)?.property_id)
       ).length || 0;
-      
+
       const openTickets = tickets?.length || 0;
-      
+
       setData(prev => ({
         ...prev,
         totalRevenue,
@@ -197,21 +204,23 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
   }, [fetchInitialData]);
 
   // Configurer les listeners temps réel
+  // FIX AUDIT 2026-03-05: Tous les channels ont maintenant des filtres serveur
   useEffect(() => {
-    if (!ownerId) return;
+    if (!ownerId || propertyIds.length === 0) return;
 
     const channels: RealtimeChannel[] = [];
 
-    const setupRealtime = async () => {
-      // 1. Écouter les paiements
+    const setupRealtime = () => {
+      // 1. Écouter les paiements (filtre par owner_id)
       const paymentsChannel = supabase
-        .channel(`payments:${ownerId}`)
+        .channel(`owner-payments:${ownerId}`)
         .on(
           "postgres_changes",
           {
             event: "INSERT",
             schema: "public",
             table: "payments",
+            filter: `owner_id=eq.${ownerId}`,
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const payment = payload.new;
@@ -221,7 +230,7 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
                 totalRevenue: prev.totalRevenue + (payment.montant || 0),
                 lastUpdate: new Date(),
               }));
-              
+
               addEvent({
                 type: "payment",
                 action: "created",
@@ -235,18 +244,19 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
         .subscribe((status) => {
           setData(prev => ({ ...prev, isConnected: status === "SUBSCRIBED" }));
         });
-      
+
       channels.push(paymentsChannel);
 
-      // 2. Écouter les changements de statut des factures
+      // 2. Écouter les changements de statut des factures (filtre par owner_id)
       const invoicesChannel = supabase
-        .channel(`invoices:${ownerId}`)
+        .channel(`owner-invoices:${ownerId}`)
         .on(
           "postgres_changes",
           {
             event: "UPDATE",
             schema: "public",
             table: "invoices",
+            filter: `owner_id=eq.${ownerId}`,
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const invoice = payload.new;
@@ -259,7 +269,7 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
                   pendingPayments: Math.max(0, prev.pendingPayments - 1),
                   lastUpdate: new Date(),
                 }));
-                
+
                 addEvent({
                   type: "payment",
                   action: "updated",
@@ -273,7 +283,7 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
                   latePayments: prev.latePayments + 1,
                   lastUpdate: new Date(),
                 }));
-                
+
                 addEvent({
                   type: "payment",
                   action: "updated",
@@ -286,214 +296,227 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
           }
         )
         .subscribe();
-      
+
       channels.push(invoicesChannel);
 
-      // 3. Écouter les signatures de bail
-      const signersChannel = supabase
-        .channel(`signers:${ownerId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "lease_signers",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const signer = payload.new;
-            const oldSigner = payload.old as Record<string, any>;
+      // 3. Écouter les signatures de bail (filtre par lease_id)
+      for (const leaseId of leaseIds) {
+        const signersCh = supabase
+          .channel(`owner-signers:${leaseId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "lease_signers",
+              filter: `lease_id=eq.${leaseId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const signer = payload.new;
+              const oldSigner = payload.old as Record<string, any>;
 
-            if (oldSigner.signature_status === "pending" && signer.signature_status === "signed") {
-              setData(prev => ({
-                ...prev,
-                pendingSignatures: Math.max(0, prev.pendingSignatures - 1),
-                lastUpdate: new Date(),
-              }));
-              
-              addEvent({
-                type: "signature",
-                action: "updated",
-                title: "Nouvelle signature",
-                description: "Un signataire a signé le bail",
-                data: signer,
-              });
+              if (oldSigner.signature_status === "pending" && signer.signature_status === "signed") {
+                setData(prev => ({
+                  ...prev,
+                  pendingSignatures: Math.max(0, prev.pendingSignatures - 1),
+                  lastUpdate: new Date(),
+                }));
+
+                addEvent({
+                  type: "signature",
+                  action: "updated",
+                  title: "Nouvelle signature",
+                  description: "Un signataire a signé le bail",
+                  data: signer,
+                });
+              }
             }
-          }
-        )
-        .subscribe();
-      
-      channels.push(signersChannel);
+          )
+          .subscribe();
 
-      // 4. Écouter les tickets
-      const ticketsChannel = supabase
-        .channel(`tickets:${ownerId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "tickets",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const ticket = payload.new;
-            
-            setData(prev => ({
-              ...prev,
-              openTickets: prev.openTickets + 1,
-              lastUpdate: new Date(),
-            }));
-            
-            addEvent({
-              type: "ticket",
-              action: "created",
-              title: "Nouveau ticket",
-              description: ticket.titre || "Demande de maintenance",
-              data: ticket,
-            });
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "tickets",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const ticket = payload.new;
-            const oldTicket = payload.old as Record<string, any>;
+        channels.push(signersCh);
+      }
 
-            if (["resolved", "closed"].includes(ticket.statut) && !["resolved", "closed"].includes(oldTicket.statut)) {
+      // 4. Écouter les tickets (filtre par property_id)
+      for (const propId of propertyIds) {
+        const ticketsCh = supabase
+          .channel(`owner-tickets:${propId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "tickets",
+              filter: `property_id=eq.${propId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const ticket = payload.new;
+
               setData(prev => ({
                 ...prev,
-                openTickets: Math.max(0, prev.openTickets - 1),
+                openTickets: prev.openTickets + 1,
                 lastUpdate: new Date(),
               }));
-              
+
               addEvent({
                 type: "ticket",
-                action: "updated",
-                title: "Ticket résolu",
-                description: ticket.titre || "Demande traitée",
+                action: "created",
+                title: "Nouveau ticket",
+                description: ticket.titre || "Demande de maintenance",
                 data: ticket,
               });
             }
-          }
-        )
-        .subscribe();
-      
-      channels.push(ticketsChannel);
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "tickets",
+              filter: `property_id=eq.${propId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const ticket = payload.new;
+              const oldTicket = payload.old as Record<string, any>;
 
-      // 5. Écouter les changements de statut de bail
-      const leasesChannel = supabase
-        .channel(`leases:${ownerId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "leases",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const lease = payload.new;
-            const oldLease = payload.old as Record<string, any>;
-
-            if (oldLease.statut !== lease.statut) {
-              if (lease.statut === "active" && oldLease.statut !== "active") {
+              if (["resolved", "closed"].includes(ticket.statut) && !["resolved", "closed"].includes(oldTicket.statut)) {
                 setData(prev => ({
                   ...prev,
-                  activeLeases: prev.activeLeases + 1,
+                  openTickets: Math.max(0, prev.openTickets - 1),
                   lastUpdate: new Date(),
                 }));
-                
+
                 addEvent({
-                  type: "lease",
+                  type: "ticket",
                   action: "updated",
-                  title: "Bail activé",
-                  description: "Un nouveau bail est maintenant actif",
-                  data: lease,
+                  title: "Ticket résolu",
+                  description: ticket.titre || "Demande traitée",
+                  data: ticket,
                 });
-              } else if (lease.statut === "terminated" && oldLease.statut === "active") {
-                setData(prev => ({
-                  ...prev,
-                  activeLeases: Math.max(0, prev.activeLeases - 1),
-                  lastUpdate: new Date(),
-                }));
               }
             }
-          }
-        )
-        .subscribe();
-      
-      channels.push(leasesChannel);
+          )
+          .subscribe();
 
-      // 6. Écouter les changements d'EDL (états des lieux)
-      const edlChannel = supabase
-        .channel(`edl:${ownerId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "edl",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const edl = payload.new;
-            addEvent({
-              type: "edl",
-              action: "created",
-              title: "Nouvel état des lieux",
-              description: `EDL ${edl.type === "entree" ? "d'entrée" : "de sortie"} créé`,
-              data: edl,
-            });
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "edl",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const edl = payload.new;
-            const oldEdl = payload.old as Record<string, any>;
+        channels.push(ticketsCh);
+      }
 
-            // EDL complété et en attente de signature propriétaire
-            if (oldEdl.statut !== "completed" && edl.statut === "completed" && !edl.owner_signed) {
+      // 5. Écouter les changements de statut de bail (filtre par property_id)
+      for (const propId of propertyIds) {
+        const leasesCh = supabase
+          .channel(`owner-leases:${propId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "leases",
+              filter: `property_id=eq.${propId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const lease = payload.new;
+              const oldLease = payload.old as Record<string, any>;
+
+              if (oldLease.statut !== lease.statut) {
+                if (lease.statut === "active" && oldLease.statut !== "active") {
+                  setData(prev => ({
+                    ...prev,
+                    activeLeases: prev.activeLeases + 1,
+                    lastUpdate: new Date(),
+                  }));
+
+                  addEvent({
+                    type: "lease",
+                    action: "updated",
+                    title: "Bail activé",
+                    description: "Un nouveau bail est maintenant actif",
+                    data: lease,
+                  });
+                } else if (lease.statut === "terminated" && oldLease.statut === "active") {
+                  setData(prev => ({
+                    ...prev,
+                    activeLeases: Math.max(0, prev.activeLeases - 1),
+                    lastUpdate: new Date(),
+                  }));
+                }
+              }
+            }
+          )
+          .subscribe();
+
+        channels.push(leasesCh);
+      }
+
+      // 6. Écouter les changements d'EDL (filtre par lease_id)
+      for (const leaseId of leaseIds) {
+        const edlCh = supabase
+          .channel(`owner-edl:${leaseId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "edl",
+              filter: `lease_id=eq.${leaseId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const edl = payload.new;
               addEvent({
                 type: "edl",
-                action: "updated",
-                title: "EDL à signer",
-                description: "Un état des lieux est terminé et attend votre signature",
+                action: "created",
+                title: "Nouvel état des lieux",
+                description: `EDL ${edl.type === "entree" ? "d'entrée" : "de sortie"} créé`,
                 data: edl,
               });
             }
-            // EDL entièrement signé
-            if (!oldEdl.owner_signed && edl.owner_signed) {
-              addEvent({
-                type: "edl",
-                action: "updated",
-                title: "EDL signé",
-                description: "L'état des lieux a été signé avec succès",
-                data: edl,
-              });
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "edl",
+              filter: `lease_id=eq.${leaseId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const edl = payload.new;
+              const oldEdl = payload.old as Record<string, any>;
+
+              if (oldEdl.statut !== "completed" && edl.statut === "completed" && !edl.owner_signed) {
+                addEvent({
+                  type: "edl",
+                  action: "updated",
+                  title: "EDL à signer",
+                  description: "Un état des lieux est terminé et attend votre signature",
+                  data: edl,
+                });
+              }
+              if (!oldEdl.owner_signed && edl.owner_signed) {
+                addEvent({
+                  type: "edl",
+                  action: "updated",
+                  title: "EDL signé",
+                  description: "L'état des lieux a été signé avec succès",
+                  data: edl,
+                });
+              }
             }
-          }
-        )
-        .subscribe();
+          )
+          .subscribe();
 
-      channels.push(edlChannel);
+        channels.push(edlCh);
+      }
 
-      // 7. Écouter les nouveaux documents (attestations locataire, etc.)
+      // 7. Écouter les nouveaux documents (filtre par owner_id)
       const documentsChannel = supabase
-        .channel(`documents:${ownerId}`)
+        .channel(`owner-documents:${ownerId}`)
         .on(
           "postgres_changes",
           {
             event: "INSERT",
             schema: "public",
             table: "documents",
+            filter: `owner_id=eq.${ownerId}`,
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const doc = payload.new;
@@ -517,65 +540,68 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
 
       channels.push(documentsChannel);
 
-      // 8. Écouter les interventions prestataire (work_orders)
-      const workOrdersChannel = supabase
-        .channel(`work_orders:${ownerId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "work_orders",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const wo = payload.new;
-            addEvent({
-              type: "ticket",
-              action: "created",
-              title: "Nouvelle intervention",
-              description: `Intervention planifiée${wo.date_intervention_prevue ? ` le ${new Date(wo.date_intervention_prevue).toLocaleDateString("fr-FR")}` : ""}`,
-              data: wo,
-            });
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "work_orders",
-          },
-          (payload: RealtimePostgresChangesPayload<any>) => {
-            const wo = payload.new;
-            const oldWo = payload.old as Record<string, any>;
-
-            if (oldWo.statut !== wo.statut) {
-              const statusLabels: Record<string, string> = {
-                done: "Intervention terminée",
-                scheduled: "Intervention planifiée",
-                cancelled: "Intervention annulée",
-              };
+      // 8. Écouter les interventions prestataire (filtre par property_id)
+      for (const propId of propertyIds) {
+        const workOrdersCh = supabase
+          .channel(`owner-work-orders:${propId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "work_orders",
+              filter: `property_id=eq.${propId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const wo = payload.new;
               addEvent({
                 type: "ticket",
-                action: "updated",
-                title: statusLabels[wo.statut] || "Intervention mise à jour",
-                description: wo.cout_final
-                  ? `Coût final : ${wo.cout_final}€`
-                  : `Statut : ${wo.statut}`,
+                action: "created",
+                title: "Nouvelle intervention",
+                description: `Intervention planifiée${wo.date_intervention_prevue ? ` le ${new Date(wo.date_intervention_prevue).toLocaleDateString("fr-FR")}` : ""}`,
                 data: wo,
               });
             }
-          }
-        )
-        .subscribe();
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "work_orders",
+              filter: `property_id=eq.${propId}`,
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              const wo = payload.new;
+              const oldWo = payload.old as Record<string, any>;
 
-      channels.push(workOrdersChannel);
+              if (oldWo.statut !== wo.statut) {
+                const statusLabels: Record<string, string> = {
+                  done: "Intervention terminée",
+                  scheduled: "Intervention planifiée",
+                  cancelled: "Intervention annulée",
+                };
+                addEvent({
+                  type: "ticket",
+                  action: "updated",
+                  title: statusLabels[wo.statut] || "Intervention mise à jour",
+                  description: wo.cout_final
+                    ? `Coût final : ${wo.cout_final}€`
+                    : `Statut : ${wo.statut}`,
+                  data: wo,
+                });
+              }
+            }
+          )
+          .subscribe();
+
+        channels.push(workOrdersCh);
+      }
     };
 
     setupRealtime();
 
-    // ✅ Reconnexion automatique sur perte de connexion
-    // Vérifie l'état des channels toutes les 30s et reconfigure si déconnecté
+    // Reconnexion automatique sur perte de connexion
     const reconnectInterval = setInterval(() => {
       const allSubscribed = channels.every(
         (ch) => (ch as any).state === "joined" || (ch as any).state === "SUBSCRIBED"
@@ -583,7 +609,6 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
       if (!allSubscribed && ownerId) {
         console.warn("[useRealtimeDashboard] Channels déconnectés, reconnexion...");
         setData(prev => ({ ...prev, isConnected: false }));
-        // Nettoyer et recréer
         channels.forEach(channel => {
           supabase.removeChannel(channel);
         });
@@ -598,9 +623,8 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
         supabase.removeChannel(channel);
       });
     };
-  // FIX AUDIT 2026-02-16: Retirer supabase (singleton stable) et addEvent (stabilisé)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId]);
+  }, [ownerId, propertyIds, leaseIds]);
 
   return {
     ...data,
@@ -610,4 +634,3 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
 }
 
 export type { UseRealtimeDashboardOptions };
-

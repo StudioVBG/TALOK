@@ -88,6 +88,7 @@ export function useRealtimeProvider(options: UseRealtimeProviderOptions = {}) {
     channelsRef.current = [];
 
     // 1. Écouter les nouvelles interventions et changements de statut
+    // FIX AUDIT 2026-03-05: Filtre serveur par provider_id
     const workOrdersChannel = supabase
       .channel(`provider-work-orders:${profileId}`)
       .on(
@@ -96,10 +97,10 @@ export function useRealtimeProvider(options: UseRealtimeProviderOptions = {}) {
           event: "INSERT",
           schema: "public",
           table: "work_orders",
+          filter: `provider_id=eq.${profileId}`,
         },
         (payload: RealtimePostgresChangesPayload<any>) => {
           const wo = payload.new as Record<string, any>;
-          if (wo.provider_id !== profileId) return;
 
           setNewOrdersCount((prev) => prev + 1);
           addEvent({
@@ -118,11 +119,11 @@ export function useRealtimeProvider(options: UseRealtimeProviderOptions = {}) {
           event: "UPDATE",
           schema: "public",
           table: "work_orders",
+          filter: `provider_id=eq.${profileId}`,
         },
         (payload: RealtimePostgresChangesPayload<any>) => {
           const wo = payload.new as Record<string, any>;
           const oldWo = payload.old as Record<string, any>;
-          if (wo.provider_id !== profileId) return;
 
           if (oldWo.statut !== wo.statut) {
             const statusMessages: Record<string, string> = {
@@ -150,6 +151,7 @@ export function useRealtimeProvider(options: UseRealtimeProviderOptions = {}) {
     channelsRef.current.push(workOrdersChannel);
 
     // 2. Écouter les nouveaux avis
+    // FIX AUDIT 2026-03-05: Filtre serveur par provider_id
     const reviewsChannel = supabase
       .channel(`provider-reviews:${profileId}`)
       .on(
@@ -158,10 +160,10 @@ export function useRealtimeProvider(options: UseRealtimeProviderOptions = {}) {
           event: "INSERT",
           schema: "public",
           table: "provider_reviews",
+          filter: `provider_id=eq.${profileId}`,
         },
         (payload: RealtimePostgresChangesPayload<any>) => {
           const review = payload.new as Record<string, any>;
-          if (review.provider_id !== profileId) return;
 
           addEvent({
             type: "review",
