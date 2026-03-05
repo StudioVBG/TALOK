@@ -3,41 +3,38 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { z } from "zod";
+
+const auditLogsQuerySchema = z.object({
+  entity: z.string().optional(),
+  user: z.string().uuid().optional(),
+  action: z.string().optional(),
+  risk_level: z.enum(["low", "medium", "high", "critical"]).optional(),
+  entity_type: z.string().optional(),
+  user_id: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+  offset: z.coerce.number().int().min(0).default(0),
+});
 
 /**
  * GET /api/admin/audit-logs - Récupérer les logs d'audit
  */
 export async function GET(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.compliance.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut voir les logs d'audit" },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
-    const entity = searchParams.get("entity");
-    const userId = searchParams.get("user");
-    const action = searchParams.get("action");
-    const limit = parseInt(searchParams.get("limit") || "100");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const params = auditLogsQuerySchema.safeParse(Object.fromEntries(searchParams));
+    if (!params.success) {
+      return NextResponse.json({ error: params.error.message }, { status: 400 });
+    }
+
+    const { entity, user: userId, action, risk_level, entity_type, user_id, limit, offset } = params.data;
 
     let query = supabase
       .from("audit_log")
@@ -45,19 +42,20 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (entity) {
-      // @ts-ignore - Supabase typing issue
-      query = query.eq("entity_type", entity);
+    if (entity || entity_type) {
+      query = query.eq("entity_type" as any, entity || entity_type);
     }
 
-    if (userId) {
-      // @ts-ignore - Supabase typing issue
-      query = query.eq("user_id", userId);
+    if (userId || user_id) {
+      query = query.eq("user_id" as any, userId || user_id);
     }
 
     if (action) {
-      // @ts-ignore - Supabase typing issue
-      query = query.eq("action", action);
+      query = query.eq("action" as any, action);
+    }
+
+    if (risk_level) {
+      query = query.eq("risk_level" as any, risk_level);
     }
 
     const { data: logs, error, count } = await query;

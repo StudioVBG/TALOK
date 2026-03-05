@@ -7,26 +7,16 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.reports.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createRouteHandlerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-    }
-
-    // Vérifier le rôle admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     // Appeler la fonction RPC
     const { data, error } = await supabase.rpc("admin_dashboard_stats");

@@ -12,6 +12,7 @@ import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { AdminKeyboardShortcuts } from "@/components/admin/admin-keyboard-shortcuts";
+import { Toaster as SonnerToaster } from "sonner";
 
 export default async function AdminLayout({
   children,
@@ -67,6 +68,7 @@ export default async function AdminLayout({
             </div>
           </main>
         </div>
+        <SonnerToaster position="top-right" richColors closeButton />
       </AdminDataProvider>
     </ErrorBoundary>
   );

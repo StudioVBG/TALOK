@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/helpers/format";
+import { useAuditLogs } from "@/lib/hooks/use-admin-queries";
 
 interface AuditLog {
   id: string;
@@ -65,41 +66,22 @@ const ENTITY_ICONS: Record<string, typeof User> = {
 };
 
 export default function AuditLogsPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [riskFilter, setRiskFilter] = useState("all");
   const [entityFilter, setEntityFilter] = useState("all");
   const perPage = 30;
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        limit: perPage.toString(),
-        offset: ((page - 1) * perPage).toString(),
-      });
-      if (riskFilter !== "all") params.set("risk_level", riskFilter);
-      if (entityFilter !== "all") params.set("entity_type", entityFilter);
-      if (search) params.set("user_id", search);
+  const { data, isLoading: loading, refetch: fetchLogs } = useAuditLogs({
+    limit: perPage,
+    offset: (page - 1) * perPage,
+    risk_level: riskFilter,
+    entity_type: entityFilter,
+    user_id: search || undefined,
+  });
 
-      const res = await fetch(`/api/admin/audit-logs?${params}`);
-      const data = await res.json();
-      setLogs(data.logs || []);
-      setTotal(data.total || 0);
-    } catch (error) {
-      console.error("Failed to fetch audit logs:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, riskFilter, entityFilter, search]);
-
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
-
+  const logs: AuditLog[] = (data?.logs as AuditLog[]) || [];
+  const total = data?.total || 0;
   const totalPages = Math.ceil(total / perPage);
 
   const exportCSV = () => {
@@ -139,7 +121,7 @@ export default function AuditLogsPage() {
             <Download className="h-4 w-4 mr-2" />
             Exporter CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={fetchLogs}>
+          <Button variant="outline" size="sm" onClick={() => fetchLogs()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualiser
           </Button>
