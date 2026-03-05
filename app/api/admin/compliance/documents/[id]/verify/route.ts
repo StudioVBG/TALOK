@@ -7,8 +7,9 @@ export const runtime = 'nodejs';
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/helpers/auth-helper';
+import { createClient } from '@/lib/supabase/server';
 import { verifyDocumentSchema } from '@/lib/validations/provider-compliance';
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 interface RouteParams {
   params: { id: string };
@@ -16,10 +17,14 @@ interface RouteParams {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.compliance.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "compliance_document_verify",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const { user } = auth;
+
+    const supabase = await createClient();
 
     const documentId = params.id;
 
@@ -101,8 +106,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       await supabase.from('notifications').insert({
         user_id: providerProfile.user_id,
         type: action === 'approve' ? 'document_approved' : 'document_rejected',
-        title: action === 'approve'
-          ? 'Document validé'
+        title: action === 'approve' 
+          ? 'Document validé' 
           : 'Document rejeté',
         body: action === 'approve'
           ? `Votre document "${document.document_type}" a été validé.`
@@ -139,3 +144,4 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
+

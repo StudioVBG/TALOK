@@ -5,7 +5,9 @@
  * Dashboard complet avec stats, liste des utilisateurs et actions
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { adminKeys } from "@/lib/hooks/use-admin-queries";
 import { motion } from "framer-motion";
 import {
   PLANS,
@@ -403,13 +405,6 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
 
 export default function AdminSubscriptionsPage() {
   const { toast } = useToast();
-  const [stats, setStats] = useState<SubscriptionStats | null>(null);
-  const [distribution, setDistribution] = useState<PlanDistribution[]>([]);
-  const [users, setUsers] = useState<AdminSubscriptionOverview[]>([]);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [tableLoading, setTableLoading] = useState(false);
-
   // Filters
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState<string>("all");
@@ -421,54 +416,43 @@ export default function AdminSubscriptionsPage() {
   const [selectedUser, setSelectedUser] = useState<AdminSubscriptionOverview | null>(null);
   const [actionType, setActionType] = useState<"override" | "gift" | "suspend" | "unsuspend" | null>(null);
 
-  const fetchStats = useCallback(async () => {
-    try {
+  // Stats query
+  const { data: statsData, refetch: refetchStats } = useQuery({
+    queryKey: adminKeys.subscriptionStats(),
+    queryFn: async () => {
       const res = await fetch("/api/admin/subscriptions/stats");
-      const data = await res.json();
-      setStats(data.stats);
-      setDistribution(data.distribution || []);
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
-    }
-  }, []);
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
 
-  const fetchUsers = useCallback(async () => {
-    setTableLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        per_page: perPage.toString(),
-      });
+  const stats: SubscriptionStats | null = statsData?.stats || null;
+  const distribution: PlanDistribution[] = statsData?.distribution || [];
 
-      if (search) params.set("search", search);
-      if (planFilter !== "all") params.set("plan", planFilter);
-      if (statusFilter !== "all") params.set("status", statusFilter);
+  // Users list query
+  const usersQueryParams = new URLSearchParams({
+    page: page.toString(),
+    per_page: perPage.toString(),
+  });
+  if (search) usersQueryParams.set("search", search);
+  if (planFilter !== "all") usersQueryParams.set("plan", planFilter);
+  if (statusFilter !== "all") usersQueryParams.set("status", statusFilter);
 
-      const res = await fetch(`/api/admin/subscriptions/list?${params}`);
-      const data = await res.json();
-      setUsers(data.users || []);
-      setTotalUsers(data.total || 0);
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
-    } finally {
-      setTableLoading(false);
-    }
-  }, [page, search, planFilter, statusFilter]);
+  const { data: usersData, isLoading: loading, isFetching: tableLoading, refetch: fetchUsers } = useQuery({
+    queryKey: [...adminKeys.subscriptions(Object.fromEntries(usersQueryParams))],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/subscriptions/list?${usersQueryParams}`);
+      if (!res.ok) throw new Error("Failed to fetch users");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    const init = async () => {
-      await fetchStats();
-      await fetchUsers();
-      setLoading(false);
-    };
-    init();
-  }, [fetchStats, fetchUsers]);
+  const users: AdminSubscriptionOverview[] = usersData?.users || [];
+  const totalUsers = usersData?.total || 0;
 
-  useEffect(() => {
-    if (!loading) {
-      fetchUsers();
-    }
-  }, [page, planFilter, statusFilter, loading, fetchUsers]);
+  const fetchStats = useCallback(() => refetchStats(), [refetchStats]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

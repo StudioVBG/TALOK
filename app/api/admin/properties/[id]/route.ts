@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClientFromRequest } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/properties/[id] - Récupérer les détails d'une propriété (admin)
@@ -13,10 +14,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+
+    const auth = await requireAdminPermissions(request, ["admin.properties.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClientFromRequest(request);
 
     // Récupérer la propriété avec owner
     const { data: property, error } = await supabase

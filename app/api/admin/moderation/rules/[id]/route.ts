@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -14,10 +15,12 @@ interface RouteParams {
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.moderation.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     const { data: rule, error } = await supabase
       .from("moderation_rules")
@@ -43,10 +46,14 @@ export async function GET(request: Request, { params }: RouteParams) {
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.moderation.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "moderation_rule_update",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const { user } = auth;
+
+    const supabase = await createClient();
 
     const body = await request.json();
     const {
@@ -65,7 +72,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     } = body;
 
     const updateData: Record<string, unknown> = {
-      updated_by: user!.id,
+      updated_by: user.id,
       updated_at: new Date().toISOString(),
     };
 
@@ -96,7 +103,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "moderation_rule_updated",
       entity_type: "moderation_rule",
       entity_id: id,
@@ -117,10 +124,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.moderation.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "moderation_rule_delete",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const { user } = auth;
+
+    const supabase = await createClient();
 
     // Vérifier si la règle a des éléments en attente
     const { count } = await supabase
@@ -147,7 +158,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "moderation_rule_deleted",
       entity_type: "moderation_rule",
       entity_id: id,

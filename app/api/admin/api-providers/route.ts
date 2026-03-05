@@ -1,18 +1,21 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/api-providers - Lister tous les providers API disponibles
  */
 export async function GET(request: Request) {
   try {
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     const { data: providers, error } = await supabase
       .from("api_providers")
@@ -29,3 +32,8 @@ export async function GET(request: Request) {
     );
   }
 }
+
+
+
+
+

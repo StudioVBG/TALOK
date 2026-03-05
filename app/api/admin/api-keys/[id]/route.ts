@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * DELETE /api/admin/api-keys/[id] - Supprimer ou désactiver une clé API
@@ -14,11 +15,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminStandard",
+      auditAction: "Delete API key",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const { id } = await params;
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const supabase = await createClient();
+    const user = auth.user;
 
     // Désactiver plutôt que supprimer (soft delete)
     const { error } = await supabase
@@ -33,7 +38,7 @@ export async function DELETE(
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "api_key_deleted",
       entity_type: "api_credential",
       entity_id: id,
@@ -58,11 +63,15 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminStandard",
+      auditAction: "Update API key",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const { id } = await params;
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const supabase = await createClient();
+    const user = auth.user;
 
     const body = await request.json();
     const { name, is_active, permissions } = body;
@@ -90,7 +99,7 @@ export async function PATCH(
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "api_key_updated",
       entity_type: "api_credential",
       entity_id: id,
@@ -105,3 +114,8 @@ export async function PATCH(
     );
   }
 }
+
+
+
+
+

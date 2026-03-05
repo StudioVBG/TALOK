@@ -6,10 +6,10 @@ export const runtime = 'nodejs';
  * Offre des jours gratuits à un utilisateur (admin only)
  */
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 import { adminGiftDays } from "@/lib/subscriptions/subscription-service";
 import { z } from "zod";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 const giftSchema = z.object({
   user_id: z.string().uuid(),
@@ -20,10 +20,14 @@ const giftSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const { error: authError, user } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    // RBAC + rate limit + audit
+    const auth = await requireAdminPermissions(request, ["admin.subscriptions.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Gift de jours gratuits",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const user = auth.user;
 
     const body = await request.json();
     const parsed = giftSchema.safeParse(body);
@@ -35,7 +39,7 @@ export async function POST(request: Request) {
     const { user_id, days, reason, notify_user } = parsed.data;
 
     const result = await adminGiftDays(
-      user!.id,
+      user.id,
       user_id,
       days,
       reason,

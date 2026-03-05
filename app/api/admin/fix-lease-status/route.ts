@@ -2,58 +2,62 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { getServiceClient } from "@/lib/supabase/service-client";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/fix-lease-status
  * Corrige le statut d'un bail signé vers "fully_signed"
- *
+ * 
  * Body: { leaseId: string }
  */
 export async function POST(request: Request) {
   try {
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "fix-lease-status",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     const { leaseId } = await request.json();
-
+    
     if (!leaseId) {
       return NextResponse.json({ error: "leaseId requis" }, { status: 400 });
     }
-
+    
+    const serviceClient = getServiceClient();
+    
     // 1. Vérifier le bail
-    const { data: lease, error: leaseError } = await supabase
+    const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select("id, statut, type_bail, date_debut")
       .eq("id", leaseId)
       .single();
-
+    
     if (leaseError || !lease) {
-      return NextResponse.json({
+      return NextResponse.json({ 
         error: "Bail non trouvé",
-        details: leaseError?.message
+        details: leaseError?.message 
       }, { status: 404 });
     }
-
+    
     // 2. Vérifier les signataires
-    const { data: signers, error: signersError } = await supabase
+    const { data: signers, error: signersError } = await serviceClient
       .from("lease_signers")
       .select("role, signature_status, signed_at")
       .eq("lease_id", leaseId);
-
+    
     if (signersError) {
-      return NextResponse.json({
+      return NextResponse.json({ 
         error: "Erreur lecture signataires",
-        details: signersError.message
+        details: signersError.message 
       }, { status: 500 });
     }
-
+    
     // 3. Vérifier si tous ont signé
-    const allSigned = signers && signers.length > 0 &&
+    const allSigned = signers && signers.length > 0 && 
       signers.every((s: any) => s.signature_status === "signed");
-
+    
     const result = {
       lease: {
         id: lease.id,
@@ -70,25 +74,25 @@ export async function POST(request: Request) {
       action: "none",
       statut_apres: lease.statut,
     };
-
+    
     // 4. Corriger si nécessaire
     if (allSigned && lease.statut !== "fully_signed" && lease.statut !== "active") {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await serviceClient
         .from("leases")
         .update({ statut: "fully_signed" })
         .eq("id", leaseId);
-
+      
       if (updateError) {
-        return NextResponse.json({
+        return NextResponse.json({ 
           error: "Erreur mise à jour statut",
           details: updateError.message,
-          hint: updateError.message.includes("check constraint")
+          hint: updateError.message.includes("check constraint") 
             ? "La migration 20251228000000_edl_before_activation.sql doit être appliquée"
             : undefined,
           ...result,
         }, { status: 500 });
       }
-
+      
       result.action = "updated";
       result.statut_apres = "fully_signed";
     } else if (lease.statut === "fully_signed" || lease.statut === "active") {
@@ -96,21 +100,21 @@ export async function POST(request: Request) {
     } else {
       result.action = "no_change_needed";
     }
-
+    
     return NextResponse.json({
       success: true,
-      message: result.action === "updated"
-        ? "✅ Statut corrigé vers 'fully_signed'"
+      message: result.action === "updated" 
+        ? "✅ Statut corrigé vers 'fully_signed'" 
         : result.action === "already_correct"
         ? "✅ Le statut est déjà correct"
         : "⚠️ Aucune modification (signatures manquantes)",
       ...result,
     });
-
+    
   } catch (error: unknown) {
     console.error("[fix-lease-status] Erreur:", error);
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Erreur serveur"
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : "Erreur serveur" 
     }, { status: 500 });
   }
 }
@@ -124,11 +128,12 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
+    const serviceClient = getServiceClient();
     const url = new URL(request.url);
     const leaseId = url.searchParams.get("leaseId");
     const shouldFix = url.searchParams.get("fix") === "true";
@@ -136,45 +141,45 @@ export async function GET(request: Request) {
     if (!leaseId) {
       return NextResponse.json({ error: "leaseId requis" }, { status: 400 });
     }
-
+    
     // 1. Vérifier le bail
-    const { data: lease, error: leaseError } = await supabase
+    const { data: lease, error: leaseError } = await serviceClient
       .from("leases")
       .select("id, statut, type_bail, date_debut")
       .eq("id", leaseId)
       .single();
-
+    
     if (leaseError || !lease) {
-      return NextResponse.json({
-        error: "Bail non trouvé"
+      return NextResponse.json({ 
+        error: "Bail non trouvé" 
       }, { status: 404 });
     }
-
+    
     // 2. Vérifier les signataires
-    const { data: signers } = await supabase
+    const { data: signers } = await serviceClient
       .from("lease_signers")
       .select("role, signature_status, signed_at")
       .eq("lease_id", leaseId);
-
-    const allSigned = signers && signers.length > 0 &&
+    
+    const allSigned = signers && signers.length > 0 && 
       signers.every((s: any) => s.signature_status === "signed");
-
+    
     const needsFix = allSigned && lease.statut !== "fully_signed" && lease.statut !== "active";
-
+    
     let fixResult = null;
-
+    
     // Corriger si demandé
     if (shouldFix && needsFix) {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await serviceClient
         .from("leases")
         .update({ statut: "fully_signed" })
         .eq("id", leaseId);
-
+      
       if (updateError) {
         fixResult = {
           success: false,
           error: updateError.message,
-          hint: updateError.message.includes("check constraint")
+          hint: updateError.message.includes("check constraint") 
             ? "Migration 20251228000000_edl_before_activation.sql nécessaire"
             : undefined,
         };
@@ -186,7 +191,7 @@ export async function GET(request: Request) {
         };
       }
     }
-
+    
     return NextResponse.json({
       lease: {
         id: lease.id,
@@ -204,8 +209,9 @@ export async function GET(request: Request) {
       fix_requested: shouldFix,
       fix_result: fixResult,
     });
-
+    
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
+

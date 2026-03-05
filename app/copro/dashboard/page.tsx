@@ -11,14 +11,23 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { usePermissions } from "@/lib/hooks/use-permissions";
+import { formatCurrency } from "@/lib/helpers/format";
 import {
   Building2, Euro, FileText, Calendar, AlertTriangle,
   TrendingUp, TrendingDown, Clock, CheckCircle2,
   Vote, MessageSquare, ChevronRight, Download, Bell
 } from "lucide-react";
 import Link from "next/link";
+
+interface CoproProfile {
+  first_name?: string;
+  prenom?: string;
+  last_name?: string;
+  nom?: string;
+}
 
 interface DashboardData {
   sites: Array<{
@@ -52,44 +61,73 @@ interface DashboardData {
 
 export default function CoproDashboardPage() {
   const { user, profile } = useAuth();
+  const typedProfile = profile as CoproProfile | null;
   const { isCoproprietaire, hasRole } = usePermissions();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const isBailleur = hasRole('coproprietaire_bailleur');
 
   useEffect(() => {
     async function fetchData() {
       try {
-        // TODO: Appeler l'API dashboard copropriétaire
-        // Pour l'instant, données mockées
+        // Récupérer les sites du copropriétaire
+        const sitesRes = await fetch('/api/copro/sites');
+        const sitesData = sitesRes.ok ? await sitesRes.json() : [];
+
+        // Récupérer les assemblées à venir
+        const assembliesRes = await fetch('/api/copro/assemblies?upcoming=true');
+        const assembliesData = assembliesRes.ok ? await assembliesRes.json() : [];
+
+        // Récupérer les charges récentes
+        const chargesRes = await fetch('/api/copro/charges');
+        const chargesData = chargesRes.ok ? await chargesRes.json() : [];
+
+        // Calculer les données du dashboard depuis les API
+        const sites = sitesData.map((site: any) => ({
+          id: site.id,
+          name: site.name || site.nom,
+          my_units: (site.units || site.my_units || []).map((u: any) => ({
+            id: u.id,
+            lot_number: u.lot_number || u.numero_lot,
+            tantieme_general: u.tantieme_general || 0,
+            balance_due: u.balance_due || 0,
+          })),
+        }));
+
+        const totalBalance = sites.reduce(
+          (sum: number, s: any) => sum + s.my_units.reduce((uSum: number, u: any) => uSum + u.balance_due, 0),
+          0
+        );
+
+        const nextAssembly = assembliesData.length > 0
+          ? {
+              id: assembliesData[0].id,
+              label: assembliesData[0].label || assembliesData[0].titre,
+              scheduled_at: assembliesData[0].scheduled_at || assembliesData[0].date_ag,
+              site_name: assembliesData[0].site_name || assembliesData[0].site?.name || '',
+              motions_count: assembliesData[0].motions_count || assembliesData[0].resolutions?.length || 0,
+            }
+          : null;
+
         setData({
-          sites: [
-            {
-              id: '1',
-              name: 'Résidence Les Oliviers',
-              my_units: [
-                { id: 'u1', lot_number: '012', tantieme_general: 250, balance_due: 125.50 },
-              ],
-            },
-          ],
-          totalBalance: 125.50,
-          nextAssembly: {
-            id: 'ag1',
-            label: 'AGO 2025',
-            scheduled_at: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-            site_name: 'Résidence Les Oliviers',
-            motions_count: 12,
-          },
-          pendingDocuments: 3,
-          openTickets: 1,
-          recentCharges: [
-            { id: 'c1', label: 'Charges Q4 2024', amount: 450, period: 'T4 2024', status: 'paid' },
-            { id: 'c2', label: 'Charges Q1 2025', amount: 475, period: 'T1 2025', status: 'pending' },
-          ],
+          sites,
+          totalBalance,
+          nextAssembly,
+          pendingDocuments: 0,
+          openTickets: 0,
+          recentCharges: chargesData.slice(0, 5).map((c: any) => ({
+            id: c.id,
+            label: c.label || c.libelle,
+            amount: c.amount || c.montant || 0,
+            period: c.period || c.periode || '',
+            status: c.status || c.statut || 'pending',
+          })),
         });
-      } catch (error) {
-        console.error('Erreur chargement dashboard:', error);
+      } catch (err) {
+        console.error('Erreur chargement dashboard:', err);
+        setError('Erreur lors du chargement du tableau de bord');
       } finally {
         setLoading(false);
       }
@@ -100,6 +138,19 @@ export default function CoproDashboardPage() {
 
   if (loading) {
     return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+        <div className="max-w-7xl mx-auto">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
   }
 
   const nextAssemblyDate = data?.nextAssembly
@@ -120,16 +171,20 @@ export default function CoproDashboardPage() {
         >
           <div>
             <h1 className="text-2xl font-bold text-white">
-              Bonjour {(profile as any)?.first_name || 'Copropriétaire'} 👋
+              Bonjour {typedProfile?.first_name || typedProfile?.prenom || 'Copropriétaire'} 👋
             </h1>
             <p className="text-slate-400">
               Bienvenue sur votre espace copropriétaire
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="border-white/10 text-white">
-              <Bell className="w-4 h-4 mr-2" />
-              <Badge className="bg-red-500 text-white ml-1">2</Badge>
+            <Button variant="outline" className="border-white/10 text-white" asChild>
+              <Link href="/copro/notifications">
+                <Bell className="w-4 h-4 mr-2" />
+                {(data?.pendingDocuments || 0) > 0 && (
+                  <Badge className="bg-red-500 text-white ml-1">{data?.pendingDocuments}</Badge>
+                )}
+              </Link>
             </Button>
           </div>
         </motion.div>
@@ -156,10 +211,7 @@ export default function CoproDashboardPage() {
                       ? 'text-red-400' 
                       : 'text-emerald-400'
                   }`}>
-                    {(data?.totalBalance || 0).toLocaleString('fr-FR', {
-                      style: 'currency',
-                      currency: 'EUR',
-                    })}
+                    {formatCurrency(data?.totalBalance || 0)}
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
                     {data?.totalBalance && data.totalBalance > 0 
@@ -179,9 +231,11 @@ export default function CoproDashboardPage() {
                 </div>
               </div>
               {data?.totalBalance && data.totalBalance > 0 && (
-                <Button className="w-full mt-4 bg-red-500 hover:bg-red-600">
-                  <Euro className="w-4 h-4 mr-2" />
-                  Payer maintenant
+                <Button className="w-full mt-4 bg-red-500 hover:bg-red-600" asChild>
+                  <Link href="/copro/charges?action=pay">
+                    <Euro className="w-4 h-4 mr-2" />
+                    Payer maintenant
+                  </Link>
                 </Button>
               )}
             </CardContent>
@@ -308,10 +362,7 @@ export default function CoproDashboardPage() {
                         <p className={`font-semibold ${
                           unit.balance_due > 0 ? 'text-red-400' : 'text-emerald-400'
                         }`}>
-                          {unit.balance_due.toLocaleString('fr-FR', {
-                            style: 'currency',
-                            currency: 'EUR',
-                          })}
+                          {formatCurrency(unit.balance_due)}
                         </p>
                         <p className="text-xs text-slate-400">
                           {unit.balance_due > 0 ? 'Solde débiteur' : 'À jour'}
@@ -380,8 +431,15 @@ export default function CoproDashboardPage() {
                           {charge.status === 'paid' ? 'Payé' : 'En attente'}
                         </Badge>
                       </div>
-                      <Button variant="ghost" size="icon" className="text-slate-400">
-                        <Download className="w-4 h-4" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-slate-400"
+                        asChild
+                      >
+                        <Link href={`/copro/charges/${charge.id}/download`}>
+                          <Download className="w-4 h-4" />
+                        </Link>
                       </Button>
                     </div>
                   </div>

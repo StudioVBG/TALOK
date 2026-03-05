@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 interface LegislationChange {
   field: string;
@@ -28,12 +29,14 @@ interface UpdateLegislationBody {
  */
 export async function POST(request: Request) {
   try {
-    const { error: authError, user, profile, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.templates.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "update-legislation",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
-    const profileData = profile as { id: string; role: string } | null;
+    const supabase = await createClient();
+    const user = auth.user;
 
     // Récupérer le body (optionnel)
     let body: UpdateLegislationBody = {};
@@ -71,7 +74,7 @@ export async function POST(request: Request) {
         changes,
         affected_lease_types: affectedTypes,
         effective_date: now.toISOString().split("T")[0],
-        created_by: profileData?.id,
+        created_by: auth.profile.id,
       } as any)
       .select("id")
       .single();
@@ -225,7 +228,7 @@ export async function POST(request: Request) {
     // 5. Journaliser l'action dans audit_log
     // ============================================
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "legislation_updated",
       entity_type: "legislation",
       metadata: {

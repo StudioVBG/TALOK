@@ -1,16 +1,16 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 // GET - Récupérer le statut de la configuration email
 export async function GET(request: Request) {
   try {
-    const { error: authError } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     // Vérifier les variables d'environnement
     const resendApiKeySet = !!process.env.RESEND_API_KEY;
@@ -48,3 +48,4 @@ export async function GET(request: Request) {
     );
   }
 }
+

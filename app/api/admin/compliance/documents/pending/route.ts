@@ -7,14 +7,17 @@ export const dynamic = 'force-dynamic';
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/helpers/auth-helper';
+import { createClient } from '@/lib/supabase/server';
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 export async function GET(request: NextRequest) {
   try {
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.compliance.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     // Paramètres de pagination
     const { searchParams } = new URL(request.url);
@@ -79,3 +82,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
   }
 }
+

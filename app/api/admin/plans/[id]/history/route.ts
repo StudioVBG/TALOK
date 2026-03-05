@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/plans/[id]/history - Historique des modifications d'un plan
@@ -15,10 +16,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { error: authError, user, profile, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+
+    const auth = await requireAdminPermissions(request, ["admin.plans.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     // Récupérer l'historique
     const { data: history, error } = await supabase
@@ -39,3 +43,4 @@ export async function GET(
     return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
+

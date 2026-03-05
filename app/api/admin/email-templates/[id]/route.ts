@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/email-templates/[id] — Récupérer un template par ID
@@ -13,10 +14,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.templates.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     const { data: template, error } = await supabase
       .from("email_templates")
@@ -49,10 +52,13 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.templates.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Update email template",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     const body = await request.json();
     const allowedFields = [

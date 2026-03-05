@@ -1,9 +1,10 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 // Fonction pour chiffrer une clé API avec AES-256-GCM
 function encryptAPIKey(apiKey: string, masterKey: string): string {
@@ -44,10 +45,14 @@ function decryptAPIKey(encryptedKey: string, masterKey: string): string {
  */
 export async function POST(request: Request) {
   try {
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminStandard",
+      auditAction: "Create API key",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
+    const user = auth.user;
 
     const body = await request.json();
     const { provider_id, name, permissions } = body;
@@ -83,7 +88,7 @@ export async function POST(request: Request) {
         encrypted_key: encryptedKey, // Clé chiffrée
         permissions: permissions || {},
         is_active: true,
-        created_by: user!.id,
+        created_by: user.id,
         env: "prod", // Valeur par défaut
         secret_ref: "encrypted", // Indique que la clé est chiffrée
       } as any)
@@ -104,7 +109,7 @@ export async function POST(request: Request) {
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "api_key_created",
       entity_type: "api_credential",
       entity_id: (apiCredential as any).id,
@@ -130,10 +135,12 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     const { data: credentials, error } = await supabase
       .from("api_credentials")
@@ -152,7 +159,7 @@ export async function GET(request: Request) {
       key_hash: c.key_hash?.substring(0, 8) + "...",
     }));
 
-    return NextResponse.json({
+    return NextResponse.json({ 
       credentials: sanitized,
       keys: sanitized // Alias pour compatibilité
     });
@@ -163,3 +170,4 @@ export async function GET(request: Request) {
     );
   }
 }
+

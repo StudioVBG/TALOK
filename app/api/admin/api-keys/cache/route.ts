@@ -7,9 +7,10 @@ export const dynamic = 'force-dynamic';
  * GET /api/admin/api-keys/cache/status - Statut des providers
  */
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { apiKeysService } from "@/lib/services/api-keys.service";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * DELETE /api/admin/api-keys/cache - Vider le cache des clés API
@@ -17,10 +18,14 @@ import { apiKeysService } from "@/lib/services/api-keys.service";
  */
 export async function DELETE(request: Request) {
   try {
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminStandard",
+      auditAction: "Clear API keys cache",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
+    const user = auth.user;
 
     // Récupérer le provider à vider (optionnel)
     const url = new URL(request.url);
@@ -31,7 +36,7 @@ export async function DELETE(request: Request) {
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "api_keys_cache_cleared",
       entity_type: "api_credential",
       metadata: { provider: provider || "all" },
@@ -39,8 +44,8 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: provider
-        ? `Cache vidé pour ${provider}`
+      message: provider 
+        ? `Cache vidé pour ${provider}` 
         : "Cache entièrement vidé",
     });
   } catch (error: unknown) {
@@ -56,10 +61,10 @@ export async function DELETE(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const { error: authError } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     // Récupérer le statut de tous les providers
     const status = await apiKeysService.getProvidersStatus();
@@ -75,3 +80,4 @@ export async function GET(request: Request) {
     );
   }
 }
+

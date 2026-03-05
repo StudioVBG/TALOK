@@ -1,9 +1,10 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { renderEmailTemplate } from "@/lib/email/render-template";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/email-templates/[id]/test — Envoyer un email de test
@@ -15,13 +16,16 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.templates.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Send test email template",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
-    const body = await request.json();
-    const recipientEmail = body.email || user.email;
+    const supabase = await createClient();
+
+    const body = (await request.json()) as { email?: string };
+    const recipientEmail = body.email || auth.user.email;
 
     if (!recipientEmail) {
       return NextResponse.json({ error: "Adresse email requise" }, { status: 400 });

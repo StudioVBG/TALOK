@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { ProtectedRoute } from "@/components/protected-route";
 import { BlogPostForm } from "@/features/blog/components/blog-post-form";

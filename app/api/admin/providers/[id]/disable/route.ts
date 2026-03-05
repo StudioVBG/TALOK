@@ -1,8 +1,9 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/providers/[id]/disable - Désactiver un fournisseur API
@@ -15,10 +16,15 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+
+    const auth = await requireAdminPermissions(request, ["admin.users.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "provider_disabled",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const user = auth.user;
+    const supabase = await createClient();
 
     // Désactiver le provider
     const { data: provider, error } = await supabase
@@ -26,7 +32,7 @@ export async function POST(
       .update({
         is_active: false,
         disabled_at: new Date().toISOString(),
-        disabled_by: user!.id,
+        disabled_by: user.id,
       } as any)
       .eq("id", id as any)
       .select()
@@ -36,7 +42,7 @@ export async function POST(
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "provider_disabled",
       entity_type: "api_provider",
       entity_id: id,

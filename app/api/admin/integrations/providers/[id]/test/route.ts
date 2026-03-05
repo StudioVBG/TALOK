@@ -1,9 +1,10 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 // Fonction de déchiffrement
 function decryptKey(encryptedKey: string): string {
@@ -35,10 +36,13 @@ interface RouteParams {
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { id: providerId } = params;
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Test provider connection",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     // Récupérer le provider
     const { data: provider, error: providerError } = await supabase
@@ -93,7 +97,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     switch ((provider.name as string).toLowerCase()) {
       case "resend":
-        testResult = await testResend(apiKey, user!.email, config);
+        testResult = await testResend(apiKey, auth.user.email, config);
         break;
       case "stripe":
         testResult = await testStripe(apiKey);
@@ -107,7 +111,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Logger le test
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: auth.user.id,
       action: "provider_tested",
       entity_type: "api_provider",
       entity_id: providerId,

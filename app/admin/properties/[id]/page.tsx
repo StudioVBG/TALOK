@@ -5,8 +5,9 @@
  * Utilise PropertyDetailsView avec configuration admin
  */
 
-import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { adminKeys } from "@/lib/hooks/use-admin-queries";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
@@ -132,64 +133,45 @@ export default function AdminPropertyDetailPage() {
   const router = useRouter();
   const propertyId = params.id as string;
 
-  const [data, setData] = useState<AdminPropertyData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading: loading, error: queryError } = useQuery({
+    queryKey: [...adminKeys.all, "properties", propertyId],
+    queryFn: async (): Promise<AdminPropertyData | null> => {
+      const response = await fetch(`/api/admin/properties/${propertyId}`, {
+        credentials: "include",
+      });
 
-  useEffect(() => {
-    async function fetchProperty() {
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error("Erreur lors du chargement");
+      }
+
+      const result = await response.json();
+
+      let photos: PropertyPhoto[] = [];
       try {
-        setLoading(true);
-        setError(null);
-        
-        // Récupérer les données de la propriété
-        const response = await fetch(`/api/admin/properties/${propertyId}`, {
+        const photosResponse = await fetch(`/api/properties/${propertyId}/photos`, {
           credentials: "include",
         });
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            setData(null);
-            return;
-          }
-          throw new Error("Erreur lors du chargement");
+        if (photosResponse.ok) {
+          const photosData = await photosResponse.json();
+          photos = photosData.photos || [];
         }
-        
-        const result = await response.json();
-        
-        // Récupérer les photos
-        let photos: PropertyPhoto[] = [];
-        try {
-          const photosResponse = await fetch(`/api/properties/${propertyId}/photos`, {
-            credentials: "include",
-          });
-          if (photosResponse.ok) {
-            const photosData = await photosResponse.json();
-            photos = photosData.photos || [];
-          }
-        } catch (e) {
-          console.log("Pas de photos disponibles");
-        }
-        
-        setData({
-          property: result.property || result,
-          photos,
-          owner: result.owner || null,
-          current_lease: result.current_lease || null,
-        });
-        
-      } catch (err) {
-        console.error("Erreur chargement propriété:", err);
-        setError(err instanceof Error ? err.message : "Erreur inconnue");
-      } finally {
-        setLoading(false);
+      } catch {
+        // Pas de photos disponibles
       }
-    }
-    
-    if (propertyId) {
-      fetchProperty();
-    }
-  }, [propertyId]);
+
+      return {
+        property: result.property || result,
+        photos,
+        owner: result.owner || null,
+        current_lease: result.current_lease || null,
+      };
+    },
+    enabled: !!propertyId,
+    staleTime: 60_000,
+  });
+
+  const error = queryError ? (queryError instanceof Error ? queryError.message : "Erreur inconnue") : null;
 
   // États de chargement
   if (loading) {

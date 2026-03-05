@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { adminKeys } from "@/lib/hooks/use-admin-queries";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,7 +54,6 @@ export default function AdminPropertyEditPage() {
   const { toast } = useToast();
   const propertyId = params.id as string;
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<PropertyFormData>({
     type: "appartement",
@@ -63,46 +64,38 @@ export default function AdminPropertyEditPage() {
     nb_pieces: 1,
   });
 
-  useEffect(() => {
-    async function fetchProperty() {
-      try {
-        const response = await fetch(`/api/admin/properties/${propertyId}`);
-        if (response.ok) {
-          const data = await response.json();
-          const property = data.property;
-          setFormData({
-            type: property.type || "appartement",
-            adresse_complete: property.adresse_complete || "",
-            ville: property.ville || "",
-            code_postal: property.code_postal || "",
-            surface: property.surface || 0,
-            nb_pieces: property.nb_pieces || 1,
-            nb_chambres: property.nb_chambres,
-            nb_salles_de_bain: property.nb_salles_de_bain,
-            etage: property.etage,
-            description: property.description,
-          });
-        } else {
-          toast({
-            title: "Erreur",
-            description: "Impossible de charger la propriété",
-            variant: "destructive",
-          });
-          router.push("/admin/properties");
-        }
-      } catch (error) {
-        console.error("Erreur chargement propriété:", error);
+  const { isLoading: loading } = useQuery({
+    queryKey: [...adminKeys.all, "properties", propertyId, "edit"],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/properties/${propertyId}`);
+      if (!response.ok) {
         toast({
           title: "Erreur",
-          description: "Erreur lors du chargement",
+          description: "Impossible de charger la propriété",
           variant: "destructive",
         });
-      } finally {
-        setLoading(false);
+        router.push("/admin/properties");
+        throw new Error("Property not found");
       }
-    }
-    if (propertyId) fetchProperty();
-  }, [propertyId, router, toast]);
+      const data = await response.json();
+      const property = data.property;
+      setFormData({
+        type: property.type || "appartement",
+        adresse_complete: property.adresse_complete || "",
+        ville: property.ville || "",
+        code_postal: property.code_postal || "",
+        surface: property.surface || 0,
+        nb_pieces: property.nb_pieces || 1,
+        nb_chambres: property.nb_chambres,
+        nb_salles_de_bain: property.nb_salles_de_bain,
+        etage: property.etage,
+        description: property.description,
+      });
+      return data;
+    },
+    enabled: !!propertyId,
+    staleTime: 60_000,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

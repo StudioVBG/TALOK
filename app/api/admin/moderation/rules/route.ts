@@ -1,18 +1,21 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/moderation/rules - Lister les règles de modération IA
  */
 export async function GET(request: Request) {
   try {
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.moderation.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     // Récupérer les règles depuis la table moderation_rules
     const { data: rules, error } = await supabase
@@ -39,10 +42,14 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.moderation.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "moderation_rule_create",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const { user } = auth;
+
+    const supabase = await createClient();
 
     const body = await request.json();
     const {
@@ -83,7 +90,7 @@ export async function POST(request: Request) {
         priority,
         escalation_delay_hours,
         notify_admin,
-        created_by: user!.id,
+        created_by: user.id,
       })
       .select()
       .single();
@@ -106,7 +113,7 @@ export async function POST(request: Request) {
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "moderation_rule_created",
       entity_type: "moderation_rule",
       entity_id: rule.id,

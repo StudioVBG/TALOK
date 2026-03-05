@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SiteCard } from "@/components/copro/site-card";
 import { AssemblyCard } from "@/components/copro/assembly-card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { usePermissions } from "@/lib/hooks/use-permissions";
 import {
@@ -22,6 +23,13 @@ import {
 import Link from "next/link";
 import type { Site } from "@/lib/types/copro";
 import type { AssemblySummary } from "@/lib/types/copro-assemblies";
+
+interface SyndicProfile {
+  first_name?: string;
+  prenom?: string;
+  last_name?: string;
+  nom?: string;
+}
 
 interface DashboardStats {
   total_sites: number;
@@ -34,11 +42,13 @@ interface DashboardStats {
 
 export default function SyndicDashboardPage() {
   const { user, profile } = useAuth();
+  const typedProfile = profile as SyndicProfile | null;
   const { isSyndic, isPlatformAdmin } = usePermissions();
   const [sites, setSites] = useState<Site[]>([]);
   const [assemblies, setAssemblies] = useState<AssemblySummary[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -46,26 +56,35 @@ export default function SyndicDashboardPage() {
         // Récupérer les sites
         const sitesRes = await fetch('/api/copro/sites');
         if (sitesRes.ok) {
-          setSites(await sitesRes.json());
+          const sitesData = await sitesRes.json();
+          setSites(sitesData);
+
+          // Calculer les stats à partir des sites récupérés
+          const totalUnits = sitesData.reduce((sum: number, s: Site) => sum + ((s as any).units?.[0]?.count || (s as any).total_units || 0), 0);
+          const totalBalanceDue = sitesData.reduce((sum: number, s: Site) => sum + ((s as any).total_balance_due || 0), 0);
+          const unpaidCount = sitesData.reduce((sum: number, s: Site) => sum + ((s as any).unpaid_count || 0), 0);
+
+          setStats({
+            total_sites: sitesData.length,
+            total_units: totalUnits,
+            total_owners: 0,
+            total_balance_due: totalBalanceDue,
+            unpaid_count: unpaidCount,
+            upcoming_assemblies: 0,
+          });
         }
 
         // Récupérer les AG à venir
         const assembliesRes = await fetch('/api/copro/assemblies?upcoming=true');
         if (assembliesRes.ok) {
-          setAssemblies(await assembliesRes.json());
+          const assembliesData = await assembliesRes.json();
+          setAssemblies(assembliesData);
+          // Mettre à jour le compteur AG dans les stats
+          setStats(prev => prev ? { ...prev, upcoming_assemblies: assembliesData.length } : prev);
         }
-
-        // TODO: Récupérer les stats globales
-        setStats({
-          total_sites: 0,
-          total_units: 0,
-          total_owners: 0,
-          total_balance_due: 0,
-          unpaid_count: 0,
-          upcoming_assemblies: 0,
-        });
-      } catch (error) {
-        console.error('Erreur chargement dashboard:', error);
+      } catch (err) {
+        console.error('Erreur chargement dashboard:', err);
+        setError('Erreur lors du chargement du tableau de bord');
       } finally {
         setLoading(false);
       }
@@ -76,6 +95,19 @@ export default function SyndicDashboardPage() {
 
   if (loading) {
     return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+        <div className="max-w-7xl mx-auto">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
   }
 
   // Premier accès : afficher l'onboarding
@@ -94,16 +126,18 @@ export default function SyndicDashboardPage() {
         >
           <div>
             <h1 className="text-2xl font-bold text-white">
-              Bonjour {(profile as any)?.first_name || (profile as any)?.prenom || 'Syndic'} 👋
+              Bonjour {typedProfile?.first_name || typedProfile?.prenom || 'Syndic'} 👋
             </h1>
             <p className="text-slate-400">
               Bienvenue sur votre espace de gestion
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="border-white/10 text-white">
-              <Bell className="w-4 h-4 mr-2" />
-              Notifications
+            <Button variant="outline" className="border-white/10 text-white" asChild>
+              <Link href="/syndic/notifications">
+                <Bell className="w-4 h-4 mr-2" />
+                Notifications
+              </Link>
             </Button>
             <Link href="/syndic/onboarding/profile">
               <Button className="bg-gradient-to-r from-cyan-500 to-blue-600">
@@ -130,7 +164,7 @@ export default function SyndicDashboardPage() {
           <StatCard
             icon={Users}
             label="Lots gérés"
-            value={sites.reduce((sum, s: any) => sum + (s.units?.[0]?.count || 0), 0)}
+            value={sites.reduce((sum, s) => sum + ((s as Site & { units?: Array<{ count: number }> }).units?.[0]?.count || 0), 0)}
             color="violet"
           />
           <StatCard
@@ -177,7 +211,7 @@ export default function SyndicDashboardPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 * index }}
                   >
-                    <SiteCard site={site as any} showActions={false} />
+                    <SiteCard site={site} showActions={false} />
                   </motion.div>
                 ))}
               </div>
@@ -281,18 +315,23 @@ export default function SyndicDashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <AlertItem
-                    type="warning"
-                    message="3 contrats arrivent à échéance ce mois"
-                  />
-                  <AlertItem
-                    type="danger"
-                    message="5 lots en impayé depuis plus de 60 jours"
-                  />
-                  <AlertItem
-                    type="info"
-                    message="Budget 2025 à valider avant le 31/12"
-                  />
+                  {stats && stats.unpaid_count > 0 && (
+                    <AlertItem
+                      type="danger"
+                      message={`${stats.unpaid_count} lot(s) en impayé`}
+                    />
+                  )}
+                  {assemblies.length > 0 && (
+                    <AlertItem
+                      type="info"
+                      message={`${assemblies.length} assemblée(s) générale(s) à venir`}
+                    />
+                  )}
+                  {stats && stats.unpaid_count === 0 && assemblies.length === 0 && (
+                    <div className="text-center py-4 text-slate-400 text-sm">
+                      Aucune alerte
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -311,9 +350,9 @@ function StatCard({
   color,
   alert 
 }: { 
-  icon: any; 
-  label: string; 
-  value: number; 
+  icon: React.ElementType;
+  label: string;
+  value: number;
   color: string;
   alert?: boolean;
 }) {
@@ -348,9 +387,9 @@ function QuickAction({
   href, 
   color 
 }: { 
-  icon: any; 
-  label: string; 
-  href: string; 
+  icon: React.ElementType;
+  label: string;
+  href: string;
   color: string;
 }) {
   const colorClasses: Record<string, string> = {

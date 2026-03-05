@@ -1,9 +1,9 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/cleanup-cni-duplicates
@@ -15,46 +15,11 @@ import { NextResponse } from "next/server";
  */
 export async function POST(request: Request) {
   try {
-    // Vérifier l'authentification
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    // Vérifier si admin OU secret key
-    const { searchParams } = new URL(request.url);
-    const secretKey = searchParams.get("secret");
-    const isSecretValid = secretKey === process.env.ADMIN_FIX_SECRET;
-
-    let isAdmin = false;
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
-      isAdmin = profile?.role === "admin";
-    }
-
-    // Owner peut nettoyer SES propres documents
-    let isOwner = false;
-    let ownerProfileId: string | null = null;
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, role")
-        .eq("user_id", user.id)
-        .single();
-      isOwner = profile?.role === "owner";
-      ownerProfileId = profile?.id || null;
-    }
-
-    if (!isAdmin && !isOwner && !isSecretValid) {
-      return NextResponse.json(
-        { error: "Non autorisé" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdminPermissions(request, ["admin.compliance.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "cleanup-cni-duplicates",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     const serviceClient = getServiceClient();
 
@@ -67,9 +32,7 @@ export async function POST(request: Request) {
       .eq("is_archived", false)
       .order("created_at", { ascending: false });
 
-    if (isOwner && !isAdmin) {
-      query = query.eq("owner_id", ownerProfileId!);
-    }
+    // Admin has access to all documents (RBAC enforced)
 
     const { data: allCniDocs, error: fetchError } = await query;
 
@@ -169,44 +132,10 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { searchParams } = new URL(request.url);
-    const secretKey = searchParams.get("secret");
-    const isSecretValid = secretKey === process.env.ADMIN_FIX_SECRET;
-
-    let isAdmin = false;
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
-      isAdmin = profile?.role === "admin";
-    }
-
-    // Owner peut voir SES propres stats
-    let isOwner = false;
-    let ownerProfileId: string | null = null;
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, role")
-        .eq("user_id", user.id)
-        .single();
-      isOwner = profile?.role === "owner";
-      ownerProfileId = profile?.id || null;
-    }
-
-    if (!isAdmin && !isOwner && !isSecretValid) {
-      return NextResponse.json(
-        { error: "Non autorisé" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdminPermissions(request, ["admin.compliance.write"], {
+      rateLimit: "adminCritical",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     const serviceClient = getServiceClient();
 
@@ -216,9 +145,7 @@ export async function GET(request: Request) {
       .select("type, is_archived, owner_id")
       .in("type", ["cni_recto", "cni_verso"]);
 
-    if (isOwner && !isAdmin) {
-      statsQuery = statsQuery.eq("owner_id", ownerProfileId!);
-    }
+    // Admin has access to all documents (RBAC enforced)
 
     const { data: stats } = await statsQuery;
 
@@ -245,9 +172,7 @@ export async function GET(request: Request) {
       .in("type", ["cni_recto", "cni_verso"])
       .eq("is_archived", false);
 
-    if (isOwner && !isAdmin) {
-      activeQuery = activeQuery.eq("owner_id", ownerProfileId!);
-    }
+    // Admin has access to all documents (RBAC enforced)
 
     const { data: allActive } = await activeQuery;
 

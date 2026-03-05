@@ -1,8 +1,16 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { z } from "zod";
+
+const patchUserSchema = z.object({
+  suspended: z.boolean().optional(),
+  reason: z.string().min(3).optional(),
+  role: z.enum(["owner", "tenant", "vendor", "guarantor", "admin", "platform_admin"]).optional(),
+});
 
 /**
  * PATCH /api/admin/users/[id] - Modifier un utilisateur (suspension, etc.) (BTN-A05)
@@ -15,13 +23,23 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+
+    const auth = await requireAdminPermissions(request, ["admin.users.write"], {
+      rateLimit: "adminCritical",
+      auditAction: `Modification utilisateur ${id}`,
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const user = auth.user;
+    const supabase = await createClient();
 
     const body = await request.json();
-    const { suspended, reason, role } = body;
+    const parsed = patchUserSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+    }
+
+    const { suspended, reason, role } = parsed.data;
 
     // Vérifier que l'utilisateur cible existe
     const { data: targetProfile } = await supabase
@@ -54,7 +72,7 @@ export async function PATCH(
       // Note: La suspension réelle nécessite l'Admin API de Supabase
       updates.suspended = suspended;
       updates.suspended_at = suspended ? new Date().toISOString() : null;
-      updates.suspended_by = suspended ? user!.id : null;
+      updates.suspended_by = suspended ? user.id : null;
       updates.suspension_reason = suspended ? reason : null;
     }
     if (role && role !== targetProfileData?.role) {
@@ -91,13 +109,13 @@ export async function PATCH(
         user_id: id,
         suspended,
         reason,
-        updated_by: user!.id,
+        updated_by: user.id,
       },
     } as any);
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: suspended ? "user_suspended" : "user_updated",
       entity_type: "user",
       entity_id: id,
@@ -124,10 +142,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+
+    const auth = await requireAdminPermissions(request, ["admin.users.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     // Récupérer le profil
     const { data: targetProfile, error } = await supabase

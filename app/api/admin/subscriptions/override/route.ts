@@ -6,10 +6,10 @@ export const runtime = 'nodejs';
  * Force un changement de plan (admin only)
  */
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 import { adminOverridePlan } from "@/lib/subscriptions/subscription-service";
 import { z } from "zod";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 const overrideSchema = z.object({
   user_id: z.string().uuid(),
@@ -20,10 +20,14 @@ const overrideSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const { error: authError, user } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    // RBAC + rate limit + audit
+    const auth = await requireAdminPermissions(request, ["admin.subscriptions.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Override de plan utilisateur",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const user = auth.user;
 
     const body = await request.json();
     const parsed = overrideSchema.safeParse(body);
@@ -35,7 +39,7 @@ export async function POST(request: Request) {
     const { user_id, target_plan, reason, notify_user } = parsed.data;
 
     const result = await adminOverridePlan(
-      user!.id,
+      user.id,
       user_id,
       target_plan,
       reason,

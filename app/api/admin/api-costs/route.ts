@@ -1,18 +1,22 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/api-costs - Mettre à jour les coûts API
  */
 export async function POST(request: Request) {
   try {
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.accounting.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
+    const user = auth.user;
 
     const body = await request.json();
     const { provider_id, costs } = body; // costs: { feature: cost_per_call }
@@ -48,7 +52,7 @@ export async function POST(request: Request) {
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "api_costs_updated",
       entity_type: "api_provider",
       entity_id: provider_id,
@@ -63,3 +67,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

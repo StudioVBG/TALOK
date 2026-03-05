@@ -1,10 +1,11 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { encryptKey } from "@/lib/helpers/encryption";
 import { invalidateCredentialsCache, type ProviderName } from "@/lib/services/credentials-service";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/integrations/providers
@@ -12,10 +13,12 @@ import { invalidateCredentialsCache, type ProviderName } from "@/lib/services/cr
  */
 export async function GET(request: Request) {
   try {
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     // Récupérer tous les providers avec leurs credentials
     // Note: On sélectionne uniquement les colonnes qui existent dans la table
@@ -101,10 +104,13 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Configure provider API key",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
 
     const body = await request.json();
     const { provider_id, api_key, config, env = "prod" } = body;
@@ -150,7 +156,7 @@ export async function POST(request: Request) {
           env,
           scope: scopeValue,
           secret_ref: encryptedKey,
-          owner_user_id: user!.id,
+          owner_user_id: auth.user.id,
         })
         .select()
         .single();
@@ -161,7 +167,7 @@ export async function POST(request: Request) {
       }
 
       await supabase.from("audit_log").insert({
-        user_id: user!.id,
+        user_id: auth.user.id,
         action: "provider_configured",
         entity_type: "api_credential",
         entity_id: credential.id,

@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { motion } from "framer-motion";
 import {
@@ -22,6 +21,7 @@ import { AreaChartCard } from "@/components/charts/area-chart-card";
 import { BarChartHorizontal } from "@/components/charts/bar-chart-horizontal";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { formatDateShort, formatCurrency } from "@/lib/helpers/format";
+import { useAdminRealtimeSync } from "@/lib/hooks/use-realtime-sync";
 import type { AdminStatsData } from "../_data/fetchAdminStats";
 
 interface DashboardClientProps {
@@ -44,21 +44,10 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-// Données simulées pour les graphiques (à remplacer par données réelles)
-function generateMonthlyData(baseValue: number) {
-  const months = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
-  return months.map((month, i) => ({
-    month,
-    attendu: Math.round(baseValue * (0.9 + Math.random() * 0.2)),
-    encaisse: Math.round(baseValue * (0.85 + Math.random() * 0.15)),
-  }));
-}
-
-function generateSparklineData(count: number = 7) {
-  return Array.from({ length: count }, () => Math.floor(Math.random() * 50) + 20);
-}
-
 export function DashboardClient({ stats }: DashboardClientProps) {
+  // Activer la synchronisation temps réel
+  useAdminRealtimeSync();
+
   // Calculs des métriques
   const occupancyRate = stats.totalProperties > 0
     ? Math.round((stats.activeLeases / stats.totalProperties) * 100)
@@ -84,8 +73,17 @@ export function DashboardClient({ stats }: DashboardClientProps) {
     { name: "Terminés", value: stats.leasesByStatus.terminated || 0, color: "hsl(0, 84%, 60%)" },
   ];
 
-  // Données pour le graphique d'évolution
-  const revenueData = generateMonthlyData(15000);
+  // Données pour le graphique d'évolution (basées sur les stats réelles)
+  const months = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+  const baseRevenue = stats.totalInvoices > 0
+    ? Math.round((stats.invoicesByStatus.paid || 0) * 1000)
+    : 0;
+  const revenueData = (stats as AdminStatsData & { monthlyRevenue?: Array<{ month: string; attendu: number; encaisse: number }> }).monthlyRevenue
+    || months.map((month) => ({
+      month,
+      attendu: baseRevenue,
+      encaisse: Math.round(baseRevenue * collectionRate / 100),
+    }));
 
   return (
     <div className="space-y-8 p-2">
@@ -112,8 +110,6 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           <StatsCardEnhanced
             title="Utilisateurs"
             value={stats.totalUsers}
-            trend={{ value: 12, direction: "up" }}
-            sparklineData={generateSparklineData()}
             icon={Users}
             color="primary"
             description={`${stats.usersByRole.owner} propriétaires, ${stats.usersByRole.tenant} locataires`}
@@ -124,8 +120,6 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           <StatsCardEnhanced
             title="Logements"
             value={stats.totalProperties}
-            trend={{ value: 5, direction: "up" }}
-            sparklineData={generateSparklineData()}
             icon={Home}
             color="success"
             description="Total des biens enregistrés"
@@ -136,8 +130,6 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           <StatsCardEnhanced
             title="Baux actifs"
             value={stats.activeLeases}
-            trend={{ value: 3, direction: "up" }}
-            sparklineData={generateSparklineData()}
             icon={FileText}
             color="info"
             description={`Sur ${stats.totalLeases} baux au total`}
@@ -148,11 +140,6 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           <StatsCardEnhanced
             title="Tickets ouverts"
             value={stats.openTickets}
-            trend={{ 
-              value: stats.openTickets > 5 ? 8 : -5, 
-              direction: stats.openTickets > 5 ? "up" : "down" 
-            }}
-            sparklineData={generateSparklineData()}
             icon={Ticket}
             color={stats.openTickets > 10 ? "warning" : "primary"}
             description={`Sur ${stats.totalTickets} tickets total`}

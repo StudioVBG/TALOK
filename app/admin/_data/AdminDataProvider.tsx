@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { createContext, useContext, ReactNode } from "react";
 import type { AdminStatsData } from "./fetchAdminStats";

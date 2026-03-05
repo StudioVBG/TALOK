@@ -6,17 +6,17 @@ export const dynamic = 'force-dynamic';
  * Liste les abonnements avec pagination et filtres (admin only)
  */
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSubscriptionsList } from "@/lib/subscriptions/subscription-service";
 import type { PlanSlug } from "@/lib/subscriptions/plans";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 export async function GET(request: NextRequest) {
   try {
-    const { error: authError } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.subscriptions.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     // Parse query params
     const searchParams = request.nextUrl.searchParams;

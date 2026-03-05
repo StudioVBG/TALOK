@@ -6,16 +6,16 @@ export const runtime = 'nodejs';
  * Récupère les statistiques globales des abonnements (admin only)
  */
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 import { getSubscriptionStats, getPlansDistribution } from "@/lib/subscriptions/subscription-service";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 export async function GET(request: Request) {
   try {
-    const { error: authError } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.subscriptions.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     // Récupérer les stats
     const stats = await getSubscriptionStats();

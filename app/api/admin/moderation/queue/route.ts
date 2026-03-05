@@ -1,19 +1,34 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { z } from "zod";
+
+const moderationQueueSchema = z.object({
+  entity_type: z.string().min(1),
+  entity_id: z.string().uuid(),
+  rule_id: z.string().uuid().optional(),
+  ai_score: z.number().min(0).max(1).optional(),
+  ai_reasoning: z.string().optional(),
+  ai_suggested_action: z.string().optional(),
+  flagged_content: z.any().optional(),
+  matched_patterns: z.array(z.string()).optional(),
+  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+});
 
 /**
  * GET /api/admin/moderation/queue - Liste les éléments en file d'attente de modération
  */
 export async function GET(request: Request) {
   try {
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.moderation.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "pending";
     const priority = searchParams.get("priority");
@@ -65,12 +80,21 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.moderation.write"], {
+      rateLimit: "adminStandard",
+      auditAction: "Ajout élément modération",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const user = auth.user;
+    const supabase = await createClient();
 
     const body = await request.json();
+    const parsed = moderationQueueSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+    }
+
     const {
       entity_type,
       entity_id,
@@ -80,15 +104,8 @@ export async function POST(request: Request) {
       ai_suggested_action,
       flagged_content,
       matched_patterns,
-      priority = "medium",
-    } = body;
-
-    if (!entity_type || !entity_id) {
-      return NextResponse.json(
-        { error: "entity_type et entity_id sont requis" },
-        { status: 400 }
-      );
-    }
+      priority,
+    } = parsed.data;
 
     const { data: item, error } = await supabase
       .from("moderation_queue")
@@ -114,7 +131,7 @@ export async function POST(request: Request) {
 
     // Journaliser l'action
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "moderation_item_created",
       entity_type: "moderation_queue",
       entity_id: item.id,

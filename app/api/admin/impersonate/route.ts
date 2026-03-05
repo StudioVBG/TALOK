@@ -3,25 +3,26 @@ export const runtime = 'nodejs';
 
 /**
  * API Impersonation Admin
- *
+ * 
  * Permet à un admin de se connecter en tant qu'un autre utilisateur
  * pour debug et support client.
- *
+ * 
  * SÉCURITÉ:
  * - Réservé aux admins uniquement
  * - Session limitée à 1 heure
  * - Toutes les actions sont loggées
  * - Badge visuel obligatoire côté client
  * - Impossible d'impersonner un autre admin
- *
+ * 
  * POST /api/admin/impersonate - Démarrer une session
  * DELETE /api/admin/impersonate - Terminer la session
  * GET /api/admin/impersonate - Vérifier session active
  */
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 const IMPERSONATION_COOKIE = "impersonation_session";
 const MAX_DURATION_HOURS = 1;
@@ -42,10 +43,22 @@ interface ImpersonationSession {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { error: authError, user, profile, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    // RBAC: seuls les platform_admin peuvent impersonner
+    const auth = await requireAdminPermissions(request, ["admin.impersonate"], {
+      rateLimit: "adminCritical",
+      auditAction: "Demarrage impersonation",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createClient();
+    const user = auth.user;
+
+    // Récupérer le profil admin
+    const { data: adminProfile } = await supabase
+      .from("profiles")
+      .select("id, role, email")
+      .eq("user_id", user.id)
+      .single();
 
     const body = await request.json();
     const { target_user_id, reason } = body;
@@ -91,8 +104,8 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(now.getTime() + MAX_DURATION_HOURS * 60 * 60 * 1000);
 
     const session: ImpersonationSession = {
-      admin_id: user!.id,
-      admin_email: (profile as any).email || user!.email || "",
+      admin_id: user.id,
+      admin_email: (adminProfile as any).email || user.email || "",
       target_user_id: target_user_id,
       target_email: (targetProfile as any).email || "",
       target_role: (targetProfile as any).role,
@@ -113,7 +126,7 @@ export async function POST(request: NextRequest) {
 
     // Logger dans audit_log
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "impersonation_started",
       entity_type: "user",
       entity_id: target_user_id,
@@ -128,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     // Enregistrer dans une table dédiée pour tracking
     await supabase.from("impersonation_sessions").insert({
-      admin_id: user!.id,
+      admin_id: user.id,
       target_user_id: target_user_id,
       reason,
       started_at: now.toISOString(),
@@ -211,12 +224,10 @@ export async function GET() {
 /**
  * DELETE - Terminer la session d'impersonation
  */
-export async function DELETE(request: Request) {
+export async function DELETE() {
   try {
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get(IMPERSONATION_COOKIE);
@@ -269,3 +280,4 @@ export async function DELETE(request: Request) {
     );
   }
 }
+

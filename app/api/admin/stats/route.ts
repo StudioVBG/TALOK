@@ -5,15 +5,18 @@ export const runtime = 'nodejs';
  * GET /api/admin/stats
  */
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
+import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 export async function GET(request: Request) {
   try {
-    const { error: authError, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.reports.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const supabase = await createRouteHandlerClient();
 
     // Appeler la fonction RPC
     const { data, error } = await supabase.rpc("admin_dashboard_stats");

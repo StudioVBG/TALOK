@@ -11,10 +11,11 @@ export const runtime = 'nodejs';
  * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { apiKeysService } from "@/lib/services/api-keys.service";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 // Fonction pour chiffrer une clé API avec AES-256-GCM
 function encryptAPIKey(apiKey: string, masterKey: string): string {
@@ -36,11 +37,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Rotate API key",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const { id } = await params;
-    const { error: authError, user, supabase } = await requireAdmin(request);
-    if (authError) {
-      return NextResponse.json({ error: authError.message }, { status: authError.status });
-    }
+    const supabase = await createClient();
+    const user = auth.user;
 
     const keyId = id;
 
@@ -66,8 +71,8 @@ export async function POST(
     const newHashedKey = crypto.createHash("sha256").update(newApiKey).digest("hex");
 
     // Chiffrer la nouvelle clé
-    const masterKey = process.env.API_KEY_MASTER_KEY ||
-      process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 32) ||
+    const masterKey = process.env.API_KEY_MASTER_KEY || 
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 32) || 
       "default-master-key-32-chars!!";
     const newEncryptedKey = encryptAPIKey(newApiKey, masterKey);
 
@@ -104,7 +109,7 @@ export async function POST(
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user!.id,
+      user_id: user.id,
       action: "api_key_rotated",
       entity_type: "api_credential",
       entity_id: keyId,
