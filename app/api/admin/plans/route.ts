@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
     // Compter les abonnés actifs pour chaque plan
     const plansWithCounts = await Promise.all(
-      (plans || []).map(async (plan) => {
+      (plans || []).map(async (plan: any) => {
         const { count } = await supabase
           .from("subscriptions")
           .select("id", { count: "exact", head: true })

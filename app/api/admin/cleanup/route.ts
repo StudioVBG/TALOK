@@ -176,7 +176,7 @@ export async function POST(request: Request) {
 
       if (docsToDelete.length > 0) {
         // Supprimer les fichiers du storage
-        const storagePaths = docsToDelete.map((d: any) => d.storage_path).filter((p): p is string => Boolean(p));
+        const storagePaths = docsToDelete.map((d: any) => d.storage_path).filter((p: string | null): p is string => Boolean(p));
         if (storagePaths.length > 0) {
           await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove(storagePaths);
         }
