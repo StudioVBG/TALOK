@@ -79,9 +79,10 @@ const adminNavItems: NavCategory[] = [
     ],
   },
   {
-    category: "Confidentialité",
+    category: "Sécurité & Conformité",
     items: [
       { href: "/admin/privacy", label: "RGPD", icon: Lock },
+      { href: "/admin/audit-logs", label: "Journal d'audit", icon: ScrollText },
     ],
   },
 ];

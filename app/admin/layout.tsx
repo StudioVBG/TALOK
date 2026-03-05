@@ -51,9 +51,16 @@ export default async function AdminLayout({
         {/* Bannière d'impersonation (visible si session active) */}
         <ImpersonationBanner />
         <AdminKeyboardShortcuts />
+        {/* Skip to content - accessibility */}
+        <a
+          href="#admin-main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:shadow-lg"
+        >
+          Aller au contenu principal
+        </a>
         <div className="flex min-h-screen mesh-gradient">
           <AdminSidebar />
-          <main className="flex-1 lg:pl-64 transition-all duration-200">
+          <main className="flex-1 lg:pl-64 transition-all duration-200" id="admin-main-content">
             <div className="container mx-auto py-6 px-4 lg:px-8 max-w-7xl">
               <Breadcrumb homeHref="/admin/dashboard" className="mb-4" />
               {children}
