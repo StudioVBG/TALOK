@@ -36,29 +36,35 @@ export async function GET(request: Request) {
 
     const { entity, user: userId, action, risk_level, entity_type, user_id, limit, offset } = params.data;
 
-    let query = supabase
+    // Use explicit `any` typing on query to avoid "excessively deep and possibly infinite"
+    // type instantiation from chained Supabase .eq() calls.
+    let query: any = supabase
       .from("audit_log")
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (entity || entity_type) {
-      query = query.eq("entity_type" as any, entity || entity_type);
+      const col = "entity_type";
+      query = query.eq(col, entity || entity_type);
     }
 
     if (userId || user_id) {
-      query = query.eq("user_id" as any, userId || user_id);
+      const col = "user_id";
+      query = query.eq(col, userId || user_id);
     }
 
     if (action) {
-      query = query.eq("action" as any, action);
+      const col = "action";
+      query = query.eq(col, action);
     }
 
     if (risk_level) {
-      query = query.eq("risk_level" as any, risk_level);
+      const col = "risk_level";
+      query = query.eq(col, risk_level);
     }
 
-    const { data: logs, error, count } = await query;
+    const { data: logs, error, count } = await query as { data: Record<string, unknown>[] | null; error: Error | null; count: number | null };
 
     if (error) throw error;
 
