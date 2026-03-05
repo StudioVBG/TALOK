@@ -105,6 +105,21 @@ export const rateLimitPresets = {
     windowMs: 60 * 1000,
     maxRequests: 30,
   },
+  // Limite pour les actions admin critiques (impersonate, suspend, delete)
+  adminCritical: {
+    windowMs: 60 * 1000,
+    maxRequests: 5,
+  },
+  // Limite pour les opérations admin standard (CRUD)
+  adminStandard: {
+    windowMs: 60 * 1000,
+    maxRequests: 30,
+  },
+  // Limite pour les broadcasts admin (notifications en masse)
+  adminBroadcast: {
+    windowMs: 5 * 60 * 1000,
+    maxRequests: 3,
+  },
 };
 
 // Store en mémoire (fallback pour développement)

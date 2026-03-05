@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { apiKeysService } from "@/lib/services/api-keys.service";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 // Fonction pour chiffrer une clé API avec AES-256-GCM
 function encryptAPIKey(apiKey: string, masterKey: string): string {
@@ -36,29 +37,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Rotate API key",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que c'est un admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if ((profile as any)?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut rotater les clés" },
-        { status: 403 }
-      );
-    }
+    const user = auth.user;
 
     const keyId = id;
 

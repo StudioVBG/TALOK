@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/sync-edl-lease-status
@@ -11,24 +12,14 @@ import { NextResponse } from "next/server";
  */
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "sync-edl-lease-status",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que c'est un admin ou owner
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || !["admin", "owner"].includes(profile.role)) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
-    }
+    const user = auth.user;
 
     const results = {
       edlsUpdated: 0,
@@ -223,22 +214,12 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || !["admin", "owner"].includes(profile.role)) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
-    }
 
     // Trouver les incohérences
     const { data: edls } = await supabase

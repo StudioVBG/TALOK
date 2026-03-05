@@ -3,35 +3,21 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/broadcast - Envoyer un message global (BTN-A10)
  */
 export async function POST(request: Request) {
   try {
+    // RBAC: seuls les platform_admin peuvent broadcaster
+    const auth = await requireAdminPermissions(request, ["admin.broadcast"], {
+      rateLimit: "adminBroadcast",
+      auditAction: "Envoi de notification en masse",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que l'utilisateur est admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut envoyer un message global" },
-        { status: 403 }
-      );
-    }
 
     const body = await request.json();
     const { title, message, audience, link } = body;
@@ -110,9 +96,14 @@ export async function POST(request: Request) {
       } as any);
     }
 
+    // Récupérer l'utilisateur authentifié pour le journal d'audit
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user?.id ?? "unknown",
       action: "broadcast_sent",
       entity_type: "message",
       metadata: {

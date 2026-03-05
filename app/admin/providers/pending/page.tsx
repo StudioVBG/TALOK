@@ -1,7 +1,8 @@
 "use client";
-// @ts-nocheck
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { adminKeys } from "@/lib/hooks/use-admin-queries";
 import { ProtectedRoute } from "@/components/protected-route";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,9 +54,6 @@ function PendingProvidersContent() {
   const { user, profile, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [providers, setProviders] = useState<PendingProvider[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [selectedProvider, setSelectedProvider] = useState<PendingProvider | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
@@ -87,42 +85,17 @@ function PendingProvidersContent() {
   });
   const [suspendReason, setSuspendReason] = useState("");
 
-  useEffect(() => {
-    if (authLoading) return;
-    
-    if (!user) {
-      toast({
-        title: "Non authentifié",
-        description: "Vous devez être connecté pour accéder à cette page.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (profile?.role !== "admin") {
-      toast({
-        title: "Accès refusé",
-        description: "Vous devez être administrateur pour accéder à cette page.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, search, page, user, profile, authLoading]);
-
-  async function fetchData() {
-    setLoading(true);
-    try {
+  const { data: providersData, isLoading: loading, refetch } = useQuery({
+    queryKey: [...adminKeys.all, "providers", "pending", activeTab, search, page],
+    queryFn: async () => {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       };
-      
+
       if (session?.access_token) {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
@@ -145,18 +118,17 @@ function PendingProvidersContent() {
       }
 
       const data = await response.json();
-      setProviders(data.items || []);
-      setTotal(data.total || 0);
-    } catch (error: unknown) {
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible de charger les prestataires",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
+      return {
+        providers: (data.items || []) as PendingProvider[],
+        total: (data.total || 0) as number,
+      };
+    },
+    enabled: !authLoading && !!user && profile?.role === "admin",
+    staleTime: 60_000,
+  });
+
+  const providers = providersData?.providers ?? [];
+  const total = providersData?.total ?? 0;
 
   async function handleApprove(provider: PendingProvider) {
     try {
@@ -198,12 +170,12 @@ function PendingProvidersContent() {
       }
       
       // Rafraîchir les données
-      await fetchData();
+      await refetch();
       
       // Si on est sur l'onglet "pending" et que le prestataire n'apparaît plus, 
       // basculer automatiquement sur "approved"
       if (activeTab === "pending") {
-        // Le fetchData va mettre à jour la liste, si elle est vide on peut changer d'onglet
+        // Le refetch va mettre à jour la liste, si elle est vide on peut changer d'onglet
         setTimeout(() => {
           const currentProviders = providers.filter(p => p.id !== provider.id);
           if (currentProviders.length === 0 && providers.length > 0) {
@@ -271,7 +243,7 @@ function PendingProvidersContent() {
       }
       
       // Rafraîchir les données
-      await fetchData();
+      await refetch();
       
       // Si on est sur l'onglet "pending" et que le prestataire n'apparaît plus, 
       // basculer automatiquement sur "rejected"
@@ -372,7 +344,7 @@ function PendingProvidersContent() {
       // Rafraîchir les détails et la liste
       await Promise.all([
         fetchProviderDetails(providerDetails.id),
-        fetchData()
+        refetch()
       ]);
     } catch (error: unknown) {
       toast({
@@ -423,7 +395,7 @@ function PendingProvidersContent() {
         type_services: [],
         zones_intervention: "",
       });
-      fetchData();
+      refetch();
     } catch (error: unknown) {
       toast({
         title: "Erreur",
@@ -470,7 +442,7 @@ function PendingProvidersContent() {
       // Rafraîchir les détails et la liste
       await Promise.all([
         fetchProviderDetails(providerDetails.id),
-        fetchData()
+        refetch()
       ]);
     } catch (error: unknown) {
       toast({

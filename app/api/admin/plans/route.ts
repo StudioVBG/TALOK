@@ -3,28 +3,55 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { z } from "zod";
+
+const createPlanSchema = z.object({
+  name: z.string().min(1),
+  slug: z.string().min(1),
+  description: z.string().optional(),
+  price_monthly: z.number().min(0).default(0),
+  price_yearly: z.number().min(0).default(0),
+  max_properties: z.number().int().min(1).default(1),
+  max_leases: z.number().int().min(1).default(1),
+  max_tenants: z.number().int().min(1).default(1),
+  max_documents_gb: z.number().min(0).default(1),
+  features: z.record(z.boolean()).optional(),
+  is_active: z.boolean().default(true),
+  is_popular: z.boolean().default(false),
+  display_order: z.number().int().default(0),
+});
+
+const updatePlanSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  price_monthly: z.number().min(0).optional(),
+  price_yearly: z.number().min(0).optional(),
+  max_properties: z.number().int().min(1).optional(),
+  max_leases: z.number().int().min(1).optional(),
+  max_tenants: z.number().int().min(1).optional(),
+  max_documents_gb: z.number().min(0).optional(),
+  features: z.record(z.boolean()).optional(),
+  is_active: z.boolean().optional(),
+  is_popular: z.boolean().optional(),
+  change_reason: z.string().optional(),
+  effective_date: z.string().optional(),
+  grandfather_months: z.number().int().min(0).default(6),
+  notify_subscribers: z.boolean().default(true),
+});
 
 /**
  * GET /api/admin/plans - Lister tous les plans avec le nombre d'abonnés
  */
 export async function GET(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.plans.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     // Récupérer les plans avec le comptage des abonnés
     const { data: plans, error } = await supabase
@@ -62,46 +89,40 @@ export async function GET(request: Request) {
  */
 export async function PUT(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.plans.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Mise à jour plan tarifaire",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const user = auth.user;
+    const profile = auth.profile;
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     const body = await request.json();
-    const { 
-      id, 
-      name, 
-      description, 
-      price_monthly, 
-      price_yearly, 
-      max_properties, 
-      max_leases, 
-      max_tenants, 
+    const parsed = updatePlanSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+    }
+
+    const {
+      id,
+      name,
+      description,
+      price_monthly,
+      price_yearly,
+      max_properties,
+      max_leases,
+      max_tenants,
       max_documents_gb,
-      features, 
-      is_active, 
+      features,
+      is_active,
       is_popular,
       change_reason,
       effective_date,
-      grandfather_months = 6,
-      notify_subscribers = true
-    } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "ID du plan requis" }, { status: 400 });
-    }
+      grandfather_months,
+      notify_subscribers
+    } = parsed.data;
 
     // 1. Récupérer l'ancien plan
     const { data: oldPlan, error: oldPlanError } = await supabase
@@ -294,43 +315,36 @@ export async function PUT(request: Request) {
  */
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.plans.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Création nouveau plan",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const user = auth.user;
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     const body = await request.json();
-    const { 
-      name, 
-      slug,
-      description, 
-      price_monthly = 0, 
-      price_yearly = 0, 
-      max_properties = 1, 
-      max_leases = 1, 
-      max_tenants = 1, 
-      max_documents_gb = 1,
-      features = {},
-      is_active = true, 
-      is_popular = false,
-      display_order = 0
-    } = body;
-
-    if (!name || !slug) {
-      return NextResponse.json({ error: "Nom et slug requis" }, { status: 400 });
+    const parsed = createPlanSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
+
+    const {
+      name,
+      slug,
+      description,
+      price_monthly,
+      price_yearly,
+      max_properties,
+      max_leases,
+      max_tenants,
+      max_documents_gb,
+      features,
+      is_active,
+      is_popular,
+      display_order,
+    } = parsed.data;
 
     // Créer le plan
     const { data: plan, error } = await supabase

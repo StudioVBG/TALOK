@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * API Route pour appliquer les corrections RLS admin
@@ -11,15 +12,15 @@ import { createClient } from "@/lib/supabase/server";
  * Cette route appelle la fonction RPC apply_admin_rls_fixes()
  */
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.compliance.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "fix-rls",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    
-    // Vérifier l'authentification
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
 
     // Appeler la fonction RPC qui applique les corrections
     // Cette fonction vérifie elle-même que l'utilisateur est admin

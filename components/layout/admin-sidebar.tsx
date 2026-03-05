@@ -72,16 +72,17 @@ const adminNavItems: NavCategory[] = [
     category: "Configuration",
     items: [
       { href: "/admin/plans", label: "Forfaits & Tarifs", icon: CreditCard },
-      { href: "#subscriptions", label: "Abonnements", icon: Wallet, isDialog: true },
+      { href: "/admin/subscriptions", label: "Abonnements", icon: Wallet },
       { href: "/admin/integrations", label: "Intégrations", icon: Key },
       { href: "/admin/moderation", label: "Modération", icon: Shield },
       { href: "/admin/accounting", label: "Comptabilité", icon: Calculator },
     ],
   },
   {
-    category: "Confidentialité",
+    category: "Sécurité & Conformité",
     items: [
       { href: "/admin/privacy", label: "RGPD", icon: Lock },
+      { href: "/admin/audit-logs", label: "Journal d'audit", icon: ScrollText },
     ],
   },
 ];

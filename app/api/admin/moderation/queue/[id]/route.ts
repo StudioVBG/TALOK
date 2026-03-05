@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -14,24 +15,12 @@ interface RouteParams {
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
+    const auth = await requireAdminPermissions(request, ["admin.moderation.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     const { data: item, error } = await supabase
       .from("moderation_queue")
@@ -57,24 +46,14 @@ export async function GET(request: Request, { params }: RouteParams) {
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
+    const auth = await requireAdminPermissions(request, ["admin.moderation.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "moderation_queue_update",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const { user } = auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     const body = await request.json();
     const {
@@ -148,24 +127,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
+    const auth = await requireAdminPermissions(request, ["admin.moderation.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "moderation_queue_delete",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     const { error } = await supabase
       .from("moderation_queue")

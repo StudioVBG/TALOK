@@ -22,6 +22,8 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { adminKeys } from "@/lib/hooks/use-admin-queries";
 import { motion, AnimatePresence, Reorder, useDragControls } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1525,34 +1527,38 @@ export default function AdminPlansPage() {
   // DATA FETCHING
   // ============================================
   
-  useEffect(() => {
-    fetchData();
-  }, []);
-  
-  async function fetchData() {
-    setLoading(true);
-    try {
+  const { isLoading: initialLoading, refetch: refetchPlans } = useQuery({
+    queryKey: [...adminKeys.plans(), "with-addons"],
+    queryFn: async () => {
       const [plansRes, addonsRes] = await Promise.all([
         fetch("/api/admin/plans"),
         fetch("/api/admin/addons")
       ]);
-      
+
       const plansData = await plansRes.json();
       const addonsData = await addonsRes.json();
-      
+
       if (plansData.error) throw new Error(plansData.error);
-      
+
       const sortedPlans = (plansData.plans || []).sort((a: Plan, b: Plan) => a.display_order - b.display_order);
       setPlans(sortedPlans);
       setOriginalPlans(JSON.parse(JSON.stringify(sortedPlans)));
       setAddons(addonsData.addons || []);
       setHistory([JSON.parse(JSON.stringify(sortedPlans))]);
       setHistoryIndex(0);
-    } catch (error: unknown) {
-      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+
+      return { plans: sortedPlans, addons: addonsData.addons || [] };
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  // Backwards compat: loading uses initialLoading OR manual loading
+  useEffect(() => {
+    if (!initialLoading && loading) setLoading(false);
+  }, [initialLoading]);
+
+  async function fetchData() {
+    refetchPlans();
   }
   
   // ============================================

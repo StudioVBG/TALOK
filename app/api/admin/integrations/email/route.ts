@@ -1,29 +1,16 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 // GET - Récupérer le statut de la configuration email
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    
-    // Vérifier l'authentification admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     // Vérifier les variables d'environnement
     const resendApiKeySet = !!process.env.RESEND_API_KEY;

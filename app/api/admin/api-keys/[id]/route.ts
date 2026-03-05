@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * DELETE /api/admin/api-keys/[id] - Supprimer ou désactiver une clé API
@@ -14,29 +15,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminStandard",
+      auditAction: "Delete API key",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut supprimer des clés API" },
-        { status: 403 }
-      );
-    }
+    const user = auth.user;
 
     // Désactiver plutôt que supprimer (soft delete)
     const { error } = await supabase
@@ -76,29 +63,15 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminStandard",
+      auditAction: "Update API key",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const { id } = await params;
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut modifier des clés API" },
-        { status: 403 }
-      );
-    }
+    const user = auth.user;
 
     const body = await request.json();
     const { name, is_active, permissions } = body;

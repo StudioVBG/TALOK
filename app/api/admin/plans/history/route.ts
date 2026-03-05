@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/plans/history
@@ -10,24 +11,12 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function GET(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.plans.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-    
-    // Vérifier le rôle admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-    
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
     
     // Récupérer l'historique avec les infos du plan
     const { data: history, error } = await supabase

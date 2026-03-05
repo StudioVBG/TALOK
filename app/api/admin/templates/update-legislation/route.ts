@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 interface LegislationChange {
   field: string;
@@ -28,29 +29,14 @@ interface UpdateLegislationBody {
  */
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.templates.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "update-legislation",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que l'utilisateur est admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    const profileData = profile as { id: string; role: string } | null;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut mettre à jour les législations" },
-        { status: 403 }
-      );
-    }
+    const user = auth.user;
 
     // Récupérer le body (optionnel)
     let body: UpdateLegislationBody = {};
@@ -88,7 +74,7 @@ export async function POST(request: Request) {
         changes,
         affected_lease_types: affectedTypes,
         effective_date: now.toISOString().split("T")[0],
-        created_by: profileData.id,
+        created_by: auth.profile.id,
       } as any)
       .select("id")
       .single();

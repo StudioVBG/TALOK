@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useEffect, useState } from "react";
 import { ProtectedRoute } from "@/components/protected-route";

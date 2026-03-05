@@ -2,8 +2,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { createClient } from "@/lib/supabase/server";
-import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/email-templates/[id] — Récupérer un template par ID
@@ -14,24 +14,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const auth = await requireAdminPermissions(request, ["admin.templates.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier le rôle admin avec service role (bypass RLS)
-    const serviceClient = getServiceClient();
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     const { data: template, error } = await supabase
       .from("email_templates")
@@ -64,24 +52,13 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+    const auth = await requireAdminPermissions(request, ["admin.templates.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Update email template",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier le rôle admin avec service role (bypass RLS)
-    const svcClient = getServiceClient();
-    const { data: profile } = await svcClient
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     const body = await request.json();
     const allowedFields = [

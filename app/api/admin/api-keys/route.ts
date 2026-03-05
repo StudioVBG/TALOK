@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 // Fonction pour chiffrer une clé API avec AES-256-GCM
 function encryptAPIKey(apiKey: string, masterKey: string): string {
@@ -44,28 +45,14 @@ function decryptAPIKey(encryptedKey: string, masterKey: string): string {
  */
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminStandard",
+      auditAction: "Create API key",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut créer des clés API" },
-        { status: 403 }
-      );
-    }
+    const user = auth.user;
 
     const body = await request.json();
     const { provider_id, name, permissions } = body;
@@ -148,28 +135,12 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut voir les clés API" },
-        { status: 403 }
-      );
-    }
 
     const { data: credentials, error } = await supabase
       .from("api_credentials")

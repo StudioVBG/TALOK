@@ -3,6 +3,14 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { z } from "zod";
+
+const patchUserSchema = z.object({
+  suspended: z.boolean().optional(),
+  reason: z.string().min(3).optional(),
+  role: z.enum(["owner", "tenant", "vendor", "guarantor", "admin", "platform_admin"]).optional(),
+});
 
 /**
  * PATCH /api/admin/users/[id] - Modifier un utilisateur (suspension, etc.) (BTN-A05)
@@ -15,32 +23,23 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+
+    const auth = await requireAdminPermissions(request, ["admin.users.write"], {
+      rateLimit: "adminCritical",
+      auditAction: `Modification utilisateur ${id}`,
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const user = auth.user;
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que l'utilisateur est admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut modifier un utilisateur" },
-        { status: 403 }
-      );
-    }
 
     const body = await request.json();
-    const { suspended, reason, role } = body;
+    const parsed = patchUserSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.message }, { status: 400 });
+    }
+
+    const { suspended, reason, role } = parsed.data;
 
     // Vérifier que l'utilisateur cible existe
     const { data: targetProfile } = await supabase
@@ -143,29 +142,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    const auth = await requireAdminPermissions(request, ["admin.users.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que l'utilisateur est admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut consulter un utilisateur" },
-        { status: 403 }
-      );
-    }
 
     // Récupérer le profil
     const { data: targetProfile, error } = await supabase

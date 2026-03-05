@@ -2,8 +2,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/fix-lease-status
@@ -13,13 +13,12 @@ import { getServiceClient } from "@/lib/supabase/service-client";
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-    
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "fix-lease-status",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const { leaseId } = await request.json();
     
     if (!leaseId) {
@@ -129,26 +128,12 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    // SECURITY: Vérifier l'authentification
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que l'utilisateur est admin avec service role (bypass RLS)
     const serviceClient = getServiceClient();
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
-
     const url = new URL(request.url);
     const leaseId = url.searchParams.get("leaseId");
     const shouldFix = url.searchParams.get("fix") === "true";
