@@ -307,10 +307,33 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     return { steps, completed, percentage: Math.round((completed / steps) * 100) };
   }, [hasLeaseData, dashboard?.kyc_status, currentLease?.statut, dashboard]);
 
-  // Prochaine échéance basée sur jour_paiement du bail
+  // Prochaine échéance basée sur la prochaine invoice non payée (source de vérité)
+  // Fallback : calcul basé sur jour_paiement du bail si aucune invoice n'existe encore
   const nextDue = useMemo(() => {
     if (!currentLease) return null;
     const now = new Date();
+
+    // Chercher la prochaine facture non payée dans les invoices du dashboard
+    const invoicesList = dashboard?.invoices || [];
+    const nextInvoice = invoicesList
+      .filter((i: any) => i.statut !== 'paid' && i.statut !== 'cancelled' && i.statut !== 'draft')
+      .sort((a: any, b: any) => {
+        const dateA = a.date_echeance ? new Date(a.date_echeance).getTime() : 0;
+        const dateB = b.date_echeance ? new Date(b.date_echeance).getTime() : 0;
+        return dateA - dateB;
+      })[0];
+
+    if (nextInvoice?.date_echeance) {
+      const dueDate = new Date(nextInvoice.date_echeance);
+      const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        date: dueDate,
+        amount: Number(nextInvoice.montant_total) || 0,
+        daysLeft,
+      };
+    }
+
+    // Fallback : calcul basé sur jour_paiement du bail
     const jourPaiement = (currentLease as any).jour_paiement ?? 5;
     let nextDate = new Date(now.getFullYear(), now.getMonth(), jourPaiement);
     if (nextDate <= now) {
@@ -321,7 +344,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     const amount = (currentLease.loyer ?? 0) + (currentLease.charges_forfaitaires ?? 0);
     const daysLeft = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return { date: nextDate, amount, daysLeft };
-  }, [currentLease]);
+  }, [currentLease, dashboard?.invoices]);
 
   if (error) {
     return (
@@ -656,9 +679,9 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                         </p>
                       </div>
                     ) : (!dashboard.invoices || dashboard.invoices.length === 0) && currentLease?.statut === 'active' ? (
-                      <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-amber-600" />
-                        <p className="text-sm font-bold text-amber-700">En attente de facturation</p>
+                      <div className="mt-6 p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-center gap-3">
+                        <Clock className="h-5 w-5 text-blue-600 animate-spin" />
+                        <p className="text-sm font-bold text-blue-700">Votre première facture est en cours de génération</p>
                       </div>
                     ) : (
                       <div className="mt-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-3">
