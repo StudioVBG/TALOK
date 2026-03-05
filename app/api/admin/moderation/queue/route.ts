@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 
 /**
@@ -9,23 +9,9 @@ import { NextResponse } from "next/server";
  */
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const { searchParams } = new URL(request.url);
@@ -79,23 +65,9 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
@@ -142,7 +114,7 @@ export async function POST(request: Request) {
 
     // Journaliser l'action
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: "moderation_item_created",
       entity_type: "moderation_queue",
       entity_id: item.id,

@@ -6,29 +6,16 @@ export const dynamic = 'force-dynamic';
  * Liste les abonnements avec pagination et filtres (admin only)
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSubscriptionsList } from "@/lib/subscriptions/subscription-service";
 import type { PlanSlug } from "@/lib/subscriptions/plans";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier le rôle admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+    const { error: authError } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Parse query params

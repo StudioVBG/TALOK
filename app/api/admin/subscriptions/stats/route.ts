@@ -6,28 +6,15 @@ export const runtime = 'nodejs';
  * Récupère les statistiques globales des abonnements (admin only)
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 import { getSubscriptionStats, getPlansDistribution } from "@/lib/subscriptions/subscription-service";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier le rôle admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+    const { error: authError } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Récupérer les stats

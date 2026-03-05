@@ -1,31 +1,17 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 
 /**
  * GET /api/admin/moderation/rules - Lister les règles de modération IA
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Récupérer les règles depuis la table moderation_rules
@@ -53,26 +39,9 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut créer des règles de modération" },
-        { status: 403 }
-      );
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
@@ -114,7 +83,7 @@ export async function POST(request: Request) {
         priority,
         escalation_delay_hours,
         notify_admin,
-        created_by: user.id,
+        created_by: user!.id,
       })
       .select()
       .single();
@@ -137,7 +106,7 @@ export async function POST(request: Request) {
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: "moderation_rule_created",
       entity_type: "moderation_rule",
       entity_id: rule.id,

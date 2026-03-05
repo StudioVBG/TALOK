@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 
 interface RouteParams {
@@ -14,23 +14,9 @@ interface RouteParams {
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const { data: item, error } = await supabase
@@ -57,23 +43,9 @@ export async function GET(request: Request, { params }: RouteParams) {
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
@@ -93,7 +65,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       updateData.status = status;
       // Si statut = approved/rejected, marquer comme reviewed
       if (["approved", "rejected"].includes(status)) {
-        updateData.reviewed_by = user.id;
+        updateData.reviewed_by = user!.id;
         updateData.reviewed_at = new Date().toISOString();
       }
     }
@@ -117,7 +89,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     // Journaliser l'action
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: `moderation_${action_taken || status}`,
       entity_type: "moderation_queue",
       entity_id: id,
@@ -148,23 +120,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const { error } = await supabase

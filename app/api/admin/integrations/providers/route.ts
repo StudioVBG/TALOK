@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 import { encryptKey } from "@/lib/helpers/encryption";
 import { invalidateCredentialsCache, type ProviderName } from "@/lib/services/credentials-service";
@@ -10,23 +10,11 @@ import { invalidateCredentialsCache, type ProviderName } from "@/lib/services/cr
  * GET /api/admin/integrations/providers
  * Liste tous les providers avec leur statut de configuration
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Récupérer tous les providers avec leurs credentials
@@ -113,21 +101,9 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
@@ -174,7 +150,7 @@ export async function POST(request: Request) {
           env,
           scope: scopeValue,
           secret_ref: encryptedKey,
-          owner_user_id: user.id,
+          owner_user_id: user!.id,
         })
         .select()
         .single();
@@ -185,7 +161,7 @@ export async function POST(request: Request) {
       }
 
       await supabase.from("audit_log").insert({
-        user_id: user.id,
+        user_id: user!.id,
         action: "provider_configured",
         entity_type: "api_credential",
         entity_id: credential.id,

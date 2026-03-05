@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 
 /**
@@ -15,28 +15,9 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que l'utilisateur est admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut modifier un utilisateur" },
-        { status: 403 }
-      );
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
@@ -73,7 +54,7 @@ export async function PATCH(
       // Note: La suspension réelle nécessite l'Admin API de Supabase
       updates.suspended = suspended;
       updates.suspended_at = suspended ? new Date().toISOString() : null;
-      updates.suspended_by = suspended ? user.id : null;
+      updates.suspended_by = suspended ? user!.id : null;
       updates.suspension_reason = suspended ? reason : null;
     }
     if (role && role !== targetProfileData?.role) {
@@ -110,13 +91,13 @@ export async function PATCH(
         user_id: id,
         suspended,
         reason,
-        updated_by: user.id,
+        updated_by: user!.id,
       },
     } as any);
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: suspended ? "user_suspended" : "user_updated",
       entity_type: "user",
       entity_id: id,
@@ -143,28 +124,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que l'utilisateur est admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut consulter un utilisateur" },
-        { status: 403 }
-      );
+    const { error: authError, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Récupérer le profil

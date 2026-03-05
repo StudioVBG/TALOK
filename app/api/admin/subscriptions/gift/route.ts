@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
  * Offre des jours gratuits à un utilisateur (admin only)
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 import { adminGiftDays } from "@/lib/subscriptions/subscription-service";
 import { z } from "zod";
@@ -20,22 +20,9 @@ const giftSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier le rôle admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+    const { error: authError, user } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
@@ -48,7 +35,7 @@ export async function POST(request: Request) {
     const { user_id, days, reason, notify_user } = parsed.data;
 
     const result = await adminGiftDays(
-      user.id,
+      user!.id,
       user_id,
       days,
       reason,

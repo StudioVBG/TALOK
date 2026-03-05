@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 
 interface LegislationChange {
@@ -28,29 +28,12 @@ interface UpdateLegislationBody {
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    const { error: authError, user, profile, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
-
-    // Vérifier que l'utilisateur est admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
 
     const profileData = profile as { id: string; role: string } | null;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut mettre à jour les législations" },
-        { status: 403 }
-      );
-    }
 
     // Récupérer le body (optionnel)
     let body: UpdateLegislationBody = {};
@@ -242,7 +225,7 @@ export async function POST(request: Request) {
     // 5. Journaliser l'action dans audit_log
     // ============================================
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: "legislation_updated",
       entity_type: "legislation",
       metadata: {

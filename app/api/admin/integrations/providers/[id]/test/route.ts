@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -35,21 +35,9 @@ interface RouteParams {
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { id: providerId } = params;
-    const supabase = await createClient();
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, prenom, nom")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Récupérer le provider
@@ -105,7 +93,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     switch ((provider.name as string).toLowerCase()) {
       case "resend":
-        testResult = await testResend(apiKey, user.email, config);
+        testResult = await testResend(apiKey, user!.email, config);
         break;
       case "stripe":
         testResult = await testStripe(apiKey);
@@ -119,7 +107,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Logger le test
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: "provider_tested",
       entity_type: "api_provider",
       entity_id: providerId,
