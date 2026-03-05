@@ -6,10 +6,10 @@ export const runtime = 'nodejs';
  * Suspend un compte utilisateur (admin only)
  */
 
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { adminSuspendAccount } from "@/lib/subscriptions/subscription-service";
 import { z } from "zod";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 const suspendSchema = z.object({
   user_id: z.string().uuid(),
@@ -19,23 +19,14 @@ const suspendSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    // RBAC + rate limit + audit
+    const auth = await requireAdminPermissions(request, ["admin.subscriptions.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Suspension de compte utilisateur",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
-    // Vérifier le rôle admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
+    const user = auth.user;
 
     const body = await request.json();
     const parsed = suspendSchema.safeParse(body);

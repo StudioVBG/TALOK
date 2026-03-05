@@ -22,6 +22,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 const IMPERSONATION_COOKIE = "impersonation_session";
 const MAX_DURATION_HOURS = 1;
@@ -42,29 +43,22 @@ interface ImpersonationSession {
  */
 export async function POST(request: NextRequest) {
   try {
+    // RBAC: seuls les platform_admin peuvent impersonner
+    const auth = await requireAdminPermissions(request, ["admin.impersonate"], {
+      rateLimit: "adminCritical",
+      auditAction: "Demarrage impersonation",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = auth.user;
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
-
-    // Vérifier que c'est un admin
+    // Récupérer le profil admin
     const { data: adminProfile } = await supabase
       .from("profiles")
       .select("id, role, email")
       .eq("user_id", user.id)
       .single();
-
-    if ((adminProfile as any)?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seuls les admins peuvent utiliser l'impersonation" },
-        { status: 403 }
-      );
-    }
 
     const body = await request.json();
     const { target_user_id, reason } = body;

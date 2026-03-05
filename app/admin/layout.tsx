@@ -11,6 +11,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { AdminKeyboardShortcuts } from "@/components/admin/admin-keyboard-shortcuts";
 
 export default async function AdminLayout({
   children,
@@ -49,6 +50,7 @@ export default async function AdminLayout({
         <OfflineIndicator />
         {/* Bannière d'impersonation (visible si session active) */}
         <ImpersonationBanner />
+        <AdminKeyboardShortcuts />
         <div className="flex min-h-screen mesh-gradient">
           <AdminSidebar />
           <main className="flex-1 lg:pl-64 transition-all duration-200">
