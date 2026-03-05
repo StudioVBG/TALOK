@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { fetchAdminStatsV2 } from "../_data/fetchAdminStats";
-import { DashboardClientV2 } from "./DashboardClientV2";
+import { DashboardClient } from "./DashboardClient";
 
 export default async function AdminDashboardPage() {
   // Fetch non-bloquant pour le layout, mais bloquant pour cette page
@@ -13,5 +13,5 @@ export default async function AdminDashboardPage() {
     return <div>Erreur lors du chargement des statistiques.</div>;
   }
 
-  return <DashboardClientV2 stats={stats} />;
+  return <DashboardClient stats={stats as any} />;
 }
