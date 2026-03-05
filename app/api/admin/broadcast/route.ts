@@ -96,9 +96,14 @@ export async function POST(request: Request) {
       } as any);
     }
 
+    // Récupérer l'utilisateur authentifié pour le journal d'audit
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user?.id ?? "unknown",
       action: "broadcast_sent",
       entity_type: "message",
       metadata: {
