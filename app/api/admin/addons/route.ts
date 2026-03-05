@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 
 /**
@@ -9,21 +9,9 @@ import { NextResponse } from "next/server";
  */
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Récupérer les add-ons
@@ -42,7 +30,7 @@ export async function GET(request: Request) {
           .select("id", { count: "exact", head: true })
           .eq("addon_id", addon.id as string)
           .eq("status", "active");
-        
+
         return {
           ...addon,
           active_subscriptions_count: count || 0
@@ -62,30 +50,18 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
-    const { 
-      name, 
+    const {
+      name,
       slug,
-      description, 
-      price_monthly = 0, 
-      price_yearly = 0, 
+      description,
+      price_monthly = 0,
+      price_yearly = 0,
       features = {},
       compatible_plans = [],
       is_active = true,
@@ -117,7 +93,7 @@ export async function POST(request: Request) {
 
     // Log audit
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: "addon_created",
       entity_type: "subscription_addon",
       entity_id: addon.id,
@@ -136,30 +112,18 @@ export async function POST(request: Request) {
  */
 export async function PUT(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
-    const { 
+    const {
       id,
-      name, 
-      description, 
-      price_monthly, 
-      price_yearly, 
+      name,
+      description,
+      price_monthly,
+      price_yearly,
       features,
       compatible_plans,
       is_active,
@@ -192,7 +156,7 @@ export async function PUT(request: Request) {
 
     // Log audit
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: "addon_updated",
       entity_type: "subscription_addon",
       entity_id: id,
@@ -211,21 +175,9 @@ export async function PUT(request: Request) {
  */
 export async function DELETE(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const { searchParams } = new URL(request.url);
@@ -243,8 +195,8 @@ export async function DELETE(request: Request) {
       .eq("status", "active");
 
     if (count && count > 0) {
-      return NextResponse.json({ 
-        error: `Impossible de supprimer : ${count} souscription(s) active(s)` 
+      return NextResponse.json({
+        error: `Impossible de supprimer : ${count} souscription(s) active(s)`
       }, { status: 400 });
     }
 
@@ -258,7 +210,7 @@ export async function DELETE(request: Request) {
 
     // Log audit
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: "addon_deleted",
       entity_type: "subscription_addon",
       entity_id: id
@@ -270,4 +222,3 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
-

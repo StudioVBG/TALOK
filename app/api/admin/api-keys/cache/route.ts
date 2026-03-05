@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/admin/api-keys/cache/status - Statut des providers
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 import { apiKeysService } from "@/lib/services/api-keys.service";
 
@@ -17,27 +17,9 @@ import { apiKeysService } from "@/lib/services/api-keys.service";
  */
 export async function DELETE(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que c'est un admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if ((profile as any)?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut vider le cache" },
-        { status: 403 }
-      );
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Récupérer le provider à vider (optionnel)
@@ -49,7 +31,7 @@ export async function DELETE(request: Request) {
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: "api_keys_cache_cleared",
       entity_type: "api_credential",
       metadata: { provider: provider || "all" },
@@ -57,8 +39,8 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: provider 
-        ? `Cache vidé pour ${provider}` 
+      message: provider
+        ? `Cache vidé pour ${provider}`
         : "Cache entièrement vidé",
     });
   } catch (error: unknown) {
@@ -74,27 +56,9 @@ export async function DELETE(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que c'est un admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if ((profile as any)?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut voir le statut" },
-        { status: 403 }
-      );
+    const { error: authError } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Récupérer le statut de tous les providers
@@ -111,4 +75,3 @@ export async function GET(request: Request) {
     );
   }
 }
-

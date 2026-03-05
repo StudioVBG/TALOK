@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 
 /**
@@ -9,21 +9,9 @@ import { NextResponse } from "next/server";
  */
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, profile, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Récupérer les plans avec le comptage des abonnés
@@ -42,7 +30,7 @@ export async function GET(request: Request) {
           .select("id", { count: "exact", head: true })
           .eq("plan_id", plan.id)
           .in("status", ["active", "trialing"]);
-        
+
         return {
           ...plan,
           active_subscribers_count: count || 0
@@ -62,36 +50,24 @@ export async function GET(request: Request) {
  */
 export async function PUT(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, profile, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
-    const { 
-      id, 
-      name, 
-      description, 
-      price_monthly, 
-      price_yearly, 
-      max_properties, 
-      max_leases, 
-      max_tenants, 
+    const {
+      id,
+      name,
+      description,
+      price_monthly,
+      price_yearly,
+      max_properties,
+      max_leases,
+      max_tenants,
       max_documents_gb,
-      features, 
-      is_active, 
+      features,
+      is_active,
       is_popular,
       change_reason,
       effective_date,
@@ -113,11 +89,11 @@ export async function PUT(request: Request) {
     if (oldPlanError) throw oldPlanError;
 
     // 2. Vérifier s'il y a un changement de prix ou de features
-    const priceChanged = 
-      oldPlan.price_monthly !== price_monthly || 
+    const priceChanged =
+      oldPlan.price_monthly !== price_monthly ||
       oldPlan.price_yearly !== price_yearly;
-    
-    const featuresChanged = 
+
+    const featuresChanged =
       JSON.stringify(oldPlan.features) !== JSON.stringify(features);
 
     let affectedSubscribers = 0;
@@ -127,14 +103,14 @@ export async function PUT(request: Request) {
       // Date effective minimum = 30 jours
       const minEffectiveDate = new Date();
       minEffectiveDate.setDate(minEffectiveDate.getDate() + 30);
-      
-      const finalEffectiveDate = effective_date 
+
+      const finalEffectiveDate = effective_date
         ? new Date(effective_date)
         : minEffectiveDate;
-      
+
       if (finalEffectiveDate < minEffectiveDate) {
-        return NextResponse.json({ 
-          error: "La date effective doit être au moins 30 jours dans le futur (obligation légale)" 
+        return NextResponse.json({
+          error: "La date effective doit être au moins 30 jours dans le futur (obligation légale)"
         }, { status: 400 });
       }
 
@@ -269,7 +245,7 @@ export async function PUT(request: Request) {
       action: priceChanged ? "plan_price_updated" : "plan_updated",
       entity_type: "subscription_plan",
       entity_id: id,
-      metadata: { 
+      metadata: {
         changes: body,
         price_changed: priceChanged,
         features_changed: featuresChanged,
@@ -277,7 +253,7 @@ export async function PUT(request: Request) {
       }
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       plan,
       price_changed: priceChanged,
       features_changed: featuresChanged,
@@ -294,36 +270,24 @@ export async function PUT(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, profile, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
-    const { 
-      name, 
+    const {
+      name,
       slug,
-      description, 
-      price_monthly = 0, 
-      price_yearly = 0, 
-      max_properties = 1, 
-      max_leases = 1, 
-      max_tenants = 1, 
+      description,
+      price_monthly = 0,
+      price_yearly = 0,
+      max_properties = 1,
+      max_leases = 1,
+      max_tenants = 1,
       max_documents_gb = 1,
       features = {},
-      is_active = true, 
+      is_active = true,
       is_popular = false,
       display_order = 0
     } = body;
@@ -382,4 +346,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
   }
 }
-

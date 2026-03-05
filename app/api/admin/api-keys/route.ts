@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -44,27 +44,9 @@ function decryptAPIKey(encryptedKey: string, masterKey: string): string {
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut créer des clés API" },
-        { status: 403 }
-      );
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json();
@@ -101,7 +83,7 @@ export async function POST(request: Request) {
         encrypted_key: encryptedKey, // Clé chiffrée
         permissions: permissions || {},
         is_active: true,
-        created_by: user.id,
+        created_by: user!.id,
         env: "prod", // Valeur par défaut
         secret_ref: "encrypted", // Indique que la clé est chiffrée
       } as any)
@@ -122,7 +104,7 @@ export async function POST(request: Request) {
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: "api_key_created",
       entity_type: "api_credential",
       entity_id: (apiCredential as any).id,
@@ -148,27 +130,9 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut voir les clés API" },
-        { status: 403 }
-      );
+    const { error: authError, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const { data: credentials, error } = await supabase
@@ -188,7 +152,7 @@ export async function GET(request: Request) {
       key_hash: c.key_hash?.substring(0, 8) + "...",
     }));
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       credentials: sanitized,
       keys: sanitized // Alias pour compatibilité
     });
@@ -199,4 +163,3 @@ export async function GET(request: Request) {
     );
   }
 }
-

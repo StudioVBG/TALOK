@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
  * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { apiKeysService } from "@/lib/services/api-keys.service";
@@ -37,27 +37,9 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que c'est un admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if ((profile as any)?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut rotater les clés" },
-        { status: 403 }
-      );
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const keyId = id;
@@ -84,8 +66,8 @@ export async function POST(
     const newHashedKey = crypto.createHash("sha256").update(newApiKey).digest("hex");
 
     // Chiffrer la nouvelle clé
-    const masterKey = process.env.API_KEY_MASTER_KEY || 
-      process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 32) || 
+    const masterKey = process.env.API_KEY_MASTER_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 32) ||
       "default-master-key-32-chars!!";
     const newEncryptedKey = encryptAPIKey(newApiKey, masterKey);
 
@@ -122,7 +104,7 @@ export async function POST(
 
     // Journaliser
     await supabase.from("audit_log").insert({
-      user_id: user.id,
+      user_id: user!.id,
       action: "api_key_rotated",
       entity_type: "api_credential",
       entity_id: keyId,

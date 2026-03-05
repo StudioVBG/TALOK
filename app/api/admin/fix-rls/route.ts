@@ -2,23 +2,20 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 
 /**
  * API Route pour appliquer les corrections RLS admin
  * POST /api/admin/fix-rls
- * 
+ *
  * Cette route appelle la fonction RPC apply_admin_rls_fixes()
  */
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    
-    // Vérifier l'authentification
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    const { error: authError, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     // Appeler la fonction RPC qui applique les corrections
@@ -42,4 +39,3 @@ export async function POST() {
     );
   }
 }
-

@@ -1,14 +1,13 @@
 /**
  * API Admin: Nettoyage des données orphelines
- * 
+ *
  * GET /api/admin/cleanup - Rapport des données orphelines
  * POST /api/admin/cleanup - Exécuter le nettoyage
- * 
+ *
  * ✅ SOTA 2026: Nettoyage automatique des données orphelines
  */
 
-import { createClient } from "@/lib/supabase/server";
-import { getServiceClient } from "@/lib/supabase/service-client";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { NextResponse } from "next/server";
 
@@ -24,38 +23,24 @@ interface OrphanReport {
 /**
  * GET: Rapport des données orphelines
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // Vérifier l'authentification admin
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
-
-    const serviceClient = getServiceClient();
     const report: OrphanReport[] = [];
 
     // 1. Documents avec lease_id invalide
-    const { count: docsLeaseOrphans } = await serviceClient
+    const { count: docsLeaseOrphans } = await supabase
       .from("documents")
       .select("*", { count: "exact", head: true })
       .not("lease_id", "is", null)
       .not("lease_id", "in", `(SELECT id FROM leases)`);
-    
+
     // Correction: Utiliser une requête RPC ou une sous-requête
-    const { data: orphanDocs } = await serviceClient.rpc("count_orphan_documents_lease");
+    const { data: orphanDocs } = await supabase.rpc("count_orphan_documents_lease");
     report.push({
       type: "documents_lease_orphan",
       count: (orphanDocs as number) || 0,
@@ -64,7 +49,7 @@ export async function GET() {
     });
 
     // 2. Documents avec property_id invalide
-    const { data: orphanDocsProperty } = await serviceClient.rpc("count_orphan_documents_property");
+    const { data: orphanDocsProperty } = await supabase.rpc("count_orphan_documents_property");
     report.push({
       type: "documents_property_orphan",
       count: (orphanDocsProperty as number) || 0,
@@ -73,7 +58,7 @@ export async function GET() {
     });
 
     // 3. Factures orphelines
-    const { data: orphanInvoices } = await serviceClient.rpc("count_orphan_invoices");
+    const { data: orphanInvoices } = await supabase.rpc("count_orphan_invoices");
     report.push({
       type: "invoices_orphan",
       count: (orphanInvoices as number) || 0,
@@ -82,7 +67,7 @@ export async function GET() {
     });
 
     // 4. Signataires orphelins
-    const { data: orphanSigners } = await serviceClient.rpc("count_orphan_signers");
+    const { data: orphanSigners } = await supabase.rpc("count_orphan_signers");
     report.push({
       type: "signers_orphan",
       count: (orphanSigners as number) || 0,
@@ -91,7 +76,7 @@ export async function GET() {
     });
 
     // 5. Notifications obsolètes (> 90 jours, lues)
-    const { count: oldNotifications } = await serviceClient
+    const { count: oldNotifications } = await supabase
       .from("notifications")
       .select("*", { count: "exact", head: true })
       .eq("is_read", true)
@@ -105,7 +90,7 @@ export async function GET() {
     });
 
     // 6. OTP codes expirés
-    const { count: expiredOtp } = await serviceClient
+    const { count: expiredOtp } = await supabase
       .from("otp_codes")
       .select("*", { count: "exact", head: true })
       .lt("expires_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
@@ -118,7 +103,7 @@ export async function GET() {
     });
 
     // 7. Baux sans signataires (anomalie)
-    const { data: leasesWithoutSigners } = await serviceClient.rpc("count_leases_without_signers");
+    const { data: leasesWithoutSigners } = await supabase.rpc("count_leases_without_signers");
     report.push({
       type: "leases_no_signers",
       count: (leasesWithoutSigners as number) || 0,
@@ -127,7 +112,7 @@ export async function GET() {
     });
 
     // 8. Dépôts de garantie incohérents
-    const { data: inconsistentDeposits } = await serviceClient.rpc("count_inconsistent_deposits");
+    const { data: inconsistentDeposits } = await supabase.rpc("count_inconsistent_deposits");
     report.push({
       type: "deposits_inconsistent",
       count: (inconsistentDeposits as number) || 0,
@@ -164,42 +149,28 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    // Vérifier l'authentification admin
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    const { error: authError, user, supabase } = await requireAdmin(request);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: authError.status });
     }
 
     const body = await request.json().catch(() => ({}));
     const { types = "all" } = body; // 'all' ou tableau de types spécifiques
 
-    const serviceClient = getServiceClient();
     const results: { type: string; deleted: number }[] = [];
 
     // 1. Nettoyer les documents orphelins (lease_id invalide)
     if (types === "all" || types.includes("documents_lease_orphan")) {
-      const { data: orphanDocs } = await serviceClient
+      const { data: orphanDocs } = await supabase
         .from("documents")
         .select("id, storage_path, lease_id")
         .not("lease_id", "is", null);
 
       // Filtrer ceux dont le lease n'existe plus
-      const { data: validLeases } = await serviceClient
+      const { data: validLeases } = await supabase
         .from("leases")
         .select("id");
-      
+
       const validLeaseIds = new Set((validLeases || []).map(l => l.id));
       const docsToDelete = (orphanDocs || []).filter(d => d.lease_id && !validLeaseIds.has(d.lease_id));
 
@@ -207,11 +178,11 @@ export async function POST(request: Request) {
         // Supprimer les fichiers du storage
         const storagePaths = docsToDelete.map(d => d.storage_path).filter((p): p is string => Boolean(p));
         if (storagePaths.length > 0) {
-          await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove(storagePaths);
+          await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove(storagePaths);
         }
 
         // Supprimer les entrées de la BDD
-        const { error } = await serviceClient
+        const { error } = await supabase
           .from("documents")
           .delete()
           .in("id", docsToDelete.map(d => d.id));
@@ -225,7 +196,7 @@ export async function POST(request: Request) {
     // 2. Notifications obsolètes
     if (types === "all" || types.includes("notifications_old")) {
       const cutoffDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-      const { data: oldNotifs, error } = await serviceClient
+      const { data: oldNotifs, error } = await supabase
         .from("notifications")
         .delete()
         .eq("is_read", true)
@@ -240,7 +211,7 @@ export async function POST(request: Request) {
     // 3. OTP codes expirés
     if (types === "all" || types.includes("otp_expired")) {
       const cutoffDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: expiredOtp, error } = await serviceClient
+      const { data: expiredOtp, error } = await supabase
         .from("otp_codes")
         .delete()
         .lt("expires_at", cutoffDate)
@@ -254,15 +225,15 @@ export async function POST(request: Request) {
     // 4. Corriger les dépôts de garantie incohérents
     if (types === "all" || types.includes("deposits_inconsistent")) {
       // Baux nus
-      const { data: fixed1 } = await serviceClient
+      const { data: fixed1 } = await supabase
         .from("leases")
-        .update({ depot_de_garantie: serviceClient.rpc("", {}) as any })
+        .update({ depot_de_garantie: supabase.rpc("", {}) as any })
         .eq("type_bail", "nu")
-        .gt("depot_de_garantie", serviceClient.rpc("", {}) as any)
+        .gt("depot_de_garantie", supabase.rpc("", {}) as any)
         .select("id");
 
       // Utiliser la fonction SQL directement
-      const { data: fixedDeposits } = await serviceClient.rpc("fix_inconsistent_deposits");
+      const { data: fixedDeposits } = await supabase.rpc("fix_inconsistent_deposits");
       results.push({ type: "deposits_fixed", deleted: (fixedDeposits as number) || 0 });
     }
 
@@ -270,7 +241,7 @@ export async function POST(request: Request) {
     const totalDeleted = results.reduce((sum, r) => sum + r.deleted, 0);
 
     // Log de l'action
-    await serviceClient
+    await supabase
       .from("admin_logs")
       .insert({
         admin_id: user.id,
@@ -296,4 +267,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
