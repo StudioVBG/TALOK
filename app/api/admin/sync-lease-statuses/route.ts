@@ -1,9 +1,9 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/sync-lease-statuses
@@ -15,43 +15,24 @@ import { NextResponse } from "next/server";
  */
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "sync-lease-statuses",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const serviceClient = getServiceClient();
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
 
-    // Récupérer le profil de l'utilisateur
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
-    }
-
-    const isAdmin = profile.role === "admin";
-
-    // Récupérer les baux concernés
-    let query = serviceClient
+    // Récupérer les baux concernés (admin has access to all)
+    const query = serviceClient
       .from("leases")
       .select(`
-        id, 
+        id,
         statut,
         property_id,
         properties!inner(owner_id)
       `)
       .in("statut", ["pending_signature", "partially_signed", "sent", "draft"]);
-
-    // Si pas admin, filtrer sur les biens de l'utilisateur
-    if (!isAdmin) {
-      query = query.eq("properties.owner_id", profile.id);
-    }
 
     const { data: leases, error: leasesError } = await query;
 
@@ -141,42 +122,23 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const serviceClient = getServiceClient();
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
 
-    // Récupérer le profil
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
-    }
-
-    const isAdmin = profile.role === "admin";
-
-    // Récupérer les baux concernés
-    let query = serviceClient
+    // Récupérer les baux concernés (admin has access to all)
+    const query = serviceClient
       .from("leases")
       .select(`
-        id, 
+        id,
         statut,
         property_id,
         properties!inner(owner_id, adresse_complete)
       `)
       .in("statut", ["pending_signature", "partially_signed", "sent", "draft"]);
-
-    if (!isAdmin) {
-      query = query.eq("properties.owner_id", profile.id);
-    }
 
     const { data: leases } = await query;
 

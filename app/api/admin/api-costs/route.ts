@@ -3,34 +3,20 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/api-costs - Mettre à jour les coûts API
  */
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.accounting.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut mettre à jour les coûts API" },
-        { status: 403 }
-      );
-    }
+    const user = auth.user;
 
     const body = await request.json();
     const { provider_id, costs } = body; // costs: { feature: cost_per_call }

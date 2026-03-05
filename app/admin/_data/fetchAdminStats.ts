@@ -112,7 +112,13 @@ export async function fetchAdminStatsV2(): Promise<AdminStatsDataV2 | null> {
   ]);
 
   // Revenus mensuels (12 derniers mois)
-  const { data: monthlyData } = await supabase.rpc("admin_monthly_revenue").catch(() => ({ data: null }));
+  let monthlyData = null;
+  try {
+    const result = await supabase.rpc("admin_monthly_revenue");
+    monthlyData = result.data;
+  } catch {
+    // RPC may not exist yet
+  }
 
   // Modération
   const [moderationPending, moderationCritical] = await Promise.all([
@@ -121,10 +127,22 @@ export async function fetchAdminStatsV2(): Promise<AdminStatsDataV2 | null> {
   ]);
 
   // Abonnements
-  const { data: subStats } = await supabase.rpc("admin_subscription_stats").catch(() => ({ data: null }));
+  let subStats = null;
+  try {
+    const result = await supabase.rpc("admin_subscription_stats");
+    subStats = result.data;
+  } catch {
+    // RPC may not exist yet
+  }
 
   // Tendances 7 jours (comptages quotidiens)
-  const { data: trendData } = await supabase.rpc("admin_daily_trends").catch(() => ({ data: null }));
+  let trendData = null;
+  try {
+    const result = await supabase.rpc("admin_daily_trends");
+    trendData = result.data;
+  } catch {
+    // RPC may not exist yet
+  }
 
   // Taux d'occupation et de recouvrement
   const occupancyRate = base.totalProperties > 0

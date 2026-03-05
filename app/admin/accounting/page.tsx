@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { adminKeys } from "@/lib/hooks/use-admin-queries";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Card,
@@ -135,10 +137,6 @@ export default function AdminAccountingPage() {
   const { user, profile, loading: authLoading } = useAuth();
 
   // States
-  const [summary, setSummary] = useState<AccountingSummary | null>(null);
-  const [lateInvoices, setLateInvoices] = useState<Invoice[]>([]);
-  const [paymentAlerts, setPaymentAlerts] = useState<PaymentAlert[]>([]);
-  const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -150,12 +148,10 @@ export default function AdminAccountingPage() {
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState<PaymentAlert | null>(null);
 
-  // Fetch data
-  const fetchData = useCallback(async () => {
-    if (!user || profile?.role !== "admin") return;
-
-    setLoading(true);
-    try {
+  // Fetch data with useQuery
+  const { data: accountingData, isLoading: loading, refetch } = useQuery({
+    queryKey: [...adminKeys.all, "accounting", dateRange],
+    queryFn: async () => {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
 
@@ -181,10 +177,6 @@ export default function AdminAccountingPage() {
         p_end_date: endDate.toISOString().split("T")[0],
       });
 
-      if (summaryData) {
-        setSummary(summaryData as AccountingSummary);
-      }
-
       // Fetch late invoices
       const { data: invoicesData } = await supabase
         .from("invoices")
@@ -204,32 +196,31 @@ export default function AdminAccountingPage() {
         .order("due_date", { ascending: true })
         .limit(20);
 
-      if (invoicesData) {
-        const invoices = (invoicesData as any[]).map((inv: Record<string, unknown>) => {
-          const dueDate = new Date(inv.due_date as string);
-          const today = new Date();
-          const daysLate = Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const lateInvoicesList: Invoice[] = invoicesData
+        ? (invoicesData as any[]).map((inv: Record<string, unknown>) => {
+            const dueDate = new Date(inv.due_date as string);
+            const today = new Date();
+            const daysLate = Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
 
-          const lease = inv.lease as Record<string, unknown> | null;
-          const tenant = lease?.tenant as Record<string, string> | null;
-          const property = lease?.property as Record<string, string> | null;
+            const lease = inv.lease as Record<string, unknown> | null;
+            const tenant = lease?.tenant as Record<string, string> | null;
+            const property = lease?.property as Record<string, string> | null;
 
-          return {
-            id: inv.id as string,
-            reference: inv.reference as string || "N/A",
-            tenant_name: tenant ? `${tenant.prenom} ${tenant.nom}` : "Inconnu",
-            property_address: property?.adresse_complete || "Adresse inconnue",
-            amount: inv.amount as number,
-            due_date: inv.due_date as string,
-            status: inv.status as string,
-            days_late: daysLate,
-          };
-        });
-        setLateInvoices(invoices);
-      }
+            return {
+              id: inv.id as string,
+              reference: inv.reference as string || "N/A",
+              tenant_name: tenant ? `${tenant.prenom} ${tenant.nom}` : "Inconnu",
+              property_address: property?.adresse_complete || "Adresse inconnue",
+              amount: inv.amount as number,
+              due_date: inv.due_date as string,
+              status: inv.status as string,
+              days_late: daysLate,
+            };
+          })
+        : [];
 
       // Generate AI payment alerts (simulation pour démo)
-      const alerts: PaymentAlert[] = lateInvoices.slice(0, 5).map((inv, i) => ({
+      const alerts: PaymentAlert[] = lateInvoicesList.slice(0, 5).map((inv, i) => ({
         id: `alert-${i}`,
         type: inv.days_late > 30 ? "late" : inv.days_late > 0 ? "upcoming" : "partial",
         tenant_id: inv.id,
@@ -245,26 +236,20 @@ export default function AdminAccountingPage() {
           ? "Recommandation: Contacter le locataire par téléphone et proposer un échéancier."
           : "Recommandation: Envoyer un rappel automatique par email.",
       }));
-      setPaymentAlerts(alerts);
 
-    } catch (error: unknown) {
-      console.error("Error fetching accounting data:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les données comptables",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [user, profile, dateRange, toast, lateInvoices]);
+      return {
+        summary: (summaryData as AccountingSummary) || null,
+        lateInvoices: lateInvoicesList,
+        paymentAlerts: alerts,
+      };
+    },
+    enabled: !authLoading && !!user && profile?.role === "admin",
+    staleTime: 60_000,
+  });
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user || profile?.role !== "admin") return;
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, profile, authLoading, dateRange]);
+  const summary = accountingData?.summary ?? null;
+  const lateInvoices = accountingData?.lateInvoices ?? [];
+  const paymentAlerts = accountingData?.paymentAlerts ?? [];
 
   // Export handler
   async function handleExport(format: "csv" | "excel" | "fec") {
@@ -369,7 +354,7 @@ export default function AdminAccountingPage() {
                 <SelectItem value="year">Cette année</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" onClick={fetchData}>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Actualiser
             </Button>

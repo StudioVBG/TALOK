@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { apiKeysService } from "@/lib/services/api-keys.service";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * DELETE /api/admin/api-keys/cache - Vider le cache des clés API
@@ -17,28 +18,14 @@ import { apiKeysService } from "@/lib/services/api-keys.service";
  */
 export async function DELETE(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminStandard",
+      auditAction: "Clear API keys cache",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que c'est un admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if ((profile as any)?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut vider le cache" },
-        { status: 403 }
-      );
-    }
+    const user = auth.user;
 
     // Récupérer le provider à vider (optionnel)
     const url = new URL(request.url);
@@ -74,28 +61,10 @@ export async function DELETE(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier que c'est un admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if ((profile as any)?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut voir le statut" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     // Récupérer le statut de tous les providers
     const status = await apiKeysService.getProvidersStatus();

@@ -4,27 +4,24 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/services/email-service";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 // POST - Envoyer un email de test
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Send test email",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    
-    // Vérifier l'authentification admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, prenom, nom")
-      .eq("user_id", user.id)
+      .select("prenom, nom")
+      .eq("user_id", auth.user.id)
       .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     // Récupérer l'email de destination depuis le body (optionnel)
     let body: { to?: string } = {};
@@ -34,7 +31,7 @@ export async function POST(request: Request) {
       // Body vide, utiliser l'email de l'admin
     }
 
-    const recipientEmail = body.to || user.email;
+    const recipientEmail = body.to || auth.user.email;
     
     if (!recipientEmail) {
       return NextResponse.json(

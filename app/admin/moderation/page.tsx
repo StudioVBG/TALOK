@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Card,
@@ -158,10 +159,6 @@ export default function AdminModerationPage() {
   const { user, profile, loading: authLoading } = useAuth();
 
   // States
-  const [rules, setRules] = useState<ModerationRule[]>([]);
-  const [queue, setQueue] = useState<ModerationQueueItem[]>([]);
-  const [stats, setStats] = useState<ModerationStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("queue");
 
   // Dialog states
@@ -186,66 +183,36 @@ export default function AdminModerationPage() {
     priority: 50,
   });
 
-  // Fetch data
-  const fetchData = useCallback(async () => {
-    if (!user || profile?.role !== "admin") return;
-
-    setLoading(true);
-    try {
+  // Fetch data with React Query
+  const { data: moderationData, isLoading: loading, refetch: fetchData } = useQuery({
+    queryKey: ["admin", "moderation", "all"],
+    queryFn: async () => {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
 
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
+      const [rulesRes, queueRes, statsResult] = await Promise.all([
+        fetch("/api/admin/moderation/rules", { credentials: "include" }),
+        fetch("/api/admin/moderation/queue", { credentials: "include" }),
+        supabase.rpc("get_moderation_stats"),
+      ]);
+
+      const rulesData = rulesRes.ok ? await rulesRes.json() : { rules: [] };
+      const queueData = queueRes.ok ? await queueRes.json() : { items: [] };
+
+      return {
+        rules: (rulesData.rules || []) as ModerationRule[],
+        queue: (queueData.items || []) as ModerationQueueItem[],
+        stats: (statsResult.data || null) as ModerationStats | null,
       };
+    },
+    enabled: !authLoading && !!user && profile?.role === "admin",
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
 
-      if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
-      }
-
-      // Fetch rules
-      const rulesRes = await fetch("/api/admin/moderation/rules", {
-        credentials: "include",
-        headers,
-      });
-      if (rulesRes.ok) {
-        const data = await rulesRes.json();
-        setRules(data.rules || []);
-      }
-
-      // Fetch queue
-      const queueRes = await fetch("/api/admin/moderation/queue", {
-        credentials: "include",
-        headers,
-      });
-      if (queueRes.ok) {
-        const data = await queueRes.json();
-        setQueue(data.items || []);
-      }
-
-      // Fetch stats via RPC
-      const { data: statsData } = await supabase.rpc("get_moderation_stats");
-      if (statsData) {
-        setStats(statsData as ModerationStats);
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Impossible de charger les données";
-      toast({
-        title: "Erreur",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [user, profile, toast]);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user || profile?.role !== "admin") return;
-    fetchData();
-  }, [user, profile, authLoading, fetchData]);
+  const rules = moderationData?.rules || [];
+  const queue = moderationData?.queue || [];
+  const stats = moderationData?.stats || null;
 
   // Create rule
   async function handleCreateRule() {

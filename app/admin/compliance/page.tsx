@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { adminKeys } from "@/lib/hooks/use-admin-queries";
 import { motion } from "framer-motion";
 import {
   Card,
@@ -97,9 +99,6 @@ interface ExpiringDocument {
 
 export default function AdminCompliancePage() {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [pendingDocs, setPendingDocs] = useState<PendingDocument[]>([]);
-  const [expiringDocs, setExpiringDocs] = useState<ExpiringDocument[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<PendingDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [actionDialog, setActionDialog] = useState<{
@@ -110,35 +109,27 @@ export default function AdminCompliancePage() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [processing, setProcessing] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    try {
-      // Récupérer les documents en attente
+  const { data: complianceData, isLoading: loading, refetch } = useQuery({
+    queryKey: [...adminKeys.all, "compliance"],
+    queryFn: async () => {
       const pendingResponse = await fetch("/api/admin/compliance/documents/pending");
-      if (pendingResponse.ok) {
-        const data = await pendingResponse.json();
-        setPendingDocs(data.documents || []);
-      }
+      if (!pendingResponse.ok) throw new Error("Failed to fetch pending documents");
+      const data = await pendingResponse.json();
 
       // TODO: Récupérer les documents qui expirent bientôt
       // const expiringResponse = await fetch("/api/admin/compliance/documents/expiring");
-      // if (expiringResponse.ok) {
-      //   const data = await expiringResponse.json();
-      //   setExpiringDocs(data.documents || []);
-      // }
-    } catch (error: unknown) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les données",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+      // const expiringData = expiringResponse.ok ? await expiringResponse.json() : { documents: [] };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+      return {
+        pendingDocs: (data.documents || []) as PendingDocument[],
+        expiringDocs: [] as ExpiringDocument[],
+      };
+    },
+    staleTime: 60_000,
+  });
+
+  const pendingDocs = complianceData?.pendingDocs ?? [];
+  const expiringDocs = complianceData?.expiringDocs ?? [];
 
   const handleViewDocument = async (doc: PendingDocument) => {
     setSelectedDoc(doc);
@@ -197,7 +188,7 @@ export default function AdminCompliancePage() {
       setRejectionReason("");
       setSelectedDoc(null);
       setPreviewUrl(null);
-      fetchData();
+      refetch();
     } catch (error: unknown) {
       toast({
         title: "Erreur",

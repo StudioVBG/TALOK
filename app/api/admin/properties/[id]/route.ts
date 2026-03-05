@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClientFromRequest } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/properties/[id] - Récupérer les détails d'une propriété (admin)
@@ -13,23 +14,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    const auth = await requireAdminPermissions(request, ["admin.properties.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClientFromRequest(request);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Vérifier rôle admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     // Récupérer la propriété avec owner
     const { data: property, error } = await supabase

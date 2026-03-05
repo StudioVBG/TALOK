@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { adminKeys } from "@/lib/hooks/use-admin-queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -123,9 +125,6 @@ export default function AdminIntegrationsPage() {
   const supabase = createClient();
   
   // États
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [byCategory, setByCategory] = useState<ProvidersByCategory>({});
-  const [loading, setLoading] = useState(true);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -134,44 +133,35 @@ export default function AdminIntegrationsPage() {
   const [testing, setTesting] = useState(false);
 
   // Fetch avec authentification
-  const fetchWithAuth = useCallback(async (input: RequestInfo | URL, init?: RequestInit) => {
+  const fetchWithAuth = async (input: RequestInfo | URL, init?: RequestInit) => {
     const { data: { session } } = await supabase.auth.getSession();
     const headers = new Headers(init?.headers);
     if (session?.access_token) {
       headers.set("Authorization", `Bearer ${session.access_token}`);
     }
     return fetch(input, { ...init, credentials: "include", headers });
-  }, [supabase]);
+  };
 
-  // Charger les données
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
+  // Charger les données avec useQuery
+  const { data: integrationData, isLoading: loading, refetch } = useQuery({
+    queryKey: [...adminKeys.all, "integrations"],
+    queryFn: async () => {
       const response = await fetchWithAuth("/api/admin/integrations/providers");
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProviders(data.providers || []);
-        setByCategory(data.byCategory || {});
-      } else {
+      if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Erreur de chargement");
       }
-    } catch (error: unknown) {
-      console.error("Erreur chargement:", error);
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible de charger les intégrations",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchWithAuth, toast]);
+      const data = await response.json();
+      return {
+        providers: (data.providers || []) as Provider[],
+        byCategory: (data.byCategory || {}) as ProvidersByCategory,
+      };
+    },
+    staleTime: 60_000,
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const providers = integrationData?.providers ?? [];
+  const byCategory = integrationData?.byCategory ?? {};
 
   // Ouvrir le popup de configuration
   const openConfigDialog = (provider: Provider) => {
@@ -238,7 +228,7 @@ export default function AdminIntegrationsPage() {
           description: result.message,
         });
         setConfigDialogOpen(false);
-        fetchData();
+        refetch();
       } else {
         const error = await response.json();
         throw new Error(error.error);

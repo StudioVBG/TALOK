@@ -5,29 +5,20 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { encryptKey } from "@/lib/helpers/encryption";
 import { invalidateCredentialsCache, type ProviderName } from "@/lib/services/credentials-service";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/integrations/providers
  * Liste tous les providers avec leur statut de configuration
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     // Récupérer tous les providers avec leurs credentials
     // Note: On sélectionne uniquement les colonnes qui existent dans la table
@@ -113,22 +104,13 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Configure provider API key",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     const body = await request.json();
     const { provider_id, api_key, config, env = "prod" } = body;
@@ -174,7 +156,7 @@ export async function POST(request: Request) {
           env,
           scope: scopeValue,
           secret_ref: encryptedKey,
-          owner_user_id: user.id,
+          owner_user_id: auth.user.id,
         })
         .select()
         .single();
@@ -185,7 +167,7 @@ export async function POST(request: Request) {
       }
 
       await supabase.from("audit_log").insert({
-        user_id: user.id,
+        user_id: auth.user.id,
         action: "provider_configured",
         entity_type: "api_credential",
         entity_id: credential.id,

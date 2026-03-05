@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/providers/[id]/disable - Désactiver un fournisseur API
@@ -15,28 +16,15 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    const auth = await requireAdminPermissions(request, ["admin.users.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "provider_disabled",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
+    const user = auth.user;
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    if (profileData?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut désactiver un fournisseur" },
-        { status: 403 }
-      );
-    }
 
     // Désactiver le provider
     const { data: provider, error } = await supabase

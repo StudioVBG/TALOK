@@ -3,30 +3,19 @@ export const runtime = "nodejs";
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * GET /api/admin/moderation/rules - Lister les règles de modération IA
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.moderation.read"], {
+      rateLimit: "adminStandard",
+    });
+    if (isAdminAuthError(auth)) return auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
 
     // Récupérer les règles depuis la table moderation_rules
     const { data: rules, error } = await supabase
@@ -53,27 +42,14 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdminPermissions(request, ["admin.moderation.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "moderation_rule_create",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const { user } = auth;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Seul l'admin peut créer des règles de modération" },
-        { status: 403 }
-      );
-    }
 
     const body = await request.json();
     const {

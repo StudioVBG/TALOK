@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/sync-signatures
@@ -11,23 +11,11 @@ import { createServerClient } from "@/lib/supabase/server";
  */
 export async function POST(request: Request) {
   try {
-    // Vérifier que l'utilisateur est admin
-    const supabase = await createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès réservé aux administrateurs" }, { status: 403 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "sync-signatures",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     // Client admin pour bypass RLS
     const adminClient = createClient(
@@ -70,22 +58,10 @@ export async function POST(request: Request) {
  */
 export async function GET(request: Request) {
   try {
-    const supabase = await createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "Accès réservé aux administrateurs" }, { status: 403 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

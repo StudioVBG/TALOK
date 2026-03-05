@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
  * POST /api/admin/reset-lease
@@ -11,20 +11,13 @@ import { createServerClient } from "@/lib/supabase/server";
  */
 export async function POST(request: Request) {
   try {
-    // Vérifier authentification
-    const supabase = await createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "reset-lease",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
-    // Vérifier que l'utilisateur est admin ou propriétaire du bail
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
+    const user = auth.user;
 
     const body = await request.json();
     const { lease_id, reset_edl = false, reset_invoices = false } = body;
@@ -57,13 +50,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
     }
 
-    // Vérifier les droits
-    const isAdmin = profile?.role === "admin";
-    const isOwner = (lease.properties as any)?.owner_id === profile?.id;
-    
-    if (!isAdmin && !isOwner) {
-      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
-    }
+    // Admin access verified by RBAC middleware
 
     const results: any = {
       lease_id,
@@ -213,12 +200,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "lease_id requis" }, { status: 400 });
     }
 
-    const supabase = await createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+      rateLimit: "adminCritical",
+    });
+    if (isAdminAuthError(auth)) return auth;
 
     const adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
