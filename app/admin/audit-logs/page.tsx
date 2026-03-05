@@ -260,9 +260,9 @@ export default function AuditLogsPage() {
                         </span>
                       </div>
 
-                      {log.metadata?.description && (
+                      {typeof log.metadata?.description === 'string' && log.metadata.description && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          {String(log.metadata.description)}
+                          {log.metadata.description}
                         </p>
                       )}
 
