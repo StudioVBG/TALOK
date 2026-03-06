@@ -151,15 +151,17 @@ export class AuthService {
 
   async resetPassword(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
-    // Rediriger vers /auth/callback avec next=/auth/reset-password
-    // pour que le code PKCE soit échangé côté serveur avant d'arriver sur la page
-    const baseUrl = getResetPasswordUrl().replace("/auth/reset-password", "");
-    const redirectUrl = `${baseUrl}/auth/callback?next=/auth/reset-password`;
-    const { error } = await this.supabase.auth.resetPasswordForEmail(normalizedEmail, {
-      redirectTo: redirectUrl,
+    // Utiliser notre API custom qui envoie l'email via Resend avec le template Talok
+    const response = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: normalizedEmail }),
     });
 
-    if (error) throw error;
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Erreur lors de l'envoi");
+    }
   }
 
   async resendConfirmationEmail(email: string) {
