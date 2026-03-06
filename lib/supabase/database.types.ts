@@ -275,6 +275,7 @@ export type InvoiceRow = {
   issuer_adresse?: string | null
   issuer_siret?: string | null
   issuer_tva?: string | null
+  metadata?: Record<string, any> | null
   created_at: string
   updated_at: string
 

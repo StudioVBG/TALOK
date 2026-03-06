@@ -470,7 +470,36 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       };
     }
 
-    // 6. Tout est OK
+    // 6. Bail actif, paiement reçu, clés pas encore remises
+    if (lease.statut === "active" && hasPaidInitial && !hasKeysHandedOver) {
+      return {
+        type: "key_handover",
+        icon: Key,
+        title: "Remise des clés",
+        description: "Le paiement est reçu. Procédez à la remise des clés.",
+        action: () => {
+          const el = document.getElementById("key-handover-section");
+          if (el) el.scrollIntoView({ behavior: "smooth" });
+        },
+        actionLabel: "Remettre les clés",
+        color: "green"
+      };
+    }
+
+    // 7. Tout est OK
+    if (lease.statut === "active" && hasKeysHandedOver) {
+      return {
+        type: "all_done",
+        icon: CheckCircle,
+        title: "Bail actif",
+        description: "Tout est en ordre ! Le bail est en cours.",
+        action: null,
+        actionLabel: null,
+        color: "green"
+      };
+    }
+
+    // Fallback: bail actif sans tracking de remise de clés
     if (lease.statut === "active") {
       return {
         type: "all_done",
@@ -484,7 +513,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     }
     
     return null;
-  }, [lease.statut, mainTenant, needsOwnerSignature, hasSignedEdl, hasPaidInitial, premierVersement, leaseId, property.id, edl]);
+  }, [lease.statut, mainTenant, needsOwnerSignature, hasSignedEdl, hasPaidInitial, hasKeysHandedOver, premierVersement, leaseId, property.id, edl]);
 
   // Construire bailData pour la prévisualisation (via mapper)
   const bailData = mapLeaseToTemplate(details, ownerProfile);
@@ -939,6 +968,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     payments={payments || []}
                     invoices={invoices || []}
                     leaseStatus={lease.statut}
+                    tenantName={mainTenant ? (resolveTenantFullName(mainTenant) || "Locataire") : "Locataire"}
+                    ownerName={ownerProfile ? `${ownerProfile.prenom || ""} ${ownerProfile.nom || ""}`.trim() : ""}
+                    propertyAddress={property.adresse_complete}
+                    onPaymentRecorded={() => router.refresh()}
                   />
                 </div>
               </TabsContent>
@@ -1120,7 +1153,9 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             
             {/* Remise des clés QR — affiché quand EDL signé et paiement reçu */}
             {hasSignedEdl && hasPaidInitial && !hasKeysHandedOver && (
-              <KeyHandoverQRGenerator leaseId={leaseId} />
+              <div id="key-handover-section">
+                <KeyHandoverQRGenerator leaseId={leaseId} />
+              </div>
             )}
 
             {/* Carte Info Rapide */}
