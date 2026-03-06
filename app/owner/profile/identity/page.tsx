@@ -21,9 +21,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { createClient } from "@/lib/supabase/client";
-import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { apiClient } from "@/lib/api-client";
 import Image from "next/image";
 import { DocumentScan } from "@/features/identity-verification/components/document-scan";
 
@@ -75,36 +74,20 @@ export default function OwnerIdentityPage() {
     if (!user) return;
 
     try {
-      const supabase = createClient();
-      
-      // Récupérer le profile_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!profile) return;
-
-      // Récupérer les documents d'identité du propriétaire
-      const { data: docs } = await supabase
-        .from("documents")
-        .select("*")
-        .eq("owner_id", profile.id)
-        .in("type", ["piece_identite", "cni_recto", "cni_verso"])
-        .order("created_at", { ascending: false });
+      // Récupérer les documents d'identité via API sécurisée
+      const { documents: docs } = await apiClient.get<{ documents: IdentityDocument[] }>("/owner/identity/documents");
 
       if (docs && docs.length > 0) {
-        const recto = docs.find((d: any) => 
+        const recto = docs.find((d) =>
           d.type === "cni_recto" || d.metadata?.side === "recto"
         );
-        const verso = docs.find((d: any) => 
+        const verso = docs.find((d) =>
           d.type === "cni_verso" || d.metadata?.side === "verso"
         );
-        
+
         setDocuments({
-          recto: (recto || null) as IdentityDocument | null,
-          verso: (verso || null) as IdentityDocument | null,
+          recto: recto || null,
+          verso: verso || null,
         });
 
         // Générer les URLs signées via l'API route server-side
@@ -130,67 +113,39 @@ export default function OwnerIdentityPage() {
 
   const handleUpload = async (side: "recto" | "verso", file: File) => {
     if (!user || !file) return;
-    
+
     setUploading(side);
-    
+
     try {
-      const supabase = createClient();
-      
-      // Récupérer le profile_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!profile) throw new Error("Profil non trouvé");
-
-      // Générer un nom de fichier unique
-      const ext = file.name.split(".").pop();
-      const filename = `owner_cni_${side}_${profile.id}_${Date.now()}.${ext}`;
-      const storagePath = `identity/${profile.id}/${filename}`;
-
-      // Upload vers Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from("documents")
-        .upload(storagePath, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Supprimer l'ancien document si existant
+      // Supprimer l'ancien document si existant via API
       const oldDoc = documents[side];
       if (oldDoc) {
-        await supabase.from("documents").delete().eq("id", oldDoc.id);
-        if (oldDoc.storage_path) {
-          await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([oldDoc.storage_path]);
-        }
+        await apiClient.delete(`/documents/${oldDoc.id}`);
       }
 
-      // Créer l'entrée dans la table documents
-      const { data: newDoc, error: docError } = await supabase
-        .from("documents")
-        .insert({
-          type: side === "recto" ? "cni_recto" : "cni_verso",
-          owner_id: profile.id,
-          tenant_id: null,
-          property_id: null,
-          lease_id: null,
-          storage_path: storagePath,
-          metadata: {
-            side,
-            filename: file.name,
-            mime_type: file.type,
-            size: file.size,
-            uploaded_at: new Date().toISOString(),
-          },
-        })
-        .select()
-        .single();
+      // Upload via API sécurisée (FormData)
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", side === "recto" ? "cni_recto" : "cni_verso");
 
-      if (docError) throw docError;
+      const { createClient: createSupabaseClient } = await import("@/lib/supabase/client");
+      const supabase = createSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const res = await fetch("/api/documents/upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Erreur upload" }));
+        throw new Error(err.error || `Erreur ${res.status}`);
+      }
+
+      const { document: newDoc } = await res.json();
 
       setDocuments(prev => ({ ...prev, [side]: newDoc }));
 
@@ -201,8 +156,8 @@ export default function OwnerIdentityPage() {
       }
 
       toast({
-        title: "✅ Document uploadé",
-        description: `CNI ${side === "recto" ? "recto" : "verso"} enregistrée avec succès.`,
+        title: "Document uploade",
+        description: `CNI ${side === "recto" ? "recto" : "verso"} enregistree avec succes.`,
       });
     } catch (error: unknown) {
       console.error("Erreur upload:", error);
@@ -221,22 +176,15 @@ export default function OwnerIdentityPage() {
     if (!doc) return;
 
     try {
-      const supabase = createClient();
-
-      // Supprimer de la table
-      await supabase.from("documents").delete().eq("id", doc.id);
-
-      // Supprimer du storage
-      if (doc.storage_path) {
-        await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([doc.storage_path]);
-      }
+      // Supprimer via API sécurisée (gère table + storage)
+      await apiClient.delete(`/documents/${doc.id}`);
 
       setDocuments(prev => ({ ...prev, [side]: null }));
       setPreviewUrls(prev => ({ ...prev, [side]: null }));
 
       toast({
-        title: "Document supprimé",
-        description: `CNI ${side === "recto" ? "recto" : "verso"} supprimée.`,
+        title: "Document supprime",
+        description: `CNI ${side === "recto" ? "recto" : "verso"} supprimee.`,
       });
     } catch (error: unknown) {
       toast({

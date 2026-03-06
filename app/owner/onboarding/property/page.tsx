@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { firstPropertySchema } from "@/lib/validations/onboarding";
 import { propertiesService } from "@/features/properties/services/properties.service";
+import { apiClient } from "@/lib/api-client";
 import { Home, ArrowRight } from "lucide-react";
 import {
   Select,
@@ -63,22 +64,7 @@ export default function FirstPropertyPage() {
         unit_surface: formData.is_colocation && formData.unit_surface ? parseFloat(formData.unit_surface) : undefined,
       });
 
-      // Récupérer le profil
-      const supabase = (await import("@/lib/supabase/client")).createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Utilisateur non authentifié");
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!profile) throw new Error("Profil non trouvé");
-
-      // Créer la propriété (owner_id est récupéré automatiquement par le service)
+      // Créer la propriété via le service (utilise apiClient en interne)
       const property = await propertiesService.createProperty({
         type: validated.type,
         adresse_complete: validated.adresse_complete,
@@ -93,21 +79,18 @@ export default function FirstPropertyPage() {
         ges: null,
       } as any);
 
-      // Si colocation, créer l'unité
+      const propertyData = property as any;
+
+      // Si colocation, créer l'unité via API
       if (validated.is_colocation && validated.unit_nom) {
-        const propertyData = property as any;
-        const { error: unitError } = await (supabase.from("units") as any).insert({
-          property_id: propertyData.id as any,
+        await apiClient.post(`/properties/${propertyData.id}/units`, {
           nom: validated.unit_nom,
           capacite_max: validated.unit_capacite_max || 1,
           surface: validated.unit_surface || null,
-        } as any);
-
-        if (unitError) throw unitError;
+        });
       }
 
       // Marquer l'étape comme complétée
-      const propertyData = property as any;
       await onboardingService.saveDraft("final_review", { property_id: propertyData.id }, "owner");
       await onboardingService.markStepCompleted("first_property", "owner");
 

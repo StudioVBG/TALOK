@@ -1,56 +1,32 @@
-import { createClient } from "@/lib/supabase/client";
+import { ApiClient } from "@/lib/api-client";
 import { BankConnection, CreateConnectionResponse } from "../types";
 
-export class BankConnectService {
-  private supabase = createClient();
+const apiClient = new ApiClient();
 
+export class BankConnectService {
   /**
-   * Initier une connexion bancaire
-   * NOTE (MVP): Actuellement MOCKÉ. 
-   * En production, cela doit appeler une Edge Function qui contacte l'API GoCardless/Powens.
+   * Initier une connexion bancaire via l'API route sécurisée
+   * qui appelle l'Edge Function GoCardless en backend
    */
   async initiateConnection(institutionId: string): Promise<CreateConnectionResponse> {
-    // TODO: Implémenter l'appel réel à l'Edge Function 'bank-initiate'
-    // const { data, error } = await this.supabase.functions.invoke('bank-initiate', {
-    //   body: { institutionId }
-    // });
-    
-    console.warn("[BankConnectService] Using MOCK implementation for initiateConnection");
-
-    // Simulation pour le développement UI
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          link: "https://bank-account-data.gocardless.com/sandbox/...", 
-          requisition_id: "req_" + Math.random().toString(36).substr(2, 9)
-        });
-      }, 1000);
+    return apiClient.post<CreateConnectionResponse>("/bank-connect/initiate", {
+      institutionId,
     });
   }
 
   /**
-   * Récupérer les connexions existantes
+   * Récupérer les connexions existantes via API
    */
   async getConnections(): Promise<BankConnection[]> {
-    const { data, error } = await this.supabase
-      .from("bank_connections")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data as unknown as BankConnection[];
+    const { connections } = await apiClient.get<{ connections: BankConnection[] }>("/bank-connect/connections");
+    return connections;
   }
 
   /**
-   * Supprimer une connexion
+   * Supprimer une connexion via API
    */
   async deleteConnection(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("bank_connections")
-      .delete()
-      .eq("id", id);
-
-    if (error) throw error;
+    await apiClient.delete(`/bank-connect/connections/${id}`);
   }
 
   /**

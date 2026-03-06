@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { ownerAutomationSchema } from "@/lib/validations/onboarding";
+import { apiClient } from "@/lib/api-client";
 import { Settings, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const AUTOMATION_LEVELS = [
@@ -63,7 +64,12 @@ export default function OwnerAutomationPage() {
         automation_level: selectedLevel,
       });
 
-      // Sauvegarder les préférences
+      // Persister le niveau d'automatisation dans le profil propriétaire via API
+      await apiClient.put("/me/owner-profile", {
+        automation_level: validated.automation_level,
+      });
+
+      // Sauvegarder aussi le brouillon pour le suivi d'onboarding
       await onboardingService.saveDraft("owner_automation", validated, "owner");
       await onboardingService.markStepCompleted("owner_automation", "owner");
 

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { ownerFinanceSchema } from "@/lib/validations/onboarding";
+import { apiClient } from "@/lib/api-client";
 import { CreditCard, Building, ArrowRight, CheckCircle2 } from "lucide-react";
 import {
   Select,
@@ -57,34 +58,16 @@ export default function OwnerFinancePage() {
     try {
       const validated = ownerFinanceSchema.parse(formData);
 
-      // Sauvegarder dans le profil propriétaire
-      const supabase = (await import("@/lib/supabase/client")).createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Utilisateur non authentifié");
+      // Sauvegarder les données financières via API sécurisée
+      await apiClient.put("/me/owner-profile", {
+        iban: validated.payout_iban,
+        encaissement_prefere: validated.encaissement_prefere,
+        payout_frequence: validated.payout_frequence,
+        payout_rail: validated.payout_rail,
+        payout_seuil: validated.payout_seuil,
+        payout_jour: validated.payout_jour,
+      });
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!profile) throw new Error("Profil non trouvé");
-
-      // Mettre à jour le profil propriétaire avec l'IBAN
-      const profileData = profile as any;
-      const { error: profileError } = await (supabase
-        .from("owner_profiles") as any)
-        .update({
-          iban: validated.payout_iban,
-        } as any)
-        .eq("profile_id", profileData.id as any);
-
-      if (profileError) throw profileError;
-
-      // Sauvegarder les préférences financières (pourrait être dans une table séparée)
-      // Pour l'instant, on sauvegarde dans le brouillon
       await onboardingService.saveDraft("owner_finance", validated, "owner");
       await onboardingService.markStepCompleted("owner_finance", "owner");
 

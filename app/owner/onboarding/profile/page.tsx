@@ -7,6 +7,7 @@ import { onboardingService } from "@/features/onboarding/services/onboarding.ser
 import { ownerProfileOnboardingSchema } from "@/lib/validations/onboarding";
 import { TomOnboarding } from "@/components/ai/tom-onboarding";
 import { UpdateOwnerProfileArgs } from "@/lib/ai/tools-schema";
+import { apiClient } from "@/lib/api-client";
 
 export default function OwnerProfileOnboardingPage() {
   const router = useRouter();
@@ -47,38 +48,13 @@ export default function OwnerProfileOnboardingPage() {
       // On valide ce qu'on a récolté (Tom a déjà structuré, mais on revérifie)
       const validated = ownerProfileOnboardingSchema.parse(formData);
 
-      // Récupérer le profil Supabase
-      const supabase = (await import("@/lib/supabase/client")).createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Utilisateur non authentifié");
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!profile) throw new Error("Profil non trouvé");
-
-      const profileData = profile as any;
-
-      // Créer ou mettre à jour le profil propriétaire
-      const { error } = await (supabase.from("owner_profiles") as any).upsert(
-        {
-          profile_id: profileData.id as any,
-          type: validated.type,
-          siret: validated.siret || null,
-          tva: validated.tva || null,
-          // TODO: Ajouter raison_sociale si le schéma BDD le supporte (pour l'instant mappé sur le type societe)
-        } as any,
-        {
-          onConflict: "profile_id",
-        }
-      );
-
-      if (error) throw error;
+      // Créer ou mettre à jour le profil propriétaire via API sécurisée
+      await apiClient.put("/me/owner-profile", {
+        type: validated.type,
+        siret: validated.siret || null,
+        tva: validated.tva || null,
+        raison_sociale: validated.type === "societe" ? (validated as any).raison_sociale || null : null,
+      });
 
       // Sauvegarder le brouillon et marquer terminé
       await onboardingService.saveDraft("owner_profile", validated, "owner");

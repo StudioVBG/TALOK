@@ -115,6 +115,26 @@ export const ownerProfileSchema = z.object({
     .enum(["SARL", "SAS", "SASU", "SCI", "EURL", "EI", "SA", "SCPI", "autre"])
     .optional()
     .nullable(),
+  // Préférences financières (onboarding finance)
+  encaissement_prefere: z
+    .enum(["sepa_sdd", "virement_sct", "virement_inst", "pay_by_bank", "carte_wallet"])
+    .optional()
+    .nullable(),
+  payout_frequence: z
+    .enum(["immediat", "hebdo", "mensuel", "seuil"])
+    .optional()
+    .nullable(),
+  payout_rail: z
+    .enum(["sct", "sct_inst"])
+    .optional()
+    .nullable(),
+  payout_seuil: z.number().min(0).optional().nullable(),
+  payout_jour: z.number().int().min(1).max(28).optional().nullable(),
+  // Niveau d'automatisation (onboarding automation)
+  automation_level: z
+    .enum(["basique", "standard", "pro", "autopilot"])
+    .optional()
+    .nullable(),
 });
 
 // Schéma étendu pour les fonctionnalités avancées (nécessite migration pour ajouter les colonnes)

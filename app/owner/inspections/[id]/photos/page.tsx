@@ -291,8 +291,15 @@ export default function EDLPhotosPage() {
       };
     });
 
-    // TODO: Persister l'ordre côté serveur si nécessaire
-  }, []);
+    // Persister l'ordre côté serveur
+    try {
+      await apiClient.patch(`/edl/${edlId}`, {
+        photo_order: { [roomId]: newOrder },
+      });
+    } catch (err) {
+      console.error("[handlePhotoReorder] Erreur persistance ordre:", err);
+    }
+  }, [edlId]);
 
   // Sauvegarder
   const handleSave = useCallback(async () => {
