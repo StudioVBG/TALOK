@@ -103,6 +103,8 @@ export interface TenantInvoice {
   period_end?: string;
   paid_at?: string;
   notes?: string;
+  created_at: string;
+  metadata?: Record<string, any>;
   property_type: string;
   property_address: string;
 }
