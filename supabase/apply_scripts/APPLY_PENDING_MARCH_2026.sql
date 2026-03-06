@@ -1,7 +1,7 @@
 -- =====================================================
--- SCRIPT CONSOLIDÉ — 15 MIGRATIONS EN ATTENTE
--- Date de génération: 2026-03-06
--- 
+-- SCRIPT CONSOLIDE — 15 MIGRATIONS EN ATTENTE
+-- Date de generation: 2026-03-06
+--
 -- INSTRUCTIONS:
 -- 1. Ouvrir Supabase Dashboard → SQL Editor
 -- 2. Créer un "New Query"
@@ -10,22 +10,21 @@
 -- 5. Vérifier les NOTICES dans l'onglet "Messages" en bas
 --
 -- CONTENU (15 migrations, du 29/02 au 06/03):
---
--- 1.  20260229100000_identity_2fa_requests.sql
--- 2.  20260230100000_create_notification_resolve_profile_id.sql
--- 3.  20260301000000_create_key_handovers.sql
--- 4.  20260301100000_entity_audit_and_propagation.sql
--- 5.  20260303000000_backfill_uploaded_by.sql
--- 6.  20260303100000_entity_rls_fix_and_optimize.sql
--- 7.  20260304000000_fix_invoice_generation_jour_paiement.sql
--- 8.  20260304000001_sync_sepa_collection_day.sql
--- 9.  20260304100000_activate_pg_cron_schedules.sql
--- 10. 20260304200000_auto_mark_late_invoices.sql
--- 11. 20260305000001_invoice_engine_fields.sql
--- 12. 20260305000002_payment_crons.sql
--- 13. 20260305100000_fix_invoice_draft_notification.sql
--- 14. 20260305100001_add_missing_notification_triggers.sql
--- 15. 20260306000000_lease_documents_visible_tenant.sql
+--   1. 20260229100000_identity_2fa_requests.sql
+--   2. 20260230100000_create_notification_resolve_profile_id.sql
+--   3. 20260301000000_create_key_handovers.sql
+--   4. 20260301100000_entity_audit_and_propagation.sql
+--   5. 20260303000000_backfill_uploaded_by.sql
+--   6. 20260303100000_entity_rls_fix_and_optimize.sql
+--   7. 20260304000000_fix_invoice_generation_jour_paiement.sql
+--   8. 20260304000001_sync_sepa_collection_day.sql
+--   9. 20260304100000_activate_pg_cron_schedules.sql
+--  10. 20260304200000_auto_mark_late_invoices.sql
+--  11. 20260305000001_invoice_engine_fields.sql
+--  12. 20260305000002_payment_crons.sql
+--  13. 20260305100000_fix_invoice_draft_notification.sql
+--  14. 20260305100001_add_missing_notification_triggers.sql
+--  15. 20260306000000_lease_documents_visible_tenant.sql
 -- =====================================================
 
 
