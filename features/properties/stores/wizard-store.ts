@@ -118,6 +118,8 @@ export interface WizardFormData {
   has_digicode?: boolean;
   has_local_velo?: boolean;
   has_local_poubelles?: boolean;
+  digicode?: string;
+  interphone?: string;
 }
 
 interface WizardState {
@@ -245,6 +247,8 @@ const INITIAL_STATE: Omit<WizardState, 'reset' | 'initializeDraft' | 'loadProper
     has_gardien: false,
     has_interphone: false,
     has_digicode: false,
+    digicode: "",
+    interphone: "",
   },
   rooms: [],
   photos: [],

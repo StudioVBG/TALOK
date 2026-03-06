@@ -277,6 +277,9 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       loyer_hc: p.loyer_hc || 0,
       charges_mensuelles: p.charges_mensuelles ?? 0,
       depot_garantie: p.depot_garantie || 0,
+      // Accès & Sécurité
+      digicode: p.digicode || "",
+      interphone: p.interphone || "",
       // Visite virtuelle (Matterport, Nodalview, etc.)
       visite_virtuelle_url: p.visite_virtuelle_url || "",
     });
@@ -332,6 +335,14 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       // if (editedValues.visite_virtuelle_url !== undefined) {
       //   payload.visite_virtuelle_url = editedValues.visite_virtuelle_url || null;
       // }
+
+      // Accès & Sécurité (commun à tous les types)
+      if (editedValues.digicode !== undefined) {
+        payload.digicode = editedValues.digicode || null;
+      }
+      if (editedValues.interphone !== undefined) {
+        payload.interphone = editedValues.interphone || null;
+      }
 
       // Champs spécifiques HABITATION
       if (isHabitation) {
