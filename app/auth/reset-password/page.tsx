@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -13,24 +13,52 @@ export default function ResetPasswordPage() {
   const supabase = createClient();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [canReset, setCanReset] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (active && data.session) {
-        setCanReset(true);
-      }
-    });
 
+    async function initSession() {
+      try {
+        // 1. Fallback: si un code PKCE est dans l'URL (lien arrivé directement), l'échanger
+        const code = searchParams.get("code");
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error && active) {
+            setCanReset(true);
+            // Nettoyer le code de l'URL sans recharger la page
+            window.history.replaceState({}, "", "/auth/reset-password");
+          }
+        }
+
+        // 2. Vérifier si une session active existe déjà (passée via /auth/callback)
+        const { data } = await supabase.auth.getSession();
+        if (active && data.session) {
+          setCanReset(true);
+        }
+      } catch {
+        // Ignorer les erreurs d'échange (code expiré, déjà utilisé, etc.)
+      } finally {
+        if (active) {
+          setInitializing(false);
+        }
+      }
+    }
+
+    initSession();
+
+    // 3. Écouter l'événement PASSWORD_RECOVERY (cas où le token est dans le fragment URL)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" && session) {
         setCanReset(true);
+        setInitializing(false);
       }
     });
 
@@ -38,7 +66,7 @@ export default function ResetPasswordPage() {
       active = false;
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, searchParams]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -71,9 +99,11 @@ export default function ResetPasswordPage() {
       if (error) {
         throw error;
       }
+      // Déconnecter la session recovery pour forcer une reconnexion propre
+      await supabase.auth.signOut();
       toast({
         title: "Mot de passe mis à jour",
-        description: "Vous pouvez maintenant vous connecter.",
+        description: "Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.",
       });
       router.push("/auth/signin");
     } catch (error: unknown) {
@@ -97,7 +127,9 @@ export default function ResetPasswordPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {canReset ? (
+          {initializing ? (
+            <p className="text-sm text-muted-foreground">Vérification du lien en cours...</p>
+          ) : canReset ? (
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="password">Mot de passe</Label>

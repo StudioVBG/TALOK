@@ -17,6 +17,9 @@ export async function GET(request: Request) {
   // Utiliser l'origine de la requête (Vercel en production, localhost en dev)
   const origin = requestUrl.origin;
 
+  // Paramètre "next" pour redirection post-callback (ex: password recovery)
+  const next = requestUrl.searchParams.get("next");
+
   if (code) {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -24,6 +27,12 @@ export async function GET(request: Request) {
     if (error) {
       console.error("Error exchanging code for session:", error);
       return NextResponse.redirect(new URL("/auth/signin?error=invalid_code", origin));
+    }
+
+    // Si un paramètre "next" est présent (ex: /auth/reset-password), y rediriger directement
+    // Cela permet au flux de réinitialisation de mot de passe de fonctionner correctement
+    if (next && next.startsWith("/auth/reset-password")) {
+      return NextResponse.redirect(new URL("/auth/reset-password", origin));
     }
 
     // Vérifier si l'email est confirmé → rediriger vers le parcours onboarding

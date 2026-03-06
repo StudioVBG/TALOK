@@ -151,7 +151,10 @@ export class AuthService {
 
   async resetPassword(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
-    const redirectUrl = getResetPasswordUrl();
+    // Rediriger vers /auth/callback avec next=/auth/reset-password
+    // pour que le code PKCE soit échangé côté serveur avant d'arriver sur la page
+    const baseUrl = getResetPasswordUrl().replace("/auth/reset-password", "");
+    const redirectUrl = `${baseUrl}/auth/callback?next=/auth/reset-password`;
     const { error } = await this.supabase.auth.resetPasswordForEmail(normalizedEmail, {
       redirectTo: redirectUrl,
     });

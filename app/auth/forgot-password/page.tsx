@@ -21,13 +21,15 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     setLoading(true);
     try {
-      // Utiliser NEXT_PUBLIC_APP_URL en production, sinon window.location.origin
-      const redirectTo =
-        typeof window !== "undefined"
-          ? `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/reset-password`
-          : undefined;
+      const normalizedEmail = email.trim().toLowerCase();
+      // Rediriger vers /auth/callback avec next=/auth/reset-password
+      // Le callback échangera le code PKCE puis redirigera vers reset-password
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        (typeof window !== "undefined" ? window.location.origin : "");
+      const redirectTo = `${baseUrl}/auth/callback?next=/auth/reset-password`;
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
         redirectTo,
       });
 
