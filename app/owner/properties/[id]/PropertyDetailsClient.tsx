@@ -341,10 +341,9 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       if (editedValues.depot_garantie !== undefined) {
         payload.depot_garantie = parseFloat(editedValues.depot_garantie) || 0;
       }
-      // TODO: Réactiver après application de la migration 20251207231451_add_visite_virtuelle_url.sql
-      // if (editedValues.visite_virtuelle_url !== undefined) {
-      //   payload.visite_virtuelle_url = editedValues.visite_virtuelle_url || null;
-      // }
+      if (editedValues.visite_virtuelle_url !== undefined) {
+        payload.visite_virtuelle_url = editedValues.visite_virtuelle_url || null;
+      }
 
       // Accès & Sécurité (commun à tous les types)
       // Ne pas envoyer null/vide — le digicode ne peut pas être supprimé une fois renseigné
