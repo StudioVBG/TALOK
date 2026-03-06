@@ -125,6 +125,12 @@ export async function getTenantInvoices() {
     id: inv.id,
     periode: inv.periode,
     montant_total: inv.montant_total,
+    montant_loyer: inv.montant_loyer,
+    montant_charges: inv.montant_charges,
+    date_echeance: inv.date_echeance,
+    due_date: inv.due_date || inv.date_echeance,
+    metadata: inv.metadata,
+    notes: inv.notes,
     statut: inv.statut as "draft" | "sent" | "paid" | "late" | "cancelled",
     created_at: inv.created_at,
     lease: {

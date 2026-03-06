@@ -356,7 +356,7 @@ async function fetchTenantDashboardDirect(
     leaseIds.length > 0
       ? supabase
           .from("invoices")
-          .select("id, lease_id, periode, montant_total, montant_loyer, montant_charges, statut, due_date, created_at")
+          .select("id, lease_id, periode, montant_total, montant_loyer, montant_charges, statut, due_date, date_echeance, metadata, created_at")
           .in("lease_id", leaseIds)
           .order("periode", { ascending: false })
           .limit(20)
