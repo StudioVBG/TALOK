@@ -61,6 +61,8 @@ export function BuildingConfigStep() {
   const [hasGardien, setHasGardien] = useState(formData.has_gardien || false);
   const [hasInterphone, setHasInterphone] = useState(formData.has_interphone || false);
   const [hasDigicode, setHasDigicode] = useState(formData.has_digicode || false);
+  const [digicodeValue, setDigicodeValue] = useState((formData as any).digicode || "");
+  const [interphoneValue, setInterphoneValue] = useState((formData as any).interphone || "");
 
   // Sync avec le store
   const syncToStore = useCallback((newUnits: BuildingUnit[], newFloors?: number) => {
@@ -385,27 +387,53 @@ export function BuildingConfigStep() {
                 }}
               />
             </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="interphone" className="text-sm">Interphone</Label>
-              <Switch 
-                id="interphone" 
-                checked={hasInterphone} 
-                onCheckedChange={(v) => {
-                  setHasInterphone(v);
-                  updateFormData({ has_interphone: v });
-                }}
-              />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="interphone" className="text-sm">Interphone</Label>
+                <Switch
+                  id="interphone"
+                  checked={hasInterphone}
+                  onCheckedChange={(v) => {
+                    setHasInterphone(v);
+                    updateFormData({ has_interphone: v });
+                  }}
+                />
+              </div>
+              {hasInterphone && (
+                <Input
+                  value={interphoneValue}
+                  onChange={(e) => {
+                    setInterphoneValue(e.target.value);
+                    updateFormData({ interphone: e.target.value });
+                  }}
+                  placeholder="Ex: DUPONT, 042"
+                  className="h-8 text-sm"
+                />
+              )}
             </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="digicode" className="text-sm">Digicode</Label>
-              <Switch 
-                id="digicode" 
-                checked={hasDigicode} 
-                onCheckedChange={(v) => {
-                  setHasDigicode(v);
-                  updateFormData({ has_digicode: v });
-                }}
-              />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="digicode" className="text-sm">Digicode</Label>
+                <Switch
+                  id="digicode"
+                  checked={hasDigicode}
+                  onCheckedChange={(v) => {
+                    setHasDigicode(v);
+                    updateFormData({ has_digicode: v });
+                  }}
+                />
+              </div>
+              {hasDigicode && (
+                <Input
+                  value={digicodeValue}
+                  onChange={(e) => {
+                    setDigicodeValue(e.target.value);
+                    updateFormData({ digicode: e.target.value });
+                  }}
+                  placeholder="Ex: 1234A, A5678"
+                  className="h-8 text-sm"
+                />
+              )}
             </div>
           </CardContent>
         </Card>

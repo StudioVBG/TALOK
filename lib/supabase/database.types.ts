@@ -144,6 +144,8 @@ export type PropertyRow = {
   longitude?: number | null
   adresse?: string | null
   building_id?: string | null
+  digicode?: string | null
+  interphone?: string | null
   created_at: string
   updated_at: string
 

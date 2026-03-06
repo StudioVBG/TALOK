@@ -27,6 +27,10 @@ import {
   Euro,
   Shield,
   Video,
+  Key,
+  Phone,
+  Pencil,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -164,6 +168,12 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
   const [isSaving, setIsSaving] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
 
+  // ========== INLINE EDIT: Accès & Sécurité ==========
+  const [isEditingAccess, setIsEditingAccess] = useState(false);
+  const [accessDigicode, setAccessDigicode] = useState(property.digicode || "");
+  const [accessInterphone, setAccessInterphone] = useState(property.interphone || "");
+  const [isSavingAccess, setIsSavingAccess] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     ticketsService.getTicketsByProperty(propertyId).then((data) => {
@@ -277,6 +287,9 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       loyer_hc: p.loyer_hc || 0,
       charges_mensuelles: p.charges_mensuelles ?? 0,
       depot_garantie: p.depot_garantie || 0,
+      // Accès & Sécurité
+      digicode: p.digicode || "",
+      interphone: p.interphone || "",
       // Visite virtuelle (Matterport, Nodalview, etc.)
       visite_virtuelle_url: p.visite_virtuelle_url || "",
     });
@@ -332,6 +345,15 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       // if (editedValues.visite_virtuelle_url !== undefined) {
       //   payload.visite_virtuelle_url = editedValues.visite_virtuelle_url || null;
       // }
+
+      // Accès & Sécurité (commun à tous les types)
+      // Ne pas envoyer null/vide — le digicode ne peut pas être supprimé une fois renseigné
+      if (editedValues.digicode !== undefined && editedValues.digicode !== "") {
+        payload.digicode = editedValues.digicode;
+      }
+      if (editedValues.interphone !== undefined && editedValues.interphone !== "") {
+        payload.interphone = editedValues.interphone;
+      }
 
       // Champs spécifiques HABITATION
       if (isHabitation) {
@@ -479,6 +501,42 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // ========== SAUVEGARDE INLINE: Accès & Sécurité ==========
+  const handleSaveAccess = async () => {
+    setIsSavingAccess(true);
+    try {
+      const accessPayload: Record<string, string> = {};
+      if (accessDigicode && accessDigicode !== (property.digicode || "")) {
+        accessPayload.digicode = accessDigicode;
+      }
+      if (accessInterphone && accessInterphone !== (property.interphone || "")) {
+        accessPayload.interphone = accessInterphone;
+      }
+      if (Object.keys(accessPayload).length === 0) {
+        setIsEditingAccess(false);
+        return;
+      }
+      const response = await apiClient.patch<{ property: typeof property }>(
+        `/properties/${propertyId}`,
+        accessPayload
+      );
+      setProperty(response.property);
+      setIsEditingAccess(false);
+      toast({
+        title: "Codes d'accès mis à jour",
+        description: "Les informations d'accès ont été sauvegardées.",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible de mettre à jour les codes d'accès",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingAccess(false);
     }
   };
 
@@ -979,6 +1037,150 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
               )}
             </CardContent>
           </Card>
+
+          {/* ========== ACCÈS & SÉCURITÉ (mode lecture avec inline edit) ========== */}
+          {!isEditing && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Key className="h-5 w-5 text-indigo-600" />
+                    Accès & Sécurité
+                  </CardTitle>
+                  {(property.digicode || property.interphone) && !isEditingAccess && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAccessDigicode(property.digicode || "");
+                        setAccessInterphone(property.interphone || "");
+                        setIsEditingAccess(true);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 gap-1.5"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Modifier
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isEditingAccess ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Code digicode</Label>
+                        <Input
+                          value={accessDigicode}
+                          onChange={(e) => setAccessDigicode(e.target.value)}
+                          placeholder="Ex: 1234A, A5678"
+                          className="mt-1 h-9"
+                        />
+                        {property.digicode && accessDigicode === "" && (
+                          <p className="text-xs text-red-500 mt-1">Le code ne peut pas être supprimé</p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Interphone</Label>
+                        <Input
+                          value={accessInterphone}
+                          onChange={(e) => setAccessInterphone(e.target.value)}
+                          placeholder="Ex: DUPONT, 042"
+                          className="mt-1 h-9"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditingAccess(false)}
+                        disabled={isSavingAccess}
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" />
+                        Annuler
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveAccess}
+                        disabled={isSavingAccess || (property.digicode ? accessDigicode === "" : false)}
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        {isSavingAccess ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        Enregistrer
+                      </Button>
+                    </div>
+                  </div>
+                ) : property.digicode || property.interphone ? (
+                  <div className="space-y-3">
+                    {property.digicode && (
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-white dark:bg-card flex items-center justify-center shadow-sm">
+                            <Key className="h-4 w-4 text-indigo-600" />
+                          </div>
+                          <span className="text-sm font-medium text-muted-foreground">Digicode</span>
+                        </div>
+                        <span className="font-mono font-black tracking-widest text-indigo-600 dark:text-indigo-400">
+                          {property.digicode}
+                        </span>
+                      </div>
+                    )}
+                    {property.interphone && (
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-muted border border-border">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-white dark:bg-card flex items-center justify-center shadow-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm font-medium text-muted-foreground">Interphone</span>
+                        </div>
+                        <span className="text-sm font-bold text-foreground">
+                          {property.interphone}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                          Aucun code d'accès renseigné
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                          Ajoutez le digicode et l'interphone pour qu'ils soient automatiquement transmis à vos locataires.
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-3 border-amber-300 text-amber-800 hover:bg-amber-100"
+                          onClick={() => {
+                            setAccessDigicode("");
+                            setAccessInterphone("");
+                            setIsEditingAccess(true);
+                          }}
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Ajouter les codes d'accès
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            </motion.div>
+          )}
 
           {/* ========== CARTE DE LOCALISATION ========== */}
           <Card>

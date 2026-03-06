@@ -1,6 +1,6 @@
 "use client";
 
-import { Video } from "lucide-react";
+import { Video, Key, Phone } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -137,6 +137,34 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
           </div>
         </div>
 
+        {/* Accès & Sécurité */}
+        <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+          <Label className="text-xs font-medium mb-3 block flex items-center gap-2">
+            <Key className="h-4 w-4 text-indigo-600" />
+            Accès & Sécurité
+          </Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs text-muted-foreground">Code digicode</Label>
+              <Input
+                value={String(getValue("digicode") || "")}
+                onChange={(e) => handleFieldChange("digicode", e.target.value)}
+                placeholder="Ex: 1234A, A5678"
+                className="mt-1 h-9"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Interphone</Label>
+              <Input
+                value={String(getValue("interphone") || "")}
+                onChange={(e) => handleFieldChange("interphone", e.target.value)}
+                placeholder="Ex: DUPONT, 042"
+                className="mt-1 h-9"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Visite virtuelle */}
         <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
           <Label className="text-xs font-medium mb-2 flex items-center gap-2">
@@ -241,6 +269,34 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
             <div className="flex items-center gap-2">
               <Switch checked={Boolean(getValue("local_parking_clients"))} onCheckedChange={(c) => handleFieldChange("local_parking_clients", c)} />
               <span className="text-sm">Parking clients</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Accès & Sécurité */}
+        <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+          <Label className="text-xs font-medium mb-3 block flex items-center gap-2">
+            <Key className="h-4 w-4 text-indigo-600" />
+            Accès & Sécurité
+          </Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs text-muted-foreground">Code digicode</Label>
+              <Input
+                value={String(getValue("digicode") || "")}
+                onChange={(e) => handleFieldChange("digicode", e.target.value)}
+                placeholder="Ex: 1234A, A5678"
+                className="mt-1 h-9"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Interphone</Label>
+              <Input
+                value={String(getValue("interphone") || "")}
+                onChange={(e) => handleFieldChange("interphone", e.target.value)}
+                placeholder="Ex: DUPONT, 042"
+                className="mt-1 h-9"
+              />
             </div>
           </div>
         </div>
@@ -463,6 +519,37 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
             <span className="text-sm">Cave</span>
           </div>
         </div>
+      </div>
+
+      {/* Accès & Sécurité */}
+      <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+        <Label className="text-xs font-medium mb-3 block flex items-center gap-2">
+          <Key className="h-4 w-4 text-indigo-600" />
+          Accès & Sécurité
+        </Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs text-muted-foreground">Code digicode</Label>
+            <Input
+              value={String(getValue("digicode") || "")}
+              onChange={(e) => handleFieldChange("digicode", e.target.value)}
+              placeholder="Ex: 1234A, A5678"
+              className="mt-1 h-9"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Interphone</Label>
+            <Input
+              value={String(getValue("interphone") || "")}
+              onChange={(e) => handleFieldChange("interphone", e.target.value)}
+              placeholder="Ex: DUPONT, 042"
+              className="mt-1 h-9"
+            />
+          </div>
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-2">
+          Ces informations seront visibles par le locataire dans son espace.
+        </p>
       </div>
 
       {/* Visite virtuelle */}
