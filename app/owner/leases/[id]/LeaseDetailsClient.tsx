@@ -464,12 +464,12 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         icon: Euro,
         title: "En attente du 1er paiement",
         description: `${formatCurrency(premierVersement)} (loyer + charges + dépôt)`,
-        action: null,
-        actionLabel: null,
+        action: () => setActiveTab("paiements"),
+        actionLabel: "Voir les paiements",
         color: "amber"
       };
     }
-    
+
     // 6. Tout est OK
     if (lease.statut === "active") {
       return {
