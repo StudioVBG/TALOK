@@ -614,7 +614,7 @@ async function fetchLeaseDetailsFallback(
     montant_charges: inv.montant_charges,
     statut: inv.statut as Invoice["statut"],
     created_at: inv.created_at,
-    metadata: (inv as any).metadata ?? null,
+    metadata: inv.metadata ?? null,
   }));
 
   const result: LeaseDetails = {
