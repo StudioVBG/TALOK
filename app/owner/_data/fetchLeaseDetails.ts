@@ -175,6 +175,11 @@ export interface Document {
   created_at: string;
   title?: string;
   name?: string;
+  expiry_date?: string | null;
+  is_archived?: boolean;
+  visible_tenant?: boolean;
+  mime_type?: string | null;
+  file_size?: number | null;
 }
 
 /** Interface principale des détails du bail - TYPAGE STRICT */
@@ -625,6 +630,11 @@ async function fetchLeaseDetailsFallback(
       created_at: doc.created_at,
       title: doc.nom ?? undefined,
       name: doc.nom_fichier ?? undefined,
+      expiry_date: (doc as any).expiry_date ?? null,
+      is_archived: (doc as any).is_archived ?? false,
+      visible_tenant: (doc as any).visible_tenant ?? true,
+      mime_type: (doc as any).mime_type ?? null,
+      file_size: (doc as any).size ?? null,
     })),
     edl: edl ? ({ ...edl, ...edlStats } as EDLEntry) : null,
   };

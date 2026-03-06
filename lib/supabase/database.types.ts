@@ -365,6 +365,7 @@ export type DocumentRow = {
   replaced_by?: string | null
   expiry_date?: string | null
   verification_status?: string | null
+  visible_tenant?: boolean
   // Missing columns discovered by type-level query parser
   storage_path?: string | null
   nom_fichier?: string | null

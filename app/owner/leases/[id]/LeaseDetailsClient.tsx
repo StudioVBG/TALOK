@@ -231,21 +231,12 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
   const statusConfig = STATUS_CONFIG[lease.statut] || STATUS_CONFIG.draft;
   
-  // ✅ FILTRAGE ET DÉ-DUPLICATION DES DOCUMENTS
-  // On ne garde que les annexes contractuelles et on évite les doublons techniques
-  const leaseAnnexes = Object.values(
-    (documents || [])
-      .filter((doc: any) => 
-        ["diagnostic_performance", "diagnostic_amiante", "attestation_assurance", "EDL_entree", "annexe_pinel", "etat_travaux", "autre"].includes(doc.type)
-      )
-      .reduce((acc: Record<string, any>, doc: any) => {
-        // Si doublon de type (ex: 2 DPE), on garde le plus récent
-        if (!acc[doc.type] || new Date(doc.created_at) > new Date(acc[doc.type].created_at)) {
-          acc[doc.type] = doc;
-        }
-        return acc;
-      }, {})
-  ).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  // ✅ FILTRAGE DES DOCUMENTS — sans dé-duplication (bug fix: tous les docs doivent être affichés)
+  const leaseAnnexes = (documents || [])
+    .filter((doc: any) =>
+      ["diagnostic_performance", "diagnostic_amiante", "attestation_assurance", "EDL_entree", "annexe_pinel", "etat_travaux", "autre"].includes(doc.type)
+    )
+    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   
   // Vérifier si le bail peut être activé (statut fully_signed)
   const canActivate = lease.statut === "fully_signed";
