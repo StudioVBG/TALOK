@@ -386,7 +386,10 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         epoque_construction: selectedProperty.annee_construction ? String(selectedProperty.annee_construction) : undefined, // ✅ undefined pour pointillés
         chauffage_type: selectedProperty.chauffage_type || undefined,
         eau_chaude_type: selectedProperty.eau_chaude_type || undefined,
-        equipements_privatifs: [], // Vide pour l'instant
+        equipements_privatifs: [
+          ...(wizardDigicode ? [`Digicode : ${wizardDigicode}`] : []),
+          ...(wizardInterphone ? [`Interphone : ${wizardInterphone}`] : []),
+        ],
         parties_communes: [],
         annexes: [],
       },
@@ -640,6 +643,8 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         if (loyerValue > 0) setLoyer(loyerValue);
         if (chargesValue > 0) setCharges(chargesValue);
         if (loyerValue > 0) setDepot(loyerValue);
+        if (propAny.digicode) setWizardDigicode(propAny.digicode);
+        if (propAny.interphone) setWizardInterphone(propAny.interphone);
       }
     }
   }, [initialPropertyId, properties, loyer]);
