@@ -21,6 +21,8 @@ import {
   Printer,
   Store,
   ClipboardCheck,
+  Key,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +107,8 @@ interface Property {
   chauffage_type?: string | null;
   eau_chaude_type?: string | null;
   annee_construction?: number | null; // À vérifier si dispo
+  digicode?: string | null;
+  interphone?: string | null;
 }
 
 interface LeaseWizardProps {
@@ -195,6 +199,12 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   // ✅ Champs spécifiques location-gérance
   const [redevanceGerance, setRedevanceGerance] = useState<number>(0);
   const [fondsDescription, setFondsDescription] = useState("");
+
+  // ✅ Accès & Sécurité (digicode/interphone)
+  const [wizardDigicode, setWizardDigicode] = useState("");
+  const [wizardInterphone, setWizardInterphone] = useState("");
+  const [digicodeModified, setDigicodeModified] = useState(false);
+  const [interphoneModified, setInterphoneModified] = useState(false);
 
   // Vérifier si c'est un bail colocation
   const isColocation = selectedType === "colocation";
@@ -596,12 +606,18 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
       duration: 2000,
     });
     
+    // ✅ Pré-remplir digicode/interphone depuis la propriété
+    setWizardDigicode(propAny.digicode || "");
+    setWizardInterphone(propAny.interphone || "");
+    setDigicodeModified(false);
+    setInterphoneModified(false);
+
     // ✅ SOTA 2026: Auto-scroll vers la section financière
     setTimeout(() => {
       if (financialSectionRef.current) {
-        financialSectionRef.current.scrollIntoView({ 
-          behavior: "smooth", 
-          block: "start" 
+        financialSectionRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
         });
       }
       // Focus sur le champ loyer si pas de loyer pré-rempli
@@ -889,11 +905,30 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         throw new Error(result.error || result.details || result.hint || "Erreur lors de la création");
       }
 
+      // ✅ Mettre à jour digicode/interphone sur la propriété si modifié
+      if (selectedPropertyId && (digicodeModified || interphoneModified)) {
+        const accessPayload: Record<string, string> = {};
+        if (digicodeModified && wizardDigicode) accessPayload.digicode = wizardDigicode;
+        if (interphoneModified && wizardInterphone) accessPayload.interphone = wizardInterphone;
+        if (Object.keys(accessPayload).length > 0) {
+          try {
+            await fetch(`/api/properties/${selectedPropertyId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(accessPayload),
+            });
+          } catch {
+            // Non bloquant : le bail est créé, l'accès sera mis à jour manuellement
+            console.warn("Impossible de mettre à jour les codes d'accès de la propriété");
+          }
+        }
+      }
+
       // P2-9: Clear auto-save on successful submit
       clearAutoSave();
 
       toast({
-        title: "✅ Bail créé avec succès !",
+        title: "Bail créé avec succès !",
         description: creationMode === "manual" ? "Le bail vierge est prêt." : "L'invitation a été envoyée.",
       });
 
@@ -1363,6 +1398,59 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                             Indexation : {indexationType === "ILC" ? "ILC (Loyers Commerciaux)" : indexationType === "ILAT" ? "ILAT (Activités Tertiaires)" : "IRL (Référence Loyers)"}
                           </p>
                         )}
+                      </div>
+
+                      {/* ✅ Accès du logement (digicode/interphone) */}
+                      <div className="mt-6 pt-6 border-t">
+                        <h4 className="text-base font-semibold mb-4 flex items-center gap-2">
+                          <Key className="h-4 w-4 text-indigo-600" />
+                          Accès du logement
+                        </h4>
+                        <p className="text-xs text-muted-foreground mb-4">
+                          Ces informations seront automatiquement transmises au locataire dans son espace.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="flex items-center gap-1.5">
+                              <Key className="h-3.5 w-3.5 text-indigo-500" />
+                              Code digicode
+                            </Label>
+                            <Input
+                              value={wizardDigicode}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                // Empêcher la suppression si la propriété avait déjà un digicode
+                                if (val === "" && selectedProperty?.digicode) {
+                                  return;
+                                }
+                                setWizardDigicode(val);
+                                setDigicodeModified(true);
+                              }}
+                              placeholder="Ex: 1234A, A5678"
+                              className="h-9"
+                            />
+                            {selectedProperty?.digicode && (
+                              <p className="text-[10px] text-muted-foreground">
+                                Code actuel du bien. Modifiable mais non supprimable.
+                              </p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="flex items-center gap-1.5">
+                              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                              Interphone
+                            </Label>
+                            <Input
+                              value={wizardInterphone}
+                              onChange={(e) => {
+                                setWizardInterphone(e.target.value);
+                                setInterphoneModified(true);
+                              }}
+                              placeholder="Ex: DUPONT, 042"
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

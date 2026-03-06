@@ -309,6 +309,19 @@ export async function PATCH(
 
     const updates: Record<string, unknown> = { ...validated, updated_at: new Date().toISOString() };
 
+    // Empêcher la suppression d'un digicode existant (seulement modification autorisée)
+    if ('digicode' in updates && (updates.digicode === null || updates.digicode === '')) {
+      const { data: currentProp } = await serviceClient
+        .from("properties")
+        .select("digicode")
+        .eq("id", propertyId)
+        .single();
+
+      if (currentProp?.digicode) {
+        throw new ApiError(400, "Le digicode ne peut pas être supprimé, seulement modifié");
+      }
+    }
+
     // TODO: Réactiver après application de la migration 20251207231451_add_visite_virtuelle_url.sql
     // Supprimer temporairement le champ visite_virtuelle_url car la colonne n'existe pas encore
     delete updates.visite_virtuelle_url;
