@@ -53,13 +53,30 @@ export function DocumentDownloadButton({
       let body: any = {};
 
       if (type === "lease") {
-        // Utiliser la nouvelle route HTML pour une meilleure qualité
+        // Vérifier si un PDF scellé existe (bail signé = fichier immuable)
         const response = await fetch(`/api/leases/${leaseId}/html`);
         if (!response.ok) throw new Error("Erreur génération document");
-        
-        const { html: pdfHtml, fileName: generatedFileName } = await response.json();
+
+        const data = await response.json();
+
+        // Si le bail est scellé, télécharger directement le PDF stocké
+        if (data.sealed && data.pdfUrl) {
+          const link = document.createElement("a");
+          link.href = data.pdfUrl;
+          link.download = fileName || data.fileName || "bail_signe.pdf";
+          link.click();
+          toast({
+            title: "Téléchargement démarré",
+            description: "Votre bail signé est en cours de téléchargement.",
+          });
+          return;
+        }
+
+        // Sinon, générer le PDF à partir du HTML (bail en cours de rédaction)
+        const pdfHtml = data.html;
+        const generatedFileName = data.fileName;
         const html2pdf = (await import("html2pdf.js")).default;
-        
+
         const opt = {
           margin: 10,
           filename: fileName || generatedFileName || `bail.pdf`,
@@ -74,7 +91,7 @@ export function DocumentDownloadButton({
         document.body.appendChild(element);
         await html2pdf().set(opt).from(element).save();
         document.body.removeChild(element);
-        
+
         toast({
           title: "Téléchargement démarré",
           description: "Votre bail est en cours de préparation.",

@@ -13,6 +13,8 @@ interface LeasePreviewProps {
 
 export function LeasePreview({ leaseId }: LeasePreviewProps) {
   const [html, setHtml] = useState<string>("");
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [isSealed, setIsSealed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -23,9 +25,19 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
       setLoading(true);
       const response = await fetch(`/api/leases/${leaseId}/html`);
       if (!response.ok) throw new Error("Erreur lors de la récupération du bail");
-      
+
       const data = await response.json();
-      setHtml(data.html);
+
+      // Si le bail est scellé, afficher le PDF stocké directement
+      if (data.sealed && data.pdfUrl) {
+        setPdfUrl(data.pdfUrl);
+        setIsSealed(true);
+        setHtml("");
+      } else {
+        setHtml(data.html);
+        setPdfUrl(null);
+        setIsSealed(false);
+      }
     } catch (error) {
       console.error("LeasePreview Error:", error);
       toast({
@@ -43,7 +55,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
   }, [leaseId]);
 
   useEffect(() => {
-    if (iframeRef.current && html) {
+    if (iframeRef.current && html && !isSealed) {
       const doc = iframeRef.current.contentDocument;
       if (doc) {
         doc.open();
@@ -51,7 +63,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
         doc.close();
       }
     }
-  }, [html]);
+  }, [html, isSealed]);
 
   return (
     <Card className="h-full flex flex-col">
@@ -78,16 +90,19 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
             </DialogTrigger>
             <DialogContent className="max-w-[95vw] h-[95vh] p-0 flex flex-col" aria-describedby={undefined}>
               <DialogHeader className="p-4 border-b shrink-0">
-                <DialogTitle>Contrat de location - Plein écran</DialogTitle>
+                <DialogTitle>
+                  {isSealed ? "Bail signé - Document définitif" : "Contrat de location - Plein écran"}
+                </DialogTitle>
               </DialogHeader>
               <div className="flex-1 min-h-0 bg-[#525659] overflow-y-auto">
                 <div className="flex justify-center py-6 px-4">
                   <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
                     <iframe
-                      srcDoc={html}
+                      src={isSealed && pdfUrl ? pdfUrl : undefined}
+                      srcDoc={!isSealed ? html : undefined}
                       className="w-full border-0"
                       style={{ height: "calc(297mm * 2)" }}
-                      title="Aperçu bail plein écran"
+                      title={isSealed ? "Bail signé plein écran" : "Aperçu bail plein écran"}
                     />
                   </div>
                 </div>
@@ -104,7 +119,20 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
               <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-blue-600 mb-2" />
               <p className="text-xs sm:text-sm text-white/80 text-center">Chargement du contrat...</p>
             </div>
+          ) : isSealed && pdfUrl ? (
+            /* Bail scellé : afficher le PDF stocké directement */
+            <div className="h-full overflow-y-auto flex justify-center py-4 px-2 sm:px-4">
+              <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
+                <iframe
+                  src={pdfUrl}
+                  className="w-full border-0 bg-white"
+                  style={{ height: "calc(297mm * 1.5)" }}
+                  title="Bail signé (document définitif)"
+                />
+              </div>
+            </div>
           ) : (
+            /* Bail en cours : afficher le HTML généré */
             <div className="h-full overflow-y-auto flex justify-center py-4 px-2 sm:px-4">
               <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
                 <iframe
