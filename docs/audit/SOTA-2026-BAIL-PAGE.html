@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Talok — SOTA 2026 · Page Bail</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: #1e1e2a;
+    --border2: #2a2a3a;
+    --text: #e8e8f0;
+    --muted: #6b6b88;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --accent3: #ff6b6b;
+    --accent4: #f5a623;
+    --gold: #c9a84c;
+    --green: #00d4aa;
+    --red: #ff5757;
+    --orange: #f5a623;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .report-header {
+    padding: 60px 60px 40px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .report-header::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(108,99,255,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .report-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .report-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 48px;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .report-title em {
+    color: var(--accent);
+    font-style: italic;
+  }
+  .report-sub {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 600px;
+  }
+  .meta-row {
+    display: flex;
+    gap: 32px;
+    margin-top: 28px;
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .meta-item .label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .meta-item .value {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* LAYOUT */
+  .content {
+    padding: 0 60px 80px;
+  }
+
+  /* SECTION */
+  .section {
+    margin-top: 56px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-number {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .section-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+  }
+  .badge-critical { background: rgba(255,87,87,0.12); color: var(--red); border: 1px solid rgba(255,87,87,0.2); }
+  .badge-high { background: rgba(245,166,35,0.12); color: var(--orange); border: 1px solid rgba(245,166,35,0.2); }
+  .badge-medium { background: rgba(108,99,255,0.12); color: var(--accent); border: 1px solid rgba(108,99,255,0.2); }
+  .badge-ai { background: rgba(0,212,170,0.1); color: var(--green); border: 1px solid rgba(0,212,170,0.2); }
+
+  /* CARDS GRID */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .card.critical::before { background: var(--red); }
+  .card.high::before { background: var(--orange); }
+  .card.medium::before { background: var(--accent); }
+  .card.ai::before { background: var(--green); }
+  .card.gold::before { background: var(--gold); }
+
+  .card-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+  .icon-critical { background: rgba(255,87,87,0.1); }
+  .icon-high { background: rgba(245,166,35,0.1); }
+  .icon-medium { background: rgba(108,99,255,0.1); }
+  .icon-ai { background: rgba(0,212,170,0.08); }
+  .icon-gold { background: rgba(201,168,76,0.1); }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .card-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+  .card-sota {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .card-sota strong {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .ref-tag {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    background: rgba(108,99,255,0.08);
+    border: 1px solid rgba(108,99,255,0.15);
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-top: 10px;
+    margin-right: 4px;
+  }
+  .ref-tag.green { color: var(--green); background: rgba(0,212,170,0.06); border-color: rgba(0,212,170,0.15); }
+  .ref-tag.orange { color: var(--orange); background: rgba(245,166,35,0.06); border-color: rgba(245,166,35,0.15); }
+
+  /* WIDE CARD */
+  .card-wide {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  .card-wide .card-body { }
+
+  /* COMPARISON TABLE */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+  .compare-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text);
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td:first-child { color: var(--muted); font-size: 12px; }
+  .now { color: var(--red) !important; }
+  .sota { color: var(--green) !important; }
+  .check { color: var(--green); }
+  .cross { color: var(--red); }
+
+  /* ROADMAP */
+  .roadmap {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .roadmap-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .roadmap-phase {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .phase-sprint { color: var(--red); }
+  .phase-mid { color: var(--orange); }
+  .phase-long { color: var(--accent); }
+
+  .roadmap-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .roadmap-item::before {
+    content: '\2192';
+    color: var(--border2);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .roadmap-item.critical { color: var(--text); }
+  .roadmap-item.critical::before { color: var(--red); }
+  .roadmap-item.high::before { color: var(--orange); }
+
+  /* SCORE BLOCK */
+  .score-block {
+    display: flex;
+    gap: 16px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .score-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 20px;
+    min-width: 120px;
+    text-align: center;
+  }
+  .score-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .score-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .score-now { color: var(--red); }
+  .score-target { color: var(--green); }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 40px 0;
+  }
+
+  /* FOOTER */
+  .report-footer {
+    border-top: 1px solid var(--border);
+    padding: 24px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+<header class="report-header">
+  <div class="report-label">Audit SOTA 2026 · Talok · Page Detail Bail</div>
+  <h1 class="report-title">Best-In-Class<br><em>Lease Detail Page</em></h1>
+  <p class="report-sub">Analyse comparative des standards SaaS 2026 appliques a la vue bail de Talok — UX, architecture d'information, IA et automatisation.</p>
+  <div class="meta-row">
+    <div class="meta-item"><span class="label">Cible</span><span class="value">Page /owner/leases/[id]</span></div>
+    <div class="meta-item"><span class="label">Benchmark</span><span class="value">Linear · Stripe · Pennylane · Notion</span></div>
+    <div class="meta-item"><span class="label">Score actuel</span><span class="value" style="color:var(--red)">5.5 / 10</span></div>
+    <div class="meta-item"><span class="label">Score cible SOTA</span><span class="value" style="color:var(--green)">9 / 10</span></div>
+    <div class="meta-item"><span class="label">Marche</span><span class="value">France + DOM-TOM 2026</span></div>
+  </div>
+</header>
+
+<div class="content">
+
+  <!-- SECTION 1 : ARCHITECTURE INFO -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">01</span>
+      <span class="section-title">Architecture de l'information</span>
+      <span class="section-badge badge-critical">CRITIQUE</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="card critical">
+        <div class="card-icon icon-critical">&#x1F534;</div>
+        <div class="card-title">Triple redondance d'etat</div>
+        <div class="card-desc">Stepper + Checklist sidebar + Onglets : 3 systemes qui trackent le meme etat du bail sans etre synchronises. Resultat : contradictions visibles entre l'onglet Documents (3 manquants) et la checklist sidebar (tout vert).</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Linear / Stripe</strong>
+          Une seule source de verite : le stepper est la nav principale. La sidebar devient contextuelle et affiche uniquement des <em>actions disponibles maintenant</em>, pas un recapitulatif du statut.
+        </div>
+        <span class="ref-tag">Linear</span><span class="ref-tag green">Stripe Dashboard</span>
+      </div>
+
+      <div class="card critical">
+        <div class="card-icon icon-critical">&#x1F5C2;</div>
+        <div class="card-title">Onglets vs Stepper : navigation dupliquee</div>
+        <div class="card-desc">Les 4 onglets (Contrat / EDL / Documents / Paiements) mappent exactement les 4 etapes du stepper. L'utilisateur a deux facons de naviguer vers la meme info, creant une dissonance cognitive.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Notion / Loom</strong>
+          Le stepper devient cliquable et remplace les onglets. Chaque etape = une section de la page defilante avec ancres. Suppression des onglets comme pattern navigable separe.
+        </div>
+        <span class="ref-tag">Notion</span><span class="ref-tag green">Gusto (RH SaaS)</span>
+      </div>
+
+      <div class="card high">
+        <div class="card-icon icon-high">&#x1F4C4;</div>
+        <div class="card-title">PDF inline : anti-pattern 2026</div>
+        <div class="card-desc">Rendre le contrat entier inline cree une page de 8000px de long. L'utilisateur scrolle dans le contrat alors qu'il cherche une action. Le PDF inline est un pattern abandonne par tous les SaaS SOTA depuis 2023.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — DocuSign / Pennylane</strong>
+          Card compacte avec statut, date signature, signataires. Preview thumbnail sur hover. Boutons "Consulter" et "Telecharger" en CTA. Le PDF s'ouvre dans un drawer ou un viewer dedie.
+        </div>
+        <span class="ref-tag orange">DocuSign</span><span class="ref-tag">Pennylane</span>
+      </div>
+
+      <div class="card high">
+        <div class="card-icon icon-high">&#x1F4AC;</div>
+        <div class="card-title">Empty state Paiements sans CTA</div>
+        <div class="card-desc">"En attente du premier paiement — Aucune facture ni paiement enregistre" avec juste une icone horloge. Aucune explication du blocage, aucune action proposee. Le proprietaire est bloque sans savoir pourquoi.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Stripe / Qonto</strong>
+          Empty state educatif : expliquer le prochain declencheur, qui fait quoi, et proposer une CTA contextuelle ("Envoyer un rappel au locataire" ou "Configurer le prelevement automatique").
+        </div>
+        <span class="ref-tag green">Qonto</span><span class="ref-tag">Stripe</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION 2 : IA & AUTOMATISATION -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">02</span>
+      <span class="section-title">IA &amp; Automatisation</span>
+      <span class="section-badge badge-ai">DIFFERENCIANT 2026</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="card ai">
+        <div class="card-icon icon-ai">&#x1F916;</div>
+        <div class="card-title">Bail Assistant contextuel (TALO)</div>
+        <div class="card-desc">Aucune intelligence dans la page actuelle. En 2026, tous les SaaS SOTA integrent un assistant IA contextuel. Pour un bail, l'assistant doit etre capable de repondre a "Ce bail est-il conforme ?" ou "Que dois-je faire ensuite ?".</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Copilot / Notion AI</strong>
+          TALO integre en sidebar : "Le loyer de 35&#8364; pour 40m&#178; a Fort-de-France est en dessous du plafond DOM-TOM 2026 (8.50&#8364;/m&#178;). &#x2705; Conforme." ou alertes proactives sur revision annuelle IRL.
+        </div>
+        <span class="ref-tag green">Copilot SaaS</span><span class="ref-tag green">Notion AI</span>
+      </div>
+
+      <div class="card ai">
+        <div class="card-icon icon-ai">&#x1F4CE;</div>
+        <div class="card-title">Reconnaissance auto des documents</div>
+        <div class="card-desc">L'onglet Documents demande manuellement les memes docs qui existent deja dans le systeme (contrat signe, EDL signe). Aucune reconnaissance automatique, aucun lien intelligent entre les onglets.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Docusign + OCR</strong>
+          Detection automatique : si un contrat est signe dans le systeme &#x2192; il est automatiquement marque "fourni" dans la liste documents. Upload d'un PDF &#x2192; OCR + classification automatique (bail, DPE, assurance&#x2026;).
+        </div>
+        <span class="ref-tag green">Klippa</span><span class="ref-tag green">Mistral OCR</span>
+      </div>
+
+      <div class="card ai">
+        <div class="card-icon icon-ai">&#x1F4C5;</div>
+        <div class="card-title">Alertes proactives temporelles</div>
+        <div class="card-desc">Bail du 08/01/2026 &#x2192; revision IRL en janvier 2027, fin de bail 08/01/2029. Ces dates ne sont nulle part affichees de facon proactive. La page est statique, sans aucune anticipation.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Linear / Monday</strong>
+          Timeline widget en sidebar : "Dans 38 jours : 1ere revision possible (IRL Mars 2026). Dans 3 ans : fin de bail." Avec CTA anticipatoires selon le contexte temporel.
+        </div>
+        <span class="ref-tag green">Monday.com</span><span class="ref-tag">Linear</span>
+      </div>
+
+      <div class="card ai">
+        <div class="card-icon icon-ai">&#x26A1;</div>
+        <div class="card-title">Generation intelligente de quittances</div>
+        <div class="card-desc">L'onglet Paiements est vide. En SOTA 2026, la generation de quittance est automatique des reception du paiement, avec envoi automatique par email au locataire — sans aucune action manuelle du proprietaire.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Pennylane / Qonto</strong>
+          Des qu'un virement est detecte via Stripe &#x2192; quittance generee en PDF, stockee dans Documents, envoyee par Resend au locataire. Log dans Chronologie. Zero action proprietaire.
+        </div>
+        <span class="ref-tag green">Pennylane</span><span class="ref-tag green">Stripe Webhook</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION 3 : DESIGN PATTERNS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">03</span>
+      <span class="section-title">Design Patterns &amp; Interactions</span>
+      <span class="section-badge badge-medium">UX AVANCE</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="card medium">
+        <div class="card-icon icon-medium">&#x1F3AF;</div>
+        <div class="card-title">Contextual Actions &gt; Menus statiques</div>
+        <div class="card-desc">Le bouton "Plus d'actions" en bas de sidebar est un anti-pattern. Les actions disponibles dependent du contexte (etape actuelle du bail) et doivent etre affichees en place, pas cachees dans un dropdown.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Linear Issues</strong>
+          Actions contextuelles dans le stepper lui-meme. Etape active = CTA primaire proeminent + CTA secondaires inline. Les autres etapes n'affichent aucune action jusqu'a ce qu'elles soient actives.
+        </div>
+        <span class="ref-tag">Linear</span><span class="ref-tag">Figma</span>
+      </div>
+
+      <div class="card medium">
+        <div class="card-icon icon-medium">&#x1F4CA;</div>
+        <div class="card-title">Sidebar droite : densite vs bruit</div>
+        <div class="card-desc">La sidebar droite actuelle melange checklist d'activation, details cles financiers, locataire, et chronologie. C'est 4 blocs d'information heterogenes sans hierarchie claire.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Stripe / GitHub Issues</strong>
+          Sidebar condensee en 3 zones max : (1) Statut + CTA principale, (2) Chiffres cles financiers, (3) Personnes associees. La chronologie passe en section expandable en bas de page principale.
+        </div>
+        <span class="ref-tag">GitHub</span><span class="ref-tag">Stripe</span>
+      </div>
+
+      <div class="card medium">
+        <div class="card-icon icon-medium">&#x1F4F1;</div>
+        <div class="card-title">Mobile-first absent</div>
+        <div class="card-desc">En Martinique, fort usage mobile (65%+ du trafic). La page actuelle est desktop-only avec des tableaux dans le PDF inline qui ne passent pas en responsive. Un proprietaire qui verifie son bail depuis son telephone est bloque.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Qonto Mobile</strong>
+          Vue mobile dediee : stepper horizontal &#x2192; stepper vertical. Sidebar &#x2192; bottom sheet. PDF inline &#x2192; card compacte. Toutes les actions disponibles en 1 tap depuis le mobile.
+        </div>
+        <span class="ref-tag green">Qonto</span><span class="ref-tag orange">Figma Mobile</span>
+      </div>
+
+      <div class="card medium">
+        <div class="card-icon icon-medium">&#x1F514;</div>
+        <div class="card-title">Chronologie passive</div>
+        <div class="card-desc">La chronologie affiche 5 events passifs ("Bail active - 26 fev. 2026"). Elle ne distingue pas ce qui s'est passe de ce qui est attendu, et ne permet pas d'interactions depuis la chronologie.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Linear / Jira</strong>
+          Timeline mixte passe/futur : events passes (gris), etape actuelle (accent), prochains events attendus (pointille). Chaque event cliquable &#x2192; drawer avec detail. Commentaires inline possibles.
+        </div>
+        <span class="ref-tag">Linear</span><span class="ref-tag">Jira</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION 4 : CONFORMITE LEGALE AUGMENTEE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">04</span>
+      <span class="section-title">Conformite Legale Augmentee (DOM-TOM)</span>
+      <span class="section-badge badge-high">DIFFERENCIANT MARCHE</span>
+    </div>
+    <div class="cards-grid">
+
+      <div class="card gold">
+        <div class="card-icon icon-gold">&#x2696;</div>
+        <div class="card-title">Score de conformite bail en temps reel</div>
+        <div class="card-desc">Aucune indication si le bail est conforme a la loi ALUR 2025-2026, aux specificites DOM-TOM (loi du 13 juin 2025), ou aux nouvelles regles d'encadrement des loyers en Outre-Mer.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — LegalTech augmentee</strong>
+          Badge "Conforme ALUR 2026 &#x2705;" dans le header. Score detaille expandable : DPE &#x2705;, Encadrement loyer DOM-TOM &#x2705;, Surface minimale &#x2705;, Depot de garantie &#x2264; 1 mois (vide) &#x2705;.
+        </div>
+        <span class="ref-tag" style="color:var(--gold); background:rgba(201,168,76,0.08); border-color:rgba(201,168,76,0.2);">Loi 13 juin 2025</span>
+        <span class="ref-tag green">ALUR 2026</span>
+      </div>
+
+      <div class="card gold">
+        <div class="card-icon icon-gold">&#x1F4CB;</div>
+        <div class="card-title">Checklist DPE &amp; Diagnostics automatisee</div>
+        <div class="card-desc">Le DPE est marque "conforme" dans la checklist mais sans date de validite affichee ni alerte d'expiration. En 2026 avec les nouvelles regles DPE DOM-TOM, cela peut invalider un bail.</div>
+        <div class="card-sota">
+          <strong>SOTA 2026</strong>
+          Chaque diagnostic avec : date de realisation, date d'expiration, statut colore. Alerte automatique 3 mois avant expiration. Lien direct vers le prestataire DPE agree en Martinique.
+        </div>
+        <span class="ref-tag" style="color:var(--gold); background:rgba(201,168,76,0.08); border-color:rgba(201,168,76,0.2);">DOM-TOM Specific</span>
+      </div>
+
+      <div class="card gold">
+        <div class="card-icon icon-gold">&#x1F4B3;</div>
+        <div class="card-title">Depot de garantie : tracabilite complete</div>
+        <div class="card-desc">Le depot de 20&#8364; est affiche mais sans aucune tracabilite : quand a-t-il ete verse ? Sur quel compte ? Quelle est la date limite legale de restitution a la fin du bail (J+30 ou J+60 selon l'etat des lieux) ?</div>
+        <div class="card-sota">
+          <strong>SOTA 2026 — Fintech + Legal</strong>
+          Widget depot de garantie dedie : montant, date encaissement, compte sequestre (si applicable), date limite legale de restitution calculee automatiquement, et alerte si l'EDL de sortie est en retard.
+        </div>
+        <span class="ref-tag orange">Art. 22 Loi 1989</span>
+        <span class="ref-tag green">Stripe Escrow</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION 5 : TABLEAU COMPARATIF -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">05</span>
+      <span class="section-title">Talok Aujourd'hui vs SOTA 2026</span>
+      <span class="section-badge badge-medium">SYNTHESE</span>
+    </div>
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Dimension</th>
+            <th class="now">Talok Actuel</th>
+            <th class="sota">SOTA 2026 Cible</th>
+            <th>Effort</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Coherence des donnees</td>
+            <td class="now">&#x274C; 3 systemes non synchronises</td>
+            <td class="sota">&#x2705; Source unique, propagation automatique</td>
+            <td>&#x1F534; Sprint 1</td>
+          </tr>
+          <tr>
+            <td>Navigation page</td>
+            <td class="now">&#x274C; Stepper + Onglets = duplication</td>
+            <td class="sota">&#x2705; Stepper cliquable = seule nav</td>
+            <td>&#x1F7E0; Sprint 2</td>
+          </tr>
+          <tr>
+            <td>PDF contrat</td>
+            <td class="now">&#x274C; Inline, 8000px de scroll</td>
+            <td class="sota">&#x2705; Card compacte + viewer drawer</td>
+            <td>&#x1F7E0; Sprint 2</td>
+          </tr>
+          <tr>
+            <td>Empty state paiements</td>
+            <td class="now">&#x274C; Aucune CTA ni explication</td>
+            <td class="sota">&#x2705; Guide contextuel + CTA claires</td>
+            <td>&#x1F7E2; Quick win</td>
+          </tr>
+          <tr>
+            <td>IA assistant (TALO)</td>
+            <td class="now">&#x274C; Absent</td>
+            <td class="sota">&#x2705; TALO contextuel + alertes IRL</td>
+            <td>&#x1F535; Sprint 4</td>
+          </tr>
+          <tr>
+            <td>OCR / classification docs</td>
+            <td class="now">&#x274C; Manuel</td>
+            <td class="sota">&#x2705; Auto-reconnaissance + liaison</td>
+            <td>&#x1F535; Sprint 3</td>
+          </tr>
+          <tr>
+            <td>Mobile responsiveness</td>
+            <td class="now">&#x274C; Desktop only</td>
+            <td class="sota">&#x2705; Mobile-first avec bottom sheets</td>
+            <td>&#x1F7E0; Sprint 3</td>
+          </tr>
+          <tr>
+            <td>Conformite legale visible</td>
+            <td class="now">&#x274C; Checklist statique basique</td>
+            <td class="sota">&#x2705; Score live ALUR + DOM-TOM 2026</td>
+            <td>&#x1F535; Sprint 4</td>
+          </tr>
+          <tr>
+            <td>Quittances automatiques</td>
+            <td class="now">&#x274C; Absent</td>
+            <td class="sota">&#x2705; Auto via Stripe webhook + Resend</td>
+            <td>&#x1F7E0; Sprint 3</td>
+          </tr>
+          <tr>
+            <td>Timeline passe/futur</td>
+            <td class="now">&#x274C; Passe uniquement</td>
+            <td class="sota">&#x2705; Timeline mixte avec alertes anticipatoires</td>
+            <td>&#x1F7E2; Quick win</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION 6 : ROADMAP -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">06</span>
+      <span class="section-title">Roadmap d'implementation</span>
+      <span class="section-badge badge-medium">PRIORISATION</span>
+    </div>
+    <div class="roadmap">
+      <div class="roadmap-col">
+        <div class="roadmap-phase phase-sprint">&#x1F534; SPRINT 1 — Fondations<br><span style="color:var(--muted)">Semaines 1&#x2013;2</span></div>
+        <div class="roadmap-item critical">Synchroniser l'onglet Documents avec les docs generes par le systeme (contrat signe &#x2192; auto-fourni)</div>
+        <div class="roadmap-item critical">Fixer le compteur "3/1/4 requis" &#x2192; format lisible</div>
+        <div class="roadmap-item critical">Resoudre la contradiction banner orange + badge vert sur l'onglet Contrat</div>
+        <div class="roadmap-item high">Enrichir l'empty state Paiements avec CTA + explication du flow</div>
+      </div>
+      <div class="roadmap-col">
+        <div class="roadmap-phase phase-mid">&#x1F7E0; SPRINT 2&#x2013;3 — Patterns<br><span style="color:var(--muted)">Semaines 3&#x2013;6</span></div>
+        <div class="roadmap-item high">Remplacer PDF inline par card compacte + drawer viewer</div>
+        <div class="roadmap-item high">Rendre le stepper cliquable (navigation vers section)</div>
+        <div class="roadmap-item">Timeline mixte passe/futur avec alertes IRL</div>
+        <div class="roadmap-item">Widget depot de garantie avec tracabilite complete</div>
+        <div class="roadmap-item">Responsive mobile (stepper vertical + bottom sheets)</div>
+      </div>
+      <div class="roadmap-col">
+        <div class="roadmap-phase phase-long">&#x1F535; SPRINT 4+ — Differenciation<br><span style="color:var(--muted)">Semaines 7&#x2013;12</span></div>
+        <div class="roadmap-item">TALO : assistant IA contextuel sur la page bail</div>
+        <div class="roadmap-item">Score de conformite ALUR + loi DOM-TOM 2026 en temps reel</div>
+        <div class="roadmap-item">OCR auto + classification documents uploades</div>
+        <div class="roadmap-item">Generation quittance automatique via Stripe webhook</div>
+        <div class="roadmap-item">Alertes expiration DPE + diagnostics</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCORE -->
+  <div class="section">
+    <div class="score-block">
+      <div class="score-item">
+        <div class="score-num score-now">5.5</div>
+        <div class="score-label">Score actuel</div>
+      </div>
+      <div class="score-item">
+        <div class="score-num" style="color:var(--orange)">7.5</div>
+        <div class="score-label">Apres Sprint 1&#x2013;2</div>
+      </div>
+      <div class="score-item">
+        <div class="score-num" style="color:var(--accent)">8.5</div>
+        <div class="score-label">Apres Sprint 3</div>
+      </div>
+      <div class="score-item">
+        <div class="score-num score-target">9.2</div>
+        <div class="score-label">SOTA 2026 cible</div>
+      </div>
+      <div class="score-item" style="border-color:rgba(0,212,170,0.2)">
+        <div class="score-num score-target" style="font-size:16px; line-height:1.4; padding-top:4px">Linear<br>Pennylane<br>Qonto</div>
+        <div class="score-label">References BIC</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="report-footer">
+  <span>Talok · Audit SOTA 2026 · Page Detail Bail</span>
+  <span>BIC : Linear · Stripe · Pennylane · Qonto · Notion · DocuSign</span>
+  <span>Mars 2026</span>
+</footer>
+
+</body>
+</html>
