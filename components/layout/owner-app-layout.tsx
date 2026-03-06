@@ -27,6 +27,15 @@ import {
   Search,
   Briefcase,
   Wallet,
+  Building,
+  Users,
+  Eye,
+  Receipt,
+  TrendingUp,
+  Landmark,
+  MessageSquare,
+  HardHat,
+  Hammer,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { SharedBottomNav } from "./shared-bottom-nav";
@@ -75,8 +84,11 @@ const navigationGroups: NavGroup[] = [
     label: "Gestion immobilière",
     items: [
       { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2, tourId: "nav-properties" },
+      { name: "Immeubles", href: "/owner/buildings", icon: Building },
       { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
+      { name: "Locataires", href: "/owner/tenants", icon: Users },
       { name: "États des lieux", href: "/owner/inspections", icon: ClipboardCheck, tourId: "nav-inspections" },
+      { name: "Visites", href: "/owner/visits", icon: Eye },
       { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
     ],
   },
@@ -84,6 +96,9 @@ const navigationGroups: NavGroup[] = [
     label: "Finances",
     items: [
       { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
+      { name: "Factures", href: "/owner/invoices", icon: Receipt },
+      { name: "Indexation loyers", href: "/owner/indexation", icon: TrendingUp },
+      { name: "Fiscalité", href: "/owner/taxes", icon: Landmark },
       { name: "Moyens de paiement", href: "/owner/settings/payments", icon: Wallet },
       { name: "Facturation", href: "/owner/settings/billing", icon: CreditCard },
     ],
@@ -101,6 +116,9 @@ const navigationGroups: NavGroup[] = [
     label: "Support",
     items: [
       { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
+      { name: "Prestataires", href: "/owner/providers", icon: HardHat },
+      { name: "Ordres de travaux", href: "/owner/work-orders", icon: Hammer },
+      { name: "Messages", href: "/owner/messages", icon: MessageSquare },
       { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle, tourId: "nav-support" },
     ],
   },
@@ -489,9 +507,18 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
             ]}
             moreItems={[
               { href: "/owner/inspections", label: "États des lieux", icon: ClipboardCheck },
+              { href: "/owner/buildings", label: "Immeubles", icon: Building },
+              { href: "/owner/tenants", label: "Locataires", icon: Users },
+              { href: "/owner/visits", label: "Visites", icon: Eye },
               { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench },
+              { href: "/owner/providers", label: "Prestataires", icon: HardHat },
+              { href: "/owner/work-orders", label: "Ordres de travaux", icon: Hammer },
+              { href: "/owner/messages", label: "Messages", icon: MessageSquare },
               { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck },
               { href: OWNER_ROUTES.ged.path, label: "Coffre-fort", icon: FolderArchive },
+              { href: "/owner/invoices", label: "Factures", icon: Receipt },
+              { href: "/owner/indexation", label: "Indexation", icon: TrendingUp },
+              { href: "/owner/taxes", label: "Fiscalité", icon: Landmark },
               { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
               { href: "/owner/entities", label: "Entités", icon: Briefcase },
               { href: "/owner/legal-protocols", label: "Protocoles juridiques", icon: Shield },

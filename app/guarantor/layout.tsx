@@ -80,6 +80,12 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
                 Documents
               </Link>
               <Link
+                href="/guarantor/engagements"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Engagements
+              </Link>
+              <Link
                 href="/guarantor/profile"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
