@@ -45,7 +45,7 @@ import { useEntityStore } from "@/stores/useEntityStore";
 import { deleteEntity, deactivateEntity } from "../actions";
 import { getEntityTypeLabel } from "@/lib/entities/entity-constants";
 import { maskIban, formatIban } from "@/lib/entities/siret-validation";
-import { createClient } from "@/lib/supabase/client";
+import { apiClient } from "@/lib/api-client";
 import type { LegalEntity, EntityAssociate } from "@/lib/types/legal-entity";
 
 // ============================================
@@ -556,16 +556,10 @@ function DocumentsTab({ entityId }: { entityId: string }) {
       setIsLoadingDocs(true);
       setDocsError(null);
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("documents")
-          .select("id, type, nom, created_at, property_id, lease_id, url")
-          .eq("entity_id", entityId)
-          .order("created_at", { ascending: false })
-          .limit(50);
-
-        if (error) throw error;
-        setDocuments((data || []) as EntityDocument[]);
+        const { documents: docs } = await apiClient.get<{ documents: EntityDocument[] }>(
+          `/owner/legal-entities/${entityId}/documents`
+        );
+        setDocuments(docs || []);
       } catch {
         setDocsError("Impossible de charger les documents");
       } finally {
@@ -577,16 +571,10 @@ function DocumentsTab({ entityId }: { entityId: string }) {
       setIsLoadingAudit(true);
       setAuditError(null);
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("entity_audit_log")
-          .select("id, action, changed_fields, created_at")
-          .eq("entity_id", entityId)
-          .order("created_at", { ascending: false })
-          .limit(20);
-
-        if (error) throw error;
-        setAuditLog((data || []) as AuditLogEntry[]);
+        const { auditLog: logs } = await apiClient.get<{ auditLog: AuditLogEntry[] }>(
+          `/owner/legal-entities/${entityId}/audit-log`
+        );
+        setAuditLog(logs || []);
       } catch {
         setAuditError("Impossible de charger l'historique");
       } finally {
