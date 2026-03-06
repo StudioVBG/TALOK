@@ -143,6 +143,28 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
+    // === BAIL SCELLÉ: Retourner le PDF stocké définitif ===
+    // Après signature complète, le PDF est immuable et stocké une seule fois
+    if (lease.sealed_at && lease.signed_pdf_path && !lease.signed_pdf_path.startsWith("pending_generation_")) {
+      const { data: signedUrl, error: urlError } = await serviceClient.storage
+        .from("documents")
+        .createSignedUrl(lease.signed_pdf_path, 3600);
+
+      if (!urlError && signedUrl?.signedUrl) {
+        // Journaliser l'accès en lecture
+        await serviceClient.from("audit_log").insert({
+          user_id: user.id,
+          action: "read",
+          entity_type: "document",
+          entity_id: leaseId,
+          metadata: { type: "bail_signe", sealed: true, path: lease.signed_pdf_path },
+        } as any);
+
+        return NextResponse.redirect(signedUrl.signedUrl);
+      }
+      // Si l'URL signée échoue, on continue avec la génération classique (fallback)
+    }
+
     // Diagnostics depuis la table documents (aligné sur la route HTML)
     const diagnostics: Partial<DiagnosticsTechniques> = {};
     const { data: diagnosticsDocuments } = await serviceClient

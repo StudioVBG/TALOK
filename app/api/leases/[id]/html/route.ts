@@ -86,6 +86,23 @@ export async function GET(
       return NextResponse.json({ error: "Accès non autorisé à ce bail" }, { status: 403 });
     }
 
+    // === BAIL SCELLÉ: Retourner le PDF stocké au lieu de régénérer le HTML ===
+    if (lease.sealed_at && lease.signed_pdf_path && !lease.signed_pdf_path.startsWith("pending_generation_")) {
+      const { data: signedUrl } = await serviceClient.storage
+        .from("documents")
+        .createSignedUrl(lease.signed_pdf_path, 3600);
+
+      if (signedUrl?.signedUrl) {
+        return NextResponse.json({
+          sealed: true,
+          pdfUrl: signedUrl.signedUrl,
+          fileName: `Bail_Signe_${lease.property?.ville || "document"}.pdf`,
+          html: null,
+        });
+      }
+      // Fallback: continuer avec la génération HTML si l'URL échoue
+    }
+
     // 2. Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
     const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
       leaseId,
