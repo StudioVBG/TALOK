@@ -1040,6 +1040,11 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
           {/* ========== ACCÈS & SÉCURITÉ (mode lecture avec inline edit) ========== */}
           {!isEditing && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -1174,6 +1179,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                 )}
               </CardContent>
             </Card>
+            </motion.div>
           )}
 
           {/* ========== CARTE DE LOCALISATION ========== */}

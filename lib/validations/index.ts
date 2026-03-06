@@ -527,7 +527,11 @@ export const propertyGeneralUpdateSchema = z
     complement_loyer: z.number().min(0).optional().nullable(),
     complement_justification: z.string().optional().nullable(),
     // Accès & Sécurité
-    digicode: z.string().min(1, "Le digicode ne peut pas être vide").max(50).optional().nullable(),
+    digicode: z.string().max(50).optional().nullable()
+      .refine(
+        (val) => val !== "",
+        { message: "Le digicode ne peut pas être vide" }
+      ),
     interphone: z.string().max(100).optional().nullable(),
     // Visite virtuelle (Matterport, Nodalview, etc.)
     visite_virtuelle_url: z.string().url("L'URL de visite virtuelle doit être valide").optional().nullable(),
