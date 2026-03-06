@@ -55,14 +55,14 @@ export async function POST(request: NextRequest) {
     if (linkData.user?.id) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("first_name, last_name")
+        .select("prenom, nom")
         .eq("user_id", linkData.user.id)
         .maybeSingle();
 
-      if (profile?.first_name) {
-        userName = profile.first_name;
-      } else if (profile?.last_name) {
-        userName = profile.last_name;
+      if (profile?.prenom) {
+        userName = profile.prenom;
+      } else if (profile?.nom) {
+        userName = profile.nom;
       }
     }
 
