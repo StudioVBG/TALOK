@@ -57,14 +57,15 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
     const nextInvoice = initialInvoices
       .filter((i: any) => i.statut !== 'paid' && i.statut !== 'cancelled' && i.statut !== 'draft')
       .sort((a: any, b: any) => {
-        const dateA = a.date_echeance ? new Date(a.date_echeance).getTime() : 0;
-        const dateB = b.date_echeance ? new Date(b.date_echeance).getTime() : 0;
-        return dateA - dateB;
+        const dateA = a.date_echeance || a.due_date || a.created_at;
+        const dateB = b.date_echeance || b.due_date || b.created_at;
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
       })[0];
 
-    if (nextInvoice?.date_echeance) {
+    if (nextInvoice) {
       // Source de vérité : la facture réelle
-      const dueDate = new Date(nextInvoice.date_echeance);
+      const effectiveDate = nextInvoice.date_echeance || nextInvoice.due_date || nextInvoice.created_at;
+      const dueDate = new Date(effectiveDate);
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const diffMs = dueDate.getTime() - today.getTime();
       const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
@@ -244,7 +245,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                       setIsPaymentOpen(true);
                     }
                   }}
-                  disabled={!invoices.some((i: any) => i.statut !== 'paid')}
+                  disabled={!invoices.some((i: any) => ['sent', 'late', 'overdue', 'partial', 'unpaid'].includes(i.statut))}
                 >
                   <CreditCard className="mr-2 h-4 w-4" /> Payer
                 </Button>

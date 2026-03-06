@@ -318,13 +318,14 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     const nextInvoice = invoicesList
       .filter((i: any) => i.statut !== 'paid' && i.statut !== 'cancelled' && i.statut !== 'draft')
       .sort((a: any, b: any) => {
-        const dateA = a.date_echeance ? new Date(a.date_echeance).getTime() : 0;
-        const dateB = b.date_echeance ? new Date(b.date_echeance).getTime() : 0;
-        return dateA - dateB;
+        const dateA = a.date_echeance || a.due_date || a.created_at;
+        const dateB = b.date_echeance || b.due_date || b.created_at;
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
       })[0];
 
-    if (nextInvoice?.date_echeance) {
-      const dueDate = new Date(nextInvoice.date_echeance);
+    if (nextInvoice) {
+      const effectiveDate = nextInvoice.date_echeance || nextInvoice.due_date || nextInvoice.created_at;
+      const dueDate = new Date(effectiveDate);
       const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       return {
         date: dueDate,
@@ -333,7 +334,15 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
       };
     }
 
-    // Fallback : calcul basé sur jour_paiement du bail
+    // Si le bail est fully_signed mais aucune facture n'existe encore (race condition),
+    // afficher "paiement en préparation" plutôt qu'une date fictive
+    if (currentLease.statut === 'fully_signed') {
+      const deposit = (currentLease as any).depot_de_garantie ?? 0;
+      const amount = (currentLease.loyer ?? 0) + (currentLease.charges_forfaitaires ?? 0) + deposit;
+      return { date: now, amount, daysLeft: 0 };
+    }
+
+    // Fallback : calcul basé sur jour_paiement du bail (bail actif sans facture impayée)
     const jourPaiement = (currentLease as any).jour_paiement ?? 5;
     let nextDate = new Date(now.getFullYear(), now.getMonth(), jourPaiement);
     if (nextDate <= now) {

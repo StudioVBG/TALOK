@@ -216,57 +216,81 @@ export async function POST(
         const ownerId = leaseFull.property?.owner_id;
 
         if (ownerId) {
-          // SSOT : Utiliser les données du bien par défaut
-          const baseRent = leaseFull.property?.loyer_hc ?? leaseFull.loyer ?? 0;
-          const baseCharges = leaseFull.property?.charges_mensuelles ?? leaseFull.charges_forfaitaires ?? 0;
-          const monthStr = leaseFull.date_debut?.slice(0, 7) || new Date().toISOString().slice(0, 7);
-
-          // Calcul du prorata
-          const startDate = new Date(leaseFull.date_debut);
-          const isMidMonthStart = startDate.getDate() > 1;
-          
-          let finalRent = baseRent;
-          let finalCharges = baseCharges;
-          let isProrated = false;
-
-          if (isMidMonthStart) {
-            const year = startDate.getFullYear();
-            const month = startDate.getMonth();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const remainingDays = daysInMonth - startDate.getDate() + 1;
-            
-            finalRent = (baseRent / daysInMonth) * remainingDays;
-            finalCharges = (baseCharges / daysInMonth) * remainingDays;
-            isProrated = true;
-          }
-
-          const deposit = leaseFull.depot_de_garantie || 0;
-          const totalAmount = finalRent + finalCharges + deposit;
-
-          // Créer la facture
-          await serviceClient
+          // Garde anti-doublon : vérifier si la facture initiale existe déjà
+          // (créée par le trigger DB à la signature fully_signed)
+          const { data: existingInitialInvoice } = await serviceClient
             .from("invoices")
-            .insert({
-              lease_id: leaseId,
-              owner_id: ownerId,
-              tenant_id: tenantId ?? null,
-              issuer_entity_id: (leaseFull as any).signatory_entity_id ?? null,
-              periode: monthStr,
-              montant_loyer: Math.round(finalRent * 100) / 100,
-              montant_charges: Math.round(finalCharges * 100) / 100,
-              montant_total: Math.round(totalAmount * 100) / 100,
-              statut: 'sent',
-              metadata: {
-                type: 'initial_invoice',
-                includes_deposit: true,
-                deposit_amount: deposit,
-                is_prorated: isProrated,
-                generated_manually: true,
-                version: "SOTA-2026"
-              }
-            } as any);
+            .select("id")
+            .eq("lease_id", leaseId)
+            .eq("metadata->>type", "initial_invoice")
+            .maybeSingle();
 
-          console.log(`[Activate Lease] ✅ Initial invoice created (Prorata: ${isProrated}) for lease ${leaseId}`);
+          if (existingInitialInvoice) {
+            console.log(`[Activate Lease] Initial invoice already exists (created at signing) for lease ${leaseId}, skipping`);
+          } else {
+            // SSOT : Utiliser les données du bien par défaut
+            const baseRent = leaseFull.property?.loyer_hc ?? leaseFull.loyer ?? 0;
+            const baseCharges = leaseFull.property?.charges_mensuelles ?? leaseFull.charges_forfaitaires ?? 0;
+            const monthStr = leaseFull.date_debut?.slice(0, 7) || new Date().toISOString().slice(0, 7);
+
+            // Calcul du prorata
+            const startDate = new Date(leaseFull.date_debut);
+            const isMidMonthStart = startDate.getDate() > 1;
+
+            let finalRent = baseRent;
+            let finalCharges = baseCharges;
+            let isProrated = false;
+
+            if (isMidMonthStart) {
+              const year = startDate.getFullYear();
+              const month = startDate.getMonth();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const remainingDays = daysInMonth - startDate.getDate() + 1;
+
+              finalRent = (baseRent / daysInMonth) * remainingDays;
+              finalCharges = (baseCharges / daysInMonth) * remainingDays;
+              isProrated = true;
+            }
+
+            const deposit = leaseFull.depot_de_garantie || 0;
+            const totalAmount = finalRent + finalCharges + deposit;
+
+            // Calculer la date d'échéance
+            const dueDate = leaseFull.date_debut || new Date().toISOString().slice(0, 10);
+
+            // Calculer period_start et period_end
+            const periodStart = leaseFull.date_debut;
+            const periodEndDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+            const periodEnd = periodEndDate.toISOString().slice(0, 10);
+
+            // Créer la facture
+            await serviceClient
+              .from("invoices")
+              .insert({
+                lease_id: leaseId,
+                owner_id: ownerId,
+                tenant_id: tenantId ?? null,
+                issuer_entity_id: (leaseFull as any).signatory_entity_id ?? null,
+                periode: monthStr,
+                montant_loyer: Math.round(finalRent * 100) / 100,
+                montant_charges: Math.round(finalCharges * 100) / 100,
+                montant_total: Math.round(totalAmount * 100) / 100,
+                date_echeance: dueDate,
+                period_start: periodStart,
+                period_end: periodEnd,
+                statut: 'sent',
+                metadata: {
+                  type: 'initial_invoice',
+                  includes_deposit: true,
+                  deposit_amount: deposit,
+                  is_prorated: isProrated,
+                  generated_manually: true,
+                  version: "SOTA-2026"
+                }
+              } as any);
+
+            console.log(`[Activate Lease] Initial invoice created (Prorata: ${isProrated}) for lease ${leaseId}`);
+          }
         }
       }
     } catch (invoiceErr) {
