@@ -713,22 +713,39 @@ export const emailTemplates = {
     resetUrl: string;
     expiresIn: string;
   }) => ({
-    subject: `🔐 Réinitialisation de mot de passe`,
+    subject: `Réinitialisation de votre mot de passe Talok`,
     html: baseLayout(`
       <div class="content">
-        <h1>Réinitialisation de mot de passe</h1>
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="display: inline-block; width: 64px; height: 64px; background: ${COLORS.gray[50]}; border-radius: 50%; line-height: 64px; font-size: 32px;">🔐</div>
+        </div>
+
+        <h1 style="text-align: center;">Réinitialisation de mot de passe</h1>
         <p>Bonjour ${escapeHtml(data.userName)},</p>
-        <p>Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe :</p>
-        
-        <div style="text-align: center;">
+        <p>Vous avez demandé à réinitialiser votre mot de passe sur Talok. Cliquez sur le bouton ci-dessous pour en choisir un nouveau :</p>
+
+        <div style="text-align: center; margin: 32px 0;">
           <a href="${data.resetUrl}" class="button">Réinitialiser mon mot de passe</a>
         </div>
-        
-        <p style="font-size: 14px; color: ${COLORS.gray[500]};">
-          Ce lien expire dans ${data.expiresIn}. Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email en toute sécurité.
+
+        <div class="highlight-box">
+          <p style="font-size: 14px; color: ${COLORS.gray[500]}; margin: 0;">
+            ⏱ Ce lien expire dans <strong>${escapeHtml(data.expiresIn)}</strong>. Passé ce délai, vous devrez effectuer une nouvelle demande.
+          </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <p style="font-size: 13px; color: ${COLORS.gray[500]};">
+          Si le bouton ne fonctionne pas, copiez-collez ce lien dans votre navigateur&nbsp;:<br>
+          <a href="${data.resetUrl}" style="color: ${COLORS.primary}; word-break: break-all; font-size: 12px;">${data.resetUrl}</a>
+        </p>
+
+        <p style="font-size: 13px; color: ${COLORS.gray[500]};">
+          Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email. Votre mot de passe ne sera pas modifié.
         </p>
       </div>
-    `, 'Réinitialisez votre mot de passe Talok.'),
+    `, 'Réinitialisez votre mot de passe Talok — ce lien expire dans ' + data.expiresIn + '.'),
   }),
 
   /**

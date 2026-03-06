@@ -1,9 +1,7 @@
 "use client";
-// @ts-nocheck
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function ForgotPasswordPage() {
-  const supabase = createClient();
   const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
@@ -21,28 +18,25 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     setLoading(true);
     try {
-      // Utiliser NEXT_PUBLIC_APP_URL en production, sinon window.location.origin
-      const redirectTo =
-        typeof window !== "undefined"
-          ? `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/reset-password`
-          : undefined;
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo,
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Erreur lors de l'envoi");
       }
 
       toast({
         title: "Email envoyé",
-        description: "Consultez votre boîte mail pour créer un nouveau mot de passe.",
+        description: "Si un compte existe avec cette adresse, vous recevrez un lien de réinitialisation.",
       });
       router.push("/auth/signin");
     } catch (error: unknown) {
       toast({
-        title: "Impossible d’envoyer l’email",
+        title: "Impossible d'envoyer l'email",
         description: error instanceof Error ? error.message : "Réessayez dans quelques instants.",
         variant: "destructive",
       });
@@ -57,7 +51,7 @@ export default function ForgotPasswordPage() {
         <CardHeader>
           <CardTitle>Mot de passe oublié</CardTitle>
           <CardDescription>
-            Saisissez l’adresse email de votre compte pour recevoir un lien de réinitialisation.
+            Saisissez l'adresse email de votre compte pour recevoir un lien de réinitialisation.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -82,4 +76,3 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
-
