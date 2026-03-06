@@ -149,6 +149,12 @@ export interface TenantDashboardData {
   tickets: TenantTicket[];
   notifications: any[];
   pending_edls: PendingEDL[];
+  recent_documents: Array<{
+    id: string;
+    type: string;
+    nom_fichier?: string | null;
+    created_at: string;
+  }>;
   insurance: {
     has_insurance: boolean;
     last_expiry_date?: string;
@@ -232,6 +238,7 @@ async function fetchTenantDashboardDirect(
         tickets: [],
         notifications: [],
         pending_edls: [],
+        recent_documents: [],
         insurance: { has_insurance: false },
         stats: { unpaid_amount: 0, unpaid_count: 0, total_monthly_rent: 0, active_leases_count: 0 },
       };
@@ -342,6 +349,7 @@ async function fetchTenantDashboardDirect(
     notificationsResult,
     chargesResult,
     chargesBaseResult,
+    recentDocumentsResult,
   ] = await Promise.allSettled([
     // Propriétés complètes (select *)
     propertyIds.length > 0
@@ -435,6 +443,13 @@ async function fetchTenantDashboardDirect(
           .select("id, lease_id, label, amount, created_at")
           .in("lease_id", leaseIds)
       : Promise.resolve({ data: [] }),
+    // Documents récents du locataire (pour le flux d'activité)
+    supabase
+      .from("documents")
+      .select("id, type, nom_fichier, created_at")
+      .eq("tenant_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -467,6 +482,7 @@ async function fetchTenantDashboardDirect(
   const notificationsData = getData<Record<string, unknown>>(notificationsResult);
   const chargesData = getData<Record<string, unknown>>(chargesResult);
   const chargesBaseData = getData<Record<string, unknown>>(chargesBaseResult);
+  const recentDocumentsData = getData<{ id: string; type: string; nom_fichier?: string; created_at: string }>(recentDocumentsResult);
 
   const propertyIdsWithSignedEntryEdl = new Set(
     edlSignedEntryData.map((e) => e.property_id).filter(Boolean)
@@ -663,6 +679,7 @@ async function fetchTenantDashboardDirect(
     tickets,
     notifications: notificationsData,
     pending_edls,
+    recent_documents: recentDocumentsData,
     insurance: {
       has_insurance: hasInsurance,
       last_expiry_date: insuranceDoc?.expiry_date || undefined,
@@ -727,6 +744,22 @@ export async function fetchTenantDashboard(userId: string): Promise<TenantDashbo
     .single();
 
   cleanData.tenant = profile ? { prenom: profile.prenom ?? "", nom: profile.nom ?? "" } : undefined;
+
+  // La RPC ne retourne pas recent_documents — on les fetch en complément
+  if (!cleanData.recent_documents) {
+    const profileId = cleanData.profile_id;
+    if (profileId) {
+      const { data: recentDocs } = await serviceClient
+        .from("documents")
+        .select("id, type, nom_fichier, created_at")
+        .eq("tenant_id", profileId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      cleanData.recent_documents = recentDocs || [];
+    } else {
+      cleanData.recent_documents = [];
+    }
+  }
 
   if (cleanData.leases) {
     cleanData.leases = cleanData.leases.map((l: any) => ({

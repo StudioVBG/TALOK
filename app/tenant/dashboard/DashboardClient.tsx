@@ -29,6 +29,7 @@ import {
   Phone,
   Wrench,
   Zap,
+  Bell,
 } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { Badge } from "@/components/ui/badge";
@@ -86,9 +87,10 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     }
   }, [dashboard, error, isRefetching, retried, refetch]);
   
-  // 🔴 SOTA 2026: États pour les données dynamiques (Credit Score & Consommation)
+  // 🔴 SOTA 2026: États pour les données dynamiques (Credit Score & Consommation & Tips)
   const [creditScoreData, setCreditScoreData] = useState<CreditScoreData | null>(null);
   const [consumptionData, setConsumptionData] = useState<ConsumptionResponse | null>(null);
+  const [tipData, setTipData] = useState<{ message: string; action: { label: string; href: string }; priority: string } | null>(null);
   const [isLoadingScores, setIsLoadingScores] = useState(true);
   
   // 🔴 SOTA 2026: Hook temps réel pour synchronisation avec propriétaire
@@ -120,6 +122,13 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
           const consumptionData = await consumptionRes.json();
           setConsumptionData(consumptionData);
         }
+
+        // Fetch Tips personnalisés
+        const tipsRes = await fetch('/api/tenant/tips');
+        if (tipsRes.ok) {
+          const tipsData = await tipsRes.json();
+          setTipData(tipsData);
+        }
       } catch (error) {
         console.error("[Dashboard] Erreur chargement données dynamiques:", error);
       } finally {
@@ -147,8 +156,24 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
   // 1. Logique de tri du flux d'activité unifié (inclut les événements temps réel)
   const activityFeed = useMemo(() => {
     if (!dashboard) return [];
-    
-    const items = [
+
+    const parseDate = (dateStr: string | undefined | null) => {
+      if (!dateStr) return new Date();
+      const parsed = new Date(dateStr);
+      return isNaN(parsed.getTime()) ? new Date() : parsed;
+    };
+
+    const items: Array<{
+      id: string;
+      date: Date;
+      type: string;
+      title: string;
+      status?: string;
+      amount?: number;
+      isRealtime?: boolean;
+      importance?: string;
+      raw?: any;
+    }> = [
       // Événements temps réel en premier (les plus récents)
       ...realtime.recentEvents.map(event => ({
         id: `rt-${event.id}`,
@@ -156,37 +181,58 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
         type: event.type as string,
         title: event.title,
         status: event.action,
-        isRealtime: true, // Marqueur pour style spécial
+        isRealtime: true,
         importance: event.importance,
         raw: event
       })),
       // Factures
-      ...(dashboard.invoices || []).map(inv => {
-        const dateStr = (inv as any).created_at;
-        const parsed = dateStr ? new Date(dateStr) : new Date();
-        return {
-          id: `inv-${inv.id}`,
-          date: isNaN(parsed.getTime()) ? new Date() : parsed,
-          type: 'invoice',
-          title: `Loyer ${inv.periode}`,
-          amount: inv.montant_total,
-          status: inv.statut,
-          raw: inv
-        };
-      }),
+      ...(dashboard.invoices || []).map(inv => ({
+        id: `inv-${inv.id}`,
+        date: parseDate((inv as any).created_at),
+        type: 'invoice',
+        title: `Loyer ${inv.periode}`,
+        amount: inv.montant_total,
+        status: inv.statut,
+        raw: inv
+      })),
       // Tickets
-      ...(dashboard.tickets || []).map(t => {
-        const dateStr = t.created_at;
-        const parsed = dateStr ? new Date(dateStr) : new Date();
-        return {
-          id: `tick-${t.id}`,
-          date: isNaN(parsed.getTime()) ? new Date() : parsed,
-          type: 'ticket',
-          title: t.titre,
-          status: t.statut,
-          raw: t
-        };
-      })
+      ...(dashboard.tickets || []).map(t => ({
+        id: `tick-${t.id}`,
+        date: parseDate(t.created_at),
+        type: 'ticket',
+        title: t.titre,
+        status: t.statut,
+        raw: t
+      })),
+      // Notifications
+      ...(dashboard.notifications || []).map((n: any) => ({
+        id: `notif-${n.id}`,
+        date: parseDate(n.created_at),
+        type: 'notification',
+        title: n.title || "Notification",
+        status: n.read_at ? 'read' : 'unread',
+        raw: n
+      })),
+      // Signatures de bail récentes
+      ...((currentLease as any)?.lease_signers || [])
+        .filter((s: any) => s.signed_at)
+        .map((s: any) => ({
+          id: `sign-${s.id}`,
+          date: parseDate(s.signed_at),
+          type: 'lease',
+          title: `Bail signé par ${s.prenom || ''} ${s.nom || ''}`.trim(),
+          status: 'signed',
+          raw: s
+        })),
+      // Documents récents
+      ...(dashboard.recent_documents || []).map((d: any) => ({
+        id: `doc-${d.id}`,
+        date: parseDate(d.created_at),
+        type: 'document',
+        title: d.nom_fichier || d.type || "Document ajouté",
+        status: 'uploaded',
+        raw: d
+      })),
     ];
 
     // Dédupliquer par ID (les événements realtime peuvent être des doublons)
@@ -198,7 +244,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     });
 
     return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
-  }, [dashboard, realtime.recentEvents]);
+  }, [dashboard, realtime.recentEvents, currentLease]);
 
   // ✅ FIX: Vérifier si le locataire a déjà signé ce bail
   const hasSignedLease = useMemo(() => {
@@ -309,14 +355,16 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
 
   // Prochaine échéance basée sur la prochaine invoice non payée (source de vérité)
   // Fallback : calcul basé sur jour_paiement du bail si aucune invoice n'existe encore
+  // SOTA 2026 / Légal : Seules les vraies factures (sent, late, partial) déclenchent l'affichage
+  // d'un montant à payer. Pas de fallback frontend — la facture initiale est générée par le
+  // trigger DB generate_initial_signing_invoice() quand le bail passe à fully_signed.
   const nextDue = useMemo(() => {
     if (!currentLease) return null;
     const now = new Date();
 
-    // Chercher la prochaine facture non payée dans les invoices du dashboard
     const invoicesList = dashboard?.invoices || [];
     const nextInvoice = invoicesList
-      .filter((i: any) => i.statut !== 'paid' && i.statut !== 'cancelled' && i.statut !== 'draft')
+      .filter((i: any) => ['sent', 'late', 'partial', 'viewed'].includes(i.statut))
       .sort((a: any, b: any) => {
         const dateA = a.date_echeance || a.due_date || a.created_at;
         const dateB = b.date_echeance || b.due_date || b.created_at;
@@ -331,28 +379,12 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
         date: dueDate,
         amount: Number(nextInvoice.montant_total) || 0,
         daysLeft,
+        invoiceId: nextInvoice.id,
       };
     }
 
-    // Si le bail est fully_signed mais aucune facture n'existe encore (race condition),
-    // afficher "paiement en préparation" plutôt qu'une date fictive
-    if (currentLease.statut === 'fully_signed') {
-      const deposit = (currentLease as any).depot_de_garantie ?? 0;
-      const amount = (currentLease.loyer ?? 0) + (currentLease.charges_forfaitaires ?? 0) + deposit;
-      return { date: now, amount, daysLeft: 0 };
-    }
-
-    // Fallback : calcul basé sur jour_paiement du bail (bail actif sans facture impayée)
-    const jourPaiement = (currentLease as any).jour_paiement ?? 5;
-    let nextDate = new Date(now.getFullYear(), now.getMonth(), jourPaiement);
-    if (nextDate <= now) {
-      nextDate = new Date(now.getFullYear(), now.getMonth() + 1, jourPaiement);
-    }
-    const daysInMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
-    if (jourPaiement > daysInMonth) nextDate.setDate(daysInMonth);
-    const amount = (currentLease.loyer ?? 0) + (currentLease.charges_forfaitaires ?? 0);
-    const daysLeft = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return { date: nextDate, amount, daysLeft };
+    // Pas de facture réelle à payer — ne pas afficher de montant fictif
+    return null;
   }, [currentLease, dashboard?.invoices]);
 
   if (error) {
@@ -687,10 +719,14 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                           {formatCurrency(realtime.unpaidAmount > 0 ? realtime.unpaidAmount : dashboard.stats?.unpaid_amount)}
                         </p>
                       </div>
-                    ) : (!dashboard.invoices || dashboard.invoices.length === 0) && currentLease?.statut === 'active' ? (
+                    ) : (!dashboard.invoices || dashboard.invoices.length === 0) && (currentLease?.statut === 'active' || currentLease?.statut === 'fully_signed') ? (
                       <div className="mt-6 p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-blue-600 animate-spin" />
-                        <p className="text-sm font-bold text-blue-700">Votre première facture est en cours de génération</p>
+                        <Clock className="h-5 w-5 text-blue-600" />
+                        <p className="text-sm font-bold text-blue-700">
+                          {currentLease?.statut === 'fully_signed'
+                            ? "Votre facture initiale est en cours de préparation."
+                            : "Aucune facture émise pour l'instant. Votre prochaine facture sera générée automatiquement."}
+                        </p>
                       </div>
                     ) : (
                       <div className="mt-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-3">
@@ -866,14 +902,16 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "p-2 rounded-xl relative",
-                        item.type === 'invoice' ? 'bg-emerald-50 text-emerald-600' : 
+                        item.type === 'invoice' ? 'bg-emerald-50 text-emerald-600' :
                         item.type === 'lease' ? 'bg-indigo-50 text-indigo-600' :
                         item.type === 'document' ? 'bg-amber-50 text-amber-600' :
+                        item.type === 'notification' ? 'bg-blue-50 text-blue-600' :
                         'bg-muted text-muted-foreground'
                       )}>
-                        {item.type === 'invoice' ? <FileText className="h-4 w-4" /> : 
+                        {item.type === 'invoice' ? <FileText className="h-4 w-4" /> :
                          item.type === 'lease' ? <Home className="h-4 w-4" /> :
                          item.type === 'document' ? <FileText className="h-4 w-4" /> :
+                         item.type === 'notification' ? <Bell className="h-4 w-4" /> :
                          <Wrench className="h-4 w-4" />}
                         {/* Indicateur temps réel */}
                         {item.isRealtime && (
@@ -1058,34 +1096,25 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
           >
-            <GlassCard className="p-6 border-none bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-xl relative overflow-hidden flex items-center justify-between">
+            <GlassCard className={cn(
+              "p-6 border-none text-white shadow-xl relative overflow-hidden flex items-center justify-between",
+              tipData?.priority === "high"
+                ? "bg-gradient-to-br from-red-500 to-orange-500"
+                : tipData?.priority === "medium"
+                  ? "bg-gradient-to-br from-amber-400 to-orange-500"
+                  : "bg-gradient-to-br from-amber-400 to-orange-500"
+            )}>
               <div className="relative z-10 space-y-1">
                 <p className="font-black text-lg flex items-center gap-2">
                   <Sparkles className="h-5 w-5" /> Conseil de Tom
                 </p>
                 <p className="text-sm text-white/90 leading-relaxed font-medium max-w-sm">
-                  {!dashboard.insurance?.has_insurance
-                    ? "Pensez à déposer votre attestation d'assurance habitation pour être en conformité avec votre bail."
-                    : dashboard.insurance?.last_expiry_date && new Date(dashboard.insurance.last_expiry_date) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-                      ? `Votre attestation d'assurance expire le ${new Date(dashboard.insurance.last_expiry_date).toLocaleDateString("fr-FR")}. Pensez à la renouveler !`
-                      : (dashboard.stats?.unpaid_amount > 0)
-                        ? "Vous avez un impayé en cours. Régularisez-le rapidement pour maintenir un bon score locataire."
-                        : (currentLease?.statut === 'pending_signature' && !hasSignedLease)
-                          ? "Votre bail est prêt à être signé ! Finalisez la signature pour activer votre espace."
-                          : "Tout est en ordre ! Pensez à vérifier régulièrement vos relevés de compteurs pour suivre votre consommation."}
+                  {tipData?.message || "Tout est en ordre ! Pensez à vérifier régulièrement vos relevés de compteurs pour suivre votre consommation."}
                 </p>
               </div>
               <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-md h-11 px-6 rounded-xl font-bold" asChild>
-                <Link href={
-                  !dashboard.insurance?.has_insurance ? "/tenant/documents" :
-                  (dashboard.stats?.unpaid_amount > 0) ? "/tenant/payments" :
-                  (currentLease?.statut === 'pending_signature' && !hasSignedLease) ? "/tenant/onboarding/sign" :
-                  "/tenant/meters"
-                }>
-                  {!dashboard.insurance?.has_insurance ? "Déposer" :
-                   (dashboard.stats?.unpaid_amount > 0) ? "Régulariser" :
-                   (currentLease?.statut === 'pending_signature' && !hasSignedLease) ? "Signer" :
-                   "Mes compteurs"}
+                <Link href={tipData?.action?.href || "/tenant/meters"}>
+                  {tipData?.action?.label || "Mes compteurs"}
                 </Link>
               </Button>
               <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-white/10 rotate-12" />
