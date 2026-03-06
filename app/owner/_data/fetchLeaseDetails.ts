@@ -364,7 +364,7 @@ async function fetchLeaseDetailsFallback(
   // 4. Récupérer les factures du bail (SSOT 2026)
   const { data: invoices } = await supabase
     .from("invoices")
-    .select("id, periode, montant_total, montant_loyer, montant_charges, statut, created_at")
+    .select("id, periode, montant_total, montant_loyer, montant_charges, statut, created_at, metadata")
     .eq("lease_id", leaseId)
     .order("periode", { ascending: false })
     .limit(24);
@@ -614,7 +614,7 @@ async function fetchLeaseDetailsFallback(
     montant_charges: inv.montant_charges,
     statut: inv.statut as Invoice["statut"],
     created_at: inv.created_at,
-    metadata: null,
+    metadata: (inv as any).metadata ?? null,
   }));
 
   const result: LeaseDetails = {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,10 @@ import {
   ExternalLink,
   FileText,
   AlertTriangle,
+  Plus,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/helpers/format";
+import { ManualPaymentDialog } from "@/components/payments/ManualPaymentDialog";
 
 interface Payment {
   id: string;
@@ -40,6 +43,10 @@ interface LeasePaymentsTabProps {
   payments: Payment[];
   invoices: Invoice[];
   leaseStatus: string;
+  tenantName: string;
+  ownerName: string;
+  propertyAddress: string;
+  onPaymentRecorded?: () => void;
 }
 
 const PAYMENT_STATUS: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
@@ -67,7 +74,19 @@ function formatPeriode(periode: string): string {
   }
 }
 
-export function LeasePaymentsTab({ leaseId, payments, invoices, leaseStatus }: LeasePaymentsTabProps) {
+export function LeasePaymentsTab({
+  leaseId,
+  payments,
+  invoices,
+  leaseStatus,
+  tenantName,
+  ownerName,
+  propertyAddress,
+  onPaymentRecorded,
+}: LeasePaymentsTabProps) {
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+
   const isPreActivation = !["active", "terminated", "archived"].includes(leaseStatus);
 
   if (isPreActivation) {
@@ -98,7 +117,7 @@ export function LeasePaymentsTab({ leaseId, payments, invoices, leaseStatus }: L
           En attente du premier paiement
         </h3>
         <p className="text-sm text-slate-500 text-center max-w-md">
-          Aucune facture ni paiement enregistré pour ce bail.
+          La facture initiale sera disponible sous peu. Si elle n&apos;apparaît pas, vous pouvez la retrouver dans la comptabilité.
         </p>
         <Button variant="outline" size="sm" className="mt-4" asChild>
           <Link href={`/owner/money?lease_id=${leaseId}`}>
@@ -119,131 +138,171 @@ export function LeasePaymentsTab({ leaseId, payments, invoices, leaseStatus }: L
     .reduce((sum, p) => sum + p.montant, 0);
   const lateInvoices = invoices.filter((inv) => inv.statut === "late");
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6 py-4"
-    >
-      {/* Résumé */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100 text-center">
-          <p className="text-xs text-emerald-600 font-medium mb-1">Reçus</p>
-          <p className="text-lg font-bold text-emerald-700">{formatCurrency(totalReceived)}</p>
-        </div>
-        <div className="p-4 bg-amber-50 rounded-lg border border-amber-100 text-center">
-          <p className="text-xs text-amber-600 font-medium mb-1">En attente</p>
-          <p className="text-lg font-bold text-amber-700">{formatCurrency(totalPending)}</p>
-        </div>
-        <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-center">
-          <p className="text-xs text-slate-600 font-medium mb-1">Factures</p>
-          <p className="text-lg font-bold text-slate-700">{invoices.length}</p>
-        </div>
-      </div>
+  const handleOpenPaymentDialog = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setPaymentDialogOpen(true);
+  };
 
-      {/* Alerte retards */}
-      {lateInvoices.length > 0 && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-red-800">
-              {lateInvoices.length} facture{lateInvoices.length > 1 ? "s" : ""} en retard
-            </p>
-            <p className="text-xs text-red-600">
-              {formatCurrency(lateInvoices.reduce((s, i) => s + i.montant_total, 0))} impayés
-            </p>
+  const handlePaymentComplete = () => {
+    setPaymentDialogOpen(false);
+    setSelectedInvoice(null);
+    onPaymentRecorded?.();
+  };
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6 py-4"
+      >
+        {/* Résumé */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100 text-center">
+            <p className="text-xs text-emerald-600 font-medium mb-1">Reçus</p>
+            <p className="text-lg font-bold text-emerald-700">{formatCurrency(totalReceived)}</p>
+          </div>
+          <div className="p-4 bg-amber-50 rounded-lg border border-amber-100 text-center">
+            <p className="text-xs text-amber-600 font-medium mb-1">En attente</p>
+            <p className="text-lg font-bold text-amber-700">{formatCurrency(totalPending)}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-center">
+            <p className="text-xs text-slate-600 font-medium mb-1">Factures</p>
+            <p className="text-lg font-bold text-slate-700">{invoices.length}</p>
           </div>
         </div>
-      )}
 
-      {/* Factures */}
-      {invoices.length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-            <FileText className="h-3.5 w-3.5" />
-            Factures
-          </h4>
-          <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
-            {invoices.slice(0, 12).map((invoice) => {
-              const invStatus = INVOICE_STATUS[invoice.statut] || INVOICE_STATUS.draft;
-              const isInitial = invoice.metadata?.type === "initial_invoice";
+        {/* Alerte retards */}
+        {lateInvoices.length > 0 && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">
+                {lateInvoices.length} facture{lateInvoices.length > 1 ? "s" : ""} en retard
+              </p>
+              <p className="text-xs text-red-600">
+                {formatCurrency(lateInvoices.reduce((s, i) => s + i.montant_total, 0))} impayés
+              </p>
+            </div>
+          </div>
+        )}
 
-              return (
-                <div key={invoice.id} className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                      <FileText className="h-4 w-4 text-slate-500" />
+        {/* Factures */}
+        {invoices.length > 0 && (
+          <div>
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <FileText className="h-3.5 w-3.5" />
+              Factures
+            </h4>
+            <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+              {invoices.slice(0, 12).map((invoice) => {
+                const invStatus = INVOICE_STATUS[invoice.statut] || INVOICE_STATUS.draft;
+                const isInitial = invoice.metadata?.type === "initial_invoice";
+
+                return (
+                  <div key={invoice.id} className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        <FileText className="h-4 w-4 text-slate-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {isInitial ? "Facture initiale" : formatPeriode(invoice.periode)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatCurrency(invoice.montant_loyer)} + {formatCurrency(invoice.montant_charges)} charges
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {isInitial ? "Facture initiale" : formatPeriode(invoice.periode)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatCurrency(invoice.montant_loyer)} + {formatCurrency(invoice.montant_charges)} charges
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold">{formatCurrency(invoice.montant_total)}</span>
+                      <Badge className={invStatus.color} variant="outline">
+                        {invStatus.label}
+                      </Badge>
+                      {invoice.statut !== "paid" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="ml-1 text-xs gap-1"
+                          onClick={() => handleOpenPaymentDialog(invoice)}
+                        >
+                          <Plus className="h-3 w-3" />
+                          Enregistrer
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold">{formatCurrency(invoice.montant_total)}</span>
-                    <Badge className={invStatus.color} variant="outline">
-                      {invStatus.label}
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Paiements */}
+        {payments.length > 0 && (
+          <div>
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <CreditCard className="h-3.5 w-3.5" />
+              Paiements reçus
+            </h4>
+            <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+              {payments.map((payment) => {
+                const statusConf = PAYMENT_STATUS[payment.statut] || PAYMENT_STATUS.pending;
+                const StatusIcon = statusConf.icon;
+
+                return (
+                  <div key={payment.id} className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center ${statusConf.color}`}>
+                        <StatusIcon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{formatCurrency(payment.montant)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {payment.periode
+                            ? formatPeriode(payment.periode)
+                            : payment.date_paiement
+                              ? new Date(payment.date_paiement).toLocaleDateString("fr-FR")
+                              : "Date inconnue"}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className={statusConf.color} variant="outline">
+                      {statusConf.label}
                     </Badge>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
+        )}
+
+        {/* Lien vers comptabilité complète */}
+        <div className="flex justify-end pt-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/owner/money?lease_id=${leaseId}`}>
+              <CreditCard className="h-3.5 w-3.5 mr-2" />
+              Voir la comptabilité complète
+            </Link>
+          </Button>
         </div>
+      </motion.div>
+
+      {/* Dialog d'enregistrement de paiement */}
+      {selectedInvoice && (
+        <ManualPaymentDialog
+          open={paymentDialogOpen}
+          onOpenChange={setPaymentDialogOpen}
+          invoiceId={selectedInvoice.id}
+          invoiceReference={`INV-${selectedInvoice.id.slice(0, 8).toUpperCase()}`}
+          amount={selectedInvoice.montant_total}
+          tenantName={tenantName}
+          ownerName={ownerName}
+          propertyAddress={propertyAddress}
+          periode={selectedInvoice.periode}
+          onPaymentComplete={handlePaymentComplete}
+        />
       )}
-
-      {/* Paiements */}
-      {payments.length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-            <CreditCard className="h-3.5 w-3.5" />
-            Paiements reçus
-          </h4>
-          <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
-            {payments.map((payment) => {
-              const statusConf = PAYMENT_STATUS[payment.statut] || PAYMENT_STATUS.pending;
-              const StatusIcon = statusConf.icon;
-
-              return (
-                <div key={payment.id} className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${statusConf.color}`}>
-                      <StatusIcon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{formatCurrency(payment.montant)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {payment.periode
-                          ? formatPeriode(payment.periode)
-                          : payment.date_paiement
-                            ? new Date(payment.date_paiement).toLocaleDateString("fr-FR")
-                            : "Date inconnue"}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge className={statusConf.color} variant="outline">
-                    {statusConf.label}
-                  </Badge>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Lien vers comptabilité complète */}
-      <div className="flex justify-end pt-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/owner/money?lease_id=${leaseId}`}>
-            <CreditCard className="h-3.5 w-3.5 mr-2" />
-            Voir la comptabilité complète
-          </Link>
-        </Button>
-      </div>
-    </motion.div>
+    </>
   );
 }
