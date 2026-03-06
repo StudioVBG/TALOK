@@ -17,7 +17,7 @@ import {
   FileText,
   FolderOpen,
   Shield,
-  Images,
+  Image,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { ProviderBottomNav } from "@/components/layout/provider-bottom-nav";
@@ -35,7 +35,7 @@ const navigation = [
   { name: "Mes documents", href: "/provider/documents", icon: FolderOpen },
   { name: "Mes avis", href: "/provider/reviews", icon: Star },
   { name: "Conformité", href: "/provider/compliance", icon: Shield },
-  { name: "Mon portfolio", href: "/provider/portfolio", icon: Images },
+  { name: "Mon portfolio", href: "/provider/portfolio", icon: Image },
 ];
 
 const secondaryNav = [
