@@ -21,6 +21,9 @@ import {
   CreditCard,
   Wallet,
   Mail,
+  Palette,
+  Inbox,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -61,6 +64,7 @@ const adminNavItems: NavCategory[] = [
     category: "Gestion",
     items: [
       { href: "/admin/people", label: "Annuaire", icon: Users },
+      { href: "/admin/tenants", label: "Locataires", icon: UserCheck },
       { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
       { href: "/admin/providers/pending", label: "Validation Prestataires", icon: ShieldCheck },
       { href: "/admin/templates", label: "Templates Baux", icon: ScrollText },
@@ -76,12 +80,15 @@ const adminNavItems: NavCategory[] = [
       { href: "/admin/integrations", label: "Intégrations", icon: Key },
       { href: "/admin/moderation", label: "Modération", icon: Shield },
       { href: "/admin/accounting", label: "Comptabilité", icon: Calculator },
+      { href: "/admin/branding", label: "Branding", icon: Palette },
+      { href: "/admin/emails", label: "Emails", icon: Inbox },
     ],
   },
   {
     category: "Sécurité & Conformité",
     items: [
       { href: "/admin/privacy", label: "RGPD", icon: Lock },
+      { href: "/admin/compliance", label: "Conformité", icon: ShieldCheck },
       { href: "/admin/audit-logs", label: "Journal d'audit", icon: ScrollText },
     ],
   },

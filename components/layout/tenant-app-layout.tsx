@@ -18,6 +18,10 @@ import {
   Gauge,
   Users,
   FileSearch,
+  Receipt,
+  PenTool,
+  Scale,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,10 +69,14 @@ const allNavItems = [
   { name: "Tableau de bord", href: "/tenant/dashboard", icon: LayoutDashboard, tourId: "nav-dashboard", group: "Mon Espace" },
   { name: "Mon Logement", href: "/tenant/lease", icon: Home, tourId: "nav-lease", group: "Mon Espace" },
   { name: "Documents", href: "/tenant/documents", icon: FileText, tourId: "nav-documents", group: "Mes Documents" },
+  { name: "Quittances", href: "/tenant/receipts", icon: Receipt, tourId: "nav-receipts", group: "Mes Documents" },
+  { name: "Signatures", href: "/tenant/signatures", icon: PenTool, tourId: "nav-signatures", group: "Mes Documents" },
   { name: "Loyers & Paiements", href: "/tenant/payments", icon: CreditCard, tourId: "nav-payments", group: "Mes Finances" },
   { name: "Candidatures", href: "/tenant/applications", icon: FileSearch, tourId: "nav-applications", group: "Mes Documents" },
   { name: "Demandes", href: "/tenant/requests", icon: Wrench, tourId: "nav-requests", group: "Assistance" },
   { name: "Messages", href: "/tenant/messages", icon: MessageSquare, tourId: "nav-messages", group: "Assistance" },
+  { name: "Mes droits", href: "/tenant/legal-rights", icon: Scale, tourId: "nav-legal-rights", group: "Assistance" },
+  { name: "Visites", href: "/tenant/visits", icon: Eye, tourId: "nav-visits", group: "Assistance" },
 ];
 
 const footerNavItems = [
