@@ -19,8 +19,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Lock, Shield, Smartphone } from "lucide-react";
+import { Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { SecuritySettings } from "@/components/settings/security-settings";
 
 export function ProfileSecurityTab() {
   const router = useRouter();
@@ -149,30 +150,8 @@ export function ProfileSecurityTab() {
         </CardContent>
       </Card>
 
-      {/* 2FA placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Smartphone className="h-5 w-5" />
-            Authentification à deux facteurs
-          </CardTitle>
-          <CardDescription>
-            Renforcez la sécurité de votre compte
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-            <Shield className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-medium">Bientôt disponible</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                L&apos;authentification à deux facteurs sera disponible
-                prochainement pour renforcer la sécurité de votre compte.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 2FA & Passkeys */}
+      <SecuritySettings />
     </div>
   );
 }
