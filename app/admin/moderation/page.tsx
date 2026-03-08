@@ -163,8 +163,23 @@ export default function AdminModerationPage() {
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ModerationQueueItem | null>(null);
+  const [selectedRule, setSelectedRule] = useState<ModerationRule | null>(null);
+
+  // Edit rule form (populated when editing)
+  const [editRule, setEditRule] = useState({
+    name: "",
+    description: "",
+    flow_type: "profile",
+    ai_enabled: true,
+    ai_threshold: 0.75,
+    rule_config: "{}",
+    auto_action: "flag",
+    priority: 50,
+  });
 
   // Filter states
   const [filterPriority, setFilterPriority] = useState<string>("all");
@@ -366,6 +381,132 @@ export default function AdminModerationPage() {
       fetchData();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Erreur";
+      toast({
+        title: "Erreur",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  }
+
+  // Open edit dialog with pre-populated data
+  function handleOpenEditRule(rule: ModerationRule) {
+    setSelectedRule(rule);
+    setEditRule({
+      name: rule.name,
+      description: rule.description || "",
+      flow_type: rule.flow_type,
+      ai_enabled: rule.ai_enabled,
+      ai_threshold: rule.ai_threshold,
+      rule_config: JSON.stringify(rule.rule_config || {}, null, 2),
+      auto_action: rule.auto_action,
+      priority: rule.priority,
+    });
+    setEditDialogOpen(true);
+  }
+
+  // Save edited rule
+  async function handleSaveEditRule() {
+    if (!selectedRule || !editRule.name || !editRule.flow_type) {
+      toast({
+        title: "Champs requis",
+        description: "Veuillez remplir tous les champs obligatoires",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      let ruleConfig = {};
+      try {
+        ruleConfig = JSON.parse(editRule.rule_config);
+      } catch {
+        toast({
+          title: "JSON invalide",
+          description: "La configuration doit être un JSON valide",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch(`/api/admin/moderation/rules/${selectedRule.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
+        },
+        body: JSON.stringify({
+          name: editRule.name,
+          description: editRule.description,
+          flow_type: editRule.flow_type,
+          ai_enabled: editRule.ai_enabled,
+          ai_threshold: editRule.ai_threshold,
+          rule_config: ruleConfig,
+          auto_action: editRule.auto_action,
+          priority: editRule.priority,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erreur lors de la mise à jour");
+      }
+
+      toast({
+        title: "Règle mise à jour",
+        description: "La règle de modération a été modifiée avec succès.",
+      });
+
+      setEditDialogOpen(false);
+      setSelectedRule(null);
+      fetchData();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Impossible de modifier la règle";
+      toast({
+        title: "Erreur",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  }
+
+  // Delete rule
+  async function handleDeleteRule() {
+    if (!selectedRule) return;
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch(`/api/admin/moderation/rules/${selectedRule.id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erreur lors de la suppression");
+      }
+
+      toast({
+        title: "Règle supprimée",
+        description: "La règle de modération a été supprimée.",
+      });
+
+      setDeleteDialogOpen(false);
+      setSelectedRule(null);
+      fetchData();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Impossible de supprimer la règle";
       toast({
         title: "Erreur",
         description: errorMessage,
@@ -781,10 +922,22 @@ export default function AdminModerationPage() {
                                 {rule.is_active ? "Désactiver" : "Activer"}
                               </TooltipContent>
                             </Tooltip>
-                            <Button variant="outline" size="sm">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenEditRule(rule)}
+                            >
                               Modifier
                             </Button>
-                            <Button variant="ghost" size="sm" className="text-red-500">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500"
+                              onClick={() => {
+                                setSelectedRule(rule);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
@@ -1075,6 +1228,174 @@ export default function AdminModerationPage() {
             )}
           </SheetContent>
         </Sheet>
+        {/* Edit Rule Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-blue-500" />
+                Modifier la règle
+              </DialogTitle>
+              <DialogDescription>
+                Modifiez les paramètres de la règle de modération
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-rule-name">Nom de la règle *</Label>
+                <Input
+                  id="edit-rule-name"
+                  value={editRule.name}
+                  onChange={(e) => setEditRule({ ...editRule, name: e.target.value })}
+                  placeholder="Ex: Détection spam profils"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-rule-description">Description</Label>
+                <Textarea
+                  id="edit-rule-description"
+                  value={editRule.description}
+                  onChange={(e) => setEditRule({ ...editRule, description: e.target.value })}
+                  placeholder="Décrivez ce que cette règle détecte..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-flow-type">Type de flux *</Label>
+                  <Select
+                    value={editRule.flow_type}
+                    onValueChange={(value) => setEditRule({ ...editRule, flow_type: value })}
+                  >
+                    <SelectTrigger id="edit-flow-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FLOW_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          <div className="flex items-center gap-2">
+                            <type.icon className="h-4 w-4" />
+                            {type.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-auto-action">Action automatique</Label>
+                  <Select
+                    value={editRule.auto_action}
+                    onValueChange={(value) => setEditRule({ ...editRule, auto_action: value })}
+                  >
+                    <SelectTrigger id="edit-auto-action">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AUTO_ACTIONS.map((action) => (
+                        <SelectItem key={action.value} value={action.value}>
+                          <span className={action.color}>{action.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-4 p-4 border rounded-lg bg-purple-500/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-5 w-5 text-purple-500" />
+                    <Label htmlFor="edit-ai-enabled">Activer le scoring IA</Label>
+                  </div>
+                  <Switch
+                    id="edit-ai-enabled"
+                    checked={editRule.ai_enabled}
+                    onCheckedChange={(checked) => setEditRule({ ...editRule, ai_enabled: checked })}
+                  />
+                </div>
+
+                {editRule.ai_enabled && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Seuil de confiance IA</Label>
+                      <span className="text-sm font-medium">{Math.round(editRule.ai_threshold * 100)}%</span>
+                    </div>
+                    <Slider
+                      value={[editRule.ai_threshold * 100]}
+                      onValueChange={([value]) => setEditRule({ ...editRule, ai_threshold: value / 100 })}
+                      min={50}
+                      max={100}
+                      step={5}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-rule-config">Configuration (JSON)</Label>
+                <Textarea
+                  id="edit-rule-config"
+                  value={editRule.rule_config}
+                  onChange={(e) => setEditRule({ ...editRule, rule_config: e.target.value })}
+                  className="font-mono text-sm"
+                  rows={4}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Priorité</Label>
+                  <span className="text-sm font-medium">{editRule.priority}</span>
+                </div>
+                <Slider
+                  value={[editRule.priority]}
+                  onValueChange={([value]) => setEditRule({ ...editRule, priority: value })}
+                  min={1}
+                  max={100}
+                  step={1}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleSaveEditRule}>
+                Enregistrer les modifications
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Rule Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-500">
+                <Trash2 className="h-5 w-5" />
+                Supprimer la règle
+              </DialogTitle>
+              <DialogDescription>
+                Êtes-vous sûr de vouloir supprimer la règle
+                <strong className="text-foreground"> {selectedRule?.name}</strong> ?
+                Cette action est irréversible.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteRule}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );

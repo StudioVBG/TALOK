@@ -22,8 +22,7 @@ import {
   Wallet,
   Mail,
   Palette,
-  Inbox,
-  UserCheck,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -64,31 +63,29 @@ const adminNavItems: NavCategory[] = [
     category: "Gestion",
     items: [
       { href: "/admin/people", label: "Annuaire", icon: Users },
-      { href: "/admin/tenants", label: "Locataires", icon: UserCheck },
       { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
-      { href: "/admin/providers/pending", label: "Validation Prestataires", icon: ShieldCheck },
       { href: "/admin/templates", label: "Templates Baux", icon: ScrollText },
       { href: "/admin/email-templates", label: "Templates Email", icon: Mail },
       { href: "/admin/blog", label: "Blog", icon: BookOpen },
     ],
   },
   {
-    category: "Configuration",
+    category: "Commercial",
     items: [
       { href: "/admin/plans", label: "Forfaits & Tarifs", icon: CreditCard },
       { href: "/admin/subscriptions", label: "Abonnements", icon: Wallet },
-      { href: "/admin/integrations", label: "Intégrations", icon: Key },
-      { href: "/admin/moderation", label: "Modération", icon: Shield },
       { href: "/admin/accounting", label: "Comptabilité", icon: Calculator },
       { href: "/admin/branding", label: "Branding", icon: Palette },
-      { href: "/admin/emails", label: "Emails", icon: Inbox },
+      { href: "/admin/integrations", label: "Intégrations", icon: Key },
     ],
   },
   {
     category: "Sécurité & Conformité",
     items: [
+      { href: "/admin/moderation", label: "Modération IA", icon: Brain },
+      { href: "/admin/providers/pending", label: "Validation Prestataires", icon: ShieldCheck },
+      { href: "/admin/compliance", label: "Documents & Conformité", icon: Shield },
       { href: "/admin/privacy", label: "RGPD", icon: Lock },
-      { href: "/admin/compliance", label: "Conformité", icon: ShieldCheck },
       { href: "/admin/audit-logs", label: "Journal d'audit", icon: ScrollText },
     ],
   },
