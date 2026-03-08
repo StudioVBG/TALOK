@@ -215,7 +215,7 @@ export async function POST(
 
         const ownerId = leaseFull.property?.owner_id;
 
-        if (ownerId) {
+        if (ownerId && tenantId) {
           // Garde anti-doublon : vérifier si la facture initiale existe déjà
           // (créée par le trigger DB à la signature fully_signed)
           const { data: existingInitialInvoice } = await serviceClient
@@ -269,7 +269,7 @@ export async function POST(
               .insert({
                 lease_id: leaseId,
                 owner_id: ownerId,
-                tenant_id: tenantId ?? null,
+                tenant_id: tenantId,
                 issuer_entity_id: (leaseFull as any).signatory_entity_id ?? null,
                 periode: monthStr,
                 montant_loyer: Math.round(finalRent * 100) / 100,

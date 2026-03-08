@@ -425,8 +425,10 @@ export async function POST(
 
           const ownerId = (leaseFull as any).property?.owner_id;
 
-          if (ownerId) {
+          if (ownerId && tenantId) {
             // Garde anti-doublon : vérifier si la facture initiale existe déjà
+            // Note: tenant_id est NOT NULL dans la table invoices, donc on skip si pas de tenant résolu
+            // Le trigger DB (trg_invoice_on_lease_fully_signed) s'en charge en parallèle
             const { data: existingInitialInvoice } = await serviceClient
               .from("invoices")
               .select("id")
@@ -466,13 +468,16 @@ export async function POST(
               const periodEndDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
               const periodEnd = periodEndDate.toISOString().slice(0, 10);
 
+              const invoiceNumber = `INI-${monthStr.replace("-", "")}-${leaseId.slice(0, 8).toUpperCase()}`;
+
               const { error: invoiceError } = await serviceClient
                 .from("invoices")
                 .insert({
                   lease_id: leaseId,
                   owner_id: ownerId,
-                  tenant_id: tenantId ?? null,
+                  tenant_id: tenantId,
                   issuer_entity_id: (leaseFull as any).signatory_entity_id ?? null,
+                  invoice_number: invoiceNumber,
                   periode: monthStr,
                   montant_loyer: Math.round(finalRent * 100) / 100,
                   montant_charges: Math.round(finalCharges * 100) / 100,
@@ -481,7 +486,7 @@ export async function POST(
                   period_start: (leaseFull as any).date_debut,
                   period_end: periodEnd,
                   statut: 'sent',
-                  description: `Facture initiale - Dépôt de garantie + ${isMidMonthStart ? "loyer proratisé" : "1er mois de loyer"}`,
+                  notes: `Facture initiale - Dépôt de garantie + ${isMidMonthStart ? "loyer proratisé" : "1er mois de loyer"}`,
                   metadata: {
                     type: 'initial_invoice',
                     includes_deposit: deposit > 0,
