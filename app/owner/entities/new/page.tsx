@@ -83,6 +83,7 @@ export default function NewEntityPage() {
         villeSiege: formData.villeSiege || null,
         isDefault: false,
         isActive: true,
+        status: 'active',
         couleur: null,
         propertyCount: 0,
         activeLeaseCount: 0,
