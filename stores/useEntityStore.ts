@@ -24,6 +24,7 @@ export interface LegalEntitySummary {
   villeSiege: string | null;
   isDefault: boolean;
   isActive: boolean;
+  status: 'draft' | 'active' | 'archived';
   couleur: string | null;
   propertyCount: number;
   activeLeaseCount: number;
@@ -113,6 +114,7 @@ export const useEntityStore = create<EntityState>()(
                 villeSiege: (e.ville_siege as string) || null,
                 isDefault: false,
                 isActive: (e.is_active as boolean) ?? true,
+                status: (e.status as 'draft' | 'active' | 'archived') || 'active',
                 couleur: (e.couleur as string) || null,
                 propertyCount: s?.properties_count ?? 0,
                 activeLeaseCount: s?.active_leases ?? 0,

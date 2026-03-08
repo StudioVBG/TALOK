@@ -127,6 +127,7 @@ export interface LegalEntity {
   type_gerance?: GeranceType | null;
 
   // Statut
+  status?: 'draft' | 'active' | 'archived';
   is_active: boolean;
   date_radiation?: string | null;
   motif_radiation?: string | null;

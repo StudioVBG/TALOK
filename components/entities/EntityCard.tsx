@@ -18,9 +18,13 @@ interface EntityCardProps {
   isActive?: boolean;
   /** Compact mode for profile tab — hides stats and status rows */
   compact?: boolean;
+  /** Selection mode props */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggle?: (id: string) => void;
 }
 
-export function EntityCard({ entity, isActive, compact }: EntityCardProps) {
+export function EntityCard({ entity, isActive, compact, selectable, selected, onToggle }: EntityCardProps) {
   const Icon = getEntityIcon(entity.entityType);
   const typeLabel = ENTITY_TYPE_LABELS[entity.entityType] || entity.entityType;
   const hasWarnings = !entity.hasIban || !entity.siret;
@@ -29,10 +33,27 @@ export function EntityCard({ entity, isActive, compact }: EntityCardProps) {
     <Card
       className={cn(
         "relative transition-all hover:shadow-md",
-        isActive && "ring-2 ring-primary"
+        isActive && "ring-2 ring-primary",
+        selectable && "cursor-pointer",
+        selected && "ring-2 ring-destructive bg-destructive/5"
       )}
+      onClick={selectable && onToggle ? () => onToggle(entity.id) : undefined}
     >
       <CardContent className={cn("p-5", compact && "p-4")}>
+        {selectable && (
+          <div className="absolute top-3 right-3 z-10">
+            <div
+              className={cn(
+                "h-5 w-5 rounded border-2 flex items-center justify-center transition-colors",
+                selected
+                  ? "bg-destructive border-destructive text-white"
+                  : "border-muted-foreground/30 bg-background"
+              )}
+            >
+              {selected && <Check className="h-3 w-3" />}
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className={cn("flex items-start gap-3", !compact && "mb-4")}>
           <div
