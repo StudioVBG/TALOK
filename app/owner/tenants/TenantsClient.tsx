@@ -124,10 +124,10 @@ function TenantScoreStars({ score }: { score: number }) {
 function LeaseStatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; className: string }> = {
     active: { label: "Actif", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-    pending_signature: { label: "Signature en cours", className: "bg-amber-100 text-amber-700 border-amber-200" },
+    sent: { label: "Envoyé", className: "bg-amber-100 text-amber-700 border-amber-200" },
     partially_signed: { label: "Partiellement signé", className: "bg-orange-100 text-orange-700 border-orange-200" },
-    pending_owner_signature: { label: "Signature propriétaire", className: "bg-blue-100 text-blue-700 border-blue-200" },
     fully_signed: { label: "Signé", className: "bg-indigo-100 text-indigo-700 border-indigo-200" },
+    amended: { label: "Avenant", className: "bg-blue-100 text-blue-700 border-blue-200" },
     terminated: { label: "Terminé", className: "bg-slate-100 text-slate-600 border-slate-200" },
     invitation_pending: { label: "Invitation envoyée", className: "bg-purple-100 text-purple-700 border-purple-200" },
   };

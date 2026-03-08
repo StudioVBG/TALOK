@@ -2,11 +2,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 import { TenantsClient } from "./TenantsClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { resolveTenantDisplay } from "@/lib/helpers/resolve-tenant-display";
 import { computeTenantScore, getTenantDisplayId, getTenantLeaseStatus } from "@/lib/helpers/tenant-score";
+import { TENANT_VISIBLE_LEASE_STATUSES } from "@/lib/constants/lease-statuses";
 
 interface LeaseSignerProfile {
   id: string;
@@ -68,10 +70,19 @@ interface TenantWithDetails {
 
 async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> {
   const supabase = await createClient();
+  const serviceClient = getServiceClient();
 
-  // Récupérer tous les baux du propriétaire avec les infos locataires
-  // ✅ FIX: Inclure invited_email et invited_name pour les locataires en attente
-  const { data: leases, error } = await supabase
+  // 1. Récupérer les propriétés du propriétaire (client RLS pour la sécurité)
+  const { data: properties } = await supabase
+    .from("properties")
+    .select("id")
+    .eq("owner_id", ownerId);
+
+  const propertyIds = properties?.map((p) => p.id) || [];
+  if (propertyIds.length === 0) return [];
+
+  // 2. Récupérer les baux + signers via service client (bypass RLS pour les joins profiles)
+  const { data: leases, error } = await serviceClient
     .from("leases")
     .select(`
       id,
@@ -81,12 +92,11 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
       type_bail,
       loyer,
       charges_forfaitaires,
-      property:properties!inner(
+      property:properties(
         id,
         adresse_complete,
         ville,
-        type,
-        owner_id
+        type
       ),
       lease_signers(
         role,
@@ -103,32 +113,22 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
         )
       )
     `)
-    .eq("property.owner_id", ownerId)
-    .in("statut", [
-      "active",
-      "pending_signature",
-      "partially_signed",
-      "pending_owner_signature",
-      "fully_signed",
-      "notice_given",
-      "sent",
-    ]);
+    .in("property_id", propertyIds)
+    .in("statut", [...TENANT_VISIBLE_LEASE_STATUSES]);
 
   if (error) {
     console.error("[fetchOwnerTenants] Error:", error);
     return [];
   }
 
-  // Batch: collect lease_ids pour tous les signers avec profil (une requête invoices par lot)
+  // Batch: collect lease_ids pour tous les signers locataires (y compris invités)
   const leaseIds: string[] = [];
   for (const lease of leases || []) {
     const signers = (lease.lease_signers as LeaseSignerRow[] | undefined)?.filter(
-      (s) => (s.role === "locataire_principal" || s.role === "colocataire") && s.profile?.id
+      (s) => s.role === "locataire_principal" || s.role === "colocataire"
     ) || [];
-    for (const s of signers) {
-      if (s.profile?.id) {
-        leaseIds.push(lease.id);
-      }
+    if (signers.length > 0) {
+      leaseIds.push(lease.id);
     }
   }
 
@@ -137,7 +137,7 @@ async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> 
 
   if (leaseIds.length > 0) {
     const uniqueLeaseIds = [...new Set(leaseIds)];
-    const { data: allInvoices, error: invError } = await supabase
+    const { data: allInvoices, error: invError } = await serviceClient
       .from("invoices")
       .select("lease_id, tenant_id, statut, montant_total, date_paiement, date_echeance")
       .in("lease_id", uniqueLeaseIds);
