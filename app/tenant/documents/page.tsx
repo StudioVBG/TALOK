@@ -15,7 +15,8 @@
  * - H-14 : prefers-reduced-motion
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useDocuments } from "@/lib/hooks/use-documents";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -177,8 +178,17 @@ export default function TenantDocumentsPage() {
   const { data: documents = [], isLoading, error, refetch } = useDocuments();
   const { dashboard } = useTenantData();
   const { profile } = useAuth();
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  // SOTA 2026: Support ?type=quittance pour le redirect depuis /tenant/receipts
+  useEffect(() => {
+    const typeParam = searchParams.get("type");
+    if (typeParam) {
+      setTypeFilter(typeParam);
+    }
+  }, [searchParams]);
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [periodFilter, setPeriodFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"date_desc" | "date_asc" | "type">("date_desc");
