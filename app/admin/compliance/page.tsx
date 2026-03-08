@@ -112,17 +112,20 @@ export default function AdminCompliancePage() {
   const { data: complianceData, isLoading: loading, refetch } = useQuery({
     queryKey: [...adminKeys.all, "compliance"],
     queryFn: async () => {
-      const pendingResponse = await fetch("/api/admin/compliance/documents/pending");
+      const [pendingResponse, expiringResponse] = await Promise.all([
+        fetch("/api/admin/compliance/documents/pending"),
+        fetch("/api/admin/compliance/documents/expiring").catch(() => null),
+      ]);
+
       if (!pendingResponse.ok) throw new Error("Failed to fetch pending documents");
       const data = await pendingResponse.json();
-
-      // TODO: Récupérer les documents qui expirent bientôt
-      // const expiringResponse = await fetch("/api/admin/compliance/documents/expiring");
-      // const expiringData = expiringResponse.ok ? await expiringResponse.json() : { documents: [] };
+      const expiringData = expiringResponse?.ok
+        ? await expiringResponse.json()
+        : { documents: [] };
 
       return {
         pendingDocs: (data.documents || []) as PendingDocument[],
-        expiringDocs: [] as ExpiringDocument[],
+        expiringDocs: (expiringData.documents || []) as ExpiringDocument[],
       };
     },
     staleTime: 60_000,
@@ -197,6 +200,39 @@ export default function AdminCompliancePage() {
       });
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const [notifying, setNotifying] = useState<string | null>(null);
+
+  const handleNotifyProvider = async (doc: ExpiringDocument) => {
+    setNotifying(doc.document_id);
+    try {
+      const response = await fetch("/api/admin/compliance/documents/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider_profile_id: doc.provider_profile_id,
+          document_type: doc.document_type,
+          document_id: doc.document_id,
+          expiration_date: doc.expiration_date,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Erreur lors de la notification");
+      }
+
+      toast({
+        title: "Notification envoyée",
+        description: `${doc.provider_name} a été notifié de l'expiration de son document.`,
+      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Impossible d'envoyer la notification";
+      toast({ title: "Erreur", description: msg, variant: "destructive" });
+    } finally {
+      setNotifying(null);
     }
   };
 
@@ -473,7 +509,18 @@ export default function AdminCompliancePage() {
                           <Badge variant="outline">{DOCUMENT_TYPE_LABELS[doc.document_type]}</Badge>
                           <span className="text-muted-foreground">{new Date(doc.expiration_date).toLocaleDateString("fr-FR")}</span>
                         </div>
-                        <Button variant="outline" size="sm" className="w-full">Notifier</Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          disabled={notifying === doc.document_id}
+                          onClick={() => handleNotifyProvider(doc)}
+                        >
+                          {notifying === doc.document_id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : null}
+                          Notifier
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -516,7 +563,15 @@ export default function AdminCompliancePage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="outline" size="sm">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={notifying === doc.document_id}
+                              onClick={() => handleNotifyProvider(doc)}
+                            >
+                              {notifying === doc.document_id ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : null}
                               Notifier
                             </Button>
                           </TableCell>

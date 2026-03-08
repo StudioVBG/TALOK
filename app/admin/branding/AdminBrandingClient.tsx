@@ -42,6 +42,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { BrandingForm } from "@/components/white-label/branding-form";
 import { FeatureList } from "@/components/white-label/feature-gate";
@@ -57,6 +58,7 @@ interface AdminBrandingClientProps {
 }
 
 export function AdminBrandingClient({ organizations }: AdminBrandingClientProps) {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrg, setSelectedOrg] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState("list");
@@ -93,18 +95,59 @@ export function AdminBrandingClient({ organizations }: AdminBrandingClientProps)
   };
 
   const handleSaveBranding = async (updates: Partial<OrganizationBranding>) => {
-    // En production: appel API pour sauvegarder
-    console.log("Save branding:", updates);
-    // Simuler un délai
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (!selectedOrg) return;
+    try {
+      const response = await fetch(`/api/admin/branding/${selectedOrg.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Erreur lors de la sauvegarde");
+      }
+
+      toast({
+        title: "Branding sauvegardé",
+        description: `La configuration de ${selectedOrg.name} a été mise à jour.`,
+      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Impossible de sauvegarder";
+      toast({ title: "Erreur", description: msg, variant: "destructive" });
+      throw error;
+    }
   };
 
   const handleUploadAsset = async (type: string, file: File) => {
-    // En production: upload vers Supabase Storage
-    console.log("Upload asset:", type, file.name);
-    // Simuler un délai et retourner une URL fictive
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return URL.createObjectURL(file);
+    if (!selectedOrg) return "";
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", type);
+      formData.append("organization_id", selectedOrg.id);
+
+      const response = await fetch("/api/admin/branding/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Erreur lors de l'upload");
+      }
+
+      const data = await response.json();
+      toast({
+        title: "Fichier uploadé",
+        description: `${file.name} a été uploadé avec succès.`,
+      });
+      return data.url as string;
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Impossible d'uploader le fichier";
+      toast({ title: "Erreur", description: msg, variant: "destructive" });
+      return URL.createObjectURL(file);
+    }
   };
 
   return (
