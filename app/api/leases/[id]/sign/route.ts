@@ -386,6 +386,148 @@ export async function POST(
       }
     }
 
+    // 9bis. SOTA 2026: Créer la facture initiale (caution + 1er mois) dès fully_signed
+    // Permet au locataire de payer immédiatement depuis son espace
+    if (newLeaseStatus === LEASE_STATUS.FULLY_SIGNED) {
+      try {
+        const { data: leaseFull } = await serviceClient
+          .from("leases")
+          .select(`
+            *,
+            property:properties!leases_property_id_fkey (owner_id, loyer_hc, charges_mensuelles),
+            signers:lease_signers(profile_id, role, invited_email)
+          `)
+          .eq("id", leaseId as any)
+          .single();
+
+        if (leaseFull) {
+          const TENANT_ROLES = ['locataire_principal', 'locataire', 'tenant', 'principal', 'colocataire'];
+          let tenantId = (leaseFull as any).signers?.find((s: any) =>
+            TENANT_ROLES.includes(s.role)
+          )?.profile_id;
+
+          // Fallback: résolution par invited_email si profile_id est NULL
+          if (!tenantId) {
+            const tenantSigner = (leaseFull as any).signers?.find((s: any) =>
+              TENANT_ROLES.includes(s.role)
+            );
+            if (tenantSigner?.invited_email) {
+              const { data: resolved } = await serviceClient
+                .from("profiles")
+                .select("id")
+                .eq("email", tenantSigner.invited_email)
+                .maybeSingle();
+              if (resolved) {
+                tenantId = (resolved as any).id;
+              }
+            }
+          }
+
+          const ownerId = (leaseFull as any).property?.owner_id;
+
+          if (ownerId) {
+            // Garde anti-doublon : vérifier si la facture initiale existe déjà
+            const { data: existingInitialInvoice } = await serviceClient
+              .from("invoices")
+              .select("id")
+              .eq("lease_id", leaseId as any)
+              .eq("metadata->>type" as any, "initial_invoice")
+              .maybeSingle();
+
+            if (existingInitialInvoice) {
+              log.info("Facture initiale déjà existante, skip", { invoiceId: (existingInitialInvoice as any).id });
+            } else {
+              // SSOT : Utiliser le loyer contractuel du bail (pas du bien)
+              const baseRent = (leaseFull as any).loyer ?? (leaseFull as any).property?.loyer_hc ?? 0;
+              const baseCharges = (leaseFull as any).charges_forfaitaires ?? (leaseFull as any).property?.charges_mensuelles ?? 0;
+              const monthStr = (leaseFull as any).date_debut?.slice(0, 7) || new Date().toISOString().slice(0, 7);
+
+              // Calcul du prorata si entrée en milieu de mois
+              const startDate = new Date((leaseFull as any).date_debut);
+              const isMidMonthStart = startDate.getDate() > 1;
+
+              let finalRent = baseRent;
+              let finalCharges = baseCharges;
+
+              if (isMidMonthStart) {
+                const year = startDate.getFullYear();
+                const month = startDate.getMonth();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const remainingDays = daysInMonth - startDate.getDate() + 1;
+                finalRent = (baseRent / daysInMonth) * remainingDays;
+                finalCharges = (baseCharges / daysInMonth) * remainingDays;
+              }
+
+              const deposit = (leaseFull as any).depot_de_garantie || 0;
+              const totalAmount = finalRent + finalCharges + deposit;
+              const dueDate = (leaseFull as any).date_debut || new Date().toISOString().slice(0, 10);
+
+              // Period: date_debut → fin du mois
+              const periodEndDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+              const periodEnd = periodEndDate.toISOString().slice(0, 10);
+
+              const { error: invoiceError } = await serviceClient
+                .from("invoices")
+                .insert({
+                  lease_id: leaseId,
+                  owner_id: ownerId,
+                  tenant_id: tenantId ?? null,
+                  issuer_entity_id: (leaseFull as any).signatory_entity_id ?? null,
+                  periode: monthStr,
+                  montant_loyer: Math.round(finalRent * 100) / 100,
+                  montant_charges: Math.round(finalCharges * 100) / 100,
+                  montant_total: Math.round(totalAmount * 100) / 100,
+                  date_echeance: dueDate,
+                  period_start: (leaseFull as any).date_debut,
+                  period_end: periodEnd,
+                  statut: 'sent',
+                  description: `Facture initiale - Dépôt de garantie + ${isMidMonthStart ? "loyer proratisé" : "1er mois de loyer"}`,
+                  metadata: {
+                    type: 'initial_invoice',
+                    includes_deposit: deposit > 0,
+                    deposit_amount: deposit,
+                    is_prorated: isMidMonthStart,
+                    prorated_days: isMidMonthStart ? (new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate() - startDate.getDate() + 1) : null,
+                    rent_amount: Math.round(finalRent * 100) / 100,
+                    charges_amount: Math.round(finalCharges * 100) / 100,
+                    created_at_signing: true,
+                    version: "SOTA-2026"
+                  }
+                } as any);
+
+              if (invoiceError) {
+                log.warn("Erreur création facture initiale (non bloquant)", { error: invoiceError.message });
+              } else {
+                log.info("Facture initiale créée à la signature", {
+                  lease_id: leaseId,
+                  total: Math.round(totalAmount * 100) / 100,
+                  deposit,
+                  prorated: isMidMonthStart,
+                  tenant_id: tenantId,
+                });
+
+                // Notifier le locataire qu'une facture est disponible
+                if (tenantId) {
+                  await serviceClient.from("outbox").insert({
+                    event_type: "Invoice.InitialCreated",
+                    payload: {
+                      lease_id: leaseId,
+                      tenant_profile_id: tenantId,
+                      amount: Math.round(totalAmount * 100) / 100,
+                      includes_deposit: deposit > 0,
+                      deposit_amount: deposit,
+                    },
+                  } as any).catch(() => null);
+                }
+              }
+            }
+          }
+        }
+      } catch (invoiceErr) {
+        log.warn("Exception création facture initiale (non bloquant)", { error: String(invoiceErr) });
+      }
+    }
+
     // 10. Journaliser
     await serviceClient.from("audit_log").insert({
       user_id: user.id,

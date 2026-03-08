@@ -433,6 +433,49 @@ export default function TenantLeasePage() {
                     </>
                   )}
 
+                  {/* SOTA 2026: Section Paiement — Visible si bail signé ou actif */}
+                  {(lease.statut === 'fully_signed' || lease.statut === 'active') && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                      <GlassCard className="p-6 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 shadow-lg space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl">
+                              <Euro className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-foreground">Mes paiements</h3>
+                              <p className="text-xs text-muted-foreground">
+                                {lease.statut === 'fully_signed'
+                                  ? "Facture initiale disponible (caution + 1er loyer)"
+                                  : "Gérez vos paiements de loyer"
+                                }
+                              </p>
+                            </div>
+                          </div>
+                          {lease.statut === 'fully_signed' && (
+                            <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 font-semibold">
+                              À payer
+                            </Badge>
+                          )}
+                        </div>
+                        <Button
+                          variant="default"
+                          className="w-full font-bold"
+                          asChild
+                        >
+                          <Link href="/tenant/payments">
+                            <Euro className="h-4 w-4 mr-2" />
+                            {lease.statut === 'fully_signed'
+                              ? "Payer la facture initiale"
+                              : "Voir mes paiements"
+                            }
+                            <ChevronRight className="h-4 w-4 ml-auto" />
+                          </Link>
+                        </Button>
+                      </GlassCard>
+                    </motion.div>
+                  )}
+
                   {/* Section Donner Congé - Visible uniquement si bail actif */}
                   {lease.statut === 'active' && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
