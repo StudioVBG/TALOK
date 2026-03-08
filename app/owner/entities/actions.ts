@@ -785,8 +785,11 @@ export async function deduplicateEntities(): Promise<
 > {
   try {
     const findResult = await findDuplicateEntities();
-    if (!findResult.success || !findResult.data) {
-      return { success: false, error: findResult.error || "Erreur recherche doublons" };
+    if (!findResult.success) {
+      return { success: false, error: findResult.error };
+    }
+    if (!findResult.data) {
+      return { success: false, error: "Erreur recherche doublons" };
     }
 
     if (findResult.data.length === 0) {
@@ -804,8 +807,11 @@ export async function deduplicateEntities(): Promise<
     }
 
     const bulkResult = await bulkDeleteEntities({ ids: idsToRemove });
-    if (!bulkResult.success || !bulkResult.data) {
-      return { success: false, error: bulkResult.error || "Erreur suppression" };
+    if (!bulkResult.success) {
+      return { success: false, error: bulkResult.error };
+    }
+    if (!bulkResult.data) {
+      return { success: false, error: "Erreur suppression" };
     }
 
     const { deleted, deactivated } = bulkResult.data;
