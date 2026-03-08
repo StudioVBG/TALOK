@@ -1,54 +1,21 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { GedClient } from "./GedClient";
 
+/**
+ * SOTA 2026 — Redirect GED vers Documents consolidé
+ * Le coffre-fort est maintenant un onglet de la page Documents unifiée.
+ * Ce redirect préserve les bookmarks et liens existants.
+ */
 export default async function GedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ property_id?: string; lease_id?: string }>;
+  searchParams: Promise<{ property_id?: string; lease_id?: string; type?: string }>;
 }) {
   const params = await searchParams;
-  const supabase = await createClient();
+  const query = new URLSearchParams();
+  query.set("tab", "coffre-fort");
+  if (params.property_id) query.set("property_id", params.property_id);
+  if (params.lease_id) query.set("lease_id", params.lease_id);
+  if (params.type) query.set("type", params.type);
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    redirect("/auth/signin");
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (profileError || !profile || profile.role !== "owner") {
-    redirect("/dashboard");
-  }
-
-  // Récupérer les propriétés pour le sélecteur d'upload
-  const { data: properties } = await supabase
-    .from("properties")
-    .select("id, adresse_complete, ville")
-    .eq("owner_id", profile.id)
-    .order("adresse_complete", { ascending: true });
-
-  return (
-    <GedClient
-      properties={
-        properties?.map((p) => ({
-          id: p.id,
-          adresse_complete: p.adresse_complete || "",
-          ville: p.ville || "",
-        })) || []
-      }
-    />
-  );
+  redirect(`/owner/documents?${query.toString()}`);
 }

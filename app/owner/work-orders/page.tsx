@@ -24,6 +24,7 @@ import {
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { TicketsTabNav } from "../tickets/TicketsTabNav";
 
 interface WorkOrder {
   id: string;
@@ -152,12 +153,15 @@ export default function WorkOrdersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Interventions</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Tickets & travaux</h1>
           <p className="text-muted-foreground">
             Gérez les interventions des prestataires sur vos logements
           </p>
         </div>
       </div>
+
+      {/* SOTA 2026 — Navigation Tickets / Ordres de travaux */}
+      <TicketsTabNav activeTab="travaux" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

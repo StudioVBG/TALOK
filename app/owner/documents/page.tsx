@@ -42,5 +42,23 @@ export default async function OwnerDocumentsPage({
     limit: 50,
   });
 
-  return <OwnerDocumentsClient initialDocuments={documents} />;
+  // Récupérer les propriétés pour le sélecteur d'upload GED (consolidation Documents + Coffre-fort)
+  const { data: properties } = await supabase
+    .from("properties")
+    .select("id, adresse_complete, ville")
+    .eq("owner_id", profile.id)
+    .order("adresse_complete", { ascending: true });
+
+  return (
+    <OwnerDocumentsClient
+      initialDocuments={documents}
+      properties={
+        properties?.map((p) => ({
+          id: p.id,
+          adresse_complete: p.adresse_complete || "",
+          ville: p.ville || "",
+        })) || []
+      }
+    />
+  );
 }

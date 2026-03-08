@@ -1,12 +1,13 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Wrench, Hammer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TicketListUnified } from "@/features/tickets/components/ticket-list-unified";
 import { getTickets } from "@/features/tickets/server/data-fetching";
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
+import { TicketsTabNav } from "./TicketsTabNav";
 
 export default async function OwnerTicketsPage() {
   const tickets = await getTickets("owner");
@@ -17,16 +18,19 @@ export default async function OwnerTicketsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Tickets</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Tickets & travaux</h1>
           <p className="text-muted-foreground mt-1">Gérez les demandes d'intervention et de maintenance</p>
         </div>
-        
+
         <Button asChild className="shadow-lg shadow-blue-500/20">
           <Link href="/owner/tickets/new">
             <Plus className="mr-2 h-4 w-4" /> Nouveau ticket
           </Link>
         </Button>
       </div>
+
+      {/* SOTA 2026 — Navigation Tickets / Ordres de travaux */}
+      <TicketsTabNav activeTab="tickets" />
 
       {/* Stats Cards (Placeholder pour le futur) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

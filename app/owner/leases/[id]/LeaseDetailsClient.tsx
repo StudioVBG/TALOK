@@ -42,6 +42,8 @@ import {
   Clock,
   ArrowRight,
   MoreHorizontal,
+  Eye,
+  CalendarClock,
 } from "lucide-react";
 import { LeaseRenewalWizard } from "@/features/leases/components/lease-renewal-wizard";
 import { useToast } from "@/components/ui/use-toast";
@@ -1275,6 +1277,22 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                {/* SOTA 2026 — Cross-links vers Visites et Fin de bail */}
+                {property?.id && (
+                  <DropdownMenuItem asChild>
+                    <Link href={`/owner/visits?property_id=${property.id}`} className="cursor-pointer">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Visites du bien
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link href={`/owner/end-of-lease`} className="cursor-pointer">
+                    <CalendarClock className="h-4 w-4 mr-2" />
+                    Processus fin de bail
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {canRenew && (
                   <DropdownMenuItem onClick={() => setShowRenewalWizard(true)} className="text-blue-600 focus:text-blue-700">
                     <RefreshCw className="h-4 w-4 mr-2" />
