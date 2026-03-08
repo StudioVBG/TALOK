@@ -312,25 +312,34 @@ export function TenantSettingsClient({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                {isCniVerified ? (
-                  <>
-                    <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Profil certifié
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  {isCniVerified ? (
+                    <>
+                      <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Profil certifié
+                      </Badge>
+                      {cniExpiryDate && (
+                        <span className="text-sm text-muted-foreground">
+                          CNI valide jusqu'au {formatDate(cniExpiryDate)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <Badge variant="outline" className="text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-600">
+                      <Clock className="h-3 w-3 mr-1" />
+                      En attente de vérification
                     </Badge>
-                    {cniExpiryDate && (
-                      <span className="text-sm text-muted-foreground">
-                        CNI valide jusqu'au {formatDate(cniExpiryDate)}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <Badge variant="outline" className="text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-600">
-                    <Clock className="h-3 w-3 mr-1" />
-                    En attente de vérification
-                  </Badge>
-                )}
+                  )}
+                </div>
+                <Link href="/tenant/identity">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Shield className="h-4 w-4" />
+                    Gérer mon identité
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </Link>
               </div>
               {(isCniExpired || isCniExpiringSoon) && (
                 <Alert variant={isCniExpired ? "destructive" : "default"}>

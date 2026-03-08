@@ -18,8 +18,6 @@ import {
   Gauge,
   Users,
   FileSearch,
-  Receipt,
-  PenTool,
   Scale,
   Eye,
 } from "lucide-react";
@@ -64,15 +62,18 @@ interface TenantAppLayoutProps {
   } | null;
 }
 
-// Navigation items - single source of truth (AUDIT UX: simplifié de 14 à 7 items)
+// Navigation items - single source of truth (AUDIT UX SOTA 2026: suppression doublons, parité mobile/desktop)
+// Quittances et Signatures retirés : ce sont des redirects vers /tenant/documents (doublons UX)
+// Candidatures déplacé dans Mon Espace (concerne le parcours locataire, pas les documents)
+// Ajout États des lieux et Compteurs pour parité avec le menu mobile
 const allNavItems = [
   { name: "Tableau de bord", href: "/tenant/dashboard", icon: LayoutDashboard, tourId: "nav-dashboard", group: "Mon Espace" },
   { name: "Mon Logement", href: "/tenant/lease", icon: Home, tourId: "nav-lease", group: "Mon Espace" },
+  { name: "Candidatures", href: "/tenant/applications", icon: FileSearch, tourId: "nav-applications", group: "Mon Espace" },
   { name: "Documents", href: "/tenant/documents", icon: FileText, tourId: "nav-documents", group: "Mes Documents" },
-  { name: "Quittances", href: "/tenant/receipts", icon: Receipt, tourId: "nav-receipts", group: "Mes Documents" },
-  { name: "Signatures", href: "/tenant/signatures", icon: PenTool, tourId: "nav-signatures", group: "Mes Documents" },
+  { name: "États des lieux", href: "/tenant/inspections", icon: ClipboardCheck, tourId: "nav-inspections", group: "Mes Documents" },
   { name: "Loyers & Paiements", href: "/tenant/payments", icon: CreditCard, tourId: "nav-payments", group: "Mes Finances" },
-  { name: "Candidatures", href: "/tenant/applications", icon: FileSearch, tourId: "nav-applications", group: "Mes Documents" },
+  { name: "Compteurs", href: "/tenant/meters", icon: Gauge, tourId: "nav-meters", group: "Mes Finances" },
   { name: "Demandes", href: "/tenant/requests", icon: Wrench, tourId: "nav-requests", group: "Assistance" },
   { name: "Messages", href: "/tenant/messages", icon: MessageSquare, tourId: "nav-messages", group: "Assistance" },
   { name: "Mes droits", href: "/tenant/legal-rights", icon: Scale, tourId: "nav-legal-rights", group: "Assistance" },
@@ -419,7 +420,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           Mobile Bottom Navigation (< md)
           Hidden on tablet+ where rail nav takes over
           ============================================ */}
-      {/* AUDIT UX: Documents en accès direct (plus dans "Plus"), Logement déplacé dans "Plus" */}
+      {/* AUDIT UX SOTA 2026: Parité mobile/desktop — même pages accessibles, plus de doublons */}
       <SharedBottomNav
         items={[
           { href: "/tenant/dashboard", label: "Accueil", icon: LayoutDashboard },
@@ -432,6 +433,8 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           { href: "/tenant/messages", label: "Messages", icon: MessageSquare },
           { href: "/tenant/inspections", label: "États des lieux", icon: ClipboardCheck },
           { href: "/tenant/meters", label: "Compteurs", icon: Gauge },
+          { href: "/tenant/legal-rights", label: "Mes droits", icon: Scale },
+          { href: "/tenant/visits", label: "Visites", icon: Eye },
           { href: "/tenant/colocation", label: "Colocation", icon: Users },
           { href: "/tenant/settings", label: "Mon Profil", icon: Settings },
           { href: "/tenant/help", label: "Aide", icon: HelpCircle },

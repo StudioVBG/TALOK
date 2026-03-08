@@ -38,7 +38,6 @@ import {
   Sparkles,
   LayoutGrid,
   Layers,
-  PenTool,
   Shield,
   AlertCircle,
   CheckCircle2,
@@ -62,6 +61,7 @@ import { cn } from "@/lib/utils";
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
 import { DocumentCard, DOCUMENT_CONFIG, type DocumentCardDoc } from "@/components/documents/DocumentCard";
 import Link from "next/link";
+import { useTenantPendingActions } from "@/lib/hooks/use-tenant-pending-actions";
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -194,60 +194,22 @@ export default function TenantDocumentsPage() {
   const propertyId = dashboard?.lease?.property_id;
   const hasLease = !!leaseId;
 
-  // ── Actions requises (zone "À faire") ──
-  const pendingActions = useMemo(() => {
-    if (!dashboard) return [];
-    const actions: Array<{ id: string; label: string; description: string; icon: React.ElementType; color: string; bgColor: string; href: string }> = [];
-
-    // Bail à signer
-    const leaseStatus = dashboard.lease?.statut;
-    if (leaseStatus === "pending_signature" || leaseStatus === "partially_signed") {
-      const leaseSigners = (dashboard.lease as any)?.lease_signers || (dashboard.lease as any)?.signers || [];
-      const tenantSigner = (leaseSigners as any[])?.find(
-        (s: any) => s.role === "locataire_principal" || s.role === "tenant" || s.role === "locataire"
-      );
-      const hasSignedLease = tenantSigner?.signature_status === "signed" || !!tenantSigner?.signed_at;
-      if (!hasSignedLease) {
-        actions.push({
-          id: "sign-lease",
-          label: "Signer mon bail",
-          description: "Votre bail est prêt et attend votre signature.",
-          icon: PenTool,
-          color: "text-indigo-700",
-          bgColor: "bg-indigo-50 border-indigo-200",
-          href: "/tenant/onboarding/sign",
-        });
-      }
-    }
-
-    // Assurance manquante
-    if (!dashboard.insurance?.has_insurance) {
-      actions.push({
-        id: "upload-insurance",
-        label: "Déposer l'attestation d'assurance",
-        description: "Obligatoire pour activer votre bail.",
-        icon: Shield,
-        color: "text-blue-700",
-        bgColor: "bg-blue-50 border-blue-200",
-        href: "/tenant/documents?action=upload&type=attestation_assurance",
-      });
-    }
-
-    // EDL en attente
-    if (dashboard.pending_edls && dashboard.pending_edls.length > 0) {
-      actions.push({
-        id: "sign-edl",
-        label: "Signer l'état des lieux",
-        description: "Un état des lieux est en attente de votre signature.",
-        icon: FileCheck,
-        color: "text-amber-700",
-        bgColor: "bg-amber-50 border-amber-200",
-        href: `/signature-edl/${dashboard.pending_edls[0].invitation_token}`,
-      });
-    }
-
-    return actions;
+  // ── Actions requises (zone "À faire") — source unique via hook partagé ──
+  const hasSignedLease = useMemo(() => {
+    const signers = (dashboard?.lease as any)?.lease_signers || (dashboard?.lease as any)?.signers || [];
+    const tenantSigner = (signers as any[]).find(
+      (s: any) => s.role === "locataire_principal" || s.role === "tenant" || s.role === "locataire"
+    );
+    return tenantSigner?.signature_status === "signed" || !!tenantSigner?.signed_at;
   }, [dashboard]);
+
+  const pendingEDLs = useMemo(() => dashboard?.pending_edls || [], [dashboard]);
+
+  const pendingActions = useTenantPendingActions({
+    dashboard,
+    hasSignedLease,
+    pendingEDLs,
+  });
 
   // ── Documents clés (4 slots fixes) ──
   const keyDocuments = useMemo(() => {
@@ -795,8 +757,8 @@ export default function TenantDocumentsPage() {
                   </p>
                 </div>
               </div>
-              <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md h-11 px-6">
-                En savoir plus
+              <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md h-11 px-6" asChild>
+                <Link href="/tenant/help">En savoir plus</Link>
               </Button>
             </div>
             <Sparkles className="absolute -right-4 -bottom-4 h-32 w-32 text-white/5 rotate-12" />
