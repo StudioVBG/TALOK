@@ -104,11 +104,19 @@ export default async function TenantRequestsPage() {
         {/* Section Sinistres */}
         {claims.length > 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-600 rounded-lg shadow-lg shadow-red-200 dark:shadow-red-900/30">
-                <ShieldAlert className="h-5 w-5 text-white" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-600 rounded-lg shadow-lg shadow-red-200 dark:shadow-red-900/30">
+                  <ShieldAlert className="h-5 w-5 text-white" />
+                </div>
+                <h2 className="text-xl font-bold tracking-tight text-foreground">Mes sinistres</h2>
               </div>
-              <h2 className="text-xl font-bold tracking-tight text-foreground">Mes sinistres</h2>
+              <Button variant="outline" size="sm" className="rounded-xl font-bold" asChild>
+                <Link href="/tenant/requests/new">
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                  Déclarer un sinistre
+                </Link>
+              </Button>
             </div>
             <div className="space-y-3">
               {claims.map((claim: any) => {

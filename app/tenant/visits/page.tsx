@@ -22,9 +22,9 @@ export default async function TenantVisitsPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/">
+          <Link href="/tenant/dashboard">
             <Search className="mr-2 h-4 w-4" />
-            Rechercher un logement
+            Retour au tableau de bord
           </Link>
         </Button>
       </div>
@@ -38,7 +38,7 @@ export default async function TenantVisitsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">En attente</p>
-              <p className="text-2xl font-bold text-yellow-600">Aucune donnée</p>
+              <p className="text-2xl font-bold text-yellow-600">0</p>
             </div>
           </div>
         </div>
@@ -49,7 +49,7 @@ export default async function TenantVisitsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Confirmées</p>
-              <p className="text-2xl font-bold text-green-600">Aucune donnée</p>
+              <p className="text-2xl font-bold text-green-600">0</p>
             </div>
           </div>
         </div>
@@ -60,7 +60,7 @@ export default async function TenantVisitsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Effectuées</p>
-              <p className="text-2xl font-bold text-blue-600">Aucune donnée</p>
+              <p className="text-2xl font-bold text-blue-600">0</p>
             </div>
           </div>
         </div>

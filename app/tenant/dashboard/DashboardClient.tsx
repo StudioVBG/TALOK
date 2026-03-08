@@ -1020,11 +1020,11 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" className="h-11 rounded-xl border-border font-bold" asChild>
-                    <Link href="/tenant/requests/new">Aide</Link>
+                    <Link href="/tenant/messages">Contacter</Link>
                   </Button>
-                  <Button variant="outline" className="h-11 rounded-xl border-border font-bold px-4" asChild>
-                    <Link href="/tenant/requests/new">
-                      <Phone className="h-4 w-4" />
+                  <Button variant="outline" className="h-11 w-12 rounded-xl border-border font-bold px-0" asChild>
+                    <Link href="/tenant/requests/new" aria-label="Demander de l'aide">
+                      <Wrench className="h-4 w-4" />
                     </Link>
                   </Button>
                 </div>
@@ -1040,8 +1040,8 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                     <p className="font-medium text-muted-foreground text-lg leading-tight">Pas encore de propriétaire</p>
                   </div>
                 </div>
-                <Button variant="outline" className="h-11 rounded-xl border-border font-bold text-muted-foreground" disabled>
-                  Aide
+                <Button variant="outline" className="h-11 rounded-xl border-border font-bold" asChild>
+                  <Link href="/tenant/help">Aide</Link>
                 </Button>
               </GlassCard>
             )}

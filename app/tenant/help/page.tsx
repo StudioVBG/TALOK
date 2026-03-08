@@ -4,37 +4,37 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  HelpCircle, 
-  MessageSquare, 
-  Mail, 
-  FileText, 
+import {
+  HelpCircle,
+  MessageSquare,
+  Mail,
+  FileText,
   ExternalLink,
-  BookOpen,
-  Search
+  Search,
+  Wrench,
+  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const FAQ_CATEGORIES = ["Tout", "Loyer", "Documents", "Bail", "Technique"] as const;
 
 type FaqCategory = "Loyer" | "Documents" | "Bail" | "Technique";
-const faqItems: Array<{ question: string; answer: string; category: FaqCategory }> = [
-  { question: "Comment payer mon loyer ?", answer: "Rendez-vous dans la section 'Paiements' pour régler votre loyer par carte bancaire ou virement.", category: "Loyer" },
+const faqItems: Array<{ question: string; answer: string; category: FaqCategory; link?: { href: string; label: string } }> = [
+  { question: "Comment payer mon loyer ?", answer: "Rendez-vous dans la section 'Paiements' pour régler votre loyer par carte bancaire ou virement.", category: "Loyer", link: { href: "/tenant/payments", label: "Aller aux paiements" } },
   { question: "Quand est débité mon loyer ?", answer: "Le prélèvement a lieu le 1er de chaque mois. Pensez à avoir des fonds disponibles.", category: "Loyer" },
-  { question: "Puis-je modifier ma date de prélèvement ?", answer: "Non, la date est fixée au 1er du mois. En cas de difficulté, contactez votre propriétaire.", category: "Loyer" },
-  { question: "Comment signaler un problème dans mon logement ?", answer: "Utilisez la section 'Demandes' pour créer un ticket de maintenance. Votre propriétaire sera notifié.", category: "Technique" },
-  { question: "Où trouver mes quittances de loyer ?", answer: "Vos quittances sont disponibles dans la section 'Documents' une fois le paiement validé.", category: "Documents" },
-  { question: "Comment obtenir une attestation de loyer ?", answer: "Dans 'Documents', demandez une attestation. Elle est générée sous 24h.", category: "Documents" },
-  { question: "Où est mon bail signé ?", answer: "Votre bail signé se trouve dans la section 'Documents', onglet Bail.", category: "Documents" },
-  { question: "Comment contacter mon propriétaire ?", answer: "Utilisez la messagerie intégrée dans la section 'Messages' pour communiquer avec votre propriétaire.", category: "Technique" },
-  { question: "Comment résilier mon bail ?", answer: "Envoi d'un préavis écrit au propriétaire (3 mois pour une location vide, 1 mois pour du meublé). Utilisez la section Messages.", category: "Bail" },
-  { question: "Qu'est-ce que l'état des lieux d'entrée ?", answer: "C'est un document qui décrit l'état du logement à votre entrée. À signer avec le propriétaire.", category: "Bail" },
-  { question: "Puis-je sous-louer ?", answer: "La sous-location doit être autorisée par le bail et le propriétaire. Consultez votre bail.", category: "Bail" },
+  { question: "Puis-je modifier ma date de prélèvement ?", answer: "Non, la date est fixée au 1er du mois. En cas de difficulté, contactez votre propriétaire.", category: "Loyer", link: { href: "/tenant/messages", label: "Contacter mon propriétaire" } },
+  { question: "Comment signaler un problème dans mon logement ?", answer: "Utilisez la section 'Demandes' pour créer un ticket de maintenance. Votre propriétaire sera notifié.", category: "Technique", link: { href: "/tenant/requests/new", label: "Créer une demande" } },
+  { question: "Où trouver mes quittances de loyer ?", answer: "Vos quittances sont disponibles dans la section 'Documents' une fois le paiement validé.", category: "Documents", link: { href: "/tenant/documents?type=quittance", label: "Voir mes quittances" } },
+  { question: "Comment obtenir une attestation de loyer ?", answer: "Dans 'Documents', demandez une attestation. Elle est générée sous 24h.", category: "Documents", link: { href: "/tenant/documents", label: "Aller aux documents" } },
+  { question: "Où est mon bail signé ?", answer: "Votre bail signé se trouve dans la section 'Documents', onglet Bail.", category: "Documents", link: { href: "/tenant/documents?type=bail", label: "Voir mon bail" } },
+  { question: "Comment contacter mon propriétaire ?", answer: "Utilisez la messagerie intégrée dans la section 'Messages' pour communiquer avec votre propriétaire.", category: "Technique", link: { href: "/tenant/messages", label: "Ouvrir la messagerie" } },
+  { question: "Comment résilier mon bail ?", answer: "Envoi d'un préavis écrit au propriétaire (3 mois pour une location vide, 1 mois pour du meublé). Utilisez la section Messages.", category: "Bail", link: { href: "/tenant/lease", label: "Mon logement" } },
+  { question: "Qu'est-ce que l'état des lieux d'entrée ?", answer: "C'est un document qui décrit l'état du logement à votre entrée. À signer avec le propriétaire.", category: "Bail", link: { href: "/tenant/inspections", label: "Voir les états des lieux" } },
+  { question: "Puis-je sous-louer ?", answer: "La sous-location doit être autorisée par le bail et le propriétaire. Consultez votre bail.", category: "Bail", link: { href: "/tenant/lease", label: "Consulter mon bail" } },
   { question: "Mon compte ne se connecte pas, que faire ?", answer: "Utilisez 'Mot de passe oublié' sur l'écran de connexion ou contactez support@talok.fr.", category: "Technique" },
-  { question: "Comment mettre à jour mon RIB ?", answer: "Allez dans Paramètres > Paiements pour enregistrer un nouveau moyen de paiement.", category: "Loyer" },
-  { question: "Où voir mes relevés de compteurs ?", answer: "Dans la section 'Compteurs', vous pouvez consulter l'historique et saisir un nouvel index.", category: "Technique" },
-  { question: "Comment ajouter un colocataire ?", answer: "Seul le propriétaire peut inviter un colocataire. Demandez-lui de vous ajouter via le bail.", category: "Bail" },
+  { question: "Comment mettre à jour mon RIB ?", answer: "Allez dans Paramètres > Paiements pour enregistrer un nouveau moyen de paiement.", category: "Loyer", link: { href: "/tenant/settings/payments", label: "Gérer mes paiements" } },
+  { question: "Où voir mes relevés de compteurs ?", answer: "Dans la section 'Compteurs', vous pouvez consulter l'historique et saisir un nouvel index.", category: "Technique", link: { href: "/tenant/meters", label: "Aller aux compteurs" } },
+  { question: "Comment ajouter un colocataire ?", answer: "Seul le propriétaire peut inviter un colocataire. Demandez-lui de vous ajouter via le bail.", category: "Bail", link: { href: "/tenant/messages", label: "Contacter mon propriétaire" } },
 ];
 
 export default function TenantHelpPage() {
@@ -61,53 +61,41 @@ export default function TenantHelpPage() {
 
       {/* Contact rapide */}
       <div className="grid gap-4 md:grid-cols-3 mb-8">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Card className="transition-shadow opacity-70 cursor-not-allowed pointer-events-none">
-                <CardContent className="pt-6 text-center">
-                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
-                    <MessageSquare className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <h3 className="font-semibold mb-1">Chat en ligne</h3>
-                  <p className="text-sm text-muted-foreground">Réponse en quelques minutes</p>
-                </CardContent>
-              </Card>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Bientôt disponible</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Link href="/tenant/messages">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardContent className="pt-6 text-center">
+              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="font-semibold mb-1">Messagerie</h3>
+              <p className="text-sm text-muted-foreground">Contactez votre propriétaire</p>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent className="pt-6 text-center">
-            <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-              <Mail className="h-6 w-6 text-green-600" />
-            </div>
-            <h3 className="font-semibold mb-1">Email</h3>
-            <p className="text-sm text-muted-foreground">support@talok.fr</p>
-          </CardContent>
-        </Card>
+        <a href="mailto:support@talok.fr">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardContent className="pt-6 text-center">
+              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                <Mail className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="font-semibold mb-1">Email</h3>
+              <p className="text-sm text-muted-foreground">support@talok.fr</p>
+            </CardContent>
+          </Card>
+        </a>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Card className="transition-shadow opacity-70 cursor-not-allowed pointer-events-none">
-                <CardContent className="pt-6 text-center">
-                  <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
-                    <BookOpen className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <h3 className="font-semibold mb-1">Centre d'aide</h3>
-                  <p className="text-sm text-muted-foreground">Articles et guides</p>
-                </CardContent>
-              </Card>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Bientôt disponible</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Link href="/tenant/requests/new">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardContent className="pt-6 text-center">
+              <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
+                <Wrench className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="font-semibold mb-1">Signaler un problème</h3>
+              <p className="text-sm text-muted-foreground">Créer un ticket de maintenance</p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Recherche FAQ */}
@@ -162,6 +150,12 @@ export default function TenantHelpPage() {
                     <h4 className="font-medium">{item.question}</h4>
                   </div>
                   <p className="text-sm text-muted-foreground">{item.answer}</p>
+                  {item.link && (
+                    <Link href={item.link.href} className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+                      {item.link.label}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
                 </div>
               ))
             )}
