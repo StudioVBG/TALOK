@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, FileText, Plus, MoreHorizontal, Eye, Download, Trash2, Loader2, PenLine, AlertTriangle, RefreshCw, User } from "lucide-react";
+import { Search, FileText, Plus, MoreHorizontal, Eye, Download, Trash2, Loader2, PenLine, AlertTriangle, RefreshCw, User, Users, ClipboardCheck } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { exportLeases } from "@/lib/services/export-service";
 import { useToast } from "@/components/ui/use-toast";
@@ -574,11 +574,25 @@ export function ContractsClient() {
             />
           </div>
 
-          {/* Onglets */}
+          {/* SOTA 2026 — Onglets Hub Gestion Locative */}
           <Tabs defaultValue="leases" className="space-y-4 md:space-y-6">
             <TabsList className="bg-white/50 backdrop-blur-sm border w-full sm:w-auto overflow-x-auto">
-              <TabsTrigger value="leases" className="text-xs sm:text-sm">Baux & contrats</TabsTrigger>
-              <TabsTrigger value="tenants" className="text-xs sm:text-sm">Locataires & garants</TabsTrigger>
+              <TabsTrigger value="leases" className="text-xs sm:text-sm gap-1.5">
+                <FileText className="h-3.5 w-3.5" />
+                Baux & contrats
+              </TabsTrigger>
+              <TabsTrigger value="tenants" className="text-xs sm:text-sm gap-1.5" asChild>
+                <Link href="/owner/tenants">
+                  <Users className="h-3.5 w-3.5" />
+                  Locataires
+                </Link>
+              </TabsTrigger>
+              <TabsTrigger value="inspections" className="text-xs sm:text-sm gap-1.5" asChild>
+                <Link href="/owner/inspections">
+                  <ClipboardCheck className="h-3.5 w-3.5" />
+                  États des lieux
+                </Link>
+              </TabsTrigger>
             </TabsList>
 
             {/* Baux & contrats */}
@@ -665,20 +679,7 @@ export function ContractsClient() {
               )}
             </TabsContent>
 
-            {/* Locataires & garants */}
-            <TabsContent value="tenants">
-              <GlassCard>
-                <div className="p-4 sm:p-6 md:p-8 text-center">
-                    <h2 className="text-xl font-semibold mb-2">Locataires & Garants</h2>
-                    <p className="text-muted-foreground mb-4">
-                        Vue consolidée de tous vos contacts locataires (Bientôt disponible).
-                    </p>
-                    <Button variant="outline" asChild>
-                        <Link href="/owner/leases">Retour aux baux</Link>
-                    </Button>
-                </div>
-              </GlassCard>
-            </TabsContent>
+            {/* Locataires et EDL: navigation vers pages dédiées via les onglets Link ci-dessus */}
           </Tabs>
         </div>
       </div>

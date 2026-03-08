@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, FileText, Upload, Download, Trash2, Eye, Tag, FolderOpen, Loader2, LayoutGrid, List, Home } from "lucide-react";
+import { Search, FileText, Upload, Download, Trash2, Eye, Tag, FolderOpen, Loader2, LayoutGrid, List, Home, Bell, ShieldCheck } from "lucide-react";
 import { formatDateShort } from "@/lib/helpers/format";
 import { DOCUMENT_TYPES, DOCUMENT_STATUS_LABELS } from "@/lib/owner/constants";
 import { ownerDocumentRoutes } from "@/lib/owner/routes";
@@ -45,17 +45,55 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Props optionnel pour compatibilité
+// GED Imports (consolidation Coffre-fort SOTA 2026)
+import { QuickView } from "@/components/ged/quick-view";
+import { TypeView } from "@/components/ged/type-view";
+import { AlertsPanel } from "@/components/ged/alerts-panel";
+import { GedUploadDialog } from "@/components/ged/ged-upload-dialog";
+import { useGedDocuments, useGedDeleteDocument } from "@/lib/hooks/use-ged-documents";
+import { useGedAlertsSummary } from "@/lib/hooks/use-ged-alerts";
+import type { GedDocument, GedViewMode } from "@/lib/types/ged";
+
+// Props
 interface OwnerDocumentsClientProps {
   initialDocuments?: any[];
+  properties?: Array<{ id: string; adresse_complete: string; ville: string }>;
 }
 
-export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientProps) {
+export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocumentsClientProps) {
   const { toast } = useToast();
   const { profile } = useAuth();
   const searchParams = useSearchParams();
   const propertyIdFilter = searchParams.get("property_id");
   const leaseIdFilter = searchParams.get("lease_id");
+
+  // SOTA 2026 — Onglet de haut niveau : "bibliotheque" | "coffre-fort" | "alertes"
+  const initialTab = searchParams.get("tab") || "bibliotheque";
+  const [activeSection, setActiveSection] = useState<"bibliotheque" | "coffre-fort" | "alertes">(
+    initialTab === "coffre-fort" ? "coffre-fort" : initialTab === "alertes" ? "alertes" : "bibliotheque"
+  );
+
+  // GED hooks (coffre-fort)
+  const { data: gedDocuments = [], isLoading: isLoadingGed } = useGedDocuments({
+    propertyId: propertyIdFilter,
+    leaseId: leaseIdFilter,
+  });
+  const { data: alertsSummary, isLoading: isLoadingAlerts } = useGedAlertsSummary();
+  const gedDeleteMutation = useGedDeleteDocument();
+  const [gedViewMode, setGedViewMode] = useState<GedViewMode>("quick");
+  const [gedUploadOpen, setGedUploadOpen] = useState(false);
+  const [gedUploadDefaultType, setGedUploadDefaultType] = useState<string | undefined>();
+
+  // Alert badge count
+  const alertCount = alertsSummary
+    ? alertsSummary.expired_count + alertsSummary.expiring_soon_count
+    : 0;
+
+  // GED handlers
+  const handleGedUploadForType = useCallback((docType: string) => {
+    setGedUploadDefaultType(docType);
+    setGedUploadOpen(true);
+  }, []);
 
   // ✅ React Query : données réactives avec mise à jour automatique
   // initialDocuments est utilisé comme fallback initial pour un rendu immédiat
@@ -437,32 +475,260 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
                 Documents
               </h1>
               <p className="text-muted-foreground mt-2 text-lg">
-                Bibliothèque de tous vos documents
+                Bibliothèque et coffre-fort de vos documents
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {/* Toggle vue */}
-              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "table" | "cascade")} className="bg-white/80 rounded-lg border shadow-sm">
-                <TabsList className="grid grid-cols-2 h-9">
-                  <TabsTrigger value="cascade" className="flex items-center gap-1.5 text-xs px-3">
-                    <Home className="h-3.5 w-3.5" />
-                    Par bien
-                  </TabsTrigger>
-                  <TabsTrigger value="table" className="flex items-center gap-1.5 text-xs px-3">
-                    <List className="h-3.5 w-3.5" />
-                    Liste
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <Button asChild className="shadow-lg hover:shadow-xl transition-all duration-300 bg-indigo-600 hover:bg-indigo-700">
-                <Link href={ownerDocumentRoutes.upload()}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Téléverser
-                </Link>
-              </Button>
+              {activeSection === "bibliotheque" && (
+                <>
+                  {/* Toggle vue */}
+                  <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "table" | "cascade")} className="bg-white/80 rounded-lg border shadow-sm">
+                    <TabsList className="grid grid-cols-2 h-9">
+                      <TabsTrigger value="cascade" className="flex items-center gap-1.5 text-xs px-3">
+                        <Home className="h-3.5 w-3.5" />
+                        Par bien
+                      </TabsTrigger>
+                      <TabsTrigger value="table" className="flex items-center gap-1.5 text-xs px-3">
+                        <List className="h-3.5 w-3.5" />
+                        Liste
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <Button asChild className="shadow-lg hover:shadow-xl transition-all duration-300 bg-indigo-600 hover:bg-indigo-700">
+                    <Link href={ownerDocumentRoutes.upload()}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Téléverser
+                    </Link>
+                  </Button>
+                </>
+              )}
+              {activeSection === "coffre-fort" && (
+                <Button className="gap-2" onClick={() => setGedUploadOpen(true)}>
+                  <Upload className="h-4 w-4" />
+                  Ajouter un document
+                </Button>
+              )}
             </div>
           </div>
 
+          {/* SOTA 2026 — Onglets de section : Bibliothèque | Coffre-fort | Alertes */}
+          <Tabs
+            value={activeSection}
+            onValueChange={(v) => setActiveSection(v as "bibliotheque" | "coffre-fort" | "alertes")}
+          >
+            <TabsList className="grid w-full grid-cols-3 max-w-lg">
+              <TabsTrigger value="bibliotheque" className="gap-1.5 text-xs sm:text-sm">
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Bibliothèque</span>
+                <span className="sm:hidden">Docs</span>
+              </TabsTrigger>
+              <TabsTrigger value="coffre-fort" className="gap-1.5 text-xs sm:text-sm">
+                <ShieldCheck className="h-4 w-4" />
+                <span className="hidden sm:inline">Coffre-fort</span>
+                <span className="sm:hidden">Coffre</span>
+              </TabsTrigger>
+              <TabsTrigger value="alertes" className="gap-1.5 text-xs sm:text-sm relative">
+                <Bell className="h-4 w-4" />
+                <span>Alertes</span>
+                {alertCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] rounded-full h-4 min-w-[16px] flex items-center justify-center px-1 font-bold">
+                    {alertCount}
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* ============ SECTION: Coffre-fort (GED) ============ */}
+          {activeSection === "coffre-fort" && (
+            <div className="space-y-6">
+              {/* Alerts summary */}
+              <AlertsPanel
+                summary={alertsSummary}
+                isLoading={isLoadingAlerts}
+                onUploadNew={handleGedUploadForType}
+                onViewDocument={(id) => {
+                  const doc = gedDocuments.find((d) => d.id === id);
+                  if (doc) openPreview(doc);
+                }}
+              />
+
+              {/* View switcher */}
+              <Tabs
+                value={gedViewMode}
+                onValueChange={(v) => setGedViewMode(v as GedViewMode)}
+              >
+                <TabsList className="grid w-full grid-cols-2 max-w-xs">
+                  <TabsTrigger value="quick" className="gap-1.5 text-xs sm:text-sm">
+                    <FolderOpen className="h-4 w-4" />
+                    Par bien
+                  </TabsTrigger>
+                  <TabsTrigger value="type" className="gap-1.5 text-xs sm:text-sm">
+                    <List className="h-4 w-4" />
+                    Par type
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {/* Views */}
+              {gedViewMode === "quick" && (
+                <QuickView
+                  documents={gedDocuments}
+                  isLoading={isLoadingGed}
+                  onPreview={(doc: any) => openPreview(doc)}
+                  onDownload={(doc: any) => handleDownload(doc)}
+                  onDelete={(doc: any) => openDeleteDialog(doc)}
+                />
+              )}
+
+              {gedViewMode === "type" && (
+                <TypeView
+                  documents={gedDocuments}
+                  isLoading={isLoadingGed}
+                  onPreview={(doc: any) => openPreview(doc)}
+                  onDownload={(doc: any) => handleDownload(doc)}
+                  onDelete={(doc: any) => openDeleteDialog(doc)}
+                />
+              )}
+            </div>
+          )}
+
+          {/* ============ SECTION: Alertes ============ */}
+          {activeSection === "alertes" && (
+            <div className="space-y-6">
+              <AlertsPanel
+                summary={alertsSummary}
+                isLoading={isLoadingAlerts}
+                onUploadNew={handleGedUploadForType}
+                onViewDocument={(id) => {
+                  const doc = gedDocuments.find((d) => d.id === id);
+                  if (doc) openPreview(doc);
+                }}
+              />
+
+              {/* Détail des alertes par statut d'expiration */}
+              {isLoadingGed ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              ) : (() => {
+                const alertDocs = gedDocuments.filter(
+                  (d) =>
+                    d.expiry_status === "expired" ||
+                    d.expiry_status === "expiring_soon" ||
+                    d.expiry_status === "expiring_notice"
+                );
+                const sortOrder = { expired: 0, expiring_soon: 1, expiring_notice: 2 };
+                alertDocs.sort(
+                  (a, b) =>
+                    (sortOrder[a.expiry_status as keyof typeof sortOrder] ?? 3) -
+                    (sortOrder[b.expiry_status as keyof typeof sortOrder] ?? 3)
+                );
+
+                if (alertDocs.length === 0) {
+                  return (
+                    <EmptyState
+                      title="Aucune alerte"
+                      description="Tous vos documents sont à jour."
+                      icon={Bell}
+                    />
+                  );
+                }
+
+                const expired = alertDocs.filter((d) => d.expiry_status === "expired");
+                const expiringSoon = alertDocs.filter((d) => d.expiry_status === "expiring_soon");
+                const expiringNotice = alertDocs.filter((d) => d.expiry_status === "expiring_notice");
+
+                return (
+                  <div className="space-y-6">
+                    {expired.length > 0 && (
+                      <GlassCard className="border-rose-200 dark:border-rose-800">
+                        <div className="px-4 py-2.5 bg-rose-50/50 border-b border-rose-200">
+                          <h3 className="text-sm font-semibold text-rose-700">Documents expirés ({expired.length})</h3>
+                        </div>
+                        <div className="p-3 space-y-2">
+                          {expired.map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between p-3 rounded-md border bg-background hover:bg-accent/50 transition-colors">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{doc.title || doc.type_label || "Document"}</p>
+                                <p className="text-xs text-muted-foreground">{doc.property?.adresse_complete || "Document général"}{doc.valid_until && ` — Exp. ${doc.valid_until}`}</p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => handleGedUploadForType(doc.type)}>
+                                  <Upload className="h-3 w-3" />
+                                  Remplacer
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openPreview(doc)}>
+                                  Voir
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </GlassCard>
+                    )}
+                    {expiringSoon.length > 0 && (
+                      <GlassCard className="border-amber-200 dark:border-amber-800">
+                        <div className="px-4 py-2.5 bg-amber-50/50 border-b border-amber-200">
+                          <h3 className="text-sm font-semibold text-amber-700">Expirent dans 30 jours ({expiringSoon.length})</h3>
+                        </div>
+                        <div className="p-3 space-y-2">
+                          {expiringSoon.map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between p-3 rounded-md border bg-background hover:bg-accent/50 transition-colors">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{doc.title || doc.type_label || "Document"}</p>
+                                <p className="text-xs text-muted-foreground">{doc.property?.adresse_complete || "Document général"}{doc.valid_until && ` — Exp. ${doc.valid_until}`}</p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => handleGedUploadForType(doc.type)}>
+                                  <Upload className="h-3 w-3" />
+                                  Remplacer
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openPreview(doc)}>
+                                  Voir
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </GlassCard>
+                    )}
+                    {expiringNotice.length > 0 && (
+                      <GlassCard className="border-blue-200 dark:border-blue-800">
+                        <div className="px-4 py-2.5 bg-blue-50/50 border-b border-blue-200">
+                          <h3 className="text-sm font-semibold text-blue-700">À renouveler sous 90 jours ({expiringNotice.length})</h3>
+                        </div>
+                        <div className="p-3 space-y-2">
+                          {expiringNotice.map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between p-3 rounded-md border bg-background hover:bg-accent/50 transition-colors">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{doc.title || doc.type_label || "Document"}</p>
+                                <p className="text-xs text-muted-foreground">{doc.property?.adresse_complete || "Document général"}{doc.valid_until && ` — Exp. ${doc.valid_until}`}</p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => handleGedUploadForType(doc.type)}>
+                                  <Upload className="h-3 w-3" />
+                                  Remplacer
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openPreview(doc)}>
+                                  Voir
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </GlassCard>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* ============ SECTION: Bibliothèque (vue originale) ============ */}
+          {activeSection === "bibliotheque" && <>
           {/* Filtres */}
           <GlassCard className="p-4">
             <div className="grid gap-4 md:grid-cols-6">
@@ -582,9 +848,23 @@ export function OwnerDocumentsClient({ initialDocuments }: OwnerDocumentsClientP
                 />
             </GlassCard>
           )}
+          </>}
         </div>
       </div>
-      
+
+      {/* GED Upload Dialog (Coffre-fort) */}
+      <GedUploadDialog
+        open={gedUploadOpen}
+        onOpenChange={(open) => {
+          setGedUploadOpen(open);
+          if (!open) setGedUploadDefaultType(undefined);
+        }}
+        defaultType={gedUploadDefaultType as any}
+        defaultPropertyId={propertyIdFilter}
+        defaultLeaseId={leaseIdFilter}
+        properties={properties}
+      />
+
       {/* Modal de prévisualisation PDF */}
       <PDFPreviewModal
         isOpen={previewOpen}

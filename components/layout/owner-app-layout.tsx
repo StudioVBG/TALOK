@@ -13,7 +13,6 @@ import {
   FileText,
   Euro,
   FileCheck,
-  FolderArchive,
   HelpCircle,
   User,
   LogOut,
@@ -22,20 +21,15 @@ import {
   CalendarClock,
   Wrench,
   Shield,
-  CreditCard,
   ClipboardCheck,
   Search,
   Briefcase,
-  Wallet,
-  Building,
-  Users,
   Eye,
-  Receipt,
   TrendingUp,
   Landmark,
   MessageSquare,
   HardHat,
-  Hammer,
+  Settings,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { SharedBottomNav } from "./shared-bottom-nav";
@@ -74,6 +68,12 @@ interface NavGroup {
   items: NavItem[];
 }
 
+/**
+ * SOTA 2026 — Navigation consolidée (25 → 14 items)
+ * Architecture orientée parcours utilisateur (cycle de vie locatif)
+ * Doublons éliminés : Immeubles → onglet Biens, Coffre-fort → onglet Documents,
+ * Factures → onglet Loyers, Locataires/EDL → onglets Baux, Ordres de travaux → onglet Tickets
+ */
 const navigationGroups: NavGroup[] = [
   {
     items: [
@@ -81,13 +81,15 @@ const navigationGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Gestion immobilière",
+    label: "Patrimoine",
     items: [
       { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2, tourId: "nav-properties" },
-      { name: "Immeubles", href: "/owner/buildings", icon: Building },
+    ],
+  },
+  {
+    label: "Gestion locative",
+    items: [
       { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
-      { name: "Locataires", href: "/owner/tenants", icon: Users },
-      { name: "États des lieux", href: "/owner/inspections", icon: ClipboardCheck, tourId: "nav-inspections" },
       { name: "Visites", href: "/owner/visits", icon: Eye },
       { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
     ],
@@ -96,30 +98,24 @@ const navigationGroups: NavGroup[] = [
     label: "Finances",
     items: [
       { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
-      { name: "Factures", href: "/owner/invoices", icon: Receipt },
       { name: "Indexation loyers", href: "/owner/indexation", icon: TrendingUp },
       { name: "Fiscalité", href: "/owner/taxes", icon: Landmark },
-      { name: "Moyens de paiement", href: "/owner/settings/payments", icon: Wallet },
-      { name: "Facturation", href: "/owner/settings/billing", icon: CreditCard },
     ],
   },
   {
-    label: "Documents & Juridique",
+    label: "Documents",
     items: [
       { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck, tourId: "nav-documents" },
-      { name: "Coffre-fort", href: OWNER_ROUTES.ged.path, icon: FolderArchive, badge: "Nouveau" },
       { name: "Mes entités", href: "/owner/entities", icon: Briefcase, tourId: "nav-entities" },
       { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
     ],
   },
   {
-    label: "Support",
+    label: "Maintenance",
     items: [
-      { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
+      { name: "Tickets & travaux", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
       { name: "Prestataires", href: "/owner/providers", icon: HardHat },
-      { name: "Ordres de travaux", href: "/owner/work-orders", icon: Hammer },
       { name: "Messages", href: "/owner/messages", icon: MessageSquare },
-      { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle, tourId: "nav-support" },
     ],
   },
 ];
@@ -345,6 +341,31 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                 ))}
               </ul>
             </nav>
+
+            {/* SOTA 2026 — Footer sidebar : Paramètres + Aide */}
+            <div className="border-t border-border pt-3 mt-3 space-y-1">
+              {[
+                { name: "Paramètres", href: "/owner/settings", icon: Settings },
+                { name: "Aide & services", href: OWNER_ROUTES.support.path, icon: HelpCircle },
+              ].map((item) => {
+                const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "group flex gap-x-3 rounded-lg p-3 text-sm font-semibold leading-6 transition-all duration-200",
+                      isActive
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                        : "text-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <item.icon className={cn("h-5 w-5 shrink-0", isActive ? "text-white" : "text-muted-foreground group-hover:text-foreground")} />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </aside>
 
@@ -507,23 +528,15 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
             ]}
             moreItems={[
               { href: "/owner/inspections", label: "États des lieux", icon: ClipboardCheck },
-              { href: "/owner/buildings", label: "Immeubles", icon: Building },
-              { href: "/owner/tenants", label: "Locataires", icon: Users },
               { href: "/owner/visits", label: "Visites", icon: Eye },
+              { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
               { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench },
               { href: "/owner/providers", label: "Prestataires", icon: HardHat },
-              { href: "/owner/work-orders", label: "Ordres de travaux", icon: Hammer },
               { href: "/owner/messages", label: "Messages", icon: MessageSquare },
               { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck },
-              { href: OWNER_ROUTES.ged.path, label: "Coffre-fort", icon: FolderArchive },
-              { href: "/owner/invoices", label: "Factures", icon: Receipt },
               { href: "/owner/indexation", label: "Indexation", icon: TrendingUp },
               { href: "/owner/taxes", label: "Fiscalité", icon: Landmark },
-              { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
               { href: "/owner/entities", label: "Entités", icon: Briefcase },
-              { href: "/owner/legal-protocols", label: "Protocoles juridiques", icon: Shield },
-              { href: "/owner/settings/payments", label: "Moyens de paiement", icon: Wallet },
-              { href: "/owner/settings/billing", label: "Facturation", icon: CreditCard },
               { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
             ]}
             hideAbove="md"

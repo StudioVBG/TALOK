@@ -1,6 +1,11 @@
 /**
- * Configuration des routes pour le compte propriétaire - SOTA 2025
+ * Configuration des routes pour le compte propriétaire - SOTA 2026
  * Structure unifiée : toutes les routes utilisent /owner/*
+ *
+ * Consolidation navigation :
+ * - contracts est l'entrée principale pour /owner/leases (alias leases supprimé)
+ * - money est l'entrée principale pour /owner/money (alias finances supprimé)
+ * - profile est l'entrée principale pour /owner/profile (alias settings redirige vers /owner/settings)
  */
 
 export const OWNER_BASE_PATH = "/owner";
@@ -34,6 +39,7 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "Users",
   },
+  /** @deprecated Utiliser contracts à la place - même path /owner/leases */
   leases: {
     path: "/owner/leases",
     name: "Baux",
@@ -48,6 +54,7 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "Euro",
   },
+  /** @deprecated Utiliser money à la place - même path /owner/money */
   finances: {
     path: "/owner/money",
     name: "Finances",
@@ -90,6 +97,7 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "FileCheck",
   },
+  /** @deprecated Consolidé dans Documents - redirige vers /owner/documents?tab=coffre-fort */
   ged: {
     path: "/owner/ged",
     name: "GED",
@@ -119,7 +127,7 @@ export const OWNER_ROUTES = {
     icon: "HelpCircle",
   },
   settings: {
-    path: "/owner/profile",
+    path: "/owner/settings",
     name: "Paramètres",
     component: "OwnerSettingsPage",
     auth: ["owner"],

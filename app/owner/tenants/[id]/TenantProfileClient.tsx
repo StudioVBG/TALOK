@@ -358,10 +358,15 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
                         </p>
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t">
+                    <div className="mt-3 pt-3 border-t flex gap-2 flex-wrap">
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/owner/leases/${currentLease.id}`}>
                           Voir le bail
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href="/owner/end-of-lease">
+                          Fin de bail
                         </Link>
                       </Button>
                     </div>

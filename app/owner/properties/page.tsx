@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, LayoutGrid, LayoutList, Download } from "lucide-react";
+import { Plus, Search, LayoutGrid, LayoutList, Download, Building } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportProperties } from "@/lib/services/export-service";
 import { useProperties, useLeases } from "@/lib/hooks";
 import { useEntityStore } from "@/stores/useEntityStore";
@@ -62,7 +63,13 @@ export default function OwnerPropertiesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const moduleFilter = searchParams.get("module");
+  const initialTab = searchParams.get("tab");
   const { activeEntityId, entities, getActiveEntity } = useEntityStore();
+
+  // SOTA 2026 — Onglet "Mes biens" | "Immeubles"
+  const [propertyTab, setPropertyTab] = useState<"biens" | "immeubles">(
+    initialTab === "immeubles" ? "immeubles" : "biens"
+  );
 
   // Déterminer l'entityId pour le filtrage :
   // - null (toutes les entités) → pas de filtre
@@ -143,6 +150,11 @@ export default function OwnerPropertiesPage() {
   const filteredProperties = useMemo(() => {
     let filtered = propertiesWithStatus;
 
+    // SOTA 2026 — Filtre par onglet Biens/Immeubles
+    if (propertyTab === "immeubles") {
+      filtered = filtered.filter((p: any) => p.type === "immeuble");
+    }
+
     if (moduleFilter) {
       filtered = filtered.filter((p: any) => {
         if (moduleFilter === "habitation") {
@@ -173,7 +185,7 @@ export default function OwnerPropertiesPage() {
     }
 
     return filtered;
-  }, [propertiesWithStatus, moduleFilter, typeFilter, statusFilter, debouncedSearchQuery]);
+  }, [propertiesWithStatus, propertyTab, moduleFilter, typeFilter, statusFilter, debouncedSearchQuery]);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -510,6 +522,25 @@ export default function OwnerPropertiesPage() {
                   </Button>
                 )}
               </motion.div>
+            </motion.div>
+
+            {/* SOTA 2026 — Onglets Biens / Immeubles */}
+            <motion.div variants={itemVariants} className="mb-6">
+              <Tabs
+                value={propertyTab}
+                onValueChange={(v) => setPropertyTab(v as "biens" | "immeubles")}
+              >
+                <TabsList className="grid w-full grid-cols-2 max-w-xs">
+                  <TabsTrigger value="biens" className="gap-1.5 text-xs sm:text-sm">
+                    <LayoutGrid className="h-4 w-4" />
+                    Mes biens
+                  </TabsTrigger>
+                  <TabsTrigger value="immeubles" className="gap-1.5 text-xs sm:text-sm">
+                    <Building className="h-4 w-4" />
+                    Immeubles
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </motion.div>
 
             {/* Usage Limit Banner SOTA 2025 */}
