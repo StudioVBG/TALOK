@@ -6,6 +6,9 @@
  * Wrap le layout owner pour charger les entités et synchroniser l'entité active.
  * Si aucune entité n'est trouvée après le fetch, appelle ensureDefaultEntity()
  * pour auto-provisionner une entité "particulier" par défaut.
+ *
+ * Utilise un module-level promise pour dédupliquer les appels concurrents
+ * (React strict mode, onglets multiples).
  */
 
 import { useEffect, type ReactNode } from "react";
@@ -15,6 +18,9 @@ import { useAuth } from "@/lib/hooks/use-auth";
 interface EntityProviderProps {
   children: ReactNode;
 }
+
+// Module-level deduplication: prevents concurrent ensureDefaultEntity() calls
+let ensureDefaultPromise: Promise<void> | null = null;
 
 export function EntityProvider({ children }: EntityProviderProps) {
   const { profile } = useAuth();
@@ -37,13 +43,24 @@ export function EntityProvider({ children }: EntityProviderProps) {
         // Si toujours vide après fetch, auto-créer l'entité par défaut
         const currentEntities = useEntityStore.getState().entities;
         if (currentEntities.length === 0) {
-          const { ensureDefaultEntity } = await import(
-            "@/app/owner/entities/actions"
-          );
-          const result = await ensureDefaultEntity();
-          if (result.success) {
-            // Re-fetch pour alimenter le store avec la nouvelle entité
-            await fetchEntities(profile.id);
+          // Dédupliquer les appels concurrents (strict mode, multi-tab)
+          if (ensureDefaultPromise) {
+            await ensureDefaultPromise;
+          } else {
+            ensureDefaultPromise = (async () => {
+              try {
+                const { ensureDefaultEntity } = await import(
+                  "@/app/owner/entities/actions"
+                );
+                const result = await ensureDefaultEntity();
+                if (result.success) {
+                  await fetchEntities(profile.id);
+                }
+              } finally {
+                ensureDefaultPromise = null;
+              }
+            })();
+            await ensureDefaultPromise;
           }
         }
       } catch (err) {

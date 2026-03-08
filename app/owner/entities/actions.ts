@@ -182,6 +182,26 @@ export async function createEntity(
       }
     }
 
+    // Check for name+type duplicates when no SIRET (prevents unlimited "particulier" clones)
+    if (!cleanSiret) {
+      const { data: existingByName } = await supabase
+        .from("legal_entities")
+        .select("id, nom")
+        .eq("owner_profile_id", auth.ownerProfileId)
+        .eq("entity_type", data.entity_type)
+        .eq("nom", data.nom)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingByName) {
+        return {
+          success: false,
+          error: `Une entité "${existingByName.nom}" de ce type existe déjà.`,
+        };
+      }
+    }
+
     // Auto-derive SIREN from SIRET
     const derivedSiren = cleanSiret ? siretToSiren(cleanSiret) : null;
 
@@ -550,6 +570,21 @@ export async function ensureDefaultEntity(): Promise<ActionResult<{ id: string }
       .single();
 
     if (leError || !entity) {
+      // Handle unique constraint violation (race condition: another request just created it)
+      if (leError?.code === "23505") {
+        const { data: justCreated } = await serviceClient
+          .from("legal_entities")
+          .select("id")
+          .eq("owner_profile_id", auth.ownerProfileId)
+          .eq("is_active", true)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (justCreated) {
+          return { success: true, data: { id: justCreated.id } };
+        }
+      }
       console.error("[ensureDefaultEntity] legal_entities insert error:", leError?.message);
       return { success: false, error: leError?.message || "Erreur de création" };
     }
@@ -572,6 +607,224 @@ export async function ensureDefaultEntity(): Promise<ActionResult<{ id: string }
     return { success: true, data: { id: entity.id } };
   } catch (e) {
     console.error("[ensureDefaultEntity] Unexpected error:", e);
+    return { success: false, error: "Erreur inattendue" };
+  }
+}
+
+// ============================================
+// BULK OPERATIONS
+// ============================================
+
+const bulkDeleteSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(200),
+});
+
+/**
+ * Supprime ou désactive en masse une liste d'entités.
+ * Pour chaque ID : tente la suppression, sinon désactive.
+ */
+export async function bulkDeleteEntities(
+  input: z.infer<typeof bulkDeleteSchema>
+): Promise<
+  ActionResult<{
+    deleted: string[];
+    deactivated: string[];
+    failed: Array<{ id: string; reason: string }>;
+  }>
+> {
+  try {
+    const parsed = bulkDeleteSchema.safeParse(input);
+    if (!parsed.success) {
+      return { success: false, error: "IDs invalides" };
+    }
+
+    const auth = await getAuthenticatedOwnerProfileId();
+    if (!auth) {
+      return { success: false, error: "Non autorisé" };
+    }
+
+    const supabase = await createClient();
+    const deleted: string[] = [];
+    const deactivated: string[] = [];
+    const failed: Array<{ id: string; reason: string }> = [];
+
+    for (const id of parsed.data.ids) {
+      try {
+        // Verify ownership
+        const { data: entity } = await supabase
+          .from("legal_entities")
+          .select("id, nom")
+          .eq("id", id)
+          .eq("owner_profile_id", auth.ownerProfileId)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (!entity) {
+          failed.push({ id, reason: "Entité non trouvée ou déjà inactive" });
+          continue;
+        }
+
+        const { canDelete } = await canDeleteEntity(id);
+
+        if (canDelete) {
+          const { error } = await supabase
+            .from("legal_entities")
+            .delete()
+            .eq("id", id)
+            .eq("owner_profile_id", auth.ownerProfileId);
+
+          if (error) {
+            failed.push({ id, reason: error.message });
+          } else {
+            deleted.push(id);
+          }
+        } else {
+          // Fallback: deactivate
+          const { error } = await supabase
+            .from("legal_entities")
+            .update({
+              is_active: false,
+              date_radiation: new Date().toISOString().split("T")[0],
+              motif_radiation: "Suppression en masse — doublon",
+            })
+            .eq("id", id)
+            .eq("owner_profile_id", auth.ownerProfileId);
+
+          if (error) {
+            failed.push({ id, reason: error.message });
+          } else {
+            deactivated.push(id);
+          }
+        }
+      } catch {
+        failed.push({ id, reason: "Erreur inattendue" });
+      }
+    }
+
+    revalidatePath("/owner/entities");
+    revalidatePath("/owner/profile");
+
+    return { success: true, data: { deleted, deactivated, failed } };
+  } catch (error) {
+    console.error("[bulkDeleteEntities] Unexpected error:", error);
+    return { success: false, error: "Erreur inattendue" };
+  }
+}
+
+/**
+ * Identifie les groupes de doublons pour le propriétaire connecté.
+ * Retourne les groupes avec 2+ entités actives partageant (entity_type, nom).
+ */
+export async function findDuplicateEntities(): Promise<
+  ActionResult<
+    Array<{
+      entityType: string;
+      nom: string;
+      count: number;
+      ids: string[];
+      keepId: string;
+    }>
+  >
+> {
+  try {
+    const auth = await getAuthenticatedOwnerProfileId();
+    if (!auth) {
+      return { success: false, error: "Non autorisé" };
+    }
+
+    const supabase = await createClient();
+
+    // Fetch all active entities for this owner
+    const { data: entities, error } = await supabase
+      .from("legal_entities")
+      .select("id, entity_type, nom, created_at")
+      .eq("owner_profile_id", auth.ownerProfileId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
+
+    if (error || !entities) {
+      return { success: false, error: "Erreur lors de la recherche" };
+    }
+
+    // Group by (entity_type, nom)
+    const groups = new Map<
+      string,
+      Array<{ id: string; entity_type: string; nom: string; created_at: string }>
+    >();
+
+    for (const e of entities) {
+      const key = `${e.entity_type}::${e.nom}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(e);
+    }
+
+    // Filter to groups with duplicates
+    const duplicates = Array.from(groups.values())
+      .filter((g) => g.length > 1)
+      .map((g) => ({
+        entityType: g[0].entity_type,
+        nom: g[0].nom,
+        count: g.length,
+        ids: g.map((e) => e.id),
+        keepId: g[0].id, // oldest entity
+      }));
+
+    return { success: true, data: duplicates };
+  } catch (error) {
+    console.error("[findDuplicateEntities] Unexpected error:", error);
+    return { success: false, error: "Erreur inattendue" };
+  }
+}
+
+/**
+ * Déduplique les entités : garde la plus ancienne de chaque groupe,
+ * supprime/désactive les doublons.
+ */
+export async function deduplicateEntities(): Promise<
+  ActionResult<{ totalRemoved: number; deleted: number; deactivated: number }>
+> {
+  try {
+    const findResult = await findDuplicateEntities();
+    if (!findResult.success) {
+      return { success: false, error: findResult.error };
+    }
+    if (!findResult.data) {
+      return { success: false, error: "Erreur recherche doublons" };
+    }
+
+    if (findResult.data.length === 0) {
+      return { success: true, data: { totalRemoved: 0, deleted: 0, deactivated: 0 } };
+    }
+
+    // Collect all IDs to remove (everything except keepId)
+    const idsToRemove: string[] = [];
+    for (const group of findResult.data) {
+      for (const id of group.ids) {
+        if (id !== group.keepId) {
+          idsToRemove.push(id);
+        }
+      }
+    }
+
+    const bulkResult = await bulkDeleteEntities({ ids: idsToRemove });
+    if (!bulkResult.success) {
+      return { success: false, error: bulkResult.error };
+    }
+    if (!bulkResult.data) {
+      return { success: false, error: "Erreur suppression" };
+    }
+
+    const { deleted, deactivated } = bulkResult.data;
+    return {
+      success: true,
+      data: {
+        totalRemoved: deleted.length + deactivated.length,
+        deleted: deleted.length,
+        deactivated: deactivated.length,
+      },
+    };
+  } catch (error) {
+    console.error("[deduplicateEntities] Unexpected error:", error);
     return { success: false, error: "Erreur inattendue" };
   }
 }

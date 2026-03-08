@@ -32,6 +32,7 @@ export async function getLegalEntities(
   options?: {
     includeInactive?: boolean;
     entityType?: LegalEntityType;
+    status?: 'draft' | 'active' | 'archived';
   }
 ): Promise<LegalEntity[]> {
   const supabase = await createClient();
@@ -42,7 +43,9 @@ export async function getLegalEntities(
     .eq("owner_profile_id", ownerProfileId)
     .order("nom");
 
-  if (!options?.includeInactive) {
+  if (options?.status) {
+    query = query.eq("status", options.status);
+  } else if (!options?.includeInactive) {
     query = query.eq("is_active", true);
   }
 
