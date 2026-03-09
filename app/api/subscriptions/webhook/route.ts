@@ -478,7 +478,7 @@ async function handleInvoiceFailed(
     .eq("stripe_subscription_id", (invoice as any).subscription as string)
     .single();
 
-  if (sub) {
+  if (sub?.owner_id) {
     await supabase.from("notifications").insert({
       user_id: sub.owner_id,
       type: "payment_failed",
