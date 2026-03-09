@@ -38,7 +38,7 @@ export async function GET() {
       .eq("user_id", user.id)
       .single();
 
-    const currentPlan = (subscription?.plan_slug || "starter") as PlanSlug;
+    const currentPlan = (subscription?.plan_slug || "gratuit") as PlanSlug;
 
     // Compter les propriétés
     const { count: propertiesCount } = await supabase

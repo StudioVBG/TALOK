@@ -68,8 +68,8 @@ export async function GET() {
       .eq("owner_id", profile.id)
       .maybeSingle();
 
-    const planSlug = (subscription?.plan_slug || 'starter') as PlanSlug;
-    const limits = PLANS[planSlug]?.limits || PLANS.starter.limits;
+    const planSlug = (subscription?.plan_slug || 'gratuit') as PlanSlug;
+    const limits = PLANS[planSlug]?.limits || PLANS.gratuit.limits;
 
     // Compter les propriétés
     const { count: propertiesCount } = await supabase

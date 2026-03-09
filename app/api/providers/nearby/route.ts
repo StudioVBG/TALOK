@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
       .eq("status", "active")
       .single();
 
-    const planSlug = subscription?.plan_slug || "starter";
+    const planSlug = subscription?.plan_slug || "gratuit";
     const premiumPlans = ["confort", "pro", "enterprise"];
 
     if (!premiumPlans.includes(planSlug)) {

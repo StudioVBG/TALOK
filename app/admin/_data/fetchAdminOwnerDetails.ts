@@ -202,8 +202,8 @@ export async function fetchAdminOwnerDetails(ownerId: string): Promise<AdminOwne
     // Subscription
     subscription: subscriptionData ? ({
       id: subscriptionData.id,
-      plan_slug: subscriptionData.plan?.slug || "starter",
-      plan_name: subscriptionData.plan?.name || "Starter",
+      plan_slug: subscriptionData.plan?.slug || "gratuit",
+      plan_name: subscriptionData.plan?.name || "Gratuit",
       status: subscriptionData.status,
       billing_cycle: subscriptionData.billing_cycle,
       current_period_start: subscriptionData.current_period_start,

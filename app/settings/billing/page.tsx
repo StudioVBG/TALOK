@@ -894,7 +894,7 @@ export default function BillingPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            plan_slug: subscription?.plan.slug || "starter",
+            plan_slug: subscription?.plan.slug || "gratuit",
             billing_cycle: subscription?.billing_cycle || "monthly",
           }),
         });
