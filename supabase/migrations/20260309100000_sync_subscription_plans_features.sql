@@ -662,7 +662,7 @@ FROM (
   SELECT pr.owner_id, COUNT(*) as cnt
   FROM leases l
   JOIN properties pr ON l.property_id = pr.id
-  WHERE l.status IN ('active', 'pending', 'signed')
+  WHERE l.statut IN ('active', 'pending_signature', 'partially_signed', 'fully_signed')
   GROUP BY pr.owner_id
 ) lease_counts
 WHERE s.owner_id = lease_counts.owner_id
