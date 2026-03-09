@@ -87,7 +87,8 @@ export function LeasePaymentsTab({
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
-  const isPreActivation = !["active", "terminated", "archived"].includes(leaseStatus);
+  // SOTA 2026: Autoriser fully_signed (facture initiale créée à la signature)
+  const isPreActivation = !["active", "terminated", "archived", "fully_signed"].includes(leaseStatus);
 
   if (isPreActivation) {
     return (
@@ -99,7 +100,7 @@ export function LeasePaymentsTab({
           Paiements non disponibles
         </h3>
         <p className="text-sm text-slate-500 text-center max-w-md">
-          Les factures et paiements seront générés une fois le bail activé.
+          Les factures et paiements seront générés une fois le bail signé par toutes les parties.
         </p>
       </div>
     );
@@ -156,6 +157,21 @@ export function LeasePaymentsTab({
         animate={{ opacity: 1, y: 0 }}
         className="space-y-6 py-4"
       >
+        {/* Bannière bail signé - en attente d'activation */}
+        {leaseStatus === "fully_signed" && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+            <Clock className="h-5 w-5 text-blue-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-blue-800">
+                Bail signé — En attente d&apos;activation
+              </p>
+              <p className="text-xs text-blue-600">
+                La facture initiale (caution + 1er mois) a été envoyée au locataire. Le bail sera activé après l&apos;état des lieux d&apos;entrée.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Résumé */}
         <div className="grid grid-cols-3 gap-4">
           <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100 text-center">

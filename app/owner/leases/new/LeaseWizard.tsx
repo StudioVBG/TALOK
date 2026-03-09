@@ -1202,6 +1202,57 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         </div>
                       </div>
 
+                      {/* SOTA 2026: Aperçu prorata + facture initiale */}
+                      {dateDebut && loyer > 0 && (() => {
+                        const start = new Date(dateDebut);
+                        const dayOfMonth = start.getDate();
+                        const isMidMonth = dayOfMonth > 1;
+                        const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+                        const remainingDays = daysInMonth - dayOfMonth + 1;
+                        const prorataRent = isMidMonth ? Math.round((loyer / daysInMonth) * remainingDays * 100) / 100 : loyer;
+                        const prorataCharges = isMidMonth ? Math.round((charges / daysInMonth) * remainingDays * 100) / 100 : charges;
+                        const totalInitial = prorataRent + prorataCharges + depot;
+
+                        return (
+                          <div className="mt-4 p-4 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800">
+                            <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-200 mb-2">
+                              Facture initiale (générée à la signature)
+                            </p>
+                            <div className="space-y-1 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-indigo-600 dark:text-indigo-400">
+                                  {isMidMonth ? `Loyer proratisé (${remainingDays}/${daysInMonth} jours)` : "1er mois de loyer"}
+                                </span>
+                                <span className="font-medium text-indigo-800 dark:text-indigo-200">{prorataRent.toFixed(2)}€</span>
+                              </div>
+                              {prorataCharges > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-indigo-600 dark:text-indigo-400">
+                                    {isMidMonth ? `Charges proratisées` : "Charges"}
+                                  </span>
+                                  <span className="font-medium text-indigo-800 dark:text-indigo-200">{prorataCharges.toFixed(2)}€</span>
+                                </div>
+                              )}
+                              {depot > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-indigo-600 dark:text-indigo-400">Dépôt de garantie</span>
+                                  <span className="font-medium text-indigo-800 dark:text-indigo-200">{depot.toFixed(2)}€</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between pt-2 border-t border-indigo-200 dark:border-indigo-700 mt-1">
+                                <span className="font-bold text-indigo-800 dark:text-indigo-200">Total facture initiale</span>
+                                <span className="font-bold text-indigo-800 dark:text-indigo-200">{totalInitial.toFixed(2)}€</span>
+                              </div>
+                            </div>
+                            {isMidMonth && (
+                              <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-2">
+                                Entrée le {dayOfMonth}/{start.getMonth() + 1} — loyer proratisé au {daysInMonth}/{start.getMonth() + 1}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {/* P1-4: Avertissement durée SCI */}
                       {effectiveDurationMonths > (leaseConfig?.durationMonths ?? 0) && (
                         <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">

@@ -197,8 +197,8 @@ export async function GET(request: NextRequest) {
             date_echeance: dateEcheance.toISOString().split("T")[0],
             statut: "sent",
             invoice_number: invoiceNumber,
-            type: "loyer",
-            description: `Loyer et charges - ${new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`,
+            notes: `Loyer et charges - ${new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`,
+            metadata: { type: "loyer", version: "SOTA-2026" },
           })
           .select("id")
           .single();

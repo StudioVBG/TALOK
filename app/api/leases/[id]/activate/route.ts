@@ -215,7 +215,7 @@ export async function POST(
 
         const ownerId = leaseFull.property?.owner_id;
 
-        if (ownerId) {
+        if (ownerId && tenantId) {
           // Garde anti-doublon : vérifier si la facture initiale existe déjà
           // (créée par le trigger DB à la signature fully_signed)
           const { data: existingInitialInvoice } = await serviceClient
@@ -228,9 +228,9 @@ export async function POST(
           if (existingInitialInvoice) {
             console.log(`[Activate Lease] Initial invoice already exists (created at signing) for lease ${leaseId}, skipping`);
           } else {
-            // SSOT : Utiliser les données du bien par défaut
-            const baseRent = leaseFull.property?.loyer_hc ?? leaseFull.loyer ?? 0;
-            const baseCharges = leaseFull.property?.charges_mensuelles ?? leaseFull.charges_forfaitaires ?? 0;
+            // SSOT 2026 : Utiliser le loyer contractuel du bail (pas du bien)
+            const baseRent = leaseFull.loyer ?? leaseFull.property?.loyer_hc ?? 0;
+            const baseCharges = leaseFull.charges_forfaitaires ?? leaseFull.property?.charges_mensuelles ?? 0;
             const monthStr = leaseFull.date_debut?.slice(0, 7) || new Date().toISOString().slice(0, 7);
 
             // Calcul du prorata
@@ -269,7 +269,7 @@ export async function POST(
               .insert({
                 lease_id: leaseId,
                 owner_id: ownerId,
-                tenant_id: tenantId ?? null,
+                tenant_id: tenantId,
                 issuer_entity_id: (leaseFull as any).signatory_entity_id ?? null,
                 periode: monthStr,
                 montant_loyer: Math.round(finalRent * 100) / 100,
