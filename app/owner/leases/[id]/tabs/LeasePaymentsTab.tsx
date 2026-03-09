@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,10 @@ import {
   FileText,
   AlertTriangle,
   Plus,
+  Loader2,
+  Zap,
 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 import { formatCurrency } from "@/lib/helpers/format";
 import { ManualPaymentDialog } from "@/components/payments/ManualPaymentDialog";
 
@@ -86,6 +90,9 @@ export function LeasePaymentsTab({
 }: LeasePaymentsTabProps) {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
   // SOTA 2026: Autoriser fully_signed (facture initiale créée à la signature)
   const isPreActivation = !["active", "terminated", "archived", "fully_signed"].includes(leaseStatus);
@@ -108,19 +115,76 @@ export function LeasePaymentsTab({
 
   const hasNoData = payments.length === 0 && invoices.length === 0;
 
+  const handleGenerateInvoice = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/leases/${leaseId}/generate-invoice`, {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast({
+          title: "Erreur",
+          description: data.error || "Impossible de générer la facture",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: data.already_exists ? "Facture existante" : "Facture créée",
+        description: data.already_exists
+          ? "La facture initiale existe déjà. Rechargement..."
+          : `Facture initiale de ${data.details?.total ?? ""}€ créée avec succès`,
+      });
+
+      // Refresh pour afficher la facture
+      router.refresh();
+    } catch {
+      toast({
+        title: "Erreur réseau",
+        description: "Impossible de contacter le serveur",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   if (hasNoData) {
+    const canGenerate = ["active", "fully_signed"].includes(leaseStatus);
+
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
         <div className="p-4 bg-amber-100 rounded-full mb-4">
           <Clock className="h-8 w-8 text-amber-600" />
         </div>
         <h3 className="text-lg font-semibold text-slate-700 mb-2">
-          En attente du premier paiement
+          Aucune facture pour ce bail
         </h3>
-        <p className="text-sm text-slate-500 text-center max-w-md">
-          La facture initiale sera disponible sous peu. Si elle n&apos;apparaît pas, vous pouvez la retrouver dans la comptabilité.
+        <p className="text-sm text-slate-500 text-center max-w-md mb-4">
+          {canGenerate
+            ? "La facture initiale (dépôt de garantie + premier mois de loyer) n'a pas encore été générée pour ce bail."
+            : "Les factures seront générées une fois le bail signé par toutes les parties."}
         </p>
-        <Button variant="outline" size="sm" className="mt-4" asChild>
+
+        {canGenerate && (
+          <Button
+            onClick={handleGenerateInvoice}
+            disabled={generating}
+            className="gap-2"
+          >
+            {generating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Zap className="h-4 w-4" />
+            )}
+            {generating ? "Génération en cours..." : "Générer la facture initiale"}
+          </Button>
+        )}
+
+        <Button variant="outline" size="sm" className="mt-3" asChild>
           <Link href={`/owner/money?lease_id=${leaseId}`}>
             <ExternalLink className="h-4 w-4 mr-2" />
             Voir la comptabilité
