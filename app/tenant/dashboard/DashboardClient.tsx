@@ -42,6 +42,7 @@ import { getStatusBadgeProps } from "@/lib/types/status";
 import { isIdentityVerified } from "@/lib/helpers/identity-check";
 import { CreditBuilderCard, CreditScoreData } from "@/features/tenant/components/credit-builder-card";
 import { ConsumptionChart, ConsumptionDataPoint } from "@/features/tenant/components/consumption-chart";
+import { QuickActions } from "@/components/dashboard/QuickActions";
 
 // Types pour les données SOTA 2026
 interface ConsumptionResponse {
@@ -674,6 +675,43 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
           </motion.div>
         )}
 
+        {/* --- CTA SIGNALER UN PROBLÈME --- */}
+        {hasLeaseData && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+          >
+            <GlassCard className="p-6 border-none text-white shadow-xl bg-gradient-to-br from-orange-500 to-red-500 relative overflow-hidden">
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
+                    <Wrench className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black">Un problème dans votre logement ?</h3>
+                    <p className="text-sm text-white/80 font-medium">
+                      Signalez-le en quelques clics, nous nous en occupons.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Button
+                    className="bg-white text-orange-700 hover:bg-white/90 font-bold rounded-xl h-12 px-6 shadow-lg"
+                    asChild
+                  >
+                    <Link href="/tenant/requests/new" className="gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      Signaler un problème
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+              <Wrench className="absolute -right-4 -bottom-4 h-24 w-24 text-white/10 rotate-12" />
+            </GlassCard>
+          </motion.div>
+        )}
+
         {/* --- SECTION 2 : BENTO GRID SOTA 2026 --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
@@ -827,7 +865,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                         <Building2 className="h-4 w-4" /> Ma Vie au Logement
                       </Link>
                     </Button>
-                    <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-xl h-11 px-5 rounded-xl font-bold transition-all" asChild>
+                    <Button variant="secondary" className="bg-orange-500/80 hover:bg-orange-500 text-white border-orange-400/50 backdrop-blur-xl h-11 px-5 rounded-xl font-bold transition-all" asChild>
                       <Link href="/tenant/requests/new" className="gap-2">
                         <Wrench className="h-4 w-4" /> Signaler un problème
                       </Link>
@@ -1119,6 +1157,16 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
               </Button>
               <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-white/10 rotate-12" />
             </GlassCard>
+          </motion.div>
+
+          {/* H. ACTIONS RAPIDES - 12/12 */}
+          <motion.div
+            className="lg:col-span-12"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+          >
+            <QuickActions role="tenant" />
           </motion.div>
 
         </div>
