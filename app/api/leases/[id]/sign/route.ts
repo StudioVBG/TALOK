@@ -522,7 +522,7 @@ export async function POST(
                       includes_deposit: deposit > 0,
                       deposit_amount: deposit,
                     },
-                  } as any).catch(() => null);
+                  } as any).then(() => null, () => null);
                 }
               }
             }
