@@ -10,6 +10,7 @@ export interface Conversation {
   id: string;
   property_id: string;
   lease_id?: string | null;
+  ticket_id?: string | null;
   owner_profile_id: string;
   tenant_profile_id: string;
   subject?: string | null;
@@ -224,6 +225,44 @@ class ChatService {
   }
 
   /**
+   * Créer ou récupérer une conversation liée à un ticket
+   */
+  async getOrCreateTicketConversation(data: {
+    ticket_id: string;
+    property_id: string;
+    owner_profile_id: string;
+    tenant_profile_id: string;
+    subject?: string;
+  }): Promise<Conversation> {
+    // Chercher une conversation existante liée au ticket
+    const { data: existing } = await (this.supabase
+      .from("conversations")
+      .select("*") as any)
+      .eq("ticket_id", data.ticket_id)
+      .single();
+
+    if (existing) {
+      return existing as Conversation;
+    }
+
+    // Créer une nouvelle conversation liée au ticket
+    const { data: newConv, error } = await this.supabase
+      .from("conversations")
+      .insert({
+        property_id: data.property_id,
+        ticket_id: data.ticket_id,
+        owner_profile_id: data.owner_profile_id,
+        tenant_profile_id: data.tenant_profile_id,
+        subject: data.subject || "Ticket",
+      } as any)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return newConv as Conversation;
+  }
+
+  /**
    * Récupérer les messages d'une conversation
    */
   async getMessages(conversationId: string, limit = 50, before?: string): Promise<Message[]> {
@@ -308,11 +347,27 @@ class ChatService {
 
     if (error) throw error;
 
+    // Envoyer une notification au destinataire (fire-and-forget)
+    this.notifyRecipient(data.conversation_id, data.content).catch((err) =>
+      console.warn("[ChatService] Notification failed:", err)
+    );
+
     return {
       ...message,
       sender_name: `${message.sender?.prenom || ""} ${message.sender?.nom || ""}`.trim(),
       sender_avatar: message.sender?.avatar_url,
     } as Message;
+  }
+
+  /**
+   * Notifier le destinataire d'un nouveau message via l'API
+   */
+  private async notifyRecipient(conversationId: string, messageContent: string): Promise<void> {
+    await fetch("/api/messages/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId, messageContent }),
+    });
   }
 
   /**
@@ -342,7 +397,8 @@ class ChatService {
    */
   subscribeToMessages(
     conversationId: string,
-    onMessage: (message: Message) => void
+    onMessage: (message: Message) => void,
+    onMessageUpdate?: (message: Message) => void
   ): () => void {
     // Vérifier si Realtime est disponible
     if (!this.realtimeEnabled) {
@@ -387,6 +443,36 @@ class ChatService {
             } catch (err) {
               console.error("Erreur enrichissement message:", err);
               onMessage(payload.new as Message);
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "messages",
+            filter: `conversation_id=eq.${conversationId}`,
+          },
+          async (payload) => {
+            if (!onMessageUpdate) return;
+            try {
+              const { data: sender } = await this.supabase
+                .from("profiles")
+                .select("prenom, nom, avatar_url")
+                .eq("id", payload.new.sender_profile_id)
+                .single();
+
+              const message: Message = {
+                ...(payload.new as any),
+                sender_name: sender ? `${sender.prenom || ""} ${sender.nom || ""}`.trim() : "",
+                sender_avatar: sender?.avatar_url,
+              };
+
+              onMessageUpdate(message);
+            } catch (err) {
+              console.error("Erreur enrichissement message update:", err);
+              onMessageUpdate(payload.new as Message);
             }
           }
         )
@@ -478,6 +564,57 @@ class ChatService {
     const { error } = await this.supabase
       .from("conversations")
       .update({ status: "archived" })
+      .eq("id", conversationId);
+
+    if (error) throw error;
+  }
+
+  /**
+   * Modifier un message (seul l'auteur peut modifier)
+   */
+  async editMessage(messageId: string, newContent: string): Promise<Message> {
+    const { data, error } = await this.supabase
+      .from("messages")
+      .update({ content: newContent, edited_at: new Date().toISOString() } as any)
+      .eq("id", messageId)
+      .select(`
+        *,
+        sender:profiles!messages_sender_profile_id_fkey (
+          prenom,
+          nom,
+          avatar_url
+        )
+      `)
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      sender_name: `${data.sender?.prenom || ""} ${data.sender?.nom || ""}`.trim(),
+      sender_avatar: data.sender?.avatar_url,
+    } as Message;
+  }
+
+  /**
+   * Supprimer un message (soft delete)
+   */
+  async deleteMessage(messageId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("messages")
+      .update({ deleted_at: new Date().toISOString() } as any)
+      .eq("id", messageId);
+
+    if (error) throw error;
+  }
+
+  /**
+   * Clôturer une conversation
+   */
+  async closeConversation(conversationId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("conversations")
+      .update({ status: "closed" })
       .eq("id", conversationId);
 
     if (error) throw error;

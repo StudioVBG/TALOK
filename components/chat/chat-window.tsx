@@ -12,16 +12,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Send,
   Paperclip,
-  Image as ImageIcon,
   File,
   MoreVertical,
+  MoreHorizontal,
   Check,
   CheckCheck,
   ArrowLeft,
   Loader2,
-  MessageSquare
+  MessageSquare,
+  Pencil,
+  Trash2,
+  Flag,
+  X
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { chatService, type Message, type Conversation } from "@/lib/services/chat.service";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -30,16 +41,23 @@ interface ChatWindowProps {
   conversation: Conversation;
   currentProfileId: string;
   onBack?: () => void;
+  onConversationStatusChange?: (conversationId: string, status: "archived" | "closed") => void;
 }
 
-export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindowProps) {
+export function ChatWindow({ conversation, currentProfileId, onBack, onConversationStatusChange }: ChatWindowProps) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [newMessage, setNewMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [reportingMessage, setReportingMessage] = useState<Message | null>(null);
+  const [reportReason, setReportReason] = useState<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isOwner = currentProfileId === conversation.owner_profile_id;
   const otherName = isOwner ? conversation.tenant_name : conversation.owner_name;
@@ -51,23 +69,25 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
     // Marquer comme lus
     chatService.markAsRead(conversation.id);
 
-    // Souscrire aux nouveaux messages
+    // Souscrire aux nouveaux messages + updates
     const unsubscribe = chatService.subscribeToMessages(
       conversation.id,
       (message) => {
         setMessages((prev) => {
-          // Éviter les doublons
           if (prev.some(m => m.id === message.id)) return prev;
           return [...prev, message];
         });
-        
-        // Marquer comme lus si ce n'est pas notre message
         if (message.sender_profile_id !== currentProfileId) {
           chatService.markAsRead(conversation.id);
         }
-        
-        // Scroll vers le bas
         setTimeout(scrollToBottom, 100);
+      },
+      (updatedMessage) => {
+        setMessages((prev) =>
+          updatedMessage.deleted_at
+            ? prev.filter((m) => m.id !== updatedMessage.id)
+            : prev.map((m) => (m.id === updatedMessage.id ? updatedMessage : m))
+        );
       }
     );
 
@@ -155,6 +175,131 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || uploading) return;
+
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    // Limit to 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Fichier trop volumineux",
+        description: "La taille maximale est de 10 Mo",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const attachment = await chatService.uploadAttachment(conversation.id, file);
+      const contentType = file.type.startsWith("image/") ? "image" : "file";
+
+      await chatService.sendMessage({
+        conversation_id: conversation.id,
+        content: file.name,
+        content_type: contentType,
+        attachment_url: attachment.url,
+        attachment_name: attachment.name,
+        attachment_type: attachment.type,
+        attachment_size: attachment.size,
+      });
+
+      setTimeout(scrollToBottom, 100);
+    } catch (error) {
+      console.error("Erreur upload:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le fichier",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    try {
+      await chatService.archiveConversation(conversation.id);
+      toast({ title: "Conversation archivée" });
+      onConversationStatusChange?.(conversation.id, "archived");
+    } catch (error) {
+      console.error("Erreur archivage:", error);
+      toast({ title: "Erreur", description: "Impossible d'archiver", variant: "destructive" });
+    }
+  };
+
+  const handleClose = async () => {
+    try {
+      await chatService.closeConversation(conversation.id);
+      toast({ title: "Conversation clôturée", description: "Le sujet a été marqué comme résolu." });
+      onConversationStatusChange?.(conversation.id, "closed");
+    } catch (error) {
+      console.error("Erreur clôture:", error);
+      toast({ title: "Erreur", description: "Impossible de clôturer", variant: "destructive" });
+    }
+  };
+
+  const handleEditStart = (message: Message) => {
+    setEditingMessageId(message.id);
+    setEditContent(message.content);
+  };
+
+  const handleEditSave = async () => {
+    if (!editingMessageId || !editContent.trim()) return;
+    try {
+      const updated = await chatService.editMessage(editingMessageId, editContent.trim());
+      setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+      toast({ title: "Message modifié" });
+    } catch (error) {
+      console.error("Erreur édition:", error);
+      toast({ title: "Erreur", description: "Impossible de modifier le message", variant: "destructive" });
+    } finally {
+      setEditingMessageId(null);
+      setEditContent("");
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditingMessageId(null);
+    setEditContent("");
+  };
+
+  const handleDelete = async (messageId: string) => {
+    try {
+      await chatService.deleteMessage(messageId);
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      toast({ title: "Message supprimé" });
+    } catch (error) {
+      console.error("Erreur suppression:", error);
+      toast({ title: "Erreur", description: "Impossible de supprimer le message", variant: "destructive" });
+    }
+  };
+
+  const handleReport = async () => {
+    if (!reportingMessage || !reportReason) return;
+    try {
+      await fetch("/api/messages/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messageId: reportingMessage.id,
+          conversationId: conversation.id,
+          reason: reportReason,
+        }),
+      });
+      toast({ title: "Message signalé", description: "Votre signalement a été envoyé." });
+    } catch (error) {
+      console.error("Erreur signalement:", error);
+      toast({ title: "Erreur", description: "Impossible de signaler le message", variant: "destructive" });
+    } finally {
+      setReportingMessage(null);
+      setReportReason("");
+    }
+  };
+
   const formatMessageTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -220,6 +365,27 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
           <Badge variant="outline" className="text-xs">
             {isOwner ? "Propriétaire" : "Locataire"}
           </Badge>
+          {conversation.ticket_id && (
+            <Badge variant="secondary" className="text-xs">
+              Ticket lié
+            </Badge>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleClose}>
+                Clôturer (résolu)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleArchive} className="text-muted-foreground">
+                Archiver
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
 
@@ -287,63 +453,143 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
                           </div>
                         )}
 
-                        <div
-                          className={`max-w-[70%] px-4 py-2 rounded-2xl ${
-                            isMe
-                              ? "bg-primary text-primary-foreground rounded-br-md"
-                              : "bg-muted rounded-bl-md"
-                          }`}
-                        >
-                          {message.content_type === "text" && (
-                            <p className="text-sm whitespace-pre-wrap break-words">
-                              {message.content}
-                            </p>
-                          )}
-
-                          {message.attachment_url && (
-                            <div className="mt-2">
-                              {message.content_type === "image" ? (
-                                <img
-                                  src={message.attachment_url}
-                                  alt={message.attachment_name || "Image"}
-                                  className="max-w-full rounded-lg"
-                                />
-                              ) : (
-                                <a
-                                  href={message.attachment_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className={`flex items-center gap-2 text-sm ${
-                                    isMe ? "text-primary-foreground/80" : "text-muted-foreground"
-                                  } hover:underline`}
+                        <div className="group relative flex items-center gap-1">
+                          {/* Message action menu (appears on hover) */}
+                          {isMe && !message.id.startsWith("temp-") && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
-                                  <File className="h-4 w-4" />
-                                  {message.attachment_name || "Fichier"}
-                                </a>
-                              )}
-                            </div>
+                                  <MoreHorizontal className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" side="top">
+                                {message.content_type === "text" && (
+                                  <DropdownMenuItem onClick={() => handleEditStart(message)}>
+                                    <Pencil className="h-3 w-3 mr-2" />
+                                    Modifier
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(message.id)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="h-3 w-3 mr-2" />
+                                  Supprimer
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
 
                           <div
-                            className={`flex items-center gap-1 mt-1 ${
-                              isMe ? "justify-end" : ""
+                            className={`max-w-[70%] px-4 py-2 rounded-2xl ${
+                              isMe
+                                ? "bg-primary text-primary-foreground rounded-br-md"
+                                : "bg-muted rounded-bl-md"
                             }`}
                           >
-                            <span
-                              className={`text-[10px] ${
-                                isMe ? "text-primary-foreground/60" : "text-muted-foreground"
-                              }`}
-                            >
-                              {formatMessageTime(message.created_at)}
-                            </span>
-                            {isMe && (
-                              message.read_at ? (
-                                <CheckCheck className="h-3 w-3 text-primary-foreground/60" />
-                              ) : (
-                                <Check className="h-3 w-3 text-primary-foreground/60" />
-                              )
+                            {editingMessageId === message.id ? (
+                              <div className="flex flex-col gap-2">
+                                <Input
+                                  value={editContent}
+                                  onChange={(e) => setEditContent(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleEditSave();
+                                    if (e.key === "Escape") handleEditCancel();
+                                  }}
+                                  className="text-sm bg-background text-foreground"
+                                  autoFocus
+                                />
+                                <div className="flex gap-1 justify-end">
+                                  <Button size="sm" variant="ghost" onClick={handleEditCancel} className="h-6 px-2 text-xs">
+                                    <X className="h-3 w-3 mr-1" />Annuler
+                                  </Button>
+                                  <Button size="sm" onClick={handleEditSave} className="h-6 px-2 text-xs">
+                                    <Check className="h-3 w-3 mr-1" />Valider
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                {message.content_type === "text" && (
+                                  <p className="text-sm whitespace-pre-wrap break-words">
+                                    {message.content}
+                                  </p>
+                                )}
+
+                                {message.attachment_url && (
+                                  <div className="mt-2">
+                                    {message.content_type === "image" ? (
+                                      <img
+                                        src={message.attachment_url}
+                                        alt={message.attachment_name || "Image"}
+                                        className="max-w-full rounded-lg"
+                                      />
+                                    ) : (
+                                      <a
+                                        href={message.attachment_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`flex items-center gap-2 text-sm ${
+                                          isMe ? "text-primary-foreground/80" : "text-muted-foreground"
+                                        } hover:underline`}
+                                      >
+                                        <File className="h-4 w-4" />
+                                        {message.attachment_name || "Fichier"}
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div
+                                  className={`flex items-center gap-1 mt-1 ${
+                                    isMe ? "justify-end" : ""
+                                  }`}
+                                >
+                                  <span
+                                    className={`text-[10px] ${
+                                      isMe ? "text-primary-foreground/60" : "text-muted-foreground"
+                                    }`}
+                                  >
+                                    {formatMessageTime(message.created_at)}
+                                  </span>
+                                  {message.edited_at && (
+                                    <span
+                                      className={`text-[10px] italic ${
+                                        isMe ? "text-primary-foreground/50" : "text-muted-foreground/70"
+                                      }`}
+                                    >
+                                      (modifié)
+                                    </span>
+                                  )}
+                                  {isMe && (
+                                    message.read_at ? (
+                                      <CheckCheck className="h-3 w-3 text-primary-foreground/60" />
+                                    ) : (
+                                      <Check className="h-3 w-3 text-primary-foreground/60" />
+                                    )
+                                  )}
+                                </div>
+                              </>
                             )}
                           </div>
+
+                          {/* Report button for received messages */}
+                          {!isMe && !message.id.startsWith("temp-") && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground"
+                              onClick={() => { setReportingMessage(message); setReportReason(""); }}
+                              title="Signaler ce message"
+                            >
+                              <Flag className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
                       </motion.div>
                     );
@@ -358,15 +604,27 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
       {/* Input */}
       <div className="p-4 border-t flex-shrink-0">
         <form onSubmit={handleSend} className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+            onChange={handleFileSelect}
+          />
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className="h-10 w-10 text-muted-foreground hover:text-foreground"
-            disabled={sending}
+            disabled={sending || uploading}
+            onClick={() => fileInputRef.current?.click()}
             aria-label="Ajouter une pièce jointe"
           >
-            <Paperclip className="h-5 w-5" aria-hidden="true" />
+            {uploading ? (
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Paperclip className="h-5 w-5" aria-hidden="true" />
+            )}
           </Button>
 
           <Input
@@ -394,6 +652,57 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
           </Button>
         </form>
       </div>
+
+      {/* Report dialog */}
+      {reportingMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setReportingMessage(null)}>
+          <div className="bg-background rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg mb-2">Signaler ce message</h3>
+            <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+              &quot;{reportingMessage.content}&quot;
+            </p>
+            <div className="space-y-2 mb-4">
+              {[
+                { value: "spam", label: "Spam" },
+                { value: "harassment", label: "Harcèlement" },
+                { value: "inappropriate", label: "Contenu inapproprié" },
+                { value: "other", label: "Autre" },
+              ].map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    reportReason === option.value ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="report-reason"
+                    value={option.value}
+                    checked={reportReason === option.value}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    className="sr-only"
+                  />
+                  <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                    reportReason === option.value ? "border-primary" : "border-muted-foreground"
+                  }`}>
+                    {reportReason === option.value && <div className="h-2 w-2 rounded-full bg-primary" />}
+                  </div>
+                  <span className="text-sm">{option.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setReportingMessage(null)}>
+                Annuler
+              </Button>
+              <Button size="sm" onClick={handleReport} disabled={!reportReason} variant="destructive">
+                <Flag className="h-3 w-3 mr-1" />
+                Signaler
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
