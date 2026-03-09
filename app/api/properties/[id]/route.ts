@@ -695,9 +695,9 @@ export async function DELETE(
       throw new ApiError(403, "Vous n'avez pas la permission de supprimer cette propriété");
     }
 
-    // ✅ VALIDATION MÉTIER: Vérifier l'état (seuls les brouillons peuvent être supprimés)
-    if (!isAdmin && property.etat && property.etat !== "draft") {
-      throw new ApiError(400, "Seuls les brouillons peuvent être supprimés");
+    // ✅ VALIDATION MÉTIER: Bloquer uniquement les biens en cours de validation admin
+    if (!isAdmin && property.etat === "pending_review") {
+      throw new ApiError(400, "Impossible de supprimer un bien en cours de validation. Veuillez attendre la fin de la vérification.");
     }
 
     // ✅ SOTA 2026: Vérifier s'il y a des baux actifs
