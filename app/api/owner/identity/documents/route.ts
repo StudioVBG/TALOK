@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
     const { data: docs, error: docsError } = await serviceClient
       .from("documents")
-      .select("id, type, storage_path, metadata, created_at")
+      .select("id, type, storage_path, metadata, created_at, verification_status")
       .eq("owner_id", profile.id)
       .in("type", ["piece_identite", "cni_recto", "cni_verso"])
       .order("created_at", { ascending: false });

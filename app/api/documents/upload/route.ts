@@ -8,6 +8,7 @@ import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { validateFile, ALLOWED_MIME_TYPES } from "@/lib/security/file-validation";
 import { withSecurity } from "@/lib/api/with-security";
 import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
+import { tesseractOCRService } from "@/lib/ocr/tesseract.service";
 
 /**
  * POST /api/documents/upload - Upload un document
@@ -241,6 +242,96 @@ export const POST = withSecurity(async function POST(request: Request) {
         { error: docError.message || "Erreur lors de la création du document" },
         { status: 500 }
       );
+    }
+
+    // OCR automatique pour les documents CNI (recto/verso)
+    const isCniDocument = type && ["cni_recto", "cni_verso"].includes(type);
+    const isImageFile = file.type.startsWith("image/");
+
+    if (isCniDocument && isImageFile && document) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const imageBuffer = Buffer.from(arrayBuffer);
+        const ocrResult = await tesseractOCRService.analyzeIdCard(imageBuffer, file.name);
+
+        // Construire les metadata OCR
+        const ocrMetadata: Record<string, unknown> = {
+          ...(document as any).metadata,
+          ocr_confidence: ocrResult.confidence,
+          ocr_is_valid: ocrResult.isValid,
+          ocr_document_type: ocrResult.documentType,
+        };
+
+        if (ocrResult.lastName) ocrMetadata.nom = ocrResult.lastName;
+        if (ocrResult.firstName) ocrMetadata.prenom = ocrResult.firstName;
+        if (ocrResult.documentNumber) ocrMetadata.numero_document = ocrResult.documentNumber;
+        if (ocrResult.expiryDate) ocrMetadata.date_expiration = ocrResult.expiryDate;
+        if (ocrResult.birthDate) ocrMetadata.date_naissance = ocrResult.birthDate;
+        if (ocrResult.birthPlace) ocrMetadata.lieu_naissance = ocrResult.birthPlace;
+        if (ocrResult.gender) ocrMetadata.sexe = ocrResult.gender;
+        if (ocrResult.nationality) ocrMetadata.nationalite = ocrResult.nationality;
+        if (ocrResult.requiresManualVerification) ocrMetadata.requires_manual_verification = true;
+
+        // Comparaison avec le profil propriétaire si c'est un owner
+        let identityMatch: Record<string, unknown> | null = null;
+        if (profileAny.role === "owner") {
+          const { data: ownerProfile } = await serviceClient
+            .from("profiles")
+            .select("nom, prenom")
+            .eq("id", profileAny.id)
+            .single();
+
+          if (ownerProfile) {
+            const normalize = (s: string | null | undefined) =>
+              (s || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[-\s]+/g, " ").trim();
+
+            const profileNom = normalize((ownerProfile as any).nom);
+            const profilePrenom = normalize((ownerProfile as any).prenom);
+            const ocrNom = normalize(ocrResult.lastName);
+            const ocrPrenom = normalize(ocrResult.firstName);
+
+            const nomMatch = profileNom && ocrNom ? profileNom === ocrNom : false;
+            const prenomMatch = profilePrenom && ocrPrenom ? profilePrenom === ocrPrenom : false;
+
+            identityMatch = {
+              nom_match: nomMatch,
+              prenom_match: prenomMatch,
+              profile_nom: (ownerProfile as any).nom,
+              profile_prenom: (ownerProfile as any).prenom,
+              ocr_nom: ocrResult.lastName || null,
+              ocr_prenom: ocrResult.firstName || null,
+              is_verified: nomMatch && prenomMatch && ocrResult.isValid,
+            };
+
+            ocrMetadata.identity_match = identityMatch;
+          }
+        }
+
+        // Déterminer le statut de vérification
+        const verificationStatus = identityMatch?.is_verified
+          ? "verified"
+          : ocrResult.isValid
+            ? "pending"
+            : "pending";
+
+        // Mettre à jour le document avec les données OCR
+        await serviceClient
+          .from("documents")
+          .update({
+            metadata: ocrMetadata,
+            verification_status: verificationStatus,
+          })
+          .eq("id", (document as any).id);
+
+        // Enrichir la réponse avec les données OCR
+        (document as any).metadata = ocrMetadata;
+        (document as any).verification_status = verificationStatus;
+
+        console.log(`[POST /api/documents/upload] OCR completed for ${type}: confidence=${ocrResult.confidence}, valid=${ocrResult.isValid}, match=${identityMatch?.is_verified || 'n/a'}`);
+      } catch (ocrError) {
+        // L'OCR est non-bloquant : si ça échoue, le document est quand même uploadé
+        console.error("[POST /api/documents/upload] OCR processing failed (non-blocking):", ocrError);
+      }
     }
 
     return NextResponse.json({ document }, { status: 201 });
