@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Send,
   Paperclip,
-  Image as ImageIcon,
   File,
   MoreVertical,
   Check,
@@ -22,6 +21,13 @@ import {
   MessageSquare
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { chatService, type Message, type Conversation } from "@/lib/services/chat.service";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -30,16 +36,19 @@ interface ChatWindowProps {
   conversation: Conversation;
   currentProfileId: string;
   onBack?: () => void;
+  onConversationStatusChange?: (conversationId: string, status: "archived" | "closed") => void;
 }
 
-export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindowProps) {
+export function ChatWindow({ conversation, currentProfileId, onBack, onConversationStatusChange }: ChatWindowProps) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [newMessage, setNewMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isOwner = currentProfileId === conversation.owner_profile_id;
   const otherName = isOwner ? conversation.tenant_name : conversation.owner_name;
@@ -155,6 +164,73 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || uploading) return;
+
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    // Limit to 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Fichier trop volumineux",
+        description: "La taille maximale est de 10 Mo",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const attachment = await chatService.uploadAttachment(conversation.id, file);
+      const contentType = file.type.startsWith("image/") ? "image" : "file";
+
+      await chatService.sendMessage({
+        conversation_id: conversation.id,
+        content: file.name,
+        content_type: contentType,
+        attachment_url: attachment.url,
+        attachment_name: attachment.name,
+        attachment_type: attachment.type,
+        attachment_size: attachment.size,
+      });
+
+      setTimeout(scrollToBottom, 100);
+    } catch (error) {
+      console.error("Erreur upload:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le fichier",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    try {
+      await chatService.archiveConversation(conversation.id);
+      toast({ title: "Conversation archivée" });
+      onConversationStatusChange?.(conversation.id, "archived");
+    } catch (error) {
+      console.error("Erreur archivage:", error);
+      toast({ title: "Erreur", description: "Impossible d'archiver", variant: "destructive" });
+    }
+  };
+
+  const handleClose = async () => {
+    try {
+      await chatService.closeConversation(conversation.id);
+      toast({ title: "Conversation clôturée", description: "Le sujet a été marqué comme résolu." });
+      onConversationStatusChange?.(conversation.id, "closed");
+    } catch (error) {
+      console.error("Erreur clôture:", error);
+      toast({ title: "Erreur", description: "Impossible de clôturer", variant: "destructive" });
+    }
+  };
+
   const formatMessageTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -220,6 +296,22 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
           <Badge variant="outline" className="text-xs">
             {isOwner ? "Propriétaire" : "Locataire"}
           </Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleClose}>
+                Clôturer (résolu)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleArchive} className="text-muted-foreground">
+                Archiver
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
 
@@ -358,15 +450,27 @@ export function ChatWindow({ conversation, currentProfileId, onBack }: ChatWindo
       {/* Input */}
       <div className="p-4 border-t flex-shrink-0">
         <form onSubmit={handleSend} className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+            onChange={handleFileSelect}
+          />
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className="h-10 w-10 text-muted-foreground hover:text-foreground"
-            disabled={sending}
+            disabled={sending || uploading}
+            onClick={() => fileInputRef.current?.click()}
             aria-label="Ajouter une pièce jointe"
           >
-            <Paperclip className="h-5 w-5" aria-hidden="true" />
+            {uploading ? (
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Paperclip className="h-5 w-5" aria-hidden="true" />
+            )}
           </Button>
 
           <Input

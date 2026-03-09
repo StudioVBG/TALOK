@@ -12,6 +12,20 @@ import { MessageSquare, ArrowRight, Plus, Loader2 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { chatService } from "@/lib/services/chat.service";
 import type { Conversation } from "@/lib/services/chat.service";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+interface TenantOption {
+  tenantProfileId: string;
+  tenantName: string;
+  propertyId: string;
+  propertyAddress: string;
+  leaseId: string;
+}
 
 interface MessagesPageContentProps {
   /** Sous-titre sous le titre "Messages" */
@@ -31,6 +45,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
     ownerId: string;
     leaseId: string;
   } | null>(null);
+  const [ownerTenants, setOwnerTenants] = useState<TenantOption[]>([]);
   const supabase = createClient();
 
   useEffect(() => {
@@ -61,8 +76,9 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
         if (profile) {
           setCurrentProfileId(profile.id);
 
-          // Charger le contexte du bail pour le bouton "Nouvelle conversation"
+          // Charger le contexte pour le bouton "Nouvelle conversation"
           try {
+            // 1) Côté locataire : chercher via lease_signers
             const { data: signerData } = await supabase
               .from("lease_signers")
               .select("lease_id")
@@ -87,7 +103,44 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
               }
             }
           } catch {
-            // Silently ignore — no new conversation button if no lease
+            // Pas de bail signé — vérifier côté propriétaire
+          }
+
+          // 2) Côté propriétaire : chercher les baux actifs avec locataires
+          try {
+            const { data: ownerLeases } = await supabase
+              .from("leases")
+              .select(`
+                id,
+                property_id,
+                properties(owner_id, adresse_complete, ville),
+                lease_signers(profile_id, profiles(prenom, nom))
+              `)
+              .eq("properties.owner_id", profile.id)
+              .in("status", ["active", "signed"]);
+
+            if (ownerLeases && ownerLeases.length > 0) {
+              const tenants: TenantOption[] = [];
+              for (const lease of ownerLeases) {
+                const prop = (lease as any).properties;
+                const signers = (lease as any).lease_signers;
+                if (!prop || !signers) continue;
+                for (const signer of signers) {
+                  if (signer.profile_id === profile.id) continue; // skip self
+                  const p = signer.profiles;
+                  tenants.push({
+                    tenantProfileId: signer.profile_id,
+                    tenantName: p ? `${p.prenom || ""} ${p.nom || ""}`.trim() : "Locataire",
+                    propertyId: lease.property_id,
+                    propertyAddress: `${prop.adresse_complete || ""}, ${prop.ville || ""}`.trim(),
+                    leaseId: lease.id,
+                  });
+                }
+              }
+              setOwnerTenants(tenants);
+            }
+          } catch {
+            // Silently ignore — owner tenants not available
           }
         }
       } catch (error) {
@@ -108,6 +161,10 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
     setSelectedConversation(null);
   };
 
+  const handleConversationStatusChange = () => {
+    setSelectedConversation(null);
+  };
+
   const handleNewConversation = async () => {
     if (!currentProfileId || !leaseContext || isCreatingConversation) return;
     setIsCreatingConversation(true);
@@ -125,6 +182,26 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
       setIsCreatingConversation(false);
     }
   };
+
+  const handleNewConversationWithTenant = async (tenant: TenantOption) => {
+    if (!currentProfileId || isCreatingConversation) return;
+    setIsCreatingConversation(true);
+    try {
+      const conversation = await chatService.getOrCreateConversation({
+        property_id: tenant.propertyId,
+        lease_id: tenant.leaseId,
+        owner_profile_id: currentProfileId,
+        tenant_profile_id: tenant.tenantProfileId,
+      });
+      setSelectedConversation(conversation);
+    } catch (error) {
+      console.error("Erreur création conversation:", error);
+    } finally {
+      setIsCreatingConversation(false);
+    }
+  };
+
+  const canCreateConversation = leaseContext || ownerTenants.length > 0;
 
   if (loading) {
     return (
@@ -168,21 +245,49 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
                 conversation={selectedConversation}
                 currentProfileId={currentProfileId}
                 onBack={handleBack}
+                onConversationStatusChange={handleConversationStatusChange}
               />
             </div>
           ) : (
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold">Messages</h1>
-                {leaseContext && (
-                  <Button
-                    size="sm"
-                    onClick={handleNewConversation}
-                    disabled={isCreatingConversation}
-                    className="rounded-xl font-bold"
-                  >
-                    {isCreatingConversation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  </Button>
+                {canCreateConversation && (
+                  ownerTenants.length > 0 ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          disabled={isCreatingConversation}
+                          className="rounded-xl font-bold"
+                        >
+                          {isCreatingConversation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {ownerTenants.map((t) => (
+                          <DropdownMenuItem
+                            key={`${t.leaseId}-${t.tenantProfileId}`}
+                            onClick={() => handleNewConversationWithTenant(t)}
+                          >
+                            <div>
+                              <p className="font-medium">{t.tenantName}</p>
+                              <p className="text-xs text-muted-foreground">{t.propertyAddress}</p>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={handleNewConversation}
+                      disabled={isCreatingConversation}
+                      className="rounded-xl font-bold"
+                    >
+                      {isCreatingConversation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  )
                 )}
               </div>
               <ConversationsList
@@ -209,19 +314,50 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
             <h1 className="text-3xl font-bold">Messages</h1>
             <p className="text-muted-foreground mt-1">{subtitle}</p>
           </div>
-          {leaseContext && (
-            <Button
-              onClick={handleNewConversation}
-              disabled={isCreatingConversation}
-              className="rounded-xl font-bold"
-            >
-              {isCreatingConversation ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Plus className="h-4 w-4 mr-2" />
-              )}
-              Nouvelle conversation
-            </Button>
+          {canCreateConversation && (
+            ownerTenants.length > 0 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    disabled={isCreatingConversation}
+                    className="rounded-xl font-bold"
+                  >
+                    {isCreatingConversation ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    Nouvelle conversation
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  {ownerTenants.map((t) => (
+                    <DropdownMenuItem
+                      key={`${t.leaseId}-${t.tenantProfileId}`}
+                      onClick={() => handleNewConversationWithTenant(t)}
+                    >
+                      <div>
+                        <p className="font-medium">{t.tenantName}</p>
+                        <p className="text-xs text-muted-foreground">{t.propertyAddress}</p>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                onClick={handleNewConversation}
+                disabled={isCreatingConversation}
+                className="rounded-xl font-bold"
+              >
+                {isCreatingConversation ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
+                Nouvelle conversation
+              </Button>
+            )
           )}
         </motion.div>
 
@@ -245,6 +381,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
               <ChatWindow
                 conversation={selectedConversation}
                 currentProfileId={currentProfileId}
+                onConversationStatusChange={handleConversationStatusChange}
               />
             ) : (
               <Card className="h-full flex items-center justify-center">

@@ -308,11 +308,27 @@ class ChatService {
 
     if (error) throw error;
 
+    // Envoyer une notification au destinataire (fire-and-forget)
+    this.notifyRecipient(data.conversation_id, data.content).catch((err) =>
+      console.warn("[ChatService] Notification failed:", err)
+    );
+
     return {
       ...message,
       sender_name: `${message.sender?.prenom || ""} ${message.sender?.nom || ""}`.trim(),
       sender_avatar: message.sender?.avatar_url,
     } as Message;
+  }
+
+  /**
+   * Notifier le destinataire d'un nouveau message via l'API
+   */
+  private async notifyRecipient(conversationId: string, messageContent: string): Promise<void> {
+    await fetch("/api/messages/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId, messageContent }),
+    });
   }
 
   /**
@@ -478,6 +494,18 @@ class ChatService {
     const { error } = await this.supabase
       .from("conversations")
       .update({ status: "archived" })
+      .eq("id", conversationId);
+
+    if (error) throw error;
+  }
+
+  /**
+   * Clôturer une conversation
+   */
+  async closeConversation(conversationId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("conversations")
+      .update({ status: "closed" })
       .eq("id", conversationId);
 
     if (error) throw error;

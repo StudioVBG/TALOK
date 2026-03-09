@@ -567,14 +567,16 @@ export async function notifyMessageReceived(
   recipientId: string,
   senderName: string,
   messagePreview: string,
-  conversationId: string
+  conversationId: string,
+  recipientRole?: "owner" | "tenant"
 ): Promise<Notification | null> {
+  const basePath = recipientRole === "owner" ? "/owner/messages" : "/tenant/messages";
   return createNotification({
     type: "message_received",
     title: `Message de ${senderName}`,
     message: messagePreview.slice(0, 100) + (messagePreview.length > 100 ? "..." : ""),
     recipientId,
-    actionUrl: `/messages/${conversationId}`,
+    actionUrl: basePath,
     actionLabel: "Répondre",
     metadata: { senderName, conversationId },
   });
