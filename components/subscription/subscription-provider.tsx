@@ -5,7 +5,7 @@
  * Fournit l'état de l'abonnement, l'usage et les helpers à toute l'application
  */
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PLANS, type PlanSlug, type FeatureKey, getUsagePercentage } from "@/lib/subscriptions/plans";
 import type { SubscriptionWithPlan, UsageSummary } from "@/lib/subscriptions/types";
@@ -68,7 +68,9 @@ export function SubscriptionProvider({
   const [loading, setLoading] = useState(!initialSubscription);
   const [error, setError] = useState<string | null>(null);
 
-  const supabase = createClient();
+  // Stabiliser le client Supabase pour éviter de le recréer à chaque render
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
 
   // Current plan slug - gratuit par défaut pour les nouveaux utilisateurs
   const currentPlan = useMemo<PlanSlug>(

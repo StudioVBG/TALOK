@@ -9,8 +9,13 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 export async function POST(request: Request) {
+  // Rate limiting : 5 requêtes/minute par IP
+  const rateLimitResponse = applyRateLimit(request, "payment");
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const supabase = await createClient();
     const {

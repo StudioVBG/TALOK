@@ -1511,5 +1511,132 @@ export const emailTemplates = {
       `, `Votre espace Talok est prêt à 100% !`),
     };
   },
+
+  // ============================================
+  // EMAILS TRANSACTIONNELS SUBSCRIPTION
+  // ============================================
+
+  /**
+   * Essai se terminant bientôt
+   */
+  trialEndingSoon: (data: {
+    userName: string;
+    planName: string;
+    daysRemaining: number;
+    upgradeUrl: string;
+  }) => ({
+    subject: `⏰ Plus que ${data.daysRemaining} jour${data.daysRemaining > 1 ? 's' : ''} d'essai`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Votre essai se termine bientôt</h1>
+        <p>Bonjour ${escapeHtml(data.userName)},</p>
+        <p>Votre essai gratuit du plan <strong>${escapeHtml(data.planName)}</strong> se termine dans <strong>${data.daysRemaining} jour${data.daysRemaining > 1 ? 's' : ''}</strong>.</p>
+
+        <div class="highlight-box">
+          <p style="font-weight: 600; margin-bottom: 8px;">Ne perdez pas vos données !</p>
+          <p style="color: ${COLORS.gray[700]}; margin: 0;">Passez à un forfait payant pour continuer à profiter de toutes les fonctionnalités sans interruption.</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="${data.upgradeUrl}" class="button">Choisir un forfait</a>
+        </div>
+      </div>
+    `, `Plus que ${data.daysRemaining} jour(s) d'essai gratuit`),
+  }),
+
+  /**
+   * Échec de paiement
+   */
+  paymentFailed: (data: {
+    userName: string;
+    planName: string;
+    amount: string;
+    billingUrl: string;
+  }) => ({
+    subject: `⚠️ Échec de paiement - Action requise`,
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span class="badge badge-error">ACTION REQUISE</span>
+        </div>
+
+        <h1>Échec de paiement</h1>
+        <p>Bonjour ${escapeHtml(data.userName)},</p>
+        <p>Le paiement de <strong>${data.amount}</strong> pour votre abonnement <strong>${escapeHtml(data.planName)}</strong> a échoué.</p>
+
+        <div class="highlight-box" style="border-color: ${COLORS.error};">
+          <p style="font-weight: 600; color: ${COLORS.error}; margin-bottom: 8px;">Important</p>
+          <p style="color: ${COLORS.gray[700]}; margin: 0;">Sans action de votre part sous 7 jours, votre abonnement sera automatiquement suspendu et vous passerez au plan gratuit.</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="${data.billingUrl}" class="button">Mettre à jour mon paiement</a>
+        </div>
+      </div>
+    `, `Échec de paiement pour votre abonnement ${escapeHtml(data.planName)}`),
+  }),
+
+  /**
+   * Abonnement activé
+   */
+  subscriptionActivated: (data: {
+    userName: string;
+    planName: string;
+    billingCycle: string;
+    price: string;
+    dashboardUrl: string;
+  }) => ({
+    subject: `🎉 Abonnement ${escapeHtml(data.planName)} activé !`,
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span class="badge badge-success">ABONNEMENT ACTIF</span>
+        </div>
+
+        <h1>Bienvenue sur ${escapeHtml(data.planName)} !</h1>
+        <p>Bonjour ${escapeHtml(data.userName)},</p>
+        <p>Votre abonnement <strong>${escapeHtml(data.planName)}</strong> est maintenant actif.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Votre forfait</p>
+          <div class="amount">${data.price}</div>
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px;">${data.billingCycle}</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="${data.dashboardUrl}" class="button button-success">Accéder à mon espace</a>
+        </div>
+      </div>
+    `, `Votre abonnement ${escapeHtml(data.planName)} est actif`),
+  }),
+
+  /**
+   * Abonnement annulé
+   */
+  subscriptionCanceled: (data: {
+    userName: string;
+    planName: string;
+    endDate: string;
+    reactivateUrl: string;
+  }) => ({
+    subject: `Abonnement ${escapeHtml(data.planName)} annulé`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Abonnement annulé</h1>
+        <p>Bonjour ${escapeHtml(data.userName)},</p>
+        <p>Votre abonnement <strong>${escapeHtml(data.planName)}</strong> a bien été annulé.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[700]}; margin: 0;">Vous continuez à bénéficier de toutes les fonctionnalités jusqu'au <strong>${data.endDate}</strong>. Après cette date, vous passerez au plan gratuit.</p>
+        </div>
+
+        <p>Vous avez changé d'avis ? Vous pouvez réactiver votre abonnement à tout moment avant la fin de la période.</p>
+
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="${data.reactivateUrl}" class="button">Réactiver mon abonnement</a>
+        </div>
+      </div>
+    `, `Votre abonnement ${escapeHtml(data.planName)} sera désactivé le ${data.endDate}`),
+  }),
 };
 

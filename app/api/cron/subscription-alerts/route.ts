@@ -10,6 +10,8 @@ import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { addDays, differenceInDays, format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { sendEmail } from "@/lib/emails/resend.service";
+import { emailTemplates } from "@/lib/emails/templates";
 
 function verifyCronSecret(request: Request): boolean {
   const authHeader = request.headers.get("authorization");
@@ -30,6 +32,8 @@ export async function GET(request: Request) {
   const results = {
     processed: 0,
     trial_ending_alerts: 0,
+    trial_expired_downgrades: 0,
+    past_due_downgrades: 0,
     renewal_alerts: 0,
     errors: [] as string[],
   };
@@ -85,6 +89,22 @@ export async function GET(request: Request) {
               days_remaining: daysRemaining,
             },
           });
+
+          // Email de rappel
+          const { data: authUser } = await supabase.auth.admin.getUserById(sub.owner.user_id);
+          if (authUser?.user?.email) {
+            const emailData = emailTemplates.trialEndingSoon({
+              userName: sub.owner.prenom || "Propriétaire",
+              planName: sub.plan.name,
+              daysRemaining,
+              upgradeUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr"}/pricing`,
+            });
+            try {
+              await sendEmail({ to: authUser.user.email, ...emailData });
+            } catch (emailError) {
+              console.error("Erreur envoi email trial_ending:", emailError);
+            }
+          }
 
           results.trial_ending_alerts++;
           results.processed++;
@@ -216,6 +236,108 @@ export async function GET(request: Request) {
           results.processed++;
         } catch (subError: any) {
           results.errors.push(`Canceled sub ${sub.id}: ${subError.message}`);
+        }
+      }
+    }
+
+    // 4. Auto-downgrade : essais expirés → passer au plan gratuit
+    const { data: expiredTrials, error: expTrialError }: any = await supabase
+      .from("subscriptions")
+      .select("id, owner_id, plan_slug, owner:profiles!subscriptions_owner_id_fkey(user_id)")
+      .eq("status", "trialing")
+      .lt("trial_end", today.toISOString());
+
+    if (!expTrialError && expiredTrials) {
+      // Récupérer l'ID du plan gratuit
+      const { data: gratuitPlan } = await supabase
+        .from("subscription_plans")
+        .select("id")
+        .eq("slug", "gratuit")
+        .single();
+
+      for (const sub of expiredTrials) {
+        try {
+          const updateData: Record<string, any> = {
+            status: "active",
+            plan_slug: "gratuit",
+            updated_at: new Date().toISOString(),
+          };
+          if (gratuitPlan) {
+            updateData.plan_id = gratuitPlan.id;
+          }
+
+          await supabase
+            .from("subscriptions")
+            .update(updateData)
+            .eq("id", sub.id);
+
+          // Notification
+          if (sub.owner?.user_id) {
+            await supabase.from("notifications").insert({
+              user_id: sub.owner.user_id,
+              type: "trial_expired",
+              title: "Essai terminé",
+              message: "Votre période d'essai est terminée. Vous êtes passé au plan gratuit. Abonnez-vous pour continuer à profiter de toutes les fonctionnalités.",
+              data: { subscription_id: sub.id, previous_plan: sub.plan_slug },
+            });
+          }
+
+          results.trial_expired_downgrades++;
+          results.processed++;
+        } catch (subError: any) {
+          results.errors.push(`Trial expired ${sub.id}: ${subError.message}`);
+        }
+      }
+    }
+
+    // 5. Grace period : past_due depuis +7 jours → downgrade vers gratuit
+    const pastDueCutoff = addDays(today, -7);
+
+    const { data: longPastDueSubs, error: pastDueError }: any = await supabase
+      .from("subscriptions")
+      .select("id, owner_id, plan_slug, updated_at, owner:profiles!subscriptions_owner_id_fkey(user_id)")
+      .eq("status", "past_due")
+      .lt("updated_at", pastDueCutoff.toISOString());
+
+    if (!pastDueError && longPastDueSubs) {
+      const { data: gratuitPlan } = await supabase
+        .from("subscription_plans")
+        .select("id")
+        .eq("slug", "gratuit")
+        .single();
+
+      for (const sub of longPastDueSubs) {
+        try {
+          const updateData: Record<string, any> = {
+            status: "canceled",
+            plan_slug: "gratuit",
+            canceled_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          if (gratuitPlan) {
+            updateData.plan_id = gratuitPlan.id;
+          }
+
+          await supabase
+            .from("subscriptions")
+            .update(updateData)
+            .eq("id", sub.id);
+
+          // Notification
+          if (sub.owner?.user_id) {
+            await supabase.from("notifications").insert({
+              user_id: sub.owner.user_id,
+              type: "subscription_downgraded_payment",
+              title: "Abonnement suspendu",
+              message: "Votre abonnement a été suspendu suite à un échec de paiement prolongé. Mettez à jour vos informations de paiement pour réactiver.",
+              data: { subscription_id: sub.id, previous_plan: sub.plan_slug },
+            });
+          }
+
+          results.past_due_downgrades++;
+          results.processed++;
+        } catch (subError: any) {
+          results.errors.push(`Past due downgrade ${sub.id}: ${subError.message}`);
         }
       }
     }

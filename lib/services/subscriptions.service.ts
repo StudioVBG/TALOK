@@ -4,10 +4,14 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import type { FeatureKey } from "@/lib/subscriptions/plans";
+import type { PlanFeatures } from "@/features/admin/plans/types";
 
 // ============================================
 // TYPES
 // ============================================
+
+export type { PlanFeatures };
 
 export interface Plan {
   id: string;
@@ -23,19 +27,6 @@ export interface Plan {
   features: PlanFeatures;
   is_popular: boolean;
   display_order: number;
-}
-
-export interface PlanFeatures {
-  signatures: boolean;
-  ocr: boolean;
-  scoring: boolean;
-  automations: boolean;
-  api_access: boolean;
-  priority_support: boolean;
-  white_label: boolean;
-  cash_payments: boolean;
-  export_csv: boolean;
-  multi_users: boolean;
 }
 
 export interface Subscription {
@@ -217,7 +208,7 @@ class SubscriptionsService {
    */
   async hasFeature(
     ownerId: string,
-    feature: keyof PlanFeatures
+    feature: FeatureKey
   ): Promise<boolean> {
     const supabase = createClient();
     const { data, error } = await supabase.rpc("has_subscription_feature", {

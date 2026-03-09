@@ -22,6 +22,32 @@ import type { FeatureKey } from "@/lib/subscriptions/plans";
 
 export type LimitType = "properties" | "leases" | "users" | "documents_gb" | "signatures";
 
+// Cache en mémoire pour les comptages de signatures (TTL 5 min)
+const signatureCountCache = new Map<string, { count: number; expiresAt: number }>();
+const SIGNATURE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function getCachedSignatureCount(ownerId: string, month: string): number | null {
+  const key = `${ownerId}:${month}`;
+  const cached = signatureCountCache.get(key);
+  if (!cached || cached.expiresAt < Date.now()) {
+    signatureCountCache.delete(key);
+    return null;
+  }
+  return cached.count;
+}
+
+function setCachedSignatureCount(ownerId: string, month: string, count: number): void {
+  const key = `${ownerId}:${month}`;
+  signatureCountCache.set(key, { count, expiresAt: Date.now() + SIGNATURE_CACHE_TTL_MS });
+  // Cleanup si trop d'entrées
+  if (signatureCountCache.size > 500) {
+    const cutoff = Date.now();
+    for (const [k, v] of signatureCountCache) {
+      if (v.expiresAt < cutoff) signatureCountCache.delete(k);
+    }
+  }
+}
+
 export interface LimitCheckResult {
   allowed: boolean;
   current: number;
@@ -99,15 +125,21 @@ export async function withSubscriptionLimit(
         max = plan.max_documents_gb ?? 0.1; // 100 Mo pour gratuit
         break;
       case "signatures":
-        // Compter les signatures du mois en cours pour CE propriétaire
+        // Compter les signatures du mois en cours (avec cache 5 min)
         const currentMonth = new Date().toISOString().slice(0, 7);
-        const { count: sigCount } = await serviceClient
-          .from("signature_requests")
-          .select("*", { count: "exact", head: true })
-          .eq("owner_id", ownerId)
-          .gte("created_at", `${currentMonth}-01`)
-          .neq("status", "cancelled");
-        current = sigCount || 0;
+        const cachedCount = getCachedSignatureCount(ownerId, currentMonth);
+        if (cachedCount !== null) {
+          current = cachedCount;
+        } else {
+          const { count: sigCount } = await serviceClient
+            .from("signature_requests")
+            .select("*", { count: "exact", head: true })
+            .eq("owner_id", ownerId)
+            .gte("created_at", `${currentMonth}-01`)
+            .neq("status", "cancelled");
+          current = sigCount || 0;
+          setCachedSignatureCount(ownerId, currentMonth, current);
+        }
         max = plan.signatures_monthly_quota ?? 0;
         break;
     }

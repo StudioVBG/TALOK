@@ -9,8 +9,13 @@ export const runtime = 'nodejs';
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 export async function POST(request: Request) {
+  // Rate limiting : 5 requêtes/minute par IP
+  const rateLimitResponse = applyRateLimit(request, "payment");
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     // Vérifier si Stripe est configuré
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -165,6 +170,7 @@ export async function POST(request: Request) {
       metadata: {
         profile_id: profile.id,
         plan_id: plan.id,
+        plan_slug: plan.slug,
       },
       allow_promotion_codes: true,
       billing_address_collection: "auto",
