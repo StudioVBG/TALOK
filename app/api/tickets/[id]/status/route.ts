@@ -101,6 +101,35 @@ export async function PATCH(
 
     if (error) throw error;
 
+    // Si le ticket passe en resolved/closed, fermer la conversation liée
+    if (["resolved", "closed"].includes(statut)) {
+      const { data: linkedConv } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("ticket_id", id)
+        .eq("status", "active")
+        .single();
+
+      if (linkedConv) {
+        await supabase
+          .from("conversations")
+          .update({ status: "closed" })
+          .eq("id", linkedConv.id);
+
+        // Envoyer un message système dans la conversation
+        const statusLabel = statut === "resolved" ? "résolu" : "clôturé";
+        await supabase
+          .from("messages")
+          .insert({
+            conversation_id: linkedConv.id,
+            sender_profile_id: profileData.id,
+            sender_role: "owner",
+            content: `Ticket ${statusLabel} par ${profileData?.prenom || ""} ${profileData?.nom || ""}`.trim(),
+            content_type: "system",
+          } as any);
+      }
+    }
+
     // Émettre un événement selon le statut
     let eventType: string;
     switch (statut) {

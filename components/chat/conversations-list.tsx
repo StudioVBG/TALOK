@@ -9,11 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Search,
   MessageSquare,
   Home,
-  RefreshCw
+  RefreshCw,
+  Ticket
 } from "lucide-react";
 import { chatService, type Conversation } from "@/lib/services/chat.service";
 import { formatDistanceToNow } from "date-fns";
@@ -191,30 +192,45 @@ export function ConversationsList({ currentProfileId, selectedId, onSelect }: Co
                       isSelected
                         ? "bg-primary/10 border border-primary/20"
                         : "hover:bg-muted/50"
-                    } ${unreadCount > 0 ? "bg-blue-50/50" : ""}`}
+                    } ${unreadCount > 0 ? "bg-blue-50/50 dark:bg-blue-950/20" : ""}`}
                   >
                     <div className="flex items-start gap-3">
                       <Avatar className="h-12 w-12 flex-shrink-0">
-                        <AvatarFallback>
+                        <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10">
                           {getOtherName(conversation)
                             ?.split(" ")
                             .map((n) => n[0])
                             .join("")
-                            .toUpperCase() || "?"}
+                            .toUpperCase()
+                            .slice(0, 2) || "?"}
                         </AvatarFallback>
                       </Avatar>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <p className={`font-medium truncate ${unreadCount > 0 ? "font-semibold" : ""}`}>
-                            {getOtherName(conversation) || "Utilisateur"}
-                          </p>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className={`font-medium truncate ${unreadCount > 0 ? "font-semibold" : ""}`}>
+                              {getOtherName(conversation) || "Utilisateur"}
+                            </p>
+                            {conversation.ticket_id && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 flex-shrink-0">
+                                <Ticket className="h-3 w-3 mr-0.5" />
+                                Ticket
+                              </Badge>
+                            )}
+                          </div>
                           {conversation.last_message_at && (
                             <span className="text-xs text-muted-foreground flex-shrink-0">
                               {formatLastMessage(conversation.last_message_at)}
                             </span>
                           )}
                         </div>
+
+                        {conversation.subject && (
+                          <p className="text-xs font-medium text-foreground/70 truncate mt-0.5">
+                            {conversation.subject}
+                          </p>
+                        )}
 
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                           <Home className="h-3 w-3" />
@@ -232,7 +248,7 @@ export function ConversationsList({ currentProfileId, selectedId, onSelect }: Co
 
                       {unreadCount > 0 && (
                         <Badge className="h-6 min-w-6 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
-                          {unreadCount}
+                          {unreadCount > 99 ? "99+" : unreadCount}
                         </Badge>
                       )}
                     </div>
