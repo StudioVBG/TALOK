@@ -61,7 +61,7 @@ export async function fetchProfileCompletion(
       .from("documents")
       .select("id", { count: "exact", head: true })
       .eq("owner_id", ownerId)
-      .in("type", ["piece_identite", "identite", "cni", "passeport"]),
+      .in("type", ["piece_identite", "identite", "cni", "passeport", "cni_recto", "cni_verso"]),
   ]);
 
   const profile = profileResult.data;

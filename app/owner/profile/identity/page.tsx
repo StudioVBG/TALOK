@@ -26,14 +26,38 @@ import { apiClient } from "@/lib/api-client";
 import Image from "next/image";
 import { DocumentScan } from "@/features/identity-verification/components/document-scan";
 
+interface IdentityDocumentMetadata {
+  side?: "recto" | "verso";
+  filename?: string;
+  nom?: string;
+  prenom?: string;
+  numero_document?: string;
+  date_expiration?: string;
+  date_naissance?: string;
+  lieu_naissance?: string;
+  sexe?: string;
+  nationalite?: string;
+  ocr_confidence?: number;
+  ocr_is_valid?: boolean;
+  ocr_document_type?: string;
+  requires_manual_verification?: boolean;
+  identity_match?: {
+    nom_match: boolean;
+    prenom_match: boolean;
+    profile_nom: string;
+    profile_prenom: string;
+    ocr_nom: string | null;
+    ocr_prenom: string | null;
+    is_verified: boolean;
+  };
+}
+
 interface IdentityDocument {
   id: string;
   type: string;
   storage_path: string;
-  metadata: {
-    side?: "recto" | "verso";
-    filename?: string;
-  };
+  metadata: IdentityDocumentMetadata;
+  verification_status?: "pending" | "verified" | "rejected" | "expired";
   created_at: string;
 }
 
@@ -155,9 +179,12 @@ export default function OwnerIdentityPage() {
         if (url) setPreviewUrls(prev => ({ ...prev, [side]: url }));
       }
 
+      const ocrData = newDoc?.metadata?.ocr_confidence !== undefined;
       toast({
-        title: "Document uploade",
-        description: `CNI ${side === "recto" ? "recto" : "verso"} enregistree avec succes.`,
+        title: ocrData ? "Document analysé" : "Document enregistré",
+        description: ocrData
+          ? `CNI ${side} enregistrée et analysée (confiance : ${Math.round((newDoc.metadata.ocr_confidence || 0) * 100)}%).`
+          : `CNI ${side} enregistrée avec succès.`,
       });
     } catch (error: unknown) {
       console.error("Erreur upload:", error);
@@ -386,6 +413,22 @@ export default function OwnerIdentityPage() {
   }
 
   const isComplete = documents.recto && documents.verso;
+  const rectoMeta = documents.recto?.metadata;
+  const identityMatch = rectoMeta?.identity_match;
+  const ocrConfidence = rectoMeta?.ocr_confidence;
+  const isOcrValid = rectoMeta?.ocr_is_valid;
+  const isIdentityVerified = identityMatch?.is_verified === true;
+  const hasOcrData = ocrConfidence !== undefined;
+
+  // Statut réel : vérifié par OCR + correspondance profil
+  const getVerificationStatus = () => {
+    if (!isComplete) return "incomplete";
+    if (isIdentityVerified) return "verified";
+    if (hasOcrData && isOcrValid) return "pending_review";
+    if (hasOcrData && !isOcrValid) return "low_quality";
+    return "uploaded";
+  };
+  const verificationStatus = getVerificationStatus();
 
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
@@ -404,7 +447,7 @@ export default function OwnerIdentityPage() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Shield className="h-6 w-6 text-blue-600" />
-              Pièce d'identité
+              Pièce d&apos;identité
             </h1>
             <p className="text-muted-foreground">
               Vérifiez votre identité pour sécuriser vos transactions
@@ -413,18 +456,55 @@ export default function OwnerIdentityPage() {
         </div>
 
         {/* Statut */}
-        <Card className={isComplete 
-          ? "bg-green-50 border-green-200" 
-          : "bg-amber-50 border-amber-200"
+        <Card className={
+          verificationStatus === "verified"
+            ? "bg-green-50 border-green-200"
+            : verificationStatus === "incomplete"
+              ? "bg-amber-50 border-amber-200"
+              : verificationStatus === "low_quality"
+                ? "bg-red-50 border-red-200"
+                : "bg-blue-50 border-blue-200"
         }>
           <CardContent className="flex items-start gap-3 py-4">
-            {isComplete ? (
+            {verificationStatus === "verified" ? (
               <>
                 <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium text-green-900">Identité vérifiée</p>
                   <p className="text-sm text-green-700">
-                    Votre pièce d'identité est complète (recto + verso).
+                    Votre pièce d&apos;identité est complète et correspond à votre profil.
+                  </p>
+                </div>
+              </>
+            ) : verificationStatus === "pending_review" ? (
+              <>
+                <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-900">Documents lisibles - Correspondance en attente</p>
+                  <p className="text-sm text-blue-700">
+                    L&apos;OCR a extrait les données mais le nom ne correspond pas exactement au profil.
+                    Vérifiez que votre nom et prénom dans votre profil sont identiques à ceux de votre CNI.
+                  </p>
+                </div>
+              </>
+            ) : verificationStatus === "low_quality" ? (
+              <>
+                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-red-900">Document peu lisible</p>
+                  <p className="text-sm text-red-700">
+                    La qualité de l&apos;image ne permet pas une lecture fiable.
+                    Veuillez re-photographier votre CNI dans de bonnes conditions de luminosité.
+                  </p>
+                </div>
+              </>
+            ) : verificationStatus === "uploaded" ? (
+              <>
+                <CheckCircle2 className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-900">Documents enregistrés</p>
+                  <p className="text-sm text-blue-700">
+                    Votre pièce d&apos;identité est complète (recto + verso). Analyse en cours.
                   </p>
                 </div>
               </>
@@ -434,13 +514,98 @@ export default function OwnerIdentityPage() {
                 <div>
                   <p className="font-medium text-amber-900">Vérification incomplète</p>
                   <p className="text-sm text-amber-700">
-                    Veuillez uploader les deux faces de votre pièce d'identité.
+                    Veuillez uploader les deux faces de votre pièce d&apos;identité.
                   </p>
                 </div>
               </>
             )}
           </CardContent>
         </Card>
+
+        {/* Données OCR extraites */}
+        {hasOcrData && rectoMeta && (
+          <Card className="border-slate-200">
+            <CardContent className="py-4">
+              <h3 className="font-medium mb-3 flex items-center gap-2 text-sm">
+                <Shield className="h-4 w-4" />
+                Données extraites de la CNI
+                {ocrConfidence !== undefined && (
+                  <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
+                    ocrConfidence > 0.7 ? "bg-green-100 text-green-700" :
+                    ocrConfidence > 0.5 ? "bg-amber-100 text-amber-700" :
+                    "bg-red-100 text-red-700"
+                  }`}>
+                    Confiance : {Math.round(ocrConfidence * 100)}%
+                  </span>
+                )}
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {rectoMeta.nom && (
+                  <div>
+                    <span className="text-muted-foreground text-xs">Nom</span>
+                    <p className="font-medium flex items-center gap-1">
+                      {rectoMeta.nom}
+                      {identityMatch && (
+                        identityMatch.nom_match
+                          ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                          : <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                      )}
+                    </p>
+                  </div>
+                )}
+                {rectoMeta.prenom && (
+                  <div>
+                    <span className="text-muted-foreground text-xs">Prénom</span>
+                    <p className="font-medium flex items-center gap-1">
+                      {rectoMeta.prenom}
+                      {identityMatch && (
+                        identityMatch.prenom_match
+                          ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                          : <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                      )}
+                    </p>
+                  </div>
+                )}
+                {rectoMeta.numero_document && (
+                  <div>
+                    <span className="text-muted-foreground text-xs">N° Document</span>
+                    <p className="font-medium">{rectoMeta.numero_document}</p>
+                  </div>
+                )}
+                {rectoMeta.date_expiration && (
+                  <div>
+                    <span className="text-muted-foreground text-xs">Expiration</span>
+                    <p className="font-medium">{rectoMeta.date_expiration}</p>
+                  </div>
+                )}
+                {rectoMeta.date_naissance && (
+                  <div>
+                    <span className="text-muted-foreground text-xs">Date de naissance</span>
+                    <p className="font-medium">{rectoMeta.date_naissance}</p>
+                  </div>
+                )}
+                {rectoMeta.nationalite && (
+                  <div>
+                    <span className="text-muted-foreground text-xs">Nationalité</span>
+                    <p className="font-medium">{rectoMeta.nationalite}</p>
+                  </div>
+                )}
+              </div>
+              {identityMatch && !identityMatch.is_verified && (
+                <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                  Les données extraites ne correspondent pas exactement à votre profil
+                  ({identityMatch.profile_prenom} {identityMatch.profile_nom}).
+                  Mettez à jour votre profil si nécessaire.
+                </div>
+              )}
+              {rectoMeta.requires_manual_verification && (
+                <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
+                  Ce document nécessite une vérification manuelle supplémentaire.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Upload Cards */}
         <div className="grid md:grid-cols-2 gap-4">
@@ -469,7 +634,7 @@ export default function OwnerIdentityPage() {
               <li>Titre de séjour en cours de validité</li>
             </ul>
             <p className="text-xs text-muted-foreground mt-3 border-t pt-3">
-              🔒 Vos documents sont stockés de manière sécurisée et ne sont accessibles que par vous et les personnes autorisées.
+              Vos documents sont stockés de manière sécurisée et ne sont accessibles que par vous et les personnes autorisées.
             </p>
           </CardContent>
         </Card>
