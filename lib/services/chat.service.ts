@@ -235,9 +235,9 @@ class ChatService {
     subject?: string;
   }): Promise<Conversation> {
     // Chercher une conversation existante liée au ticket
-    const { data: existing } = await this.supabase
+    const { data: existing } = await (this.supabase
       .from("conversations")
-      .select("*")
+      .select("*") as any)
       .eq("ticket_id", data.ticket_id)
       .single();
 
@@ -254,7 +254,7 @@ class ChatService {
         owner_profile_id: data.owner_profile_id,
         tenant_profile_id: data.tenant_profile_id,
         subject: data.subject || "Ticket",
-      })
+      } as any)
       .select()
       .single();
 
@@ -575,7 +575,7 @@ class ChatService {
   async editMessage(messageId: string, newContent: string): Promise<Message> {
     const { data, error } = await this.supabase
       .from("messages")
-      .update({ content: newContent, edited_at: new Date().toISOString() })
+      .update({ content: newContent, edited_at: new Date().toISOString() } as any)
       .eq("id", messageId)
       .select(`
         *,
@@ -602,7 +602,7 @@ class ChatService {
   async deleteMessage(messageId: string): Promise<void> {
     const { error } = await this.supabase
       .from("messages")
-      .update({ deleted_at: new Date().toISOString() })
+      .update({ deleted_at: new Date().toISOString() } as any)
       .eq("id", messageId);
 
     if (error) throw error;

@@ -44,6 +44,10 @@ export async function POST(request: NextRequest) {
       ? conversation.tenant_profile_id
       : conversation.owner_profile_id;
 
+    if (!recipientId) {
+      return NextResponse.json({ error: "Destinataire non trouvé" }, { status: 404 });
+    }
+
     const senderName = `${senderProfile.prenom || ""} ${senderProfile.nom || ""}`.trim() || "Utilisateur";
 
     // Déterminer le rôle du destinataire pour l'URL

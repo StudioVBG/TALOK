@@ -124,7 +124,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
               for (const lease of ownerLeases) {
                 const prop = (lease as any).properties;
                 const signers = (lease as any).lease_signers;
-                if (!prop || !signers) continue;
+                if (!prop || !signers || !lease.property_id) continue;
                 for (const signer of signers) {
                   if (signer.profile_id === profile.id) continue; // skip self
                   const p = signer.profiles;
