@@ -16,7 +16,14 @@ import {
 import type { FeatureGroup, PlanColorScheme } from "./types";
 
 export const PLAN_COLORS: Record<string, PlanColorScheme> = {
-  solo: {
+  gratuit: {
+    bg: "bg-gray-500/10",
+    border: "border-gray-500/30",
+    text: "text-gray-600 dark:text-gray-400",
+    gradient: "from-gray-500/20 to-gray-600/5",
+    ring: "ring-gray-500/50",
+  },
+  starter: {
     bg: "bg-slate-500/10",
     border: "border-slate-500/30",
     text: "text-slate-600 dark:text-slate-400",
@@ -43,6 +50,34 @@ export const PLAN_COLORS: Record<string, PlanColorScheme> = {
     text: "text-amber-600 dark:text-amber-400",
     gradient: "from-amber-500/20 to-amber-600/5",
     ring: "ring-amber-500/50",
+  },
+  enterprise_s: {
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/30",
+    text: "text-emerald-600 dark:text-emerald-400",
+    gradient: "from-emerald-500/20 to-emerald-600/5",
+    ring: "ring-emerald-500/50",
+  },
+  enterprise_m: {
+    bg: "bg-teal-500/10",
+    border: "border-teal-500/30",
+    text: "text-teal-600 dark:text-teal-400",
+    gradient: "from-teal-500/20 to-teal-600/5",
+    ring: "ring-teal-500/50",
+  },
+  enterprise_l: {
+    bg: "bg-cyan-500/10",
+    border: "border-cyan-500/30",
+    text: "text-cyan-600 dark:text-cyan-400",
+    gradient: "from-cyan-500/20 to-cyan-600/5",
+    ring: "ring-cyan-500/50",
+  },
+  enterprise_xl: {
+    bg: "bg-indigo-500/10",
+    border: "border-indigo-500/30",
+    text: "text-indigo-600 dark:text-indigo-400",
+    gradient: "from-indigo-500/20 to-indigo-600/5",
+    ring: "ring-indigo-500/50",
   },
 };
 
@@ -135,15 +170,18 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       { key: "support_phone", label: "Support téléphone", type: "boolean" },
       { key: "onboarding", label: "Onboarding personnalisé", type: "boolean" },
       { key: "data_import", label: "Import données", type: "boolean" },
-      { key: "custom_sla", label: "SLA contractuel", type: "boolean" },
-      { key: "account_manager", label: "Account manager", type: "boolean" },
+      { key: "sla_guarantee", label: "SLA contractuel", type: "boolean" },
+      { key: "dedicated_account_manager", label: "Account manager", type: "boolean" },
     ],
   },
   {
     id: "ia",
     label: "IA & Avancé",
     icon: Brain,
-    features: [{ key: "scoring_ia", label: "Scoring IA locataire", type: "boolean" }],
+    features: [
+      { key: "scoring_tenant", label: "Scoring IA locataire", type: "boolean" },
+      { key: "scoring_advanced", label: "Scoring IA avancé", type: "boolean" },
+    ],
   },
 ];
 

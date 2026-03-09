@@ -16,7 +16,7 @@ export interface PlanFeatures {
   open_banking?: boolean;
   open_banking_level?: "none" | "basic" | "advanced" | "premium";
   bank_reconciliation?: boolean;
-  auto_reminders?: boolean;
+  auto_reminders?: boolean | string;
   auto_reminders_sms?: boolean;
   irl_revision?: boolean;
   alerts_deadlines?: boolean;
@@ -25,7 +25,7 @@ export interface PlanFeatures {
   export_csv?: boolean;
   export_excel?: boolean;
   export_accounting?: boolean;
-  tenant_portal?: "none" | "basic" | "advanced" | "whitelabel";
+  tenant_portal?: "none" | "basic" | "advanced" | "full" | "whitelabel";
   colocation?: boolean;
   multi_units?: boolean;
   multi_users?: boolean;
@@ -37,19 +37,22 @@ export interface PlanFeatures {
   work_orders?: boolean;
   work_orders_planning?: boolean;
   providers_management?: boolean;
-  channel_manager?: "none" | "basic" | "full";
+  channel_manager?: "none" | "basic" | "full" | "all";
   api_access?: boolean;
-  api_access_level?: "none" | "basic" | "full";
+  api_access_level?: "none" | "basic" | "read_write" | "full";
   webhooks?: boolean;
   white_label?: boolean;
+  custom_domain?: boolean;
   sso?: boolean;
   priority_support?: boolean;
   support_phone?: boolean;
   onboarding?: boolean;
   data_import?: boolean;
-  custom_sla?: boolean;
-  account_manager?: boolean;
-  scoring_ia?: boolean;
+  sla_guarantee?: boolean;
+  dedicated_account_manager?: boolean;
+  scoring_tenant?: boolean;
+  scoring_advanced?: boolean;
+  copro_module?: boolean;
 }
 
 export interface Plan {
