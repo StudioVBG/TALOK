@@ -100,6 +100,14 @@ const PLAN_THEMES: Record<string, {
   ring: string;
   iconColor: string;
 }> = {
+  gratuit: {
+    gradient: "from-gray-500/20 via-gray-400/10 to-gray-600/20",
+    glow: "shadow-gray-500/10",
+    icon: Shield,
+    badge: "bg-gray-100 text-gray-600 border-gray-300",
+    ring: "ring-gray-400/30",
+    iconColor: "text-gray-500",
+  },
   starter: {
     gradient: "from-slate-500/20 via-slate-400/10 to-slate-600/20",
     glow: "shadow-slate-500/10",
@@ -437,7 +445,7 @@ export function OwnerSubscriptionCard({
 }: OwnerSubscriptionCardProps) {
   const [changeDialogOpen, setChangeDialogOpen] = React.useState(false);
   
-  const theme = PLAN_THEMES[subscription?.plan_slug || "starter"] || PLAN_THEMES.starter;
+  const theme = PLAN_THEMES[subscription?.plan_slug || "gratuit"] || PLAN_THEMES.gratuit;
   const statusConfig = STATUS_CONFIG[subscription?.status || "active"] || STATUS_CONFIG.active;
   const PlanIcon = theme.icon;
   const StatusIcon = statusConfig.icon;

@@ -76,14 +76,34 @@ export async function withSubscriptionLimit(
     let max = 0;
 
     switch (limitType) {
-      case "properties":
-        current = subscription.properties_count || 0;
+      case "properties": {
+        const { count: propCount } = await serviceClient
+          .from("properties")
+          .select("id", { count: "exact", head: true })
+          .eq("owner_id", ownerId);
+        current = propCount || 0;
         max = plan.max_properties ?? 1;
         break;
-      case "leases":
-        current = subscription.leases_count || 0;
+      }
+      case "leases": {
+        const { data: ownerProperties } = await serviceClient
+          .from("properties")
+          .select("id")
+          .eq("owner_id", ownerId);
+        if (ownerProperties && ownerProperties.length > 0) {
+          const propertyIds = ownerProperties.map((p: { id: string }) => p.id);
+          const { count: leaseCount } = await serviceClient
+            .from("leases")
+            .select("id", { count: "exact", head: true })
+            .in("property_id", propertyIds)
+            .in("statut", ["active", "pending_signature"]);
+          current = leaseCount || 0;
+        } else {
+          current = 0;
+        }
         max = plan.max_leases ?? 1;
         break;
+      }
       case "users":
         // Compter les team members actifs
         const { count: userCount } = await serviceClient
