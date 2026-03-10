@@ -41,6 +41,7 @@ import {
   Crown,
   Building2,
   Star,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
@@ -50,12 +51,16 @@ interface UpgradeModalProps {
   onClose: () => void;
   feature?: FeatureKey;
   requiredPlan?: PlanSlug;
+  /** Contexte "properties" : affiche l'option "ajouter un bien en plus" si le forfait le permet */
+  context?: "properties";
 }
 
 const TVA_RATE = 20;
 
-export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeModalProps) {
+export function UpgradeModal({ open, onClose, feature, requiredPlan, context }: UpgradeModalProps) {
   const { currentPlan, subscription } = useSubscription();
+  const planConfig = PLANS[currentPlan];
+  const extraPropertyPrice = planConfig.limits.extra_property_price; // centimes
   const [selectedPlan, setSelectedPlan] = useState<PlanSlug | null>(requiredPlan || null);
   const [billing, setBilling] = useState<"monthly" | "yearly">(
     subscription?.billing_cycle || "yearly"
@@ -150,19 +155,62 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
                 <Sparkles className="w-5 h-5 text-white" aria-hidden="true" />
               </div>
               <DialogTitle className="text-xl font-bold text-white">
-                Débloquez plus de fonctionnalités
+                {context === "properties"
+                  ? "Ajouter un bien"
+                  : "Débloquez plus de fonctionnalités"}
               </DialogTitle>
             </div>
-            {feature && (
-              <DialogDescription className="text-slate-400">
-                La fonctionnalité &quot;{FEATURE_LABELS[feature]?.label}&quot; nécessite le
-                plan {requiredPlan ? PLANS[requiredPlan].name : "supérieur"}.
-              </DialogDescription>
-            )}
+            <DialogDescription className="text-slate-400">
+              {feature
+                ? <>La fonctionnalité &quot;{FEATURE_LABELS[feature]?.label}&quot; nécessite le plan {requiredPlan ? PLANS[requiredPlan].name : "supérieur"}.</>
+                : context === "properties"
+                  ? <>Vous avez atteint vos {planConfig.limits.included_properties} bien{planConfig.limits.included_properties > 1 ? "s" : ""} inclus dans le forfait {planConfig.name}.</>
+                  : null}
+            </DialogDescription>
           </DialogHeader>
         </div>
 
         <div className="p-6 space-y-6">
+          {/* Option "Ajouter un bien supplémentaire" pour les forfaits payants */}
+          {context === "properties" && extraPropertyPrice > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-xl border-2 border-blue-500/50 bg-blue-500/10"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h4 className="font-semibold text-white flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-blue-400" />
+                    Ajouter un bien supplémentaire
+                  </h4>
+                  <p className="text-sm text-slate-400 mt-1">
+                    +{(extraPropertyPrice / 100).toFixed(2).replace('.', ',')}€ HT/mois ajouté à votre forfait {planConfig.name}
+                  </p>
+                </div>
+                <Button
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 whitespace-nowrap"
+                  onClick={() => {
+                    onClose();
+                    router.push("/owner/properties/new");
+                  }}
+                >
+                  Ajouter
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Séparateur "ou" si option extra dispo */}
+          {context === "properties" && extraPropertyPrice > 0 && availablePlans.length > 0 && (
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-slate-700/50" />
+              <span className="text-sm text-slate-500 font-medium">ou passez au forfait supérieur</span>
+              <div className="flex-1 h-px bg-slate-700/50" />
+            </div>
+          )}
+
           {/* Toggle mensuel/annuel */}
           <div className="flex justify-center">
             <div className="inline-flex items-center gap-1 p-1 rounded-full bg-slate-800/50 border border-slate-700/50" role="radiogroup" aria-label="Cycle de facturation">

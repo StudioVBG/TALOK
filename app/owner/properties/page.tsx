@@ -756,10 +756,11 @@ export default function OwnerPropertiesPage() {
         </PullToRefreshContainer>
       </PageTransition>
 
-      {/* Modal d'upgrade quand limite atteinte */}
+      {/* Modal d'upgrade / ajout bien quand limite atteinte */}
       <UpgradeModal
         open={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
+        context="properties"
       />
     </ProtectedRoute>
   );
