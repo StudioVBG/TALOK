@@ -11,7 +11,8 @@
 --
 -- Fix:
 -- - enforce_property_limit() utilise un vrai COUNT(*)
--- - update_subscription_properties_count() gère les soft-deletes
+-- - enforce_lease_limit() utilise un vrai COUNT(*) avec deleted_at IS NULL
+-- - update_subscription_properties_count() gère les soft-deletes via recount
 -- - Recalcul des compteurs pour TOUS les comptes
 -- =====================================================
 
@@ -56,44 +57,95 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =====================================================
--- 2. Fix update_subscription_properties_count() : gérer soft-deletes
+-- 2. Fix enforce_lease_limit() : COUNT live + deleted_at IS NULL
+-- =====================================================
+CREATE OR REPLACE FUNCTION enforce_lease_limit()
+RETURNS TRIGGER AS $$
+DECLARE
+  current_count INTEGER;
+  max_allowed INTEGER;
+  plan_slug TEXT;
+  property_owner_id UUID;
+BEGIN
+  -- Récupérer l'owner_id depuis la propriété
+  SELECT owner_id INTO property_owner_id
+  FROM properties
+  WHERE id = NEW.property_id;
+
+  IF property_owner_id IS NULL THEN
+    RAISE EXCEPTION 'Propriété non trouvée';
+  END IF;
+
+  -- Compter les baux actifs sur les propriétés non soft-deleted
+  SELECT COUNT(*) INTO current_count
+  FROM leases l
+  JOIN properties p ON l.property_id = p.id
+  WHERE p.owner_id = property_owner_id
+    AND p.deleted_at IS NULL
+    AND l.statut IN ('active', 'pending_signature');
+
+  -- Récupérer la limite du plan
+  SELECT
+    COALESCE(sp.max_leases, -1),
+    COALESCE(s.plan_slug, 'gratuit')
+  INTO max_allowed, plan_slug
+  FROM subscriptions s
+  LEFT JOIN subscription_plans sp ON sp.slug = s.plan_slug
+  WHERE s.owner_id = property_owner_id;
+
+  -- Si pas de subscription trouvée, utiliser les limites du plan gratuit
+  IF max_allowed IS NULL THEN
+    max_allowed := 1;
+  END IF;
+
+  -- Vérifier la limite (sauf si illimité = -1)
+  IF max_allowed != -1 AND current_count >= max_allowed THEN
+    RAISE EXCEPTION 'SUBSCRIPTION_LIMIT_REACHED: Limite de % bail(s) atteinte pour le forfait "%". Passez à un forfait supérieur pour créer plus de baux.', max_allowed, plan_slug
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =====================================================
+-- 3. Fix update_subscription_properties_count() : gérer soft-deletes
+--    Utilise un recount complet (self-healing) au lieu de inc/dec
 -- =====================================================
 CREATE OR REPLACE FUNCTION update_subscription_properties_count()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_owner_id UUID;
 BEGIN
-  IF TG_OP = 'INSERT' THEN
-    UPDATE subscriptions
-    SET properties_count = properties_count + 1, updated_at = NOW()
-    WHERE owner_id = NEW.owner_id;
-  ELSIF TG_OP = 'DELETE' THEN
-    UPDATE subscriptions
-    SET properties_count = GREATEST(0, properties_count - 1), updated_at = NOW()
-    WHERE owner_id = OLD.owner_id;
-  ELSIF TG_OP = 'UPDATE' THEN
-    -- Soft-delete : deleted_at passe de NULL à une valeur
-    IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
-      UPDATE subscriptions
-      SET properties_count = GREATEST(0, properties_count - 1), updated_at = NOW()
-      WHERE owner_id = NEW.owner_id;
-    -- Restauration : deleted_at passe d'une valeur à NULL
-    ELSIF OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL THEN
-      UPDATE subscriptions
-      SET properties_count = properties_count + 1, updated_at = NOW()
-      WHERE owner_id = NEW.owner_id;
-    END IF;
+  IF TG_OP = 'DELETE' THEN
+    v_owner_id := OLD.owner_id;
+  ELSE
+    v_owner_id := NEW.owner_id;
   END IF;
+
+  -- Recalculer le compteur à partir de l'état réel de la table
+  UPDATE subscriptions
+  SET properties_count = (
+    SELECT COUNT(*)
+    FROM properties
+    WHERE owner_id = v_owner_id
+      AND deleted_at IS NULL
+  ),
+  updated_at = NOW()
+  WHERE owner_id = v_owner_id;
+
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
--- Mettre à jour le trigger pour écouter aussi les UPDATE
+-- Mettre à jour le trigger pour écouter aussi les UPDATE (soft-delete/restore)
 DROP TRIGGER IF EXISTS trg_update_subscription_properties ON properties;
 CREATE TRIGGER trg_update_subscription_properties
   AFTER INSERT OR UPDATE OR DELETE ON properties
   FOR EACH ROW EXECUTE FUNCTION update_subscription_properties_count();
 
 -- =====================================================
--- 3. Recalculer properties_count pour TOUS les comptes
+-- 4. Recalculer properties_count pour TOUS les comptes
 -- =====================================================
 UPDATE subscriptions s
 SET
@@ -108,7 +160,7 @@ FROM (
 WHERE s.owner_id = pc.owner_id;
 
 -- =====================================================
--- 4. Recalculer leases_count pour TOUS les comptes
+-- 5. Recalculer leases_count pour TOUS les comptes
 -- =====================================================
 UPDATE subscriptions s
 SET
@@ -127,4 +179,5 @@ WHERE s.owner_id = lc.owner_id;
 -- Commentaires
 -- =====================================================
 COMMENT ON FUNCTION enforce_property_limit() IS 'Vérifie la limite de biens via COUNT réel (pas le compteur caché). Gère correctement les soft-deletes.';
-COMMENT ON FUNCTION update_subscription_properties_count() IS 'Met à jour le compteur properties_count sur INSERT, DELETE et soft-delete (UPDATE deleted_at).';
+COMMENT ON FUNCTION enforce_lease_limit() IS 'Vérifie la limite de baux via COUNT réel. Exclut les propriétés soft-deleted.';
+COMMENT ON FUNCTION update_subscription_properties_count() IS 'Met à jour le compteur properties_count via recount complet sur INSERT, DELETE et soft-delete (UPDATE deleted_at).';

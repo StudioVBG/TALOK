@@ -107,6 +107,10 @@ export async function GET() {
       .single();
 
     // Fetch usage - compteurs live pour properties et leases
+    if (!profile) {
+      return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
+    }
+
     const { count: livePropertiesCount } = await serviceClient
       .from("properties")
       .select("id", { count: "exact", head: true })
