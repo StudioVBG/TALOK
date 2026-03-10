@@ -70,6 +70,9 @@ export function SubscriptionProvider({
 
   const supabase = createClient();
 
+  // SOTA 2026: Ref pour compter les retries (ne déclenche pas de re-render)
+  const retryCountRef = React.useRef(0);
+
   // Current plan slug - gratuit par défaut pour les nouveaux utilisateurs
   const currentPlan = useMemo<PlanSlug>(
     () => (subscription?.plan_slug as PlanSlug) || "gratuit",
@@ -196,6 +199,10 @@ export function SubscriptionProvider({
         const usageData = await usageRes.json();
         setUsage(usageData.usage);
       }
+
+      // Succès : fin du chargement + reset retry counter
+      setLoading(false);
+      retryCountRef.current = 0;
     } catch (err) {
       console.error("[SubscriptionProvider] Error:", err);
       setError("Erreur lors du chargement de l'abonnement");
@@ -206,15 +213,12 @@ export function SubscriptionProvider({
         const delay = retryCountRef.current * 2000; // 2s, 4s
         console.info(`[SubscriptionProvider] Retry ${retryCountRef.current}/2 dans ${delay}ms`);
         setTimeout(() => fetchSubscription(), delay);
-        return; // Ne pas mettre loading=false, on retry
+        // Ne pas mettre loading=false pendant le retry
+        return;
       }
-    } finally {
       setLoading(false);
     }
   }, [supabase]);
-
-  // SOTA 2026: Ref pour compter les retries (ne déclenche pas de re-render)
-  const retryCountRef = React.useRef(0);
 
   // Initial fetch
   useEffect(() => {
