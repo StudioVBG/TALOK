@@ -107,7 +107,17 @@ export async function GET() {
       .eq("id", planId)
       .single();
 
-    // Fetch usage
+    // Fetch usage - compteurs live pour properties et leases
+    if (!profile) {
+      return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
+    }
+
+    const { count: livePropertiesCount } = await serviceClient
+      .from("properties")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", profile.id)
+      .is("deleted_at", null);
+
     const { data: usageData } = await supabase
       .from("subscription_usage")
       .select("*")
@@ -156,7 +166,7 @@ export async function GET() {
     });
 
     const usage: UsageSummary = {
-      biens: buildUsageRecord("biens", Number(usageRow.properties_count ?? 0), maxProperties),
+      biens: buildUsageRecord("biens", livePropertiesCount ?? 0, maxProperties),
       locataires: buildUsageRecord("locataires", Number(usageRow.tenants_count ?? 0), maxTenants),
       signatures: buildUsageRecord("signatures", Number(usageRow.signatures_used ?? 0), maxSignatures),
       utilisateurs: buildUsageRecord("utilisateurs", Number(usageRow.users_count ?? 0), maxUsers),
