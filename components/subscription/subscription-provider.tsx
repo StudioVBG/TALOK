@@ -269,39 +269,68 @@ export function SubscriptionProvider({
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): boolean => {
       const limit = getLimitForResource(resource);
       if (limit === -1) return true; // Unlimited
+
+      // Pour les propriétés : si le plan autorise des biens supplémentaires payants,
+      // ne pas bloquer au-delà du quota inclus (aligné avec le backend subscription-check.ts)
+      if (resource === "properties" && planConfig.limits.extra_property_price > 0) {
+        return true;
+      }
+
       const used = getUsedForResource(resource);
       return used < limit;
     },
-    [getLimitForResource, getUsedForResource]
+    [getLimitForResource, getUsedForResource, planConfig]
   );
 
   const getRemainingUsage = useCallback(
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): number => {
       const limit = getLimitForResource(resource);
       if (limit === -1) return Infinity;
+
+      // Pour les propriétés avec biens supplémentaires payants : pas de plafond dur
+      if (resource === "properties" && planConfig.limits.extra_property_price > 0) {
+        return Infinity;
+      }
+
       const used = getUsedForResource(resource);
       return Math.max(0, limit - used);
     },
-    [getLimitForResource, getUsedForResource]
+    [getLimitForResource, getUsedForResource, planConfig]
   );
 
   const getUsagePercent = useCallback(
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): number => {
       const limit = getLimitForResource(resource);
+
+      // Pour les propriétés avec biens supplémentaires payants :
+      // calculer le pourcentage par rapport aux biens inclus (informatif uniquement, pas bloquant)
+      if (resource === "properties" && planConfig.limits.extra_property_price > 0) {
+        const used = getUsedForResource(resource);
+        const included = planConfig.limits.included_properties;
+        if (included <= 0) return 0;
+        return getUsagePercentage(used, included);
+      }
+
       const used = getUsedForResource(resource);
       return getUsagePercentage(used, limit);
     },
-    [getLimitForResource, getUsedForResource]
+    [getLimitForResource, getUsedForResource, planConfig]
   );
 
   const isOverLimit = useCallback(
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): boolean => {
       const limit = getLimitForResource(resource);
       if (limit === -1) return false;
+
+      // Pour les propriétés avec biens supplémentaires payants : jamais "over limit"
+      if (resource === "properties" && planConfig.limits.extra_property_price > 0) {
+        return false;
+      }
+
       const used = getUsedForResource(resource);
       return used >= limit;
     },
-    [getLimitForResource, getUsedForResource]
+    [getLimitForResource, getUsedForResource, planConfig]
   );
 
   // ============================================
