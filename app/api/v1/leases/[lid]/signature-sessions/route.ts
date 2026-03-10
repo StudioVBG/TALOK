@@ -130,7 +130,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         // Map signing URLs per signer
         if (yousignData.signers) {
           for (let i = 0; i < signers.length && i < yousignData.signers.length; i++) {
-            signingUrls[signers[i].profile_id] = yousignData.signers[i].signature_link || "";
+            const profileId = signers[i]?.profile_id;
+            if (!profileId) continue;
+            signingUrls[profileId] = yousignData.signers[i].signature_link || "";
           }
         }
       } else {
@@ -149,7 +151,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         otp_verified: false,
         doc_hash: docHash,
         provider: yousignApiKey ? "yousign" : "internal",
-        signing_url: signingUrls[signer.profile_id] || null,
+        signing_url: (signer.profile_id && signingUrls[signer.profile_id]) || null,
       } as any);
     }
 
@@ -200,7 +202,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         role: s.role,
         name: `${s.profiles?.prenom || ""} ${s.profiles?.nom || ""}`.trim(),
         status: "pending",
-        signing_url: signingUrls[s.profile_id] || null,
+        signing_url: (s.profile_id && signingUrls[s.profile_id]) || null,
       })),
     }, 201);
   } catch (error: unknown) {
