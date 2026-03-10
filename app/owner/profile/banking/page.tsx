@@ -14,7 +14,7 @@ export default function OwnerBankingPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/owner/settings/payments?tab=bank");
+    router.replace("/owner/money?tab=banque");
   }, [router]);
 
   return (

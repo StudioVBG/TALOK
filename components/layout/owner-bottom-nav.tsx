@@ -52,7 +52,7 @@ const NAV_ITEMS = [
 
 const MORE_ITEMS = [
   {
-    href: "/owner/settings/billing",
+    href: "/owner/money?tab=forfait",
     label: "Facturation",
     icon: CreditCard,
   },

@@ -174,7 +174,7 @@ export function OwnerPaymentSettingsClient({ profileId }: Props) {
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-8">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
         <Button variant="ghost" size="sm" asChild className="mb-4 gap-1.5 text-muted-foreground">
-          <Link href="/owner/settings/billing"><ChevronLeft className="h-4 w-4" /> Facturation</Link>
+          <Link href="/owner/money?tab=forfait"><ChevronLeft className="h-4 w-4" /> Finances</Link>
         </Button>
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-violet-600 rounded-xl shadow-lg shadow-violet-200 dark:shadow-violet-900/30">

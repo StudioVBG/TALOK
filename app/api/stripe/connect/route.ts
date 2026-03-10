@@ -231,8 +231,8 @@ export async function POST(request: NextRequest) {
     // Créer le lien d'onboarding
     const accountLink = await connectService.createAccountLink({
       accountId: stripeAccountId,
-      refreshUrl: `${APP_URL}/owner/settings/payments?refresh=true`,
-      returnUrl: `${APP_URL}/owner/settings/payments?success=true`,
+      refreshUrl: `${APP_URL}/owner/money?tab=banque&refresh=true`,
+      returnUrl: `${APP_URL}/owner/money?tab=banque&success=true`,
       type: existingAccount ? "account_update" : "account_onboarding",
     });
 
