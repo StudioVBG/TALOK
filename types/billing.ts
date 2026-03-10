@@ -21,7 +21,8 @@ export type SubscriptionStatus =
   | "paused"
   | "past_due"
   | "canceled"
-  | "incomplete";
+  | "incomplete"
+  | "unpaid";
 
 /**
  * Statut de facture Stripe (billing/abonnement)

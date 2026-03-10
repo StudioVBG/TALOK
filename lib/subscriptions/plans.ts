@@ -2,7 +2,7 @@
  * Configuration des plans d'abonnement
  * Synchronisé avec la base de données subscription_plans
  * 
- * GRILLE TARIFAIRE OPTIMISÉE 2025 - VERSION B (AGGRESSIVE)
+ * GRILLE TARIFAIRE OPTIMISÉE 2026 - VERSION B (AGGRESSIVE)
  * ========================================================
  * 
  * FORFAITS STANDARD :
@@ -95,7 +95,8 @@ export type FeatureKey =
   | 'scoring_tenant'
   | 'scoring_advanced'
   | 'edl_digital'
-  | 'copro_module';
+  | 'copro_module'
+  | 'sla_guarantee';
 
 export interface PlanLimits {
   max_properties: number; // -1 = illimité
@@ -168,23 +169,42 @@ export const PLANS: Record<PlanSlug, Plan> = {
       signatures_monthly_quota: SIGNATURE_QUOTAS.gratuit,
       signature_price: SIGNATURE_PRICES.gratuit, // 5,90€
       open_banking: false,
+      open_banking_level: 'none',
       bank_reconciliation: false,
       auto_reminders: false,
       auto_reminders_sms: false,
       irl_revision: false,
+      alerts_deadlines: false,
       tenant_portal: 'basic',
       tenant_payment_online: false, // Virement uniquement
       payment_fees_cb: 0, // Non disponible
       payment_fees_sepa: 0, // Non disponible
       lease_generation: true,
       colocation: false,
+      multi_units: false,
       multi_users: false,
+      max_users: 1,
+      roles_permissions: false,
+      activity_log: false,
       work_orders: false,
+      work_orders_planning: false,
       providers_management: false,
       owner_reports: false,
+      multi_mandants: false,
+      channel_manager: 'none',
       api_access: false,
+      api_access_level: 'none',
+      webhooks: false,
+      white_label: false,
+      custom_domain: false,
+      sso: false,
       scoring_tenant: false,
+      scoring_advanced: false,
       edl_digital: false,
+      copro_module: false,
+      priority_support: false,
+      dedicated_account_manager: false,
+      sla_guarantee: false,
       gli_discount: GLI_DISCOUNTS.gratuit, // 0%
     },
     highlights: [
@@ -226,23 +246,42 @@ export const PLANS: Record<PlanSlug, Plan> = {
       signatures_monthly_quota: SIGNATURE_QUOTAS.starter, // 0
       signature_price: SIGNATURE_PRICES.starter, // 4,90€
       open_banking: false,
+      open_banking_level: 'none',
       bank_reconciliation: false,
       auto_reminders: 'email_basic', // 1 rappel email
       auto_reminders_sms: false,
       irl_revision: false,
+      alerts_deadlines: false,
       tenant_portal: 'basic',
       tenant_payment_online: true,
       payment_fees_cb: PAYMENT_FEES.CB_PERCENTAGE, // 2,2%
       payment_fees_sepa: PAYMENT_FEES.SEPA_FIXED, // 0,50€
       lease_generation: true,
       colocation: false,
+      multi_units: false,
       multi_users: false,
+      max_users: 1,
+      roles_permissions: false,
+      activity_log: false,
       work_orders: false,
+      work_orders_planning: false,
       providers_management: false,
       owner_reports: false,
+      multi_mandants: false,
+      channel_manager: 'none',
       api_access: false,
+      api_access_level: 'none',
+      webhooks: false,
+      white_label: false,
+      custom_domain: false,
+      sso: false,
       scoring_tenant: false,
+      scoring_advanced: false,
       edl_digital: false,
+      copro_module: false,
+      priority_support: false,
+      dedicated_account_manager: false,
+      sla_guarantee: false,
       gli_discount: GLI_DISCOUNTS.starter, // 0%
     },
     highlights: [

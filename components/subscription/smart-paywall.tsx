@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SmartPaywall - Paywall intelligent SOTA 2025
+ * SmartPaywall - Paywall intelligent SOTA 2026
  * Affiche un paywall contextuel avec animations et gamification
  */
 
