@@ -48,6 +48,7 @@ export type Territoire =
 
 export type UsageMetric =
   | "biens"
+  | "locataires"
   | "signatures"
   | "utilisateurs"
   | "stockage_mb";
@@ -101,6 +102,7 @@ export interface UsageRecord {
 
 export interface UsageSummary {
   biens: UsageRecord;
+  locataires: UsageRecord;
   signatures: UsageRecord;
   utilisateurs: UsageRecord;
   stockage_mb: UsageRecord;

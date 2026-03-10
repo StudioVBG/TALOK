@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, PenTool, Users, HardDrive, HelpCircle } from "lucide-react";
+import { Building2, PenTool, Users, UserCheck, HardDrive, HelpCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,12 @@ const METER_CONFIG: Record<
     label: "Biens immobiliers",
     unit: "",
     tooltip: "Nombre de biens (lots) geres dans votre compte",
+  },
+  locataires: {
+    icon: UserCheck,
+    label: "Locataires",
+    unit: "",
+    tooltip: "Nombre de locataires actifs dans votre compte",
   },
   signatures: {
     icon: PenTool,

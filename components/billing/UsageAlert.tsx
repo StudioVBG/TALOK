@@ -9,6 +9,7 @@ import type { AlertLevel, UsageMetric } from "@/types/billing";
 
 const METRIC_LABELS: Record<UsageMetric, string> = {
   biens: "biens immobiliers",
+  locataires: "locataires",
   signatures: "signatures electroniques",
   utilisateurs: "utilisateurs",
   stockage_mb: "stockage",

@@ -24,10 +24,10 @@ interface SubscriptionContextValue {
 
   // Helpers
   hasFeature: (feature: FeatureKey) => boolean;
-  canUseMore: (resource: "properties" | "leases" | "users" | "signatures") => boolean;
-  getRemainingUsage: (resource: "properties" | "leases" | "users" | "signatures") => number;
-  getUsagePercent: (resource: "properties" | "leases" | "users" | "signatures") => number;
-  isOverLimit: (resource: "properties" | "leases" | "users" | "signatures") => boolean;
+  canUseMore: (resource: "properties" | "leases" | "users" | "signatures" | "tenants") => boolean;
+  getRemainingUsage: (resource: "properties" | "leases" | "users" | "signatures" | "tenants") => number;
+  getUsagePercent: (resource: "properties" | "leases" | "users" | "signatures" | "tenants") => number;
+  isOverLimit: (resource: "properties" | "leases" | "users" | "signatures" | "tenants") => boolean;
 
   // Status helpers
   isActive: boolean;
@@ -250,7 +250,7 @@ export function SubscriptionProvider({
   // ============================================
 
   const getLimitForResource = useCallback(
-    (resource: "properties" | "leases" | "users" | "signatures"): number => {
+    (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): number => {
       const limitKey = resource === "signatures" ? "signatures_monthly_quota" : `max_${resource}`;
       return (planConfig.limits as unknown as Record<string, number>)[limitKey] ?? 0;
     },
@@ -258,7 +258,7 @@ export function SubscriptionProvider({
   );
 
   const getUsedForResource = useCallback(
-    (resource: "properties" | "leases" | "users" | "signatures"): number => {
+    (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): number => {
       if (!usage) return 0;
       return usage[resource]?.used ?? 0;
     },
@@ -266,7 +266,7 @@ export function SubscriptionProvider({
   );
 
   const canUseMore = useCallback(
-    (resource: "properties" | "leases" | "users" | "signatures"): boolean => {
+    (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): boolean => {
       const limit = getLimitForResource(resource);
       if (limit === -1) return true; // Unlimited
       const used = getUsedForResource(resource);
@@ -276,7 +276,7 @@ export function SubscriptionProvider({
   );
 
   const getRemainingUsage = useCallback(
-    (resource: "properties" | "leases" | "users" | "signatures"): number => {
+    (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): number => {
       const limit = getLimitForResource(resource);
       if (limit === -1) return Infinity;
       const used = getUsedForResource(resource);
@@ -286,7 +286,7 @@ export function SubscriptionProvider({
   );
 
   const getUsagePercent = useCallback(
-    (resource: "properties" | "leases" | "users" | "signatures"): number => {
+    (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): number => {
       const limit = getLimitForResource(resource);
       const used = getUsedForResource(resource);
       return getUsagePercentage(used, limit);
@@ -295,7 +295,7 @@ export function SubscriptionProvider({
   );
 
   const isOverLimit = useCallback(
-    (resource: "properties" | "leases" | "users" | "signatures"): boolean => {
+    (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): boolean => {
       const limit = getLimitForResource(resource);
       if (limit === -1) return false;
       const used = getUsedForResource(resource);
@@ -430,7 +430,7 @@ export function useFeature(feature: FeatureKey): { hasAccess: boolean; loading: 
 /**
  * Hook pour vérifier une limite
  */
-export function useUsageLimit(resource: "properties" | "leases" | "users" | "signatures") {
+export function useUsageLimit(resource: "properties" | "leases" | "users" | "signatures" | "tenants") {
   const { canUseMore, getRemainingUsage, getUsagePercent, isOverLimit, loading } = useSubscription();
 
   return {
