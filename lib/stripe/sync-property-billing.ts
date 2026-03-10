@@ -74,14 +74,16 @@ export async function syncPropertyBillingToStripe(ownerId: string): Promise<void
   let extraPriceId: string | null = null;
 
   // Chercher dans subscription_plans
+  // Note: stripe_price_extra_property_id ajouté par migration, pas encore dans les types générés
   const { data: planRow } = await serviceClient
     .from("subscription_plans")
-    .select("stripe_price_extra_property_id, stripe_product_id")
+    .select("*")
     .eq("slug", planSlug)
     .maybeSingle();
 
-  if (planRow?.stripe_price_extra_property_id) {
-    extraPriceId = planRow.stripe_price_extra_property_id;
+  const planRowAny = planRow as Record<string, unknown> | null;
+  if (planRowAny?.stripe_price_extra_property_id) {
+    extraPriceId = planRowAny.stripe_price_extra_property_id as string;
   }
 
   // 5. Appliquer la logique de sync
@@ -89,7 +91,7 @@ export async function syncPropertyBillingToStripe(ownerId: string): Promise<void
     if (!extraPriceId) {
       // Créer un prix Stripe ad-hoc si pas encore configuré
       try {
-        const productId = planRow?.stripe_product_id;
+        const productId = planRowAny?.stripe_product_id as string | null;
         const price = await stripe.prices.create({
           currency: "eur",
           unit_amount: extraPriceCents,
@@ -112,7 +114,7 @@ export async function syncPropertyBillingToStripe(ownerId: string): Promise<void
         // Sauvegarder le price ID pour le réutiliser
         await serviceClient
           .from("subscription_plans")
-          .update({ stripe_price_extra_property_id: price.id })
+          .update({ stripe_price_extra_property_id: price.id } as any)
           .eq("slug", planSlug);
       } catch (err) {
         console.error("[syncPropertyBilling] Error creating Stripe price:", err);
