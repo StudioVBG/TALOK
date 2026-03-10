@@ -10,12 +10,12 @@ import { useSubscription, useUsageLimit } from "./subscription-provider";
 import { UpgradeModal } from "./upgrade-modal";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, X, Sparkles, TrendingUp } from "lucide-react";
+import { AlertTriangle, X, Sparkles, TrendingUp, Home, FileText, Users, PenTool, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLANS } from "@/lib/subscriptions/plans";
 
 interface UsageLimitBannerProps {
-  resource: "properties" | "leases" | "users" | "signatures";
+  resource: "properties" | "leases" | "users" | "signatures" | "tenants";
   className?: string;
   dismissible?: boolean;
   /** Seuil d'affichage (default: 80%) */
@@ -23,11 +23,20 @@ interface UsageLimitBannerProps {
   variant?: "inline" | "floating" | "card";
 }
 
-const RESOURCE_LABELS: Record<string, { singular: string; plural: string; icon: string }> = {
-  properties: { singular: "bien", plural: "biens", icon: "🏠" },
-  leases: { singular: "bail", plural: "baux", icon: "📝" },
-  users: { singular: "utilisateur", plural: "utilisateurs", icon: "👤" },
-  signatures: { singular: "signature", plural: "signatures", icon: "✍️" },
+const RESOURCE_ICONS: Record<string, React.ElementType> = {
+  properties: Home,
+  leases: FileText,
+  users: Users,
+  signatures: PenTool,
+  tenants: UserCheck,
+};
+
+const RESOURCE_LABELS: Record<string, { singular: string; plural: string }> = {
+  properties: { singular: "bien", plural: "biens" },
+  leases: { singular: "bail", plural: "baux" },
+  users: { singular: "utilisateur", plural: "utilisateurs" },
+  signatures: { singular: "signature", plural: "signatures" },
+  tenants: { singular: "locataire", plural: "locataires" },
 };
 
 export function UsageLimitBanner({
@@ -160,7 +169,7 @@ export function UsageLimitBanner({
                   isCritical ? "bg-red-500/20" : "bg-amber-500/20"
                 )}
               >
-                <span className="text-xl">{label.icon}</span>
+                {React.createElement(RESOURCE_ICONS[resource], { className: "w-5 h-5" })}
               </div>
               <div className="flex-1">
                 <div className="flex items-start justify-between gap-2">
@@ -217,7 +226,7 @@ export function UsageLimitBanner({
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-lg">{label.icon}</span>
+            {React.createElement(RESOURCE_ICONS[resource], { className: "w-4 h-4 text-slate-400" })}
             <div>
               <p className="text-sm font-medium text-white">
                 {limit - remaining}/{limit} {label.plural}
@@ -268,7 +277,7 @@ export function UsageMeter({
     return (
       <div className={cn("flex items-center gap-2", className)}>
         {showLabel && (
-          <span className="text-sm text-slate-400">{label.icon} Illimité</span>
+          <span className="text-sm text-slate-400 flex items-center gap-1">{React.createElement(RESOURCE_ICONS[resource], { className: "w-3.5 h-3.5" })} Illimité</span>
         )}
       </div>
     );
@@ -290,7 +299,7 @@ export function UsageMeter({
     <div className={cn("flex items-center gap-2", className)}>
       {showLabel && (
         <span className="text-xs text-slate-500">
-          {label.icon} {limit - remaining}/{limit}
+          {limit - remaining}/{limit}
         </span>
       )}
       <div className={cn("rounded-full bg-slate-700/50 overflow-hidden", sizeClasses[size])}>

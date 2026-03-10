@@ -2,7 +2,7 @@
 
 /**
  * Subscription Manager Dialog - Popup complet de gestion des abonnements
- * SOTA Décembre 2025
+ * SOTA Mars 2026
  */
 
 import React, { useState, useEffect, useCallback } from "react";

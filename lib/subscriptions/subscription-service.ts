@@ -196,6 +196,11 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
         percentage: getUsagePercentage(userCount, plan.limits.max_users),
       };
     })(),
+    tenants: {
+      used: used.tenants,
+      limit: limits.max_tenants,
+      percentage: getUsagePercentage(used.tenants, limits.max_tenants),
+    },
     signatures: signatureUsage,
     storage: {
       used: Math.round(used.storage),

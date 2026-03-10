@@ -91,6 +91,7 @@ export interface UsageSummary {
   properties: { used: number; limit: number; percentage: number };
   leases: { used: number; limit: number; percentage: number };
   users: { used: number; limit: number; percentage: number };
+  tenants: { used: number; limit: number; percentage: number };
   signatures: { used: number; limit: number; percentage: number };
   storage: { used: number; limit: number; percentage: number; unit: string };
 }

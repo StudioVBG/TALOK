@@ -41,6 +41,10 @@ const STATUS_DISPLAY: Record<
     label: "Incomplet",
     classes: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   },
+  unpaid: {
+    label: "Impayé",
+    classes: "bg-red-500/20 text-red-400 border-red-500/30",
+  },
 };
 
 interface PlanHeaderProps {

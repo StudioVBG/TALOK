@@ -77,6 +77,7 @@ export async function GET() {
         subscription: null as any,
         usage: {
           biens: { metric: "biens", current_value: 0, max_value: 1, percentage: 0, alert_level: "normal" },
+          locataires: { metric: "locataires", current_value: 0, max_value: 2, percentage: 0, alert_level: "normal" },
           signatures: { metric: "signatures", current_value: 0, max_value: 0, percentage: 0, alert_level: "normal" },
           utilisateurs: { metric: "utilisateurs", current_value: 0, max_value: 1, percentage: 0, alert_level: "normal" },
           stockage_mb: { metric: "stockage_mb", current_value: 0, max_value: 100, percentage: 0, alert_level: "normal" },
@@ -88,7 +89,7 @@ export async function GET() {
           price_monthly_ht: 0,
           price_yearly_ht: 0,
           yearly_discount_percent: 0,
-          limits: { biens: 1, signatures: 0, utilisateurs: 1, stockage_mb: 100 },
+          limits: { biens: 1, locataires: 2, signatures: 0, utilisateurs: 1, stockage_mb: 100 },
           features: [],
           stripe_price_monthly: "",
           stripe_price_yearly: "",
@@ -123,7 +124,7 @@ export async function GET() {
       .eq("subscription_id", subscription.id)
       .single();
 
-    type UsageRow = { properties_count?: number; signatures_used?: number; users_count?: number; storage_mb?: number };
+    type UsageRow = { properties_count?: number; tenants_count?: number; signatures_used?: number; users_count?: number; storage_mb?: number };
     const usageRow = (usageData ?? {}) as UsageRow;
 
     // Fetch payment method from Stripe if available
@@ -151,6 +152,7 @@ export async function GET() {
 
     // Build usage summary (planData has flat structure: max_properties, signatures_monthly_quota, etc.)
     const maxProperties = planData?.max_properties ?? -1;
+    const maxTenants = planData?.max_tenants ?? -1;
     const maxSignatures = planData?.signatures_monthly_quota ?? -1;
     const maxUsers = planData?.max_users ?? -1;
     const maxDocumentsGb = planData?.max_documents_gb ?? -1;
@@ -165,6 +167,7 @@ export async function GET() {
 
     const usage: UsageSummary = {
       biens: buildUsageRecord("biens", livePropertiesCount ?? 0, maxProperties),
+      locataires: buildUsageRecord("locataires", Number(usageRow.tenants_count ?? 0), maxTenants),
       signatures: buildUsageRecord("signatures", Number(usageRow.signatures_used ?? 0), maxSignatures),
       utilisateurs: buildUsageRecord("utilisateurs", Number(usageRow.users_count ?? 0), maxUsers),
       stockage_mb: buildUsageRecord("stockage_mb", Number(usageRow.storage_mb ?? 0), maxDocumentsGb * 1024),
@@ -212,6 +215,7 @@ export async function GET() {
         yearly_discount_percent: 20, // SubscriptionPlanRow has no yearly_discount_percent; use default
         limits: {
           biens: maxProperties,
+          locataires: maxTenants,
           signatures: maxSignatures,
           utilisateurs: maxUsers,
           stockage_mb: maxDocumentsGb * 1024,
