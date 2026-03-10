@@ -150,7 +150,7 @@ export async function POST(request: Request) {
       payment_method_types: ["card", "sepa_debit"],
       line_items: lineItems,
       success_url:
-        success_url || `${process.env.NEXT_PUBLIC_APP_URL}/owner/settings/billing?success=true`,
+        success_url || `${process.env.NEXT_PUBLIC_APP_URL}/owner/money?tab=forfait&success=true`,
       cancel_url:
         cancel_url || `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
       subscription_data: {

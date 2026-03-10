@@ -249,7 +249,7 @@ class SubscriptionsService {
         body: JSON.stringify({
           plan_slug: planSlug,
           billing_cycle: billingCycle,
-          success_url: successUrl || `${window.location.origin}/owner/settings/billing?success=true`,
+          success_url: successUrl || `${window.location.origin}/owner/money?tab=forfait&success=true`,
           cancel_url: cancelUrl || `${window.location.origin}/pricing?canceled=true`,
         }),
       });

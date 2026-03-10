@@ -668,7 +668,7 @@ export async function POST(request: NextRequest) {
                 p_type: "success",
                 p_title: "Compte de paiement activé !",
                 p_message: "Votre compte Stripe est maintenant actif. Vous recevrez les loyers directement.",
-                p_link: "/owner/settings/payments",
+                p_link: "/owner/money?tab=banque",
               });
             }
           }

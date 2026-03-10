@@ -42,8 +42,8 @@ export function createOwnerProfileTasks(data: {
     { key: "phone", label: "Téléphone ajouté", iconName: "Phone", href: "/owner/settings/profile", done: !!data.hasPhone },
     { key: "avatar", label: "Photo de profil", iconName: "Camera", href: "/owner/settings/profile", done: !!data.hasAvatar },
     { key: "ownerType", label: "Type de propriétaire", iconName: "Building2", href: "/owner/settings/profile", done: !!data.hasOwnerType },
-    { key: "iban", label: "IBAN bancaire", iconName: "Euro", href: "/owner/settings/billing", done: !!data.hasIban },
-    { key: "billingAddress", label: "Adresse de facturation", iconName: "Building2", href: "/owner/settings/billing", done: !!data.hasBillingAddress },
+    { key: "iban", label: "IBAN bancaire", iconName: "Euro", href: "/owner/money?tab=banque", done: !!data.hasIban },
+    { key: "billingAddress", label: "Adresse de facturation", iconName: "Building2", href: "/owner/money?tab=forfait", done: !!data.hasBillingAddress },
     { key: "identityDocument", label: "Pièce d'identité", iconName: "FileText", href: "/owner/documents", done: !!data.hasIdentityDocument },
     { key: "property", label: "Premier bien ajouté", iconName: "Building2", href: "/owner/properties/new", done: !!data.hasProperty },
   ];

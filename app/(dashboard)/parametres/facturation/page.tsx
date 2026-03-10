@@ -5,5 +5,5 @@ import { redirect } from "next/navigation";
  * La page billing est désormais à /owner/settings/billing
  */
 export default function FacturationPage() {
-  redirect("/owner/settings/billing");
+  redirect("/owner/money?tab=forfait");
 }

@@ -15,13 +15,13 @@ const settingsItems = [
   {
     title: "Moyens de paiement",
     description: "Configurez vos modes de paiement et encaissement",
-    href: "/owner/settings/payments",
+    href: "/owner/money?tab=paiement",
     icon: Wallet,
   },
   {
     title: "Facturation",
     description: "Gérez votre abonnement et vos factures Talok",
-    href: "/owner/settings/billing",
+    href: "/owner/money?tab=forfait",
     icon: CreditCard,
   },
   {

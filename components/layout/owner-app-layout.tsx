@@ -97,7 +97,7 @@ const navigationGroups: NavGroup[] = [
   {
     label: "Finances",
     items: [
-      { name: "Loyers & revenus", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
+      { name: "Finances", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
       { name: "Indexation loyers", href: "/owner/indexation", icon: TrendingUp },
       { name: "Fiscalité", href: "/owner/taxes", icon: Landmark },
     ],

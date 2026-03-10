@@ -49,7 +49,7 @@ export const OWNER_ROUTES = {
   },
   money: {
     path: "/owner/money",
-    name: "Loyers & revenus",
+    name: "Finances",
     component: "OwnerMoneyPage",
     auth: ["owner"],
     icon: "Euro",
