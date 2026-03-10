@@ -64,8 +64,8 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
   const router = useRouter();
   const { toast } = useToast();
 
-  // Plans disponibles pour upgrade (all tiers including Enterprise M/L/XL)
-  const availablePlans = (["confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"] as PlanSlug[]).filter(
+  // Plans disponibles pour upgrade (tous les forfaits payants)
+  const availablePlans = (["starter", "confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"] as PlanSlug[]).filter(
     (slug) => getPlanLevel(slug) > getPlanLevel(currentPlan)
   );
 
@@ -119,6 +119,8 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan }: UpgradeMo
 
   const getPlanIcon = (slug: PlanSlug) => {
     switch (slug) {
+      case "starter":
+        return <Sparkles className="w-5 h-5" />;
       case "confort":
         return <Star className="w-5 h-5" />;
       case "pro":

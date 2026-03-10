@@ -488,12 +488,12 @@ export default function OwnerPropertiesPage() {
                   <span className="hidden sm:inline">Exporter</span>
                 </Button>
                 
-                {/* Bouton Ajouter — conditionnel selon limites du forfait */}
-                {canAdd ? (
-                  <Button
-                    asChild
-                    className="relative overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                  >
+                {/* Bouton Ajouter — toujours actif, CTA upgrade si limite atteinte */}
+                <Button
+                  {...(canAdd ? { asChild: true } : { onClick: () => setShowUpgradeModal(true) })}
+                  className="relative overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                >
+                  {canAdd ? (
                     <Link href="/owner/properties/new">
                       <motion.div
                         className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
@@ -509,18 +509,13 @@ export default function OwnerPropertiesPage() {
                         Ajouter un bien
                       </span>
                     </Link>
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => setShowUpgradeModal(true)}
-                    className="relative overflow-hidden group shadow-lg transition-all duration-300 bg-gradient-to-r from-gray-400 to-gray-500 cursor-pointer"
-                  >
+                  ) : (
                     <span className="relative flex items-center">
                       <Plus className="mr-2 h-4 w-4" />
                       Ajouter un bien
                     </span>
-                  </Button>
-                )}
+                  )}
+                </Button>
               </motion.div>
             </motion.div>
 
