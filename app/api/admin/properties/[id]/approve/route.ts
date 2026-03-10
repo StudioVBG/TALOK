@@ -39,7 +39,7 @@ export async function POST(
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    if (property.etat !== "pending") {
+    if (property.etat !== "pending_review") {
       return NextResponse.json(
         { error: "Le logement n'est pas en attente de validation" },
         { status: 400 }

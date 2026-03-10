@@ -376,7 +376,7 @@ export async function POST(
     const { data: updatedProperty, error: updateError } = await serviceClient
       .from("properties")
       .update({
-        etat: "pending",
+        etat: "pending_review",
         submitted_at: now,
         validated_at: null,
         validated_by: null,

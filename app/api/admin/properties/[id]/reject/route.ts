@@ -52,7 +52,7 @@ export async function POST(
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    if (!["pending", "published"].includes(property.etat)) {
+    if (!["pending_review", "published"].includes(property.etat)) {
       // Permettre le rejet même après publication (pour retrait), sinon restreindre aux pending
       return NextResponse.json(
         { error: "Le logement ne peut pas être rejeté dans son état actuel" },

@@ -36,7 +36,7 @@ interface PropertyCardProps {
 
 const STATUS_VARIANTS: Record<Property["etat"], { label: string; variant: BadgeProps["variant"] }> = {
   draft: { label: "Brouillon", variant: "secondary" },
-  pending: { label: "En attente", variant: "warning" },
+  pending_review: { label: "En attente", variant: "warning" },
   published: { label: "Publié", variant: "success" },
   rejected: { label: "Rejeté", variant: "destructive" },
   archived: { label: "Archivé", variant: "outline" },
