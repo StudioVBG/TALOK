@@ -42,7 +42,8 @@ export async function GET() {
       .eq("profile_id", profile.id)
       .single();
 
-    if (!connectAccount) {
+    const connectAccountId = connectAccount?.id;
+    if (!connectAccountId) {
       return NextResponse.json([]);
     }
 
@@ -52,7 +53,7 @@ export async function GET() {
       .select(
         "id, amount, currency, net_amount, platform_fee, stripe_fee, status, description, created_at, completed_at, invoice_id"
       )
-      .eq("connect_account_id", connectAccount.id)
+      .eq("connect_account_id", connectAccountId)
       .order("created_at", { ascending: false })
       .limit(50);
 
