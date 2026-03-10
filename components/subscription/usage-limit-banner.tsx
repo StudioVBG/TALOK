@@ -55,8 +55,11 @@ export function UsageLimitBanner({
   const limitKey = resource === "signatures" ? "signatures_monthly_quota" : `max_${resource}`;
   const limit = (PLANS[currentPlan].limits as unknown as Record<string, number>)[limitKey] as number;
 
-  // Ne pas afficher si en dessous du seuil ou si illimité
-  if (limit === -1 || percentage < threshold || dismissed) {
+  const planConfig = PLANS[currentPlan];
+  const hasExtraPropertyBilling = resource === "properties" && planConfig.limits.extra_property_price > 0;
+
+  // Ne pas afficher si en dessous du seuil, si illimité, ou si le plan permet des biens supplémentaires payants
+  if (limit === -1 || percentage < threshold || dismissed || hasExtraPropertyBilling) {
     return null;
   }
 
@@ -267,11 +270,16 @@ export function UsageMeter({
   size = "md",
   className,
 }: UsageMeterProps) {
-  const { currentPlan } = useSubscription();
-  const { remaining, percentage, isAtLimit } = useUsageLimit(resource);
-  const label = RESOURCE_LABELS[resource];
+  const { currentPlan, usage } = useSubscription();
+  const { percentage, isAtLimit } = useUsageLimit(resource);
   const limitKey = resource === "signatures" ? "signatures_monthly_quota" : `max_${resource}`;
   const limit = (PLANS[currentPlan].limits as unknown as Record<string, number>)[limitKey] as number;
+  const meterPlanConfig = PLANS[currentPlan];
+  const meterHasExtraBilling = resource === "properties" && meterPlanConfig.limits.extra_property_price > 0;
+  const used = usage?.[resource]?.used ?? 0;
+
+  // Pour les plans avec biens supplémentaires payants, afficher par rapport aux biens inclus
+  const displayLimit = meterHasExtraBilling ? meterPlanConfig.limits.included_properties : limit;
 
   if (limit === -1) {
     return (
@@ -299,7 +307,7 @@ export function UsageMeter({
     <div className={cn("flex items-center gap-2", className)}>
       {showLabel && (
         <span className="text-xs text-slate-500">
-          {limit - remaining}/{limit}
+          {used}/{displayLimit}{meterHasExtraBilling ? "+" : ""}
         </span>
       )}
       <div className={cn("rounded-full bg-slate-700/50 overflow-hidden", sizeClasses[size])}>

@@ -45,7 +45,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { UsageLimitBanner } from "@/components/subscription";
+import { UsageLimitBanner, useUsageLimit, UpgradeModal } from "@/components/subscription";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function ContractsClient() {
@@ -61,12 +61,17 @@ export function ContractsClient() {
   
   const isLoading = isLoadingLeases || isLoadingProperties;
 
+  // SOTA 2026: Vérification limite abonnement pour les baux
+  const { canAdd: canAddLease, loading: subscriptionLoading } = useUsageLimit("leases");
+  const canNavigateToNewLease = canAddLease || subscriptionLoading;
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>(
     filterParam === "pending_signature" ? "pending_signature" : "all"
   );
-  
+
   // États pour la suppression
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [leaseToDelete, setLeaseToDelete] = useState<any>(null);
@@ -508,12 +513,25 @@ export function ContractsClient() {
                 <span className="hidden sm:inline">Exporter</span>
               </Button>
 
-              <Button asChild size="sm" className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 h-9 md:h-10">
-                <Link href="/owner/leases/new">
-                  <Plus className="mr-1 sm:mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Créer un bail</span>
-                  <span className="sm:hidden">Bail</span>
-                </Link>
+              {/* SOTA 2026: Bouton conditionnel selon limite abonnement */}
+              <Button
+                {...(canNavigateToNewLease ? { asChild: true } : { onClick: () => setShowUpgradeModal(true) })}
+                size="sm"
+                className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 h-9 md:h-10"
+              >
+                {canNavigateToNewLease ? (
+                  <Link href="/owner/leases/new">
+                    <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+                    <span className="hidden sm:inline">Créer un bail</span>
+                    <span className="sm:hidden">Bail</span>
+                  </Link>
+                ) : (
+                  <span className="flex items-center">
+                    <Plus className="mr-1 sm:mr-2 h-4 w-4" />
+                    <span className="hidden sm:inline">Créer un bail</span>
+                    <span className="sm:hidden">Bail</span>
+                  </span>
+                )}
               </Button>
             </div>
           </div>
@@ -683,6 +701,8 @@ export function ContractsClient() {
           </Tabs>
         </div>
       </div>
+      {/* SOTA 2026: Modal upgrade si limite baux atteinte */}
+      <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
     </PageTransition>
   );
 }

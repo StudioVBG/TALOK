@@ -34,6 +34,12 @@ interface TaxRegimeSelectorProps {
   value: TaxRegimeData;
   onChange: (data: TaxRegimeData) => void;
   annualRent: number;
+  /** Valeur estimée du bien (pour calcul amortissement réel BIC) */
+  propertyValue?: number;
+  /** Valeur estimée du mobilier (pour calcul amortissement réel BIC) */
+  furnitureValue?: number;
+  /** Charges annuelles estimées (intérêts, assurance, taxe foncière, etc.) */
+  annualCharges?: number;
 }
 
 // ============================================
@@ -63,20 +69,41 @@ export function TaxRegimeSelector({
   value,
   onChange,
   annualRent,
+  propertyValue = 0,
+  furnitureValue = 0,
+  annualCharges = 0,
 }: TaxRegimeSelectorProps) {
-  // Calcul du revenu imposable estimé
+  // Calcul du revenu imposable estimé — SOTA 2026: comparatif micro vs réel
   const taxEstimates = useMemo(() => {
     const microBIC = Math.round(annualRent * (1 - MICRO_BIC_ABATEMENT));
     const isAboveThreshold = annualRent > MICRO_BIC_THRESHOLD;
     const isNearLMPThreshold = annualRent > LMP_REVENUE_THRESHOLD * 0.8;
 
+    // Estimation régime réel BIC (si des valeurs sont fournies)
+    // Amortissement bien : (valeur - 15% terrain) / 25 ans
+    const depreciableProperty = propertyValue * 0.85; // exclusion terrain 15%
+    const propertyDepreciation = depreciableProperty > 0 ? Math.round(depreciableProperty / 25) : 0;
+    // Amortissement mobilier : valeur / 7 ans
+    const furnitureDepreciation = furnitureValue > 0 ? Math.round(furnitureValue / 7) : 0;
+    const totalDepreciation = propertyDepreciation + furnitureDepreciation;
+    const reelBIC = Math.max(0, Math.round(annualRent - annualCharges - totalDepreciation));
+    const hasReelEstimate = propertyValue > 0 || annualCharges > 0;
+    // Économie estimée
+    const reelSavings = hasReelEstimate ? microBIC - reelBIC : 0;
+
     return {
       microBIC,
+      reelBIC,
+      totalDepreciation,
+      propertyDepreciation,
+      furnitureDepreciation,
+      reelSavings,
+      hasReelEstimate,
       isAboveThreshold,
       isNearLMPThreshold,
       annualRent,
     };
-  }, [annualRent]);
+  }, [annualRent, propertyValue, furnitureValue, annualCharges]);
 
   return (
     <div className="space-y-4">
@@ -173,6 +200,22 @@ export function TaxRegimeSelector({
               Permet l'amortissement du bien et du mobilier
             </p>
           </div>
+          {/* SOTA 2026: Estimation réel BIC si données fournies */}
+          {taxEstimates.hasReelEstimate && annualRent > 0 && (
+            <div className="mt-2 pt-2 border-t">
+              <p className="text-xs">
+                Imposable estimé :{" "}
+                <strong className="text-green-700">
+                  {taxEstimates.reelBIC.toLocaleString("fr-FR")} €
+                </strong>
+              </p>
+              {taxEstimates.totalDepreciation > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  dont amortissement : {taxEstimates.totalDepreciation.toLocaleString("fr-FR")} €/an
+                </p>
+              )}
+            </div>
+          )}
         </button>
       </div>
 
@@ -218,6 +261,41 @@ export function TaxRegimeSelector({
           </SelectContent>
         </Select>
       </div>
+
+      {/* SOTA 2026: Recommandation comparative micro vs réel */}
+      {taxEstimates.hasReelEstimate && annualRent > 0 && taxEstimates.reelSavings !== 0 && (
+        <div className={cn(
+          "p-3 rounded-lg border",
+          taxEstimates.reelSavings > 0
+            ? "bg-green-50 border-green-200"
+            : "bg-blue-50 border-blue-200"
+        )}>
+          <div className="flex items-start gap-2">
+            <TrendingUp className={cn(
+              "h-4 w-4 mt-0.5 shrink-0",
+              taxEstimates.reelSavings > 0 ? "text-green-600" : "text-blue-600"
+            )} />
+            <p className="text-xs">
+              {taxEstimates.reelSavings > 0 ? (
+                <>
+                  Le <strong>régime réel BIC</strong> vous ferait économiser environ{" "}
+                  <strong className="text-green-700">
+                    {taxEstimates.reelSavings.toLocaleString("fr-FR")} €
+                  </strong>{" "}
+                  de base imposable par rapport au micro-BIC.
+                </>
+              ) : (
+                <>
+                  Le <strong>micro-BIC</strong> est plus avantageux pour vous avec une base imposable inférieure de{" "}
+                  <strong className="text-blue-700">
+                    {Math.abs(taxEstimates.reelSavings).toLocaleString("fr-FR")} €
+                  </strong>.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* LMP threshold warning */}
       {taxEstimates.isNearLMPThreshold && value.lmnpStatus === "lmnp" && (

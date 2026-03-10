@@ -70,6 +70,9 @@ export function SubscriptionProvider({
 
   const supabase = createClient();
 
+  // SOTA 2026: Ref pour compter les retries (ne déclenche pas de re-render)
+  const retryCountRef = React.useRef(0);
+
   // Current plan slug - gratuit par défaut pour les nouveaux utilisateurs
   const currentPlan = useMemo<PlanSlug>(
     () => (subscription?.plan_slug as PlanSlug) || "gratuit",
@@ -196,10 +199,23 @@ export function SubscriptionProvider({
         const usageData = await usageRes.json();
         setUsage(usageData.usage);
       }
+
+      // Succès : fin du chargement + reset retry counter
+      setLoading(false);
+      retryCountRef.current = 0;
     } catch (err) {
       console.error("[SubscriptionProvider] Error:", err);
       setError("Erreur lors du chargement de l'abonnement");
-    } finally {
+
+      // SOTA 2026: Retry automatique avec backoff exponentiel (max 2 retries)
+      if (retryCountRef.current < 2) {
+        retryCountRef.current += 1;
+        const delay = retryCountRef.current * 2000; // 2s, 4s
+        console.info(`[SubscriptionProvider] Retry ${retryCountRef.current}/2 dans ${delay}ms`);
+        setTimeout(() => fetchSubscription(), delay);
+        // Ne pas mettre loading=false pendant le retry
+        return;
+      }
       setLoading(false);
     }
   }, [supabase]);
@@ -207,6 +223,7 @@ export function SubscriptionProvider({
   // Initial fetch
   useEffect(() => {
     if (!initialSubscription) {
+      retryCountRef.current = 0;
       fetchSubscription();
     }
   }, [fetchSubscription, initialSubscription]);
@@ -267,41 +284,74 @@ export function SubscriptionProvider({
 
   const canUseMore = useCallback(
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): boolean => {
+      // SOTA 2026: Pendant le chargement, être permissif (le backend vérifiera)
+      // Évite les faux blocages pendant le fetch initial
+      if (loading && !usage) return true;
+
       const limit = getLimitForResource(resource);
       if (limit === -1) return true; // Unlimited
+
+      // Pour les propriétés : si le plan autorise des biens supplémentaires payants,
+      // ne pas bloquer au-delà du quota inclus (aligné avec le backend subscription-check.ts)
+      if (resource === "properties" && planConfig.limits.extra_property_price > 0) {
+        return true;
+      }
+
       const used = getUsedForResource(resource);
       return used < limit;
     },
-    [getLimitForResource, getUsedForResource]
+    [getLimitForResource, getUsedForResource, planConfig, loading, usage]
   );
 
   const getRemainingUsage = useCallback(
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): number => {
       const limit = getLimitForResource(resource);
       if (limit === -1) return Infinity;
+
+      // Pour les propriétés avec biens supplémentaires payants : pas de plafond dur
+      if (resource === "properties" && planConfig.limits.extra_property_price > 0) {
+        return Infinity;
+      }
+
       const used = getUsedForResource(resource);
       return Math.max(0, limit - used);
     },
-    [getLimitForResource, getUsedForResource]
+    [getLimitForResource, getUsedForResource, planConfig]
   );
 
   const getUsagePercent = useCallback(
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): number => {
       const limit = getLimitForResource(resource);
+
+      // Pour les propriétés avec biens supplémentaires payants :
+      // calculer le pourcentage par rapport aux biens inclus (informatif uniquement, pas bloquant)
+      if (resource === "properties" && planConfig.limits.extra_property_price > 0) {
+        const used = getUsedForResource(resource);
+        const included = planConfig.limits.included_properties;
+        if (included <= 0) return 0;
+        return getUsagePercentage(used, included);
+      }
+
       const used = getUsedForResource(resource);
       return getUsagePercentage(used, limit);
     },
-    [getLimitForResource, getUsedForResource]
+    [getLimitForResource, getUsedForResource, planConfig]
   );
 
   const isOverLimit = useCallback(
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): boolean => {
       const limit = getLimitForResource(resource);
       if (limit === -1) return false;
+
+      // Pour les propriétés avec biens supplémentaires payants : jamais "over limit"
+      if (resource === "properties" && planConfig.limits.extra_property_price > 0) {
+        return false;
+      }
+
       const used = getUsedForResource(resource);
       return used >= limit;
     },
-    [getLimitForResource, getUsedForResource]
+    [getLimitForResource, getUsedForResource, planConfig]
   );
 
   // ============================================

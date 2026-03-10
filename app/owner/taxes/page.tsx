@@ -53,6 +53,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { formatCurrency } from "@/lib/helpers/format";
 import { PageTransition } from "@/components/ui/page-transition";
+import { LMNPStatusAlert } from "@/components/bic/LMNPStatusAlert";
 
 type TaxRegime = "micro_foncier" | "reel" | "micro_bic" | "reel_bic";
 
@@ -571,27 +572,12 @@ export default function OwnerTaxesPage() {
               </Card>
             </div>
 
-            {/* LMP Threshold Warning */}
-            {summary.lmp_threshold_warning && (
-              <Card className="border-amber-200 bg-amber-50">
-                <CardContent className="py-4">
-                  <div className="flex items-center gap-4">
-                    <AlertCircle className="h-10 w-10 text-amber-600" />
-                    <div>
-                      <h3 className="font-semibold text-amber-900">
-                        Seuil LMP atteint
-                      </h3>
-                      <p className="text-sm text-amber-700">
-                        Vos recettes meublées (<strong>{formatCurrency(summary.bic_gross_income)}</strong>)
-                        dépassent le seuil de <strong>{LMP_THRESHOLD.toLocaleString("fr-FR")} €</strong>.
-                        Si elles représentent plus de 50% de vos revenus professionnels,
-                        vous êtes considéré <strong>Loueur Meublé Professionnel (LMP)</strong>.
-                        Cela implique des cotisations sociales SSI et la CFE.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* SOTA 2026: Indicateur détaillé LMNP/LMP avec barres de progression */}
+            {summary.bic_gross_income > 0 && (
+              <LMNPStatusAlert
+                furnishedRentalIncome={summary.bic_gross_income}
+                otherProfessionalIncome={summary.total_gross_income}
+              />
             )}
 
             {/* BIC Savings */}
@@ -985,7 +971,14 @@ export default function OwnerTaxesPage() {
                 {/* BIC: Amortissements (régime réel uniquement) */}
                 {editingProperty.is_furnished && editingProperty.regime === "reel_bic" && (
                   <div className="space-y-4 p-4 rounded-lg bg-purple-50 border border-purple-200">
-                    <h5 className="text-sm font-medium text-purple-800">Amortissements (régime réel BIC)</h5>
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-sm font-medium text-purple-800">Amortissements (régime réel BIC)</h5>
+                      {(editingProperty.depreciation_property > 0 || editingProperty.depreciation_furniture > 0) && (
+                        <Badge className="bg-purple-100 text-purple-700 border-purple-200">
+                          Total : {formatCurrency(editingProperty.depreciation_property + editingProperty.depreciation_furniture)}/an
+                        </Badge>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label className="text-xs">Amortissement du bien (€/an)</Label>

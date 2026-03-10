@@ -89,8 +89,12 @@ export default function OwnerPropertiesPage() {
     enabled: !isLoading && properties.length > 0,
   });
 
-  const { isAtLimit, canAdd } = useUsageLimit("properties");
+  const { isAtLimit, canAdd, loading: subscriptionLoading } = useUsageLimit("properties");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Pendant le chargement de l'abonnement, autoriser la navigation (le backend vérifiera)
+  // pour éviter un flash de l'UpgradeModal pendant le loading
+  const canNavigateToNew = canAdd || subscriptionLoading;
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -490,10 +494,10 @@ export default function OwnerPropertiesPage() {
                 
                 {/* Bouton Ajouter — toujours actif, CTA upgrade si limite atteinte */}
                 <Button
-                  {...(canAdd ? { asChild: true } : { onClick: () => setShowUpgradeModal(true) })}
+                  {...(canNavigateToNew ? { asChild: true } : { onClick: () => setShowUpgradeModal(true) })}
                   className="relative overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                 >
-                  {canAdd ? (
+                  {canNavigateToNew ? (
                     <Link href="/owner/properties/new">
                       <motion.div
                         className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
