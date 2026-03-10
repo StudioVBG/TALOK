@@ -90,7 +90,8 @@ export async function withSubscriptionLimit(
         const { data: ownerProperties } = await serviceClient
           .from("properties")
           .select("id")
-          .eq("owner_id", ownerId);
+          .eq("owner_id", ownerId)
+          .is("deleted_at", null);
         if (ownerProperties && ownerProperties.length > 0) {
           const propertyIds = ownerProperties.map((p: { id: string }) => p.id);
           const { count: leaseCount } = await serviceClient
