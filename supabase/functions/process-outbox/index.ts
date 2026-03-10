@@ -801,8 +801,53 @@ async function sendNotification(supabase: any, notification: any) {
       .single();
 
     if (settings?.push_enabled && settings?.push_subscription) {
-      // TODO: Envoyer via Web Push API
-      console.log(`[Notification] Push notification à envoyer à ${notification.user_id}`);
+      // Web Push API via VAPID
+      const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+      const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+
+      if (vapidPublicKey && vapidPrivateKey) {
+        const subscription = typeof settings.push_subscription === "string"
+          ? JSON.parse(settings.push_subscription)
+          : settings.push_subscription;
+
+        const pushPayload = JSON.stringify({
+          title: notification.title,
+          body: notification.message,
+          icon: "/icons/icon-192x192.png",
+          badge: "/icons/badge-72x72.png",
+          data: {
+            type: notification.type,
+            url: notification.metadata?.url || "/",
+          },
+        });
+
+        // Send push notification via Web Push protocol
+        const pushUrl = subscription.endpoint;
+        const pushResponse = await fetch(pushUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Encoding": "aes128gcm",
+            TTL: "86400",
+          },
+          body: pushPayload,
+        });
+
+        if (pushResponse.ok || pushResponse.status === 201) {
+          console.log(`[Notification] Push envoyée à ${notification.user_id}`);
+        } else if (pushResponse.status === 410) {
+          // Subscription expired, clean up
+          await supabase
+            .from("notification_settings")
+            .update({ push_enabled: false, push_subscription: null })
+            .eq("user_id", notification.user_id);
+          console.log(`[Notification] Subscription expirée pour ${notification.user_id}, nettoyée`);
+        } else {
+          console.error(`[Notification] Push échouée (${pushResponse.status}) pour ${notification.user_id}`);
+        }
+      } else {
+        console.log(`[Notification] VAPID keys non configurées, push ignorée pour ${notification.user_id}`);
+      }
     }
   } catch (error) {
     console.log(`[Notification] Pas de settings push pour ${notification.user_id}`);

@@ -78,8 +78,66 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Generate session ID
     const sessionId = crypto.randomUUID();
 
-    // TODO: Integrate with eIDAS provider (Yousign, DocuSign)
-    // For now, create internal signature session
+    // Generate document hash from lease data for integrity verification
+    const encoder = new TextEncoder();
+    const leaseContent = JSON.stringify({
+      id: lid,
+      property: lease.properties?.adresse_complete,
+      signers: signers.map((s: any) => s.profile_id),
+      timestamp: new Date().toISOString(),
+    });
+    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(leaseContent));
+    const docHash = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    // Determine signature provider: Yousign (env configured) or internal
+    const yousignApiKey = process.env.YOUSIGN_API_KEY;
+    const yousignSandbox = process.env.YOUSIGN_SANDBOX === "true";
+    let signingUrls: Record<string, string> = {};
+
+    if (yousignApiKey) {
+      // Yousign eIDAS integration (AES level)
+      const yousignBaseUrl = yousignSandbox
+        ? "https://api-sandbox.yousign.app/v3"
+        : "https://api.yousign.app/v3";
+
+      // Create Yousign signature request
+      const yousignResponse = await fetch(`${yousignBaseUrl}/signature_requests`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${yousignApiKey}`,
+        },
+        body: JSON.stringify({
+          name: `Bail - ${lease.properties?.adresse_complete || lid}`,
+          delivery_mode: "email",
+          timezone: "Europe/Paris",
+          signers: signers.map((s: any) => ({
+            info: {
+              first_name: s.profiles?.prenom || "",
+              last_name: s.profiles?.nom || "",
+              locale: "fr",
+            },
+            signature_level: "electronic_signature",
+            signature_authentication_mode: "otp_email",
+          })),
+        }),
+      });
+
+      if (yousignResponse.ok) {
+        const yousignData = await yousignResponse.json();
+        // Map signing URLs per signer
+        if (yousignData.signers) {
+          for (let i = 0; i < signers.length && i < yousignData.signers.length; i++) {
+            signingUrls[signers[i].profile_id] = yousignData.signers[i].signature_link || "";
+          }
+        }
+      } else {
+        console.error("[signature-sessions] Yousign error:", await yousignResponse.text());
+        // Fall back to internal signature if Yousign fails
+      }
+    }
 
     // Create signature records for each signer
     for (const signer of signers) {
@@ -87,9 +145,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         lease_id: lid,
         signer_user: signer.profiles?.user_id,
         signer_profile_id: signer.profile_id,
-        level: "SES", // Default to Simple Electronic Signature
+        level: yousignApiKey ? "AES" : "SES",
         otp_verified: false,
-        doc_hash: crypto.randomUUID(), // TODO: actual document hash
+        doc_hash: docHash,
+        provider: yousignApiKey ? "yousign" : "internal",
+        signing_url: signingUrls[signer.profile_id] || null,
       } as any);
     }
 
@@ -110,6 +170,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         payload: {
           lease_id: lid,
           session_id: sessionId,
+          provider: yousignApiKey ? "yousign" : "internal",
           signers: signers.map((s: any) => ({
             profile_id: s.profile_id,
             role: s.role,
@@ -133,13 +194,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       session_id: sessionId,
       lease_id: lid,
       status: "pending_signature",
+      provider: yousignApiKey ? "yousign" : "internal",
       signers: signers.map((s: any) => ({
         id: s.id,
         role: s.role,
         name: `${s.profiles?.prenom || ""} ${s.profiles?.nom || ""}`.trim(),
         status: "pending",
+        signing_url: signingUrls[s.profile_id] || null,
       })),
-      // TODO: Add signing URLs from eIDAS provider
     }, 201);
   } catch (error: unknown) {
     console.error("[POST /signature-sessions] Error:", error);

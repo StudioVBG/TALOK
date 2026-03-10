@@ -87,30 +87,60 @@ export async function POST(
     }
 
     // Déterminer le provider
-    const provider = method === "cb" ? "stripe" : method === "prelevement" ? "gocardless" : "internal";
+    const provider = method === "cb" ? "stripe" : method === "prelevement" ? "stripe" : "internal";
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     let providerIntentId: string | null = null;
     let providerStatus = "created";
+    let clientSecret: string | null = null;
 
-    // Créer un payment intent
+    // Créer un payment intent via le provider approprié
     if (method === "cb" && stripeSecretKey) {
-      // TODO: Créer un Payment Intent Stripe
-      // const stripe = require('stripe')(stripeSecretKey);
-      // const paymentIntent = await stripe.paymentIntents.create({
-      //   amount: Math.round(amount * 100), // Convertir en centimes
-      //   currency: 'eur',
-      //   metadata: {
-      //     lease_id: params.id,
-      //     payment_share_id: paymentShareId,
-      //     month,
-      //   },
-      // });
-      // providerIntentId = paymentIntent.id;
-      providerIntentId = `mock_stripe_${Date.now()}`;
+      // Payment Intent Stripe pour carte bancaire
+      const Stripe = (await import("stripe")).default;
+      const stripeClient = new Stripe(stripeSecretKey, {
+        apiVersion: "2024-11-20.acacia" as any,
+        typescript: true,
+      });
+
+      const stripeIntent = await stripeClient.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convertir en centimes
+        currency: "eur",
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          lease_id: id,
+          payment_share_id: paymentShareId,
+          month,
+          user_id: user.id,
+          type: "rent",
+        },
+      });
+
+      providerIntentId = stripeIntent.id;
+      clientSecret = stripeIntent.client_secret;
       providerStatus = "pending";
-    } else if (method === "prelevement") {
-      // TODO: Créer un mandat GoCardless
-      providerIntentId = `mock_gocardless_${Date.now()}`;
+    } else if (method === "prelevement" && stripeSecretKey) {
+      // SEPA Direct Debit via Stripe
+      const Stripe = (await import("stripe")).default;
+      const stripeClient = new Stripe(stripeSecretKey, {
+        apiVersion: "2024-11-20.acacia" as any,
+        typescript: true,
+      });
+
+      const stripeIntent = await stripeClient.paymentIntents.create({
+        amount: Math.round(amount * 100),
+        currency: "eur",
+        payment_method_types: ["sepa_debit"],
+        metadata: {
+          lease_id: id,
+          payment_share_id: paymentShareId,
+          month,
+          user_id: user.id,
+          type: "rent",
+        },
+      });
+
+      providerIntentId = stripeIntent.id;
+      clientSecret = stripeIntent.client_secret;
       providerStatus = "pending";
     } else if (method === "virement" || method === "sct_inst") {
       // Virement direct, pas de provider externe
@@ -173,6 +203,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       payment_intent: paymentIntent,
+      client_secret: clientSecret,
       status: providerStatus,
     });
   } catch (error: unknown) {

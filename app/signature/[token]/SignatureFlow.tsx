@@ -551,13 +551,40 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
                         {/* Option France Identité */}
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             setIdentityMethod("france_identite");
-                            // TODO: Intégrer France Identité
-                            toast({
-                              title: "France Identité",
-                              description: "Cette fonctionnalité sera bientôt disponible",
-                            });
+                            try {
+                              // Initier le flow FranceConnect pour la vérification d'identité
+                              const response = await fetch("/api/auth/france-identite/authorize", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  context: "signature",
+                                  callback_url: window.location.href,
+                                }),
+                              });
+
+                              if (response.ok) {
+                                const data = await response.json();
+                                if (data.authorization_url) {
+                                  // Rediriger vers FranceConnect
+                                  window.location.href = data.authorization_url;
+                                  return;
+                                }
+                              }
+
+                              toast({
+                                title: "France Identité",
+                                description: "Service non disponible. Veuillez réessayer ou utiliser une autre méthode.",
+                                variant: "destructive",
+                              });
+                            } catch {
+                              toast({
+                                title: "France Identité",
+                                description: "Erreur de connexion au service. Veuillez réessayer.",
+                                variant: "destructive",
+                              });
+                            }
                           }}
                           className="p-4 rounded-xl border-2 text-left transition-all border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30"
                         >

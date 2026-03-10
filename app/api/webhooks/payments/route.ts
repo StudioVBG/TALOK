@@ -280,5 +280,43 @@ async function generateReceipt(
     console.error("[webhook/payments] Erreur création quittance:", error);
   }
 
-  // TODO: Générer le PDF réel via une Edge Function
+  // Appeler la Edge Function receipt-generator pour générer le PDF
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (supabaseUrl && serviceRoleKey) {
+    try {
+      const receiptResponse = await fetch(
+        `${supabaseUrl}/functions/v1/receipt-generator`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({ invoice_id: invoiceId, payment_id: paymentId }),
+        }
+      );
+
+      if (receiptResponse.ok) {
+        const result = await receiptResponse.json();
+        console.log(`[webhook/payments] Quittance PDF générée: ${result.receipt_id}`);
+
+        // Mettre à jour le document avec l'URL du PDF
+        if (result.pdf_url) {
+          await supabase
+            .from("documents")
+            .update({ url: result.pdf_url })
+            .eq("lease_id", invoice.lease_id)
+            .eq("type", "quittance")
+            .like("nom", `%${invoice.periode}%`);
+        }
+      } else {
+        console.error("[webhook/payments] Erreur génération PDF:", await receiptResponse.text());
+      }
+    } catch (pdfError) {
+      // Ne pas bloquer le webhook si la génération PDF échoue
+      console.error("[webhook/payments] Erreur appel receipt-generator:", pdfError);
+    }
+  }
 }
