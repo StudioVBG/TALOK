@@ -269,10 +269,14 @@ export function SubscriptionProvider({
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): boolean => {
       const limit = getLimitForResource(resource);
       if (limit === -1) return true; // Unlimited
+      // Si le forfait permet des biens supplémentaires payants, ne pas bloquer
+      if (resource === "properties" && planConfig.limits.extra_property_price > 0) {
+        return true;
+      }
       const used = getUsedForResource(resource);
       return used < limit;
     },
-    [getLimitForResource, getUsedForResource]
+    [getLimitForResource, getUsedForResource, planConfig]
   );
 
   const getRemainingUsage = useCallback(
@@ -298,10 +302,14 @@ export function SubscriptionProvider({
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): boolean => {
       const limit = getLimitForResource(resource);
       if (limit === -1) return false;
+      // Les forfaits avec biens supplémentaires payants n'ont pas de plafond dur
+      if (resource === "properties" && planConfig.limits.extra_property_price > 0) {
+        return false;
+      }
       const used = getUsedForResource(resource);
       return used >= limit;
     },
-    [getLimitForResource, getUsedForResource]
+    [getLimitForResource, getUsedForResource, planConfig]
   );
 
   // ============================================
