@@ -165,7 +165,7 @@ export function CompteBancaireTab() {
                 <Skeleton className="h-8 w-32" />
               ) : (
                 <p className="text-3xl font-bold text-emerald-600">
-                  <AnimatedCounter value={balance?.available ?? 0} prefix="€" decimals={2} />
+                  <AnimatedCounter value={balance?.available ?? 0} type="currency" />
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">Prêt à être viré sur votre compte</p>
@@ -181,7 +181,7 @@ export function CompteBancaireTab() {
                 <Skeleton className="h-8 w-32" />
               ) : (
                 <p className="text-3xl font-bold text-amber-600">
-                  <AnimatedCounter value={balance?.pending ?? 0} prefix="€" decimals={2} />
+                  <AnimatedCounter value={balance?.pending ?? 0} type="currency" />
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">Paiements en cours de traitement</p>
