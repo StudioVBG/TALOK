@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
 import { z } from "zod";
+import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
 
 const UpgradeSchema = z.object({
   new_plan_id: z.enum(["gratuit", "starter", "confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"]),
@@ -83,6 +84,13 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", subscription.id);
+
+    // Sync extra property billing (included_properties may change between plans)
+    try {
+      await syncPropertyBillingToStripe(profile.id);
+    } catch (billingError) {
+      console.warn("[billing/upgrade] Stripe property billing sync failed:", billingError);
+    }
 
     // Audit log
     await supabase.from("audit_log").insert({
