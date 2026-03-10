@@ -199,14 +199,27 @@ export function SubscriptionProvider({
     } catch (err) {
       console.error("[SubscriptionProvider] Error:", err);
       setError("Erreur lors du chargement de l'abonnement");
+
+      // SOTA 2026: Retry automatique avec backoff exponentiel (max 2 retries)
+      if (retryCountRef.current < 2) {
+        retryCountRef.current += 1;
+        const delay = retryCountRef.current * 2000; // 2s, 4s
+        console.info(`[SubscriptionProvider] Retry ${retryCountRef.current}/2 dans ${delay}ms`);
+        setTimeout(() => fetchSubscription(), delay);
+        return; // Ne pas mettre loading=false, on retry
+      }
     } finally {
       setLoading(false);
     }
   }, [supabase]);
 
+  // SOTA 2026: Ref pour compter les retries (ne déclenche pas de re-render)
+  const retryCountRef = React.useRef(0);
+
   // Initial fetch
   useEffect(() => {
     if (!initialSubscription) {
+      retryCountRef.current = 0;
       fetchSubscription();
     }
   }, [fetchSubscription, initialSubscription]);
@@ -267,6 +280,10 @@ export function SubscriptionProvider({
 
   const canUseMore = useCallback(
     (resource: "properties" | "leases" | "users" | "signatures" | "tenants"): boolean => {
+      // SOTA 2026: Pendant le chargement, être permissif (le backend vérifiera)
+      // Évite les faux blocages pendant le fetch initial
+      if (loading && !usage) return true;
+
       const limit = getLimitForResource(resource);
       if (limit === -1) return true; // Unlimited
 
@@ -279,7 +296,7 @@ export function SubscriptionProvider({
       const used = getUsedForResource(resource);
       return used < limit;
     },
-    [getLimitForResource, getUsedForResource, planConfig]
+    [getLimitForResource, getUsedForResource, planConfig, loading, usage]
   );
 
   const getRemainingUsage = useCallback(

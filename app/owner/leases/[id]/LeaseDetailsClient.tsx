@@ -58,6 +58,7 @@ import { LeaseProgressTracker, type LeaseProgressStatus } from "@/components/own
 import { KeyHandoverQRGenerator } from "@/components/key-handover/KeyHandoverQRGenerator";
 import { LeaseTimeline } from "@/components/owner/leases/LeaseTimeline";
 import { Celebration, useCelebration } from "@/components/ui/celebration";
+import { SignatureUsageBadge } from "@/components/subscription/signature-usage-badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -736,6 +737,9 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
           </div>
 
           <div className="flex items-center gap-2">
+            {/* SOTA 2026: Indicateur quota signatures */}
+            <SignatureUsageBadge variant="minimal" />
+
             {needsOwnerSignature && (
               <Button
                 size="sm"
