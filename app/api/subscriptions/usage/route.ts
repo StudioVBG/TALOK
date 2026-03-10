@@ -71,11 +71,12 @@ export async function GET() {
     const planSlug = (subscription?.plan_slug || 'gratuit') as PlanSlug;
     const limits = PLANS[planSlug]?.limits || PLANS.gratuit.limits;
 
-    // Compter les propriétés
+    // Compter les propriétés (exclure les soft-deleted)
     const { count: propertiesCount } = await supabase
       .from("properties")
       .select("id", { count: "exact", head: true })
-      .eq("owner_id", profile.id);
+      .eq("owner_id", profile.id)
+      .is("deleted_at", null);
 
     // Compter les baux actifs via les propriétés du propriétaire
     let leasesCount = 0;
@@ -84,7 +85,8 @@ export async function GET() {
       const { data: properties } = await supabase
         .from("properties")
         .select("id")
-        .eq("owner_id", profile.id);
+        .eq("owner_id", profile.id)
+        .is("deleted_at", null);
       
       if (properties && properties.length > 0) {
         const propertyIds = properties.map(p => p.id);

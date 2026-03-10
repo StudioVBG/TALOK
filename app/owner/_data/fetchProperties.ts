@@ -55,6 +55,7 @@ export async function fetchProperties(
     .from("properties")
     .select("*")
     .eq("owner_id", ownerId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (propertiesError) {

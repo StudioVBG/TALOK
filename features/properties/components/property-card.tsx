@@ -36,7 +36,7 @@ interface PropertyCardProps {
 
 const STATUS_VARIANTS: Record<Property["etat"], { label: string; variant: BadgeProps["variant"] }> = {
   draft: { label: "Brouillon", variant: "secondary" },
-  pending: { label: "En attente", variant: "warning" },
+  pending_review: { label: "En attente", variant: "warning" },
   published: { label: "Publié", variant: "success" },
   rejected: { label: "Rejeté", variant: "destructive" },
   archived: { label: "Archivé", variant: "outline" },
@@ -146,27 +146,28 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
   const status = STATUS_VARIANTS[currentStatus] ?? STATUS_VARIANTS.draft;
   const canSubmit = ["draft", "rejected"].includes(currentStatus);
   const cannotEdit = !["draft", "rejected"].includes(currentStatus);
+  const cannotDelete = currentStatus === "pending_review";
   const renderDeleteAction = () => (
     <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
       <DialogTrigger asChild>
         <Button
           variant="destructive"
           size="icon"
-          disabled={deleteProperty.isPending || cannotEdit}
+          disabled={deleteProperty.isPending || cannotDelete}
           title={
-            cannotEdit
+            cannotDelete
               ? "Suppression bloquée pendant la validation"
               : "Supprimer définitivement"
           }
           aria-label={
-            cannotEdit
+            cannotDelete
               ? "Suppression bloquée pendant la validation"
               : "Supprimer le logement"
           }
           className="relative overflow-hidden border border-destructive/30 bg-gradient-to-br from-destructive via-destructive to-red-600 shadow-lg transition hover:scale-[1.02] hover:shadow-destructive/40 disabled:opacity-60"
         >
           <span className="absolute inset-0 bg-white/10 opacity-0 transition group-hover:opacity-50" />
-          {cannotEdit ? (
+          {cannotDelete ? (
             <Shield className="h-4 w-4" />
           ) : (
             <Trash2 className="h-4 w-4" />

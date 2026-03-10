@@ -581,7 +581,7 @@ export interface Property {
   parking_details: ParkingDetails | null;
   unique_code: string; // Code unique, jamais réattribué
   visite_virtuelle_url?: string | null; // URL externe vers visite virtuelle (Matterport, Nodalview, etc.)
-  etat: "draft" | "pending" | "published" | "rejected" | "archived";
+  etat: "draft" | "pending_review" | "published" | "rejected" | "archived";
   status?: PropertyStatus;
   submitted_at: string | null;
   validated_at: string | null;
