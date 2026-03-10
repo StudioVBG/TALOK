@@ -7,6 +7,7 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { propertyIdParamSchema } from "@/lib/validations/params";
 import type { ServiceSupabaseClient, MediaDocument, SupabaseError } from "@/lib/types/supabase-client";
+import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
 
 /**
  * GET /api/properties/[id] - Récupérer une propriété par ID
@@ -829,16 +830,30 @@ export async function DELETE(
         throw new ApiError(500, "Erreur lors de la suppression", deleteError);
       }
 
-      return NextResponse.json({ 
-        success: true, 
+      // Sync facturation Stripe après hard-delete
+      try {
+        await syncPropertyBillingToStripe(property.owner_id);
+      } catch (billingError) {
+        console.warn("[DELETE Property] Stripe billing sync failed:", billingError);
+      }
+
+      return NextResponse.json({
+        success: true,
         mode: "hard_delete",
         message: "Propriété supprimée définitivement"
       });
     }
 
-    return NextResponse.json({ 
+    // Sync facturation Stripe après soft-delete
+    try {
+      await syncPropertyBillingToStripe(property.owner_id);
+    } catch (billingError) {
+      console.warn("[DELETE Property] Stripe billing sync failed:", billingError);
+    }
+
+    return NextResponse.json({
       success: true,
-      mode: "soft_delete", 
+      mode: "soft_delete",
       message: "Propriété archivée. Les locataires ont été notifiés.",
       tenantsNotified: allLeases?.length || 0
     });

@@ -18,7 +18,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import type { FeatureKey } from "@/lib/subscriptions/plans";
+import { PLANS, type PlanSlug, type FeatureKey } from "@/lib/subscriptions/plans";
 
 export type LimitType = "properties" | "leases" | "users" | "documents_gb" | "signatures";
 
@@ -59,15 +59,89 @@ export async function withSubscriptionLimit(
       .eq("owner_id", ownerId)
       .single();
 
+    // Déterminer le plan slug et les limites
+    const planSlug: PlanSlug = (subscription?.plan_slug || "gratuit") as PlanSlug;
+    const planConfig = PLANS[planSlug] || PLANS.gratuit;
+
     if (subError || !subscription) {
-      // Pas de subscription = plan gratuit avec limites strictes
+      // Pas de subscription en BDD = plan gratuit
+      // On doit quand même compter l'usage réel avant de décider
+      const freeLimits = PLANS.gratuit.limits;
+      let current = 0;
+      let max = 0;
+
+      switch (limitType) {
+        case "properties": {
+          const { count: propCount } = await serviceClient
+            .from("properties")
+            .select("id", { count: "exact", head: true })
+            .eq("owner_id", ownerId)
+            .is("deleted_at", null);
+          current = propCount || 0;
+          max = freeLimits.max_properties;
+          break;
+        }
+        case "leases": {
+          const { data: ownerProperties } = await serviceClient
+            .from("properties")
+            .select("id")
+            .eq("owner_id", ownerId)
+            .is("deleted_at", null);
+          if (ownerProperties && ownerProperties.length > 0) {
+            const propertyIds = ownerProperties.map((p: { id: string }) => p.id);
+            const { count: leaseCount } = await serviceClient
+              .from("leases")
+              .select("id", { count: "exact", head: true })
+              .in("property_id", propertyIds)
+              .in("statut", ["active", "pending_signature"]);
+            current = leaseCount || 0;
+          }
+          max = freeLimits.max_leases;
+          break;
+        }
+        case "users": {
+          const { count: userCount } = await serviceClient
+            .from("team_members")
+            .select("*", { count: "exact", head: true })
+            .eq("owner_id", ownerId)
+            .eq("status", "active");
+          current = userCount || 0;
+          max = freeLimits.max_users;
+          break;
+        }
+        case "documents_gb":
+          current = 0;
+          max = freeLimits.max_documents_gb;
+          break;
+        case "signatures": {
+          const currentMonth = new Date().toISOString().slice(0, 7);
+          const { count: sigCount } = await serviceClient
+            .from("signature_requests")
+            .select("*", { count: "exact", head: true })
+            .eq("owner_id", ownerId)
+            .gte("created_at", `${currentMonth}-01`)
+            .neq("status", "cancelled");
+          current = sigCount || 0;
+          max = freeLimits.signatures_monthly_quota;
+          break;
+        }
+      }
+
+      if (max === -1) {
+        return { allowed: true, current, max: -1, remaining: -1, plan: "gratuit" };
+      }
+
+      const allowed = current < max;
+      const remaining = Math.max(0, max - current);
       return {
-        allowed: false,
-        current: 0,
-        max: 1,
-        remaining: 0,
+        allowed,
+        current,
+        max,
+        remaining,
         plan: "gratuit",
-        message: "Aucun abonnement trouvé. Veuillez activer un forfait.",
+        message: allowed
+          ? undefined
+          : `Limite de ${max} ${getLimitLabel(limitType)} atteinte pour le forfait gratuit. Passez à un forfait supérieur.`,
       };
     }
 
@@ -83,7 +157,21 @@ export async function withSubscriptionLimit(
           .eq("owner_id", ownerId)
           .is("deleted_at", null);
         current = propCount || 0;
-        max = plan.max_properties ?? 1;
+        max = plan.max_properties ?? planConfig.limits.max_properties;
+
+        // Si le forfait permet des biens supplémentaires payants,
+        // ne pas bloquer au-delà du nombre inclus
+        if (planConfig.limits.extra_property_price > 0) {
+          // Le forfait autorise des biens au-delà du quota inclus (avec surcoût)
+          // → toujours autoriser la création
+          return {
+            allowed: true,
+            current,
+            max: -1, // Pas de plafond dur
+            remaining: -1,
+            plan: planSlug,
+          };
+        }
         break;
       }
       case "leases": {
@@ -103,7 +191,7 @@ export async function withSubscriptionLimit(
         } else {
           current = 0;
         }
-        max = plan.max_leases ?? 1;
+        max = plan.max_leases ?? planConfig.limits.max_leases;
         break;
       }
       case "users":
@@ -114,11 +202,11 @@ export async function withSubscriptionLimit(
           .eq("owner_id", ownerId)
           .eq("status", "active");
         current = userCount || 0;
-        max = plan.max_users ?? 1;
+        max = plan.max_users ?? planConfig.limits.max_users;
         break;
       case "documents_gb":
         current = subscription.documents_size_mb ? subscription.documents_size_mb / 1024 : 0;
-        max = plan.max_documents_gb ?? 0.1; // 100 Mo pour gratuit
+        max = plan.max_documents_gb ?? planConfig.limits.max_documents_gb;
         break;
       case "signatures":
         // Compter les signatures du mois en cours pour CE propriétaire
@@ -130,7 +218,7 @@ export async function withSubscriptionLimit(
           .gte("created_at", `${currentMonth}-01`)
           .neq("status", "cancelled");
         current = sigCount || 0;
-        max = plan.signatures_monthly_quota ?? 0;
+        max = plan.signatures_monthly_quota ?? planConfig.limits.signatures_monthly_quota;
         break;
     }
 
@@ -141,7 +229,7 @@ export async function withSubscriptionLimit(
         current,
         max: -1,
         remaining: -1,
-        plan: subscription.plan_slug || "gratuit",
+        plan: planSlug,
       };
     }
 
@@ -153,10 +241,10 @@ export async function withSubscriptionLimit(
       current,
       max,
       remaining,
-      plan: subscription.plan_slug || "gratuit",
+      plan: planSlug,
       message: allowed
         ? undefined
-        : `Limite de ${max} ${getLimitLabel(limitType)} atteinte pour le forfait "${subscription.plan_slug}". Passez à un forfait supérieur.`,
+        : `Limite de ${max} ${getLimitLabel(limitType)} atteinte pour le forfait "${planSlug}". Passez à un forfait supérieur.`,
     };
   } catch (error) {
     console.error("[subscription-check] Error:", error);

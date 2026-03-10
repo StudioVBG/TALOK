@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { generateCode } from "@/lib/helpers/code-generator";
 import { withSubscriptionLimit } from "@/lib/middleware/subscription-check";
+import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
 
 /**
  * Extrait le code département depuis un code postal
@@ -158,6 +159,13 @@ export async function POST(request: Request) {
     } catch (notifError) {
       // Ne pas bloquer si la notification échoue
       console.warn("Notification Property.DraftCreated non envoyée:", notifError);
+    }
+
+    // Sync facturation Stripe pour les biens supplémentaires
+    try {
+      await syncPropertyBillingToStripe(profile.id);
+    } catch (billingError) {
+      console.warn("[properties/init] Stripe billing sync failed:", billingError);
     }
 
     return NextResponse.json({ 
