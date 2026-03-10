@@ -80,7 +80,8 @@ export async function withSubscriptionLimit(
         const { count: propCount } = await serviceClient
           .from("properties")
           .select("id", { count: "exact", head: true })
-          .eq("owner_id", ownerId);
+          .eq("owner_id", ownerId)
+          .is("deleted_at", null);
         current = propCount || 0;
         max = plan.max_properties ?? 1;
         break;
