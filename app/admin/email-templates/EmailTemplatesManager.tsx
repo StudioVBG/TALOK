@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
 
 // Types
 interface AvailableVariable {
@@ -100,6 +100,7 @@ export function EmailTemplatesManager({
 }: {
   initialTemplates: EmailTemplate[];
 }) {
+  const { toast } = useToast();
   const [templates, setTemplates] = useState<EmailTemplate[]>(initialTemplates);
   const [selectedId, setSelectedId] = useState<string | null>(
     initialTemplates[0]?.id || null
@@ -190,11 +191,9 @@ export function EmailTemplatesManager({
       setTemplates((prev) =>
         prev.map((t) => (t.id === selected.id ? data.template : t))
       );
-      toast.success("Template sauvegardé");
+      toast({ title: "Template sauvegardé" });
     } catch (err) {
-      toast.error(
-        `Erreur : ${err instanceof Error ? err.message : "Sauvegarde échouée"}`
-      );
+      toast({ title: "Erreur", description: err instanceof Error ? err.message : "Sauvegarde échouée", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -215,11 +214,9 @@ export function EmailTemplatesManager({
       setTemplates((prev) =>
         prev.map((t) => (t.id === selected.id ? data.template : t))
       );
-      toast.success(
-        data.template.is_active ? "Template activé" : "Template désactivé"
-      );
+      toast({ title: data.template.is_active ? "Template activé" : "Template désactivé" });
     } catch (err) {
-      toast.error("Erreur lors du changement de statut");
+      toast({ title: "Erreur", description: "Erreur lors du changement de statut", variant: "destructive" });
     }
   };
 
@@ -238,11 +235,9 @@ export function EmailTemplatesManager({
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success(data.message);
+      toast({ title: data.message });
     } catch (err) {
-      toast.error(
-        `Erreur : ${err instanceof Error ? err.message : "Envoi échoué"}`
-      );
+      toast({ title: "Erreur", description: err instanceof Error ? err.message : "Envoi échoué", variant: "destructive" });
     } finally {
       setSendingTest(false);
     }
@@ -260,7 +255,7 @@ export function EmailTemplatesManager({
       if (!res.ok) throw new Error(data.error);
       setVersions(data.versions || []);
     } catch {
-      toast.error("Erreur lors du chargement des versions");
+      toast({ title: "Erreur", description: "Erreur lors du chargement des versions", variant: "destructive" });
     }
   };
 
@@ -271,7 +266,7 @@ export function EmailTemplatesManager({
     setEditText(version.body_text);
     setShowVersions(false);
     setEditTab("html");
-    toast.info("Version restaurée — sauvegardez pour appliquer");
+    toast({ title: "Version restaurée", description: "Sauvegardez pour appliquer les changements" });
   };
 
   // Copy variable

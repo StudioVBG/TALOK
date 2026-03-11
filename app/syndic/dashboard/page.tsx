@@ -134,7 +134,7 @@ export default function SyndicDashboardPage() {
           </div>
           <div className="flex gap-3">
             <Button variant="outline" className="border-white/10 text-white" asChild>
-              <Link href="/syndic/notifications">
+              <Link href="/notifications">
                 <Bell className="w-4 h-4 mr-2" />
                 Notifications
               </Link>

@@ -100,7 +100,7 @@ function EngagementCard({ engagement }: { engagement: GuarantorDashboardEngageme
 
         {engagement.status === "pending_signature" && (
           <div className="pt-2 border-t">
-            <Link href={`/guarantor/engagements/${engagement.id}/sign`}>
+            <Link href={`/guarantor/dashboard/${engagement.id}/sign`}>
               <Button className="w-full">
                 <FileCheck className="h-4 w-4 mr-2" />
                 Signer l'acte de caution
@@ -310,7 +310,7 @@ export default function GuarantorDashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Mes engagements</h2>
-            <Link href="/guarantor/engagements">
+            <Link href="/guarantor/dashboard">
               <Button variant="ghost" size="sm">
                 Voir tout
                 <ArrowRight className="h-4 w-4 ml-1" />
@@ -422,7 +422,7 @@ export default function GuarantorDashboardPage() {
                 Gérer mes documents
               </Button>
             </Link>
-            <Link href="/guarantor/engagements">
+            <Link href="/guarantor/dashboard">
               <Button variant="outline" className="w-full justify-start">
                 <Home className="h-4 w-4 mr-2" />
                 Voir tous les engagements

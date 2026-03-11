@@ -179,7 +179,7 @@ export default function CoproDashboardPage() {
           </div>
           <div className="flex gap-3">
             <Button variant="outline" className="border-white/10 text-white" asChild>
-              <Link href="/copro/notifications">
+              <Link href="/copro/dashboard">
                 <Bell className="w-4 h-4 mr-2" />
                 {(data?.pendingDocuments || 0) > 0 && (
                   <Badge className="bg-red-500 text-white ml-1">{data?.pendingDocuments}</Badge>

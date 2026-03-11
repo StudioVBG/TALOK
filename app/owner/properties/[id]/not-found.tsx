@@ -93,7 +93,7 @@ export default function PropertyNotFound() {
             <p className="text-center text-xs text-slate-500">
               Besoin d'aide ?{" "}
               <Link
-                href="/support"
+                href="/contact"
                 className="text-blue-600 hover:underline"
               >
                 Contactez le support

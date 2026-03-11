@@ -1,14 +1,31 @@
-import { Building2 } from "lucide-react";
-import { ResourceNotFound } from "@/components/ui/resource-not-found";
+"use client";
 
-export default function EntityNotFound() {
+import { ArrowLeft, Home as HomeIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+export default function NotFound() {
   return (
-    <ResourceNotFound
-      icon={Building2}
-      title="Entité introuvable"
-      description="Cette entité juridique n'existe pas ou a été supprimée. Vérifiez l'URL ou retournez à la liste des entités."
-      backHref="/owner/entities"
-      backLabel="Retour aux entités"
-    />
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 p-8">
+      <span className="text-5xl font-bold text-slate-300">404</span>
+      <h2 className="text-xl font-semibold text-slate-900">Entité introuvable</h2>
+      <p className="text-sm text-slate-500 text-center max-w-md">
+        Cet élément n'existe pas ou vous n'avez pas les droits pour y accéder.
+      </p>
+      <div className="flex gap-3 mt-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/owner/entities">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Retour à la liste
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/owner/dashboard">
+            <HomeIcon className="mr-2 h-4 w-4" />
+            Tableau de bord
+          </Link>
+        </Button>
+      </div>
+    </div>
   );
 }

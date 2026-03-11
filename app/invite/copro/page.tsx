@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useSignOut } from "@/lib/hooks/use-sign-out";
 import {
   Building2, CheckCircle2, AlertCircle, Clock,
   User, Mail, MapPin, Key, ArrowRight, LogIn
@@ -24,6 +25,7 @@ export default function CoproInvitePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { signOut } = useSignOut({ redirectTo: `/invite/copro?token=${searchParams.get('token') || ''}` });
   const token = searchParams.get('token');
 
   const [inviteData, setInviteData] = useState<InviteValidationResult | null>(null);
@@ -277,7 +279,7 @@ export default function CoproInvitePage() {
                   <Button
                     variant="outline"
                     className="w-full border-white/10 text-white"
-                    onClick={() => {/* TODO: Déconnexion */}}
+                    onClick={() => signOut()}
                   >
                     Se connecter avec un autre compte
                   </Button>

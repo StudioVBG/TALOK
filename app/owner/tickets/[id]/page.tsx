@@ -483,7 +483,7 @@ function ProviderSearchModal({
                             <p className="text-xs text-white/80 mt-1">
                               Accédez à la recherche de prestataires locaux avec notes, avis et coordonnées directes.
                             </p>
-                            <Link href="/owner/settings/subscription">
+                            <Link href="/owner/money?tab=forfait">
                               <Button 
                                 size="sm" 
                                 className="mt-3 bg-white text-indigo-600 hover:bg-white/90"
@@ -509,7 +509,7 @@ function ProviderSearchModal({
                         >
                           Voir tous les prestataires
                         </Button>
-                        <Link href="/owner/providers/invite">
+                        <Link href="/owner/providers">
                           <Button variant="link" size="sm" className="text-blue-600">
                             Inviter un prestataire →
                           </Button>
@@ -711,7 +711,7 @@ function ProviderSearchModal({
                                   Voir sur Maps
                                 </Button>
                               </a>
-                              <Link href="/owner/providers/invite">
+                              <Link href="/owner/providers">
                                 <Button size="sm" className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700">
                                   <UserPlus className="h-3 w-3" />
                                   Inviter

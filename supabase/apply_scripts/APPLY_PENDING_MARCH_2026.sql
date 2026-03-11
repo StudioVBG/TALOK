@@ -1610,7 +1610,7 @@ BEGIN
       'invoice',
       'Nouvelle quittance disponible',
       'Quittance pour ' || v_property_address || ' - ' || COALESCE(NEW.montant_total::text, '0') || '€',
-      '/tenant/invoices/' || NEW.id,
+      '/tenant/payments?invoice=' || NEW.id,
       jsonb_build_object(
         'invoice_id', NEW.id,
         'lease_id', NEW.lease_id,
