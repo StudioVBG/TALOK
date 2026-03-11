@@ -60,7 +60,12 @@ export async function withSubscriptionLimit(
       .single();
 
     // Déterminer le plan slug et les limites
-    const planSlug: PlanSlug = (subscription?.plan_slug || "gratuit") as PlanSlug;
+    // Priorité: plan_slug > plan.slug (jointure) > fallback gratuit
+    const resolvedSlug = subscription?.plan_slug || (subscription?.plan as any)?.slug;
+    if (!subscription?.plan_slug && resolvedSlug) {
+      console.warn(`[subscription-check] plan_slug NULL pour owner_id=${ownerId}, résolu depuis plan.slug="${resolvedSlug}"`);
+    }
+    const planSlug: PlanSlug = (resolvedSlug || "gratuit") as PlanSlug;
     const planConfig = PLANS[planSlug] || PLANS.gratuit;
 
     if (subError || !subscription) {
@@ -300,7 +305,7 @@ export async function withFeatureAccess(
     return {
       allowed,
       feature,
-      plan: subscription.plan_slug || "gratuit",
+      plan: subscription.plan_slug || (subscription.plan as any)?.slug || "gratuit",
       requiredPlan: allowed ? undefined : getRequiredPlanForFeature(feature),
       message: allowed
         ? undefined

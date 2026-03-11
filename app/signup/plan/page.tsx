@@ -93,8 +93,22 @@ export default function SignupPlanPage() {
 
     setLoading(true);
     try {
-      // Si plan gratuit, pas de Stripe — rediriger directement vers l'onboarding
+      // Si plan gratuit, confirmer le choix via l'API puis rediriger vers l'onboarding
       if (selectedPlan === "gratuit") {
+        try {
+          const res = await fetch("/api/subscriptions/select-plan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ plan_slug: "gratuit" }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            console.warn("[signup/plan] Erreur select-plan gratuit:", data.error);
+            // Non-bloquant : on continue vers l'onboarding meme en cas d'erreur
+          }
+        } catch (err) {
+          console.warn("[signup/plan] Erreur reseau select-plan:", err);
+        }
         router.push("/owner/onboarding/profile?subscription=free");
         return;
       }

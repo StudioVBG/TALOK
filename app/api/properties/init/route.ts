@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { generateCode } from "@/lib/helpers/code-generator";
 import { withSubscriptionLimit } from "@/lib/middleware/subscription-check";
@@ -115,6 +115,7 @@ export async function POST(request: Request) {
     const insertData: Record<string, any> = {
       owner_id: profile.id,
       type: type, // Correspond au champ 'type' de la table properties
+      type_bien: type, // Support V3 : type_bien (nouveau champ) aligné avec /api/properties
       etat: "draft", // Toujours 'draft' au début
       unique_code: uniqueCode, // Code unique obligatoire
       // Champs obligatoires mais qu'on peut mettre par défaut pour un draft
@@ -124,13 +125,17 @@ export async function POST(request: Request) {
       departement: departement || "", // Valeur par défaut vide si pas de CP (évite NOT NULL constraint)
       surface: 0,
       nb_pieces: 0,
+      nb_chambres: 0, // Aligné avec /api/properties
+      ascenseur: false, // Aligné avec /api/properties
       // On initialise les compteurs à 0
       loyer_hc: 0,
       charges_mensuelles: 0,
       // depot_garantie n'existe pas dans la table properties (c'est dans leases)
     };
 
-    const { data: property, error: insertError } = await supabase
+    // Utiliser le service role client pour l'insert (cohérent avec /api/properties)
+    const serviceClient = createServiceRoleClient();
+    const { data: property, error: insertError } = await serviceClient
       .from("properties")
       .insert(insertData)
       .select()
