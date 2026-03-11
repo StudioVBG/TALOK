@@ -148,45 +148,44 @@ export function SubscriptionProvider({
       let subscriptionWithPlan: SubscriptionWithPlan | null = null;
       if (sub) {
         let plan = null;
-        
-        // Utiliser plan_slug si disponible, sinon fallback sur plan_id
+        const planFields = "name, price_monthly, price_yearly, max_properties, max_leases, max_tenants, max_documents_gb, features, slug";
+        const toPlan = (data: any) => data ? {
+          ...data,
+          limits: {
+            max_properties: data.max_properties,
+            max_leases: data.max_leases,
+            max_tenants: data.max_tenants,
+            max_documents_gb: data.max_documents_gb,
+          }
+        } : null;
+
+        // 1. Essayer plan_slug d'abord
         if (sub.plan_slug) {
           const { data } = await supabase
             .from("subscription_plans")
-            .select("name, price_monthly, price_yearly, max_properties, max_leases, max_tenants, max_documents_gb, features, slug")
+            .select(planFields)
             .eq("slug", sub.plan_slug)
             .maybeSingle();
-          // Transformer en format attendu avec limits
-          plan = data ? {
-            ...data,
-            limits: {
-              max_properties: data.max_properties,
-              max_leases: data.max_leases,
-              max_tenants: data.max_tenants,
-              max_documents_gb: data.max_documents_gb,
-            }
-          } : null;
-        } else if (sub.plan_id) {
-          const { data } = await supabase
-            .from("subscription_plans")
-            .select("name, price_monthly, price_yearly, max_properties, max_leases, max_tenants, max_documents_gb, features, slug")
-            .eq("id", sub.plan_id)
-            .maybeSingle();
-          // Transformer en format attendu avec limits
-          plan = data ? {
-            ...data,
-            limits: {
-              max_properties: data.max_properties,
-              max_leases: data.max_leases,
-              max_tenants: data.max_tenants,
-              max_documents_gb: data.max_documents_gb,
-            }
-          } : null;
+          plan = toPlan(data);
         }
 
+        // 2. Fallback sur plan_id si plan_slug absent ou non trouvé
+        if (!plan && sub.plan_id) {
+          const { data } = await supabase
+            .from("subscription_plans")
+            .select(planFields)
+            .eq("id", sub.plan_id)
+            .maybeSingle();
+          plan = toPlan(data);
+          if (plan && !sub.plan_slug) {
+            console.warn(`[SubscriptionProvider] plan_slug manquant, résolu via plan_id: ${plan.slug}`);
+          }
+        }
+
+        const resolvedSlug = sub.plan_slug || plan?.slug || "gratuit";
         subscriptionWithPlan = {
           ...sub,
-          plan_slug: sub.plan_slug || plan?.slug || "gratuit",
+          plan_slug: resolvedSlug,
           plan: plan || null,
         } as SubscriptionWithPlan;
       }

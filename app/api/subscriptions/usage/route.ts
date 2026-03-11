@@ -68,7 +68,18 @@ export async function GET() {
       .eq("owner_id", profile.id)
       .maybeSingle();
 
-    const planSlug = (subscription?.plan_slug || 'gratuit') as PlanSlug;
+    // Résoudre plan_slug : priorité plan_slug, fallback plan_id, puis "gratuit"
+    let planSlug: PlanSlug = (subscription?.plan_slug as PlanSlug) || 'gratuit';
+    if (planSlug === 'gratuit' && subscription?.plan_id) {
+      const { data: planData } = await supabase
+        .from("subscription_plans")
+        .select("slug")
+        .eq("id", subscription.plan_id)
+        .maybeSingle();
+      if (planData?.slug) {
+        planSlug = planData.slug as PlanSlug;
+      }
+    }
     const limits = PLANS[planSlug]?.limits || PLANS.gratuit.limits;
 
     // Compter les propriétés (exclure les soft-deleted)
