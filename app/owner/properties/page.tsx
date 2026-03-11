@@ -90,7 +90,8 @@ export default function OwnerPropertiesPage() {
   });
 
   const { isAtLimit, canAdd, loading: subscriptionLoading } = useUsageLimit("properties");
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const upgradeParam = searchParams.get("upgrade");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(upgradeParam === "true");
 
   // Pendant le chargement de l'abonnement, autoriser la navigation (le backend vérifiera)
   // pour éviter un flash de l'UpgradeModal pendant le loading
@@ -492,34 +493,28 @@ export default function OwnerPropertiesPage() {
                   <span className="hidden sm:inline">Exporter</span>
                 </Button>
                 
-                {/* Bouton Ajouter — toujours actif, CTA upgrade si limite atteinte */}
-                <Button
-                  {...(canNavigateToNew ? { asChild: true } : { onClick: () => setShowUpgradeModal(true) })}
-                  className="relative overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  {canNavigateToNew ? (
+                {/* Bouton Ajouter — toujours visible, CTA upgrade si limite atteinte */}
+                {canNavigateToNew ? (
+                  <Button
+                    asChild
+                    size="sm"
+                    className="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-9 md:h-10"
+                  >
                     <Link href="/owner/properties/new">
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                        whileHover={{ x: ["0%", "100%"], transition: { duration: 0.6, repeat: Infinity, repeatType: "reverse" } }}
-                      />
-                      <span className="relative flex items-center">
-                        <motion.div
-                          whileHover={{ rotate: 90 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                        </motion.div>
-                        Ajouter un bien
-                      </span>
-                    </Link>
-                  ) : (
-                    <span className="relative flex items-center">
                       <Plus className="mr-2 h-4 w-4" />
                       Ajouter un bien
-                    </span>
-                  )}
-                </Button>
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-9 md:h-10"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Ajouter un bien
+                  </Button>
+                )}
               </motion.div>
             </motion.div>
 
