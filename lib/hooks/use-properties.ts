@@ -242,34 +242,37 @@ export function useDeleteProperty() {
       await apiClient.delete(`/properties/${id}`);
     },
     onMutate: async (id) => {
-      // Annuler les requêtes en cours pour éviter les conflits
+      // Annuler toutes les requêtes properties en cours (y compris celles filtrées par entité)
       await queryClient.cancelQueries({ queryKey: ["properties"] });
       await queryClient.cancelQueries({ queryKey: ["property", id] });
-      
-      // Sauvegarder l'état précédent pour rollback
-      const previousProperties = queryClient.getQueryData<PropertyRow[]>([
-        "properties",
-        profile?.id,
-      ]);
+
+      // Sauvegarder l'état de TOUS les caches properties pour rollback
+      const allPropertiesQueries = queryClient.getQueriesData<PropertyRow[]>({
+        queryKey: ["properties", profile?.id],
+      });
       const previousProperty = queryClient.getQueryData<PropertyRow>(["property", id]);
-      
-      // Mise à jour optimiste - supprimer la propriété de la liste
-      if (previousProperties) {
+
+      // Mise à jour optimiste sur tous les caches (avec et sans filtre entité)
+      for (const [queryKey] of allPropertiesQueries) {
         queryClient.setQueryData<PropertyRow[]>(
-          ["properties", profile?.id],
+          queryKey,
           (old) => old?.filter((p) => p.id !== id) ?? []
         );
       }
-      
+
       // Supprimer aussi de la cache individuelle
       queryClient.removeQueries({ queryKey: ["property", id] });
-      
-      return { previousProperties, previousProperty };
+
+      return { allPropertiesQueries, previousProperty };
     },
     onError: (error, id, context) => {
-      // Rollback en cas d'erreur
-      if (context?.previousProperties) {
-        queryClient.setQueryData(["properties", profile?.id], context.previousProperties);
+      // Rollback de tous les caches properties
+      if (context?.allPropertiesQueries) {
+        for (const [queryKey, data] of context.allPropertiesQueries) {
+          if (data) {
+            queryClient.setQueryData(queryKey, data);
+          }
+        }
       }
       if (context?.previousProperty) {
         queryClient.setQueryData(["property", id], context.previousProperty);

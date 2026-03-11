@@ -323,14 +323,18 @@ export async function deleteProperty(
     return { success: false, error: "Impossible de supprimer : des baux actifs existent" };
   }
 
-  // 5. Supprimer (soft delete si colonne available, sinon hard delete)
+  // 5. Soft-delete : marquer comme supprimé au lieu de supprimer définitivement
   const { error: deleteError } = await supabase
     .from("properties")
-    .delete()
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: profile.id,
+      etat: "deleted" as any,
+    })
     .eq("id", id);
 
   if (deleteError) {
-    console.error("Delete property error:", deleteError);
+    console.error("Soft-delete property error:", deleteError);
     return { success: false, error: "Erreur lors de la suppression" };
   }
 
