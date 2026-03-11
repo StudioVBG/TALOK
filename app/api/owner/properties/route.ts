@@ -55,6 +55,7 @@ export async function GET(request: Request) {
       .from("properties")
       .select("*, legal_entity:legal_entities(id, nom, entity_type, couleur)", { count: "exact" })
       .eq("owner_id", profile.id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 

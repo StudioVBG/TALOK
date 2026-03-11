@@ -6,15 +6,24 @@ import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/protected-route";
 import { PropertyWizardV3 } from "@/features/properties/components/v3/property-wizard-v3";
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
+import { useUsageLimit } from "@/components/subscription";
 
 function PropertyWizardWrapper() {
   const router = useRouter();
   const reset = usePropertyWizardStore((state) => state.reset);
+  const { canAdd, loading: subscriptionLoading } = useUsageLimit("properties");
 
   // Reset wizard on mount to ensure clean state
   useEffect(() => {
     reset();
   }, [reset]);
+
+  // Rediriger si l'utilisateur ne peut pas ajouter de bien (accès direct par URL)
+  useEffect(() => {
+    if (!subscriptionLoading && !canAdd) {
+      router.replace("/owner/properties?upgrade=true");
+    }
+  }, [subscriptionLoading, canAdd, router]);
 
   const handleSuccess = (propertyId: string) => {
     router.push(`/owner/properties/${propertyId}?new=true`);
@@ -23,6 +32,16 @@ function PropertyWizardWrapper() {
   const handleCancel = () => {
     router.push("/owner/properties");
   };
+
+  // Pendant le chargement de l'abonnement, afficher le loading
+  if (subscriptionLoading) {
+    return <LoadingFallback />;
+  }
+
+  // Si l'utilisateur ne peut pas ajouter, ne pas afficher le wizard (en cours de redirection)
+  if (!canAdd) {
+    return <LoadingFallback />;
+  }
 
   return (
     <div className="space-y-6">
