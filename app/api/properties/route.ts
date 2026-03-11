@@ -9,6 +9,7 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { propertiesQuerySchema, validateQueryParams } from "@/lib/validations/params";
 import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
+import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
 import type {
   ServiceSupabaseClient,
   TypedSupabaseClient,
@@ -649,6 +650,14 @@ export async function POST(request: Request) {
         serviceClient,
       });
       console.log(`[POST /api/properties] Draft créé avec succès: id=${property.id}, owner_id=${property.owner_id}`);
+
+      // ✅ STRIPE SYNC: Mettre à jour la facturation des biens supplémentaires
+      try {
+        await syncPropertyBillingToStripe(profile.id);
+      } catch (billingError) {
+        console.warn("[POST /api/properties] Stripe billing sync failed:", billingError);
+      }
+
       return NextResponse.json({ property }, { status: 201 });
     }
 
@@ -706,6 +715,13 @@ export async function POST(request: Request) {
     } catch (auditError) {
       // Ignorer si la table n'existe pas
       console.warn("[POST /api/properties] Table audit_log non disponible:", auditError);
+    }
+
+    // ✅ STRIPE SYNC: Mettre à jour la facturation des biens supplémentaires
+    try {
+      await syncPropertyBillingToStripe(profile.id);
+    } catch (billingError) {
+      console.warn("[POST /api/properties] Stripe billing sync failed:", billingError);
     }
 
     return NextResponse.json({ property }, { status: 201 });
