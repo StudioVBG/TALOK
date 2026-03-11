@@ -75,7 +75,7 @@ const ownerCommands = {
   settings: [
     { icon: UserCircle, label: "Mon profil", href: "/owner/profile" },
     { icon: CreditCard, label: "Abonnement & facturation", href: "/owner/money?tab=forfait" },
-    { icon: Bell, label: "Notifications", href: "/owner/settings/notifications" },
+    { icon: Bell, label: "Notifications", href: "/notifications" },
     { icon: HelpCircle, label: "Aide & support", href: "/owner/support" },
   ],
 };

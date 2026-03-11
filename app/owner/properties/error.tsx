@@ -108,7 +108,7 @@ export default function PropertiesError({ error, reset }: ErrorProps) {
             <p className="text-center text-xs text-slate-500">
               Si le problème persiste,{" "}
               <Link
-                href="/support"
+                href="/contact"
                 className="text-blue-600 hover:underline"
               >
                 contactez le support

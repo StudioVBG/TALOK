@@ -11,6 +11,10 @@ import { getServiceClient } from "@/lib/supabase/service-client";
  * Route publique pour debug - À SUPPRIMER EN PRODUCTION
  */
 export async function GET(request: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not available in production" }, { status: 403 });
+  }
+
   try {
     const url = new URL(request.url);
     const leaseId = url.searchParams.get("leaseId");

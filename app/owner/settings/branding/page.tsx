@@ -176,7 +176,7 @@ export default function OwnerBrandingPage() {
   };
 
   const handleUpgrade = () => {
-    router.push("/owner/settings/subscription");
+    router.push("/owner/money?tab=forfait");
   };
 
   return (

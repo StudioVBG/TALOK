@@ -301,7 +301,7 @@ export function AgencyDashboardClient({ data }: { data: any }) {
                 </div>
               )}
               <Button variant="outline" className="w-full mt-2" size="sm" asChild>
-                <Link href="/agency/tasks">
+                <Link href="/agency/dashboard">
                   Voir toutes les tâches
                 </Link>
               </Button>

@@ -313,7 +313,7 @@ export function NotificationCenter() {
               asChild
               aria-label="Paramètres des notifications"
             >
-              <Link href="/owner/settings/notifications">
+              <Link href="/owner/profile">
                 <Settings className="h-3.5 w-3.5" />
               </Link>
             </Button>
@@ -388,7 +388,7 @@ export function NotificationCenter() {
                 className="text-xs text-slate-500 h-auto p-0"
                 asChild
               >
-                <Link href="/owner/notifications">
+                <Link href="/notifications">
                   Voir toutes les notifications
                 </Link>
               </Button>

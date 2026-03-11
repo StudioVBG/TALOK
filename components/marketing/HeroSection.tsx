@@ -216,7 +216,7 @@ export function HeroSection({ className }: HeroSectionProps) {
               size="lg"
               className="h-14 px-8 text-lg font-semibold rounded-full shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300"
             >
-              <Link href="/signup?role=owner">
+              <Link href="/signup/role">
                 Créer mon premier bail
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
