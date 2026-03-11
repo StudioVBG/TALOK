@@ -40,7 +40,8 @@ export async function GET(request: Request) {
     const { data: properties } = await supabase
       .from("properties")
       .select("id, type, type_bien, adresse_complete, surface, nb_pieces")
-      .eq("owner_id", ownerId);
+      .eq("owner_id", ownerId)
+      .is("deleted_at", null);
 
     const propertyIds = (properties || []).map((p) => p.id);
 

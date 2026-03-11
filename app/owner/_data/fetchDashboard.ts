@@ -102,7 +102,8 @@ async function fetchDashboardDirect(
   const { data: properties } = await supabase
     .from("properties")
     .select("id, etat")
-    .eq("owner_id", ownerId);
+    .eq("owner_id", ownerId)
+    .is("deleted_at", null);
 
   const propertyIds = (properties || []).map((p: { id: string }) => p.id);
 
