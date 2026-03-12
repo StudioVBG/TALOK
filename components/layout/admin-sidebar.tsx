@@ -23,6 +23,7 @@ import {
   Mail,
   Palette,
   Brain,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ const adminNavItems: NavCategory[] = [
     category: "Gestion",
     items: [
       { href: "/admin/people", label: "Annuaire", icon: Users },
+      { href: "/admin/tenants", label: "Locataires", icon: UserCheck },
       { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
       { href: "/admin/templates", label: "Templates Baux", icon: ScrollText },
       { href: "/admin/email-templates", label: "Templates Email", icon: Mail },

@@ -24,8 +24,7 @@ function ReportsPageContent() {
 
     setLoading(true);
     try {
-      const data = await reportsService.generateOwnerReport(
-        profile.id,
+      const data = await reportsService.generateAdminReport(
         startDate || undefined,
         endDate || undefined
       );
@@ -86,14 +85,14 @@ function ReportsPageContent() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Rapports</h1>
-        <p className="text-muted-foreground">Générez et exportez vos rapports</p>
+        <h1 className="text-3xl font-bold">Rapports plateforme</h1>
+        <p className="text-muted-foreground">Rapports globaux de l'ensemble de la plateforme</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Générer un rapport</CardTitle>
-          <CardDescription>Sélectionnez une période pour générer votre rapport</CardDescription>
+          <CardDescription>Sélectionnez une période pour générer le rapport de la plateforme</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -129,7 +128,7 @@ function ReportsPageContent() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Résumé</CardTitle>
-                  <CardDescription>Vue d'ensemble de votre activité</CardDescription>
+                  <CardDescription>Vue d'ensemble de l'activité de la plateforme</CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={exportToCSV}>

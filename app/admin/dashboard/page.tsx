@@ -13,5 +13,5 @@ export default async function AdminDashboardPage() {
     return <div>Erreur lors du chargement des statistiques.</div>;
   }
 
-  return <DashboardClient stats={stats as any} />;
+  return <DashboardClient stats={stats} />;
 }
