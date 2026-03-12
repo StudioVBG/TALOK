@@ -18,6 +18,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TenantOption {
   tenantProfileId: string;
@@ -252,7 +258,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-bold">Messages</h1>
-                {canCreateConversation && (
+                {canCreateConversation ? (
                   ownerTenants.length > 0 ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -288,6 +294,25 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
                       {isCreatingConversation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                     </Button>
                   )
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span tabIndex={0}>
+                          <Button
+                            size="sm"
+                            disabled
+                            className="rounded-xl font-bold"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Un bail actif est requis pour envoyer un message</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </div>
               <ConversationsList
@@ -314,7 +339,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
             <h1 className="text-3xl font-bold">Messages</h1>
             <p className="text-muted-foreground mt-1">{subtitle}</p>
           </div>
-          {canCreateConversation && (
+          {canCreateConversation ? (
             ownerTenants.length > 0 ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -358,6 +383,25 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
                 Nouvelle conversation
               </Button>
             )
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button
+                      disabled
+                      className="rounded-xl font-bold"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nouvelle conversation
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Un bail actif est requis pour envoyer un message</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </motion.div>
 

@@ -57,7 +57,7 @@ export default async function AdminLayout({
       </a>
       <div className="flex min-h-screen mesh-gradient">
         <AdminSidebar />
-        <main className="flex-1 lg:pl-64 transition-all duration-200" id="admin-main-content">
+        <main className="flex-1 pl-14 lg:pl-64 transition-all duration-200" id="admin-main-content">
           <AdminShellHeader />
           <div className="container mx-auto max-w-7xl px-4 py-6 lg:px-8">
             <Breadcrumb homeHref="/admin/dashboard" className="mb-4" />
