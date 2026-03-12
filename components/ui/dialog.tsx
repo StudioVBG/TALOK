@@ -5,7 +5,13 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const Dialog = DialogPrimitive.Root;
+/**
+ * Dialog wrapper that ensures `open` is always a strict boolean when provided,
+ * preventing the "changing from controlled to uncontrolled" React warning.
+ */
+const Dialog = ({ open, ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) => (
+  <DialogPrimitive.Root open={open !== undefined ? Boolean(open) : undefined} {...props} />
+);
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
