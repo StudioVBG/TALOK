@@ -68,7 +68,7 @@ export async function fetchAdminOwnerDetails(ownerId: string): Promise<AdminOwne
     .eq("user_id", user.id)
     .single();
 
-  if (!adminProfile || adminProfile.role !== "admin") {
+  if (!adminProfile || (adminProfile.role !== "admin" && adminProfile.role !== "platform_admin")) {
     console.error("[fetchAdminOwnerDetails] User is not admin");
     return null;
   }

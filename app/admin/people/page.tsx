@@ -28,7 +28,7 @@ export default async function PeopleDirectoryPage({
     .eq("user_id", user.id)
     .single();
 
-  if (profileError || !profile || profile.role !== "admin") {
+  if (profileError || !profile || (profile.role !== "admin" && profile.role !== "platform_admin")) {
     redirect("/dashboard");
   }
 

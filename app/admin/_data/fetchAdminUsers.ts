@@ -31,7 +31,7 @@ export async function fetchAdminUsers(options: { role?: string; search?: string;
     .eq("user_id", user.id)
     .single();
 
-  if (!adminProfile || adminProfile.role !== "admin") {
+  if (!adminProfile || (adminProfile.role !== "admin" && adminProfile.role !== "platform_admin")) {
     return { users: [], total: 0 };
   }
 
@@ -63,49 +63,33 @@ export async function fetchAdminUsers(options: { role?: string; search?: string;
     return { users: [], total: count || 0 };
   }
 
-  // Récupérer les emails depuis auth.users via l'API admin
-  const userIds = profiles.map((p) => p.user_id).filter(Boolean);
-  
-  // Utiliser auth.admin.listUsers pour récupérer les emails
-  const { data: authUsersData, error: authError } = await serviceClient.auth.admin.listUsers({
-    perPage: 1000, // Max par page
-  });
+  // Récupérer les emails uniquement pour les profils de la page courante (pas les 1000)
+  const userIds: string[] = profiles.map((p: Record<string, unknown>) => p.user_id as string).filter(Boolean);
 
-  if (authError) {
-    console.error("Error fetching auth users:", authError);
-    // Retourner les profils sans emails en cas d'erreur
-    return { 
-      users: profiles.map((p) => ({ ...p, email: null })) as UserWithEmail[], 
-      total: count || 0 
-    };
-  }
-
-  // Créer un map userId -> email
   const emailMap = new Map<string, string>();
-  if (authUsersData?.users) {
-    for (const authUser of authUsersData.users) {
-      emailMap.set(authUser.id, authUser.email || "");
-    }
+
+  // Récupérer les emails un par un (seulement pour la page courante, max ~50 users)
+  const emailResults = await Promise.allSettled(
+    userIds.map(async (userId: string) => {
+      const { data } = await serviceClient.auth.admin.getUserById(userId);
+      if (data?.user?.email) {
+        emailMap.set(userId, data.user.email);
+      }
+    })
+  );
+
+  // Log errors silently
+  const failures = emailResults.filter((r: PromiseSettledResult<void>) => r.status === "rejected");
+  if (failures.length > 0) {
+    console.warn(`[fetchAdminUsers] ${failures.length} email lookups failed`);
   }
 
   // Combiner les profils avec les emails
-  const usersWithEmail: UserWithEmail[] = profiles.map((profile) => ({
-    ...profile,
-    email: emailMap.get(profile.user_id) || null,
+  const usersWithEmail: UserWithEmail[] = profiles.map((p: Record<string, unknown>) => ({
+    ...p,
+    email: emailMap.get(p.user_id as string) || null,
   })) as UserWithEmail[];
 
-  // Si la recherche inclut un email, filtrer côté serveur
-  let filteredUsers = usersWithEmail;
-  if (search) {
-    const searchLower = search.toLowerCase();
-    filteredUsers = usersWithEmail.filter((u) => 
-      u.email?.toLowerCase().includes(searchLower) ||
-      u.prenom?.toLowerCase().includes(searchLower) ||
-      u.nom?.toLowerCase().includes(searchLower) ||
-      u.telephone?.includes(search)
-    );
-  }
-
-  return { users: filteredUsers, total: count || 0 };
+  return { users: usersWithEmail, total: count || 0 };
 }
 

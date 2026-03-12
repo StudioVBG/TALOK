@@ -22,10 +22,10 @@ import { BarChartHorizontal } from "@/components/charts/bar-chart-horizontal";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { formatDateShort, formatCurrency } from "@/lib/helpers/format";
 import { useAdminRealtimeSync } from "@/lib/hooks/use-realtime-sync";
-import type { AdminStatsData } from "../_data/fetchAdminStats";
+import type { AdminStatsDataV2 } from "../_data/fetchAdminStats";
 
 interface DashboardClientProps {
-  stats: AdminStatsData;
+  stats: AdminStatsDataV2;
 }
 
 // Animation variants
@@ -78,8 +78,9 @@ export function DashboardClient({ stats }: DashboardClientProps) {
   const baseRevenue = stats.totalInvoices > 0
     ? Math.round((stats.invoicesByStatus.paid || 0) * 1000)
     : 0;
-  const revenueData = (stats as AdminStatsData & { monthlyRevenue?: Array<{ month: string; attendu: number; encaisse: number }> }).monthlyRevenue
-    || months.map((month) => ({
+  const revenueData = stats.monthlyRevenue && stats.monthlyRevenue.length > 0
+    ? stats.monthlyRevenue
+    : months.map((month) => ({
       month,
       attendu: baseRevenue,
       encaisse: Math.round(baseRevenue * collectionRate / 100),

@@ -94,6 +94,70 @@ export class ReportsService {
     };
   }
 
+  /**
+   * Génère un rapport admin (vue globale de la plateforme)
+   * Récupère TOUTES les propriétés, baux et factures sans filtre owner
+   */
+  async generateAdminReport(startDate?: string, endDate?: string): Promise<ReportData> {
+    // Récupérer toutes les propriétés
+    const { data: properties } = await this.supabase
+      .from("properties")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    const propertyIds = (properties || []).map((p) => p.id);
+
+    // Récupérer tous les baux
+    let leasesQuery = this.supabase
+      .from("leases")
+      .select("*");
+
+    if (propertyIds.length > 0) {
+      leasesQuery = leasesQuery.in("property_id", propertyIds);
+    }
+    if (startDate) {
+      leasesQuery = leasesQuery.gte("date_debut", startDate);
+    }
+    if (endDate) {
+      leasesQuery = leasesQuery.lte("date_debut", endDate);
+    }
+
+    const { data: leases } = await leasesQuery;
+
+    // Récupérer toutes les factures (sans filtre owner)
+    let invoicesQuery = this.supabase
+      .from("invoices")
+      .select("*");
+
+    if (startDate) {
+      invoicesQuery = invoicesQuery.gte("periode", startDate.substring(0, 7));
+    }
+    if (endDate) {
+      invoicesQuery = invoicesQuery.lte("periode", endDate.substring(0, 7));
+    }
+
+    const { data: invoices } = await invoicesQuery;
+
+    const paidInvoices = invoices?.filter((i) => i.statut === "paid").length || 0;
+    const unpaidInvoices = invoices?.filter((i) => i.statut !== "paid").length || 0;
+    const totalRevenue =
+      invoices?.filter((i) => i.statut === "paid").reduce((sum, i) => sum + Number(i.montant_total), 0) || 0;
+
+    return {
+      properties: (properties as Property[]) || [],
+      leases: (leases as Lease[]) || [],
+      invoices: (invoices as Invoice[]) || [],
+      summary: {
+        totalProperties: properties?.length || 0,
+        totalLeases: leases?.length || 0,
+        totalInvoices: invoices?.length || 0,
+        totalRevenue,
+        paidInvoices,
+        unpaidInvoices,
+      },
+    };
+  }
+
   async exportToCSV(data: ReportData): Promise<string> {
     // Générer un CSV simple
     let csv = "Type,ID,Date,Montant,Statut\n";
