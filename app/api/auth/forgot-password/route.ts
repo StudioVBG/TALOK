@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { sendEmail } from "@/lib/services/email-service";
+import { sendEmail } from "@/lib/emails/resend.service";
 import { emailTemplates } from "@/lib/emails/templates";
 
 export async function POST(request: NextRequest) {

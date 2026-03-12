@@ -56,49 +56,20 @@ export default function VerifyEmailOnboardingPage() {
     }
 
     setLoading(true);
-    
-    try {
-      // Essayer d'envoyer l'email via le service
-      try {
-        await authService.resendConfirmationEmail(email);
-      } catch (serviceError: any) {
-        
-        // Si erreur de session, essayer directement avec Supabase
-        if (
-          serviceError.message?.includes("session") ||
-          serviceError.message?.includes("Auth session missing")
-        ) {
-          const supabase = (await import("@/lib/supabase/client")).createClient();
-          const { getAuthCallbackUrl } = await import("@/lib/utils/redirect-url");
-          const redirectUrl = getAuthCallbackUrl();
-          
-          const { error: resendError } = await supabase.auth.resend({
-            type: "signup",
-            email,
-            options: {
-              emailRedirectTo: redirectUrl,
-            },
-          });
 
-          if (resendError) {
-            console.error("[VerifyEmail] Erreur Supabase resend:", resendError);
-            throw resendError;
-          }
-        } else {
-          throw serviceError;
-        }
-      }
+    try {
+      // Le service gère déjà le fallback en cas d'erreur de session
+      await authService.resendConfirmationEmail(email);
 
       setEmailSent(true);
       toast({
-        title: "Email envoyé ✅",
+        title: "Email envoyé",
         description: "Un nouvel email de confirmation a été envoyé. Vérifiez aussi vos spams !",
       });
     } catch (error: unknown) {
-      
       // Messages d'erreur plus explicites
       let errorMessage = error instanceof Error ? (error as Error).message : "Impossible d'envoyer l'email.";
-      
+
       if ((error as Error).message?.includes("rate limit") || (error as Error).message?.includes("too many")) {
         errorMessage = "Trop de tentatives. Attendez quelques minutes avant de réessayer.";
       } else if ((error as Error).message?.includes("already confirmed")) {
@@ -106,7 +77,7 @@ export default function VerifyEmailOnboardingPage() {
       } else if ((error as Error).message?.includes("not found") || (error as Error).message?.includes("User not found")) {
         errorMessage = "Aucun compte trouvé avec cet email. Vérifiez l'adresse ou inscrivez-vous.";
       }
-      
+
       toast({
         title: "Erreur d'envoi",
         description: errorMessage,
@@ -161,11 +132,10 @@ export default function VerifyEmailOnboardingPage() {
     }
   };
 
-  const goToNextStep = () => {
+  const goToNextStep = useCallback(() => {
     // Redirection selon le rôle
     switch (role) {
       case "owner":
-        // Les propriétaires doivent d'abord choisir leur forfait
         router.push(`/signup/plan?role=owner`);
         break;
       case "tenant":
@@ -177,10 +147,13 @@ export default function VerifyEmailOnboardingPage() {
       case "guarantor":
         router.push("/guarantor/onboarding/context");
         break;
+      case "syndic":
+        router.push("/syndic/onboarding/profile");
+        break;
       default:
         router.push("/dashboard");
     }
-  };
+  }, [role, router]);
 
   // Polling automatique toutes les 5 secondes pour détecter la confirmation
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -208,7 +181,7 @@ export default function VerifyEmailOnboardingPage() {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [verified]);
+  }, [verified, goToNextStep, toast]);
 
   const handleContinue = () => {
     goToNextStep();

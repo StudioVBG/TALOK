@@ -116,6 +116,8 @@ export default function AccountCreationPage() {
         return "prestataire";
       case "guarantor":
         return "garant";
+      case "syndic":
+        return "syndic";
       default:
         return "";
     }

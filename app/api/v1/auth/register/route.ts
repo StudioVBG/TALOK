@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
           { onConflict: "profile_id", ignoreDuplicates: true }
         );
       }
+      // Note: syndic uses base profile only (no syndic_profiles table yet)
 
       // Audit log
       await logAudit(
