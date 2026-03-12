@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users, ShieldCheck } from "lucide-react";
+import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users, ShieldCheck, ChevronDown } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOwnerData } from "../_data/OwnerDataProvider";
@@ -20,6 +20,7 @@ import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { UpgradeTrigger, UsageLimitBanner } from "@/components/subscription";
 import { UrgentActionsSection, type UrgentAction } from "@/components/owner/dashboard/urgent-actions-section";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PushNotificationPrompt } from "@/components/notifications/push-notification-prompt";
 import { SignatureAlertBanner } from "@/components/owner/dashboard/signature-alert-banner";
 import { OwnerRecentActivity } from "@/components/owner/dashboard/recent-activity";
@@ -237,6 +238,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
         metadata: { type: "dpe" },
       })),
   ] as UrgentAction[];
+  const primaryUrgentActions = urgentActions.slice(0, 3);
 
   // Construction unique des alertes compliance (évite la duplication)
   const complianceAlerts = [
@@ -291,6 +293,11 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
         animate="visible"
         className="space-y-8 pb-10"
       >
+        {/* Niveau 1 - Ce que je dois faire maintenant */}
+        <motion.section variants={itemVariants}>
+          <UrgentActionsSection actions={primaryUrgentActions} />
+        </motion.section>
+
         {/* SOTA Header - Responsive pour tous appareils 2025-2026 */}
         <motion.header
           variants={itemVariants}
@@ -390,132 +397,147 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
           </div>
         </motion.header>
 
-        {/* Section Complétion du profil */}
-        {profileCompletion && completionPercentage < 100 && (
-          <motion.section variants={itemVariants}>
+        {/* Niveau 2 - Tâches à terminer */}
+        <motion.section variants={itemVariants} className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">A terminer</h2>
+              <p className="text-sm text-muted-foreground">
+                Finalisez les éléments qui améliorent votre gestion quotidienne.
+              </p>
+            </div>
+          </div>
+
+          {profileCompletion && completionPercentage < 100 && (
             <GlassCard gradient={true} className="border-amber-200/50 bg-amber-50/30">
-               <div className="p-1">
-                  <ProfileCompletionCard data={profileCompletion} />
-               </div>
+              <div className="p-1">
+                <ProfileCompletionCard data={profileCompletion} />
+              </div>
             </GlassCard>
-          </motion.section>
-        )}
+          )}
 
-        {/* Bannière notifications push */}
-        <motion.section variants={itemVariants}>
           <PushNotificationPrompt variant="banner" />
-        </motion.section>
-
-        {/* 🔔 Alerte signatures en attente */}
-        <motion.section variants={itemVariants}>
           <SignatureAlertBanner />
         </motion.section>
 
-        {/* Zone 1 - Actions Urgentes (SOTA 2025) */}
+        {/* Niveau 3 - Activité visible */}
         <motion.section variants={itemVariants}>
-          <UrgentActionsSection actions={urgentActions} />
-        </motion.section>
-        
-        {/* Liens rapides - Touch-friendly et responsive */}
-        <motion.section variants={itemVariants}>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 xs:gap-2.5 sm:gap-3">
-            <Link href="/owner/tenants">
-              <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
-                <Users className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-blue-600 mb-1.5 xs:mb-2" />
-                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Mes locataires</p>
-              </GlassCard>
-            </Link>
-            <Link href="/owner/analytics">
-              <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
-                <BarChart3 className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-emerald-600 mb-1.5 xs:mb-2" />
-                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Analytics</p>
-              </GlassCard>
-            </Link>
-            <Link href={`${OWNER_ROUTES.contracts.path}/new`}>
-              <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
-                <Plus className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-amber-600 mb-1.5 xs:mb-2" />
-                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Nouveau bail</p>
-              </GlassCard>
-            </Link>
-            <Link href={`${OWNER_ROUTES.properties.path}/new`}>
-              <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
-                <Plus className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-purple-600 mb-1.5 xs:mb-2" />
-                <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Ajouter un bien</p>
-              </GlassCard>
-            </Link>
-          </div>
-        </motion.section>
-
-        {/* Zone 2 - Vue finances détaillée avec Temps Réel */}
-        <motion.section variants={itemVariants}>
-          <div className="mb-3 sm:mb-4 flex flex-row items-center justify-between gap-2">
-             <h2 className="text-sm xs:text-base sm:text-lg lg:text-xl font-semibold text-foreground truncate">Performance Financière</h2>
-             <div className="flex items-center gap-1.5 xs:gap-2 shrink-0">
-               <StartTourButton className="text-[10px] xs:text-xs hidden xs:flex" />
-               <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700 h-7 xs:h-8 sm:h-9 px-2 xs:px-3 text-xs xs:text-sm">
-                  <Link href="/owner/money">
-                     <span className="hidden sm:inline">Voir détails</span>
-                     <span className="sm:hidden">Détails</span>
-                     <ArrowRight className="ml-1 h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
-                  </Link>
-               </Button>
-             </div>
-          </div>
-          <div className="grid gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-2">
-            {/* Widget Temps Réel SOTA 2026 */}
-            <RealtimeRevenueWidget />
-            {/* Widget classique */}
-            <OwnerFinanceSummary
-              chartData={transformedData.zone2_finances.chart_data}
-              kpis={transformedData.zone2_finances.kpis}
-            />
-          </div>
-        </motion.section>
-
-        {/* Zone 3 - Portefeuille & conformité - Responsive mobile → tablet → desktop */}
-        <div className="grid gap-3 sm:gap-4 lg:gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <div className="md:col-span-2 lg:col-span-2 space-y-3 sm:space-y-4 lg:space-y-6">
-            <div className="grid gap-3 sm:gap-4 lg:gap-6 sm:grid-cols-2">
-              <GlassCard hoverEffect={true}>
-                <div className="p-0.5 xs:p-1">
-                  <OwnerPortfolioByModule modules={transformedData.zone3_portfolio.modules} />
-                </div>
-              </GlassCard>
-              
-              <GlassCard hoverEffect={true} className={transformedData.zone3_portfolio.compliance.length > 0 ? "border-red-100 bg-red-50/30" : ""}>
-                <div className="p-0.5 xs:p-1">
-                  <OwnerRiskSection risks={transformedData.zone3_portfolio.compliance as any} />
-                </div>
-              </GlassCard>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Activité récente</h2>
+              <p className="text-sm text-muted-foreground">
+                Les derniers événements importants de votre portefeuille.
+              </p>
             </div>
           </div>
-          
-          <div className="md:col-span-2 lg:col-span-1">
-            <OwnerRecentActivity activities={(apiData?.recentActivity || dashboard.recentActivity || []) as any} />
-          </div>
-        </div>
+          <OwnerRecentActivity activities={(apiData?.recentActivity || dashboard.recentActivity || []) as any} />
+        </motion.section>
 
-        {/* SOTA 2026 - Usage Limits & Upgrade Trigger */}
-        <motion.section variants={itemVariants} className="space-y-4">
-          <UsageLimitBanner
-            resource="properties"
-            variant="inline"
-            threshold={80}
-            dismissible={true}
-          />
-          <UsageLimitBanner
-            resource="leases"
-            variant="inline"
-            threshold={80}
-            dismissible={true}
-          />
-          <UsageLimitBanner
-            resource="signatures"
-            variant="inline"
-            threshold={80}
-            dismissible={true}
-          />
-          <UpgradeTrigger variant="prominent" />
+        {/* Détails et modules secondaires */}
+        <motion.section variants={itemVariants}>
+          <Collapsible>
+            <GlassCard className="overflow-hidden">
+              <CollapsibleTrigger className="group flex w-full items-center justify-between p-4 text-left">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Détails et analyses</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Retrouvez les vues avancées, raccourcis et modules complémentaires.
+                  </p>
+                </div>
+                <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+
+              <CollapsibleContent className="space-y-8 border-t border-border p-4">
+                <section>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 xs:gap-2.5 sm:gap-3">
+                    <Link href="/owner/tenants">
+                      <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
+                        <Users className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-blue-600 mb-1.5 xs:mb-2" />
+                        <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Mes locataires</p>
+                      </GlassCard>
+                    </Link>
+                    <Link href="/owner/analytics">
+                      <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
+                        <BarChart3 className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-emerald-600 mb-1.5 xs:mb-2" />
+                        <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Analytics</p>
+                      </GlassCard>
+                    </Link>
+                    <Link href={`${OWNER_ROUTES.contracts.path}/new`}>
+                      <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
+                        <Plus className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-amber-600 mb-1.5 xs:mb-2" />
+                        <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Nouveau bail</p>
+                      </GlassCard>
+                    </Link>
+                    <Link href={`${OWNER_ROUTES.properties.path}/new`}>
+                      <GlassCard hoverEffect className="p-3 xs:p-4 text-center cursor-pointer touch-target active:scale-[0.98] transition-transform min-h-[72px] xs:min-h-[80px] flex flex-col items-center justify-center">
+                        <Plus className="h-6 w-6 xs:h-7 xs:w-7 sm:h-6 sm:w-6 mx-auto text-purple-600 mb-1.5 xs:mb-2" />
+                        <p className="text-[11px] xs:text-xs sm:text-sm font-medium text-foreground line-clamp-1">Ajouter un bien</p>
+                      </GlassCard>
+                    </Link>
+                  </div>
+                </section>
+
+                <section>
+                  <div className="mb-3 sm:mb-4 flex flex-row items-center justify-between gap-2">
+                    <h3 className="text-sm xs:text-base sm:text-lg lg:text-xl font-semibold text-foreground truncate">Performance Financière</h3>
+                    <div className="flex items-center gap-1.5 xs:gap-2 shrink-0">
+                      <StartTourButton className="text-[10px] xs:text-xs hidden xs:flex" />
+                      <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700 h-7 xs:h-8 sm:h-9 px-2 xs:px-3 text-xs xs:text-sm">
+                        <Link href="/owner/money">
+                          <span className="hidden sm:inline">Voir détails</span>
+                          <span className="sm:hidden">Détails</span>
+                          <ArrowRight className="ml-1 h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:gap-4 lg:gap-6 lg:grid-cols-2">
+                    <RealtimeRevenueWidget />
+                    <OwnerFinanceSummary
+                      chartData={transformedData.zone2_finances.chart_data}
+                      kpis={transformedData.zone2_finances.kpis}
+                    />
+                  </div>
+                </section>
+
+                <section className="grid gap-3 sm:gap-4 lg:gap-6 md:grid-cols-2">
+                  <GlassCard hoverEffect={true}>
+                    <div className="p-0.5 xs:p-1">
+                      <OwnerPortfolioByModule modules={transformedData.zone3_portfolio.modules} />
+                    </div>
+                  </GlassCard>
+
+                  <GlassCard hoverEffect={true} className={transformedData.zone3_portfolio.compliance.length > 0 ? "border-red-100 bg-red-50/30" : ""}>
+                    <div className="p-0.5 xs:p-1">
+                      <OwnerRiskSection risks={transformedData.zone3_portfolio.compliance as any} />
+                    </div>
+                  </GlassCard>
+                </section>
+
+                <section className="space-y-4">
+                  <UsageLimitBanner
+                    resource="properties"
+                    variant="inline"
+                    threshold={80}
+                    dismissible={true}
+                  />
+                  <UsageLimitBanner
+                    resource="leases"
+                    variant="inline"
+                    threshold={80}
+                    dismissible={true}
+                  />
+                  <UsageLimitBanner
+                    resource="signatures"
+                    variant="inline"
+                    threshold={80}
+                    dismissible={true}
+                  />
+                  <UpgradeTrigger variant="prominent" />
+                </section>
+              </CollapsibleContent>
+            </GlassCard>
+          </Collapsible>
         </motion.section>
       </motion.div>
     </PageTransition>

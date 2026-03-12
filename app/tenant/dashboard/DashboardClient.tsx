@@ -18,6 +18,7 @@ import {
   Sparkles,
   PenTool,
   Shield,
+  ChevronDown,
   ChevronRight,
   Loader2,
   Building2,
@@ -43,6 +44,7 @@ import { isIdentityVerified } from "@/lib/helpers/identity-check";
 import { CreditBuilderCard, CreditScoreData } from "@/features/tenant/components/credit-builder-card";
 import { ConsumptionChart, ConsumptionDataPoint } from "@/features/tenant/components/consumption-chart";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // Types pour les données SOTA 2026
 interface ConsumptionResponse {
@@ -975,188 +977,207 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
             </GlassCard>
           </motion.div>
 
-          {/* Credit Builder ou SuggestionCard si pas de données */}
-          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-            {!isLoadingScores && (!creditScoreData || !creditScoreData.hasData) ? (
-              <GlassCard className="h-full p-6 border-border bg-card shadow-xl flex flex-col justify-center">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-100">
-                    <Shield className="h-6 w-6 text-indigo-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-foreground">Credit Builder</h3>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Confiance locative</p>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Payez votre loyer à temps et complétez votre profil pour construire votre score.
-                </p>
-                <Button className="w-full rounded-xl font-bold" asChild>
-                  <Link href="/tenant/rewards">Découvrir mes récompenses</Link>
-                </Button>
-              </GlassCard>
-            ) : (
-              <CreditBuilderCard 
-                data={creditScoreData || undefined}
-                isLoading={isLoadingScores}
-                className="h-full bg-card shadow-xl border-border"
-              />
-            )}
-          </motion.div>
-
-          {/* Consommation ou SuggestionCard si pas de données */}
-          <motion.div className="lg:col-span-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-            {!(consumptionData?.hasData && consumptionData?.data && consumptionData.data.length > 0) ? (
-              <GlassCard className="h-full p-6 border-border bg-card shadow-xl flex flex-col justify-center">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100">
-                    <Zap className="h-6 w-6 text-amber-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-foreground">Suivi consommation</h3>
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Eau, électricité, gaz</p>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Saisissez vos relevés de compteurs pour suivre votre consommation.
-                </p>
-                <Button className="w-full rounded-xl font-bold" variant="outline" asChild>
-                  <Link href="/tenant/meters">Mes compteurs</Link>
-                </Button>
-              </GlassCard>
-            ) : (
-              <ConsumptionChart
-                type="electricity"
-                data={consumptionData?.data}
-                currentValue={consumptionData?.current?.electricity}
-                hasData={consumptionData?.hasData ?? false}
-                lastUpdate={consumptionData?.lastUpdate}
-                ctaHref="/tenant/meters"
-                className="h-full"
-              />
-            )}
-          </motion.div>
-
-          {/* Row 3: Support & AI Tips */}
-          {/* F. SUPPORT BAILLEUR - 6/12 - SOTA 2026: Conditionné au bail actif */}
-          <motion.div 
-            className="lg:col-span-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-          >
-            {currentLease?.owner ? (
-              <GlassCard className="p-6 border-border bg-card shadow-xl flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-lg">
-                    {currentLease.owner.name?.[0] || "P"}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Mon Bailleur</p>
-                    <p className="font-black text-foreground text-lg leading-tight">{currentLease.owner.name}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" className="h-11 rounded-xl border-border font-bold" asChild>
-                    <Link href="/tenant/messages">Contacter</Link>
-                  </Button>
-                  <Button variant="outline" className="h-11 w-12 rounded-xl border-border font-bold px-0" asChild>
-                    <Link href="/tenant/requests/new" aria-label="Demander de l'aide">
-                      <Wrench className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </GlassCard>
-            ) : (
-              <GlassCard className="p-6 border-border bg-card shadow-xl flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground font-black text-xl">
-                    ?
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Mon Bailleur</p>
-                    <p className="font-medium text-muted-foreground text-lg leading-tight">Pas encore de propriétaire</p>
-                  </div>
-                </div>
-                <Button variant="outline" className="h-11 rounded-xl border-border font-bold" asChild>
-                  <Link href="/tenant/help">Aide</Link>
-                </Button>
-              </GlassCard>
-            )}
-          </motion.div>
-
-          {/* G-bis. DPE Compact - 6/12 — Diagnostics énergie du logement */}
-          {currentProperty?.dpe_classe_energie && (
-            <motion.div
-              className="lg:col-span-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.65 }}
-            >
-              <GlassCard className="p-6 border-border bg-card shadow-xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "h-14 w-14 rounded-2xl flex items-center justify-center font-black text-xl text-white",
-                      currentProperty.dpe_classe_energie === "A" ? "bg-green-500" :
-                      currentProperty.dpe_classe_energie === "B" ? "bg-lime-500" :
-                      currentProperty.dpe_classe_energie === "C" ? "bg-yellow-400 text-gray-800" :
-                      currentProperty.dpe_classe_energie === "D" ? "bg-amber-400 text-gray-800" :
-                      currentProperty.dpe_classe_energie === "E" ? "bg-orange-500" :
-                      currentProperty.dpe_classe_energie === "F" ? "bg-red-500" :
-                      "bg-red-700"
-                    )}>
-                      {currentProperty.dpe_classe_energie}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Performance Énergétique</p>
-                      <p className="font-bold text-foreground text-lg leading-tight">DPE Classe {currentProperty.dpe_classe_energie}</p>
-                      {currentProperty.dpe_consommation && (
-                        <p className="text-sm text-muted-foreground">{currentProperty.dpe_consommation} kWh/m²/an</p>
-                      )}
-                    </div>
-                  </div>
-                  {currentProperty.dpe_classe_climat && (
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">GES</p>
-                      <p className="font-black text-2xl text-foreground">{currentProperty.dpe_classe_climat}</p>
-                    </div>
-                  )}
-                </div>
-              </GlassCard>
-            </motion.div>
-          )}
-
-          {/* G. IA TIP - 6/12 — Conseil dynamique basé sur le contexte utilisateur */}
           <motion.div
-            className="lg:col-span-6"
+            className="lg:col-span-8 lg:col-start-5"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
+            transition={{ delay: 0.4 }}
           >
-            <GlassCard className={cn(
-              "p-6 border-none text-white shadow-xl relative overflow-hidden flex items-center justify-between",
-              tipData?.priority === "high"
-                ? "bg-gradient-to-br from-red-500 to-orange-500"
-                : tipData?.priority === "medium"
-                  ? "bg-gradient-to-br from-amber-400 to-orange-500"
-                  : "bg-gradient-to-br from-amber-400 to-orange-500"
-            )}>
-              <div className="relative z-10 space-y-1">
-                <p className="font-black text-lg flex items-center gap-2">
-                  <Sparkles className="h-5 w-5" /> Conseil de Tom
-                </p>
-                <p className="text-sm text-white/90 leading-relaxed font-medium max-w-sm">
-                  {tipData?.message || "Tout est en ordre ! Pensez à vérifier régulièrement vos relevés de compteurs pour suivre votre consommation."}
-                </p>
-              </div>
-              <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-md h-11 px-6 rounded-xl font-bold" asChild>
-                <Link href={tipData?.action?.href || "/tenant/meters"}>
-                  {tipData?.action?.label || "Mes compteurs"}
-                </Link>
-              </Button>
-              <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-white/10 rotate-12" />
-            </GlassCard>
+            <Collapsible>
+              <GlassCard className="overflow-hidden border-border bg-card shadow-xl">
+                <CollapsibleTrigger className="group flex w-full items-center justify-between p-6 text-left">
+                  <div>
+                    <h3 className="font-bold text-foreground">En savoir plus</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Retrouvez ici les informations avancées et les modules complémentaires.
+                    </p>
+                  </div>
+                  <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+
+                <CollapsibleContent className="border-t border-border p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <motion.div className="lg:col-span-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                      {!isLoadingScores && (!creditScoreData || !creditScoreData.hasData) ? (
+                        <GlassCard className="h-full p-6 border-border bg-card shadow-xl flex flex-col justify-center">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-100">
+                              <Shield className="h-6 w-6 text-indigo-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-foreground">Credit Builder</h3>
+                              <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Confiance locative</p>
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-6">
+                            Payez votre loyer à temps et complétez votre profil pour construire votre score.
+                          </p>
+                          <Button className="w-full rounded-xl font-bold" asChild>
+                            <Link href="/tenant/rewards">Découvrir mes récompenses</Link>
+                          </Button>
+                        </GlassCard>
+                      ) : (
+                        <CreditBuilderCard
+                          data={creditScoreData || undefined}
+                          isLoading={isLoadingScores}
+                          className="h-full bg-card shadow-xl border-border"
+                        />
+                      )}
+                    </motion.div>
+
+                    <motion.div className="lg:col-span-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                      {!(consumptionData?.hasData && consumptionData?.data && consumptionData.data.length > 0) ? (
+                        <GlassCard className="h-full p-6 border-border bg-card shadow-xl flex flex-col justify-center">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100">
+                              <Zap className="h-6 w-6 text-amber-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-foreground">Suivi consommation</h3>
+                              <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Eau, électricité, gaz</p>
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-6">
+                            Saisissez vos relevés de compteurs pour suivre votre consommation.
+                          </p>
+                          <Button className="w-full rounded-xl font-bold" variant="outline" asChild>
+                            <Link href="/tenant/meters">Mes compteurs</Link>
+                          </Button>
+                        </GlassCard>
+                      ) : (
+                        <ConsumptionChart
+                          type="electricity"
+                          data={consumptionData?.data}
+                          currentValue={consumptionData?.current?.electricity}
+                          hasData={consumptionData?.hasData ?? false}
+                          lastUpdate={consumptionData?.lastUpdate}
+                          ctaHref="/tenant/meters"
+                          className="h-full"
+                        />
+                      )}
+                    </motion.div>
+
+                    <motion.div
+                      className="lg:col-span-6"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.6 }}
+                    >
+                      {currentLease?.owner ? (
+                        <GlassCard className="p-6 border-border bg-card shadow-xl flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-lg">
+                              {currentLease.owner.name?.[0] || "P"}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Mon Bailleur</p>
+                              <p className="font-black text-foreground text-lg leading-tight">{currentLease.owner.name}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="outline" className="h-11 rounded-xl border-border font-bold" asChild>
+                              <Link href="/tenant/messages">Contacter</Link>
+                            </Button>
+                            <Button variant="outline" className="h-11 w-12 rounded-xl border-border font-bold px-0" asChild>
+                              <Link href="/tenant/requests/new" aria-label="Demander de l'aide">
+                                <Wrench className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </GlassCard>
+                      ) : (
+                        <GlassCard className="p-6 border-border bg-card shadow-xl flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground font-black text-xl">
+                              ?
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Mon Bailleur</p>
+                              <p className="font-medium text-muted-foreground text-lg leading-tight">Pas encore de propriétaire</p>
+                            </div>
+                          </div>
+                        <Button variant="outline" className="h-11 rounded-xl border-border font-bold" asChild>
+                          <Link href="/tenant/help">Aide</Link>
+                        </Button>
+                        </GlassCard>
+                      )}
+                    </motion.div>
+
+                    {currentProperty?.dpe_classe_energie && (
+                      <motion.div
+                        className="lg:col-span-6"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.65 }}
+                      >
+                        <GlassCard className="p-6 border-border bg-card shadow-xl">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className={cn(
+                                "h-14 w-14 rounded-2xl flex items-center justify-center font-black text-xl text-white",
+                                currentProperty.dpe_classe_energie === "A" ? "bg-green-500" :
+                                currentProperty.dpe_classe_energie === "B" ? "bg-lime-500" :
+                                currentProperty.dpe_classe_energie === "C" ? "bg-yellow-400 text-gray-800" :
+                                currentProperty.dpe_classe_energie === "D" ? "bg-amber-400 text-gray-800" :
+                                currentProperty.dpe_classe_energie === "E" ? "bg-orange-500" :
+                                currentProperty.dpe_classe_energie === "F" ? "bg-red-500" :
+                                "bg-red-700"
+                              )}>
+                                {currentProperty.dpe_classe_energie}
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Performance Énergétique</p>
+                                <p className="font-bold text-foreground text-lg leading-tight">DPE Classe {currentProperty.dpe_classe_energie}</p>
+                                {currentProperty.dpe_consommation && (
+                                  <p className="text-sm text-muted-foreground">{currentProperty.dpe_consommation} kWh/m²/an</p>
+                                )}
+                              </div>
+                            </div>
+                            {currentProperty.dpe_classe_climat && (
+                              <div className="text-center">
+                                <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">GES</p>
+                                <p className="font-black text-2xl text-foreground">{currentProperty.dpe_classe_climat}</p>
+                              </div>
+                            )}
+                          </div>
+                        </GlassCard>
+                      </motion.div>
+                    )}
+
+                    <motion.div
+                      className="lg:col-span-12"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.7 }}
+                    >
+                      <GlassCard className={cn(
+                        "p-6 border-none text-white shadow-xl relative overflow-hidden flex items-center justify-between",
+                        tipData?.priority === "high"
+                          ? "bg-gradient-to-br from-red-500 to-orange-500"
+                          : tipData?.priority === "medium"
+                            ? "bg-gradient-to-br from-amber-400 to-orange-500"
+                            : "bg-gradient-to-br from-amber-400 to-orange-500"
+                      )}>
+                        <div className="relative z-10 space-y-1">
+                          <p className="font-black text-lg flex items-center gap-2">
+                            <Sparkles className="h-5 w-5" /> Conseil de Tom
+                          </p>
+                          <p className="text-sm text-white/90 leading-relaxed font-medium max-w-sm">
+                            {tipData?.message || "Tout est en ordre ! Pensez à vérifier régulièrement vos relevés de compteurs pour suivre votre consommation."}
+                          </p>
+                        </div>
+                        <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-md h-11 px-6 rounded-xl font-bold" asChild>
+                          <Link href={tipData?.action?.href || "/tenant/meters"}>
+                            {tipData?.action?.label || "Mes compteurs"}
+                          </Link>
+                        </Button>
+                        <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-white/10 rotate-12" />
+                      </GlassCard>
+                    </motion.div>
+                  </div>
+                </CollapsibleContent>
+              </GlassCard>
+            </Collapsible>
           </motion.div>
 
           {/* H. ACTIONS RAPIDES - 12/12 */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -22,7 +22,6 @@ import {
   Wrench,
   Shield,
   ClipboardCheck,
-  Search,
   Briefcase,
   Eye,
   TrendingUp,
@@ -40,9 +39,7 @@ import { UnifiedFAB } from "@/components/layout/unified-fab";
 import { SubscriptionProvider } from "@/components/subscription";
 import { CommandPalette } from "@/components/command-palette";
 import { NotificationCenter } from "@/components/notifications";
-import { FavoritesList } from "@/components/ui/favorites-list";
-import { KeyboardShortcutsHelp } from "@/components/ui/keyboard-shortcuts-help";
-import { OnboardingTourProvider, AutoTourPrompt, StartTourButton, FirstLoginOrchestrator } from "@/components/onboarding";
+import { OnboardingTourProvider, AutoTourPrompt, FirstLoginOrchestrator } from "@/components/onboarding";
 import { SkipLinks } from "@/components/ui/skip-links";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { CompanySwitcher } from "@/components/entities/CompanySwitcher";
@@ -181,6 +178,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
     (item) => pathname === item.href || pathname?.startsWith(item.href + "/")
   );
   const pageTitle = isProfilePage ? "Mon profil" : (activeNavItem?.name || "Tableau de bord");
+  const isDashboardPage = pathname === OWNER_ROUTES.dashboard.path;
 
   // Déterminer si on peut afficher un bouton retour (page de détail)
   const isDetailPage = pathname?.split("/").filter(Boolean).length > 2;
@@ -395,41 +393,39 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
 
             <div className="flex flex-1 gap-x-2 xs:gap-x-4 self-stretch lg:gap-x-6">
               <div className="flex flex-1 items-center gap-2 xs:gap-4 min-w-0">
-                {/* Titre de page - Visible partout */}
-                <h2 className="text-sm xs:text-base sm:text-lg font-semibold text-foreground truncate">
-                  {pageTitle}
-                </h2>
+                <div className="min-w-0">
+                  <h2 className="text-sm xs:text-base sm:text-lg font-semibold text-foreground truncate">
+                    {pageTitle}
+                  </h2>
+                  <p className="hidden lg:block text-xs text-muted-foreground truncate">
+                    {isDashboardPage ? "Priorisez vos prochaines actions sans vous disperser." : "Concentrez-vous sur la tâche en cours."}
+                  </p>
+                </div>
 
-                {/* Bouton recherche - Masqué sur mobile */}
+                {/* Recherche discrète - desktop uniquement */}
                 <button
                   data-tour="search-button"
                   onClick={() => {
                     const event = new KeyboardEvent("keydown", { key: "k", metaKey: true });
                     document.dispatchEvent(event);
                   }}
-                  className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+                  className="hidden lg:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors"
                 >
                   <span className="text-muted-foreground">Recherche rapide...</span>
                   <kbd className="px-1.5 py-0.5 text-xs font-mono bg-background rounded border shadow-sm">⌘K</kbd>
                 </button>
               </div>
               <div className="flex items-center gap-x-2 xs:gap-x-3 lg:gap-x-4">
-                {/* SOTA 2026 - Éléments masqués sur mobile pour désencombrer */}
-                <div className="hidden lg:flex items-center gap-x-3">
-                  <KeyboardShortcutsHelp />
-                  <FavoritesList />
-                </div>
-
                 {/* Notifications - Toujours visible */}
                 <NotificationCenter />
 
-                {/* Dark mode - Masqué sur mobile */}
-                <div className="hidden md:block">
+                {/* Dark mode - réservé au desktop */}
+                <div className="hidden lg:block">
                   <DarkModeToggle />
                 </div>
 
-                {/* Aide - Desktop uniquement */}
-                <Button variant="outline" size="sm" asChild className="hidden lg:flex">
+                {/* Aide - action secondaire seulement sur grand écran */}
+                <Button variant="outline" size="sm" asChild className="hidden xl:flex">
                   <Link href={OWNER_ROUTES.support.path}>
                     <HelpCircle className="h-4 w-4 mr-2" />
                     Aide

@@ -118,6 +118,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
   // Page title from active nav item
   const activeItem = [...allNavItems, ...footerNavItems].find(item => isCurrent(item.href));
   const pageTitle = activeItem?.name || "Tableau de bord";
+  const isDashboardPage = pathname === "/tenant/dashboard";
 
   // Back button for detail pages (depth > 2)
   const isDetailPage = pathname?.split("/").filter(Boolean).length > 2;
@@ -333,17 +334,21 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
               Talok
             </span>
 
-            {/* Tablet+: Page title */}
-            <h2 className="hidden md:block text-base lg:text-lg font-semibold text-foreground truncate">
-              {pageTitle}
-            </h2>
+            <div className="hidden md:block min-w-0">
+              <h2 className="text-base lg:text-lg font-semibold text-foreground truncate">
+                {pageTitle}
+              </h2>
+              <p className="hidden lg:block text-xs text-muted-foreground truncate">
+                {isDashboardPage ? "Retrouvez vos actions importantes en un coup d'oeil." : "Concentrez-vous sur votre prochaine action utile."}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
             <NotificationBell />
 
-            {/* Dark mode toggle - Masqué sur mobile */}
-            <div className="hidden md:block">
+            {/* Dark mode toggle - réservé au desktop */}
+            <div className="hidden lg:block">
               <DarkModeToggle />
             </div>
 
