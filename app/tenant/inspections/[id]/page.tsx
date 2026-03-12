@@ -220,7 +220,7 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
             if (signedUrlData?.signedUrl) {
               (sig as any).signature_image_url = signedUrlData.signedUrl;
             }
-          } catch (e) {}
+          } catch (e) { console.error("[inspections] Erreur génération URL signée:", e); }
         }
       }
     }

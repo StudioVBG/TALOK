@@ -851,7 +851,10 @@ export default function BillingPage() {
       const [subRes, plansRes, invoicesRes] = await Promise.all([
         fetch("/api/subscriptions/current"),
         fetch("/api/subscriptions/plans"),
-        fetch("/api/subscriptions/invoices").catch(() => null),
+        fetch("/api/subscriptions/invoices").catch((err) => {
+          console.error("[billing] Erreur chargement factures:", err);
+          return null;
+        }),
       ]);
 
       const subData = await subRes.json();

@@ -308,7 +308,7 @@ export async function getLeasesForCoproUnit(
       tenant:profiles!leases_tenant_id_fkey(first_name, last_name)
     `)
     .eq('property_id', (unit as any).linked_property_id)
-    .in('status', ['active', 'terminated'])
+    .in('statut', ['active', 'terminated'])
     .order('start_date', { ascending: false });
   
   if (leasesError) throw leasesError;
