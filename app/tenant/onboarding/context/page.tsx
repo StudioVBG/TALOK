@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { OnboardingStepShell } from "@/components/onboarding/onboarding-step-shell";
 
 interface PropertyInfoShort {
   id: string;
@@ -239,20 +239,23 @@ export default function TenantContextPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Home className="w-6 h-6 text-primary" />
-            <CardTitle>Contexte logement & rôle</CardTitle>
-          </div>
-          <CardDescription>
-            {inviteToken
-              ? "Votre invitation a été chargée. Vérifiez les informations ci-dessous."
-              : "Rejoignez un logement en saisissant le code ou en utilisant une invitation"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <OnboardingStepShell
+      icon={Home}
+      step="Etape 1"
+      title="Relier votre espace à votre logement"
+      description={
+        inviteToken
+          ? "Votre invitation a bien été récupérée. Vérifiez les informations puis confirmez votre rôle."
+          : "Saisissez votre code logement ou utilisez une invitation pour activer votre espace locataire."
+      }
+      asideTitle="Avant de continuer"
+      asideDescription="Cette étape permet de rattacher les bons documents, loyers et demandes au bon logement."
+      tips={[
+        "Si vous avez reçu un lien d'invitation, le rôle est déjà prérempli.",
+        "Si vous saisissez un code, vérifiez bien l'adresse trouvée avant de continuer.",
+        "En cas de doute, vous pourrez demander de l'aide depuis votre espace locataire.",
+      ]}
+    >
           <form onSubmit={handleSubmit} className="space-y-6">
             {!inviteToken && (
               <div className="space-y-4">
@@ -291,7 +294,7 @@ export default function TenantContextPage() {
             )}
 
             <div className="space-y-2">
-              <Label>Votre rôle *</Label>
+              <Label>Votre rôle dans ce logement *</Label>
               <Select
                 value={formData.role}
                 onValueChange={(value: any) => setFormData({ ...formData, role: value })}
@@ -324,9 +327,7 @@ export default function TenantContextPage() {
               )}
             </Button>
           </form>
-        </CardContent>
-      </Card>
-    </div>
+    </OnboardingStepShell>
   );
 }
 

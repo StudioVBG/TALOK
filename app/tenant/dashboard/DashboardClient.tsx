@@ -44,7 +44,7 @@ import { isIdentityVerified } from "@/lib/helpers/identity-check";
 import { CreditBuilderCard, CreditScoreData } from "@/features/tenant/components/credit-builder-card";
 import { ConsumptionChart, ConsumptionDataPoint } from "@/features/tenant/components/consumption-chart";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SecondaryContentPanel } from "@/components/layout/secondary-content-panel";
 
 // Types pour les données SOTA 2026
 interface ConsumptionResponse {
@@ -322,6 +322,8 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     
     return actions;
   }, [dashboard, pendingEDLs, hasSignedLease]);
+  const primaryPendingAction = pendingActions[0] ?? null;
+  const secondaryPendingActions = pendingActions.slice(1, 3);
 
   // Vérifier si le bail/logement est lié
   // ✅ FIX: Un bail avec une propriété est considéré comme lié, même si l'adresse est incomplète
@@ -605,38 +607,52 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
             <p className="text-muted-foreground mt-1 font-medium">
               {!hasLeaseData 
                 ? "Liez votre logement pour accéder à toutes les fonctionnalités."
-                : pendingActions.length > 0 
-                  ? `Vous avez ${pendingActions.length} action${pendingActions.length > 1 ? 's' : ''} en attente.`
+                : primaryPendingAction
+                  ? `Action prioritaire : ${primaryPendingAction.label}.`
                   : "Tout est en ordre dans votre logement."}
             </p>
           </motion.div>
 
           <AnimatePresence mode="wait">
-            {pendingActions.length > 0 && hasLeaseData && (
+            {primaryPendingAction && hasLeaseData && (
               <motion.div 
-                key="pending-actions"
+                key="primary-pending-action"
                 initial={{ opacity: 0, scale: 0.9, y: -10 }} 
                 animate={{ opacity: 1, scale: 1, y: 0 }} 
                 exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                className="flex flex-wrap gap-2"
+                className="w-full md:w-auto"
               >
-                {pendingActions.map(action => (
-                  <Button 
-                    key={action.id}
-                    variant="ghost" 
+                <div className="rounded-2xl border border-current/10 bg-card/80 p-3 shadow-sm md:min-w-[320px]">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    À faire maintenant
+                  </p>
+                  <Button
+                    variant="ghost"
                     asChild
                     className={cn(
-                      "h-auto py-2.5 px-5 border shadow-sm transition-all hover:scale-105 rounded-xl border-current/10",
-                      action.bg, action.color
+                      "h-auto w-full justify-between rounded-xl border border-current/10 px-4 py-3 shadow-sm transition-all hover:scale-[1.01]",
+                      primaryPendingAction.bg,
+                      primaryPendingAction.color,
                     )}
                   >
-                    <Link href={action.href} className="flex items-center gap-2">
-                      <action.icon className="h-4 w-4" />
-                      <span className="text-sm font-bold">{action.label}</span>
+                    <Link href={primaryPendingAction.href} className="flex items-center gap-3">
+                      <span className="flex items-center gap-2">
+                        <primaryPendingAction.icon className="h-4 w-4" />
+                        <span className="text-sm font-bold">{primaryPendingAction.label}</span>
+                      </span>
                       <ChevronRight className="h-3.5 w-3.5 opacity-50" />
                     </Link>
                   </Button>
-                ))}
+                  {secondaryPendingActions.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {secondaryPendingActions.map((action) => (
+                        <Button key={action.id} variant="outline" size="sm" asChild className="rounded-xl">
+                          <Link href={action.href}>{action.label}</Link>
+                        </Button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -983,19 +999,12 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <Collapsible>
-              <GlassCard className="overflow-hidden border-border bg-card shadow-xl">
-                <CollapsibleTrigger className="group flex w-full items-center justify-between p-6 text-left">
-                  <div>
-                    <h3 className="font-bold text-foreground">En savoir plus</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Retrouvez ici les informations avancées et les modules complémentaires.
-                    </p>
-                  </div>
-                  <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                </CollapsibleTrigger>
-
-                <CollapsibleContent className="border-t border-border p-6">
+            <SecondaryContentPanel
+              title="En savoir plus"
+              description="Retrouvez ici les informations avancées et les modules complémentaires."
+              className="border-border bg-card shadow-xl"
+              contentClassName="p-6"
+            >
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <motion.div className="lg:col-span-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                       {!isLoadingScores && (!creditScoreData || !creditScoreData.hasData) ? (
@@ -1175,9 +1184,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                       </GlassCard>
                     </motion.div>
                   </div>
-                </CollapsibleContent>
-              </GlassCard>
-            </Collapsible>
+            </SecondaryContentPanel>
           </motion.div>
 
           {/* H. ACTIONS RAPIDES - 12/12 */}

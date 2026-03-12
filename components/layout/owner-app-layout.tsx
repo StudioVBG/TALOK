@@ -43,6 +43,7 @@ import { OnboardingTourProvider, AutoTourPrompt, FirstLoginOrchestrator } from "
 import { SkipLinks } from "@/components/ui/skip-links";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { CompanySwitcher } from "@/components/entities/CompanySwitcher";
+import { CoreShellHeader } from "@/components/layout/core-shell-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +52,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getCoreShellMetadata } from "@/lib/navigation/core-shell-metadata";
 
 interface NavItem {
   name: string;
@@ -179,6 +181,11 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
   );
   const pageTitle = isProfilePage ? "Mon profil" : (activeNavItem?.name || "Tableau de bord");
   const isDashboardPage = pathname === OWNER_ROUTES.dashboard.path;
+  const shellMeta = getCoreShellMetadata({
+    role: "owner",
+    pathname,
+    fallbackTitle: pageTitle,
+  });
 
   // Déterminer si on peut afficher un bouton retour (page de détail)
   const isDetailPage = pathname?.split("/").filter(Boolean).length > 2;
@@ -377,54 +384,32 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               Mobile: Page title + back + actions
               Tablet/Desktop: Search + notifications + user
               ============================================ */}
-          <header className="sticky top-0 z-40 flex h-14 xs:h-16 shrink-0 items-center gap-x-2 xs:gap-x-3 sm:gap-x-4 lg:gap-x-6 border-b border-border bg-background/95 backdrop-blur-sm px-3 xs:px-4 sm:px-6 lg:px-8 shadow-sm">
-            {/* Mobile: Back button for detail pages */}
-            {isDetailPage && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden shrink-0"
-                onClick={() => router.back()}
-                aria-label="Retour"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            )}
-
-            <div className="flex flex-1 gap-x-2 xs:gap-x-4 self-stretch lg:gap-x-6">
-              <div className="flex flex-1 items-center gap-2 xs:gap-4 min-w-0">
-                <div className="min-w-0">
-                  <h2 className="text-sm xs:text-base sm:text-lg font-semibold text-foreground truncate">
-                    {pageTitle}
-                  </h2>
-                  <p className="hidden lg:block text-xs text-muted-foreground truncate">
-                    {isDashboardPage ? "Priorisez vos prochaines actions sans vous disperser." : "Concentrez-vous sur la tâche en cours."}
-                  </p>
-                </div>
-
-                {/* Recherche discrète - desktop uniquement */}
+          <CoreShellHeader
+            title={shellMeta.title}
+            description={isDashboardPage ? shellMeta.description : "Concentrez-vous sur la tache qui debloque votre gestion."}
+            roleLabel={shellMeta.roleLabel}
+            isDetailPage={isDetailPage}
+            onBack={() => router.back()}
+            rightContent={
+              <>
                 <button
                   data-tour="search-button"
                   onClick={() => {
                     const event = new KeyboardEvent("keydown", { key: "k", metaKey: true });
                     document.dispatchEvent(event);
                   }}
-                  className="hidden lg:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+                  className="hidden xl:flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted/80"
                 >
-                  <span className="text-muted-foreground">Recherche rapide...</span>
-                  <kbd className="px-1.5 py-0.5 text-xs font-mono bg-background rounded border shadow-sm">⌘K</kbd>
+                  <span>Recherche rapide...</span>
+                  <kbd className="rounded border bg-background px-1.5 py-0.5 text-xs font-mono shadow-sm">⌘K</kbd>
                 </button>
-              </div>
-              <div className="flex items-center gap-x-2 xs:gap-x-3 lg:gap-x-4">
-                {/* Notifications - Toujours visible */}
+
                 <NotificationCenter />
 
-                {/* Dark mode - réservé au desktop */}
                 <div className="hidden lg:block">
                   <DarkModeToggle />
                 </div>
 
-                {/* Aide - action secondaire seulement sur grand écran */}
                 <Button variant="outline" size="sm" asChild className="hidden xl:flex">
                   <Link href={OWNER_ROUTES.support.path}>
                     <HelpCircle className="h-4 w-4 mr-2" />
@@ -432,20 +417,16 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                   </Link>
                 </Button>
 
-                {/* User Menu - DropdownMenu propre (remplace le menu custom) */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="flex items-center gap-2 p-1.5"
-                    >
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shrink-0">
+                    <Button variant="ghost" className="flex items-center gap-2 p-1.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600">
                         <User className="h-4 w-4 text-white" />
                       </div>
-                      <span className="hidden sm:block text-sm font-medium text-foreground truncate max-w-[120px]">
+                      <span className="hidden max-w-[120px] truncate text-sm font-medium text-foreground sm:block">
                         {profile?.prenom || "Propriétaire"}
                       </span>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                      <ChevronDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
@@ -454,9 +435,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                         <p className="text-sm font-medium leading-none">
                           {[profile?.prenom, profile?.nom].filter(Boolean).join(" ") || "Propriétaire"}
                         </p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          Propriétaire
-                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">Propriétaire</p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -480,7 +459,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                     >
                       {isSigningOut ? (
                         <>
-                          <span className="mr-2 h-4 w-4 inline-block animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                          <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
                           Déconnexion...
                         </>
                       ) : (
@@ -492,9 +471,9 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
-            </div>
-          </header>
+              </>
+            }
+          />
 
           {/* ============================================
               PAGE CONTENT

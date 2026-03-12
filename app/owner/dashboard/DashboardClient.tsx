@@ -3,30 +3,28 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users, ShieldCheck, ChevronDown } from "lucide-react";
+import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOwnerData } from "../_data/OwnerDataProvider";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import type { OwnerDashboardData } from "../_data/fetchDashboard";
 import type { ProfileCompletionData } from "@/components/owner/dashboard/profile-completion-card";
-import { Badge } from "@/components/ui/badge";
 
 // SOTA Imports
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { UpgradeTrigger, UsageLimitBanner } from "@/components/subscription";
 import { UrgentActionsSection, type UrgentAction } from "@/components/owner/dashboard/urgent-actions-section";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PushNotificationPrompt } from "@/components/notifications/push-notification-prompt";
 import { SignatureAlertBanner } from "@/components/owner/dashboard/signature-alert-banner";
 import { OwnerRecentActivity } from "@/components/owner/dashboard/recent-activity";
 import { RealtimeRevenueWidget, RealtimeStatusIndicator } from "@/components/owner/dashboard/realtime-revenue-widget";
 import { useRealtimeDashboard } from "@/lib/hooks/use-realtime-dashboard";
 import { StartTourButton } from "@/components/onboarding";
+import { SecondaryContentPanel } from "@/components/layout/secondary-content-panel";
 
 // Lazy loading des composants lourds
 const OwnerFinanceSummary = dynamic(
@@ -309,8 +307,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
           
           <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 lg:gap-6">
             <div className="min-w-0 flex-1">
-              {/* Titre + Badge - Toujours en ligne */}
-              <div className="flex flex-row items-center flex-wrap gap-2 xs:gap-3 mb-1.5 sm:mb-2">
+              <div className="mb-1.5 flex flex-row items-center flex-wrap gap-2 xs:gap-3 sm:mb-2">
                 <motion.h1 
                   className="text-xl xs:text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight"
                   initial={{ opacity: 0, y: 20 }}
@@ -324,13 +321,8 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 }}
-                  className="flex items-center gap-1.5 xs:gap-2"
+                  className="flex items-center gap-2"
                 >
-                  {/* Badge SOTA - Condensé sur mobile */}
-                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 gap-1 xs:gap-1.5 px-1.5 xs:px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] xs:text-xs">
-                    <ShieldCheck className="h-3 w-3 xs:h-3.5 xs:w-3.5" />
-                    <span className="hidden sm:inline">SOTA 2026</span> Secure
-                  </Badge>
                   <RealtimeStatusIndicator isConnected={realtimeStatus.isConnected} loading={realtimeStatus.loading} />
                 </motion.div>
               </div>
@@ -340,7 +332,9 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
               >
-                Bienvenue, vous gérez {dashboard.properties?.total || 0} bien{(dashboard.properties?.total || 0) > 1 ? 's' : ''} avec succès.
+                {primaryUrgentActions.length > 0
+                  ? `${primaryUrgentActions.length} sujet${primaryUrgentActions.length > 1 ? "s demandent" : " demande"} votre attention aujourd'hui.`
+                  : `Votre portefeuille est a jour avec ${dashboard.properties?.total || 0} bien${(dashboard.properties?.total || 0) > 1 ? "s" : ""} gere${(dashboard.properties?.total || 0) > 1 ? "s" : ""}.`}
               </motion.p>
             </div>
             
@@ -435,19 +429,11 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
 
         {/* Détails et modules secondaires */}
         <motion.section variants={itemVariants}>
-          <Collapsible>
-            <GlassCard className="overflow-hidden">
-              <CollapsibleTrigger className="group flex w-full items-center justify-between p-4 text-left">
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">Détails et analyses</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Retrouvez les vues avancées, raccourcis et modules complémentaires.
-                  </p>
-                </div>
-                <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-              </CollapsibleTrigger>
-
-              <CollapsibleContent className="space-y-8 border-t border-border p-4">
+          <SecondaryContentPanel
+            title="Détails et analyses"
+            description="Retrouvez les vues avancées, raccourcis et modules complémentaires."
+            contentClassName="space-y-8"
+          >
                 <section>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 xs:gap-2.5 sm:gap-3">
                     <Link href="/owner/tenants">
@@ -535,9 +521,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
                   />
                   <UpgradeTrigger variant="prominent" />
                 </section>
-              </CollapsibleContent>
-            </GlassCard>
-          </Collapsible>
+          </SecondaryContentPanel>
         </motion.section>
       </motion.div>
     </PageTransition>

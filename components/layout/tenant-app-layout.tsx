@@ -50,6 +50,8 @@ import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
 import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import { PushNotificationPrompt } from "@/components/notifications/push-notification-prompt";
 import { useTenantNavBadges } from "@/lib/hooks/use-tenant-nav-badges";
+import { CoreShellHeader } from "@/components/layout/core-shell-header";
+import { getCoreShellMetadata } from "@/lib/navigation/core-shell-metadata";
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
@@ -119,6 +121,11 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
   const activeItem = [...allNavItems, ...footerNavItems].find(item => isCurrent(item.href));
   const pageTitle = activeItem?.name || "Tableau de bord";
   const isDashboardPage = pathname === "/tenant/dashboard";
+  const shellMeta = getCoreShellMetadata({
+    role: "tenant",
+    pathname,
+    fallbackTitle: pageTitle,
+  });
 
   // Back button for detail pages (depth > 2)
   const isDetailPage = pathname?.split("/").filter(Boolean).length > 2;
@@ -314,102 +321,77 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
             Mobile: Brand + actions (no hamburger)
             Tablet+: Page title + actions
             ============================================ */}
-        <header className="sticky top-0 z-50 flex items-center justify-between px-3 xs:px-4 sm:px-6 lg:px-8 py-3 bg-card border-b shadow-sm">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            {/* Mobile: back button for detail pages */}
-            {isDetailPage && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden shrink-0"
-                onClick={() => router.back()}
-                aria-label="Retour"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            )}
+        <CoreShellHeader
+          title={shellMeta.title}
+          description={isDashboardPage ? shellMeta.description : "Concentrez-vous sur votre prochaine action utile."}
+          roleLabel={shellMeta.roleLabel}
+          isDetailPage={isDetailPage}
+          onBack={() => router.back()}
+          rightContent={
+            <>
+              <NotificationBell />
 
-            {/* Mobile: Brand (when no sidebar visible) */}
-            <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent md:hidden">
-              Talok
-            </span>
+              <div className="hidden lg:block">
+                <DarkModeToggle />
+              </div>
 
-            <div className="hidden md:block min-w-0">
-              <h2 className="text-base lg:text-lg font-semibold text-foreground truncate">
-                {pageTitle}
-              </h2>
-              <p className="hidden lg:block text-xs text-muted-foreground truncate">
-                {isDashboardPage ? "Retrouvez vos actions importantes en un coup d'oeil." : "Concentrez-vous sur votre prochaine action utile."}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-
-            {/* Dark mode toggle - réservé au desktop */}
-            <div className="hidden lg:block">
-              <DarkModeToggle />
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-9 w-9 p-0 rounded-full">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={profile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-blue-100 text-blue-700 text-sm">
-                      {profile?.prenom?.[0]}
-                      {profile?.nom?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col">
-                    <span>
-                      {profile?.prenom} {profile?.nom}
-                    </span>
-                    <span className="text-xs text-muted-foreground font-normal">
-                      Locataire
-                    </span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/tenant/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Paramètres
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/tenant/help">
-                    <HelpCircle className="mr-2 h-4 w-4" />
-                    Aide & FAQ
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleSignOut}
-                  disabled={isSigningOut}
-                  className="text-red-600 focus:text-red-600 disabled:opacity-50"
-                >
-                  {isSigningOut ? (
-                    <>
-                      <span className="mr-2 h-4 w-4 inline-block animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
-                      Déconnexion...
-                    </>
-                  ) : (
-                    <>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Déconnexion
-                    </>
-                  )}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </header>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-blue-100 text-blue-700 text-sm">
+                        {profile?.prenom?.[0]}
+                        {profile?.nom?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col">
+                      <span>
+                        {profile?.prenom} {profile?.nom}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-normal">Locataire</span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/tenant/settings">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Paramètres
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/tenant/help">
+                      <HelpCircle className="mr-2 h-4 w-4" />
+                      Aide & FAQ
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
+                    className="text-red-600 focus:text-red-600 disabled:opacity-50"
+                  >
+                    {isSigningOut ? (
+                      <>
+                        <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                        Déconnexion...
+                      </>
+                    ) : (
+                      <>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Déconnexion
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          }
+        />
 
         {/* Main Content */}
         <main

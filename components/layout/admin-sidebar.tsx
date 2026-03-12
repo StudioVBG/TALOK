@@ -54,25 +54,33 @@ interface NavCategory {
 
 const adminNavItems: NavCategory[] = [
   {
-    category: "Vue d'ensemble",
+    category: "A traiter",
     items: [
       { href: "/admin/dashboard", label: "Tableau de bord", icon: BarChart3 },
-      { href: "/admin/reports", label: "Rapports", icon: FileText },
+      { href: "/admin/moderation", label: "Modération IA", icon: Brain },
+      { href: "/admin/providers/pending", label: "Validation Prestataires", icon: ShieldCheck },
+      { href: "/admin/compliance", label: "Documents & Conformité", icon: Shield },
     ],
   },
   {
-    category: "Gestion",
+    category: "Utilisateurs & parc",
     items: [
       { href: "/admin/people", label: "Annuaire", icon: Users },
       { href: "/admin/tenants", label: "Locataires", icon: UserCheck },
       { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
+      { href: "/admin/reports", label: "Rapports", icon: FileText },
+    ],
+  },
+  {
+    category: "Contenu & communication",
+    items: [
       { href: "/admin/templates", label: "Templates Baux", icon: ScrollText },
       { href: "/admin/email-templates", label: "Templates Email", icon: Mail },
       { href: "/admin/blog", label: "Blog", icon: BookOpen },
     ],
   },
   {
-    category: "Commercial",
+    category: "Offre & revenus",
     items: [
       { href: "/admin/plans", label: "Forfaits & Tarifs", icon: CreditCard },
       { href: "/admin/subscriptions", label: "Abonnements", icon: Wallet },
@@ -84,9 +92,6 @@ const adminNavItems: NavCategory[] = [
   {
     category: "Sécurité & Conformité",
     items: [
-      { href: "/admin/moderation", label: "Modération IA", icon: Brain },
-      { href: "/admin/providers/pending", label: "Validation Prestataires", icon: ShieldCheck },
-      { href: "/admin/compliance", label: "Documents & Conformité", icon: Shield },
       { href: "/admin/privacy", label: "RGPD", icon: Lock },
       { href: "/admin/audit-logs", label: "Journal d'audit", icon: ScrollText },
     ],
