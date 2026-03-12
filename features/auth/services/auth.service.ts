@@ -20,31 +20,35 @@ export class AuthService {
   private supabase = createClient();
 
   async signUp(data: SignUpData) {
-    // Normaliser l'email de la même manière que lors de la connexion
+    // Normaliser l'email
     const normalizedEmail = data.email.trim().toLowerCase();
-    
-    // Créer l'utilisateur avec le rôle dans les metadata pour que le trigger le lise
-    const { data: authData, error: authError } = await this.supabase.auth.signUp({
-      email: normalizedEmail,
-      password: data.password,
-      options: {
-        data: {
-          role: data.role, // Passer le rôle dans les metadata
-          prenom: data.prenom,
-          nom: data.nom,
-          telephone: data.telephone,
-        },
-      },
+
+    // Passer par l'API serveur pour bénéficier de :
+    // - Rate limiting (3/h par IP)
+    // - Création des profils spécialisés (owner_profiles, tenant_profiles, etc.)
+    // - Audit logging
+    const response = await fetch("/api/v1/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        password: data.password,
+        role: data.role,
+        prenom: data.prenom,
+        nom: data.nom,
+      }),
     });
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error("User creation failed");
+    const result = await response.json();
 
-    // Le profil est créé automatiquement par le trigger handle_new_user
-    // qui lit le rôle, prénom, nom et téléphone depuis les metadata de l'utilisateur
-    // Donc pas besoin de faire un upsert ici
-    
-    return authData;
+    if (!response.ok) {
+      const error = new Error(result.error || "Erreur lors de la création du compte");
+      (error as any).code = result.code;
+      (error as any).status = response.status;
+      throw error;
+    }
+
+    return result;
   }
 
   async signIn(data: SignInData) {
