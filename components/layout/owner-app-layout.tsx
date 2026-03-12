@@ -286,7 +286,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         <aside
           data-tour-sidebar
           aria-label="Navigation principale"
-          className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 xl:w-72 lg:flex-col"
+          className="hidden lg:fixed lg:inset-y-0 lg:z-40 lg:flex lg:w-64 xl:w-72 lg:flex-col"
         >
           <div className="flex grow flex-col gap-y-4 lg:gap-y-5 overflow-y-auto bg-card border-r border-border px-4 lg:px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center gap-2">

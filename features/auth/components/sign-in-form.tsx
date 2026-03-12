@@ -267,6 +267,12 @@ export function SignInForm() {
       </CardContent>
       <CardFooter className="flex flex-col space-y-2 text-sm text-muted-foreground">
         <p>
+          Pas encore inscrit ?{" "}
+          <Link href="/signup/role" className="text-primary underline-offset-2 hover:underline">
+            Créer un compte
+          </Link>
+        </p>
+        <p>
           Mot de passe oublié ?{" "}
           <Link href="/auth/forgot-password" className="text-primary underline-offset-2 hover:underline">
             Réinitialiser
