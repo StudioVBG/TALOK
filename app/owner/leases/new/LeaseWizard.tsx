@@ -168,7 +168,11 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   const [depot, setDepot] = useState<number>(0);
   const [chargesType, setChargesType] = useState<"forfait" | "provisions">("forfait");
   const [jourPaiement, setJourPaiement] = useState<number>(5);
-  const [dateDebut, setDateDebut] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [dateDebut, setDateDebut] = useState<string>(() => {
+    const now = new Date();
+    const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return firstOfNextMonth.toISOString().split("T")[0];
+  });
   
   // ✅ États pour la colocation
   const [colocConfig, setColocConfig] = useState<ColocationConfigData>(DEFAULT_COLOCATION_CONFIG);
