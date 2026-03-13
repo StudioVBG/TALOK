@@ -36,7 +36,6 @@ import { cn } from "@/lib/utils";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
 import { UnifiedFAB } from "@/components/layout/unified-fab";
-import { SubscriptionProvider } from "@/components/subscription";
 import { CommandPalette } from "@/components/command-palette";
 import { NotificationCenter } from "@/components/notifications";
 import { OnboardingTourProvider, AutoTourPrompt, FirstLoginOrchestrator } from "@/components/onboarding";
@@ -195,7 +194,6 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
 
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
-      <SubscriptionProvider>
       <OnboardingTourProvider role="owner" profileId={profile?.id}>
       <TooltipProvider delayDuration={0}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
@@ -539,7 +537,6 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
       </div>
       </TooltipProvider>
       </OnboardingTourProvider>
-      </SubscriptionProvider>
     </ProtectedRoute>
   );
 }

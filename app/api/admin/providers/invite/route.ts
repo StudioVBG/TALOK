@@ -3,7 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 /**
  * POST /api/admin/providers/invite - Inviter un prestataire par email
@@ -34,16 +34,7 @@ export async function POST(request: Request) {
     }
 
     // Vérifier si l'utilisateur existe déjà
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+    const adminClient = getServiceClient();
 
     const { data: { users } } = await adminClient.auth.admin.listUsers();
     const existingUser = users.find((u) => u.email === email);

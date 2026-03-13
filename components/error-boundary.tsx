@@ -126,7 +126,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   variant="outline"
                   className="flex-1"
                 >
-                  <Link href="/owner/dashboard">
+                  <Link href="/dashboard">
                     <Home className="mr-2 h-4 w-4" />
                     Retour au tableau de bord
                   </Link>

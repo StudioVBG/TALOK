@@ -17,13 +17,47 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
+    }
+
     const { searchParams } = new URL(request.url);
     const propertyId = searchParams.get("property_id");
+
+    if (propertyId && profile.role === "owner") {
+      const { data: prop } = await supabase
+        .from("properties")
+        .select("id")
+        .eq("id", propertyId)
+        .eq("owner_id", profile.id)
+        .maybeSingle();
+
+      if (!prop) {
+        return NextResponse.json({ error: "Accès refusé à ce logement" }, { status: 403 });
+      }
+    }
 
     let query = supabase.from("charges").select("*").order("created_at", { ascending: false });
 
     if (propertyId) {
       query = query.eq("property_id", propertyId);
+    } else if (profile.role === "owner") {
+      const { data: ownerProps } = await supabase
+        .from("properties")
+        .select("id")
+        .eq("owner_id", profile.id);
+      const propIds = (ownerProps || []).map((p: { id: string }) => p.id);
+      if (propIds.length > 0) {
+        query = query.in("property_id", propIds);
+      } else {
+        return NextResponse.json({ charges: [] });
+      }
     }
 
     const { data, error } = await query;

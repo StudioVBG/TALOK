@@ -1,5 +1,6 @@
 // Schémas Zod pour l'onboarding
 import { z } from "zod";
+import { normalizePhoneToE164 } from "@/lib/utils/phone";
 
 const isoDateString = z
   .string()
@@ -68,9 +69,6 @@ export const minimalProfileSchema = z
     let normalizedPhone: string | null = null;
     
     if (data.telephone && data.telephone.trim() !== "") {
-      const { normalizePhoneToE164 } = require("@/lib/utils/phone");
-      // Utiliser le country_code fourni pour la normalisation
-      // Si le numéro commence déjà par +, le country_code sera ignoré
       normalizedPhone = normalizePhoneToE164(data.telephone, data.country_code);
       
       if (normalizedPhone === null) {

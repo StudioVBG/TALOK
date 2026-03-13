@@ -98,7 +98,12 @@ export function middleware(request: NextRequest) {
   const authPages = ["/auth/signin", "/auth/signup"];
   if (hasAuthCookie && authPages.some((p) => pathname === p)) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    const redirectParam = request.nextUrl.searchParams.get("redirect");
+    const safeRedirect = redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : "/dashboard";
+    url.pathname = safeRedirect;
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

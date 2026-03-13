@@ -231,15 +231,6 @@ export async function POST(request: Request) {
 
     // 4. Corriger les dépôts de garantie incohérents
     if (types === "all" || types.includes("deposits_inconsistent")) {
-      // Baux nus
-      const { data: fixed1 } = await serviceClient
-        .from("leases")
-        .update({ depot_de_garantie: serviceClient.rpc("", {}) as any })
-        .eq("type_bail", "nu")
-        .gt("depot_de_garantie", serviceClient.rpc("", {}) as any)
-        .select("id");
-
-      // Utiliser la fonction SQL directement
       const { data: fixedDeposits } = await serviceClient.rpc("fix_inconsistent_deposits");
       results.push({ type: "deposits_fixed", deleted: (fixedDeposits as number) || 0 });
     }

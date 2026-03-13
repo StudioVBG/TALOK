@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { emailTemplates } from "@/lib/emails/templates";
 import { Resend } from "resend";
 
@@ -31,10 +31,7 @@ function isAuthorized(request: NextRequest): boolean {
 export async function GET(request: NextRequest) {
   // Créer les clients à l'intérieur du handler (pas au niveau module)
   // pour éviter les erreurs de build quand les env vars ne sont pas disponibles
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const supabase = getServiceClient();
   const resend = new Resend(process.env.RESEND_API_KEY);
   // Vérification de l'autorisation
   if (!isAuthorized(request)) {

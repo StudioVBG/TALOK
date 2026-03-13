@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
@@ -26,11 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "lease_id requis" }, { status: 400 });
     }
 
-    // Client admin pour bypass RLS
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const adminClient = getServiceClient();
 
     // Vérifier que le bail existe et appartient à l'utilisateur (ou admin)
     const { data: lease, error: leaseError } = await adminClient
@@ -205,10 +201,7 @@ export async function GET(request: Request) {
     });
     if (isAdminAuthError(auth)) return auth;
 
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const adminClient = getServiceClient();
 
     // Récupérer toutes les données du bail
     const [

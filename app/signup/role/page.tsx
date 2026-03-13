@@ -93,7 +93,11 @@ export default function RoleChoicePage() {
 
     setCodeLoading(true);
     try {
-      const response = await fetch(`/api/public/property-code/verify?code=${encodeURIComponent(propertyCode.trim())}`);
+      const response = await fetch("/api/public/code/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: propertyCode.trim() }),
+      });
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.error || "Code invalide ou expiré.");

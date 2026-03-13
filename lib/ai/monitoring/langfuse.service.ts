@@ -77,9 +77,7 @@ class LangfuseService {
     }
 
     try {
-      // Import dynamique pour éviter les erreurs si le package n'est pas installé
-      // Utiliser eval pour éviter que webpack ne résolve le module au build time
-      const langfuseModule = await eval('import("langfuse")');
+      const langfuseModule = await import("langfuse");
       const Langfuse = langfuseModule.default || langfuseModule.Langfuse;
       
       this.client = new Langfuse({

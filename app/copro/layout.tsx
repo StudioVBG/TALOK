@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl, COPRO_ROLES } from "@/lib/helpers/role-redirects";
 import { ErrorBoundary } from "@/components/error-boundary";
+import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import Link from "next/link";
 import {
@@ -69,8 +70,8 @@ export default async function CoproLayout({
   // 4. Rendre le layout avec la sidebar
   return (
     <ErrorBoundary>
+      <CsrfTokenInjector />
       <div className="min-h-screen bg-gradient-to-br from-background via-violet-50/10 to-background dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-        {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />
 
         <div className="flex">
