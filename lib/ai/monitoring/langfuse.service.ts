@@ -77,6 +77,7 @@ class LangfuseService {
     }
 
     try {
+      // @ts-expect-error — langfuse is an optional runtime dependency
       const langfuseModule = await import(/* webpackIgnore: true */ "langfuse");
       const Langfuse = langfuseModule.default || langfuseModule.Langfuse;
       
