@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         // Si erreur d'insertion, supprimer le compte Stripe
-        await connectService.deleteConnectAccount(stripeAccountId).catch(() => {});
+        await connectService.deleteConnectAccount(stripeAccountId).catch((err) => console.error("[stripe-connect] Erreur suppression compte:", err));
         throw new Error(`Erreur base de données: ${insertError.message}`);
       }
     }

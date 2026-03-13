@@ -6,7 +6,13 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
-const AlertDialog = AlertDialogPrimitive.Root
+/**
+ * AlertDialog wrapper that ensures `open` is always a strict boolean when provided,
+ * preventing the "changing from controlled to uncontrolled" React warning.
+ */
+const AlertDialog = ({ open, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) => (
+  <AlertDialogPrimitive.Root open={open !== undefined ? Boolean(open) : undefined} {...props} />
+)
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 

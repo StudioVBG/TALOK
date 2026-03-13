@@ -278,5 +278,5 @@ async function logAuditEvent(
     metadata,
     risk_level: action === "create" && entityType === "webhook_error" ? "high" : "low",
     success: true,
-  }).catch(() => {});
+  }).catch((err) => console.error("[webhook] Erreur audit_log:", err));
 }
