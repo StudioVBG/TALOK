@@ -250,10 +250,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const signedPdfPath = (lease as any).signed_pdf_path;
   const sealedAt = (lease as any).sealed_at;
 
-  // ✅ SYNCHRONISATION : Les données financières viennent du BIEN (source unique)
+  // Le bail est la source de vérité pour les conditions financières.
+  // Fallback sur les valeurs du bien uniquement si le bail n'a pas encore ses propres valeurs.
   const propAny = property as any;
-  
-  // Calcul du dépôt max légal selon le type de bail
+
   const getMaxDepotLegal = (typeBail: string, loyerHC: number): number => {
     switch (typeBail) {
       case "nu":
@@ -271,7 +271,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     }
   };
 
-  // ✅ LIRE depuis le BIEN (source unique SSOT 2026)
+  // Bail = source de vérité ; fallback sur property si non renseigné
   const displayLoyer = lease.loyer ?? propAny?.loyer_hc ?? propAny?.loyer_base ?? 0;
   const displayCharges = lease.charges_forfaitaires ?? propAny?.charges_mensuelles ?? 0;
   const displayDepot = lease.depot_de_garantie ?? getMaxDepotLegal(lease.type_bail, displayLoyer);

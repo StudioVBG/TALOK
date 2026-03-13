@@ -79,7 +79,7 @@ export default function OwnerProfileOnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-blue-50/50">
+    <div className="flex items-center justify-center px-4 py-6">
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-5 gap-8">
         
         {/* Colonne gauche : Infos contextuelles */}

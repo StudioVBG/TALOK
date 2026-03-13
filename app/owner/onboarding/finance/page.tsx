@@ -105,6 +105,7 @@ export default function OwnerFinancePage() {
         "Renseignez le compte bancaire sur lequel vous souhaitez recevoir vos versements.",
         "Si vous hesitez, gardez des reglages simples puis ajustez-les apres votre premiere mise en location.",
       ]}
+      embedded
     >
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="space-y-4">

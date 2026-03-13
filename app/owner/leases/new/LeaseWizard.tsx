@@ -166,6 +166,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   const [loyer, setLoyer] = useState<number>(0);
   const [charges, setCharges] = useState<number>(0);
   const [depot, setDepot] = useState<number>(0);
+  const [propertyLoyer, setPropertyLoyer] = useState<number>(0);
   const [chargesType, setChargesType] = useState<"forfait" | "provisions">("forfait");
   const [jourPaiement, setJourPaiement] = useState<number>(5);
   const [dateDebut, setDateDebut] = useState<string>(() => {
@@ -591,8 +592,8 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     setSelectedPropertyId(property.id);
     const propAny = property as any;
     
-    // Loyer : loyer_hc ou loyer_base
     const loyerValue = propAny.loyer_hc ?? propAny.loyer_base ?? 0;
+    setPropertyLoyer(loyerValue);
     if (loyerValue > 0) setLoyer(loyerValue);
     
     // Charges : charges_mensuelles (propriété) → charges_forfaitaires (bail)
@@ -1126,7 +1127,12 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                           {/* ✅ SOTA 2026: Message d'erreur inline */}
                           {loyer === 0 && (
                             <p className="text-xs text-amber-600 animate-pulse">
-                              ⚠️ Renseignez le loyer pour continuer
+                              Renseignez le loyer pour continuer
+                            </p>
+                          )}
+                          {propertyLoyer > 0 && loyer > 0 && loyer !== propertyLoyer && (
+                            <p className="text-xs text-blue-600">
+                              Loyer du bien : {propertyLoyer.toLocaleString("fr-FR")} € — le bail utilisera {loyer.toLocaleString("fr-FR")} €
                             </p>
                           )}
                         </div>

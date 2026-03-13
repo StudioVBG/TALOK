@@ -113,7 +113,7 @@ export default function FirstPropertyPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-background to-muted">
+    <div className="flex items-center justify-center px-4 py-6">
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <div className="flex items-center gap-2">

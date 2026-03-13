@@ -307,8 +307,6 @@ export const ONBOARDING_STEPS = {
     { id: "profile", label: "Profil", description: "Vos informations personnelles" },
     { id: "finance", label: "Finances", description: "Coordonnées bancaires" },
     { id: "property", label: "Bien", description: "Votre premier logement" },
-    { id: "automation", label: "Automatisation", description: "Préférences" },
-    { id: "invite", label: "Invitations", description: "Inviter des locataires" },
     { id: "review", label: "Validation", description: "Vérification finale" },
   ],
   tenant: [

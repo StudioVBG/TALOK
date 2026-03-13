@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface OnboardingStepShellProps {
   icon: LucideIcon;
@@ -11,6 +12,7 @@ interface OnboardingStepShellProps {
   asideDescription: string;
   tips: string[];
   children: ReactNode;
+  embedded?: boolean;
 }
 
 export function OnboardingStepShell({
@@ -22,9 +24,13 @@ export function OnboardingStepShell({
   asideDescription,
   tips,
   children,
+  embedded = false,
 }: OnboardingStepShellProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/70 px-4 py-8">
+    <div className={cn(
+      "px-4 py-6",
+      !embedded && "min-h-screen bg-gradient-to-br from-background via-background to-muted/70 py-8"
+    )}>
       <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
