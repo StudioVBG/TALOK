@@ -86,7 +86,16 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Vérifier que l'utilisateur n'a pas complété l'onboarding entre-temps
-    for (const reminder of reminders) {
+    for (const _reminder of reminders) {
+      const reminder = _reminder as unknown as {
+        id: string;
+        user_id: string;
+        profile_id: string;
+        role: string;
+        reminder_type: string;
+        email_sent_to: string | null;
+        profiles: { id: string; prenom: string | null; nom: string | null; email: string } | null;
+      };
       results.processed++;
 
       try {

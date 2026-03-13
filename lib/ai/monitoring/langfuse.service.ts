@@ -77,7 +77,7 @@ class LangfuseService {
     }
 
     try {
-      const langfuseModule = await import("langfuse");
+      const langfuseModule = await import(/* webpackIgnore: true */ "langfuse");
       const Langfuse = langfuseModule.default || langfuseModule.Langfuse;
       
       this.client = new Langfuse({
