@@ -62,20 +62,20 @@ export async function PATCH(
 
     const profileData = profile as any;
 
-    const { data: document, error: documentError } = await serviceClient
+    const { data: _document, error: documentError } = await serviceClient
       .from("documents")
-      .select("id, property_id, lease_id, owner_id, tenant_id, collection, position, is_cover")
+      .select("id, property_id, lease_id, owner_id, tenant_id, collection, position, is_cover" as any)
       .eq("id", id as any)
       .single();
+    const document = _document as any;
 
     if (documentError || !document) {
       return NextResponse.json({ error: "Document introuvable" }, { status: 404 });
     }
 
-    const doc = document as any;
     const isAdmin = profileData.role === "admin";
-    const isOwner = doc.owner_id && doc.owner_id === profileData.id;
-    const isTenant = doc.tenant_id && doc.tenant_id === profileData.id;
+    const isOwner = document.owner_id && document.owner_id === profileData.id;
+    const isTenant = document.tenant_id && document.tenant_id === profileData.id;
 
     if (!isAdmin && !isOwner && !isTenant) {
       return NextResponse.json(
@@ -84,24 +84,25 @@ export async function PATCH(
       );
     }
 
-    const targetCollection = doc.collection ?? "property_media";
+    const targetCollection = document.collection ?? "property_media";
     const peersQuery = serviceClient
       .from("documents")
       .select("id, position")
       .eq("collection", targetCollection)
       .order("position", { ascending: true });
 
-    if (doc.property_id) {
-      peersQuery.eq("property_id", doc.property_id);
-    } else if (doc.lease_id) {
-      peersQuery.eq("lease_id", doc.lease_id);
-    } else if (doc.owner_id) {
-      peersQuery.eq("owner_id", doc.owner_id);
-    } else if (doc.tenant_id) {
-      peersQuery.eq("tenant_id", doc.tenant_id);
+    if (document.property_id) {
+      peersQuery.eq("property_id", document.property_id);
+    } else if (document.lease_id) {
+      peersQuery.eq("lease_id", document.lease_id);
+    } else if (document.owner_id) {
+      peersQuery.eq("owner_id", document.owner_id);
+    } else if (document.tenant_id) {
+      peersQuery.eq("tenant_id", document.tenant_id);
     }
 
-    const { data: siblings, error: siblingsError } = await peersQuery;
+    const { data: _siblings, error: siblingsError } = await peersQuery;
+    const siblings = _siblings as { id: string; position: number }[] | null;
 
     if (siblingsError) {
       return NextResponse.json(
@@ -118,10 +119,10 @@ export async function PATCH(
       const maxIndex = siblings.length - 1;
       const sanitizedIndex = Math.min(Math.max(position - 1, 0), maxIndex);
 
-      const withoutCurrent = siblings.filter((item) => item.id !== doc.id);
+      const withoutCurrent = siblings.filter((item) => item.id !== document.id);
       const reordered = [
         ...withoutCurrent.slice(0, sanitizedIndex),
-        { id: doc.id, position: sanitizedIndex + 1 },
+        { id: document.id, position: sanitizedIndex + 1 },
         ...withoutCurrent.slice(sanitizedIndex),
       ];
 
@@ -133,7 +134,7 @@ export async function PATCH(
         if (item.position !== newPosition) {
           const { error: updateError } = await serviceClient
             .from("documents")
-            .update({ position: newPosition })
+            .update({ position: newPosition } as any)
             .eq("id", item.id);
 
           if (updateError) {
@@ -149,10 +150,10 @@ export async function PATCH(
     if (setCover) {
       const { error: resetError } = await serviceClient
         .from("documents")
-        .update({ is_cover: false })
-        .eq("collection", targetCollection)
-        .eq("property_id", doc.property_id ?? null)
-        .eq("lease_id", doc.lease_id ?? null);
+        .update({ is_cover: false } as any)
+        .eq("collection" as any, targetCollection)
+        .eq("property_id", document.property_id ?? null)
+        .eq("lease_id", document.lease_id ?? null);
 
       if (resetError) {
         return NextResponse.json(
@@ -163,8 +164,8 @@ export async function PATCH(
 
       const { error: coverError } = await serviceClient
         .from("documents")
-        .update({ is_cover: true })
-        .eq("id", doc.id);
+        .update({ is_cover: true } as any)
+        .eq("id", document.id);
 
       if (coverError) {
         return NextResponse.json(
@@ -177,7 +178,7 @@ export async function PATCH(
     const { data: updatedDocument, error: refreshedError } = await serviceClient
       .from("documents")
       .select("*")
-      .eq("id", doc.id)
+      .eq("id", document.id)
       .single();
 
     if (refreshedError || !updatedDocument) {
