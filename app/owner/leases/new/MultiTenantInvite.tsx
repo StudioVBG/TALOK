@@ -240,7 +240,7 @@ export function MultiTenantInvite({
                   ) : (
                     <>
                       <User className="h-3 w-3" />
-                      Colocataire {index}
+                      Colocataire {index + 1}
                     </>
                   )}
                 </Badge>
@@ -415,6 +415,29 @@ export function MultiTenantInvite({
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Alerte si les parts custom ne totalisent pas 100% */}
+      {config.splitMode === "custom" && invitees.length > 0 && (() => {
+        const totalWeight = invitees.reduce((sum, inv) => sum + (inv.weight ?? 0), 0);
+        const totalPercent = Math.round(totalWeight * 100);
+        if (totalPercent !== 100 && invitees.some(i => i.weight !== undefined)) {
+          return (
+            <div className={cn(
+              "p-3 rounded-lg border flex items-center gap-2 text-sm",
+              totalPercent > 100
+                ? "bg-red-50 border-red-200 text-red-700"
+                : "bg-amber-50 border-amber-200 text-amber-700"
+            )}>
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>
+                Total des parts : <strong>{totalPercent}%</strong> — {totalPercent > 100 ? "dépasse" : "n'atteint pas"} 100%.
+                Ajustez les parts pour que le total soit exactement 100%.
+              </span>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* Bouton ajouter */}
       {remainingPlaces > 0 && (
