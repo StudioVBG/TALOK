@@ -418,11 +418,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         moreItems={[
           { href: "/tenant/lease", label: "Mon Logement", icon: Home },
           { href: "/tenant/messages", label: "Messages", icon: MessageSquare },
-          { href: "/tenant/inspections", label: "États des lieux", icon: ClipboardCheck },
-          { href: "/tenant/meters", label: "Compteurs", icon: Gauge },
-          { href: "/tenant/legal-rights", label: "Mes droits", icon: Scale },
-          { href: "/tenant/visits", label: "Visites", icon: Eye },
-          { href: "/tenant/colocation", label: "Colocation", icon: Users },
+          { href: "/tenant/applications", label: "Candidatures", icon: FileSearch },
           { href: "/tenant/settings", label: "Mon Profil", icon: Settings },
           { href: "/tenant/help", label: "Aide", icon: HelpCircle },
         ]}

@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import React from "react";
 import { motion } from "framer-motion";
 import {
   Home,
@@ -302,21 +303,17 @@ export function getAvailableLeaseTypes(propertyType?: string): LeaseType[] {
   return mapping[propertyType] || ["nu", "meuble", "colocation", "saisonnier", "bail_mobilite", "etudiant"];
 }
 
+const COMMON_TYPES: LeaseType[] = ["nu", "meuble", "colocation", "saisonnier"];
+
 export function LeaseTypeCards({ selectedType, onSelect, propertyType }: LeaseTypeCardsProps) {
   const availableTypes = getAvailableLeaseTypes(propertyType);
+  const commonTypes = availableTypes.filter(t => COMMON_TYPES.includes(t));
+  const advancedTypes = availableTypes.filter(t => !COMMON_TYPES.includes(t));
+  const [showAdvanced, setShowAdvanced] = React.useState(
+    !!selectedType && !COMMON_TYPES.includes(selectedType)
+  );
   
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Choisissez le type de bail</h3>
-        <Badge variant="secondary" className="gap-1">
-          <Sparkles className="h-3 w-3" />
-          Conforme loi ALUR
-        </Badge>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {availableTypes.map((type) => {
+  const renderCard = (type: LeaseType, isRecommended = false) => {
           const config = LEASE_TYPE_CONFIGS[type];
           const Icon = config.icon;
           const isSelected = selectedType === type;
@@ -382,8 +379,8 @@ export function LeaseTypeCards({ selectedType, onSelect, propertyType }: LeaseTy
                     <Icon className="h-10 w-10 text-white/90 drop-shadow-lg" />
                   </motion.div>
 
-                  {/* Badge sélectionné */}
-                  {isSelected && (
+                  {/* Badge sélectionné ou recommandé */}
+                  {isSelected ? (
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
@@ -393,7 +390,13 @@ export function LeaseTypeCards({ selectedType, onSelect, propertyType }: LeaseTy
                         ✓ Sélectionné
                       </Badge>
                     </motion.div>
-                  )}
+                  ) : isRecommended ? (
+                    <div className="absolute top-2 right-2">
+                      <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm text-[10px]">
+                        Courant
+                      </Badge>
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* Content */}
@@ -436,8 +439,47 @@ export function LeaseTypeCards({ selectedType, onSelect, propertyType }: LeaseTy
               </div>
             </motion.div>
           );
-        })}
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Choisissez le type de bail</h3>
+        <Badge variant="secondary" className="gap-1">
+          <Sparkles className="h-3 w-3" />
+          Conforme loi ALUR
+        </Badge>
       </div>
+
+      {/* Types courants */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {commonTypes.map((type) => renderCard(type, true))}
+      </div>
+
+      {/* Types avancés (collapsibles) */}
+      {advancedTypes.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="w-full flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span>{showAdvanced ? "Masquer" : "Afficher"} les types spécialisés ({advancedTypes.length})</span>
+            <motion.span animate={{ rotate: showAdvanced ? 180 : 0 }}>▼</motion.span>
+          </button>
+
+          {showAdvanced && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+            >
+              {advancedTypes.map((type) => renderCard(type, false))}
+            </motion.div>
+          )}
+        </>
+      )}
     </div>
   );
 }

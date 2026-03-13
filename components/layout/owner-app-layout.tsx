@@ -17,17 +17,8 @@ import {
   User,
   LogOut,
   ChevronDown,
-  ChevronLeft,
-  CalendarClock,
   Wrench,
-  Shield,
-  ClipboardCheck,
-  Briefcase,
-  Eye,
-  TrendingUp,
-  Landmark,
   MessageSquare,
-  HardHat,
   Settings,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
@@ -36,7 +27,6 @@ import { cn } from "@/lib/utils";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
 import { UnifiedFAB } from "@/components/layout/unified-fab";
-import { SubscriptionProvider } from "@/components/subscription";
 import { CommandPalette } from "@/components/command-palette";
 import { NotificationCenter } from "@/components/notifications";
 import { OnboardingTourProvider, AutoTourPrompt, FirstLoginOrchestrator } from "@/components/onboarding";
@@ -68,10 +58,11 @@ interface NavGroup {
 }
 
 /**
- * SOTA 2026 — Navigation consolidée (25 → 14 items)
- * Architecture orientée parcours utilisateur (cycle de vie locatif)
- * Doublons éliminés : Immeubles → onglet Biens, Coffre-fort → onglet Documents,
- * Factures → onglet Loyers, Locataires/EDL → onglets Baux, Ordres de travaux → onglet Tickets
+ * SOTA 2026 — Navigation simplifiée (14 → 7 items)
+ * Principe : Progressive Disclosure — seuls les items essentiels sont visibles.
+ * Les features avancées (Indexation, Fiscalité, Protocoles, Visites, Fin de bail,
+ * Prestataires, Entités) restent accessibles depuis les pages contextuelles
+ * et via la Command Palette (⌘K).
  */
 const navigationGroups: NavGroup[] = [
   {
@@ -80,40 +71,18 @@ const navigationGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Patrimoine",
+    label: "Gestion",
     items: [
       { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2, tourId: "nav-properties" },
-    ],
-  },
-  {
-    label: "Gestion locative",
-    items: [
-      { name: "Baux & locataires", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
-      { name: "Visites", href: "/owner/visits", icon: Eye },
-      { name: "Fin de bail", href: "/owner/end-of-lease", icon: CalendarClock, badge: "Premium" },
-    ],
-  },
-  {
-    label: "Finances",
-    items: [
+      { name: "Mes baux", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
       { name: "Finances", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
-      { name: "Indexation loyers", href: "/owner/indexation", icon: TrendingUp },
-      { name: "Fiscalité", href: "/owner/taxes", icon: Landmark },
     ],
   },
   {
-    label: "Documents",
+    label: "Quotidien",
     items: [
       { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck, tourId: "nav-documents" },
-      { name: "Mes entités", href: "/owner/entities", icon: Briefcase, tourId: "nav-entities" },
-      { name: "Protocoles juridiques", href: "/owner/legal-protocols", icon: Shield },
-    ],
-  },
-  {
-    label: "Maintenance",
-    items: [
-      { name: "Tickets & travaux", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
-      { name: "Prestataires", href: "/owner/providers", icon: HardHat },
+      { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
       { name: "Messages", href: "/owner/messages", icon: MessageSquare },
     ],
   },
@@ -195,7 +164,6 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
 
   return (
     <ProtectedRoute allowedRoles={["owner"]}>
-      <SubscriptionProvider>
       <OnboardingTourProvider role="owner" profileId={profile?.id}>
       <TooltipProvider delayDuration={0}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
@@ -502,16 +470,10 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               { href: OWNER_ROUTES.contracts.path, label: "Baux", icon: FileText },
             ]}
             moreItems={[
-              { href: "/owner/inspections", label: "États des lieux", icon: ClipboardCheck },
-              { href: "/owner/visits", label: "Visites", icon: Eye },
-              { href: "/owner/end-of-lease", label: "Fin de bail", icon: CalendarClock },
               { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench },
-              { href: "/owner/providers", label: "Prestataires", icon: HardHat },
               { href: "/owner/messages", label: "Messages", icon: MessageSquare },
               { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck },
-              { href: "/owner/indexation", label: "Indexation", icon: TrendingUp },
-              { href: "/owner/taxes", label: "Fiscalité", icon: Landmark },
-              { href: "/owner/entities", label: "Entités", icon: Briefcase },
+              { href: "/owner/settings", label: "Paramètres", icon: Settings },
               { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
             ]}
             hideAbove="md"
@@ -539,7 +501,6 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
       </div>
       </TooltipProvider>
       </OnboardingTourProvider>
-      </SubscriptionProvider>
     </ProtectedRoute>
   );
 }

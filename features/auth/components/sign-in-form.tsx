@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,8 +42,20 @@ const AppleIcon = () => (
   </svg>
 );
 
+function getSafeRedirectUrl(redirect: string | null): string | null {
+  if (!redirect) return null;
+  if (!redirect.startsWith("/") || redirect.startsWith("//")) return null;
+  return redirect;
+}
+
+const ERROR_MESSAGES: Record<string, string> = {
+  session_expired: "Votre session a expiré. Veuillez vous reconnecter.",
+  invalid_code: "Le lien de connexion est invalide ou expiré. Veuillez réessayer.",
+};
+
 export function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -52,6 +64,19 @@ export function SignInForm() {
     email: "",
     password: "",
   });
+
+  const redirectTo = getSafeRedirectUrl(searchParams.get("redirect"));
+
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam && ERROR_MESSAGES[errorParam]) {
+      toast({
+        title: "Information",
+        description: ERROR_MESSAGES[errorParam],
+        variant: errorParam === "session_expired" ? "destructive" : "default",
+      });
+    }
+  }, [searchParams, toast]);
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -141,7 +166,7 @@ export function SignInForm() {
         conseil_syndical: "/copro/dashboard",
       };
 
-      const targetRoute = roleRoutes[profileData?.role] || "/dashboard";
+      const targetRoute = redirectTo || roleRoutes[profileData?.role] || "/dashboard";
       router.push(targetRoute);
       
       router.refresh();

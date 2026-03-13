@@ -38,23 +38,8 @@ export async function PATCH(
       );
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: "Configuration Supabase manquante (service role key)" },
-        { status: 500 }
-      );
-    }
-
-    const { createClient } = await import("@supabase/supabase-js");
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    const { getServiceClient } = await import("@/lib/supabase/service-client");
+    const serviceClient = getServiceClient();
 
     const supportsGallery = await ensureDocumentGallerySupport(serviceClient);
 
@@ -77,11 +62,12 @@ export async function PATCH(
 
     const profileData = profile as any;
 
-    const { data: document, error: documentError } = await serviceClient
+    const { data: _document, error: documentError } = await serviceClient
       .from("documents")
-      .select("id, property_id, lease_id, owner_id, tenant_id, collection, position, is_cover")
+      .select("id, property_id, lease_id, owner_id, tenant_id, collection, position, is_cover" as any)
       .eq("id", id as any)
       .single();
+    const document = _document as any;
 
     if (documentError || !document) {
       return NextResponse.json({ error: "Document introuvable" }, { status: 404 });
@@ -115,7 +101,8 @@ export async function PATCH(
       peersQuery.eq("tenant_id", document.tenant_id);
     }
 
-    const { data: siblings, error: siblingsError } = await peersQuery;
+    const { data: _siblings, error: siblingsError } = await peersQuery;
+    const siblings = _siblings as { id: string; position: number }[] | null;
 
     if (siblingsError) {
       return NextResponse.json(
@@ -147,7 +134,7 @@ export async function PATCH(
         if (item.position !== newPosition) {
           const { error: updateError } = await serviceClient
             .from("documents")
-            .update({ position: newPosition })
+            .update({ position: newPosition } as any)
             .eq("id", item.id);
 
           if (updateError) {
@@ -163,8 +150,8 @@ export async function PATCH(
     if (setCover) {
       const { error: resetError } = await serviceClient
         .from("documents")
-        .update({ is_cover: false })
-        .eq("collection", targetCollection)
+        .update({ is_cover: false } as any)
+        .eq("collection" as any, targetCollection)
         .eq("property_id", document.property_id ?? null)
         .eq("lease_id", document.lease_id ?? null);
 
@@ -177,7 +164,7 @@ export async function PATCH(
 
       const { error: coverError } = await serviceClient
         .from("documents")
-        .update({ is_cover: true })
+        .update({ is_cover: true } as any)
         .eq("id", document.id);
 
       if (coverError) {

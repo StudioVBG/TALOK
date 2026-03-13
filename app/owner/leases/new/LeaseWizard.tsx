@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ChevronDown,
   FileText,
   Send,
   Loader2,
@@ -166,9 +167,14 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   const [loyer, setLoyer] = useState<number>(0);
   const [charges, setCharges] = useState<number>(0);
   const [depot, setDepot] = useState<number>(0);
+  const [propertyLoyer, setPropertyLoyer] = useState<number>(0);
   const [chargesType, setChargesType] = useState<"forfait" | "provisions">("forfait");
   const [jourPaiement, setJourPaiement] = useState<number>(5);
-  const [dateDebut, setDateDebut] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [dateDebut, setDateDebut] = useState<string>(() => {
+    const now = new Date();
+    const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return firstOfNextMonth.toISOString().split("T")[0];
+  });
   
   // ✅ États pour la colocation
   const [colocConfig, setColocConfig] = useState<ColocationConfigData>(DEFAULT_COLOCATION_CONFIG);
@@ -587,8 +593,8 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
     setSelectedPropertyId(property.id);
     const propAny = property as any;
     
-    // Loyer : loyer_hc ou loyer_base
     const loyerValue = propAny.loyer_hc ?? propAny.loyer_base ?? 0;
+    setPropertyLoyer(loyerValue);
     if (loyerValue > 0) setLoyer(loyerValue);
     
     // Charges : charges_mensuelles (propriété) → charges_forfaitaires (bail)
@@ -1122,7 +1128,12 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                           {/* ✅ SOTA 2026: Message d'erreur inline */}
                           {loyer === 0 && (
                             <p className="text-xs text-amber-600 animate-pulse">
-                              ⚠️ Renseignez le loyer pour continuer
+                              Renseignez le loyer pour continuer
+                            </p>
+                          )}
+                          {propertyLoyer > 0 && loyer > 0 && loyer !== propertyLoyer && (
+                            <p className="text-xs text-blue-600">
+                              Loyer du bien : {propertyLoyer.toLocaleString("fr-FR")} € — le bail utilisera {loyer.toLocaleString("fr-FR")} €
                             </p>
                           )}
                         </div>
@@ -1161,44 +1172,8 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                         <div className="space-y-2">
-                          <Label>Type de charges</Label>
-                          <Select value={chargesType} onValueChange={(v: "forfait" | "provisions") => setChargesType(v)}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="forfait">Forfait (montant fixe)</SelectItem>
-                              <SelectItem value="provisions">Provisions (régularisation annuelle)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground">
-                            {chargesType === "forfait" 
-                              ? "Montant fixe, pas de régularisation" 
-                              : "Avance mensuelle avec régularisation annuelle"}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
                           <Label>Date de début</Label>
                           <Input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div className="space-y-2">
-                          <Label>Jour de paiement</Label>
-                          <Select value={String(jourPaiement)} onValueChange={(v) => setJourPaiement(Number(v))}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                                <SelectItem key={day} value={String(day)}>Le {day} du mois</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground">
-                            Date d&apos;échéance mensuelle du loyer
-                          </p>
                         </div>
                       </div>
 
@@ -1456,58 +1431,84 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         )}
                       </div>
 
-                      {/* ✅ Accès du logement (digicode/interphone) */}
-                      <div className="mt-6 pt-6 border-t">
-                        <h4 className="text-base font-semibold mb-4 flex items-center gap-2">
-                          <Key className="h-4 w-4 text-indigo-600" />
-                          Accès du logement
-                        </h4>
-                        <p className="text-xs text-muted-foreground mb-4">
-                          Ces informations seront automatiquement transmises au locataire dans son espace.
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="flex items-center gap-1.5">
-                              <Key className="h-3.5 w-3.5 text-indigo-500" />
-                              Code digicode
-                            </Label>
-                            <Input
-                              value={wizardDigicode}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                // Empêcher la suppression si la propriété avait déjà un digicode
-                                if (val === "" && selectedProperty?.digicode) {
-                                  return;
-                                }
-                                setWizardDigicode(val);
-                                setDigicodeModified(true);
-                              }}
-                              placeholder="Ex: 1234A, A5678"
-                              className="h-9"
-                            />
-                            {selectedProperty?.digicode && (
-                              <p className="text-[10px] text-muted-foreground">
-                                Code actuel du bien. Modifiable mais non supprimable.
-                              </p>
-                            )}
+                      {/* Paramètres supplémentaires (masqués par défaut) */}
+                      <details className="mt-6 pt-6 border-t group">
+                        <summary className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none [&::-webkit-details-marker]:hidden">
+                          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+                          Paramètres supplémentaires
+                          <span className="text-xs">(charges, jour de paiement, accès)</span>
+                        </summary>
+                        <div className="mt-4 space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Type de charges</Label>
+                              <Select value={chargesType} onValueChange={(v: "forfait" | "provisions") => setChargesType(v)}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="forfait">Forfait (montant fixe)</SelectItem>
+                                  <SelectItem value="provisions">Provisions (régularisation annuelle)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Jour de paiement</Label>
+                              <Select value={String(jourPaiement)} onValueChange={(v) => setJourPaiement(Number(v))}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                                    <SelectItem key={day} value={String(day)}>Le {day} du mois</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <Label className="flex items-center gap-1.5">
-                              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                              Interphone
-                            </Label>
-                            <Input
-                              value={wizardInterphone}
-                              onChange={(e) => {
-                                setWizardInterphone(e.target.value);
-                                setInterphoneModified(true);
-                              }}
-                              placeholder="Ex: DUPONT, 042"
-                              className="h-9"
-                            />
+
+                          <div>
+                            <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                              <Key className="h-4 w-4 text-indigo-600" />
+                              Accès du logement
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label className="flex items-center gap-1.5">
+                                  <Key className="h-3.5 w-3.5 text-indigo-500" />
+                                  Code digicode
+                                </Label>
+                                <Input
+                                  value={wizardDigicode}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === "" && selectedProperty?.digicode) return;
+                                    setWizardDigicode(val);
+                                    setDigicodeModified(true);
+                                  }}
+                                  placeholder="Ex: 1234A, A5678"
+                                  className="h-9"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="flex items-center gap-1.5">
+                                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                                  Interphone
+                                </Label>
+                                <Input
+                                  value={wizardInterphone}
+                                  onChange={(e) => {
+                                    setWizardInterphone(e.target.value);
+                                    setInterphoneModified(true);
+                                  }}
+                                  placeholder="Ex: DUPONT, 042"
+                                  className="h-9"
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </details>
                     </div>
                   )}
                 </div>
@@ -1550,27 +1551,6 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         hasGarant={hasGarant}
                         onHasGarantChange={setHasGarant}
                       />
-                    </div>
-
-                    {/* Rappel des conditions financières */}
-                    <div className="pt-5 sm:pt-6 border-t">
-                      <div className="flex items-center justify-between mb-3 sm:mb-4">
-                        <h4 className="font-medium text-xs sm:text-sm text-muted-foreground uppercase">Ajustements rapides</h4>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Loyer</Label>
-                          <Input type="number" className="h-10 sm:h-8" value={loyer} onChange={(e) => setLoyer(parseFloat(e.target.value) || 0)} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Charges</Label>
-                          <Input type="number" className="h-10 sm:h-8" value={charges} onChange={(e) => setCharges(parseFloat(e.target.value) || 0)} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Date début</Label>
-                          <Input type="date" className="h-10 sm:h-8" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
-                        </div>
-                      </div>
                     </div>
 
                     {/* Clauses personnalisables */}

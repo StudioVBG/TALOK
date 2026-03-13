@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { emailTemplates } from "@/lib/emails/templates";
 import { Resend } from "resend";
 
@@ -31,10 +31,7 @@ function isAuthorized(request: NextRequest): boolean {
 export async function GET(request: NextRequest) {
   // Créer les clients à l'intérieur du handler (pas au niveau module)
   // pour éviter les erreurs de build quand les env vars ne sont pas disponibles
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const supabase = getServiceClient();
   const resend = new Resend(process.env.RESEND_API_KEY);
   // Vérification de l'autorisation
   if (!isAuthorized(request)) {
@@ -89,7 +86,16 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Vérifier que l'utilisateur n'a pas complété l'onboarding entre-temps
-    for (const reminder of reminders) {
+    for (const _reminder of reminders) {
+      const reminder = _reminder as unknown as {
+        id: string;
+        user_id: string;
+        profile_id: string;
+        role: string;
+        reminder_type: string;
+        email_sent_to: string | null;
+        profiles: { id: string; prenom: string | null; nom: string | null; email: string } | null;
+      };
       results.processed++;
 
       try {

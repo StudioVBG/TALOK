@@ -72,6 +72,7 @@ import { LeaseEdlTab } from "./tabs/LeaseEdlTab";
 import { LeaseDocumentsTab } from "./tabs/LeaseDocumentsTab";
 import { LeasePaymentsTab } from "./tabs/LeasePaymentsTab";
 import { resolveTenantDisplay, resolveTenantFullName } from "@/lib/helpers/resolve-tenant-display";
+import { LeaseDetailsSidebar } from "./LeaseDetailsSidebar";
 
 interface LeaseDetailsClientProps {
   details: LeaseDetails;
@@ -249,10 +250,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const signedPdfPath = (lease as any).signed_pdf_path;
   const sealedAt = (lease as any).sealed_at;
 
-  // ✅ SYNCHRONISATION : Les données financières viennent du BIEN (source unique)
+  // Le bail est la source de vérité pour les conditions financières.
+  // Fallback sur les valeurs du bien uniquement si le bail n'a pas encore ses propres valeurs.
   const propAny = property as any;
-  
-  // Calcul du dépôt max légal selon le type de bail
+
   const getMaxDepotLegal = (typeBail: string, loyerHC: number): number => {
     switch (typeBail) {
       case "nu":
@@ -270,7 +271,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     }
   };
 
-  // ✅ LIRE depuis le BIEN (source unique SSOT 2026)
+  // Bail = source de vérité ; fallback sur property si non renseigné
   const displayLoyer = lease.loyer ?? propAny?.loyer_hc ?? propAny?.loyer_base ?? 0;
   const displayCharges = lease.charges_forfaitaires ?? propAny?.charges_mensuelles ?? 0;
   const displayDepot = lease.depot_de_garantie ?? getMaxDepotLegal(lease.type_bail, displayLoyer);
@@ -985,395 +986,43 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
           </div>
 
           {/* Colonne de droite : Contexte & Actions */}
-          <div className="lg:col-span-4 xl:col-span-3 order-1 lg:order-2 space-y-6">
-
-            {/* ✅ Bannière action prioritaire */}
-            {nextAction && nextAction.actionLabel && (() => {
-              const colorMap: Record<string, { border: string; bg: string; iconBg: string; iconText: string; title: string; desc: string; btn: string; btnHover: string }> = {
-                amber:  { border: "border-amber-200",   bg: "bg-amber-50/50",   iconBg: "bg-amber-100",   iconText: "text-amber-600",   title: "text-amber-900",   desc: "text-amber-700",   btn: "bg-amber-600",   btnHover: "hover:bg-amber-700" },
-                blue:   { border: "border-blue-200",    bg: "bg-blue-50/50",    iconBg: "bg-blue-100",    iconText: "text-blue-600",    title: "text-blue-900",    desc: "text-blue-700",    btn: "bg-blue-600",    btnHover: "hover:bg-blue-700" },
-                indigo: { border: "border-indigo-200",  bg: "bg-indigo-50/50",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  title: "text-indigo-900",  desc: "text-indigo-700",  btn: "bg-indigo-600",  btnHover: "hover:bg-indigo-700" },
-                green:  { border: "border-emerald-200", bg: "bg-emerald-50/50", iconBg: "bg-emerald-100", iconText: "text-emerald-600", title: "text-emerald-900", desc: "text-emerald-700", btn: "bg-emerald-600", btnHover: "hover:bg-emerald-700" },
-              };
-              const c = colorMap[nextAction.color] || colorMap.indigo;
-              const ActionIcon = nextAction.icon;
-              return (
-                <Card className={`border-2 ${c.border} ${c.bg} overflow-hidden`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-full flex-shrink-0 ${c.iconBg}`}>
-                        <ActionIcon className={`h-4 w-4 ${c.iconText}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold ${c.title}`}>
-                          {nextAction.title}
-                        </p>
-                        <p className={`text-xs ${c.desc} mt-0.5`}>
-                          {nextAction.description}
-                        </p>
-                        <div className="mt-3">
-                          {nextAction.href ? (
-                            <Link
-                              href={nextAction.href}
-                              className={cn(buttonVariants({ size: "sm" }), `w-full gap-2 ${c.btn} ${c.btnHover} text-white`)}
-                            >
-                              {nextAction.actionLabel}
-                              <ArrowRight className="h-3.5 w-3.5" />
-                            </Link>
-                          ) : nextAction.action ? (
-                            <Button size="sm" onClick={nextAction.action} className={`w-full gap-2 ${c.btn} ${c.btnHover} text-white`}>
-                              {nextAction.actionLabel}
-                              <ArrowRight className="h-3.5 w-3.5" />
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
-
-            {/* ✅ Checklist d'activation — fusion Conformité + Prérequis */}
-            <Card className="border-none shadow-sm bg-white overflow-hidden">
-              <CardHeader className="pb-2 border-b border-slate-50">
-                <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                  <ShieldCheck className="h-3 w-3 text-emerald-500" />
-                  Checklist d&apos;activation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 space-y-3">
-                {/* Checklist items */}
-                <div className="space-y-2">
-                  {/* Signatures */}
-                  <div className="flex items-center gap-2">
-                    <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      ["fully_signed", "active", "terminated", "archived"].includes(lease.statut) ? "bg-emerald-100" : "bg-amber-100"
-                    }`}>
-                      {["fully_signed", "active", "terminated", "archived"].includes(lease.statut) ? (
-                        <CheckCircle className="h-3 w-3 text-emerald-600" />
-                      ) : (
-                        <Clock className="h-3 w-3 text-amber-600" />
-                      )}
-                    </div>
-                    <span className={`text-xs font-medium ${
-                      ["fully_signed", "active", "terminated", "archived"].includes(lease.statut) ? "text-emerald-700" : "text-amber-700"
-                    }`}>
-                      Bail signé par toutes les parties
-                    </span>
-                  </div>
-
-                  {/* DPE */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${dpeStatus?.status === "VALID" ? "bg-emerald-100" : "bg-red-100"}`}>
-                        {dpeStatus?.status === "VALID" ? (
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
-                        ) : (
-                          <ShieldAlert className="h-3 w-3 text-red-600" />
-                        )}
-                      </div>
-                      <span className={`text-xs font-medium ${dpeStatus?.status === "VALID" ? "text-emerald-700" : "text-red-700"}`}>
-                        {dpeStatus?.status === "VALID" ? "DPE conforme" : `DPE ${dpeStatus?.status === "EXPIRED" ? "expiré" : "manquant"}`}
-                      </span>
-                    </div>
-                    {dpeStatus?.status !== "VALID" && (
-                      <Link
-                        href={`/owner/properties/${property.id}/diagnostics`}
-                        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50")}
-                      >
-                        Régulariser
-                      </Link>
-                    )}
-                  </div>
-
-                  {/* Assurance */}
-                  <div className="flex items-center gap-2">
-                    <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      leaseAnnexes.some(a => a.type === "attestation_assurance") ? "bg-emerald-100" : "bg-slate-100"
-                    }`}>
-                      {leaseAnnexes.some(a => a.type === "attestation_assurance") ? (
-                        <CheckCircle className="h-3 w-3 text-emerald-600" />
-                      ) : (
-                        <Clock className="h-3 w-3 text-slate-400" />
-                      )}
-                    </div>
-                    <span className={`text-xs font-medium ${
-                      leaseAnnexes.some(a => a.type === "attestation_assurance") ? "text-emerald-700" : "text-slate-500"
-                    }`}>
-                      {leaseAnnexes.some(a => a.type === "attestation_assurance") ? "Assurance habitation reçue" : "Assurance habitation en attente"}
-                    </span>
-                  </div>
-
-                  {/* EDL */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${hasSignedEdl ? "bg-emerald-100" : "bg-amber-100"}`}>
-                        {hasSignedEdl ? (
-                          <CheckCircle className="h-3 w-3 text-emerald-600" />
-                        ) : (
-                          <Clock className="h-3 w-3 text-amber-600" />
-                        )}
-                      </div>
-                      <span className={`text-xs font-medium ${hasSignedEdl ? "text-emerald-700" : "text-amber-700"}`}>
-                        {hasSignedEdl ? "État des lieux réalisé" : "État des lieux requis"}
-                      </span>
-                    </div>
-                    {canActivate && !hasSignedEdl && (
-                      edl ? (
-                        <Link
-                          href={`/owner/inspections/${edl.id}`}
-                          className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 px-2 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50")}
-                        >
-                          {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer" : "Voir"}
-                        </Link>
-                      ) : (
-                        <Link
-                          href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}&type=entree`}
-                          className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 px-2 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50")}
-                        >
-                          Créer
-                        </Link>
-                      )
-                    )}
-                  </div>
-                </div>
-
-                {/* Bouton activation forcée */}
-                {canActivate && !hasSignedEdl && (
-                  <div className="pt-2 border-t border-slate-50">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-xs text-slate-400 hover:text-slate-600"
-                      onClick={() => handleActivate(true)}
-                      disabled={isActivating}
-                    >
-                      {isActivating && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                      Activer sans EDL (non recommandé)
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            
-            {/* Remise des clés QR — affiché quand EDL signé et paiement reçu */}
-            {hasSignedEdl && hasPaidInitial && !hasKeysHandedOver && (
-              <div id="key-handover-section">
-                <KeyHandoverQRGenerator leaseId={leaseId} />
-              </div>
-            )}
-
-            {/* Carte Info Rapide */}
-            <Card className="border-none shadow-sm bg-white">
-              <CardHeader className="pb-3 border-b border-slate-50">
-                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Détails Clés
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Loyer mensuel</p>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {formatCurrency(displayLoyer + displayCharges)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatCurrency(displayLoyer)} HC + {formatCurrency(displayCharges)} charges
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-50">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Dépôt de garantie</p>
-                    <p className="text-base font-semibold text-slate-800">{formatCurrency(displayDepot)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">1er versement</p>
-                    <p className="text-base font-semibold text-emerald-600">{formatCurrency(premierVersement)}</p>
-                  </div>
-                </div>
-                
-                <div className="pt-3 border-t border-slate-50">
-                  <p className="text-xs text-muted-foreground mb-2">Locataire</p>
-                  {mainTenant ? (
-                    (() => {
-                      const tenantDisplay = resolveTenantDisplay(mainTenant);
-                      const initial1 = (tenantDisplay.prenom?.[0] || tenantDisplay.nom?.[0] || "?").toUpperCase();
-                      const initial2 = (tenantDisplay.prenom ? tenantDisplay.nom?.[0] : tenantDisplay.nom?.[1]) || "";
-                      const isUnlinked = !tenantDisplay.isLinked && !tenantDisplay.isPlaceholder;
-                      return (
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
-                              {initial1}{initial2 ? initial2.toUpperCase() : ""}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium truncate">
-                                {resolveTenantFullName(mainTenant) || "Locataire"}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                                <Badge variant="secondary" className="text-[10px] h-5">Principal</Badge>
-                                {isUnlinked ? (
-                                  <Badge variant="outline" className="text-[10px] h-5 text-blue-600 border-blue-300">
-                                    Invitation envoyée
-                                  </Badge>
-                                ) : null}
-                              </div>
-                            </div>
-                          </div>
-                          {isUnlinked && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full border-dashed"
-                              disabled={isResendingTenant}
-                              onClick={() => handleResendTenantInvite(mainTenant.id)}
-                            >
-                              {isResendingTenant ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              ) : (
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                              )}
-                              Relancer l&apos;invitation
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })()
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      <p className="text-sm italic text-muted-foreground">En attente d&apos;invitation</p>
-                      <Link
-                        href={`/owner/leases/${leaseId}/signers`}
-                        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-full border-dashed")}
-                      >
-                        <Users className="h-4 w-4 mr-2" />
-                        Inviter un locataire
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Chronologie des événements */}
-            <LeaseTimeline
-              lease={lease as any}
-              signers={(signers || []).map((s: any) => ({
-                role: s.role,
-                signed_at: s.signed_at,
-                profile: s.profile ? { prenom: s.profile.prenom, nom: s.profile.nom } : null,
-              }))}
-              edl={edl}
-              payments={(payments || []).map((p: any) => ({
-                created_at: p.created_at,
-                statut: p.statut,
-                montant: p.montant,
-              }))}
-            />
-
-            {/* Actions du bail — menu contextuel compact */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full justify-center gap-2 text-xs text-muted-foreground border-dashed">
-                  <MoreHorizontal className="h-4 w-4" />
-                  Plus d&apos;actions
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {/* SOTA 2026 — Cross-links vers Visites et Fin de bail */}
-                {property?.id && (
-                  <DropdownMenuItem asChild>
-                    <Link href={`/owner/visits?property_id=${property.id}`} className="cursor-pointer">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visites du bien
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem asChild>
-                  <Link href={`/owner/end-of-lease`} className="cursor-pointer">
-                    <CalendarClock className="h-4 w-4 mr-2" />
-                    Processus fin de bail
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {canRenew && (
-                  <DropdownMenuItem onClick={() => setShowRenewalWizard(true)} className="text-blue-600 focus:text-blue-700">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Renouveler le bail
-                  </DropdownMenuItem>
-                )}
-                {canTerminate && (
-                  <DropdownMenuItem onClick={() => setShowTerminateDialog(true)} className="text-amber-600 focus:text-amber-700">
-                    <CalendarOff className="h-4 w-4 mr-2" />
-                    Résilier le bail
-                  </DropdownMenuItem>
-                )}
-                {(canRenew || canTerminate) && <DropdownMenuSeparator />}
-                <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-500 focus:text-red-700 focus:bg-red-50">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Supprimer ce bail
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Dialogs de confirmation (restent au même niveau pour le portail) */}
-            <AlertDialog open={showTerminateDialog} onOpenChange={setShowTerminateDialog}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="text-amber-600 flex items-center gap-2">
-                    <CalendarOff className="h-5 w-5" />
-                    Résilier ce bail ?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Cette action mettra fin au bail. Le locataire sera notifié et
-                    le processus de fin de bail (EDL, restitution dépôt) sera initié.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isTerminating}>Annuler</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleTerminate}
-                    disabled={isTerminating}
-                    className="bg-amber-600 hover:bg-amber-700"
-                  >
-                    {isTerminating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Résiliation...
-                      </>
-                    ) : (
-                      "Confirmer la résiliation"
-                    )}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="text-red-600">
-                    Supprimer définitivement ?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Cette action effacera le bail, l&apos;historique des paiements et tous les documents associés.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    {isDeleting ? "Suppression..." : "Supprimer"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-          </div>
+          <LeaseDetailsSidebar
+            leaseId={leaseId}
+            lease={lease}
+            property={property}
+            signers={signers}
+            payments={payments}
+            documents={documents}
+            edl={edl}
+            mainTenant={mainTenant}
+            nextAction={nextAction}
+            hasSignedEdl={hasSignedEdl}
+            hasPaidInitial={hasPaidInitial}
+            hasKeysHandedOver={hasKeysHandedOver}
+            displayLoyer={displayLoyer}
+            displayCharges={displayCharges}
+            displayDepot={displayDepot}
+            premierVersement={premierVersement}
+            dpeStatus={dpeStatus}
+            leaseAnnexes={leaseAnnexes}
+            canActivate={canActivate}
+            canRenew={canRenew}
+            canTerminate={canTerminate}
+            isActivating={isActivating}
+            isResendingTenant={isResendingTenant}
+            onActivate={handleActivate}
+            onResendTenantInvite={handleResendTenantInvite}
+            onShowSignatureModal={() => setShowSignatureModal(true)}
+            onShowRenewalWizard={() => setShowRenewalWizard(true)}
+            showTerminateDialog={showTerminateDialog}
+            onShowTerminateDialog={setShowTerminateDialog}
+            isTerminating={isTerminating}
+            onTerminate={handleTerminate}
+            showDeleteDialog={showDeleteDialog}
+            onShowDeleteDialog={setShowDeleteDialog}
+            isDeleting={isDeleting}
+            onDelete={handleDelete}
+          />
         </div>
       </div>
 

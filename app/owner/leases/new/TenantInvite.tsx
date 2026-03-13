@@ -7,10 +7,6 @@ import {
   User,
   Shield,
   Info,
-  CreditCard,
-  Fingerprint,
-  PenTool,
-  Printer,
   FileSignature
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -71,11 +67,11 @@ export function TenantInvite({
         <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="invite" className="gap-2">
             <Mail className="h-4 w-4" />
-            Inviter par email
+            Nouveau locataire
           </TabsTrigger>
           <TabsTrigger value="manual" className="gap-2">
             <Upload className="h-4 w-4" />
-            Bail existant / Manuscrit
+            Locataire déjà en place
           </TabsTrigger>
         </TabsList>
 
@@ -144,32 +140,10 @@ export function TenantInvite({
             </div>
           </motion.div>
 
-          {/* Options de vérification d'identité */}
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
-            <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-              <Shield className="h-4 w-4 text-green-600" />
-              Vérification d'identité incluse
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
-                  <CreditCard className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Scan CNI / Passeport</p>
-                  <p className="text-xs text-muted-foreground">Photo recto de la pièce</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-                  <Fingerprint className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">France Identité</p>
-                  <p className="text-xs text-muted-foreground">App officielle + NFC</p>
-                </div>
-              </div>
-            </div>
+          {/* Vérification d'identité — compact */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground px-1">
+            <Shield className="h-4 w-4 text-green-600 shrink-0" />
+            <span>Vérification d'identité incluse (CNI/passeport ou France Identité)</span>
           </div>
         </TabsContent>
 
@@ -202,35 +176,14 @@ export function TenantInvite({
               <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg shrink-0">
                 <FileSignature className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
-              <div className="space-y-3 flex-1">
-                <div>
-                  <h4 className="font-medium text-amber-900 dark:text-amber-100">
-                    Bail existant ou à imprimer
-                  </h4>
-                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                    Idéal pour les propriétaires qui ont déjà un locataire en place ou qui préfèrent la signature papier.
-                    Le bail sera enregistré dans Talok pour le suivi des loyers, quittances et état des lieux.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
-                    <Upload className="h-4 w-4" />
-                    J'ai déjà un bail signé
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
-                    <Printer className="h-4 w-4" />
-                    Imprimer un bail pré-rempli
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
-                    <PenTool className="h-4 w-4" />
-                    Signature sur place
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
-                    <User className="h-4 w-4" />
-                    Locataire déjà en place
-                  </div>
-                </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-amber-900 dark:text-amber-100">
+                  Mode hors-ligne
+                </h4>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  Un bail sera généré et enregistré dans Talok pour le suivi (loyers, quittances, EDL),
+                  mais la signature se fera en dehors de la plateforme.
+                </p>
               </div>
             </div>
           </motion.div>

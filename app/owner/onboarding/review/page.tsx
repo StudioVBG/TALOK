@@ -199,7 +199,7 @@ export default function OwnerReviewPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <Loader2 className="h-8 w-8 animate-spin" />
           Chargement de la revue finale...
@@ -210,7 +210,7 @@ export default function OwnerReviewPage() {
 
   if (!property) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <Card className="max-w-md text-center">
           <CardHeader>
             <CardTitle>Impossible de charger le logement</CardTitle>

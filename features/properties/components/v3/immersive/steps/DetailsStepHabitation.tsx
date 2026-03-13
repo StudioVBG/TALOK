@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { usePropertyWizardStore } from "@/features/properties/stores/wizard-stor
 import {
   Euro, Ruler, Coins, ArrowUpDown, Sofa, HelpCircle,
   Flame, Droplet, Snowflake, Zap, Home, ThermometerSun,
-  Building2, FileText, Briefcase, AlertTriangle
+  Building2, FileText, Briefcase, AlertTriangle, ChevronDown
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -43,6 +43,8 @@ const GES_CLASSES = [
 
 export function DetailsStepHabitation() {
   const { formData, updateFormData } = usePropertyWizardStore();
+  const hasAdvancedData = !!(formData.dpe_classe_energie || (formData as any).chauffage_type || (formData as any).eau_chaude_type);
+  const [showAdvanced, setShowAdvanced] = useState(hasAdvancedData);
 
   const propertyType = (formData.type as string) || "";
   const showEtage = ["appartement", "studio", "colocation"].includes(propertyType);
@@ -196,14 +198,46 @@ export function DetailsStepHabitation() {
             </div>
           </div>
 
-          {/* Section 3: DPE (OBLIGATOIRE) */}
+          {/* Progressive Disclosure: DPE, Chauffage, Eau chaude, Climatisation */}
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="w-full flex items-center justify-between p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
+                <Zap className="h-4 w-4" />
+              </div>
+              <div className="text-left">
+                <span className="text-sm font-medium">Diagnostics & Énergie</span>
+                <p className="text-xs text-muted-foreground">DPE, chauffage, eau chaude, climatisation</p>
+              </div>
+              {!showAdvanced && !hasAdvancedData && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Compléter plus tard</Badge>
+              )}
+              {hasAdvancedData && !showAdvanced && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-300">Renseigné</Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${showAdvanced ? "rotate-180" : ""}`} />
+          </button>
+
+          <AnimatePresence>
+            {showAdvanced && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-4 overflow-hidden"
+              >
+          {/* Section 3: DPE */}
           <div className="bg-card p-4 rounded-xl border">
             <div className="flex items-center gap-2 mb-3">
               <div className="h-8 w-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
                 <Zap className="h-4 w-4" />
               </div>
               <Label className="text-sm font-medium">Diagnostic de Performance Énergétique (DPE)</Label>
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Obligatoire</Badge>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {/* Classe énergie */}
@@ -305,7 +339,6 @@ export function DetailsStepHabitation() {
                   <Flame className="h-4 w-4" />
                 </div>
                 <Label className="text-sm font-medium">Chauffage</Label>
-                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Obligatoire</Badge>
               </div>
               <div className="space-y-2">
                 <Select
@@ -321,17 +354,12 @@ export function DetailsStepHabitation() {
                 </Select>
                 {(formData as any).chauffage_type && (formData as any).chauffage_type !== "aucun" && (
                   <div className="space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground">Énergie</span>
-                      {!(formData as any).chauffage_energie && (
-                        <Badge variant="destructive" className="text-[9px] px-1 py-0 animate-pulse">Requis</Badge>
-                      )}
-                    </div>
+                    <span className="text-xs text-muted-foreground">Énergie</span>
                     <Select
                       value={(formData as any).chauffage_energie || ""}
                       onValueChange={(v) => updateFormData({ chauffage_energie: v as any })}
                     >
-                      <SelectTrigger className={`h-10 ${!(formData as any).chauffage_energie ? 'border-orange-400 bg-orange-50/50 dark:bg-orange-950/20' : ''}`}>
+                      <SelectTrigger className="h-10">
                         <SelectValue placeholder="Sélectionnez l'énergie..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -355,7 +383,6 @@ export function DetailsStepHabitation() {
                   <Droplet className="h-4 w-4" />
                 </div>
                 <Label className="text-sm font-medium">Eau chaude</Label>
-                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Obligatoire</Badge>
               </div>
               <Select 
                 value={(formData as any).eau_chaude_type || ""} 
@@ -409,6 +436,9 @@ export function DetailsStepHabitation() {
               </div>
             </div>
           </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Info pièces */}
           <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">

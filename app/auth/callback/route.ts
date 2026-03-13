@@ -17,8 +17,8 @@ export async function GET(request: Request) {
   // Utiliser l'origine de la requête (Vercel en production, localhost en dev)
   const origin = requestUrl.origin;
 
-  // Paramètre "next" pour redirection post-callback (ex: password recovery)
   const next = requestUrl.searchParams.get("next");
+  const redirectParam = requestUrl.searchParams.get("redirect");
 
   if (code) {
     const supabase = await createClient();
@@ -82,8 +82,11 @@ export async function GET(request: Request) {
         }
       }
 
-      // Onboarding terminé — rediriger vers le dashboard approprié
-      const dashUrl = getRoleDashboardUrl(profileData.role);
+      // Onboarding terminé — rediriger vers la page demandée ou le dashboard
+      const safeRedirect = redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+        ? redirectParam
+        : null;
+      const dashUrl = safeRedirect || getRoleDashboardUrl(profileData.role);
       return NextResponse.redirect(new URL(dashUrl, origin));
     }
   }

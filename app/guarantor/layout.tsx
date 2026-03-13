@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import { ErrorBoundary } from "@/components/error-boundary";
+import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { GuarantorSignOutButton } from "./_components/GuarantorSignOutButton";
 
@@ -49,6 +50,7 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
 
   return (
     <ErrorBoundary>
+      <CsrfTokenInjector />
       <div className="min-h-screen bg-background">
         <OfflineIndicator />
 

@@ -243,12 +243,12 @@ export class AssistantService {
       console.error("[AssistantService] Error saving assistant message:", assistantMsgError);
     }
     
-    // Mettre à jour le thread
+    // Incrémenter le compteur de messages via RPC puis mettre à jour le thread
+    await supabase.rpc("increment_message_count", { thread_id_param: threadId });
     await supabase
       .from("assistant_threads")
       .update({
         last_message: message.substring(0, 100),
-        message_count: supabase.rpc("increment_message_count", { thread_id_param: threadId }),
         updated_at: new Date().toISOString(),
       })
       .eq("id", threadId);
@@ -326,12 +326,11 @@ export class AssistantService {
       console.error("[AssistantService] Error saving assistant message:", assistantMsgError);
     }
     
-    // Mettre à jour le thread
+    await supabase.rpc("increment_message_count", { thread_id_param: threadId });
     await supabase
       .from("assistant_threads")
       .update({
         last_message: message.substring(0, 100),
-        message_count: supabase.rpc("increment_message_count", { thread_id_param: threadId }),
         updated_at: new Date().toISOString(),
       })
       .eq("id", threadId);

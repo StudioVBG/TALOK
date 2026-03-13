@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { ErrorBoundary } from "@/components/error-boundary";
+import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { AgencySidebar } from "./_components/AgencySidebar";
 
@@ -68,8 +69,8 @@ export default async function AgencyLayout({
   // 5. Rendre le layout
   return (
     <ErrorBoundary>
+      <CsrfTokenInjector />
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/30">
-        {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />
 
         <div className="flex">
