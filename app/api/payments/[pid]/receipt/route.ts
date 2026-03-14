@@ -6,6 +6,8 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextRequest, NextResponse } from "next/server";
 import { generateReceiptPDF, type ReceiptData } from "@/lib/services/receipt-generator";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
+import { getInvoiceSettlement } from "@/lib/services/invoice-status.service";
+import { resolveReceiptTotalAmount } from "@/lib/services/receipt-amount";
 import crypto from "crypto";
 
 /**
@@ -141,6 +143,14 @@ export async function GET(
       );
     }
 
+    const settlement = await getInvoiceSettlement(serviceClient as any, paymentData.invoice.id);
+    if (!settlement?.isSettled) {
+      return NextResponse.json(
+        { error: "La facture n'est pas encore totalement reglee, la quittance finale n'est pas disponible." },
+        { status: 409 }
+      );
+    }
+
     // === ÉTAPE 4: Récupérer les informations complémentaires ===
     // ✅ SOTA 2026: Utiliser resolveOwnerIdentity pour le bailleur
     const ownerIdentity = await resolveOwnerIdentity(serviceClient, {
@@ -178,7 +188,7 @@ export async function GET(
       period: paymentData.invoice.periode,
       rentAmount: Number(paymentData.invoice.montant_loyer) || 0,
       chargesAmount: Number(paymentData.invoice.montant_charges) || 0,
-      totalAmount: Number(paymentData.montant) || Number(paymentData.invoice.montant_total) || 0,
+      totalAmount: resolveReceiptTotalAmount(paymentData.invoice.montant_total, paymentData.montant),
       paymentDate: paymentData.date_paiement || new Date().toISOString().split("T")[0],
       paymentMethod: paymentData.moyen || "cb",
       invoiceId: paymentData.invoice.id,

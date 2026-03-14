@@ -1,6 +1,8 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { generateReceiptPDF, type ReceiptData } from "@/lib/services/receipt-generator";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
+import { getInvoiceSettlement } from "@/lib/services/invoice-status.service";
+import { resolveReceiptTotalAmount } from "@/lib/services/receipt-amount";
 
 type SupabaseLike = {
   from: (table: string) => {
@@ -86,6 +88,11 @@ export async function ensureReceiptDocument(
     return null;
   }
 
+  const settlement = await getInvoiceSettlement(supabase as any, paymentData.invoice.id);
+  if (!settlement?.isSettled) {
+    return null;
+  }
+
   const existingInvoiceDoc = await findDocumentByMetadata(
     supabase,
     "quittance",
@@ -127,7 +134,7 @@ export async function ensureReceiptDocument(
     period: paymentData.invoice.periode,
     rentAmount: Number(paymentData.invoice.montant_loyer) || 0,
     chargesAmount: Number(paymentData.invoice.montant_charges) || 0,
-    totalAmount: Number(paymentData.montant) || Number(paymentData.invoice.montant_total) || 0,
+    totalAmount: resolveReceiptTotalAmount(paymentData.invoice.montant_total, paymentData.montant),
     paymentDate: normalizeDate(paymentData.date_paiement),
     paymentMethod: paymentData.moyen || "cb",
     invoiceId: paymentData.invoice.id,
