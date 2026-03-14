@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
 import { sepaService } from "@/lib/stripe/sepa.service";
 import { z } from "zod";
+import type { Json } from "@/lib/supabase/database.types";
 
 const setupSepaSchema = z.object({
   lease_id: z.string().uuid(),
@@ -20,10 +21,24 @@ const setupSepaSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createRouteHandlerClient();
+    const creditorName = process.env.SEPA_CREDITOR_NAME;
+    const creditorIban = process.env.SEPA_CREDITOR_IBAN;
+    const creditorBic = process.env.SEPA_CREDITOR_BIC ?? null;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    }
+
+    if (!creditorName || !creditorIban) {
+      return NextResponse.json(
+        {
+          error:
+            "Le créancier SEPA de la plateforme n'est pas configuré. Renseignez SEPA_CREDITOR_NAME et SEPA_CREDITOR_IBAN avant d'activer le prélèvement.",
+          code: "SEPA_CREDITOR_NOT_CONFIGURED",
+        },
+        { status: 503 }
+      );
     }
 
     // Récupérer le profil
@@ -79,10 +94,10 @@ export async function POST(request: NextRequest) {
     const owner = (lease.property as any)?.owner;
     const ownerProfile = owner?.owner_profile;
 
-    if (!ownerProfile?.iban) {
+    if (!owner?.id) {
       return NextResponse.json(
-        { error: "Le propriétaire n'a pas configuré ses coordonnées bancaires" },
-        { status: 400 }
+        { error: "Le bail n'est pas correctement rattaché à un propriétaire" },
+        { status: 409 }
       );
     }
 
@@ -122,6 +137,8 @@ export async function POST(request: NextRequest) {
 
     // Créer le mandat en base de données
     const serviceClient = createServiceRoleClient();
+    const scheduleAmount = Number(lease.loyer || 0) + Number(lease.charges_forfaitaires || 0);
+
     const { data: mandate, error: mandateError } = await serviceClient
       .from("sepa_mandates")
       .insert({
@@ -131,10 +148,10 @@ export async function POST(request: NextRequest) {
         signature_date: new Date().toISOString().split("T")[0],
         debtor_name: validatedData.account_holder_name,
         debtor_iban: validatedData.iban,
-        creditor_name: ownerProfile.titulaire_compte || `${owner.prenom} ${owner.nom}`,
-        creditor_iban: ownerProfile.iban,
-        creditor_bic: ownerProfile.bic,
-        amount: lease.loyer + lease.charges_forfaitaires,
+        creditor_name: creditorName,
+        creditor_iban: creditorIban,
+        creditor_bic: creditorBic,
+        amount: scheduleAmount,
         status: confirmedIntent.status === "succeeded" ? "active" : "pending",
         signed_at: new Date().toISOString(),
         signature_method: "electronic",
@@ -142,6 +159,11 @@ export async function POST(request: NextRequest) {
         stripe_payment_method_id: confirmedIntent.payment_method,
         stripe_customer_id: customer.id,
         first_collection_date: getNextCollectionDate(validatedData.collection_day),
+        metadata: {
+          creditor_source: "platform",
+          owner_profile_id: owner.id,
+          owner_billing_name: ownerProfile?.titulaire_compte || `${owner.prenom} ${owner.nom}`,
+        } as Json,
       })
       .select()
       .single();
@@ -151,25 +173,68 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: mandateError.message }, { status: 500 });
     }
 
+    const { data: paymentMethod } = await serviceClient
+      .from("tenant_payment_methods")
+      .upsert(
+        {
+          tenant_profile_id: profile.id,
+          stripe_customer_id: customer.id,
+          stripe_payment_method_id: confirmedIntent.payment_method,
+          type: "sepa_debit",
+          is_default: false,
+          label: `SEPA •••• ${validatedData.iban.slice(-4)}`,
+          sepa_last4: validatedData.iban.slice(-4),
+          sepa_country: validatedData.iban.slice(0, 2),
+          sepa_mandate_id: mandate.id,
+          status: "active",
+          metadata: {
+            lease_id: validatedData.lease_id,
+            source: "sepa_setup",
+          } as Json,
+        },
+        { onConflict: "stripe_payment_method_id" }
+      )
+      .select("id")
+      .single();
+
     // Créer l'échéancier de paiement
     await serviceClient
       .from("payment_schedules")
       .upsert({
         lease_id: validatedData.lease_id,
-        payment_method: "sepa",
+        payment_method_type: "sepa",
         mandate_id: mandate.id,
+        payment_method_id: paymentMethod?.id ?? null,
         collection_day: validatedData.collection_day,
         rent_amount: lease.loyer,
         charges_amount: lease.charges_forfaitaires,
         is_active: true,
         start_date: mandate.first_collection_date,
+        metadata: {
+          source: "sepa_setup",
+          stripe_payment_method_id: confirmedIntent.payment_method,
+        } as Json,
       }, {
         onConflict: "lease_id",
       });
 
+    await serviceClient.from("payment_method_audit_log").insert({
+      tenant_profile_id: profile.id,
+      payment_method_id: paymentMethod?.id ?? null,
+      action: "mandate_created",
+      details: {
+        lease_id: validatedData.lease_id,
+        mandate_id: mandate.id,
+        collection_day: validatedData.collection_day,
+      } as Json,
+      ip_address: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      user_agent: request.headers.get("user-agent") ?? null,
+    });
+
     return NextResponse.json({
       success: true,
       mandate_id: mandate.id,
+      payment_method_id: paymentMethod?.id ?? null,
       mandate_reference: mandate.mandate_reference,
       status: mandate.status,
       first_collection_date: mandate.first_collection_date,

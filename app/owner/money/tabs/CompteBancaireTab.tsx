@@ -32,7 +32,9 @@ import {
   useStripeConnectStatus,
   useStripeConnectBalance,
   useStripeTransfers,
+  useStripePayouts,
   type StripeTransfer,
+  type StripePayout,
 } from "@/lib/hooks/use-stripe-connect";
 
 const TRANSFER_STATUS: Record<string, { label: string; icon: React.ReactNode; classes: string }> = {
@@ -42,6 +44,8 @@ const TRANSFER_STATUS: Record<string, { label: string; icon: React.ReactNode; cl
   canceled: { label: "Annulé", icon: <Ban className="h-3 w-3" />, classes: "bg-slate-500/20 text-slate-600 border-slate-500/30" },
   reversed: { label: "Reversé", icon: <RotateCcw className="h-3 w-3" />, classes: "bg-orange-500/20 text-orange-600 border-orange-500/30" },
 };
+
+const PAYOUT_STATUS = TRANSFER_STATUS;
 
 function formatEur(cents: number): string {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -85,6 +89,13 @@ export function CompteBancaireTab() {
     error: transfersErrorValue,
     refetch: refetchTransfers,
   } = useStripeTransfers(isReady);
+  const {
+    data: payouts,
+    isLoading: payoutsLoading,
+    isError: payoutsError,
+    error: payoutsErrorValue,
+    refetch: refetchPayouts,
+  } = useStripePayouts(isReady);
 
   useEffect(() => {
     const success = searchParams.get("success");
@@ -111,13 +122,14 @@ export function CompteBancaireTab() {
     refetchStatus();
     void refetchBalance();
     void refetchTransfers();
+    void refetchPayouts();
 
     const params = new URLSearchParams(searchParams.toString());
     params.delete("success");
     params.delete("refresh");
     const query = params.toString();
     router.replace(query ? `/owner/money?${query}` : "/owner/money");
-  }, [refetchBalance, refetchStatus, refetchTransfers, router, searchParams, toast]);
+  }, [refetchBalance, refetchPayouts, refetchStatus, refetchTransfers, router, searchParams, toast]);
 
   const startConnectOnboarding = async () => {
     setConnectLoading(true);
@@ -378,88 +390,174 @@ export function CompteBancaireTab() {
 
       {/* Historique des versements */}
       {isReady && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ArrowDownToLine className="h-5 w-5 text-violet-600" /> Historique des versements
-            </CardTitle>
-            <CardDescription>
-              Versements reçus sur votre compte bancaire
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {transfersLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-xl" />
-                ))}
-              </div>
-            ) : transfersError ? (
-              <div className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
-                <p className="font-medium text-destructive">Impossible de charger l&apos;historique des versements</p>
-                <p className="text-sm text-muted-foreground">
-                  {transfersErrorValue instanceof Error
-                    ? transfersErrorValue.message
-                    : "Une erreur inattendue est survenue."}
-                </p>
-                <Button variant="outline" onClick={() => refetchTransfers()} className="gap-2">
-                  <RotateCcw className="h-4 w-4" /> Réessayer
-                </Button>
-              </div>
-            ) : !transfers || transfers.length === 0 ? (
-              <EmptyState
-                icon={ArrowDownToLine}
-                title="Aucun versement"
-                description="Les versements apparaîtront ici une fois que vos locataires auront effectué des paiements."
-              />
-            ) : (
-              <div className="space-y-2">
-                {transfers.map((transfer: StripeTransfer, i: number) => {
-                  const statusInfo = TRANSFER_STATUS[transfer.status] ?? TRANSFER_STATUS.pending;
-                  return (
-                    <motion.div
-                      key={transfer.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">
-                            {formatEur(transfer.amount)}
-                          </span>
-                          <Badge className={cn("gap-1 text-xs", statusInfo.classes)}>
-                            {statusInfo.icon} {statusInfo.label}
-                          </Badge>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ArrowDownToLine className="h-5 w-5 text-violet-600" /> Transferts Connect
+              </CardTitle>
+              <CardDescription>
+                Transferts internes crees depuis les paiements locataires vers votre compte Stripe Connect.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {transfersLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : transfersError ? (
+                <div className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+                  <p className="font-medium text-destructive">Impossible de charger les transferts Connect</p>
+                  <p className="text-sm text-muted-foreground">
+                    {transfersErrorValue instanceof Error
+                      ? transfersErrorValue.message
+                      : "Une erreur inattendue est survenue."}
+                  </p>
+                  <Button variant="outline" onClick={() => refetchTransfers()} className="gap-2">
+                    <RotateCcw className="h-4 w-4" /> Réessayer
+                  </Button>
+                </div>
+              ) : !transfers || transfers.length === 0 ? (
+                <EmptyState
+                  icon={ArrowDownToLine}
+                  title="Aucun transfert"
+                  description="Les transferts apparaîtront ici une fois que vos locataires auront effectué des paiements."
+                />
+              ) : (
+                <div className="space-y-2">
+                  {transfers.map((transfer: StripeTransfer, i: number) => {
+                    const statusInfo = TRANSFER_STATUS[transfer.status] ?? TRANSFER_STATUS.pending;
+                    return (
+                      <motion.div
+                        key={transfer.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">
+                              {formatEur(transfer.amount)}
+                            </span>
+                            <Badge className={cn("gap-1 text-xs", statusInfo.classes)}>
+                              {statusInfo.icon} {statusInfo.label}
+                            </Badge>
+                          </div>
+                          {transfer.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                              {transfer.description}
+                            </p>
+                          )}
                         </div>
-                        {transfer.description && (
+                        <div className="text-right shrink-0">
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(transfer.created_at).toLocaleDateString("fr-FR", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </p>
+                          {transfer.net_amount != null && transfer.net_amount !== transfer.amount && (
+                            <p className="text-xs text-muted-foreground">
+                              Net : {formatEur(transfer.net_amount)}
+                            </p>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-emerald-600" /> Payouts bancaires
+              </CardTitle>
+              <CardDescription>
+                Virements bancaires reels emis par Stripe depuis votre solde Connect vers votre banque.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {payoutsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : payoutsError ? (
+                <div className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+                  <p className="font-medium text-destructive">Impossible de charger les payouts bancaires</p>
+                  <p className="text-sm text-muted-foreground">
+                    {payoutsErrorValue instanceof Error
+                      ? payoutsErrorValue.message
+                      : "Une erreur inattendue est survenue."}
+                  </p>
+                  <Button variant="outline" onClick={() => refetchPayouts()} className="gap-2">
+                    <RotateCcw className="h-4 w-4" /> Réessayer
+                  </Button>
+                </div>
+              ) : !payouts || payouts.length === 0 ? (
+                <EmptyState
+                  icon={Wallet}
+                  title="Aucun payout"
+                  description="Les virements bancaires réels apparaîtront ici dès que Stripe déclenchera un payout."
+                />
+              ) : (
+                <div className="space-y-2">
+                  {payouts.map((payout: StripePayout, i: number) => {
+                    const statusInfo = PAYOUT_STATUS[payout.status] ?? PAYOUT_STATUS.pending;
+                    return (
+                      <motion.div
+                        key={payout.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{formatEur(payout.amount)}</span>
+                            <Badge className={cn("gap-1 text-xs", statusInfo.classes)}>
+                              {statusInfo.icon} {statusInfo.label}
+                            </Badge>
+                          </div>
                           <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                            {transfer.description}
+                            {payout.arrival_date
+                              ? `Arrivee estimee le ${new Date(payout.arrival_date).toLocaleDateString("fr-FR")}`
+                              : "Date de virement en attente"}
                           </p>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(transfer.created_at).toLocaleDateString("fr-FR", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </p>
-                        {transfer.net_amount != null && transfer.net_amount !== transfer.amount && (
-                          <p className="text-xs text-muted-foreground">
-                            Net : {formatEur(transfer.net_amount)}
+                          {payout.failure_message ? (
+                            <p className="text-xs text-destructive mt-1 truncate">{payout.failure_message}</p>
+                          ) : null}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(payout.created_at).toLocaleDateString("fr-FR", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
                           </p>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                          {payout.paid_at ? (
+                            <p className="text-xs text-muted-foreground">
+                              Paye le {new Date(payout.paid_at).toLocaleDateString("fr-FR")}
+                            </p>
+                          ) : null}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

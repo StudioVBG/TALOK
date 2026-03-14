@@ -307,6 +307,8 @@ function MoyensPaiementTab() {
                       </div>
                       <PaymentMethodSetup
                         setupIntentEndpoint="/api/owner/payment-methods/setup-intent"
+                        allowedTypes={["card"]}
+                        returnUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/owner/money?tab=forfait&setup=success`}
                         onSuccess={handleNewCardSuccess}
                         onCancel={() => setShowAddCard(false)}
                       />

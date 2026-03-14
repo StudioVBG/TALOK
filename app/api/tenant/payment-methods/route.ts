@@ -144,6 +144,18 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (existingPm) {
+      if (payload.is_default) {
+        await supabase
+          .from("tenant_payment_methods")
+          .update({ is_default: false })
+          .eq("tenant_profile_id", profile.id)
+          .eq("status", "active");
+
+        await supabase
+          .from("tenant_payment_methods")
+          .update({ is_default: true })
+          .eq("id", existingPm.id);
+      }
       return NextResponse.json({ method: existingPm }, { status: 200 });
     }
 
@@ -155,6 +167,14 @@ export async function POST(request: NextRequest) {
       .eq("status", "active");
 
     const isFirst = (count ?? 0) === 0;
+
+    if (isFirst || payload.is_default) {
+      await supabase
+        .from("tenant_payment_methods")
+        .update({ is_default: false })
+        .eq("tenant_profile_id", profile.id)
+        .eq("status", "active");
+    }
 
     const { data: method, error } = await supabase
       .from("tenant_payment_methods")
@@ -227,6 +247,13 @@ export async function PATCH(request: NextRequest) {
     if (!data) throw new ApiError(404, "Moyen de paiement non trouvé");
 
     if (payload.is_default) {
+      await supabase
+        .from("tenant_payment_methods")
+        .update({ is_default: false })
+        .eq("tenant_profile_id", profile.id)
+        .eq("status", "active")
+        .neq("id", payload.id);
+
       await supabase.from("payment_method_audit_log").insert({
         tenant_profile_id: profile.id,
         payment_method_id: payload.id,

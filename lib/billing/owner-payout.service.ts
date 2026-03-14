@@ -13,6 +13,7 @@ type ReconcileOwnerTransferParams = {
   paymentId: string;
   invoiceId: string;
   paymentIntentId?: string | null;
+  sourceTransactionId?: string | null;
   amountCents: number;
   paymentMethod: string;
 };
@@ -98,7 +99,9 @@ export async function reconcileOwnerTransfer(
     destinationAccountId: readyAccount.stripe_account_id,
     currency: "eur",
     description: `Reversement loyer ${params.invoiceId}`,
+    sourceTransaction: params.sourceTransactionId || undefined,
     transferGroup: `invoice_${params.invoiceId}`,
+    idempotencyKey: `owner-transfer:${params.paymentId}`,
     metadata: {
       invoice_id: params.invoiceId,
       payment_id: params.paymentId,
@@ -117,6 +120,7 @@ export async function reconcileOwnerTransfer(
     invoice_id: params.invoiceId,
     stripe_transfer_id: transfer.id,
     stripe_payment_intent_id: params.paymentIntentId || null,
+    stripe_source_transaction_id: params.sourceTransactionId || null,
     amount: params.amountCents,
     currency: "eur",
     platform_fee: fees.feeAmount,

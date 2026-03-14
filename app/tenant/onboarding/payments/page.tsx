@@ -59,11 +59,20 @@ export default function TenantPaymentsPage() {
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
-    // Si on a choisi un mode automatique mais qu'on n'a pas enregistré de moyen Stripe
-    if (["sepa_sdd", "carte_wallet"].includes(formData.moyen_encaissement) && !paymentMethodId) {
+    // En onboarding, seule la carte peut etre configuree immediatement.
+    if (formData.moyen_encaissement === "carte_wallet" && !paymentMethodId) {
       toast({
         title: "Action requise",
         description: "Veuillez configurer votre moyen de paiement sécurisé ci-dessous.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.moyen_encaissement === "sepa_sdd" && !formData.sepa_mandat_accepte) {
+      toast({
+        title: "Mandat requis",
+        description: "Confirmez votre accord de prélèvement SEPA pour continuer.",
         variant: "destructive",
       });
       return;
@@ -102,7 +111,7 @@ export default function TenantPaymentsPage() {
     }
   };
 
-  const isAutomatic = ["sepa_sdd", "carte_wallet"].includes(formData.moyen_encaissement);
+  const requiresCardSetup = formData.moyen_encaissement === "carte_wallet";
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-muted to-muted">
@@ -148,7 +157,7 @@ export default function TenantPaymentsPage() {
               </div>
 
               {/* Zone Stripe Elements */}
-              {isAutomatic && (
+              {requiresCardSetup && (
                 <div className={cn(
                   "p-6 border-2 rounded-2xl transition-all duration-300",
                   paymentMethodId ? "border-emerald-100 bg-emerald-50/30" : "border-blue-100 bg-blue-50/10"
@@ -178,6 +187,8 @@ export default function TenantPaymentsPage() {
                         <span className="text-sm font-semibold text-blue-900">Configuration sécurisée Stripe</span>
                       </div>
                       <PaymentMethodSetup
+                        allowedTypes={["card"]}
+                        returnUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/tenant/onboarding/payments?success=true`}
                         onSuccess={async (id) => {
                           try {
                             await addPaymentMethodMutation.mutateAsync({
@@ -197,6 +208,15 @@ export default function TenantPaymentsPage() {
                       />
                     </div>
                   )}
+                </div>
+              )}
+
+              {formData.moyen_encaissement === "sepa_sdd" && (
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-5 text-sm text-indigo-900">
+                  <p className="font-semibold">Le mandat SEPA sera finalisé après le rattachement du bail.</p>
+                  <p className="mt-1 text-indigo-700">
+                    Pendant l&apos;onboarding, nous enregistrons seulement votre préférence. Le prélèvement réel sera configuré depuis votre espace locataire une fois le bail disponible.
+                  </p>
                 </div>
               )}
 
@@ -268,7 +288,7 @@ export default function TenantPaymentsPage() {
             <Button 
               onClick={() => handleSubmit()} 
               className="w-full h-12 text-lg font-semibold bg-foreground hover:bg-foreground/90 shadow-lg" 
-              disabled={loading || (isAutomatic && !paymentMethodId)}
+              disabled={loading || (requiresCardSetup && !paymentMethodId)}
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

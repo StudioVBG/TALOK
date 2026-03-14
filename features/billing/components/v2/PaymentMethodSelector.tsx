@@ -138,11 +138,7 @@ export function PaymentMethodSelector({
               <button
                 type="button"
                 onClick={() => {
-                  const original = methods.find((m) => m.id === method.id);
-                  if (original) {
-                    // We need the stripe PM id — fetch from the full data
-                    onSelect("", method.id);
-                  }
+                  onSelect(method.stripePaymentMethodId, method.id);
                 }}
                 className={cn(
                   "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left group",

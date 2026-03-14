@@ -317,6 +317,8 @@ export function OwnerPaymentSettingsClient({ profileId }: Props) {
                           </div>
                           <PaymentMethodSetup
                             setupIntentEndpoint="/api/owner/payment-methods/setup-intent"
+                            allowedTypes={["card"]}
+                            returnUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/owner/settings/payments?setup=success`}
                             onSuccess={handleNewCardSuccess}
                             onCancel={() => setShowAddCard(false)}
                           />

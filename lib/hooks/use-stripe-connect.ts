@@ -38,11 +38,25 @@ export interface StripeTransfer {
   invoice_id: string | null;
 }
 
+export interface StripePayout {
+  id: string;
+  stripe_payout_id: string;
+  amount: number;
+  currency: string;
+  status: "pending" | "paid" | "failed" | "canceled" | "in_transit";
+  arrival_date: string | null;
+  paid_at: string | null;
+  failure_code: string | null;
+  failure_message: string | null;
+  created_at: string;
+}
+
 // ── Hooks ──
 
 const CONNECT_STATUS_KEY = "stripe-connect-status";
 const CONNECT_BALANCE_KEY = "stripe-connect-balance";
 const CONNECT_TRANSFERS_KEY = "stripe-connect-transfers";
+const CONNECT_PAYOUTS_KEY = "stripe-connect-payouts";
 
 export function useStripeConnectStatus() {
   const { profile } = useAuth();
@@ -90,6 +104,24 @@ export function useStripeTransfers(enabled = true) {
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error ?? "Erreur chargement transferts");
+      }
+      return data;
+    },
+    enabled: !!profile?.id && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useStripePayouts(enabled = true) {
+  const { profile } = useAuth();
+
+  return useQuery<StripePayout[]>({
+    queryKey: [CONNECT_PAYOUTS_KEY, profile?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe/connect/payouts");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Erreur chargement versements");
       }
       return data;
     },

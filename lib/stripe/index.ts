@@ -16,14 +16,7 @@ function getStripe(): Stripe {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   
   if (!secretKey) {
-    console.warn("⚠️ STRIPE_SECRET_KEY n'est pas configurée. Les paiements ne fonctionneront pas.");
-    // Retourner un client "dummy" pour le build
-    // En production, les appels échoueront avec une erreur claire
-    _stripe = new Stripe("sk_test_placeholder", {
-      apiVersion: "2024-11-20.acacia" as any,
-      typescript: true,
-    });
-    return _stripe;
+    throw new Error("STRIPE_SECRET_KEY n'est pas configurée");
   }
 
   _stripe = new Stripe(secretKey, {
@@ -40,6 +33,10 @@ export const stripe = new Proxy({} as Stripe, {
     return (getStripe() as any)[prop];
   }
 });
+
+export function isStripeServerConfigured(): boolean {
+  return Boolean(process.env.STRIPE_SECRET_KEY);
+}
 
 // Types pour les métadonnées
 export interface PaymentMetadata {

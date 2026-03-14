@@ -102,6 +102,7 @@ export interface AddPaymentMethodPayload {
 
 export interface PaymentMethodDisplay {
   id: string;
+  stripePaymentMethodId: string;
   type: PaymentMethodType;
   is_default: boolean;
   label: string;
@@ -152,6 +153,7 @@ export function toPaymentMethodDisplay(pm: TenantPaymentMethod): PaymentMethodDi
 
   return {
     id: pm.id,
+    stripePaymentMethodId: pm.stripe_payment_method_id,
     type: pm.type,
     is_default: pm.is_default,
     label: pm.label || displayName,

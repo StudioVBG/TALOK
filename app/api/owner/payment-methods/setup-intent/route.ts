@@ -7,13 +7,25 @@ export const runtime = "nodejs";
  * Utilisé par la page Moyens de paiement propriétaire pour ajouter une carte in-app.
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { stripe } from "@/lib/stripe";
+import { stripe, isStripeServerConfigured } from "@/lib/stripe";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 
-export async function POST() {
+function parsePaymentMethodTypes(input: unknown): Array<"card" | "sepa_debit"> {
+  const body = (input ?? {}) as { payment_method_types?: unknown };
+  const requested = Array.isArray(body.payment_method_types)
+    ? body.payment_method_types.filter((value): value is "card" | "sepa_debit" => value === "card" || value === "sepa_debit")
+    : (["card"] as Array<"card" | "sepa_debit">);
+  return requested.length > 0 ? requested : (["card"] as Array<"card" | "sepa_debit">);
+}
+
+export async function POST(request: NextRequest) {
   try {
+    if (!isStripeServerConfigured()) {
+      throw new ApiError(503, "Stripe n'est pas configuré", "STRIPE_CONFIG_ERROR");
+    }
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -61,9 +73,12 @@ export async function POST() {
         );
     }
 
+    const body = await request.json().catch(() => ({}));
+    const paymentMethodTypes = parsePaymentMethodTypes(body);
+
     const setupIntent = await stripe.setupIntents.create({
       customer: stripeCustomerId,
-      payment_method_types: ["card", "sepa_debit"],
+      payment_method_types: paymentMethodTypes,
       metadata: { profile_id: profile.id, user_id: user.id, context: "owner_subscription" },
     });
 

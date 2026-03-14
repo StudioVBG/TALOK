@@ -242,16 +242,22 @@ export async function createTransfer(params: {
   sourceTransaction?: string; // ID du payment_intent/charge source
   transferGroup?: string;
   metadata?: Record<string, string>;
+  idempotencyKey?: string;
 }): Promise<Transfer> {
-  return stripeRequest<Transfer>("/transfers", "POST", {
-    amount: params.amount,
-    currency: params.currency || "eur",
-    destination: params.destinationAccountId,
-    description: params.description,
-    source_transaction: params.sourceTransaction,
-    transfer_group: params.transferGroup,
-    metadata: params.metadata,
-  });
+  return stripeRequest<Transfer>(
+    "/transfers",
+    "POST",
+    {
+      amount: params.amount,
+      currency: params.currency || "eur",
+      destination: params.destinationAccountId,
+      description: params.description,
+      source_transaction: params.sourceTransaction,
+      transfer_group: params.transferGroup,
+      metadata: params.metadata,
+    },
+    { idempotencyKey: params.idempotencyKey }
+  );
 }
 
 /**

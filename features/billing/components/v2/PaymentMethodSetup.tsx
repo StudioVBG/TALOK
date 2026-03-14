@@ -67,6 +67,8 @@ interface PaymentMethodSetupProps {
   allowedTypes?: ("card" | "sepa_debit")[];
   /** Endpoint pour créer le SetupIntent (défaut: /api/payments/setup-intent). Utiliser /api/owner/payment-methods/setup-intent pour le propriétaire. */
   setupIntentEndpoint?: string;
+  /** URL de retour si Stripe doit rediriger l'utilisateur. */
+  returnUrl?: string;
 }
 
 /**
@@ -105,7 +107,7 @@ function PaymentFormSkeleton() {
   );
 }
 
-function SetupForm({ onSuccess, onCancel }: PaymentMethodSetupProps) {
+function SetupForm({ onSuccess, onCancel, returnUrl }: PaymentMethodSetupProps) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -125,7 +127,7 @@ function SetupForm({ onSuccess, onCancel }: PaymentMethodSetupProps) {
       const { error, setupIntent } = await stripe.confirmSetup({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/tenant/onboarding/payments?success=true`,
+          return_url: returnUrl ?? `${window.location.origin}/tenant/settings/payments?setup=success`,
         },
         redirect: "if_required",
       });
@@ -222,7 +224,10 @@ function SetupForm({ onSuccess, onCancel }: PaymentMethodSetupProps) {
 }
 
 export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
-  const { setupIntentEndpoint = "/api/payments/setup-intent" } = props;
+  const {
+    allowedTypes = ["card"],
+    setupIntentEndpoint = "/api/payments/setup-intent",
+  } = props;
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -238,6 +243,7 @@ export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
       const response = await fetch(setupIntentEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payment_method_types: allowedTypes }),
       });
 
       if (!response.ok) {
@@ -272,7 +278,7 @@ export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [retryCount, setupIntentEndpoint]);
+  }, [allowedTypes, retryCount, setupIntentEndpoint]);
 
   useEffect(() => {
     initSetup();

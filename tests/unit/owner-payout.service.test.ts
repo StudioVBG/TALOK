@@ -4,9 +4,13 @@ import {
   reconcileOwnerTransfer,
 } from "@/lib/billing/owner-payout.service";
 
+const { createTransferMock } = vi.hoisted(() => ({
+  createTransferMock: vi.fn().mockResolvedValue({ id: "tr_123" }),
+}));
+
 vi.mock("@/lib/stripe/connect.service", () => ({
   connectService: {
-    createTransfer: vi.fn().mockResolvedValue({ id: "tr_123" }),
+    createTransfer: createTransferMock,
   },
 }));
 
@@ -89,6 +93,7 @@ describe("owner-payout.service", () => {
       paymentId: "payment_1",
       invoiceId: "invoice_1",
       paymentIntentId: "pi_123",
+      sourceTransactionId: "ch_123",
       amountCents: 100000,
       paymentMethod: "card",
     });
@@ -101,5 +106,12 @@ describe("owner-payout.service", () => {
     expect(mock.inserts[0].table).toBe("stripe_transfers");
     expect(mock.inserts[0].values.net_amount).toBeGreaterThan(0);
     expect(mock.inserts[0].values.platform_fee).toBeGreaterThan(0);
+    expect(mock.inserts[0].values.stripe_source_transaction_id).toBe("ch_123");
+    expect(createTransferMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceTransaction: "ch_123",
+        idempotencyKey: "owner-transfer:payment_1",
+      })
+    );
   });
 });

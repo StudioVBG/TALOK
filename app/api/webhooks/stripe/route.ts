@@ -42,6 +42,201 @@ async function processReceiptGeneration(supabase: any, _invoiceId: string, payme
   }
 }
 
+function getCanonicalAppUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") || null;
+}
+
+async function resolveSourceTransactionId(stripe: Stripe, paymentIntentId?: string | null) {
+  if (!paymentIntentId) {
+    return null;
+  }
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["latest_charge"],
+    });
+
+    const latestCharge = paymentIntent.latest_charge;
+    if (!latestCharge) {
+      return null;
+    }
+
+    return typeof latestCharge === "string" ? latestCharge : latestCharge.id;
+  } catch (error) {
+    console.error("[Stripe Webhook] Unable to resolve source transaction:", error);
+    return null;
+  }
+}
+
+async function syncSubscriptionStateFromStripeSubscription(
+  supabase: any,
+  subscription: Stripe.Subscription,
+  fallbackOwnerId?: string | null
+) {
+  const stripeSubscriptionId = subscription.id;
+  const stripeCustomerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id;
+
+  const baseUpdate = {
+    stripe_subscription_id: stripeSubscriptionId,
+    stripe_customer_id: stripeCustomerId || null,
+    status: subscription.status as any,
+    current_period_start: (subscription as any).current_period_start
+      ? new Date((subscription as any).current_period_start * 1000).toISOString()
+      : null,
+    current_period_end: (subscription as any).current_period_end
+      ? new Date((subscription as any).current_period_end * 1000).toISOString()
+      : null,
+    cancel_at_period_end: subscription.cancel_at_period_end,
+  };
+
+  let query = supabase
+    .from("subscriptions")
+    .update(baseUpdate)
+    .eq("stripe_subscription_id", stripeSubscriptionId);
+
+  const { data: updatedRows, error: updateError } = await query.select("id");
+  if (!updateError && (updatedRows?.length ?? 0) > 0) {
+    return;
+  }
+
+  if (stripeCustomerId) {
+    const { data: fallbackRows, error: fallbackError } = await supabase
+      .from("subscriptions")
+      .update(baseUpdate)
+      .eq("stripe_customer_id", stripeCustomerId)
+      .select("id");
+
+    if (!fallbackError && (fallbackRows?.length ?? 0) > 0) {
+      return;
+    }
+  }
+
+  const ownerId = fallbackOwnerId || subscription.metadata?.profile_id || null;
+  if (!ownerId) {
+    return;
+  }
+
+  await supabase.from("subscriptions").upsert(
+    {
+      owner_id: ownerId,
+      stripe_subscription_id: stripeSubscriptionId,
+      stripe_customer_id: stripeCustomerId || null,
+      status: subscription.status,
+      current_period_start: baseUpdate.current_period_start,
+      current_period_end: baseUpdate.current_period_end,
+      cancel_at_period_end: subscription.cancel_at_period_end,
+      billing_cycle: subscription.metadata?.billing_cycle || null,
+      plan_slug: subscription.metadata?.plan_slug || null,
+    },
+    { onConflict: "owner_id" }
+  );
+}
+
+async function syncSubscriptionFromCheckoutSession(
+  supabase: any,
+  stripe: Stripe,
+  session: Stripe.Checkout.Session
+) {
+  if (session.mode !== "subscription") {
+    return;
+  }
+
+  const ownerId = session.metadata?.profile_id || null;
+  const stripeSubscriptionId =
+    typeof session.subscription === "string" ? session.subscription : session.subscription?.id || null;
+  const stripeCustomerId =
+    typeof session.customer === "string" ? session.customer : session.customer?.id || null;
+
+  if (!ownerId && !stripeCustomerId) {
+    return;
+  }
+
+  const checkoutUpdate = {
+    stripe_customer_id: stripeCustomerId,
+    stripe_subscription_id: stripeSubscriptionId,
+    status: session.payment_status === "paid" ? "active" : "incomplete",
+    billing_cycle: session.metadata?.billing_cycle || null,
+    plan_slug: session.metadata?.plan_slug || null,
+  };
+
+  if (ownerId) {
+    await supabase.from("subscriptions").upsert(
+      {
+        owner_id: ownerId,
+        ...checkoutUpdate,
+      },
+      { onConflict: "owner_id" }
+    );
+  } else if (stripeCustomerId) {
+    await supabase
+      .from("subscriptions")
+      .update(checkoutUpdate)
+      .eq("stripe_customer_id", stripeCustomerId);
+  }
+
+  if (stripeSubscriptionId) {
+    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    await syncSubscriptionStateFromStripeSubscription(supabase, subscription, ownerId);
+  }
+}
+
+async function upsertStripePayout(
+  supabase: any,
+  stripeAccountId: string | null | undefined,
+  payout: Stripe.Payout,
+  statusOverride?: "pending" | "paid" | "failed" | "canceled" | "in_transit"
+) {
+  if (!stripeAccountId) {
+    return;
+  }
+
+  const { data: connectAccount } = await supabase
+    .from("stripe_connect_accounts")
+    .select("id")
+    .eq("stripe_account_id", stripeAccountId)
+    .maybeSingle();
+
+  const connectAccountId = (connectAccount as { id?: string } | null)?.id;
+  if (!connectAccountId) {
+    return;
+  }
+
+  const status =
+    statusOverride ??
+    (payout.status === "paid"
+      ? "paid"
+      : payout.status === "failed"
+        ? "failed"
+        : payout.status === "canceled"
+          ? "canceled"
+          : payout.status === "in_transit"
+            ? "in_transit"
+            : "pending");
+
+  await supabase.from("stripe_payouts").upsert(
+    {
+      connect_account_id: connectAccountId,
+      stripe_payout_id: payout.id,
+      stripe_balance_transaction_id:
+        typeof payout.balance_transaction === "string"
+          ? payout.balance_transaction
+          : payout.balance_transaction?.id || null,
+      amount: payout.amount,
+      currency: payout.currency,
+      status,
+      arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
+      paid_at:
+        status === "paid"
+          ? new Date().toISOString()
+          : null,
+      failure_code: payout.failure_code || null,
+      failure_message: payout.failure_message || null,
+      metadata: payout.metadata || {},
+    },
+    { onConflict: "stripe_payout_id" }
+  );
+}
+
 /**
  * ✅ SOTA 2026: Émettre un événement Payment.Succeeded dans l'outbox
  * pour les notifications et la traçabilité
@@ -195,6 +390,7 @@ export async function POST(request: NextRequest) {
       // ===============================================
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        await syncSubscriptionFromCheckoutSession(supabase, stripe, session);
         
         // Récupérer les métadonnées
         const invoiceId = session.metadata?.invoice_id;
@@ -261,6 +457,7 @@ export async function POST(request: NextRequest) {
           const settlement = await syncInvoiceStatusFromPayments(supabase as any, invoiceId, paidAt);
 
           if (paymentId) {
+            const sourceTransactionId = await resolveSourceTransactionId(stripe, providerRef);
             const receiptGenerated = !!settlement?.isSettled;
             if (settlement?.isSettled) {
               await processReceiptGeneration(
@@ -279,6 +476,7 @@ export async function POST(request: NextRequest) {
               paymentId,
               invoiceId,
               paymentIntentId: providerRef,
+              sourceTransactionId,
               amountCents: session.amount_total || 0,
               paymentMethod: session.payment_method_types?.[0] || "card",
             });
@@ -395,6 +593,7 @@ export async function POST(request: NextRequest) {
 
           console.log(`[Stripe Webhook] Payment intent ${paymentIntent.id} processed`);
           if (paymentId) {
+            const sourceTransactionId = await resolveSourceTransactionId(stripe, paymentIntent.id);
             const receiptGenerated = !!settlement?.isSettled;
             if (settlement?.isSettled) {
               await processReceiptGeneration(
@@ -413,6 +612,7 @@ export async function POST(request: NextRequest) {
               paymentId,
               invoiceId,
               paymentIntentId: paymentIntent.id,
+              sourceTransactionId,
               amountCents: paymentIntent.amount,
               paymentMethod: paymentIntent.payment_method_types?.[0] || "card",
             });
@@ -456,6 +656,13 @@ export async function POST(request: NextRequest) {
       case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
+        const stripeInvoice = invoice as Stripe.Invoice & {
+          subscription?: string | Stripe.Subscription | null;
+        };
+        const stripeSubscriptionId =
+          typeof stripeInvoice.subscription === "string"
+            ? stripeInvoice.subscription
+            : stripeInvoice.subscription?.id || null;
 
         // Trouver l'abonnement lié
         const { data: subscription } = await supabase
@@ -470,6 +677,7 @@ export async function POST(request: NextRequest) {
             .from("subscriptions")
             .update({
               status: "active",
+              stripe_subscription_id: stripeSubscriptionId,
               current_period_start: invoice.period_start
                 ? new Date(invoice.period_start * 1000).toISOString()
                 : undefined,
@@ -504,23 +712,12 @@ export async function POST(request: NextRequest) {
       // ===============================================
       // MISE À JOUR D'ABONNEMENT
       // ===============================================
+      case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        
-        // Mettre à jour en base
-        const { error } = await supabase
-          .from("subscriptions")
-          .update({
-            status: subscription.status as any,
-            current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-            current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-            cancel_at_period_end: subscription.cancel_at_period_end,
-          })
-          .eq("stripe_subscription_id", subscription.id);
 
-        if (!error) {
-          console.log(`[Stripe Webhook] Subscription updated: ${subscription.id}`);
-        }
+        await syncSubscriptionStateFromStripeSubscription(supabase, subscription);
+        console.log(`[Stripe Webhook] Subscription updated: ${subscription.id}`);
         break;
       }
 
@@ -529,6 +726,8 @@ export async function POST(request: NextRequest) {
       // ===============================================
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
+        const stripeCustomerId =
+          typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id || null;
 
         const { data: sub } = await supabase
           .from("subscriptions")
@@ -536,19 +735,32 @@ export async function POST(request: NextRequest) {
           .eq("stripe_subscription_id", subscription.id)
           .maybeSingle();
 
-        if (sub) {
+        const resolvedSub =
+          sub ?? (
+            stripeCustomerId
+              ? (
+                  await supabase
+                    .from("subscriptions")
+                    .select("id, owner_id")
+                    .eq("stripe_customer_id", stripeCustomerId)
+                    .maybeSingle()
+                ).data
+              : null
+          );
+
+        if (resolvedSub) {
           await supabase
             .from("subscriptions")
             .update({
               status: "canceled",
               canceled_at: new Date().toISOString(),
             })
-            .eq("id", sub.id);
+            .eq("id", resolvedSub.id);
 
           // Notifier le propriétaire
-          if (sub.owner_id) {
+          if (resolvedSub.owner_id) {
             await supabase.rpc("create_notification", {
-              p_recipient_id: sub.owner_id,
+              p_recipient_id: resolvedSub.owner_id,
               p_type: "alert",
               p_title: "Abonnement annulé",
               p_message: "Votre abonnement a été annulé. Vos données seront conservées.",
@@ -641,6 +853,7 @@ export async function POST(request: NextRequest) {
               .from("stripe_transfers")
               .update({
                 status: "paid",
+                stripe_source_transaction_id: transfer.source_transaction as string,
                 description: transfer.description,
                 metadata: transfer.metadata,
                 completed_at: new Date().toISOString(),
@@ -651,6 +864,7 @@ export async function POST(request: NextRequest) {
               connect_account_id: connectAccount.id,
               stripe_transfer_id: transfer.id,
               stripe_payment_intent_id: transfer.source_transaction as string,
+              stripe_source_transaction_id: transfer.source_transaction as string,
               amount: transfer.amount,
               currency: transfer.currency,
               net_amount: transfer.amount,
@@ -682,6 +896,39 @@ export async function POST(request: NextRequest) {
           .eq("stripe_transfer_id", transfer.id);
 
         console.log(`[Stripe Webhook] Transfer failed: ${transfer.id}`);
+        break;
+      }
+
+      // ===============================================
+      // STRIPE CONNECT - PAYOUTS BANCAIRES
+      // ===============================================
+      case "payout.created": {
+        const payout = event.data.object as Stripe.Payout;
+        await upsertStripePayout(supabase, event.account, payout, "pending");
+        break;
+      }
+
+      case "payout.updated": {
+        const payout = event.data.object as Stripe.Payout;
+        await upsertStripePayout(supabase, event.account, payout);
+        break;
+      }
+
+      case "payout.paid": {
+        const payout = event.data.object as Stripe.Payout;
+        await upsertStripePayout(supabase, event.account, payout, "paid");
+        break;
+      }
+
+      case "payout.failed": {
+        const payout = event.data.object as Stripe.Payout;
+        await upsertStripePayout(supabase, event.account, payout, "failed");
+        break;
+      }
+
+      case "payout.canceled": {
+        const payout = event.data.object as Stripe.Payout;
+        await upsertStripePayout(supabase, event.account, payout, "canceled");
         break;
       }
 

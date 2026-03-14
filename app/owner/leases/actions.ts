@@ -103,60 +103,13 @@ export async function terminateLease(
  * Active un bail (après signature)
  */
 export async function activateLease(leaseId: string): Promise<ActionResult> {
-  const supabase = await createClient();
+  void leaseId;
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, error: "Non authentifié" };
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!profile || profile.role !== "owner") {
-    return { success: false, error: "Accès non autorisé" };
-  }
-
-  // Vérifier le bail
-  const { data: lease } = await supabase
-    .from("leases")
-    .select(`
-      id,
-      statut,
-      properties!inner(owner_id)
-    `)
-    .eq("id", leaseId)
-    .single();
-
-  if (!lease) {
-    return { success: false, error: "Bail non trouvé" };
-  }
-
-  const propertyData = lease.properties as unknown as { owner_id: string };
-  if (propertyData.owner_id !== profile.id) {
-    return { success: false, error: "Accès refusé" };
-  }
-
-  if (lease.statut === "active") {
-    return { success: false, error: "Ce bail est déjà actif" };
-  }
-
-  const { error } = await supabase
-    .from("leases")
-    .update({ statut: "active" })
-    .eq("id", leaseId);
-
-  if (error) {
-    return { success: false, error: "Erreur lors de l'activation" };
-  }
-
-  revalidatePath("/owner/leases");
-  revalidatePath(`/owner/leases/${leaseId}`);
-
-  return { success: true };
+  return {
+    success: false,
+    error:
+      "L'activation directe legacy est desactivee. Utilisez le flux canonique qui verifie la facture initiale, l'EDL, le paiement et la remise des cles.",
+  };
 }
 
 /**

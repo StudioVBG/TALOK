@@ -9,6 +9,7 @@
  */
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -35,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { PaymentMethodSelector } from "@/features/billing/components/v2/PaymentMethodSelector";
+import { SepaMandateSetup } from "@/features/billing/components/v2/SepaMandateSetup";
 import {
   useSepaMandates,
   usePaymentAuditLog,
@@ -68,6 +70,7 @@ const AUDIT_ACTION_MAP: Record<string, { label: string; icon: React.ReactNode }>
 
 export function TenantPaymentSettingsClient({ profileId }: Props) {
   const [activeTab, setActiveTab] = useState("methods");
+  const queryClient = useQueryClient();
   const { data: mandates, isLoading: mandatesLoading } = useSepaMandates();
   const { data: audit, isLoading: auditLoading } = usePaymentAuditLog();
 
@@ -123,6 +126,15 @@ export function TenantPaymentSettingsClient({ profileId }: Props) {
                 />
               </CardContent>
             </Card>
+
+            <SepaMandateSetup
+              onSuccess={() => {
+                setActiveTab("mandates");
+                void queryClient.invalidateQueries({ queryKey: ["tenant-sepa-mandates", profileId] });
+                void queryClient.invalidateQueries({ queryKey: ["tenant-payment-methods"] });
+                void queryClient.invalidateQueries({ queryKey: ["tenant-payment-audit", profileId] });
+              }}
+            />
 
             <GlassCard className="p-5 bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/30">
               <div className="flex items-start gap-3">

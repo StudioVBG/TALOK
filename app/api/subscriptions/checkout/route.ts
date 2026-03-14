@@ -165,6 +165,8 @@ export async function POST(request: Request) {
       metadata: {
         profile_id: profile.id,
         plan_id: plan.id,
+        plan_slug: plan.slug,
+        billing_cycle,
       },
       allow_promotion_codes: true,
       billing_address_collection: "auto",
