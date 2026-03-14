@@ -18,6 +18,45 @@ import {
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
 
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function normalizeStoredConnectAccount(account: unknown): StoredConnectAccount {
+  const record =
+    account && typeof account === "object" ? (account as Record<string, unknown>) : {};
+
+  return {
+    id: typeof record.id === "string" ? record.id : "",
+    stripe_account_id:
+      typeof record.stripe_account_id === "string" ? record.stripe_account_id : "",
+    charges_enabled:
+      typeof record.charges_enabled === "boolean" ? record.charges_enabled : false,
+    payouts_enabled:
+      typeof record.payouts_enabled === "boolean" ? record.payouts_enabled : false,
+    details_submitted:
+      typeof record.details_submitted === "boolean" ? record.details_submitted : false,
+    requirements_currently_due: asStringArray(record.requirements_currently_due),
+    requirements_eventually_due: asStringArray(record.requirements_eventually_due),
+    requirements_past_due: asStringArray(record.requirements_past_due),
+    requirements_disabled_reason:
+      typeof record.requirements_disabled_reason === "string"
+        ? record.requirements_disabled_reason
+        : null,
+    bank_account_last4:
+      typeof record.bank_account_last4 === "string" ? record.bank_account_last4 : null,
+    bank_account_bank_name:
+      typeof record.bank_account_bank_name === "string"
+        ? record.bank_account_bank_name
+        : null,
+    created_at: typeof record.created_at === "string" ? record.created_at : null,
+    onboarding_completed_at:
+      typeof record.onboarding_completed_at === "string"
+        ? record.onboarding_completed_at
+        : null,
+  };
+}
+
 async function getAuthenticatedOwnerProfile() {
   const supabase = await createRouteHandlerClient();
   const {
@@ -74,10 +113,12 @@ export async function GET() {
       });
     }
 
+    const storedConnectAccount = normalizeStoredConnectAccount(connectAccount);
+
     // Rafraîchir les infos depuis Stripe
     try {
       const stripeAccount = await connectService.getConnectAccount(
-        connectAccount.stripe_account_id as string
+        storedConnectAccount.stripe_account_id
       );
 
       // Mettre à jour les infos en DB si changement
@@ -96,15 +137,15 @@ export async function GET() {
           updated_at: new Date().toISOString(),
           onboarding_completed_at:
             stripeAccount.charges_enabled && stripeAccount.payouts_enabled
-              ? connectAccount.onboarding_completed_at || new Date().toISOString()
+              ? storedConnectAccount.onboarding_completed_at || new Date().toISOString()
               : null,
         })
-        .eq("id", connectAccount.id as string);
+        .eq("id", storedConnectAccount.id);
 
       return NextResponse.json(
         buildConnectAccountResponse(
           {
-            ...(connectAccount as StoredConnectAccount),
+            ...storedConnectAccount,
             charges_enabled: stripeAccount.charges_enabled,
             payouts_enabled: stripeAccount.payouts_enabled,
             details_submitted: stripeAccount.details_submitted,
@@ -121,7 +162,7 @@ export async function GET() {
     } catch (stripeError) {
       // Si erreur Stripe, retourner les données en cache
       return NextResponse.json(
-        buildConnectAccountResponse(connectAccount as StoredConnectAccount, null, {
+        buildConnectAccountResponse(storedConnectAccount, null, {
           cached: true,
         })
       );

@@ -67,7 +67,8 @@ export function CompteBancaireTab() {
     error: statusErrorValue,
     refetch: refetchStatus,
   } = useStripeConnectStatus();
-  const isReady = Boolean(connectData?.has_account && connectData.account?.is_ready);
+  const connectAccount = connectData?.account ?? null;
+  const isReady = Boolean(connectData?.has_account && connectAccount?.is_ready);
   const hasAccount = Boolean(connectData?.has_account);
   const isOnboardingIncomplete = Boolean(hasAccount && !isReady);
   const {
@@ -214,7 +215,7 @@ export function CompteBancaireTab() {
         <CardContent className="space-y-4">
           {isReady ? (
             <div className="space-y-4">
-              {connectData?.account?._cached ? (
+              {connectAccount?._cached ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
                   Les informations Stripe affichées ci-dessous proviennent du dernier cache synchronisé.
                 </div>
@@ -224,8 +225,8 @@ export function CompteBancaireTab() {
                 <div>
                   <p className="font-medium text-emerald-900 dark:text-emerald-100">Compte configuré</p>
                   <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                    {connectData.account?.bank_account
-                      ? `IBAN •••• ${connectData.account.bank_account.last4} — ${connectData.account.bank_account.bank_name ?? "Banque"}`
+                    {connectAccount?.bank_account
+                      ? `IBAN •••• ${connectAccount.bank_account.last4} — ${connectAccount.bank_account.bank_name ?? "Banque"}`
                       : "Les versements seront envoyés sur le compte renseigné."}
                   </p>
                 </div>
@@ -251,18 +252,18 @@ export function CompteBancaireTab() {
                     <p className="text-sm text-amber-800 dark:text-amber-200">
                       Votre compte existe déjà, mais Stripe attend encore certaines informations avant d&apos;autoriser les versements.
                     </p>
-                    {connectData?.account?.requirements.disabled_reason ? (
+                    {connectAccount?.requirements.disabled_reason ? (
                       <p className="text-sm text-amber-800 dark:text-amber-200">
-                        Motif Stripe: {connectData.account.requirements.disabled_reason}
+                        Motif Stripe: {connectAccount.requirements.disabled_reason}
                       </p>
                     ) : null}
-                    {connectData?.account?.missing_requirements?.length ? (
+                    {connectAccount?.missing_requirements?.length ? (
                       <div className="space-y-1 pt-1">
                         <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
                           Éléments à compléter
                         </p>
                         <ul className="space-y-1 text-sm text-amber-800 dark:text-amber-200">
-                          {connectData.account.missing_requirements.slice(0, 5).map((item) => (
+                          {connectAccount.missing_requirements.slice(0, 5).map((item) => (
                             <li key={item}>- {formatRequirementLabel(item)}</li>
                           ))}
                         </ul>
