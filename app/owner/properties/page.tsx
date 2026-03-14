@@ -34,6 +34,7 @@ import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-containe
 import { PageTransition } from "@/components/ui/page-transition";
 import { UsageLimitBanner, useSubscription, useUsageLimit, UpgradeModal } from "@/components/subscription";
 import { PLANS } from "@/lib/subscriptions/plans";
+import { buildPropertyQuotaSummary } from "@/lib/subscriptions/property-quota";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -91,7 +92,7 @@ export default function OwnerPropertiesPage() {
   });
 
   const { isAtLimit, canAdd, loading: subscriptionLoading } = useUsageLimit("properties");
-  const { currentPlan } = useSubscription();
+  const { currentPlan, usage } = useSubscription();
   const upgradeParam = searchParams.get("upgrade");
   const [showUpgradeModal, setShowUpgradeModal] = useState(upgradeParam === "true");
 
@@ -200,6 +201,21 @@ export default function OwnerPropertiesPage() {
 
     return filtered;
   }, [propertiesWithStatus, propertyTab, moduleFilter, typeFilter, statusFilter, debouncedSearchQuery]);
+
+  const hasScopedView = Boolean(
+    moduleFilter ||
+    debouncedSearchQuery ||
+    typeFilter !== "all" ||
+    statusFilter !== "all" ||
+    propertyTab === "immeubles" ||
+    activeEntityId !== null
+  );
+  const propertyQuotaSummary = buildPropertyQuotaSummary({
+    visibleCount: filteredProperties.length,
+    totalCount: usage?.properties?.used ?? properties.length,
+    limit: currentPlanConfig.limits.max_properties,
+    hasScopedView,
+  });
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -557,6 +573,34 @@ export default function OwnerPropertiesPage() {
                 threshold={70}
                 dismissible={true}
               />
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="mb-6">
+              <Card className="border-slate-200 bg-white/80">
+                <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Quota global de biens : {propertyQuotaSummary.usageLabel}
+                      {currentPlanConfig.limits.max_properties === -1 ? " (illimite)" : ""}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      Le blocage d'ajout se base sur le total reel compte pour votre forfait, pas uniquement sur les cartes visibles a l'ecran.
+                    </p>
+                    {propertyQuotaSummary.showScopedHint && propertyQuotaSummary.scopedHint && (
+                      <p className="mt-1 text-sm text-amber-700">{propertyQuotaSummary.scopedHint}</p>
+                    )}
+                    <p className="mt-1 text-xs text-slate-500">
+                      Le badge sur chaque carte indique l'occupation ou l'etat du bail, pas le paiement du forfait.
+                    </p>
+                  </div>
+                  {isAtLimit && !canNavigateToNew && (
+                    <Button variant="outline" onClick={() => setShowUpgradeModal(true)}>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Debloquer plus de biens
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
             </motion.div>
 
             {!subscriptionLoading && isAtLimit && extraPropertyPrice > 0 && (

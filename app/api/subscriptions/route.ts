@@ -100,12 +100,25 @@ export async function POST(request: Request) {
     // Vérifier que le plan existe
     const { data: plan, error: planError } = await supabase
       .from("subscription_plans")
-      .select("id, slug, name")
+      .select("id, slug, name, price_monthly, price_yearly")
       .eq("slug", plan_slug)
       .single();
 
     if (planError || !plan) {
       return NextResponse.json({ error: "Plan non trouvé" }, { status: 404 });
+    }
+
+    const isPaidPlan = Number(plan.price_monthly ?? 0) > 0 || Number(plan.price_yearly ?? 0) > 0;
+
+    if (isPaidPlan) {
+      return NextResponse.json(
+        {
+          error: "Les forfaits payants doivent être activés via Stripe Checkout.",
+          code: "CHECKOUT_REQUIRED",
+          redirect: "/api/subscriptions/checkout",
+        },
+        { status: 409 }
+      );
     }
 
     // Vérifier si un abonnement existe déjà
@@ -122,6 +135,7 @@ export async function POST(request: Request) {
         .update({
           plan_id: plan.id,
           plan_slug: plan.slug,
+          status: "active",
           billing_cycle,
           updated_at: new Date().toISOString(),
         })

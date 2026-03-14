@@ -68,12 +68,15 @@ export function PaymentMethod({ paymentMethod, manageUrl }: PaymentMethodProps) 
   const brand = BRAND_DISPLAY[paymentMethod.brand] || BRAND_DISPLAY.unknown;
   const expiring7 = isExpiringSoon(paymentMethod.exp_month, paymentMethod.exp_year, 7);
   const expiring30 = isExpiringSoon(paymentMethod.exp_month, paymentMethod.exp_year, 30);
+  const needsDefaultSelection = paymentMethod.is_default === false || paymentMethod.source === "attached_fallback";
 
   return (
     <div
       className={cn(
         "p-4 rounded-lg border",
-        expiring7
+        needsDefaultSelection
+          ? "bg-amber-500/10 border-amber-500/30"
+          : expiring7
           ? "bg-red-500/10 border-red-500/30"
           : expiring30
             ? "bg-amber-500/10 border-amber-500/30"
@@ -94,9 +97,16 @@ export function PaymentMethod({ paymentMethod, manageUrl }: PaymentMethodProps) 
           </p>
           <p className={cn(
             "text-xs mt-0.5",
-            expiring7 ? "text-red-400 font-medium" : expiring30 ? "text-amber-400" : "text-slate-400"
+            needsDefaultSelection
+              ? "text-amber-400 font-medium"
+              : expiring7
+                ? "text-red-400 font-medium"
+                : expiring30
+                  ? "text-amber-400"
+                  : "text-slate-400"
           )}>
             exp. {String(paymentMethod.exp_month).padStart(2, "0")}/{paymentMethod.exp_year}
+            {needsDefaultSelection && " — Carte enregistree, a definir par defaut"}
             {expiring7 && " — Expire dans moins de 7 jours !"}
             {!expiring7 && expiring30 && " — Expire bientot"}
           </p>

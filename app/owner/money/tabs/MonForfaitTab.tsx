@@ -339,6 +339,59 @@ function InvoiceStatusBadge({ status }: { status: string }) {
   );
 }
 
+type CheckoutVerificationState = "idle" | "verifying" | "confirmed" | "pending";
+
+function isConfirmedSubscriptionStatus(status?: string | null): boolean {
+  return status === "active" || status === "trialing";
+}
+
+function CheckoutVerificationBanner({
+  state,
+  message,
+}: {
+  state: CheckoutVerificationState;
+  message: string | null;
+}) {
+  if (state === "idle" || !message) return null;
+
+  const tone =
+    state === "confirmed"
+      ? {
+          wrapper: "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800",
+          text: "text-emerald-800 dark:text-emerald-300",
+          icon: CheckCircle2,
+          iconClass: "text-emerald-600",
+        }
+      : state === "pending"
+        ? {
+            wrapper: "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800",
+            text: "text-amber-800 dark:text-amber-300",
+            icon: AlertTriangle,
+            iconClass: "text-amber-600",
+          }
+        : {
+            wrapper: "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800",
+            text: "text-blue-800 dark:text-blue-300",
+            icon: Loader2,
+            iconClass: "text-blue-600 animate-spin",
+          };
+
+  const Icon = tone.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn("p-4 rounded-lg border flex items-start gap-4", tone.wrapper)}
+    >
+      <Icon className={cn("w-5 h-5 flex-shrink-0 mt-0.5", tone.iconClass)} aria-hidden="true" />
+      <div className="flex-1">
+        <p className={cn("font-medium text-sm", tone.text)}>{message}</p>
+      </div>
+    </motion.div>
+  );
+}
+
 function SubscriptionInvoicesTable() {
   const [invoices, setInvoices] = useState<SubscriptionInvoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -520,6 +573,8 @@ export function MonForfaitTab() {
 
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showFeatures, setShowFeatures] = useState(false);
+  const [checkoutVerificationState, setCheckoutVerificationState] = useState<CheckoutVerificationState>("idle");
+  const [checkoutVerificationMessage, setCheckoutVerificationMessage] = useState<string | null>(null);
 
   const { data: ownerPaymentMethod } = useOwnerCurrentPaymentMethod();
   const { mutateAsync: openBillingPortal, isPending: isOpeningBillingPortal } = useStripePortal();
@@ -532,13 +587,72 @@ export function MonForfaitTab() {
     const success = searchParams.get("success");
     const canceled = searchParams.get("canceled");
     if (success === "true") {
-      toast({
-        title: "Abonnement activé !",
-        description: "Merci pour votre confiance. Profitez de vos nouvelles fonctionnalités !",
-      });
-      refresh();
-      router.replace("/owner/money?tab=forfait");
+      let cancelled = false;
+
+      const verifyCheckout = async () => {
+        setCheckoutVerificationState("verifying");
+        setCheckoutVerificationMessage("Paiement recu, confirmation de l'abonnement en cours...");
+        toast({
+          title: "Confirmation en cours",
+          description: "Nous verifions votre abonnement aupres de Stripe.",
+        });
+
+        const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+        let confirmed = false;
+
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          await refresh();
+
+          const response = await fetch("/api/subscriptions/current", {
+            cache: "no-store",
+            credentials: "include",
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (isConfirmedSubscriptionStatus(data.subscription?.status)) {
+              confirmed = true;
+              break;
+            }
+          }
+
+          if (attempt < 2) {
+            await wait(1500);
+          }
+        }
+
+        if (cancelled) return;
+
+        if (confirmed) {
+          setCheckoutVerificationState("confirmed");
+          setCheckoutVerificationMessage("Abonnement confirme. Vos nouvelles fonctionnalites sont disponibles.");
+          toast({
+            title: "Abonnement confirme",
+            description: "La confirmation Stripe a bien ete recue.",
+          });
+        } else {
+          setCheckoutVerificationState("pending");
+          setCheckoutVerificationMessage(
+            "Le retour Stripe a ete recu mais l'activation n'est pas encore confirmee cote serveur. Rechargez cette page dans quelques instants si le statut ne change pas."
+          );
+          toast({
+            title: "Confirmation en attente",
+            description: "Le paiement est revenu de Stripe, mais l'abonnement n'est pas encore confirme cote serveur.",
+            variant: "destructive",
+          });
+        }
+
+        router.replace("/owner/money?tab=forfait");
+      };
+
+      void verifyCheckout();
+
+      return () => {
+        cancelled = true;
+      };
     } else if (canceled === "true") {
+      setCheckoutVerificationState("idle");
+      setCheckoutVerificationMessage(null);
       toast({
         title: "Paiement annulé",
         description: "Vous pouvez reprendre à tout moment depuis cette page.",
@@ -625,6 +739,11 @@ export function MonForfaitTab() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
+        <CheckoutVerificationBanner
+          state={checkoutVerificationState}
+          message={checkoutVerificationMessage}
+        />
+
         {/* Proactive usage alerts */}
         <UsageAlertBanner items={usageAlertItems} />
 
@@ -812,6 +931,25 @@ export function MonForfaitTab() {
               {/* Billing info */}
               {isPaid && subscription && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-lg bg-muted/50 border">
+                    <div className="text-xs text-muted-foreground mb-1">Statut du forfait</div>
+                    <div className="font-medium text-sm">
+                      {subscription.status === "active"
+                        ? "Actif"
+                        : subscription.status === "trialing"
+                          ? "Essai"
+                          : subscription.status === "past_due"
+                            ? "Paiement en attente"
+                            : subscription.status === "incomplete"
+                              ? "Activation en attente"
+                              : subscription.status === "canceled"
+                                ? "Annulation programmee"
+                                : subscription.status}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Ce statut concerne le forfait, pas l'occupation du bien.
+                    </p>
+                  </div>
                   <div className="p-4 rounded-lg bg-muted/50 border">
                     <div className="text-xs text-muted-foreground mb-1">Cycle de facturation</div>
                     <div className="font-medium text-sm">

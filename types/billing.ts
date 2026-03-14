@@ -148,6 +148,8 @@ export interface BillingPaymentMethod {
   last4: string;
   exp_month: number;
   exp_year: number;
+  is_default?: boolean;
+  source?: "default" | "attached_fallback";
 }
 
 /** @deprecated Utiliser BillingPaymentMethod */

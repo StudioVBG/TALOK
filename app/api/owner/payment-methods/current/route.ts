@@ -10,6 +10,24 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import type Stripe from "stripe";
+
+function mapBillingPaymentMethod(
+  paymentMethod: Stripe.PaymentMethod,
+  options: { isDefault: boolean; source: "default" | "attached_fallback" }
+) {
+  const card = paymentMethod.card;
+
+  return {
+    id: paymentMethod.id,
+    brand: (card?.brand ?? "unknown") as "visa" | "mastercard" | "amex" | "discover" | "unknown",
+    last4: card?.last4 ?? "",
+    exp_month: card?.exp_month ?? 0,
+    exp_year: card?.exp_year ?? 0,
+    is_default: options.isDefault,
+    source: options.source,
+  };
+}
 
 export async function GET() {
   try {
@@ -52,22 +70,39 @@ export async function GET() {
       return NextResponse.json({ payment_method: null });
     }
 
-    const defaultPm = (customer as { invoice_settings?: { default_payment_method?: { id: string; card?: { brand: string; last4: string; exp_month: number; exp_year: number } } } })
+    const defaultPm = (customer as { invoice_settings?: { default_payment_method?: string | { id: string; card?: { brand: string; last4: string; exp_month: number; exp_year: number } } } })
       .invoice_settings?.default_payment_method;
 
-    if (!defaultPm || typeof defaultPm === "string") {
+    if (defaultPm) {
+      const paymentMethod =
+        typeof defaultPm === "string"
+          ? await stripe.paymentMethods.retrieve(defaultPm)
+          : (defaultPm as Stripe.PaymentMethod);
+
+      return NextResponse.json({
+        payment_method: mapBillingPaymentMethod(paymentMethod, {
+          isDefault: true,
+          source: "default",
+        }),
+      });
+    }
+
+    const attachedPaymentMethods = await stripe.paymentMethods.list({
+      customer: stripeCustomerId,
+      type: "card",
+      limit: 1,
+    });
+
+    const fallbackPaymentMethod = attachedPaymentMethods.data[0];
+    if (!fallbackPaymentMethod) {
       return NextResponse.json({ payment_method: null });
     }
 
-    const card = defaultPm.card;
     return NextResponse.json({
-      payment_method: {
-        id: defaultPm.id,
-        brand: (card?.brand ?? "unknown") as "visa" | "mastercard" | "amex" | "discover" | "unknown",
-        last4: card?.last4 ?? "",
-        exp_month: card?.exp_month ?? 0,
-        exp_year: card?.exp_year ?? 0,
-      },
+      payment_method: mapBillingPaymentMethod(fallbackPaymentMethod, {
+        isDefault: false,
+        source: "attached_fallback",
+      }),
     });
   } catch (error) {
     return handleApiError(error);
