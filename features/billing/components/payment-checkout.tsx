@@ -374,7 +374,6 @@ function SavedMethodQuickPay({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           invoiceId,
-          amount,
           paymentMethodId: selected.stripe_payment_method_id,
           customerId: selected.stripe_customer_id,
         }),
@@ -385,7 +384,7 @@ function SavedMethodQuickPay({
         throw new Error(data.error || "Erreur de paiement");
       }
 
-      const { clientSecret, paymentIntentId } = await res.json();
+      const { clientSecret } = await res.json();
 
       const stripeInstance = await getStripe();
       if (!stripeInstance) throw new Error("Stripe non initialisé");
@@ -550,7 +549,6 @@ function PaymentCheckoutWithNewMethod(props: PaymentCheckoutProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             invoiceId: props.invoiceId,
-            amount: props.amount,
           }),
         });
 

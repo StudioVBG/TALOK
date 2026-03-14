@@ -18,7 +18,13 @@
 
 ## 1. Vue d'ensemble
 
-Le système de paiement de TALOK est une solution complète intégrant Stripe pour les paiements en ligne, avec support pour :
+Le flux canonique de paiement locataire TALOK repose desormais sur une seule chaine :
+
+`/tenant/payments` -> `/api/payments/create-intent` -> `stripe.confirmPayment()` -> webhook Stripe -> synchronisation `payments` / `invoices` -> quittance dans `documents`
+
+Les routes historiques `POST /api/payments/checkout`, `POST /api/v1/invoices/:iid/payments` et `POST /api/leases/:id/pay` sont maintenues uniquement pour compatibilite et sont considerees comme legacy.
+
+Le système de paiement de TALOK intègre Stripe pour les paiements en ligne, avec support produit pour :
 
 | Mode de paiement | Description | Implémentation |
 |------------------|-------------|----------------|
@@ -46,7 +52,7 @@ Le système de paiement de TALOK est une solution complète intégrant Stripe po
         │                       │                       │
         │  4. Confirme paiement │                       │
         │──────────────────────▶│                       │
-        │                       │  5. Webhook           │
+        │                       │  5. Webhook canonique │
         │                       │──────────────────────▶│
         │                       │                       │
         │  6. Succès + Quittance│                       │
@@ -148,12 +154,12 @@ Pour chaque facture impayée : bouton **"Payer"**
 │                                 │→── Stripe traite le paiement      │
 │                                 │                                   │
 │         ↓                       │                                   │
-│ 7. Redirection success          │                                   │
-│                                 │→── POST /api/payments/confirm     │
-│                                 │    • Vérifie PaymentIntent        │
-│                                 │    • Met à jour payment "succeeded"│
-│                                 │    • Met à jour invoice "paid"    │
-│                                 │    • Envoie email confirmation    │
+│ 7. Retour / redirection         │                                   │
+│                                 │→── webhook Stripe                 │
+│                                 │    • Met à jour payment           │
+│                                 │    • Recalcule invoice            │
+│                                 │    • Genere la quittance          │
+│                                 │    • Emet les notifications       │
 │         ↓                       │                                   │
 │ 8. Animation succès ✓           │                                   │
 └─────────────────────────────────┴───────────────────────────────────┘
@@ -165,8 +171,21 @@ Pour chaque facture impayée : bouton **"Payer"**
 |-----------|---------|-------------|
 | Formulaire paiement | `/features/billing/components/payment-checkout.tsx` | UI Stripe Elements |
 | Création PaymentIntent | `/app/api/payments/create-intent/route.ts` | Création intent Stripe |
-| Confirmation | `/app/api/payments/confirm/route.ts` | Validation post-paiement |
-| Checkout Session | `/app/api/payments/checkout/route.ts` | Mode Checkout hébergé |
+| Webhook Stripe | `/app/api/webhooks/stripe/route.ts` | Synchronisation canonique post-paiement |
+| Confirmation legacy | `/app/api/payments/confirm/route.ts` | Route de secours / reconciliation legacy |
+| Checkout Session legacy | `/app/api/payments/checkout/route.ts` | Ancien mode Checkout hébergé |
+
+### 2.5 Statuts payables cote locataire
+
+Le locataire peut initier un paiement uniquement pour les statuts :
+
+- `sent`
+- `late`
+- `overdue`
+- `partial`
+- `unpaid`
+
+Les statuts `draft`, `cancelled` et `paid` ne doivent jamais ouvrir le checkout.
 
 ---
 

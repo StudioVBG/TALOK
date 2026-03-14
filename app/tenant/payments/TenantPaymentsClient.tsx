@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -11,9 +11,7 @@ import {
   Receipt,
   Search,
   Download,
-  ChevronRight,
   TrendingUp,
-  AlertCircle,
   FileText,
   Euro,
   PartyPopper,
@@ -35,6 +33,8 @@ import { cn } from "@/lib/utils";
 import { useTenantData } from "../_data/TenantDataProvider";
 import { useTenantRealtime } from "@/lib/hooks/use-realtime-tenant";
 import { useTenantPaymentMethodsDisplay } from "@/lib/hooks/use-tenant-payment-methods";
+import { useToast } from "@/components/ui/use-toast";
+import { isInvoicePayableStatus } from "@/lib/payments/tenant-payment-flow";
 
 interface TenantPaymentsClientProps {
   invoices: any[];
@@ -42,20 +42,27 @@ interface TenantPaymentsClientProps {
 
 export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymentsClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
   const { dashboard, refetch } = useTenantData();
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [paymentReturnState, setPaymentReturnState] = useState<"success" | "canceled" | null>(null);
 
   // Prochaine échéance basée sur la prochaine invoice non payée (source de vérité)
   // Fallback : calcul basé sur jour_paiement du bail si aucune invoice n'existe encore
+  const payableInvoices = useMemo(
+    () => initialInvoices.filter((invoice: any) => isInvoicePayableStatus(invoice.statut)),
+    [initialInvoices]
+  );
+
   const nextDue = useMemo(() => {
     const now = new Date();
     const lease = dashboard?.lease ?? (dashboard?.leases && dashboard.leases.length > 0 ? dashboard.leases[0] : null);
 
     // Chercher la prochaine facture non payée parmi les invoices
-    const nextInvoice = initialInvoices
-      .filter((i: any) => i.statut !== 'paid' && i.statut !== 'cancelled' && i.statut !== 'draft')
+    const nextInvoice = [...payableInvoices]
       .sort((a: any, b: any) => {
         const dateA = a.date_echeance || a.due_date || a.created_at;
         const dateB = b.date_echeance || b.due_date || b.created_at;
@@ -97,7 +104,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
       loyer: lease?.loyer ?? 0,
       charges: lease?.charges_forfaitaires ?? 0,
     };
-  }, [dashboard?.lease, dashboard?.leases, initialInvoices]);
+  }, [dashboard?.lease, dashboard?.leases, payableInvoices]);
 
   // SOTA 2026: Temps réel pour synchronisation des factures avec le propriétaire
   const realtime = useTenantRealtime({ showToasts: true, enableSound: false });
@@ -113,6 +120,33 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
     }
     return initialInvoices;
   }, [initialInvoices, realtime.hasRecentInvoice, refetch]);
+
+  useEffect(() => {
+    const isSuccess = searchParams.get("success") === "true";
+    const isCanceled = searchParams.get("canceled") === "true";
+
+    if (!isSuccess && !isCanceled) {
+      return;
+    }
+
+    if (isSuccess) {
+      setPaymentReturnState("success");
+      toast({
+        title: "Paiement confirmé",
+        description: "Votre paiement a ete transmis. La quittance apparaitra dans vos documents une fois synchronisee.",
+      });
+      refetch();
+      router.refresh();
+    } else {
+      setPaymentReturnState("canceled");
+      toast({
+        title: "Paiement annule",
+        description: "Aucun debit n'a ete effectue. Vous pouvez reprendre le paiement quand vous le souhaitez.",
+      });
+    }
+
+    router.replace("/tenant/payments");
+  }, [refetch, router, searchParams, toast]);
 
   const handleDownload = (invoiceId: string) => {
     window.open(`/api/invoices/${invoiceId}/receipt`, "_blank");
@@ -202,6 +236,41 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
           </div>
         </div>
 
+        {paymentReturnState && (
+          <GlassCard
+            className={cn(
+              "p-5 border shadow-lg",
+              paymentReturnState === "success"
+                ? "bg-emerald-50/80 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/40"
+                : "bg-amber-50/80 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40"
+            )}
+          >
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <p className="font-bold text-foreground">
+                  {paymentReturnState === "success"
+                    ? "Paiement en cours de synchronisation"
+                    : "Paiement annule"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {paymentReturnState === "success"
+                    ? "Le webhook Stripe met a jour la facture et la quittance. Vous pourrez ensuite la retrouver dans vos documents."
+                    : "Vous pouvez relancer le paiement depuis cette page des que vous etes pret."}
+                </p>
+              </div>
+              <Button
+                variant={paymentReturnState === "success" ? "default" : "outline"}
+                className="rounded-xl font-bold"
+                asChild
+              >
+                <Link href={paymentReturnState === "success" ? "/tenant/documents?type=quittance" : "/tenant/settings/payments"}>
+                  {paymentReturnState === "success" ? "Voir mes quittances" : "Gerer mes moyens"}
+                </Link>
+              </Button>
+            </div>
+          </GlassCard>
+        )}
+
         {/* Prochaine échéance - SOTA 2026 */}
         {nextDue.hasLease && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
@@ -239,13 +308,13 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                 <Button
                   className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700"
                   onClick={() => {
-                    const firstUnpaid = invoices.find((i: any) => i.statut !== 'paid');
-                    if (firstUnpaid) {
-                      setSelectedInvoice(firstUnpaid);
+                    const firstPayable = payableInvoices[0];
+                    if (firstPayable) {
+                      setSelectedInvoice(firstPayable);
                       setIsPaymentOpen(true);
                     }
                   }}
-                  disabled={!invoices.some((i: any) => ['sent', 'late', 'overdue', 'partial', 'unpaid'].includes(i.statut))}
+                  disabled={payableInvoices.length === 0}
                 >
                   <CreditCard className="mr-2 h-4 w-4" /> Payer
                 </Button>
@@ -435,7 +504,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                             )}
 
                             <div className="flex gap-2">
-                              {invoice.statut !== 'paid' ? (
+                              {isInvoicePayableStatus(invoice.statut) ? (
                                 <Button 
                                   size="sm" 
                                   className="bg-red-600 hover:bg-red-700 text-white font-bold h-10 px-6 rounded-xl shadow-lg shadow-red-100 dark:shadow-red-900/30"
@@ -446,7 +515,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                                 >
                                   <CreditCard className="mr-2 h-4 w-4" /> Payer
                                 </Button>
-                              ) : (
+                              ) : invoice.statut === 'paid' ? (
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
@@ -454,6 +523,15 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                                   onClick={() => handleDownload(invoice.id)}
                                 >
                                   <Download className="h-5 w-5" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  className="h-10 rounded-xl font-bold"
+                                >
+                                  Indisponible
                                 </Button>
                               )}
                             </div>

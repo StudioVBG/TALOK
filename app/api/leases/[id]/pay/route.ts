@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
+import { isLegacyTenantPaymentRouteEnabled } from "@/lib/payments/tenant-payment-flow";
 
 /**
  * POST /api/leases/[id]/pay - Effectuer un paiement
@@ -16,6 +17,21 @@ export async function POST(
 ) {
   const { id } = await params;
   try {
+    if (!isLegacyTenantPaymentRouteEnabled()) {
+      return NextResponse.json(
+        {
+          error:
+            "Route legacy desactivee. Utilisez /tenant/payments et /api/payments/create-intent pour le flux canonique locataire.",
+          deprecated: true,
+          canonical_route: "/api/payments/create-intent",
+        },
+        {
+          status: 410,
+          headers: { "X-TALOK-Legacy-Route": "leases-pay" },
+        }
+      );
+    }
+
     const supabase = await createClient();
     const {
       data: { user },

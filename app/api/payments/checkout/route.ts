@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { z } from "zod";
+import { isLegacyTenantPaymentRouteEnabled } from "@/lib/payments/tenant-payment-flow";
 
 /**
  * Zod schema for checkout session creation
@@ -20,6 +21,21 @@ const checkoutSchema = z.object({
  */
 export async function POST(request: Request) {
   try {
+    if (!isLegacyTenantPaymentRouteEnabled()) {
+      return NextResponse.json(
+        {
+          error:
+            "Route legacy desactivee. Utilisez /api/payments/create-intent pour le flux canonique locataire.",
+          deprecated: true,
+          canonical_route: "/api/payments/create-intent",
+        },
+        {
+          status: 410,
+          headers: { "X-TALOK-Legacy-Route": "payments-checkout" },
+        }
+      );
+    }
+
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: "2024-10-28.acacia" as any,
     });

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   apiError,
@@ -13,6 +13,7 @@ import {
   storeIdempotency,
 } from "@/lib/api/middleware";
 import { CreatePaymentSchema } from "@/lib/api/schemas";
+import { isLegacyTenantPaymentRouteEnabled } from "@/lib/payments/tenant-payment-flow";
 
 interface RouteParams {
   params: Promise<{ iid: string }>;
@@ -26,6 +27,21 @@ interface RouteParams {
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    if (!isLegacyTenantPaymentRouteEnabled()) {
+      return NextResponse.json(
+        {
+          error:
+            "API v1 gelee. Utilisez /api/payments/create-intent pour le flux canonique locataire.",
+          deprecated: true,
+          canonical_route: "/api/payments/create-intent",
+        },
+        {
+          status: 410,
+          headers: { "X-TALOK-Legacy-Route": "api-v1-invoice-payments" },
+        }
+      );
+    }
+
     const { iid } = await params;
     const auth = await requireAuth(request);
     if (auth instanceof Response) return auth;

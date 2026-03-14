@@ -61,7 +61,7 @@ test.describe("Parcours Locataire", () => {
       await page.click('button[type="submit"]');
 
       // Attendre la redirection vers le dashboard
-      await page.waitForURL(/\/app\/tenant|\/dashboard/, { timeout: 10000 });
+      await page.waitForURL(/\/tenant|\/app\/tenant|\/dashboard/, { timeout: 10000 });
     });
 
     test("Dashboard s'affiche correctement", async ({ page }) => {
@@ -81,6 +81,13 @@ test.describe("Parcours Locataire", () => {
         await paymentsLink.click();
         await expect(page).toHaveURL(/payments|paiements/);
       }
+    });
+
+    test("Retour Stripe succès sur les paiements", async ({ page }) => {
+      await page.goto("/tenant/payments?success=true&invoice=test-invoice");
+
+      await expect(page.getByText("Paiement en cours de synchronisation")).toBeVisible();
+      await expect(page).toHaveURL(/\/tenant\/payments$/);
     });
 
     test("Navigation vers les documents", async ({ page }) => {
