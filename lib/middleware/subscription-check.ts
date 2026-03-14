@@ -16,9 +16,15 @@
  * ```
  */
 
-import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { PLANS, type PlanSlug, type FeatureKey } from "@/lib/subscriptions/plans";
+import {
+  PLANS,
+  type PlanSlug,
+  type FeatureKey,
+  getRequiredPlanForFeature,
+  hasPlanFeature,
+  isSubscriptionStatusEntitled,
+} from "@/lib/subscriptions/plans";
 
 export type LimitType = "properties" | "leases" | "users" | "documents_gb" | "signatures";
 
@@ -286,30 +292,28 @@ export async function withFeatureAccess(
       .single();
 
     if (error || !subscription) {
+      const requiredPlan = getRequiredPlanForFeature(feature);
       return {
         allowed: false,
         feature,
         plan: "gratuit",
-        requiredPlan: getRequiredPlanForFeature(feature),
+        requiredPlan,
         message: `La fonctionnalité "${getFeatureLabel(feature)}" n'est pas disponible dans le forfait gratuit.`,
       };
     }
 
-    const plan = (subscription.plan || {}) as any;
-    const features = plan.features || {};
-
-    // Vérifier si la feature est activée dans le plan
-    const featureValue = features[feature];
-    const allowed = featureValue === true || (typeof featureValue === "string" && featureValue !== "none");
+    const planSlug = (subscription.plan_slug || (subscription.plan as any)?.slug || "gratuit") as PlanSlug;
+    const requiredPlan = getRequiredPlanForFeature(feature);
+    const allowed = isSubscriptionStatusEntitled(subscription.status) && hasPlanFeature(planSlug, feature);
 
     return {
       allowed,
       feature,
-      plan: subscription.plan_slug || (subscription.plan as any)?.slug || "gratuit",
-      requiredPlan: allowed ? undefined : getRequiredPlanForFeature(feature),
+      plan: planSlug,
+      requiredPlan: allowed ? undefined : requiredPlan,
       message: allowed
         ? undefined
-        : `La fonctionnalité "${getFeatureLabel(feature)}" nécessite le forfait ${getRequiredPlanForFeature(feature)} ou supérieur.`,
+        : `La fonctionnalité "${getFeatureLabel(feature)}" nécessite le forfait ${PLANS[requiredPlan].name} ou supérieur.`,
     };
   } catch (error) {
     console.error("[subscription-check] Error:", error);
@@ -359,34 +363,6 @@ function getFeatureLabel(feature: FeatureKey): string {
     sso: "SSO",
   };
   return labels[feature] || feature;
-}
-
-/**
- * Helper: Obtient le plan requis pour une feature
- */
-function getRequiredPlanForFeature(feature: FeatureKey): string {
-  const requirements: Record<string, string> = {
-    // Confort+
-    scoring_tenant: "Confort",
-    work_orders: "Confort",
-    irl_revision: "Confort",
-    owner_reports: "Confort",
-    colocation: "Confort",
-    bank_reconciliation: "Confort",
-    open_banking: "Confort",
-    multi_users: "Confort",
-    auto_reminders: "Confort",
-    // Pro+
-    providers_management: "Pro",
-    auto_reminders_sms: "Pro",
-    api_access: "Pro",
-    // Enterprise+
-    copro_module: "Enterprise L",
-    webhooks: "Enterprise",
-    white_label: "Enterprise M",
-    sso: "Enterprise XL",
-  };
-  return requirements[feature] || "Confort";
 }
 
 /**

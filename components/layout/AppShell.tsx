@@ -26,6 +26,7 @@ import {
   Users,
   Sun,
   Moon,
+  Lock,
   LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,8 @@ import { useTheme } from "next-themes";
 import { APP_CONFIG, roleStyles } from "@/lib/design-system/tokens";
 import { getInitials } from "@/lib/design-system/utils";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
+import { useSubscription } from "@/components/subscription/subscription-provider";
+import { getRequiredPlanForFeature, type FeatureKey } from "@/lib/subscriptions/plans";
 
 // ============================================================================
 // NAVIGATION CONFIG
@@ -53,37 +56,15 @@ interface NavItem {
   name: string;
   href: string;
   icon: LucideIcon;
+  feature?: FeatureKey;
+  locked?: boolean;
+  lockedLabel?: string;
 }
 
 interface NavSection {
   title?: string;
   items: NavItem[];
 }
-
-const ownerNavigation: NavSection[] = [
-  {
-    items: [
-      { name: "Tableau de bord", href: "/owner", icon: LayoutDashboard },
-      { name: "Mes biens", href: "/owner/properties", icon: Building2 },
-      { name: "Baux", href: "/owner/leases", icon: FileText },
-      { name: "Finances", href: "/owner/money", icon: Euro },
-    ],
-  },
-  {
-    title: "Gestion",
-    items: [
-      { name: "Tickets", href: "/owner/tickets", icon: Wrench },
-      { name: "Documents", href: "/owner/documents", icon: FileCheck },
-      { name: "Inspections", href: "/owner/inspections", icon: FileSignature },
-    ],
-  },
-  {
-    items: [
-      { name: "Aide", href: "/owner/support", icon: HelpCircle },
-      { name: "Paramètres", href: "/owner/profile", icon: Settings },
-    ],
-  },
-];
 
 const tenantNavigation: NavSection[] = [
   {
@@ -131,7 +112,7 @@ const providerNavigation: NavSection[] = [
 type AppShellRole = "owner" | "tenant" | "provider" | "admin";
 
 const navigationByRole: Record<AppShellRole, NavSection[]> = {
-  owner: ownerNavigation,
+  owner: [],
   tenant: tenantNavigation,
   provider: providerNavigation,
   admin: [], // Admin uses a different layout
@@ -159,6 +140,64 @@ const settingsRoutes: Record<AppShellRole, string> = {
   admin: "/admin/dashboard",
 };
 
+function buildOwnerNavigation(
+  hasFeature: (feature: FeatureKey) => boolean
+): NavSection[] {
+  const premiumItems: NavItem[] = [
+    {
+      name: "Inspections",
+      href: "/owner/inspections",
+      icon: FileSignature,
+      feature: "edl_digital",
+    },
+    {
+      name: "Prestataires",
+      href: "/owner/providers",
+      icon: Users,
+      feature: "providers_management",
+    },
+  ];
+
+  const visiblePremiumItems = premiumItems
+    .filter((item) => item.feature)
+    .map((item) => {
+      const hasAccess = hasFeature(item.feature!);
+      return hasAccess
+        ? item
+        : {
+            ...item,
+            href: "/owner/money?tab=forfait",
+            locked: true,
+            lockedLabel: getRequiredPlanForFeature(item.feature!),
+          };
+    });
+
+  return [
+    {
+      items: [
+        { name: "Tableau de bord", href: "/owner", icon: LayoutDashboard },
+        { name: "Mes biens", href: "/owner/properties", icon: Building2 },
+        { name: "Baux", href: "/owner/leases", icon: FileText },
+        { name: "Finances", href: "/owner/money", icon: Euro },
+      ],
+    },
+    {
+      title: "Gestion",
+      items: [
+        { name: "Tickets", href: "/owner/tickets", icon: Wrench },
+        { name: "Documents", href: "/owner/documents", icon: FileCheck },
+        ...visiblePremiumItems,
+      ],
+    },
+    {
+      items: [
+        { name: "Aide", href: "/owner/support", icon: HelpCircle },
+        { name: "Paramètres", href: "/owner/profile", icon: Settings },
+      ],
+    },
+  ];
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -181,6 +220,7 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
   const { theme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { hasFeature } = useSubscription();
   
   // Hook SOTA 2026 pour la déconnexion avec loading state et redirection forcée
   const { signOut: performSignOut, isLoading: isSigningOut } = useSignOut({
@@ -192,7 +232,7 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
     setMounted(true);
   }, []);
 
-  const navigation = navigationByRole[role] || [];
+  const navigation = role === "owner" ? buildOwnerNavigation(hasFeature) : navigationByRole[role] || [];
   const styles = roleStyles[role];
 
   const handleSignOut = async () => {
@@ -254,7 +294,9 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
                               "group flex gap-x-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                               isActive
                                 ? "bg-primary/10 text-primary"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                : item.locked
+                                  ? "text-muted-foreground/80 hover:bg-amber-50 hover:text-foreground"
+                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             )}
                           >
                             <item.icon
@@ -265,7 +307,13 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
                                   : "text-muted-foreground group-hover:text-foreground"
                               )}
                             />
-                            {item.name}
+                            <span className="flex-1">{item.name}</span>
+                            {item.locked && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/70 bg-amber-100/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                <Lock className="h-3 w-3" />
+                                {item.lockedLabel}
+                              </span>
+                            )}
                           </Link>
                         </li>
                       );
@@ -325,11 +373,16 @@ export function AppShell({ children, role, profile, onSignOut }: AppShellProps) 
                               "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                               isActive
                                 ? "bg-primary/10 text-primary"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                : item.locked
+                                  ? "text-muted-foreground/80 hover:bg-amber-50 hover:text-foreground"
+                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             )}
                           >
                             <item.icon className="h-5 w-5" />
-                            {item.name}
+                            <span className="flex-1">{item.name}</span>
+                            {item.locked && (
+                              <Lock className="h-4 w-4 text-amber-600" />
+                            )}
                           </Link>
                         </li>
                       );

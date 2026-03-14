@@ -10,6 +10,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
 import { 
   Sparkles, 
   Crown, 
@@ -20,6 +21,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UpgradeModal } from "@/components/subscription/upgrade-modal";
+import { useSubscription } from "@/components/subscription/subscription-provider";
+import { PLANS, type PlanSlug } from "@/lib/subscriptions/plans";
 
 interface UnifiedFABProps {
   className?: string;
@@ -29,6 +32,39 @@ export function UnifiedFAB({ className }: UnifiedFABProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const pathname = usePathname();
+  const { currentPlan } = useSubscription();
+
+  const getUpgradeTarget = (): { plan: PlanSlug; label: string } | null => {
+    if (pathname?.startsWith("/owner/providers")) {
+      return { plan: "pro", label: `Passer ${PLANS.pro.name}` };
+    }
+
+    if (pathname?.startsWith("/owner/inspections")) {
+      return { plan: "confort", label: `Passer ${PLANS.confort.name}` };
+    }
+
+    if (pathname?.startsWith("/owner/settings/branding")) {
+      return { plan: "enterprise_m", label: `Passer ${PLANS.enterprise_m.name}` };
+    }
+
+    const planOrder: PlanSlug[] = [
+      "gratuit",
+      "starter",
+      "confort",
+      "pro",
+      "enterprise_s",
+      "enterprise_m",
+      "enterprise_l",
+      "enterprise_xl",
+    ];
+    const currentIndex = planOrder.indexOf(currentPlan);
+    const nextPlan = planOrder[currentIndex + 1];
+
+    return nextPlan ? { plan: nextPlan, label: `Passer ${PLANS[nextPlan].name}` } : null;
+  };
+
+  const upgradeTarget = getUpgradeTarget();
 
   // Fermer le menu si on clique ailleurs
   useEffect(() => {
@@ -71,17 +107,23 @@ export function UnifiedFAB({ className }: UnifiedFABProps) {
         setIsOpen(false);
       },
     },
-    {
+    upgradeTarget ? {
       id: "upgrade",
-      label: "Passer Pro",
+      label: upgradeTarget.label,
       icon: Crown,
       gradient: "from-amber-500 to-orange-500",
       onClick: () => {
         setShowUpgrade(true);
         setIsOpen(false);
       },
-    },
-  ];
+    } : null,
+  ].filter(Boolean) as Array<{
+    id: string;
+    label: string;
+    icon: typeof MessageCircle;
+    gradient: string;
+    onClick: () => void;
+  }>;
 
   return (
     <>
@@ -188,6 +230,7 @@ export function UnifiedFAB({ className }: UnifiedFABProps) {
       <UpgradeModal 
         open={showUpgrade} 
         onClose={() => setShowUpgrade(false)} 
+        requiredPlan={upgradeTarget?.plan}
       />
     </>
   );

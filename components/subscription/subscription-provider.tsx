@@ -7,7 +7,14 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { PLANS, type PlanSlug, type FeatureKey, getUsagePercentage } from "@/lib/subscriptions/plans";
+import {
+  PLANS,
+  type PlanSlug,
+  type FeatureKey,
+  getUsagePercentage,
+  hasPlanFeature,
+  isSubscriptionStatusEntitled,
+} from "@/lib/subscriptions/plans";
 import type { SubscriptionWithPlan, UsageSummary } from "@/lib/subscriptions/types";
 
 // ============================================
@@ -250,15 +257,12 @@ export function SubscriptionProvider({
 
   const hasFeature = useCallback(
     (feature: FeatureKey): boolean => {
-      // Check subscription status first
-      if (subscription?.status && !["active", "trialing"].includes(subscription.status)) {
+      if (!isSubscriptionStatusEntitled(subscription?.status)) {
         return false;
       }
-      const featureValue = planConfig.features[feature];
-      // Feature is enabled if true, or if it has a non-"none" string value (e.g. 'basic', 'advanced')
-      return featureValue === true || (typeof featureValue === "string" && featureValue !== "none");
+      return hasPlanFeature(currentPlan, feature);
     },
-    [subscription, planConfig]
+    [subscription?.status, currentPlan]
   );
 
   // ============================================

@@ -23,6 +23,7 @@ import {
   type FeatureKey,
   formatPrice,
   getYearlyDiscount,
+  isFeatureValueEnabled,
 } from "@/lib/subscriptions/plans";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -241,7 +242,7 @@ function PlanCard({
           </>
         ) : slug === "starter" || slug === "gratuit" ? (
           <>
-            Commencer
+            {plan.cta_text}
             <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
           </>
         ) : (
@@ -266,7 +267,16 @@ function PlanCard({
 }
 
 function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
-  const orderedPlans: PlanSlug[] = ["gratuit", "starter", "confort", "pro", "enterprise_s"];
+  const orderedPlans: PlanSlug[] = [
+    "gratuit",
+    "starter",
+    "confort",
+    "pro",
+    "enterprise_s",
+    "enterprise_m",
+    "enterprise_l",
+    "enterprise_xl",
+  ];
 
   return (
     <div className="overflow-x-auto">
@@ -392,7 +402,8 @@ function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
                       <div className="text-xs text-slate-500">{feature.description}</div>
                     </td>
                     {orderedPlans.map((slug) => {
-                      const hasFeature = PLANS[slug].features[featureKey as FeatureKey];
+                      const featureValue = PLANS[slug].features[featureKey as FeatureKey];
+                      const hasFeature = isFeatureValueEnabled(featureValue);
                       return (
                         <td
                           key={slug}
@@ -404,6 +415,11 @@ function FeatureComparisonTable({ billing }: { billing: BillingCycle }) {
                           {hasFeature ? (
                             <span className="inline-flex items-center gap-1">
                               <Check className="w-5 h-5 text-emerald-400 mx-auto" aria-hidden="true" />
+                              {typeof featureValue === "string" && featureValue !== "true" && (
+                                <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                                  {featureValue}
+                                </span>
+                              )}
                               <span className="sr-only">Inclus</span>
                             </span>
                           ) : (
@@ -592,7 +608,7 @@ export default function PricingPage() {
             >
               Annuel
                 <Badge className="bg-emerald-500 text-white border-0 text-sm font-semibold px-2 py-0.5">
-                -20%
+                jusqu&apos;à -20%
                 </Badge>
             </button>
           </div>
@@ -860,7 +876,7 @@ export default function PricingPage() {
                 onClick={() => handleSelectPlan("confort")}
               >
                 <Sparkles className="w-4 h-4 mr-2" aria-hidden="true" />
-                1er mois offert
+                Choisir Confort
               </Button>
             </div>
           </motion.div>

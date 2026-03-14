@@ -137,6 +137,8 @@ export type SubscriptionStatus =
 
 export type BillingCycle = 'monthly' | 'yearly';
 
+const FEATURE_DISABLED_VALUES = new Set(["none", "false", "disabled", "off", "0", ""]);
+
 // ============================================
 // CONFIGURATION DES PLANS
 // Synchronisé avec subscription_plans en BDD
@@ -1094,13 +1096,40 @@ export function getYearlyDiscount(plan: Plan): number {
 }
 
 /**
+ * Vérifie si le statut d'abonnement permet l'usage des features
+ */
+export function isSubscriptionStatusEntitled(status?: string | null): boolean {
+  return !status || status === "active" || status === "trialing";
+}
+
+/**
+ * Vérifie si une valeur de feature doit être considérée comme activée
+ */
+export function isFeatureValueEnabled(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value === "string") {
+    return !FEATURE_DISABLED_VALUES.has(value.trim().toLowerCase());
+  }
+  if (typeof value === "number") {
+    return value > 0;
+  }
+  return false;
+}
+
+/**
+ * Vérifie si un plan donné donne accès à une feature
+ */
+export function hasPlanFeature(planSlug: PlanSlug, feature: FeatureKey): boolean {
+  return isFeatureValueEnabled(PLANS[planSlug].features[feature]);
+}
+
+/**
  * Trouve le plan minimum requis pour une feature
  */
 export function getRequiredPlanForFeature(feature: string): PlanSlug {
   const planOrder: PlanSlug[] = ['gratuit', 'starter', 'confort', 'pro', 'enterprise_s', 'enterprise_m', 'enterprise_l', 'enterprise_xl'];
   for (const slug of planOrder) {
-    const planFeatures = PLANS[slug].features;
-    if (planFeatures[feature] === true || (typeof planFeatures[feature] === 'string' && planFeatures[feature] !== 'none')) {
+    if (hasPlanFeature(slug, feature as FeatureKey)) {
       return slug;
     }
   }

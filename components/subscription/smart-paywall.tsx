@@ -26,7 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PLANS, type PlanSlug, type FeatureKey } from "@/lib/subscriptions/plans";
+import { FEATURE_LABELS, PLANS, type PlanSlug, type FeatureKey, getRequiredPlanForFeature } from "@/lib/subscriptions/plans";
 
 // ============================================
 // TYPES
@@ -114,6 +114,8 @@ export function SmartPaywall({
   const { hasFeature, currentPlan, loading, usage } = useSubscription();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [timeLeft, setTimeLeft] = useState(3600); // 1h en secondes
+  const requiredPlan = getRequiredPlanForFeature(feature);
+  const requiredPlanName = PLANS[requiredPlan].name;
 
   // Timer pour offre limitée
   useEffect(() => {
@@ -177,7 +179,7 @@ export function SmartPaywall({
                   {customTitle || visual.benefit}
                 </p>
                 <p className="text-sm text-white/80">
-                  {customDescription || "Passez à un forfait supérieur pour débloquer"}
+                  {customDescription || `Disponible avec le forfait ${requiredPlanName} ou supérieur`}
                 </p>
               </div>
             </div>
@@ -195,7 +197,7 @@ export function SmartPaywall({
                 className="bg-white text-slate-900 hover:bg-white/90 shadow-lg"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
-                Débloquer
+                Voir {requiredPlanName}
               </Button>
               {onDismiss && (
                 <Button
@@ -211,7 +213,7 @@ export function SmartPaywall({
           </div>
         </motion.div>
 
-        <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} feature={feature} />
+        <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} feature={feature} requiredPlan={requiredPlan} />
       </>
     );
   }
@@ -234,7 +236,7 @@ export function SmartPaywall({
           <div className="absolute top-4 right-4">
             <Badge className={`bg-gradient-to-r ${visual.gradient} text-white border-0`}>
               <Crown className="w-3 h-3 mr-1" />
-              Premium
+              {requiredPlanName}
             </Badge>
           </div>
 
@@ -258,10 +260,10 @@ export function SmartPaywall({
           {/* Contenu */}
           <div className="text-center space-y-4">
             <h3 className="text-xl font-bold text-slate-900">
-              {customTitle || "Fonctionnalité Premium"}
+              {customTitle || `${FEATURE_LABELS[feature]?.label || "Cette fonctionnalité"} nécessite ${requiredPlanName}`}
             </h3>
             <p className="text-slate-600">
-              {customDescription || visual.benefit}
+              {customDescription || `${visual.benefit}. Disponible avec le forfait ${requiredPlanName} ou supérieur.`}
             </p>
 
             {/* Avantages animés */}
@@ -286,7 +288,7 @@ export function SmartPaywall({
               className={`w-full bg-gradient-to-r ${visual.gradient} hover:opacity-90 text-white shadow-lg`}
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              Débloquer maintenant
+              Passer à {requiredPlanName}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
 
@@ -307,7 +309,7 @@ export function SmartPaywall({
           </div>
         </motion.div>
 
-        <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} feature={feature} />
+        <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} feature={feature} requiredPlan={requiredPlan} />
       </>
     );
   }
@@ -332,17 +334,17 @@ export function SmartPaywall({
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-slate-900">
-              {customTitle || "Débloquer cette fonctionnalité"}
+              {customTitle || `Débloquer avec ${requiredPlanName}`}
             </p>
             <p className="text-xs text-slate-500">{visual.benefit}</p>
           </div>
           <Badge variant="outline" className="text-violet-600 border-violet-300">
             <Sparkles className="w-3 h-3 mr-1" />
-            Pro
+            {requiredPlanName}
           </Badge>
         </motion.button>
 
-        <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} feature={feature} />
+        <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} feature={feature} requiredPlan={requiredPlan} />
       </>
     );
   }
@@ -405,22 +407,22 @@ export function SmartPaywall({
 
             <div className="text-center space-y-4">
               <h2 className="text-2xl font-bold text-slate-900">
-                {customTitle || "Passez au niveau supérieur"}
+                {customTitle || `Passez à ${requiredPlanName}`}
               </h2>
               <p className="text-slate-600 max-w-sm mx-auto">
-                {customDescription || `Débloquez ${visual.benefit.toLowerCase()} et bien plus encore avec nos forfaits premium.`}
+                {customDescription || `Débloquez ${visual.benefit.toLowerCase()} et les avantages du forfait ${requiredPlanName}.`}
               </p>
 
               {/* Prix — utilise le plan Starter comme référence */}
               <div className="py-6">
                 <div className="flex items-baseline justify-center gap-1">
                   <span className="text-5xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                    {((PLANS.starter.price_monthly ?? 0) / 100).toFixed(0)}€
+                    {((PLANS[requiredPlan].price_monthly ?? 0) / 100).toFixed(0)}€
                   </span>
                   <span className="text-slate-500">/mois</span>
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
-                  ou {((PLANS.starter.price_yearly ?? 0) / 100).toFixed(0)}€/an
+                  ou {((PLANS[requiredPlan].price_yearly ?? 0) / 100).toFixed(0)}€/an
                 </p>
               </div>
 
@@ -430,7 +432,7 @@ export function SmartPaywall({
                 className={`w-full bg-gradient-to-r ${visual.gradient} hover:opacity-90 text-white text-lg py-6 shadow-lg`}
               >
                 <Sparkles className="w-5 h-5 mr-2" />
-                Commencer maintenant
+                Choisir {requiredPlanName}
               </Button>
 
               <p className="text-xs text-slate-400">
@@ -441,7 +443,7 @@ export function SmartPaywall({
         </motion.div>
       </AnimatePresence>
 
-      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} feature={feature} />
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} feature={feature} requiredPlan={requiredPlan} />
     </>
   );
 }

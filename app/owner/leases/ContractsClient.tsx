@@ -45,8 +45,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { UsageLimitBanner, useUsageLimit, UpgradeModal } from "@/components/subscription";
+import { UsageLimitBanner, useSubscription, useUsageLimit, UpgradeModal } from "@/components/subscription";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getPlanLevel, PLANS, type PlanSlug } from "@/lib/subscriptions/plans";
 
 export function ContractsClient() {
   const { toast } = useToast();
@@ -63,6 +64,7 @@ export function ContractsClient() {
 
   // SOTA 2026: Vérification limite abonnement pour les baux
   const { canAdd: canAddLease, loading: subscriptionLoading } = useUsageLimit("leases");
+  const { currentPlan, hasFeature } = useSubscription();
   const canNavigateToNewLease = canAddLease || subscriptionLoading;
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -418,6 +420,31 @@ export function ContractsClient() {
       (lease.signers || []).some((s: any) => s.role === "proprietaire" && s.signature_status === "pending");
   });
 
+  const activeLeaseCount = leases.filter((lease: any) =>
+    lease.statut === "active" || lease.statut === "pending_signature"
+  ).length;
+
+  const nextLeasePlan = ([
+    "gratuit",
+    "starter",
+    "confort",
+    "pro",
+    "enterprise_s",
+    "enterprise_m",
+    "enterprise_l",
+    "enterprise_xl",
+  ] as PlanSlug[]).find(
+    (slug) =>
+      getPlanLevel(slug) > getPlanLevel(currentPlan) &&
+      (PLANS[slug].limits.max_leases === -1 || PLANS[slug].limits.max_leases > activeLeaseCount)
+  );
+
+  const createLeaseLabel = canNavigateToNewLease
+    ? "Créer un bail"
+    : nextLeasePlan
+      ? `Passer ${PLANS[nextLeasePlan].name}`
+      : "Voir les forfaits";
+
   return (
     <PageTransition>
       {/* Dialog de confirmation de suppression */}
@@ -522,13 +549,13 @@ export function ContractsClient() {
                 {canNavigateToNewLease ? (
                   <Link href="/owner/leases/new">
                     <Plus className="mr-1 sm:mr-2 h-4 w-4" />
-                    <span className="hidden sm:inline">Créer un bail</span>
+                    <span className="hidden sm:inline">{createLeaseLabel}</span>
                     <span className="sm:hidden">Bail</span>
                   </Link>
                 ) : (
                   <span className="flex items-center">
                     <Plus className="mr-1 sm:mr-2 h-4 w-4" />
-                    <span className="hidden sm:inline">Créer un bail</span>
+                    <span className="hidden sm:inline">{createLeaseLabel}</span>
                     <span className="sm:hidden">Bail</span>
                   </span>
                 )}
@@ -606,10 +633,17 @@ export function ContractsClient() {
                 </Link>
               </TabsTrigger>
               <TabsTrigger value="inspections" className="text-xs sm:text-sm gap-1.5" asChild>
-                <Link href="/owner/inspections">
-                  <ClipboardCheck className="h-3.5 w-3.5" />
-                  États des lieux
-                </Link>
+                {hasFeature("edl_digital") ? (
+                  <Link href="/owner/inspections">
+                    <ClipboardCheck className="h-3.5 w-3.5" />
+                    États des lieux
+                  </Link>
+                ) : (
+                  <button type="button" onClick={() => setShowUpgradeModal(true)} className="flex items-center gap-1.5">
+                    <ClipboardCheck className="h-3.5 w-3.5" />
+                    États des lieux
+                  </button>
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -681,10 +715,10 @@ export function ContractsClient() {
                     title="Aucun bail trouvé"
                     description="Vous n'avez pas encore de bail correspondant à vos critères."
                     icon={FileText}
-                    action={{
+                    action={canNavigateToNewLease ? {
                         label: "Créer un bail",
                         href: "/owner/leases/new"
-                    }}
+                    } : undefined}
                 />
               ) : (
                 <GlassCard className="p-0 overflow-hidden">
@@ -702,7 +736,7 @@ export function ContractsClient() {
         </div>
       </div>
       {/* SOTA 2026: Modal upgrade si limite baux atteinte */}
-      <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+      <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} requiredPlan={nextLeasePlan} />
     </PageTransition>
   );
 }

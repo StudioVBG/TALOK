@@ -31,6 +31,7 @@ import {
   getUpgradeFeatures,
   getPlanLevel,
   getYearlyDiscount,
+  getRequiredPlanForFeature,
 } from "@/lib/subscriptions/plans";
 import {
   Sparkles,
@@ -61,7 +62,8 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan, context }: 
   const { currentPlan, subscription } = useSubscription();
   const planConfig = PLANS[currentPlan];
   const extraPropertyPrice = planConfig.limits.extra_property_price; // centimes
-  const [selectedPlan, setSelectedPlan] = useState<PlanSlug | null>(requiredPlan || null);
+  const resolvedRequiredPlan = requiredPlan || (feature ? getRequiredPlanForFeature(feature) : null);
+  const [selectedPlan, setSelectedPlan] = useState<PlanSlug | null>(resolvedRequiredPlan);
   const [billing, setBilling] = useState<"monthly" | "yearly">(
     subscription?.billing_cycle || "yearly"
   );
@@ -78,6 +80,10 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan, context }: 
   const gainedFeatures = selectedPlan
     ? getUpgradeFeatures(currentPlan, selectedPlan)
     : [];
+
+  React.useEffect(() => {
+    setSelectedPlan(resolvedRequiredPlan);
+  }, [resolvedRequiredPlan, open]);
 
   const handleUpgrade = async (planSlug: PlanSlug) => {
     // Only Enterprise L and XL require contact (custom contracts)
@@ -157,12 +163,14 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan, context }: 
               <DialogTitle className="text-xl font-bold text-white">
                 {context === "properties"
                   ? "Ajouter un bien"
-                  : "Débloquez plus de fonctionnalités"}
+                  : feature && resolvedRequiredPlan
+                    ? `Débloquez ${FEATURE_LABELS[feature]?.label} avec ${PLANS[resolvedRequiredPlan].name}`
+                    : "Choisissez le bon forfait"}
               </DialogTitle>
             </div>
             <DialogDescription className="text-slate-400">
               {feature
-                ? <>La fonctionnalité &quot;{FEATURE_LABELS[feature]?.label}&quot; nécessite le plan {requiredPlan ? PLANS[requiredPlan].name : "supérieur"}.</>
+                ? <>La fonctionnalité &quot;{FEATURE_LABELS[feature]?.label}&quot; nécessite le forfait {resolvedRequiredPlan ? PLANS[resolvedRequiredPlan].name : "supérieur"} ou supérieur.</>
                 : context === "properties"
                   ? <>Vous avez atteint vos {planConfig.limits.included_properties} bien{planConfig.limits.included_properties > 1 ? "s" : ""} inclus dans le forfait {planConfig.name}.</>
                   : null}
@@ -240,7 +248,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan, context }: 
               >
                 Annuel
                 <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs">
-                  -20%
+                  jusqu&apos;à -20%
                 </Badge>
               </button>
             </div>
@@ -258,7 +266,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan, context }: 
                 const plan = PLANS[slug];
                 const isSelected = selectedPlan === slug;
                 const isLoading = loading === slug;
-                const isRecommended = requiredPlan === slug || plan.is_popular;
+                const isRecommended = resolvedRequiredPlan === slug || plan.is_popular;
                 const price = billing === "yearly" ? plan.price_yearly : plan.price_monthly;
                 const monthlyEquivalent =
                   billing === "yearly" && plan.price_yearly
@@ -288,7 +296,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan, context }: 
                     {isRecommended && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                         <Badge className="bg-gradient-to-r from-violet-500 to-indigo-500 text-white border-0 shadow-lg">
-                          {plan.badge || "Recommandé"}
+                          {resolvedRequiredPlan === slug ? "Minimum requis" : plan.badge || "Recommandé"}
                         </Badge>
                       </div>
                     )}

@@ -34,8 +34,9 @@ import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PlanGate } from "@/components/subscription";
+import { UpgradeModal, useSubscription } from "@/components/subscription";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { getRequiredPlanForFeature, PLANS } from "@/lib/subscriptions/plans";
 
 interface Inspection {
   id: string;
@@ -63,6 +64,10 @@ export function InspectionsClient({ inspections }: Props) {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [edlToDelete, setEdlToDelete] = useState<Inspection | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const { hasFeature } = useSubscription();
+  const hasDigitalEdl = hasFeature("edl_digital");
+  const digitalRequiredPlan = getRequiredPlanForFeature("edl_digital");
 
   // Synchroniser les statuts EDL/Bail
   const handleSyncStatuses = async () => {
@@ -271,24 +276,35 @@ export function InspectionsClient({ inspections }: Props) {
                 Template à imprimer
               </Link>
             </Button>
-            {/* EDL numérique - avec dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="shadow-lg hover:shadow-xl transition-all duration-300">
                   <Plus className="mr-2 h-4 w-4" />
-                  Créer un EDL
+                  {hasDigitalEdl ? "Créer un EDL" : "Créer un template EDL"}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/owner/inspections/new" className="flex items-center">
+              <DropdownMenuContent align="end" className="w-64">
+                {hasDigitalEdl ? (
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/owner/inspections/new" className="flex items-center">
+                      <ClipboardList className="mr-2 h-4 w-4" />
+                      <div>
+                        <div className="font-medium">EDL numérique</div>
+                        <div className="text-xs text-muted-foreground">Avec signature électronique</div>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => setShowUpgrade(true)} className="cursor-pointer">
                     <ClipboardList className="mr-2 h-4 w-4" />
                     <div>
                       <div className="font-medium">EDL numérique</div>
-                      <div className="text-xs text-muted-foreground">Avec signature électronique</div>
+                      <div className="text-xs text-muted-foreground">
+                        Disponible à partir du forfait {PLANS[digitalRequiredPlan].name}
+                      </div>
                     </div>
-                  </Link>
-                </DropdownMenuItem>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild className="cursor-pointer">
                   <Link href="/owner/inspections/template" className="flex items-center">
@@ -304,12 +320,19 @@ export function InspectionsClient({ inspections }: Props) {
           </div>
         </div>
 
-        {/* PlanGate SOTA 2025 - EDL Digital */}
-        <PlanGate 
-          feature="edl_digital" 
-          mode="blur"
-          message="L'EDL digital avec signature électronique nécessite un forfait supérieur. Passez à un forfait payant pour créer des états des lieux numériques."
-        >
+        {!hasDigitalEdl && (
+          <GlassCard className="border-amber-200 bg-amber-50/50">
+            <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="font-semibold text-slate-900">Le template PDF reste disponible avec votre forfait actuel.</p>
+                <p className="text-sm text-slate-600">
+                  Pour créer un EDL numérique avec signature électronique, passez au forfait {PLANS[digitalRequiredPlan].name}.
+                </p>
+              </div>
+              <Button onClick={() => setShowUpgrade(true)}>Débloquer l'EDL numérique</Button>
+            </CardContent>
+          </GlassCard>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -415,7 +438,6 @@ export function InspectionsClient({ inspections }: Props) {
             } : undefined}
           />
         )}
-        </PlanGate>
       </div>
 
       {/* Modal de confirmation de suppression */}
@@ -446,6 +468,12 @@ export function InspectionsClient({ inspections }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <UpgradeModal
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        feature="edl_digital"
+        requiredPlan={digitalRequiredPlan}
+      />
     </PageTransition>
   );
 }

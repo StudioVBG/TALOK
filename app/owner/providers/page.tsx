@@ -8,7 +8,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { PlanGate } from "@/components/subscription";
+import Link from "next/link";
+import { UpgradeModal, useSubscription } from "@/components/subscription";
 import { 
   Search, 
   Filter, 
@@ -20,6 +21,8 @@ import {
   Zap,
   RefreshCw,
   X,
+  Lock,
+  ArrowRight,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -46,6 +49,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { ProviderCard, ProviderCardCompact, type ProviderCardData } from '@/components/provider/provider-card';
 import { SERVICE_TYPE_LABELS, type ServiceType } from '@/lib/data/service-pricing-reference';
+import { PLANS, getRequiredPlanForFeature } from '@/lib/subscriptions/plans';
 
 type SortOption = 'relevance' | 'rating' | 'price_asc' | 'price_desc' | 'distance' | 'reviews';
 type ViewMode = 'grid' | 'list';
@@ -73,6 +77,7 @@ const defaultFilters: Filters = {
 export default function ProvidersMarketplacePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { hasFeature } = useSubscription();
   
   const [providers, setProviders] = useState<ProviderCardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +87,9 @@ export default function ProvidersMarketplacePage() {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const requiredPlan = getRequiredPlanForFeature("providers_management");
+  const hasProvidersAccess = hasFeature("providers_management");
   
   // Charger les filtres depuis l'URL
   useEffect(() => {
@@ -93,8 +101,12 @@ export default function ProvidersMarketplacePage() {
   
   // Charger les prestataires
   useEffect(() => {
+    if (!hasProvidersAccess) {
+      setLoading(false);
+      return;
+    }
     fetchProviders();
-  }, [filters, sortBy, searchQuery]);
+  }, [filters, sortBy, searchQuery, hasProvidersAccess]);
   
   const fetchProviders = async () => {
     setLoading(true);
@@ -159,7 +171,50 @@ export default function ProvidersMarketplacePage() {
   };
   
   return (
-    <PlanGate feature="providers_management" mode="blur">
+    <>
+    {!hasProvidersAccess ? (
+      <div className="container mx-auto max-w-4xl py-10">
+        <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-sm">
+          <CardHeader className="space-y-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+              <Lock className="h-7 w-7" />
+            </div>
+            <div>
+              <CardTitle>Catalogue prestataires réservé au forfait {PLANS[requiredPlan].name}</CardTitle>
+              <p className="mt-2 text-sm text-slate-600">
+                Depuis ce forfait, vous pouvez rechercher des artisans, comparer les profils et lancer une demande de devis sans quitter Talok.
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              {["Recherche par métier", "Profils vérifiés", "Demande de devis contextualisée"].map((item) => (
+                <div key={item} className="rounded-xl border bg-white p-4 text-sm text-slate-700">
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button onClick={() => setShowUpgrade(true)}>
+                Débloquer {PLANS[requiredPlan].name}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/owner/tickets">
+                  Continuer avec les tickets
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        <UpgradeModal
+          open={showUpgrade}
+          onClose={() => setShowUpgrade(false)}
+          feature="providers_management"
+          requiredPlan={requiredPlan}
+        />
+      </div>
+    ) : (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -453,7 +508,8 @@ export default function ProvidersMarketplacePage() {
         </div>
       )}
     </div>
-    </PlanGate>
+    )}
+    </>
   );
 }
 

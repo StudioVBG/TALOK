@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, LayoutGrid, LayoutList, Download, Building } from "lucide-react";
+import { Plus, Search, LayoutGrid, LayoutList, Download, Building, Sparkles } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportProperties } from "@/lib/services/export-service";
 import { useProperties, useLeases } from "@/lib/hooks";
@@ -32,7 +32,8 @@ import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-containe
 
 // Imports SOTA
 import { PageTransition } from "@/components/ui/page-transition";
-import { UsageLimitBanner, useUsageLimit, UpgradeModal } from "@/components/subscription";
+import { UsageLimitBanner, useSubscription, useUsageLimit, UpgradeModal } from "@/components/subscription";
+import { PLANS } from "@/lib/subscriptions/plans";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -90,12 +91,20 @@ export default function OwnerPropertiesPage() {
   });
 
   const { isAtLimit, canAdd, loading: subscriptionLoading } = useUsageLimit("properties");
+  const { currentPlan } = useSubscription();
   const upgradeParam = searchParams.get("upgrade");
   const [showUpgradeModal, setShowUpgradeModal] = useState(upgradeParam === "true");
 
   // Pendant le chargement de l'abonnement, autoriser la navigation (le backend vérifiera)
   // pour éviter un flash de l'UpgradeModal pendant le loading
   const canNavigateToNew = canAdd || subscriptionLoading;
+  const currentPlanConfig = PLANS[currentPlan];
+  const extraPropertyPrice = currentPlanConfig.limits.extra_property_price;
+  const addPropertyLabel = canNavigateToNew
+    ? "Ajouter un bien"
+    : currentPlan === "gratuit"
+      ? "Passer Starter"
+      : "Voir les options";
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -493,7 +502,7 @@ export default function OwnerPropertiesPage() {
                   <span className="hidden sm:inline">Exporter</span>
                 </Button>
                 
-                {/* Bouton Ajouter — toujours visible, CTA upgrade si limite atteinte */}
+                {/* Bouton Ajouter — CTA contextualisé selon quota */}
                 {canNavigateToNew ? (
                   <Button
                     asChild
@@ -502,7 +511,7 @@ export default function OwnerPropertiesPage() {
                   >
                     <Link href="/owner/properties/new">
                       <Plus className="mr-2 h-4 w-4" />
-                      Ajouter un bien
+                      {addPropertyLabel}
                     </Link>
                   </Button>
                 ) : (
@@ -512,7 +521,7 @@ export default function OwnerPropertiesPage() {
                     className="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-9 md:h-10"
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Ajouter un bien
+                    {addPropertyLabel}
                   </Button>
                 )}
               </motion.div>
@@ -549,6 +558,27 @@ export default function OwnerPropertiesPage() {
                 dismissible={true}
               />
             </motion.div>
+
+            {!subscriptionLoading && isAtLimit && extraPropertyPrice > 0 && (
+              <motion.div variants={itemVariants} className="mb-6">
+                <Card className="border-blue-200 bg-blue-50/60">
+                  <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        Votre quota inclus est atteint, mais vous pouvez continuer.
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        Chaque bien supplémentaire ajoute {formatCurrency(extraPropertyPrice)} HT/mois à votre forfait {currentPlanConfig.name}.
+                      </p>
+                    </div>
+                    <Button variant="outline" onClick={() => setShowUpgradeModal(true)}>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Comparer avec un forfait supérieur
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
 
             {/* Filtres avec animations */}
             <motion.div

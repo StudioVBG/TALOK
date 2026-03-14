@@ -12,7 +12,14 @@ export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { PLANS, type PlanSlug, type FeatureKey } from "@/lib/subscriptions/plans";
+import {
+  PLANS,
+  type PlanSlug,
+  type FeatureKey,
+  hasPlanFeature,
+  isFeatureValueEnabled,
+  isSubscriptionStatusEntitled,
+} from "@/lib/subscriptions/plans";
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,13 +51,11 @@ export async function GET(request: NextRequest) {
     const planSlug = (subscription?.plan_slug || 'gratuit') as PlanSlug;
     const status = subscription?.status || 'active';
     const planFeatures = PLANS[planSlug].features;
-
-    // Vérifier si l'abonnement est actif
-    const isActive = ["active", "trialing"].includes(status);
+    const isActive = isSubscriptionStatusEntitled(status);
 
     // Si une seule feature demandée
     if (singleFeature) {
-      const hasAccess = isActive && planFeatures[singleFeature] === true;
+      const hasAccess = isActive && hasPlanFeature(planSlug, singleFeature);
       return NextResponse.json({
         feature: singleFeature,
         has_access: hasAccess,
@@ -63,7 +68,7 @@ export async function GET(request: NextRequest) {
     if (multipleFeatures && multipleFeatures.length > 0) {
       const results: Record<string, boolean> = {};
       for (const feat of multipleFeatures) {
-        results[feat] = isActive && planFeatures[feat as FeatureKey] === true;
+        results[feat] = isActive && hasPlanFeature(planSlug, feat as FeatureKey);
       }
       return NextResponse.json({
         features: results,
@@ -75,7 +80,7 @@ export async function GET(request: NextRequest) {
     // Si aucune feature spécifiée, retourner toutes les features
     const allFeatures: Record<string, boolean> = {};
     for (const [key, value] of Object.entries(planFeatures)) {
-      allFeatures[key] = isActive && Boolean(value);
+      allFeatures[key] = isActive && isFeatureValueEnabled(value);
     }
 
     return NextResponse.json({
