@@ -189,22 +189,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       console.warn("[key-handover confirm] Document generation error (non-blocking):", docErr);
     }
 
-    const activatedAt = new Date().toISOString();
-    if (lease.statut !== "active") {
-      const { error: leaseActivationError } = await serviceClient
-        .from("leases")
-        .update({
-          statut: "active",
-          activated_at: activatedAt,
-          updated_at: activatedAt,
-        })
-        .eq("id", leaseId);
-
-      if (leaseActivationError) {
-        console.warn("[key-handover confirm] Lease activation error (non-blocking):", leaseActivationError);
-      }
-    }
-
     // Audit log
     try {
       await (serviceClient.from("audit_log") as any).insert({
@@ -238,27 +222,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       },
     });
 
-    const { data: tenantUserProfile } = await serviceClient
-      .from("profiles")
-      .select("user_id")
-      .eq("id", profile.id)
-      .single();
-
-    await (serviceClient.from("outbox") as any).insert({
-      event_type: "Lease.Activated",
-      payload: {
-        lease_id: leaseId,
-        activated_by: profile.id,
-        activated_at: activatedAt,
-        tenant_user_id: tenantUserProfile?.user_id || null,
-        property_address: (lease as any).properties?.adresse_complete || null,
-        initial_invoice_id: initialInvoiceSettlement.invoice?.id || null,
-        key_handover_id: handover.id,
-      },
-    });
-
     // Invalider le cache
     revalidatePath(`/owner/leases/${leaseId}`);
+    revalidatePath("/owner/leases");
     revalidatePath("/tenant/dashboard");
     revalidatePath("/tenant/documents");
     revalidatePath("/owner/documents");

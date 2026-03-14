@@ -8,7 +8,7 @@ import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admi
  * 
  * Cette route corrige les incohérences où :
  * - Un EDL a toutes les signatures mais reste en "draft" ou "in_progress"
- * - Un bail a son EDL d'entrée signé mais reste en "fully_signed" au lieu de "active"
+ * - Un bail a son EDL d'entrée signé mais son workflow d'activation n'est pas encore cohérent
  */
 export async function POST(request: Request) {
   try {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     const results = {
       edlsUpdated: 0,
-      leasesActivated: 0,
+      leasesReadyForActivation: 0,
       errors: [] as string[],
       details: [] as any[],
     };
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
             new_status: "signed",
           });
 
-          // Si c'est un EDL d'entrée, activer le bail
+          // Si c'est un EDL d'entrée, signaler simplement que le bail peut progresser
           if (edl.type === "entree" && edl.lease_id) {
             const { data: lease } = await supabase
               .from("leases")
@@ -96,39 +96,14 @@ export async function POST(request: Request) {
               .eq("id", edl.lease_id)
               .single();
 
-            if (lease && lease.statut !== "active") {
-              const { error: leaseError } = await supabase
-                .from("leases")
-                .update({
-                  statut: "active",
-                  activated_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                } as any)
-                .eq("id", edl.lease_id);
-
-              if (leaseError) {
-                results.errors.push(`Erreur activation bail ${edl.lease_id}: ${leaseError.message}`);
-              } else {
-                results.leasesActivated++;
-                results.details.push({
-                  type: "lease_activated",
-                  lease_id: edl.lease_id,
-                  old_status: lease.statut,
-                  new_status: "active",
-                  triggered_by_edl: edl.id,
-                });
-
-                // Émettre un événement pour générer la première facture
-                await supabase.from("outbox").insert({
-                  event_type: "Lease.Activated",
-                  payload: {
-                    lease_id: edl.lease_id,
-                    edl_id: edl.id,
-                    action: "generate_initial_invoice",
-                    synced_at: new Date().toISOString(),
-                  },
-                } as any);
-              }
+            if (lease && lease.statut === "fully_signed") {
+              results.leasesReadyForActivation++;
+              results.details.push({
+                type: "lease_ready_for_activation",
+                lease_id: edl.lease_id,
+                current_status: lease.statut,
+                triggered_by_edl: edl.id,
+              });
             }
           }
         }
@@ -136,7 +111,7 @@ export async function POST(request: Request) {
     }
 
     // 2. Vérifier s'il y a des baux "fully_signed" avec EDL d'entrée signé
-    const { data: leasesToActivate } = await supabase
+    const { data: leasesReady } = await supabase
       .from("leases")
       .select(`
         id,
@@ -151,33 +126,18 @@ export async function POST(request: Request) {
       .eq("edl.type", "entree")
       .eq("edl.status", "signed");
 
-    for (const lease of leasesToActivate || []) {
-      // Éviter les doublons (déjà traité ci-dessus)
-      if (results.details.some(d => d.type === "lease_activated" && d.lease_id === lease.id)) {
+    for (const lease of leasesReady || []) {
+      if (results.details.some((detail) => detail.type === "lease_ready_for_activation" && detail.lease_id === lease.id)) {
         continue;
       }
 
-      const { error: activateError } = await supabase
-        .from("leases")
-        .update({
-          statut: "active",
-          activated_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as any)
-        .eq("id", lease.id);
-
-      if (activateError) {
-        results.errors.push(`Erreur activation bail ${lease.id}: ${activateError.message}`);
-      } else {
-        results.leasesActivated++;
-        results.details.push({
-          type: "lease_activated",
-          lease_id: lease.id,
-          old_status: lease.statut,
-          new_status: "active",
-          triggered_by_edl: (lease as any).edl?.[0]?.id,
-        });
-      }
+      results.leasesReadyForActivation++;
+      results.details.push({
+        type: "lease_ready_for_activation",
+        lease_id: lease.id,
+        current_status: lease.statut,
+        triggered_by_edl: (lease as any).edl?.[0]?.id,
+      });
     }
 
     // Journaliser l'action
@@ -188,14 +148,14 @@ export async function POST(request: Request) {
       entity_id: null,
       metadata: {
         edls_updated: results.edlsUpdated,
-        leases_activated: results.leasesActivated,
+        leases_ready_for_activation: results.leasesReadyForActivation,
         errors_count: results.errors.length,
       },
     } as any);
 
     return NextResponse.json({
       success: true,
-      message: `Synchronisation terminée: ${results.edlsUpdated} EDL(s) mis à jour, ${results.leasesActivated} bail(s) activé(s)`,
+      message: `Synchronisation terminée: ${results.edlsUpdated} EDL(s) mis à jour, ${results.leasesReadyForActivation} bail(s) prêts pour activation`,
       ...results,
     });
 

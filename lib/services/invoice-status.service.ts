@@ -4,6 +4,7 @@ type SupabaseLike = {
   from: (table: string) => {
     select: (...args: unknown[]) => any;
     update: (values: Record<string, unknown>) => any;
+    order: (...args: unknown[]) => any;
   };
 };
 
@@ -119,7 +120,20 @@ export async function getInitialInvoiceSettlement(
     .order("created_at", { ascending: true })
     .maybeSingle();
 
-  const invoiceId = (invoice as { id?: string } | null)?.id;
+  const metadataInvoiceId = (invoice as { id?: string } | null)?.id;
+  if (metadataInvoiceId) {
+    return getInvoiceSettlement(supabase, metadataInvoiceId);
+  }
+
+  const { data: typedInvoice } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("lease_id", leaseId)
+    .eq("type", "initial_invoice")
+    .order("created_at", { ascending: true })
+    .maybeSingle();
+
+  const invoiceId = (typedInvoice as { id?: string } | null)?.id;
   if (!invoiceId) {
     return null;
   }

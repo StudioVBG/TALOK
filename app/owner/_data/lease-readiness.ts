@@ -41,6 +41,7 @@ export interface LeaseReadinessInvoice {
   statut: InvoiceStatus;
   created_at: string;
   metadata?: Record<string, unknown> | null;
+  type?: string | null;
 }
 
 export interface LeaseReadinessDocument {
@@ -96,15 +97,15 @@ export interface LeaseReadinessInput {
 export type LeaseReadinessStep =
   | "awaiting_tenant_signature"
   | "awaiting_owner_signature"
-  | "edl_required"
+  | "awaiting_initial_invoice"
+  | "awaiting_edl"
   | "edl_in_progress"
   | "edl_signature_required"
+  | "awaiting_initial_payment"
+  | "partial_initial_payment"
+  | "awaiting_key_handover"
   | "activation_blocked"
   | "ready_to_activate"
-  | "awaiting_first_invoice"
-  | "awaiting_first_payment"
-  | "partial_first_payment"
-  | "keys_to_handover"
   | "active_stable"
   | "closed";
 
@@ -258,7 +259,11 @@ function resolveOwnerSigner(signers: LeaseReadinessSigner[]) {
 
 function resolveFirstInvoice(invoices: LeaseReadinessInvoice[]) {
   const initialInvoice =
-    invoices.find((invoice) => invoice.metadata?.type === "initial_invoice") ??
+    invoices.find(
+      (invoice) =>
+        invoice.metadata?.type === "initial_invoice" ||
+        invoice.type === "initial_invoice"
+    ) ??
     null;
 
   if (initialInvoice) return initialInvoice;
@@ -481,8 +486,26 @@ export function deriveLeaseReadinessState(
 
   const blockingReasons: string[] = [];
   if (!isLeaseSigned) blockingReasons.push("Le bail n'est pas encore signé par toutes les parties.");
+  if (paymentState.status === "invoice_pending" && lease.statut === "fully_signed") {
+    blockingReasons.push("La facture initiale n'a pas encore été générée.");
+  }
   if (edlState.status !== "signed" && lease.statut === "fully_signed") {
     blockingReasons.push("L'état des lieux d'entrée n'est pas encore signé.");
+  }
+  if (
+    lease.statut === "fully_signed" &&
+    paymentState.status !== "locked" &&
+    paymentState.status !== "invoice_pending" &&
+    paymentState.status !== "paid"
+  ) {
+    blockingReasons.push("Le paiement initial n'est pas encore confirmé.");
+  }
+  if (
+    lease.statut === "fully_signed" &&
+    paymentState.status === "paid" &&
+    !hasKeysHandedOver
+  ) {
+    blockingReasons.push("La remise des clés n'est pas encore confirmée.");
   }
   if (dpeDocumentState !== "available") {
     blockingReasons.push(
@@ -495,6 +518,8 @@ export function deriveLeaseReadinessState(
   const canActivate =
     lease.statut === "fully_signed" &&
     edlState.status === "signed" &&
+    paymentState.status === "paid" &&
+    hasKeysHandedOver &&
     dpeDocumentState === "available";
 
   const workflowDocuments: LeaseWorkflowDocument[] = [
@@ -675,16 +700,43 @@ export function deriveLeaseReadinessState(
       description: "Signez le bail pour passer à l'état des lieux.",
       tone: "blue",
     };
+  } else if (
+    lease.statut === "fully_signed" &&
+    paymentState.status === "invoice_pending"
+  ) {
+    currentStep = "awaiting_initial_invoice";
+    defaultTab = "paiements";
+    hero = {
+      tone: "amber",
+      eyebrow: "Étape 3",
+      title: "La facture initiale est en cours de préparation",
+      description:
+        "Le bail est signé. La prochaine brique métier attendue est la facture initiale qui servira de référence pour le premier règlement.",
+      highlights: [
+        "La facture initiale doit exister avant le suivi du paiement",
+        "Le reste du workflow d'entrée dépend de cette facture",
+      ],
+    };
+    nextAction = {
+      key: "open_payments",
+      label: "Ouvrir les paiements",
+      description: "Consulte l'apparition de la facture initiale.",
+      tone: "amber",
+      tab: "paiements",
+    };
   } else if (lease.statut === "fully_signed" && edlState.status === "missing") {
-    currentStep = "edl_required";
+    currentStep = "awaiting_edl";
     defaultTab = "edl";
     hero = {
       tone: "indigo",
-      eyebrow: "Étape 3",
+      eyebrow: "Étape 4",
       title: "L'état des lieux d'entrée doit être lancé",
       description:
-        "Le contrat est prêt. L'étape suivante consiste à documenter l'entrée dans le logement.",
-      highlights: ["Le bail ne doit pas être activé avant l'EDL", "Le document final EDL sera généré au moment de la signature"],
+        "La facture initiale existe. L'étape suivante consiste à documenter l'entrée dans le logement via un EDL simple et signé.",
+      highlights: [
+        "L'EDL doit être signé avant la remise des clés",
+        "Le document final EDL sera généré au moment de la signature",
+      ],
     };
     nextAction = {
       key: "create_edl",
@@ -698,7 +750,7 @@ export function deriveLeaseReadinessState(
     defaultTab = "edl";
     hero = {
       tone: "indigo",
-      eyebrow: "Étape 3",
+      eyebrow: "Étape 4",
       title: "L'état des lieux est en cours",
       description:
         "Le dossier progresse, mais l'EDL n'est pas encore finalisé ni signé.",
@@ -719,11 +771,14 @@ export function deriveLeaseReadinessState(
     defaultTab = "edl";
     hero = {
       tone: "indigo",
-      eyebrow: "Étape 3",
+      eyebrow: "Étape 4",
       title: "L'EDL est prêt mais attend encore les signatures",
       description:
-        "Le contenu de l'état des lieux est finalisé. Il reste à le signer pour activer le bail.",
-      highlights: ["Le contrat est déjà verrouillé", "L'activation sera disponible dès la signature EDL"],
+        "Le contenu de l'état des lieux est finalisé. Il reste à le signer pour débloquer le règlement puis l'activation.",
+      highlights: [
+        "Le contrat et la facture initiale sont déjà prêts",
+        "L'activation restera bloquée tant que le paiement et la remise des clés ne sont pas confirmés",
+      ],
     };
     nextAction = {
       key: "sign_edl",
@@ -732,15 +787,85 @@ export function deriveLeaseReadinessState(
       tone: "indigo",
       href: edlState.href,
     };
-  } else if (lease.statut === "fully_signed" && !canActivate) {
-    currentStep = "activation_blocked";
-    defaultTab = "documents";
+  } else if (
+    lease.statut === "fully_signed" &&
+    paymentState.status === "invoice_issued"
+  ) {
+    currentStep = "awaiting_initial_payment";
+    defaultTab = "paiements";
     hero = {
       tone: "amber",
-      eyebrow: "Étape 4",
+      eyebrow: "Étape 5",
+      title: "Le paiement initial est attendu",
+      description:
+        "La facture initiale et l'EDL sont prêts. Le prochain jalon est maintenant le règlement du premier encaissement.",
+      highlights: [
+        paymentState.expectedAmount > 0
+          ? `Montant attendu: ${paymentState.expectedAmount.toFixed(2)} EUR`
+          : "Montant à confirmer dans la facture initiale",
+        "La remise des clés ne doit être lancée qu'après confirmation du paiement",
+      ],
+    };
+    nextAction = {
+      key: "open_payments",
+      label: "Suivre le paiement",
+      description: "Ouvre la facture initiale et les encaissements associés.",
+      tone: "amber",
+      tab: "paiements",
+    };
+  } else if (lease.statut === "fully_signed" && paymentState.status === "partial") {
+    currentStep = "partial_initial_payment";
+    defaultTab = "paiements";
+    hero = {
+      tone: "amber",
+      eyebrow: "Étape 5",
+      title: "Le paiement initial est partiellement reçu",
+      description:
+        "Le premier règlement progresse, mais il n'est pas encore totalement soldé.",
+      highlights: [
+        `Déjà reçu: ${paymentState.paidAmount.toFixed(2)} EUR`,
+        `Reste à encaisser: ${paymentState.remainingAmount.toFixed(2)} EUR`,
+      ],
+    };
+    nextAction = {
+      key: "open_payments",
+      label: "Voir le détail",
+      description: "Ouvre la facture initiale et les paiements partiels.",
+      tone: "amber",
+      tab: "paiements",
+    };
+  } else if (
+    lease.statut === "fully_signed" &&
+    paymentState.status === "paid" &&
+    !hasKeysHandedOver
+  ) {
+    currentStep = "awaiting_key_handover";
+    hero = {
+      tone: "emerald",
+      eyebrow: "Étape 6",
+      title: "Le paiement est reçu, il reste la remise des clés",
+      description:
+        "Le dossier financier est soldé. La dernière étape opérationnelle avant activation est la confirmation de la remise des clés.",
+      highlights: [
+        "Le bail restera en fully_signed tant que les clés ne sont pas remises",
+        "L'activation sera disponible juste après la confirmation de remise des clés",
+      ],
+    };
+    nextAction = {
+      key: "handover_keys",
+      label: "Aller à la remise des clés",
+      description: "Fait défiler jusqu'au module de remise des clés.",
+      tone: "emerald",
+    };
+  } else if (lease.statut === "fully_signed" && !canActivate) {
+    currentStep = "activation_blocked";
+    defaultTab = dpeDocumentState === "available" ? "paiements" : "documents";
+    hero = {
+      tone: "amber",
+      eyebrow: "Étape 7",
       title: "Le bail est presque activable",
       description:
-        "Le workflow principal est terminé, mais il reste au moins un blocage documentaire.",
+        "Le flux principal est presque terminé, mais un blocage métier ou documentaire subsiste encore avant l'activation.",
       highlights: blockingReasons,
     };
     nextAction = {
@@ -754,11 +879,14 @@ export function deriveLeaseReadinessState(
     currentStep = "ready_to_activate";
     hero = {
       tone: "emerald",
-      eyebrow: "Étape 4",
+      eyebrow: "Étape 7",
       title: "Tout est prêt pour activer le bail",
       description:
-        "Contrat, diagnostics et EDL racontent enfin la même histoire. Vous pouvez démarrer la location.",
-      highlights: ["Le premier paiement sera suivi depuis la facture initiale", "La remise des clés devient l'étape suivante"],
+        "Contrat, facture initiale, EDL, paiement, remise des clés et diagnostics racontent enfin la même histoire. Vous pouvez activer le bail.",
+      highlights: [
+        "Le premier paiement est soldé",
+        "La remise des clés est déjà confirmée",
+      ],
     };
     nextAction = {
       key: "activate_lease",
@@ -770,7 +898,7 @@ export function deriveLeaseReadinessState(
     lease.statut === "active" &&
     paymentState.status === "invoice_pending"
   ) {
-    currentStep = "awaiting_first_invoice";
+    currentStep = "awaiting_initial_invoice";
     defaultTab = "paiements";
     hero = {
       tone: "amber",
@@ -791,7 +919,7 @@ export function deriveLeaseReadinessState(
     lease.statut === "active" &&
     paymentState.status === "invoice_issued"
   ) {
-    currentStep = "awaiting_first_payment";
+    currentStep = "awaiting_initial_payment";
     defaultTab = "paiements";
     hero = {
       tone: "amber",
@@ -814,7 +942,7 @@ export function deriveLeaseReadinessState(
       tab: "paiements",
     };
   } else if (lease.statut === "active" && paymentState.status === "partial") {
-    currentStep = "partial_first_payment";
+    currentStep = "partial_initial_payment";
     defaultTab = "paiements";
     hero = {
       tone: "amber",
@@ -839,14 +967,14 @@ export function deriveLeaseReadinessState(
     paymentState.status === "paid" &&
     !hasKeysHandedOver
   ) {
-    currentStep = "keys_to_handover";
+    currentStep = "awaiting_key_handover";
     hero = {
       tone: "emerald",
       eyebrow: "Étape 6",
       title: "Le paiement est reçu, il reste la remise des clés",
       description:
-        "Le dossier financier est soldé. La dernière action opérationnelle est la remise des clés.",
-      highlights: ["Le bail est actif et payé", "Le QR de remise des clés devient l'action utile"],
+        "Le dossier financier est soldé, mais la remise des clés n'est pas encore confirmée côté workflow.",
+      highlights: ["Le bail est déjà actif", "Le QR de remise des clés devient l'action utile"],
     };
     nextAction = {
       key: "handover_keys",

@@ -411,13 +411,13 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   };
 
   // Activer le bail
-  const handleActivate = async (force = false) => {
+  const handleActivate = async (_force = false) => {
     setIsActivating(true);
     try {
       const response = await fetch(`/api/leases/${leaseId}/activate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force_without_edl: force }),
+        body: JSON.stringify({}),
       });
       const result = await response.json();
       
@@ -430,11 +430,11 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       // 🎉 SOTA 2026: Grande célébration - Bail actif !
       celebrate({
         title: "Félicitations ! 🏠",
-        subtitle: `Le bail est maintenant actif. La première facture de ${formatCurrency(premierVersement)} a été générée.`,
+        subtitle: `Le bail est maintenant actif. Le parcours d'entrée est cohérent et le suivi locatif peut commencer.`,
         type: "complete",
         nextAction: {
-          label: "Voir les factures",
-          href: `/owner/leases/${leaseId}/invoices`,
+          label: "Ouvrir les paiements",
+          href: `/owner/leases/${leaseId}`,
         },
       });
       

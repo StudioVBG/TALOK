@@ -118,6 +118,37 @@ async function processEvent(supabase: any, event: any) {
 
   switch (event_type) {
     // Notifications
+    case "Invoice.InitialCreated": {
+      let tenantUserId = payload.tenant_user_id || null;
+
+      if (!tenantUserId && payload.tenant_profile_id) {
+        const { data: tenantProfile } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("id", payload.tenant_profile_id)
+          .maybeSingle();
+
+        tenantUserId = tenantProfile?.user_id || null;
+      }
+
+      if (tenantUserId) {
+        await sendNotification(supabase, {
+          type: "invoice_issued",
+          user_id: tenantUserId,
+          title: "Facture initiale disponible",
+          message: payload.includes_deposit
+            ? `Votre facture initiale de ${payload.amount}€ incluant le dépôt de garantie est disponible.`
+            : `Votre facture initiale de ${payload.amount}€ est disponible.`,
+          metadata: {
+            invoice_id: payload.invoice_id,
+            lease_id: payload.lease_id,
+            deposit_amount: payload.deposit_amount || 0,
+          },
+        });
+      }
+      break;
+    }
+
     case "Rent.InvoiceIssued":
       await sendNotification(supabase, {
         type: "invoice_issued",

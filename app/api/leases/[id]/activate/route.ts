@@ -69,7 +69,8 @@ export async function POST(
         unit_id,
         properties!leases_property_id_fkey (
           id,
-          owner_id
+          owner_id,
+          adresse_complete
         )
       `)
       .eq("id", leaseId)
@@ -205,12 +206,31 @@ export async function POST(
     }
 
     // 10. Créer un événement dans l'outbox
+    const { data: tenantSigner } = await serviceClient
+      .from("lease_signers")
+      .select("profile_id, profiles(user_id)")
+      .eq("lease_id", leaseId)
+      .in("role", ["locataire_principal", "locataire", "tenant", "principal", "colocataire"] as any)
+      .not("profile_id", "is", null)
+      .limit(1)
+      .maybeSingle();
+
+    const tenantUserId = (() => {
+      const profiles = (tenantSigner as { profiles?: { user_id?: string | null } | Array<{ user_id?: string | null }> | null } | null)?.profiles;
+      if (Array.isArray(profiles)) {
+        return profiles[0]?.user_id ?? null;
+      }
+      return profiles?.user_id ?? null;
+    })();
+
     await serviceClient.from("outbox").insert({
       event_type: "Lease.Activated",
       payload: {
         lease_id: leaseId,
         activated_by: profile.id,
         activated_at: new Date().toISOString(),
+        tenant_user_id: tenantUserId,
+        property_address: property?.adresse_complete || null,
         edl_present: !!edl,
         edl_signed: edl?.status === "signed",
         initial_invoice_id: initialInvoiceSettlement.invoice.id,

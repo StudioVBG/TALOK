@@ -36,7 +36,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency } from "@/lib/helpers/format";
 import { KeyHandoverQRGenerator } from "@/components/key-handover/KeyHandoverQRGenerator";
@@ -185,50 +184,6 @@ export function LeaseDetailsSidebar({
               </div>
             ))}
           </div>
-          {lease.statut === "fully_signed" && !hasSignedEdl && (
-            <div className="pt-2 border-t border-slate-50">
-              <AlertDialog>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs text-slate-400 hover:text-slate-600"
-                  disabled={isActivating}
-                  asChild
-                >
-                  <AlertDialogTrigger>
-                    {isActivating && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                    Activer sans état des lieux
-                  </AlertDialogTrigger>
-                </Button>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="text-red-600">
-                      Activer sans état des lieux ?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="space-y-3">
-                      <p>
-                        L'état des lieux d'entrée est <strong>obligatoire</strong> (loi du 6 juillet 1989, art. 3-2).
-                        Sans lui, le logement est présumé en bon état à l'entrée du locataire.
-                      </p>
-                      <p>
-                        En cas de dégradation, vous ne pourrez <strong>pas retenir le dépôt de garantie</strong> sans
-                        preuve de l'état initial du logement.
-                      </p>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => onActivate(true)}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      Activer quand même
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          )}
         </CardContent>
       </Card>
 

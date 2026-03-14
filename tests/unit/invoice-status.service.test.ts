@@ -9,10 +9,12 @@ function createMockSupabase({
   invoice,
   payments = [],
   initialInvoice,
+  typedInitialInvoice,
 }: {
   invoice?: Record<string, unknown> | null;
   payments?: Array<Record<string, unknown>>;
   initialInvoice?: Record<string, unknown> | null;
+  typedInitialInvoice?: Record<string, unknown> | null;
 }) {
   const updates: Array<{ table: string; values: Record<string, unknown> }> = [];
 
@@ -38,8 +40,14 @@ function createMockSupabase({
           const requestedInitialInvoice = filters.some(
             (filter) => filter.column === "metadata->>type" && filter.value === "initial_invoice"
           );
+          const requestedTypedInitialInvoice = filters.some(
+            (filter) => filter.column === "type" && filter.value === "initial_invoice"
+          );
           if (requestedInitialInvoice) {
             return { data: initialInvoice ?? null };
+          }
+          if (requestedTypedInitialInvoice) {
+            return { data: typedInitialInvoice ?? null };
           }
           return { data: invoice ?? null };
         }
@@ -130,5 +138,25 @@ describe("invoice-status.service", () => {
     expect(settlement?.invoice?.id).toBe("inv_initial");
     expect(settlement?.isSettled).toBe(true);
     expect(settlement?.status).toBe("paid");
+  });
+
+  it("retombe sur le champ type quand metadata.type est absent", async () => {
+    const mock = createMockSupabase({
+      initialInvoice: null,
+      typedInitialInvoice: { id: "inv_initial_type" },
+      invoice: {
+        id: "inv_initial_type",
+        montant_total: 540,
+        statut: "sent",
+        date_paiement: null,
+      },
+      payments: [{ montant: 200 }],
+    });
+
+    const settlement = await getInitialInvoiceSettlement(mock.client as any, "lease_2");
+
+    expect(settlement?.invoice?.id).toBe("inv_initial_type");
+    expect(settlement?.status).toBe("partial");
+    expect(settlement?.remaining).toBe(340);
   });
 });

@@ -56,10 +56,31 @@ function buildInput(
 }
 
 describe("deriveLeaseReadinessState", () => {
-  it("retourne edl_required quand le bail est signé sans EDL", () => {
+  it("retourne awaiting_initial_invoice quand le bail est signé sans facture initiale", () => {
     const state = deriveLeaseReadinessState(buildInput());
 
-    expect(state.currentStep).toBe("edl_required");
+    expect(state.currentStep).toBe("awaiting_initial_invoice");
+    expect(state.paymentState.status).toBe("invoice_pending");
+    expect(state.nextAction.key).toBe("open_payments");
+    expect(state.tabs.defaultTab).toBe("paiements");
+  });
+
+  it("retourne awaiting_edl quand la facture initiale existe mais pas l'EDL", () => {
+    const state = deriveLeaseReadinessState(
+      buildInput({
+        invoices: [
+          {
+            id: "inv-1",
+            montant_total: 1200,
+            statut: "sent",
+            created_at: "2026-01-01T00:00:00.000Z",
+            metadata: { type: "initial_invoice" },
+          },
+        ],
+      })
+    );
+
+    expect(state.currentStep).toBe("awaiting_edl");
     expect(state.nextAction.key).toBe("create_edl");
     expect(state.tabs.defaultTab).toBe("edl");
   });
@@ -67,6 +88,15 @@ describe("deriveLeaseReadinessState", () => {
   it("retourne edl_in_progress quand un EDL existe mais n'est pas signé", () => {
     const state = deriveLeaseReadinessState(
       buildInput({
+        invoices: [
+          {
+            id: "inv-1",
+            montant_total: 1200,
+            statut: "sent",
+            created_at: "2026-01-01T00:00:00.000Z",
+            metadata: { type: "initial_invoice" },
+          },
+        ],
         edl: {
           id: "edl-1",
           status: "in_progress",
@@ -79,14 +109,10 @@ describe("deriveLeaseReadinessState", () => {
     expect(state.nextAction.key).toBe("continue_edl");
   });
 
-  it("retourne awaiting_first_payment quand le bail est actif avec facture impayée", () => {
+  it("retourne awaiting_initial_payment quand le bail est signé, EDL signé et facture impayée", () => {
     const state = deriveLeaseReadinessState(
       buildInput({
-        lease: {
-          id: "lease-1",
-          statut: "active",
-          has_signed_edl: true,
-        },
+        lease: { id: "lease-1", statut: "fully_signed", has_signed_edl: true },
         edl: {
           id: "edl-1",
           status: "signed",
@@ -103,17 +129,17 @@ describe("deriveLeaseReadinessState", () => {
       })
     );
 
-    expect(state.currentStep).toBe("awaiting_first_payment");
+    expect(state.currentStep).toBe("awaiting_initial_payment");
     expect(state.paymentState.status).toBe("invoice_issued");
     expect(state.nextAction.key).toBe("open_payments");
   });
 
-  it("retourne keys_to_handover quand le paiement est reçu mais pas les clés", () => {
+  it("retourne awaiting_key_handover quand le paiement est reçu mais pas les clés", () => {
     const state = deriveLeaseReadinessState(
       buildInput({
         lease: {
           id: "lease-1",
-          statut: "active",
+          statut: "fully_signed",
           has_signed_edl: true,
           has_paid_initial: true,
           has_keys_handed_over: false,
@@ -142,9 +168,48 @@ describe("deriveLeaseReadinessState", () => {
       })
     );
 
-    expect(state.currentStep).toBe("keys_to_handover");
+    expect(state.currentStep).toBe("awaiting_key_handover");
     expect(state.paymentState.status).toBe("paid");
     expect(state.nextAction.key).toBe("handover_keys");
+  });
+
+  it("retourne ready_to_activate quand tout est prêt avant activation", () => {
+    const state = deriveLeaseReadinessState(
+      buildInput({
+        lease: {
+          id: "lease-1",
+          statut: "fully_signed",
+          has_signed_edl: true,
+          has_paid_initial: true,
+          has_keys_handed_over: true,
+        },
+        edl: {
+          id: "edl-1",
+          status: "signed",
+        },
+        invoices: [
+          {
+            id: "inv-1",
+            montant_total: 1200,
+            statut: "paid",
+            created_at: "2026-01-01T00:00:00.000Z",
+            metadata: { type: "initial_invoice" },
+          },
+        ],
+        payments: [
+          {
+            id: "pay-1",
+            montant: 1200,
+            statut: "paid",
+            invoice_id: "inv-1",
+          },
+        ],
+      })
+    );
+
+    expect(state.currentStep).toBe("ready_to_activate");
+    expect(state.canActivate).toBe(true);
+    expect(state.nextAction.key).toBe("activate_lease");
   });
 
   it("retourne active_stable quand le bail est actif et complet", () => {
