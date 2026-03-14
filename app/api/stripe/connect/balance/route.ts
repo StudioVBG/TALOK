@@ -9,6 +9,11 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { connectService } from "@/lib/stripe/connect.service";
+import { isStripeConfigurationError } from "@/lib/helpers/api-error";
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
 
 export async function GET() {
   try {
@@ -38,24 +43,35 @@ export async function GET() {
     }
 
     // Récupérer le compte Connect
-    const { data: connectAccount } = await serviceClient
+    const { data: connectAccount, error: connectAccountError } = await serviceClient
       .from("stripe_connect_accounts")
       .select(
         "stripe_account_id, charges_enabled, payouts_enabled, details_submitted, requirements_currently_due, requirements_past_due, requirements_disabled_reason"
       )
       .eq("profile_id", profile.id)
-      .single();
+      .maybeSingle();
+
+    if (connectAccountError) {
+      throw new Error(`Erreur lecture compte Connect: ${connectAccountError.message}`);
+    }
 
     if (!connectAccount) {
-      return NextResponse.json(
-        { error: "Aucun compte Stripe Connect configuré" },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        available: 0,
+        pending: 0,
+        available_cents: 0,
+        pending_cents: 0,
+        currency: "eur",
+        has_account: false,
+        account_not_ready: true,
+        missing_requirements: [],
+        disabled_reason: null,
+      });
     }
 
     const missingRequirements = [
-      ...((connectAccount.requirements_currently_due as string[] | null) ?? []),
-      ...((connectAccount.requirements_past_due as string[] | null) ?? []),
+      ...asStringArray(connectAccount.requirements_currently_due),
+      ...asStringArray(connectAccount.requirements_past_due),
     ];
 
     if (
@@ -92,9 +108,25 @@ export async function GET() {
     });
   } catch (error) {
     console.error("[Stripe Connect] Erreur balance:", error);
+
+    if (isStripeConfigurationError(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "Le solde Stripe est temporairement indisponible. Vérifiez la configuration Stripe ou réessayez plus tard.",
+        },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Impossible de récupérer le solde Stripe pour le moment",
+      },
+      { status: 502 }
     );
   }
 }

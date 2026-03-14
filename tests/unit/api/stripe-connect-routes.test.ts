@@ -202,14 +202,14 @@ describe("API Stripe Connect propriétaire", () => {
         type: "account_update",
       })
     );
-    expect(connectService.deleteConnectAccount).not.toHaveBeenCalled();
+    expect(connectService.deleteConnectAccount).toHaveBeenCalledWith("acct_new");
   });
 
   it("GET /api/stripe/connect/balance renvoie account_not_ready si le KYC est incomplet", async () => {
     serviceClient.from.mockImplementation((table: string) => {
       if (table === "stripe_connect_accounts") {
         const chain = createSelectChain();
-        chain.single.mockResolvedValue({
+        chain.maybeSingle.mockResolvedValue({
           data: {
             stripe_account_id: "acct_123",
             charges_enabled: false,
@@ -235,6 +235,63 @@ describe("API Stripe Connect propriétaire", () => {
     expect(json.account_not_ready).toBe(true);
     expect(json.missing_requirements).toEqual(["external_account"]);
     expect(connectService.getAccountBalance).not.toHaveBeenCalled();
+  });
+
+  it("GET /api/stripe/connect/balance renvoie un etat stable quand aucun compte n'existe", async () => {
+    serviceClient.from.mockImplementation((table: string) => {
+      if (table === "stripe_connect_accounts") {
+        const chain = createSelectChain();
+        chain.maybeSingle.mockResolvedValue({
+          data: null,
+          error: null,
+        });
+        return chain;
+      }
+
+      return createSelectChain();
+    });
+
+    const { GET } = await import("@/app/api/stripe/connect/balance/route");
+    const response = await GET();
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.has_account).toBe(false);
+    expect(json.account_not_ready).toBe(true);
+    expect(json.available).toBe(0);
+    expect(connectService.getAccountBalance).not.toHaveBeenCalled();
+  });
+
+  it("GET /api/stripe/connect/balance renvoie une erreur controlee si Stripe echoue", async () => {
+    serviceClient.from.mockImplementation((table: string) => {
+      if (table === "stripe_connect_accounts") {
+        const chain = createSelectChain();
+        chain.maybeSingle.mockResolvedValue({
+          data: {
+            stripe_account_id: "acct_123",
+            charges_enabled: true,
+            payouts_enabled: true,
+            details_submitted: true,
+            requirements_currently_due: [],
+            requirements_past_due: [],
+            requirements_disabled_reason: null,
+          },
+          error: null,
+        });
+        return chain;
+      }
+
+      return createSelectChain();
+    });
+
+    connectService.getAccountBalance.mockRejectedValue(new Error("Stripe API down"));
+
+    const { GET } = await import("@/app/api/stripe/connect/balance/route");
+    const response = await GET();
+    const json = await response.json();
+
+    expect(response.status).toBe(502);
+    expect(json.error).toContain("Stripe API down");
   });
 
   it("POST /api/stripe/connect/dashboard bloque l'acces tant que le compte n'est pas pret", async () => {

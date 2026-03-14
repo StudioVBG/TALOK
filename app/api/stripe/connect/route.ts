@@ -17,6 +17,10 @@ import {
 } from "@/lib/stripe/connect-account";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
+type StoredConnectAccountReference = {
+  id: string;
+  stripe_account_id: string;
+};
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -84,6 +88,30 @@ async function getAuthenticatedOwnerProfile() {
   }
 
   return { supabase, user, profile };
+}
+
+async function getStoredConnectAccountReference(
+  serviceClient: ReturnType<typeof createServiceRoleClient>,
+  profileId: string
+): Promise<StoredConnectAccountReference | null> {
+  const { data, error } = await serviceClient
+    .from("stripe_connect_accounts")
+    .select("id, stripe_account_id")
+    .eq("profile_id", profileId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Erreur lecture compte Connect: ${error.message}`);
+  }
+
+  if (!data?.stripe_account_id) {
+    return null;
+  }
+
+  return {
+    id: data.id as string,
+    stripe_account_id: data.stripe_account_id as string,
+  };
 }
 
 /**
@@ -201,14 +229,14 @@ export async function POST(request: NextRequest) {
     const serviceClient = createServiceRoleClient();
 
     // Vérifier si un compte existe déjà
-    const { data: existingAccount } = await serviceClient
-      .from("stripe_connect_accounts")
-      .select("id, stripe_account_id")
-      .eq("profile_id", profile.id)
-      .maybeSingle();
+    const existingAccount = await getStoredConnectAccountReference(
+      serviceClient,
+      profile.id
+    );
 
     let stripeAccountId: string;
     let hasExistingAccount = Boolean(existingAccount);
+    let createdStripeAccountId: string | null = null;
 
     if (existingAccount) {
       // Compte existe, générer un nouveau lien d'onboarding
@@ -230,6 +258,7 @@ export async function POST(request: NextRequest) {
       });
 
       stripeAccountId = stripeAccount.id;
+      createdStripeAccountId = stripeAccount.id;
 
       // Enregistrer en base de données
       const { error: insertError } = await serviceClient
@@ -244,24 +273,44 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         if ((insertError as { code?: string }).code === "23505") {
-          const { data: conflictAccount } = await serviceClient
-            .from("stripe_connect_accounts")
-            .select("id, stripe_account_id")
-            .eq("profile_id", profile.id)
-            .maybeSingle();
-
-          if (conflictAccount?.stripe_account_id) {
-            stripeAccountId = conflictAccount.stripe_account_id as string;
-            hasExistingAccount = true;
-          } else {
-            await connectService.deleteConnectAccount(stripeAccountId).catch(() => {});
-            throw new Error("Conflit de creation du compte Connect sans compte recuperable");
-          }
+          hasExistingAccount = true;
         } else {
           // Si erreur d'insertion, supprimer le compte Stripe
-          await connectService.deleteConnectAccount(stripeAccountId).catch(() => {});
+          await Promise.resolve(connectService.deleteConnectAccount(stripeAccountId)).catch(() => {});
           throw new Error(`Erreur base de données: ${insertError.message}`);
         }
+      }
+
+      const persistedAccount = await getStoredConnectAccountReference(
+        serviceClient,
+        profile.id
+      );
+
+      if (!persistedAccount?.stripe_account_id) {
+        await Promise.resolve(connectService.deleteConnectAccount(stripeAccountId)).catch(() => {});
+        throw new Error(
+          "Impossible de retrouver le compte Connect après la création"
+        );
+      }
+
+      stripeAccountId = persistedAccount.stripe_account_id;
+      hasExistingAccount =
+        hasExistingAccount ||
+        persistedAccount.stripe_account_id !== createdStripeAccountId;
+
+      if (
+        createdStripeAccountId &&
+        persistedAccount.stripe_account_id !== createdStripeAccountId
+      ) {
+        await Promise.resolve(
+          connectService.deleteConnectAccount(createdStripeAccountId)
+        )
+          .catch((cleanupError) => {
+            console.warn(
+              "[Stripe Connect] Impossible de supprimer le compte orphelin après conflit:",
+              cleanupError
+            );
+          });
       }
     }
 

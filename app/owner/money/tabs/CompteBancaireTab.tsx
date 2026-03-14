@@ -119,10 +119,20 @@ export function CompteBancaireTab() {
       });
     }
 
-    refetchStatus();
-    void refetchBalance();
-    void refetchTransfers();
-    void refetchPayouts();
+    void (async () => {
+      const refreshedStatus = await refetchStatus();
+      const refreshedIsReady = Boolean(
+        refreshedStatus.data?.has_account && refreshedStatus.data.account?.is_ready
+      );
+
+      if (refreshedIsReady) {
+        await Promise.allSettled([
+          refetchBalance(),
+          refetchTransfers(),
+          refetchPayouts(),
+        ]);
+      }
+    })();
 
     const params = new URLSearchParams(searchParams.toString());
     params.delete("success");
