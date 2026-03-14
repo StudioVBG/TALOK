@@ -6,8 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
-  title: "Connexions Bancaires | Talok",
-  description: "Gérez vos connexions bancaires pour l'automatisation des paiements",
+  title: "Open Banking | Talok",
+  description: "Connexions bancaires en lecture seule pour rapprocher les virements",
 };
 
 export default function BankSettingsPage() {
@@ -20,9 +20,9 @@ export default function BankSettingsPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Connexions Bancaires</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Open Banking</h1>
           <p className="text-muted-foreground">
-            Connectez vos comptes pour automatiser le suivi des paiements.
+            Connexion bancaire en lecture seule pour rapprocher les virements. Cette page ne configure pas Stripe Connect.
           </p>
         </div>
       </div>
@@ -32,13 +32,14 @@ export default function BankSettingsPage() {
         
         <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg text-sm text-blue-800 dark:text-blue-200">
           <h4 className="font-semibold mb-2 flex items-center gap-2">
-            ℹ️ Comment ça marche ?
+            Comment ça marche ?
           </h4>
           <ul className="list-disc pl-5 space-y-1">
             <li>Nous nous connectons à votre banque en <strong>lecture seule</strong> via GoCardless.</li>
             <li>Nous récupérons uniquement l'historique des transactions.</li>
             <li>Notre algorithme détecte automatiquement les virements correspondant à vos loyers.</li>
             <li>Vos factures sont marquées comme "Payées" automatiquement.</li>
+            <li>Pour recevoir les paiements en ligne via Stripe Connect, utilisez <strong>Finances &gt; Compte bancaire</strong>.</li>
           </ul>
         </div>
       </div>

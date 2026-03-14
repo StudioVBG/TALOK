@@ -91,13 +91,18 @@ function flattenObject(obj: Record<string, any>, prefix = ""): Record<string, st
 async function stripeRequest<T>(
   endpoint: string,
   method: "GET" | "POST" | "DELETE" = "GET",
-  body?: Record<string, any>
+  body?: Record<string, any>,
+  options?: { idempotencyKey?: string }
 ): Promise<T> {
   const apiKey = await getApiKey();
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
   };
+
+  if (options?.idempotencyKey) {
+    headers["Idempotency-Key"] = options.idempotencyKey;
+  }
 
   let requestBody: string | undefined;
   if (body) {
@@ -132,26 +137,32 @@ export async function createConnectAccount(params: {
   country?: string;
   businessType?: "individual" | "company";
   metadata?: Record<string, string>;
+  idempotencyKey?: string;
 }): Promise<ConnectAccount> {
-  return stripeRequest<ConnectAccount>("/accounts", "POST", {
-    type: "express",
-    country: params.country || "FR",
-    email: params.email,
-    business_type: params.businessType || "individual",
-    capabilities: {
-      card_payments: { requested: true },
-      transfers: { requested: true },
-    },
-    metadata: params.metadata,
-    settings: {
-      payouts: {
-        schedule: {
-          interval: "daily", // Virements quotidiens
-          delay_days: "minimum", // Stripe choisit le délai minimum autorisé pour le pays/compte
+  return stripeRequest<ConnectAccount>(
+    "/accounts",
+    "POST",
+    {
+      type: "express",
+      country: params.country || "FR",
+      email: params.email,
+      business_type: params.businessType || "individual",
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      metadata: params.metadata,
+      settings: {
+        payouts: {
+          schedule: {
+            interval: "daily", // Virements quotidiens
+            delay_days: "minimum", // Stripe choisit le délai minimum autorisé pour le pays/compte
+          },
         },
       },
     },
-  });
+    { idempotencyKey: params.idempotencyKey }
+  );
 }
 
 /**

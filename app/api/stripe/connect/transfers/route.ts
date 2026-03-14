@@ -7,11 +7,12 @@ export const runtime = "nodejs";
  */
 
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { createRouteHandlerClient, createServiceRoleClient } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
     const supabase = await createRouteHandlerClient();
+    const serviceClient = createServiceRoleClient();
     const {
       data: { user },
       error: authError,
@@ -36,7 +37,7 @@ export async function GET() {
     }
 
     // Récupérer le compte Connect
-    const { data: connectAccount } = await supabase
+    const { data: connectAccount } = await serviceClient
       .from("stripe_connect_accounts")
       .select("id")
       .eq("profile_id", profile.id)
@@ -48,7 +49,7 @@ export async function GET() {
     }
 
     // Récupérer les transferts
-    const { data: transfers, error: transfersError } = await supabase
+    const { data: transfers, error: transfersError } = await serviceClient
       .from("stripe_transfers")
       .select(
         "id, amount, currency, net_amount, platform_fee, stripe_fee, status, description, created_at, completed_at, invoice_id"

@@ -6,19 +6,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/hooks/use-auth";
+import type { ConnectAccountResponse } from "@/lib/stripe/connect-account";
 
 // ── Types ──
 
-export interface ConnectAccountData {
-  has_account: boolean;
-  account: {
-    is_ready: boolean;
-    charges_enabled?: boolean;
-    payouts_enabled?: boolean;
-    details_submitted?: boolean;
-    bank_account?: { last4: string; bank_name?: string } | null;
-  } | null;
-}
+export type ConnectAccountData = ConnectAccountResponse;
 
 export interface ConnectBalanceData {
   available: number;
@@ -26,7 +18,10 @@ export interface ConnectBalanceData {
   available_cents?: number;
   pending_cents?: number;
   currency: string;
+  has_account?: boolean;
   account_not_ready?: boolean;
+  missing_requirements?: string[];
+  disabled_reason?: string | null;
 }
 
 export interface StripeTransfer {
@@ -56,40 +51,49 @@ export function useStripeConnectStatus() {
     queryKey: [CONNECT_STATUS_KEY, profile?.id],
     queryFn: async () => {
       const res = await fetch("/api/stripe/connect");
-      if (!res.ok) throw new Error("Erreur chargement compte Connect");
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Erreur chargement compte Connect");
+      }
+      return data;
     },
     enabled: !!profile?.id,
     staleTime: 60_000,
   });
 }
 
-export function useStripeConnectBalance() {
+export function useStripeConnectBalance(enabled = true) {
   const { profile } = useAuth();
 
   return useQuery<ConnectBalanceData>({
     queryKey: [CONNECT_BALANCE_KEY, profile?.id],
     queryFn: async () => {
       const res = await fetch("/api/stripe/connect/balance");
-      if (!res.ok) throw new Error("Erreur chargement solde");
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Erreur chargement solde");
+      }
+      return data;
     },
-    enabled: !!profile?.id,
+    enabled: !!profile?.id && enabled,
     staleTime: 30_000,
   });
 }
 
-export function useStripeTransfers() {
+export function useStripeTransfers(enabled = true) {
   const { profile } = useAuth();
 
   return useQuery<StripeTransfer[]>({
     queryKey: [CONNECT_TRANSFERS_KEY, profile?.id],
     queryFn: async () => {
       const res = await fetch("/api/stripe/connect/transfers");
-      if (!res.ok) throw new Error("Erreur chargement transferts");
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Erreur chargement transferts");
+      }
+      return data;
     },
-    enabled: !!profile?.id,
+    enabled: !!profile?.id && enabled,
     staleTime: 60_000,
   });
 }

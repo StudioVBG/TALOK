@@ -4,7 +4,8 @@
  * Onglet "Compte bancaire" — Statut IBAN, solde Stripe Connect, historique versements
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Building2,
@@ -46,15 +47,76 @@ function formatEur(cents: number): string {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
 
+function formatRequirementLabel(requirement: string): string {
+  return requirement
+    .replaceAll(".", " > ")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export function CompteBancaireTab() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [connectLoading, setConnectLoading] = useState(false);
 
-  const { data: connectData, isLoading: statusLoading } = useStripeConnectStatus();
-  const { data: balance, isLoading: balanceLoading } = useStripeConnectBalance();
-  const { data: transfers, isLoading: transfersLoading } = useStripeTransfers();
+  const {
+    data: connectData,
+    isLoading: statusLoading,
+    isError: statusError,
+    error: statusErrorValue,
+    refetch: refetchStatus,
+  } = useStripeConnectStatus();
+  const isReady = Boolean(connectData?.has_account && connectData.account?.is_ready);
+  const hasAccount = Boolean(connectData?.has_account);
+  const isOnboardingIncomplete = Boolean(hasAccount && !isReady);
+  const {
+    data: balance,
+    isLoading: balanceLoading,
+    isError: balanceError,
+    error: balanceErrorValue,
+    refetch: refetchBalance,
+  } = useStripeConnectBalance(isReady);
+  const {
+    data: transfers,
+    isLoading: transfersLoading,
+    isError: transfersError,
+    error: transfersErrorValue,
+    refetch: refetchTransfers,
+  } = useStripeTransfers(isReady);
 
-  const isReady = connectData?.has_account && connectData.account?.is_ready;
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const refresh = searchParams.get("refresh");
+
+    if (!success && !refresh) {
+      return;
+    }
+
+    if (success === "true") {
+      toast({
+        title: "Onboarding Stripe mis à jour",
+        description: "Le statut de votre compte bancaire est en cours de synchronisation.",
+      });
+    }
+
+    if (refresh === "true") {
+      toast({
+        title: "Onboarding à reprendre",
+        description: "Stripe vous demande encore quelques informations avant d'activer les versements.",
+      });
+    }
+
+    refetchStatus();
+    void refetchBalance();
+    void refetchTransfers();
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("success");
+    params.delete("refresh");
+    const query = params.toString();
+    router.replace(query ? `/owner/money?${query}` : "/owner/money");
+  }, [refetchBalance, refetchStatus, refetchTransfers, router, searchParams, toast]);
 
   const startConnectOnboarding = async () => {
     setConnectLoading(true);
@@ -86,8 +148,13 @@ export function CompteBancaireTab() {
       const url = data.dashboard_url ?? data.url;
       if (res.ok && url) window.location.href = url;
       else throw new Error(data.error ?? "Erreur");
-    } catch {
-      toast({ title: "Erreur", description: "Impossible d'ouvrir le tableau de bord", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description:
+          err instanceof Error ? err.message : "Impossible d'ouvrir le tableau de bord",
+        variant: "destructive",
+      });
     }
   };
 
@@ -101,6 +168,34 @@ export function CompteBancaireTab() {
         </div>
         <Skeleton className="h-64 rounded-2xl" />
       </div>
+    );
+  }
+
+  if (statusError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-violet-600" /> Réception des loyers
+          </CardTitle>
+          <CardDescription>
+            Stripe Connect permet de recevoir vos loyers. Le chargement de cet espace a échoué.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+            <p className="font-medium text-destructive">Impossible de charger le compte bancaire</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {statusErrorValue instanceof Error
+                ? statusErrorValue.message
+                : "Une erreur inattendue est survenue."}
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => refetchStatus()} className="gap-2">
+            <RotateCcw className="h-4 w-4" /> Réessayer
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -119,6 +214,11 @@ export function CompteBancaireTab() {
         <CardContent className="space-y-4">
           {isReady ? (
             <div className="space-y-4">
+              {connectData?.account?._cached ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                  Les informations Stripe affichées ci-dessous proviennent du dernier cache synchronisé.
+                </div>
+              ) : null}
               <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
                 <div>
@@ -134,18 +234,81 @@ export function CompteBancaireTab() {
                 <ExternalLink className="h-4 w-4" /> Gérer le compte bancaire
               </Button>
             </div>
+          ) : isOnboardingIncomplete ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/20">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-amber-900 dark:text-amber-100">
+                        Onboarding Stripe incomplet
+                      </p>
+                      <Badge variant="outline" className="border-amber-300 text-amber-700">
+                        Action requise
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      Votre compte existe déjà, mais Stripe attend encore certaines informations avant d&apos;autoriser les versements.
+                    </p>
+                    {connectData?.account?.requirements.disabled_reason ? (
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        Motif Stripe: {connectData.account.requirements.disabled_reason}
+                      </p>
+                    ) : null}
+                    {connectData?.account?.missing_requirements?.length ? (
+                      <div className="space-y-1 pt-1">
+                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                          Éléments à compléter
+                        </p>
+                        <ul className="space-y-1 text-sm text-amber-800 dark:text-amber-200">
+                          {connectData.account.missing_requirements.slice(0, 5).map((item) => (
+                            <li key={item}>- {formatRequirementLabel(item)}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={startConnectOnboarding} disabled={connectLoading} className="gap-2">
+                  {connectLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Building2 className="h-4 w-4" />
+                  )}
+                  Reprendre l&apos;onboarding
+                </Button>
+                <Button variant="outline" onClick={() => refetchStatus()} className="gap-2">
+                  <RotateCcw className="h-4 w-4" /> Actualiser le statut
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="space-y-4">
               <div className="text-center py-8 border-2 border-dashed rounded-2xl bg-muted/30">
                 <Building2 className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="font-medium">Aucun compte bancaire configuré</p>
-                <p className="text-sm text-muted-foreground mt-1 mb-4">
-                  Configurez votre RIB pour recevoir les loyers directement sur votre compte.
+                <p className="font-medium">
+                  {connectData?.not_configured
+                    ? "Stripe Connect n'est pas encore disponible"
+                    : "Aucun compte bancaire configuré"}
                 </p>
-                <Button onClick={startConnectOnboarding} disabled={connectLoading} className="gap-2">
-                  {connectLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
-                  Configurer mon compte bancaire
-                </Button>
+                <p className="text-sm text-muted-foreground mt-1 mb-4">
+                  {connectData?.not_configured
+                    ? "Le module d'encaissement en ligne n'est pas activé pour le moment. Vous pouvez réessayer plus tard."
+                    : "Configurez votre compte Stripe Connect pour recevoir les loyers directement sur votre compte."}
+                </p>
+                {!connectData?.not_configured ? (
+                  <Button onClick={startConnectOnboarding} disabled={connectLoading} className="gap-2">
+                    {connectLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Building2 className="h-4 w-4" />
+                    )}
+                    Configurer mon compte bancaire
+                  </Button>
+                ) : null}
               </div>
             </div>
           )}
@@ -163,6 +326,17 @@ export function CompteBancaireTab() {
               </div>
               {balanceLoading ? (
                 <Skeleton className="h-8 w-32" />
+              ) : balanceError ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-destructive">
+                    {balanceErrorValue instanceof Error
+                      ? balanceErrorValue.message
+                      : "Erreur de chargement du solde"}
+                  </p>
+                  <Button size="sm" variant="outline" onClick={() => refetchBalance()}>
+                    Réessayer
+                  </Button>
+                </div>
               ) : (
                 <p className="text-3xl font-bold text-emerald-600">
                   <AnimatedCounter value={balance?.available ?? 0} type="currency" />
@@ -179,6 +353,17 @@ export function CompteBancaireTab() {
               </div>
               {balanceLoading ? (
                 <Skeleton className="h-8 w-32" />
+              ) : balanceError ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-destructive">
+                    {balanceErrorValue instanceof Error
+                      ? balanceErrorValue.message
+                      : "Erreur de chargement du solde"}
+                  </p>
+                  <Button size="sm" variant="outline" onClick={() => refetchBalance()}>
+                    Réessayer
+                  </Button>
+                </div>
               ) : (
                 <p className="text-3xl font-bold text-amber-600">
                   <AnimatedCounter value={balance?.pending ?? 0} type="currency" />
@@ -207,6 +392,18 @@ export function CompteBancaireTab() {
                 {[1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-16 w-full rounded-xl" />
                 ))}
+              </div>
+            ) : transfersError ? (
+              <div className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+                <p className="font-medium text-destructive">Impossible de charger l&apos;historique des versements</p>
+                <p className="text-sm text-muted-foreground">
+                  {transfersErrorValue instanceof Error
+                    ? transfersErrorValue.message
+                    : "Une erreur inattendue est survenue."}
+                </p>
+                <Button variant="outline" onClick={() => refetchTransfers()} className="gap-2">
+                  <RotateCcw className="h-4 w-4" /> Réessayer
+                </Button>
               </div>
             ) : !transfers || transfers.length === 0 ? (
               <EmptyState

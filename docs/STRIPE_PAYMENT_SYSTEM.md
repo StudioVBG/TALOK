@@ -34,6 +34,13 @@ Le système de paiement de TALOK intègre Stripe pour les paiements en ligne, av
 | **Virement** | Enregistrement manuel | ✅ Complet |
 | **Chèque** | Enregistrement manuel | ✅ Complet |
 
+### Cadrage produit cote proprietaire
+
+- `Finances > Compte bancaire` correspond au compte `Stripe Connect` utilise pour recevoir les paiements en ligne et consulter les reversements.
+- `owner_profiles.iban` reste un champ metier interne et n'est pas la source de verite du compte externe Stripe.
+- `Open Banking` ou `Connexions bancaires` via GoCardless sert uniquement a la lecture des transactions bancaires pour le rapprochement des virements.
+- Ces trois briques doivent rester distinctes dans les ecrans, les messages utilisateur et les integrations techniques.
+
 ### Schéma global
 
 ```

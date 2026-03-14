@@ -7,12 +7,13 @@ export const runtime = "nodejs";
  */
 
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { createRouteHandlerClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { connectService } from "@/lib/stripe/connect.service";
 
 export async function GET() {
   try {
     const supabase = await createRouteHandlerClient();
+    const serviceClient = createServiceRoleClient();
     const {
       data: { user },
       error: authError,
@@ -37,9 +38,11 @@ export async function GET() {
     }
 
     // Récupérer le compte Connect
-    const { data: connectAccount } = await supabase
+    const { data: connectAccount } = await serviceClient
       .from("stripe_connect_accounts")
-      .select("stripe_account_id, charges_enabled")
+      .select(
+        "stripe_account_id, charges_enabled, payouts_enabled, details_submitted, requirements_currently_due, requirements_past_due, requirements_disabled_reason"
+      )
       .eq("profile_id", profile.id)
       .single();
 
@@ -50,12 +53,25 @@ export async function GET() {
       );
     }
 
-    if (!connectAccount.charges_enabled) {
+    const missingRequirements = [
+      ...((connectAccount.requirements_currently_due as string[] | null) ?? []),
+      ...((connectAccount.requirements_past_due as string[] | null) ?? []),
+    ];
+
+    if (
+      !connectAccount.charges_enabled ||
+      !connectAccount.payouts_enabled ||
+      !connectAccount.details_submitted ||
+      missingRequirements.length > 0
+    ) {
       return NextResponse.json({
         available: 0,
         pending: 0,
         currency: "eur",
+        has_account: true,
         account_not_ready: true,
+        missing_requirements: missingRequirements,
+        disabled_reason: connectAccount.requirements_disabled_reason ?? null,
       });
     }
 
@@ -72,6 +88,7 @@ export async function GET() {
       available_cents: available,
       pending_cents: pending,
       currency: "eur",
+      has_account: true,
     });
   } catch (error) {
     console.error("[Stripe Connect] Erreur balance:", error);

@@ -11,40 +11,57 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { connectService } from "@/lib/stripe/connect.service";
 import { isStripeConfigurationError } from "@/lib/helpers/api-error";
+import {
+  buildConnectAccountResponse,
+  type StoredConnectAccount,
+} from "@/lib/stripe/connect-account";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
+
+async function getAuthenticatedOwnerProfile() {
+  const supabase = await createRouteHandlerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { error: NextResponse.json({ error: "Non autorisé" }, { status: 401 }) };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, prenom, nom, role")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!profile || profile.role !== "owner") {
+    return {
+      error: NextResponse.json(
+        { error: "Seuls les propriétaires peuvent avoir un compte Connect" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { supabase, user, profile };
+}
 
 /**
  * GET - Récupérer le compte Connect de l'utilisateur
  */
 export async function GET() {
   try {
-    const supabase = await createRouteHandlerClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    const auth = await getAuthenticatedOwnerProfile();
+    if (auth.error) {
+      return auth.error;
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "owner") {
-      return NextResponse.json(
-        { error: "Seuls les propriétaires peuvent avoir un compte Connect" },
-        { status: 403 }
-      );
-    }
+    const { profile } = auth;
+    const serviceClient = createServiceRoleClient();
 
     // Récupérer le compte Connect
-    const { data: connectAccount } = await supabase
+    const { data: connectAccount } = await serviceClient
       .from("stripe_connect_accounts")
       .select("*")
       .eq("profile_id", profile.id)
@@ -64,7 +81,6 @@ export async function GET() {
       );
 
       // Mettre à jour les infos en DB si changement
-      const serviceClient = createServiceRoleClient();
       await serviceClient
         .from("stripe_connect_accounts")
         .update({
@@ -85,51 +101,30 @@ export async function GET() {
         })
         .eq("id", connectAccount.id as string);
 
-      return NextResponse.json({
-        has_account: true,
-        account: {
-          id: connectAccount.id,
-          stripe_account_id: connectAccount.stripe_account_id,
-          charges_enabled: stripeAccount.charges_enabled,
-          payouts_enabled: stripeAccount.payouts_enabled,
-          details_submitted: stripeAccount.details_submitted,
-          is_ready: connectService.isAccountReady(stripeAccount),
-          requirements: stripeAccount.requirements,
-          bank_account: stripeAccount.external_accounts?.data[0]
-            ? {
-                last4: stripeAccount.external_accounts.data[0].last4,
-                bank_name: stripeAccount.external_accounts.data[0].bank_name,
-              }
-            : null,
-          created_at: connectAccount.created_at,
-          onboarding_completed_at: connectAccount.onboarding_completed_at,
-        },
-      });
+      return NextResponse.json(
+        buildConnectAccountResponse(
+          {
+            ...(connectAccount as StoredConnectAccount),
+            charges_enabled: stripeAccount.charges_enabled,
+            payouts_enabled: stripeAccount.payouts_enabled,
+            details_submitted: stripeAccount.details_submitted,
+            requirements_currently_due: stripeAccount.requirements?.currently_due ?? [],
+            requirements_eventually_due: stripeAccount.requirements?.eventually_due ?? [],
+            requirements_past_due: stripeAccount.requirements?.past_due ?? [],
+            requirements_disabled_reason: stripeAccount.requirements?.disabled_reason,
+            bank_account_last4: stripeAccount.external_accounts?.data[0]?.last4,
+            bank_account_bank_name: stripeAccount.external_accounts?.data[0]?.bank_name,
+          },
+          stripeAccount
+        )
+      );
     } catch (stripeError) {
       // Si erreur Stripe, retourner les données en cache
-      return NextResponse.json({
-        has_account: true,
-        account: {
-          id: connectAccount.id,
-          stripe_account_id: connectAccount.stripe_account_id,
-          charges_enabled: connectAccount.charges_enabled,
-          payouts_enabled: connectAccount.payouts_enabled,
-          details_submitted: connectAccount.details_submitted,
-          is_ready:
-            connectAccount.charges_enabled &&
-            connectAccount.payouts_enabled &&
-            connectAccount.details_submitted,
-          bank_account: connectAccount.bank_account_last4
-            ? {
-                last4: connectAccount.bank_account_last4,
-                bank_name: connectAccount.bank_account_bank_name,
-              }
-            : null,
-          created_at: connectAccount.created_at,
-          onboarding_completed_at: connectAccount.onboarding_completed_at,
-          _cached: true,
-        },
-      });
+      return NextResponse.json(
+        buildConnectAccountResponse(connectAccount as StoredConnectAccount, null, {
+          cached: true,
+        })
+      );
     }
   } catch (error) {
     console.error("[Stripe Connect] Erreur GET:", error);
@@ -156,38 +151,23 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createRouteHandlerClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    const auth = await getAuthenticatedOwnerProfile();
+    if (auth.error) {
+      return auth.error;
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, prenom, nom, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "owner") {
-      return NextResponse.json(
-        { error: "Seuls les propriétaires peuvent créer un compte Connect" },
-        { status: 403 }
-      );
-    }
+    const { profile, user } = auth;
+    const serviceClient = createServiceRoleClient();
 
     // Vérifier si un compte existe déjà
-    const { data: existingAccount } = await supabase
+    const { data: existingAccount } = await serviceClient
       .from("stripe_connect_accounts")
       .select("id, stripe_account_id")
       .eq("profile_id", profile.id)
       .maybeSingle();
 
     let stripeAccountId: string;
+    let hasExistingAccount = Boolean(existingAccount);
 
     if (existingAccount) {
       // Compte existe, générer un nouveau lien d'onboarding
@@ -205,12 +185,12 @@ export async function POST(request: NextRequest) {
           profile_id: profile.id,
           talok_user_id: user.id,
         },
+        idempotencyKey: `owner-connect-account:${profile.id}`,
       });
 
       stripeAccountId = stripeAccount.id;
 
       // Enregistrer en base de données
-      const serviceClient = createServiceRoleClient();
       const { error: insertError } = await serviceClient
         .from("stripe_connect_accounts")
         .insert({
@@ -222,9 +202,25 @@ export async function POST(request: NextRequest) {
         });
 
       if (insertError) {
-        // Si erreur d'insertion, supprimer le compte Stripe
-        await connectService.deleteConnectAccount(stripeAccountId).catch(() => {});
-        throw new Error(`Erreur base de données: ${insertError.message}`);
+        if ((insertError as { code?: string }).code === "23505") {
+          const { data: conflictAccount } = await serviceClient
+            .from("stripe_connect_accounts")
+            .select("id, stripe_account_id")
+            .eq("profile_id", profile.id)
+            .maybeSingle();
+
+          if (conflictAccount?.stripe_account_id) {
+            stripeAccountId = conflictAccount.stripe_account_id as string;
+            hasExistingAccount = true;
+          } else {
+            await connectService.deleteConnectAccount(stripeAccountId).catch(() => {});
+            throw new Error("Conflit de creation du compte Connect sans compte recuperable");
+          }
+        } else {
+          // Si erreur d'insertion, supprimer le compte Stripe
+          await connectService.deleteConnectAccount(stripeAccountId).catch(() => {});
+          throw new Error(`Erreur base de données: ${insertError.message}`);
+        }
       }
     }
 
@@ -233,7 +229,7 @@ export async function POST(request: NextRequest) {
       accountId: stripeAccountId,
       refreshUrl: `${APP_URL}/owner/money?tab=banque&refresh=true`,
       returnUrl: `${APP_URL}/owner/money?tab=banque&success=true`,
-      type: existingAccount ? "account_update" : "account_onboarding",
+      type: hasExistingAccount ? "account_update" : "account_onboarding",
     });
 
     return NextResponse.json(
@@ -241,9 +237,9 @@ export async function POST(request: NextRequest) {
         success: true,
         onboarding_url: accountLink.url,
         expires_at: accountLink.expires_at,
-        is_new_account: !existingAccount,
+        is_new_account: !hasExistingAccount,
       },
-      { status: existingAccount ? 200 : 201 }
+      { status: hasExistingAccount ? 200 : 201 }
     );
   } catch (error) {
     console.error("[Stripe Connect] Erreur POST:", error);
