@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   FileText,
   FolderOpen,
@@ -60,6 +61,10 @@ import {
   archiveDocument,
 } from "./actions/documents";
 import { DocumentUploadDialog } from "./components/DocumentUploadDialog";
+import type {
+  LeaseReadinessState,
+  LeaseWorkflowDocument,
+} from "@/app/owner/_data/lease-readiness";
 
 // ============================================
 // TYPES
@@ -84,6 +89,7 @@ interface LeaseDocumentsTabProps {
   propertyId: string;
   documents: DocumentItem[];
   dpeStatus: { status: string; data?: any } | null;
+  readinessState: LeaseReadinessState;
 }
 
 // ============================================
@@ -121,6 +127,7 @@ export function LeaseDocumentsTab({
   propertyId,
   documents,
   dpeStatus,
+  readinessState,
 }: LeaseDocumentsTabProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -135,13 +142,35 @@ export function LeaseDocumentsTab({
     [documents]
   );
 
-  // Grouper par type requis : pour chaque type requis, trouver les docs existants
+  const workflowDocumentMap = useMemo(
+    () => new Map(readinessState.workflowDocuments.map((doc) => [doc.key, doc])),
+    [readinessState.workflowDocuments]
+  );
+
   const requiredSlots = useMemo(() => {
     return REQUIRED_LEASE_DOCUMENT_TYPES.map((config) => ({
       config,
       docs: activeDocs.filter((d) => d.type === config.type),
+      workflowDoc:
+        config.type === "bail"
+          ? workflowDocumentMap.get("contract")
+          : config.type === "EDL_entree"
+            ? workflowDocumentMap.get("edl")
+            : config.type === "diagnostic_performance"
+              ? workflowDocumentMap.get("dpe")
+              : undefined,
+      readinessStatus:
+        config.type === "bail"
+          ? readinessState.documentState.contract
+          : config.type === "EDL_entree"
+            ? readinessState.documentState.edl
+            : config.type === "diagnostic_performance"
+              ? readinessState.documentState.dpe
+              : config.type === "attestation_assurance"
+                ? readinessState.documentState.insurance
+                : "missing",
     }));
-  }, [activeDocs]);
+  }, [activeDocs, workflowDocumentMap, readinessState.documentState]);
 
   // Documents optionnels : tous les actifs dont le type n'est pas dans les requis
   const requiredTypes = useMemo(
@@ -155,7 +184,12 @@ export function LeaseDocumentsTab({
 
   // Stats
   const completedRequired = requiredSlots.filter(
-    ({ docs }) => docs.length > 0
+    ({ docs, readinessStatus }) =>
+      docs.some((doc) => {
+        const config = LEASE_DOCUMENT_TYPE_MAP[doc.type];
+        return config ? getLeaseDocumentUIStatus(doc, config) === "valid" : true;
+      }) ||
+      readinessStatus === "available"
   ).length;
   const totalRequired = requiredSlots.length;
   const expiredDocs = activeDocs.filter((d) => {
@@ -167,16 +201,23 @@ export function LeaseDocumentsTab({
   const filteredRequired = useMemo(() => {
     switch (filter) {
       case "required":
-        return requiredSlots.filter(({ docs }) => docs.length === 0);
+        return requiredSlots.filter(
+          ({ docs, readinessStatus }) =>
+            !docs.length &&
+            !["available", "pending_workflow", "in_progress"].includes(
+              readinessStatus
+            )
+        );
       case "expired":
-        return requiredSlots.filter(({ docs }) =>
-          docs.some((d) => {
+        return requiredSlots.filter(({ docs, readinessStatus }) => {
+          if (readinessStatus === "expired") return true;
+          return docs.some((d) => {
             const config = LEASE_DOCUMENT_TYPE_MAP[d.type];
             return (
               config && getLeaseDocumentUIStatus(d, config) === "expired"
             );
-          })
-        );
+          });
+        });
       default:
         return requiredSlots;
     }
@@ -368,7 +409,7 @@ export function LeaseDocumentsTab({
             Documents obligatoires
           </p>
           <div className="space-y-1.5">
-            {filteredRequired.map(({ config, docs }) =>
+            {filteredRequired.map(({ config, docs, workflowDoc, readinessStatus }) =>
               docs.length > 0 ? (
                 docs.map((doc) => (
                   <DocumentRow
@@ -381,6 +422,16 @@ export function LeaseDocumentsTab({
                     onReplace={() => handleReplace(doc)}
                   />
                 ))
+              ) : workflowDoc &&
+                ["available", "pending_workflow", "in_progress", "expired"].includes(
+                  readinessStatus
+                ) ? (
+                <WorkflowDocumentRow
+                  key={config.type}
+                  config={config}
+                  workflowDoc={workflowDoc}
+                  readinessStatus={readinessStatus}
+                />
               ) : (
                 <MissingDocumentRow
                   key={config.type}
@@ -639,6 +690,81 @@ function DocumentRow({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// WORKFLOW DOCUMENT ROW
+// ============================================
+
+function WorkflowDocumentRow({
+  config,
+  workflowDoc,
+  readinessStatus,
+}: {
+  config: LeaseDocumentTypeConfig;
+  workflowDoc: LeaseWorkflowDocument;
+  readinessStatus: string;
+}) {
+  const Icon = getDocIcon(config);
+  const statusLabel =
+    readinessStatus === "available"
+      ? "Déjà disponible"
+      : readinessStatus === "expired"
+        ? "À renouveler"
+        : readinessStatus === "in_progress"
+          ? "Généré à la fin du workflow"
+          : "Produit par le workflow";
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-slate-200 bg-slate-50/80">
+      <div className="h-9 w-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+        <Icon className="h-4 w-4 text-slate-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-medium text-slate-800">{config.label}</p>
+          <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+            {workflowDoc.source === "diagnostics" ? "Diagnostics" : "Workflow"}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px] h-5 px-1.5 border-0",
+              readinessStatus === "available"
+                ? "bg-emerald-100 text-emerald-700"
+                : readinessStatus === "expired"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-slate-100 text-slate-700"
+            )}
+          >
+            {statusLabel}
+          </Badge>
+        </div>
+        <p className="text-xs text-slate-500 mt-0.5">{workflowDoc.description}</p>
+      </div>
+      <div className="flex-shrink-0">
+        {workflowDoc.storagePath ? (
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={`/api/documents/view?path=${encodeURIComponent(workflowDoc.storagePath)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+              Ouvrir
+            </a>
+          </Button>
+        ) : workflowDoc.href ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={workflowDoc.href}>
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+              Voir
+            </Link>
+          </Button>
+        ) : null}
       </div>
     </div>
   );

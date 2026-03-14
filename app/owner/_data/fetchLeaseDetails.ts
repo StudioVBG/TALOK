@@ -2,6 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { Database, PropertyRow, LeaseRow, LeaseSignerRow, PaymentRow, InvoiceRow, DocumentRow, EDLItemRow, ProfileRow } from "@/lib/supabase/database.types";
 import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
+import {
+  deriveLeaseReadinessState,
+  deriveServerDpeStatus,
+  type LeaseDpeStatus,
+  type LeaseReadinessState,
+} from "./lease-readiness";
 
 // ✅ SOTA 2026: Types stricts pour l'intégrité des données
 
@@ -65,10 +71,12 @@ export interface Signer {
 /** Structure d'un paiement */
 export interface Payment {
   id: string;
+  created_at?: string | null;
   date_paiement: string | null;
   montant: number;
   statut: "pending" | "succeeded" | "paid" | "failed" | "refunded";
   periode: string | null;
+  invoice_id?: string | null;
 }
 
 /** Structure d'une facture */
@@ -194,6 +202,8 @@ export interface LeaseDetails {
   documents: Document[];
   /** EDL est un OBJET UNIQUE ou null, PAS un tableau ! */
   edl: EDLEntry | null;
+  dpeStatus: LeaseDpeStatus;
+  readinessState: LeaseReadinessState;
 }
 
 export async function fetchLeaseDetails(leaseId: string, ownerId: string): Promise<LeaseDetails | null> {
@@ -351,10 +361,12 @@ async function fetchLeaseDetailsFallback(
     .from("payments")
     .select(`
       id,
+      created_at,
       date_paiement,
       montant,
       statut,
       invoices!inner (
+        id,
         periode,
         lease_id
       )
@@ -376,6 +388,14 @@ async function fetchLeaseDetailsFallback(
     .from("documents")
     .select("*")
     .eq("lease_id", leaseId);
+
+  const { data: dpeDeliverable } = await supabase
+    .from("dpe_deliverables")
+    .select("valid_until, energy_class, ges_class, pdf_path")
+    .eq("property_id", propertyRow.id)
+    .order("issued_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   // 6. Récupérer la photo principale
   const { data: mainPhoto } = await supabase
@@ -526,29 +546,26 @@ async function fetchLeaseDetailsFallback(
   (cleanLease as Lease & { has_keys_handed_over?: boolean }).has_keys_handed_over =
     !!confirmedKeyHandover?.confirmed_at;
 
-  // ✅ SOTA 2026: Auto-repair — lier les signers orphelins dont l'email matche un profil
   type SignerWithProfile = LeaseSignerRow & {
     profiles?: ProfileRow | ProfileRow[] | null;
   };
   const signersArray = (signers ?? []) as SignerWithProfile[];
-  for (const s of signersArray) {
-    const hasProfile = Array.isArray(s.profiles) ? s.profiles?.[0] : s.profiles;
-    if (hasProfile || !s.invited_email?.trim()) continue;
-    const { data: profileRows } = await supabase.rpc("find_profile_by_email", {
-      target_email: s.invited_email,
-    });
-    const found = Array.isArray(profileRows) ? profileRows[0] : profileRows;
-    if (!found?.id) continue;
-    await supabase.from("lease_signers").update({ profile_id: found.id }).eq("id", s.id);
-    const { data: profileRow } = await supabase
-      .from("profiles")
-      .select("id, prenom, nom, email, telephone, avatar_url, date_naissance, lieu_naissance, nationalite, adresse")
-      .eq("id", found.id)
-      .single();
-    if (profileRow) {
-      (s as SignerWithProfile).profiles = profileRow as ProfileRow;
-      console.log("[fetchLeaseDetails] Auto-repair: signer", s.id, "lié au profil", found.id);
-    }
+  const orphanSigners = signersArray.filter((signer) => {
+    const linkedProfile = Array.isArray(signer.profiles)
+      ? signer.profiles[0]
+      : signer.profiles;
+    return !linkedProfile && Boolean(signer.invited_email?.trim());
+  });
+
+  if (orphanSigners.length > 0) {
+    console.warn(
+      "[fetchLeaseDetails] Signataires sans profil lié détectés:",
+      orphanSigners.map((signer) => ({
+        id: signer.id,
+        role: signer.role,
+        invited_email: signer.invited_email,
+      }))
+    );
   }
 
   const signersWithSignedUrls = await Promise.all(
@@ -604,15 +621,18 @@ async function fetchLeaseDetailsFallback(
 
   // Transformer les paiements
   type PaymentWithInvoice = PaymentRow & {
-    invoices: { periode: string; lease_id: string };
+    created_at?: string | null;
+    invoices: { id: string; periode: string; lease_id: string };
   };
   const paymentsArray = (payments ?? []) as PaymentWithInvoice[];
   const formattedPayments: Payment[] = paymentsArray.map((p) => ({
     id: p.id,
+    created_at: p.created_at ?? null,
     date_paiement: p.date_paiement ?? null,
     montant: p.montant,
     statut: p.statut as Payment["statut"],
     periode: p.invoices?.periode ?? null,
+    invoice_id: p.invoices?.id ?? null,
   }));
 
   const invoicesArray = (invoices ?? []) as InvoiceRow[];
@@ -627,26 +647,52 @@ async function fetchLeaseDetailsFallback(
     metadata: inv.metadata ?? null,
   }));
 
+  const formattedDocuments: Document[] = (documents ?? []).map((doc: DocumentRow) => ({
+    id: doc.id,
+    type: doc.type,
+    storage_path: doc.storage_path ?? doc.url ?? "",
+    created_at: doc.created_at,
+    title: doc.nom ?? undefined,
+    name: doc.nom_fichier ?? undefined,
+    expiry_date: (doc as any).expiry_date ?? null,
+    is_archived: (doc as any).is_archived ?? false,
+    visible_tenant: (doc as any).visible_tenant ?? true,
+    mime_type: (doc as any).mime_type ?? null,
+    file_size: (doc as any).size ?? null,
+  }));
+
+  const formattedEdl = edl ? ({ ...edl, ...edlStats } as EDLEntry) : null;
+  const dpeStatus = deriveServerDpeStatus(
+    property,
+    (dpeDeliverable as {
+      valid_until?: string | null;
+      energy_class?: string | null;
+      ges_class?: string | null;
+      pdf_path?: string | null;
+    } | null) ?? null
+  );
+
+  const readinessState = deriveLeaseReadinessState({
+    lease: cleanLease,
+    property,
+    signers: formattedSigners,
+    payments: formattedPayments,
+    invoices: formattedInvoices,
+    documents: formattedDocuments,
+    edl: formattedEdl,
+    dpeStatus,
+  });
+
   const result: LeaseDetails = {
     lease: cleanLease,
     property,
     signers: formattedSigners,
     payments: formattedPayments,
     invoices: formattedInvoices,
-    documents: (documents ?? []).map((doc: DocumentRow) => ({
-      id: doc.id,
-      type: doc.type,
-      storage_path: doc.storage_path ?? doc.url ?? "",
-      created_at: doc.created_at,
-      title: doc.nom ?? undefined,
-      name: doc.nom_fichier ?? undefined,
-      expiry_date: (doc as any).expiry_date ?? null,
-      is_archived: (doc as any).is_archived ?? false,
-      visible_tenant: (doc as any).visible_tenant ?? true,
-      mime_type: (doc as any).mime_type ?? null,
-      file_size: (doc as any).size ?? null,
-    })),
-    edl: edl ? ({ ...edl, ...edlStats } as EDLEntry) : null,
+    documents: formattedDocuments,
+    edl: formattedEdl,
+    dpeStatus,
+    readinessState,
   };
 
   return result;

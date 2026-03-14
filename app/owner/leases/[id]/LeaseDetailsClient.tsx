@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -44,6 +44,7 @@ import {
   MoreHorizontal,
   Eye,
   CalendarClock,
+  Sparkles,
 } from "lucide-react";
 import { LeaseRenewalWizard } from "@/features/leases/components/lease-renewal-wizard";
 import { useToast } from "@/components/ui/use-toast";
@@ -52,9 +53,6 @@ import { LeasePreview } from "@/features/leases/components/lease-preview";
 import { formatCurrency } from "@/lib/helpers/format";
 import { mapLeaseToTemplate } from "@/lib/mappers/lease-to-template";
 import { OwnerSignatureModal } from "./OwnerSignatureModal";
-import { dpeService } from "@/features/diagnostics/services/dpe.service";
-import { useEffect } from "react";
-import { LeaseProgressTracker, type LeaseProgressStatus } from "@/components/owner/leases/LeaseProgressTracker";
 import { KeyHandoverQRGenerator } from "@/components/key-handover/KeyHandoverQRGenerator";
 import { LeaseTimeline } from "@/components/owner/leases/LeaseTimeline";
 import { Celebration, useCelebration } from "@/components/ui/celebration";
@@ -140,7 +138,17 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; description?
 };
 
 export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDetailsClientProps) {
-  const { lease, property, signers, payments, invoices, documents, edl } = details;
+  const {
+    lease,
+    property,
+    signers,
+    payments,
+    invoices,
+    documents,
+    edl,
+    dpeStatus,
+    readinessState,
+  } = details;
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -151,7 +159,6 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const [showTerminateDialog, setShowTerminateDialog] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
-  const [dpeStatus, setDpeStatus] = useState<{ status: string; data?: any } | null>(null);
   const [isResendingTenant, setIsResendingTenant] = useState(false);
   
   // ✅ SOTA 2026: Hook de célébration
@@ -164,12 +171,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     edl?: { id: string; status: string } | null;
   } | null>(null);
 
-  // ✅ SSOT 2026: Onglet actif — auto-switch vers EDL quand bail fully_signed
-  const defaultTab = useMemo(() => {
-    if (lease.statut === "fully_signed") return "edl";
-    return "contrat";
-  }, [lease.statut]);
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const [activeTab, setActiveTab] = useState(readinessState.tabs.defaultTab);
 
   const handleResendTenantInvite = async (signerId: string) => {
     setIsResendingTenant(true);
@@ -192,58 +194,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     }
   };
 
-  // Charger le statut DPE au chargement
-  // Fallback : si dpe_deliverables est vide, utiliser les champs DPE de la propriété
-  useEffect(() => {
-    async function checkDPE() {
-      try {
-        const result = await dpeService.getLatestDeliverable(property.id);
-        if (result.status !== "MISSING") {
-          setDpeStatus(result);
-          return;
-        }
-        // Fallback : vérifier les champs DPE stockés directement sur la propriété
-        const propAny = property as any;
-        const classeEnergie = propAny.dpe_classe_energie || propAny.energie;
-        if (classeEnergie) {
-          const isExpired = propAny.dpe_date_validite
-            ? new Date(propAny.dpe_date_validite) < new Date()
-            : false;
-          setDpeStatus({
-            status: isExpired ? "EXPIRED" : "VALID",
-            data: {
-              classe_energie: classeEnergie,
-              classe_ges: propAny.dpe_classe_climat || propAny.ges,
-              source: "property_fields",
-            },
-          });
-        } else {
-          setDpeStatus(result); // MISSING
-        }
-      } catch (error) {
-        console.error("Erreur check DPE:", error);
-        // Même en cas d'erreur, essayer le fallback propriété
-        const propAny = property as any;
-        const classeEnergie = propAny.dpe_classe_energie || propAny.energie;
-        if (classeEnergie) {
-          setDpeStatus({ status: "VALID", data: { classe_energie: classeEnergie, source: "property_fields_fallback" } });
-        }
-      }
-    }
-    checkDPE();
-  }, [property]);
-
   const statusConfig = STATUS_CONFIG[lease.statut] || STATUS_CONFIG.draft;
-  
-  // ✅ FILTRAGE DES DOCUMENTS — sans dé-duplication (bug fix: tous les docs doivent être affichés)
-  const leaseAnnexes = (documents || [])
-    .filter((doc: any) =>
-      ["diagnostic_performance", "diagnostic_amiante", "attestation_assurance", "EDL_entree", "annexe_pinel", "etat_travaux", "autre"].includes(doc.type)
-    )
-    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  
-  // Vérifier si le bail peut être activé (statut fully_signed)
-  const canActivate = lease.statut === "fully_signed";
   
   // ✅ BAIL SCELLÉ : Un bail signé ne peut plus être modifié
   const isSealed = !!(lease as any).sealed_at || ["fully_signed", "active", "terminated", "archived"].includes(lease.statut);
@@ -313,211 +264,9 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     return mainTenant?.signature_status === "signed";
   }, [lease.statut, mainTenant?.signature_status, ownerSigner?.signature_status]);
 
-  // ✅ SOTA 2026: Utiliser les données pré-calculées par fetchLeaseDetails (SSOT)
-  // edl est un OBJET unique (ou null), PAS un tableau !
-  const hasEdl = useMemo(() => {
-    // Si c'est un objet unique (nouveau format SOTA 2026)
-    if (edl && typeof edl === "object" && !Array.isArray(edl)) {
-      return true;
-    }
-    // Fallback legacy: Si c'est un tableau (ancien format)
-    if (Array.isArray(edl)) {
-      return edl.length > 0;
-    }
-    return false;
-  }, [edl]);
-  
-  // ✅ SOTA 2026: Priorité aux données pré-calculées dans lease.has_signed_edl
-  const hasSignedEdl = useMemo(() => {
-    // 1. Utiliser la valeur pré-calculée par fetchLeaseDetails (SSOT)
-    if (typeof (lease as any).has_signed_edl === "boolean") {
-      return (lease as any).has_signed_edl;
-    }
-    // 2. Fallback: edl est un OBJET unique (nouveau format)
-    if (edl && typeof edl === "object" && !Array.isArray(edl)) {
-      return edl.status === "signed" || edl.status === "completed";
-    }
-    // 3. Fallback legacy: Si c'est un tableau
-    if (Array.isArray(edl)) {
-      const entryEdl = edl.find((e: any) => e.type === "entree");
-      return entryEdl?.status === "signed" || entryEdl?.status === "completed";
-    }
-    return false;
-  }, [lease, edl]);
-
-  // ✅ SOTA 2026: Priorité aux données pré-calculées dans lease.has_paid_initial
-  const hasPaidInitial = useMemo(() => {
-    // 1. Utiliser la valeur pré-calculée par fetchLeaseDetails (SSOT)
-    if (typeof (lease as any).has_paid_initial === "boolean") {
-      return (lease as any).has_paid_initial;
-    }
-    // 2. Fallback: Vérifier les paiements
-    if (!payments || payments.length === 0) return false;
-    return payments.some((p: any) =>
-      p.statut === "succeeded" || p.statut === "paid"
-    );
-  }, [lease, payments]);
-
-  // Remise des clés confirmée
-  const hasKeysHandedOver = useMemo(() => {
-    if (typeof (lease as any).has_keys_handed_over === "boolean") {
-      return (lease as any).has_keys_handed_over;
-    }
-    return false;
-  }, [lease]);
-
-  // ✅ SOTA 2026: Déterminer l'action prioritaire
-  const nextAction = useMemo(() => {
-    // 1. En attente de signature locataire
-    if (["draft", "sent", "pending_signature"].includes(lease.statut) && mainTenant?.signature_status !== "signed") {
-      return {
-        type: "waiting_tenant",
-        icon: Clock,
-        title: "En attente du locataire",
-        description: mainTenant?.invited_email 
-          ? `${mainTenant.invited_email} n'a pas encore signé`
-          : "Le locataire n'a pas encore signé",
-        action: null,
-        actionLabel: null,
-        color: "amber"
-      };
-    }
-    
-    // 2. Propriétaire doit signer
-    if (needsOwnerSignature) {
-      return {
-        type: "sign_owner",
-        icon: PenTool,
-        title: "À votre tour de signer !",
-        description: "Le locataire a signé. Signez pour valider le bail.",
-        action: () => setShowSignatureModal(true),
-        actionLabel: "Signer le bail",
-        color: "blue",
-        urgent: true
-      };
-    }
-    
-    // 3. Bail signé, EDL requis — action contextuelle selon l'état de l'EDL
-    if (lease.statut === "fully_signed" && !hasSignedEdl) {
-      // 3a. Pas d'EDL → Créer
-      if (!edl) {
-        return {
-          type: "create_edl",
-          icon: ClipboardCheck,
-          title: "État des lieux requis",
-          description: "Le bail est signé. Lancez l'EDL d'entrée pour activer le bail.",
-          href: `/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}&type=entree`,
-          actionLabel: "Commencer l'état des lieux",
-          color: "indigo"
-        };
-      }
-      // 3b. EDL incomplet (brouillon, planifié, en cours) → Continuer
-      if (["draft", "scheduled", "in_progress"].includes(edl.status)) {
-        return {
-          type: "continue_edl",
-          icon: ClipboardCheck,
-          title: "Compléter l'état des lieux",
-          description: "Un EDL d'entrée est en cours. Complétez-le pour activer le bail.",
-          href: `/owner/inspections/${edl.id}`,
-          actionLabel: "Continuer l'EDL",
-          color: "indigo"
-        };
-      }
-      // 3c. EDL complété mais pas signé → Signer
-      if (edl.status === "completed") {
-        return {
-          type: "sign_edl",
-          icon: PenTool,
-          title: "Signer l'état des lieux",
-          description: "L'EDL est complété. Faites-le signer pour activer le bail.",
-          href: `/owner/inspections/${edl.id}`,
-          actionLabel: "Signer l'EDL",
-          color: "indigo",
-          urgent: true
-        };
-      }
-      // 3d. Autre statut (ex: disputed) → Voir l'onglet EDL
-      return {
-        type: "view_edl",
-        icon: ClipboardCheck,
-        title: "État des lieux",
-        description: "Consultez l'état des lieux d'entrée.",
-        action: () => setActiveTab("edl"),
-        actionLabel: "Voir l'onglet EDL",
-        color: "indigo"
-      };
-    }
-    
-    // 4. EDL fait, activer le bail
-    if (lease.statut === "fully_signed" && hasSignedEdl) {
-      return {
-        type: "activate",
-        icon: Key,
-        title: "Prêt à activer !",
-        description: "L'EDL est signé. Activez le bail pour démarrer la location.",
-        action: () => handleActivate(false),
-        actionLabel: "Activer le bail",
-        color: "green"
-      };
-    }
-    
-    // 5. Bail actif, premier paiement en attente
-    if (lease.statut === "active" && !hasPaidInitial) {
-      return {
-        type: "awaiting_payment",
-        icon: Euro,
-        title: "En attente du 1er paiement",
-        description: `${formatCurrency(premierVersement)} (loyer + charges + dépôt)`,
-        action: () => setActiveTab("paiements"),
-        actionLabel: "Voir les paiements",
-        color: "amber"
-      };
-    }
-
-    // 6. Bail actif, paiement reçu, clés pas encore remises
-    if (lease.statut === "active" && hasPaidInitial && !hasKeysHandedOver) {
-      return {
-        type: "key_handover",
-        icon: Key,
-        title: "Remise des clés",
-        description: "Le paiement est reçu. Procédez à la remise des clés.",
-        action: () => {
-          const el = document.getElementById("key-handover-section");
-          if (el) el.scrollIntoView({ behavior: "smooth" });
-        },
-        actionLabel: "Remettre les clés",
-        color: "green"
-      };
-    }
-
-    // 7. Tout est OK
-    if (lease.statut === "active" && hasKeysHandedOver) {
-      return {
-        type: "all_done",
-        icon: CheckCircle,
-        title: "Bail actif",
-        description: "Tout est en ordre ! Le bail est en cours.",
-        action: null,
-        actionLabel: null,
-        color: "green"
-      };
-    }
-
-    // Fallback: bail actif sans tracking de remise de clés
-    if (lease.statut === "active") {
-      return {
-        type: "all_done",
-        icon: CheckCircle,
-        title: "Bail actif",
-        description: "Tout est en ordre ! Le bail est en cours.",
-        action: null,
-        actionLabel: null,
-        color: "green"
-      };
-    }
-    
-    return null;
-  }, [lease.statut, mainTenant, needsOwnerSignature, hasSignedEdl, hasPaidInitial, hasKeysHandedOver, premierVersement, leaseId, property.id, edl]);
+  const hasSignedEdl = readinessState.edlState.status === "signed";
+  const hasPaidInitial = readinessState.paymentState.status === "paid";
+  const hasKeysHandedOver = Boolean(lease.has_keys_handed_over);
 
   // Construire bailData pour la prévisualisation (via mapper)
   const bailData = mapLeaseToTemplate(details, ownerProfile);
@@ -702,6 +451,102 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     }
   };
 
+  const heroToneClasses = useMemo(() => {
+    const tone = readinessState.hero.tone;
+    if (tone === "emerald") {
+      return {
+        shell: "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-green-50",
+        badge: "bg-emerald-100 text-emerald-700",
+        panel: "bg-white/80 border-emerald-100",
+        button: "bg-emerald-600 hover:bg-emerald-700",
+      };
+    }
+    if (tone === "indigo") {
+      return {
+        shell: "border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-blue-50",
+        badge: "bg-indigo-100 text-indigo-700",
+        panel: "bg-white/80 border-indigo-100",
+        button: "bg-indigo-600 hover:bg-indigo-700",
+      };
+    }
+    if (tone === "blue") {
+      return {
+        shell: "border-blue-200 bg-gradient-to-br from-blue-50 via-white to-cyan-50",
+        badge: "bg-blue-100 text-blue-700",
+        panel: "bg-white/80 border-blue-100",
+        button: "bg-blue-600 hover:bg-blue-700",
+      };
+    }
+    if (tone === "amber") {
+      return {
+        shell: "border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50",
+        badge: "bg-amber-100 text-amber-700",
+        panel: "bg-white/80 border-amber-100",
+        button: "bg-amber-600 hover:bg-amber-700",
+      };
+    }
+    return {
+      shell: "border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100",
+      badge: "bg-slate-100 text-slate-700",
+      panel: "bg-white/80 border-slate-200",
+      button: "bg-slate-700 hover:bg-slate-800",
+    };
+  }, [readinessState.hero.tone]);
+
+  const primaryAction = useMemo(() => {
+    const action = readinessState.nextAction;
+    if (!action.label) return null;
+
+    if (action.href) {
+      return { label: action.label, href: action.href, disabled: false };
+    }
+
+    switch (action.key) {
+      case "sign_owner":
+        return {
+          label: action.label,
+          onClick: () => setShowSignatureModal(true),
+          disabled: isSigning,
+        };
+      case "resend_tenant_invite":
+        return {
+          label: action.label,
+          onClick: () =>
+            action.targetId && handleResendTenantInvite(action.targetId),
+          disabled: isResendingTenant || !action.targetId,
+        };
+      case "activate_lease":
+        return {
+          label: action.label,
+          onClick: () => handleActivate(false),
+          disabled: isActivating || !readinessState.canActivate,
+        };
+      case "handover_keys":
+        return {
+          label: action.label,
+          onClick: () => {
+            const el = document.getElementById("key-handover-section");
+            if (el) el.scrollIntoView({ behavior: "smooth" });
+          },
+          disabled: false,
+        };
+      default:
+        return {
+          label: action.label,
+          onClick: () => {
+            if (action.tab) setActiveTab(action.tab);
+          },
+          disabled: false,
+        };
+    }
+  }, [
+    readinessState.nextAction,
+    readinessState.canActivate,
+    isSigning,
+    isResendingTenant,
+    isActivating,
+  ]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/50">
       {/* Breadcrumb */}
@@ -754,11 +599,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             )}
             
             {/* Bouton d'activation — grisé tant que les prérequis ne sont pas remplis */}
-            {canActivate && (() => {
-              const missingItems: string[] = [];
-              if (!hasSignedEdl) missingItems.push("État des lieux non réalisé");
-              if (dpeStatus?.status !== "VALID") missingItems.push("DPE manquant ou expiré");
-              const canActivateNow = missingItems.length === 0;
+            {lease.statut === "fully_signed" && (() => {
+              const canActivateNow = readinessState.canActivate;
               return (
                 <Button
                   size="sm"
@@ -770,7 +612,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   }
                   title={canActivateNow
                     ? "Activer le bail"
-                    : `Prérequis manquants : ${missingItems.join(", ")}`
+                    : `Prérequis manquants : ${readinessState.blockingReasons.join(", ")}`
                   }
                 >
                   {isActivating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
@@ -810,21 +652,113 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       </div>
 
       <div className="container mx-auto px-4 py-6 max-w-7xl">
-        {/* 🚀 SOTA 2026: Tracker de progression */}
         <div className="mb-6">
-          <LeaseProgressTracker
-            status={lease.statut as LeaseProgressStatus}
-            hasSignedEdl={hasSignedEdl}
-            hasPaidInitial={hasPaidInitial}
-            hasKeysHandedOver={hasKeysHandedOver}
-          />
+          <Card className={cn("border shadow-sm", heroToneClasses.shell)}>
+            <CardContent className="p-6 md:p-7">
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(320px,0.9fr)]">
+                <div className="space-y-4">
+                  <Badge className={cn("w-fit border-0", heroToneClasses.badge)}>
+                    {readinessState.hero.eyebrow}
+                  </Badge>
+                  <div className="space-y-2">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-950">
+                      {readinessState.hero.title}
+                    </h2>
+                    <p className="text-sm md:text-base text-slate-600 max-w-3xl">
+                      {readinessState.hero.description}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {readinessState.hero.highlights.map((highlight) => (
+                      <div
+                        key={highlight}
+                        className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+                        {highlight}
+                      </div>
+                    ))}
+                  </div>
+                  {primaryAction && (
+                    primaryAction.href ? (
+                      <Link
+                        href={primaryAction.href}
+                        className={cn(
+                          buttonVariants({ size: "lg" }),
+                          "mt-2 gap-2 shadow-sm",
+                          heroToneClasses.button
+                        )}
+                      >
+                        {primaryAction.label}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    ) : (
+                      <Button
+                        size="lg"
+                        onClick={primaryAction.onClick}
+                        disabled={primaryAction.disabled}
+                        className={cn("mt-2 gap-2 shadow-sm", heroToneClasses.button)}
+                      >
+                        {primaryAction.label}
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    )
+                  )}
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                  <div className={cn("rounded-2xl border p-4", heroToneClasses.panel)}>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Documents
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">
+                      {readinessState.documentState.completedCount}/{readinessState.documentState.totalCount}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Prérequis visibles et réconciliés avec le workflow
+                    </p>
+                  </div>
+                  <div className={cn("rounded-2xl border p-4", heroToneClasses.panel)}>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Paiement initial
+                    </p>
+                    <p className="mt-2 text-base font-semibold text-slate-900">
+                      {readinessState.paymentState.label}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {readinessState.paymentState.description}
+                    </p>
+                  </div>
+                  <div className={cn("rounded-2xl border p-4", heroToneClasses.panel)}>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Prochaine étape
+                    </p>
+                    <p className="mt-2 text-base font-semibold text-slate-900">
+                      {readinessState.nextAction.label ?? "Aucune action requise"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {readinessState.nextAction.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
           {/* Colonne de gauche : Onglets Contrat / EDL / Documents / Paiements */}
           <div className="lg:col-span-8 xl:col-span-9 order-2 lg:order-1 flex flex-col lg:h-[calc(100vh-8rem)]">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col lg:flex-1">
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) =>
+                setActiveTab(
+                  value as "contrat" | "edl" | "documents" | "paiements"
+                )
+              }
+              className="flex flex-col lg:flex-1"
+            >
               {/* Barre d'onglets */}
               <TabsList className="w-full justify-start bg-white border border-slate-200 rounded-t-xl rounded-b-none h-12 px-2 gap-1">
                 <TabsTrigger value="contrat" className="gap-2 data-[state=active]:bg-slate-100">
@@ -857,16 +791,16 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 <TabsTrigger
                   value="paiements"
                   className={`gap-2 data-[state=active]:bg-slate-100 ${
-                    !["active", "terminated", "archived"].includes(lease.statut) ? "opacity-40 cursor-not-allowed" : ""
+                    !readinessState.tabs.paymentsEnabled ? "opacity-40 cursor-not-allowed" : ""
                   }`}
-                  disabled={!["active", "terminated", "archived"].includes(lease.statut)}
-                  title={!["active", "terminated", "archived"].includes(lease.statut) ? "Disponible après activation du bail" : undefined}
+                  disabled={!readinessState.tabs.paymentsEnabled}
+                  title={readinessState.tabs.paymentsHint}
                 >
                   <CreditCard className="h-4 w-4" />
                   <span className="hidden sm:inline">Paiements</span>
-                  {!["active", "terminated", "archived"].includes(lease.statut) && (
+                  {!readinessState.tabs.paymentsEnabled && (
                     <Badge variant="outline" className="text-[9px] h-4 px-1 border-slate-200 text-slate-400 hidden sm:inline-flex">
-                      après activation
+                      après signature
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -963,6 +897,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     propertyId={property.id}
                     documents={documents || []}
                     dpeStatus={dpeStatus}
+                    readinessState={readinessState}
                   />
                 </div>
               </TabsContent>
@@ -974,7 +909,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     leaseId={leaseId}
                     payments={payments || []}
                     invoices={invoices || []}
-                    leaseStatus={lease.statut}
+                    readinessState={readinessState}
                     tenantName={mainTenant ? (resolveTenantFullName(mainTenant) || "Locataire") : "Locataire"}
                     ownerName={ownerProfile ? `${ownerProfile.prenom || ""} ${ownerProfile.nom || ""}`.trim() : ""}
                     propertyAddress={property.adresse_complete}
@@ -995,7 +930,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             documents={documents}
             edl={edl}
             mainTenant={mainTenant}
-            nextAction={nextAction}
+            readinessState={readinessState}
             hasSignedEdl={hasSignedEdl}
             hasPaidInitial={hasPaidInitial}
             hasKeysHandedOver={hasKeysHandedOver}
@@ -1003,16 +938,12 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             displayCharges={displayCharges}
             displayDepot={displayDepot}
             premierVersement={premierVersement}
-            dpeStatus={dpeStatus}
-            leaseAnnexes={leaseAnnexes}
-            canActivate={canActivate}
             canRenew={canRenew}
             canTerminate={canTerminate}
             isActivating={isActivating}
             isResendingTenant={isResendingTenant}
             onActivate={handleActivate}
             onResendTenantInvite={handleResendTenantInvite}
-            onShowSignatureModal={() => setShowSignatureModal(true)}
             onShowRenewalWizard={() => setShowRenewalWizard(true)}
             showTerminateDialog={showTerminateDialog}
             onShowTerminateDialog={setShowTerminateDialog}
@@ -1022,6 +953,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             onShowDeleteDialog={setShowDeleteDialog}
             isDeleting={isDeleting}
             onDelete={handleDelete}
+            onOpenTab={(tab) => setActiveTab(tab)}
           />
         </div>
       </div>

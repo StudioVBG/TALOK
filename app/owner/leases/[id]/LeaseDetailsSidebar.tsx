@@ -42,19 +42,7 @@ import { formatCurrency } from "@/lib/helpers/format";
 import { KeyHandoverQRGenerator } from "@/components/key-handover/KeyHandoverQRGenerator";
 import { LeaseTimeline } from "@/components/owner/leases/LeaseTimeline";
 import { resolveTenantDisplay, resolveTenantFullName } from "@/lib/helpers/resolve-tenant-display";
-import type { LucideIcon } from "lucide-react";
-
-interface NextActionData {
-  type: string;
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  action?: (() => void) | null;
-  actionLabel?: string | null;
-  href?: string;
-  color: string;
-  urgent?: boolean;
-}
+import type { LeaseReadinessState } from "../../_data/lease-readiness";
 
 interface LeaseDetailsSidebarProps {
   leaseId: string;
@@ -65,7 +53,7 @@ interface LeaseDetailsSidebarProps {
   documents: any[];
   edl: any;
   mainTenant: any;
-  nextAction: NextActionData | null;
+  readinessState: LeaseReadinessState;
   hasSignedEdl: boolean;
   hasPaidInitial: boolean;
   hasKeysHandedOver: boolean;
@@ -73,16 +61,12 @@ interface LeaseDetailsSidebarProps {
   displayCharges: number;
   displayDepot: number;
   premierVersement: number;
-  dpeStatus: { status: string; data?: any } | null;
-  leaseAnnexes: any[];
-  canActivate: boolean;
   canRenew: boolean;
   canTerminate: boolean;
   isActivating: boolean;
   isResendingTenant: boolean;
   onActivate: (force: boolean) => void;
   onResendTenantInvite: (signerId: string) => void;
-  onShowSignatureModal: () => void;
   onShowRenewalWizard: () => void;
   showTerminateDialog: boolean;
   onShowTerminateDialog: (show: boolean) => void;
@@ -92,14 +76,8 @@ interface LeaseDetailsSidebarProps {
   onShowDeleteDialog: (show: boolean) => void;
   isDeleting: boolean;
   onDelete: () => void;
+  onOpenTab: (tab: "contrat" | "edl" | "documents" | "paiements") => void;
 }
-
-const ACTION_COLOR_MAP: Record<string, { border: string; bg: string; iconBg: string; iconText: string; title: string; desc: string; btn: string; btnHover: string }> = {
-  amber:  { border: "border-amber-200",   bg: "bg-amber-50/50",   iconBg: "bg-amber-100",   iconText: "text-amber-600",   title: "text-amber-900",   desc: "text-amber-700",   btn: "bg-amber-600",   btnHover: "hover:bg-amber-700" },
-  blue:   { border: "border-blue-200",    bg: "bg-blue-50/50",    iconBg: "bg-blue-100",    iconText: "text-blue-600",    title: "text-blue-900",    desc: "text-blue-700",    btn: "bg-blue-600",    btnHover: "hover:bg-blue-700" },
-  indigo: { border: "border-indigo-200",  bg: "bg-indigo-50/50",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  title: "text-indigo-900",  desc: "text-indigo-700",  btn: "bg-indigo-600",  btnHover: "hover:bg-indigo-700" },
-  green:  { border: "border-emerald-200", bg: "bg-emerald-50/50", iconBg: "bg-emerald-100", iconText: "text-emerald-600", title: "text-emerald-900", desc: "text-emerald-700", btn: "bg-emerald-600", btnHover: "hover:bg-emerald-700" },
-};
 
 export function LeaseDetailsSidebar({
   leaseId,
@@ -109,7 +87,7 @@ export function LeaseDetailsSidebar({
   payments,
   edl,
   mainTenant,
-  nextAction,
+  readinessState,
   hasSignedEdl,
   hasPaidInitial,
   hasKeysHandedOver,
@@ -117,9 +95,6 @@ export function LeaseDetailsSidebar({
   displayCharges,
   displayDepot,
   premierVersement,
-  dpeStatus,
-  leaseAnnexes,
-  canActivate,
   canRenew,
   canTerminate,
   isActivating,
@@ -135,51 +110,46 @@ export function LeaseDetailsSidebar({
   onShowDeleteDialog,
   isDeleting,
   onDelete,
+  onOpenTab,
 }: LeaseDetailsSidebarProps) {
   return (
     <div className="lg:col-span-4 xl:col-span-3 order-1 lg:order-2 space-y-6">
-      {/* Banniere action prioritaire */}
-      {nextAction && nextAction.actionLabel && (() => {
-        const c = ACTION_COLOR_MAP[nextAction.color] || ACTION_COLOR_MAP.indigo;
-        const ActionIcon = nextAction.icon;
-        return (
-          <Card className={`border-2 ${c.border} ${c.bg} overflow-hidden`}>
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-full flex-shrink-0 ${c.iconBg}`}>
-                  <ActionIcon className={`h-4 w-4 ${c.iconText}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${c.title}`}>
-                    {nextAction.title}
-                  </p>
-                  <p className={`text-xs ${c.desc} mt-0.5`}>
-                    {nextAction.description}
-                  </p>
-                  <div className="mt-3">
-                    {nextAction.href ? (
-                      <Link
-                        href={nextAction.href}
-                        className={cn(buttonVariants({ size: "sm" }), `w-full gap-2 ${c.btn} ${c.btnHover} text-white`)}
-                      >
-                        {nextAction.actionLabel}
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    ) : nextAction.action ? (
-                      <Button size="sm" onClick={nextAction.action} className={`w-full gap-2 ${c.btn} ${c.btnHover} text-white`}>
-                        {nextAction.actionLabel}
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
+      <Card className="border-none shadow-sm bg-white overflow-hidden">
+        <CardHeader className="pb-2 border-b border-slate-50">
+          <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            Lecture métier unifiée
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 space-y-3">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Étape actuelle
+            </p>
+            <p className="mt-2 text-base font-semibold text-slate-900">
+              {readinessState.hero.title}
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              {readinessState.hero.description}
+            </p>
+          </div>
 
-      {/* Checklist d'activation */}
+          {readinessState.blockingReasons.length > 0 && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
+                Blocages restants
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {readinessState.blockingReasons.map((reason) => (
+                  <p key={reason} className="text-xs text-amber-800">
+                    {reason}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="border-none shadow-sm bg-white overflow-hidden">
         <CardHeader className="pb-2 border-b border-slate-50">
           <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
@@ -189,55 +159,33 @@ export function LeaseDetailsSidebar({
         </CardHeader>
         <CardContent className="p-3 space-y-3">
           <div className="space-y-2">
-            <ChecklistRow
-              done={["fully_signed", "active", "terminated", "archived"].includes(lease.statut)}
-              label="Bail signé par toutes les parties"
-            />
-            <div className="flex items-center justify-between">
-              <ChecklistRow
-                done={dpeStatus?.status === "VALID"}
-                label={dpeStatus?.status === "VALID" ? "DPE conforme" : `DPE ${dpeStatus?.status === "EXPIRED" ? "expiré" : "manquant"}`}
-                variant={dpeStatus?.status === "VALID" ? "success" : "error"}
-              />
-              {dpeStatus?.status !== "VALID" && (
-                <Link
-                  href={`/owner/properties/${property.id}/diagnostics`}
-                  className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50")}
-                >
-                  Régulariser
-                </Link>
-              )}
-            </div>
-            <ChecklistRow
-              done={leaseAnnexes.some((a: any) => a.type === "attestation_assurance")}
-              label={leaseAnnexes.some((a: any) => a.type === "attestation_assurance") ? "Assurance habitation reçue" : "Assurance habitation en attente"}
-              variant={leaseAnnexes.some((a: any) => a.type === "attestation_assurance") ? "success" : "pending"}
-            />
-            <div className="flex items-center justify-between">
-              <ChecklistRow
-                done={hasSignedEdl}
-                label={hasSignedEdl ? "État des lieux réalisé" : "État des lieux requis"}
-              />
-              {canActivate && !hasSignedEdl && (
-                edl ? (
+            {readinessState.checklist.map((item) => (
+              <div key={item.key} className="flex items-center justify-between gap-3">
+                <ChecklistRow status={item.status} label={item.label} />
+                {item.actionLabel && item.href ? (
                   <Link
-                    href={`/owner/inspections/${edl.id}`}
-                    className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 px-2 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50")}
+                    href={item.href}
+                    className={cn(
+                      buttonVariants({ variant: "ghost", size: "sm" }),
+                      "h-6 px-2 text-[10px]"
+                    )}
                   >
-                    {["draft", "scheduled", "in_progress"].includes(edl.status) ? "Continuer" : "Voir"}
+                    {item.actionLabel}
                   </Link>
-                ) : (
-                  <Link
-                    href={`/owner/inspections/new?lease_id=${leaseId}&property_id=${property.id}&type=entree`}
-                    className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-6 px-2 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50")}
+                ) : item.actionLabel && item.tab ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px]"
+                    onClick={() => onOpenTab(item.tab!)}
                   >
-                    Créer
-                  </Link>
-                )
-              )}
-            </div>
+                    {item.actionLabel}
+                  </Button>
+                ) : null}
+              </div>
+            ))}
           </div>
-          {canActivate && !hasSignedEdl && (
+          {lease.statut === "fully_signed" && !hasSignedEdl && (
             <div className="pt-2 border-t border-slate-50">
               <AlertDialog>
                 <Button
@@ -502,32 +450,44 @@ export function LeaseDetailsSidebar({
   );
 }
 
-function ChecklistRow({ done, label, variant = "default" }: { done: boolean; label: string; variant?: "default" | "success" | "error" | "pending" }) {
-  const iconBg = done
-    ? "bg-emerald-100"
-    : variant === "error"
-    ? "bg-red-100"
-    : variant === "pending"
-    ? "bg-slate-100"
-    : "bg-amber-100";
+function ChecklistRow({
+  status,
+  label,
+}: {
+  status: "complete" | "action_required" | "warning" | "locked";
+  label: string;
+}) {
+  const iconBg =
+    status === "complete"
+      ? "bg-emerald-100"
+      : status === "action_required"
+        ? "bg-red-100"
+        : status === "locked"
+          ? "bg-slate-100"
+          : "bg-amber-100";
 
-  const textColor = done
-    ? "text-emerald-700"
-    : variant === "error"
-    ? "text-red-700"
-    : variant === "pending"
-    ? "text-slate-500"
-    : "text-amber-700";
+  const textColor =
+    status === "complete"
+      ? "text-emerald-700"
+      : status === "action_required"
+        ? "text-red-700"
+        : status === "locked"
+          ? "text-slate-500"
+          : "text-amber-700";
 
   return (
     <div className="flex items-center gap-2">
       <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 ${iconBg}`}>
-        {done ? (
+        {status === "complete" ? (
           <CheckCircle className="h-3 w-3 text-emerald-600" />
-        ) : variant === "error" ? (
+        ) : status === "action_required" ? (
           <ShieldAlert className="h-3 w-3 text-red-600" />
         ) : (
-          <Clock className={`h-3 w-3 ${variant === "pending" ? "text-slate-400" : "text-amber-600"}`} />
+          <Clock
+            className={`h-3 w-3 ${
+              status === "locked" ? "text-slate-400" : "text-amber-600"
+            }`}
+          />
         )}
       </div>
       <span className={`text-xs font-medium ${textColor}`}>{label}</span>

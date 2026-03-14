@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/helpers/format";
 import { ManualPaymentDialog } from "@/components/payments/ManualPaymentDialog";
+import type { LeaseReadinessState } from "@/app/owner/_data/lease-readiness";
 
 interface Payment {
   id: string;
@@ -42,7 +43,7 @@ interface LeasePaymentsTabProps {
   leaseId: string;
   payments: Payment[];
   invoices: Invoice[];
-  leaseStatus: string;
+  readinessState: LeaseReadinessState;
   tenantName: string;
   ownerName: string;
   propertyAddress: string;
@@ -78,7 +79,7 @@ export function LeasePaymentsTab({
   leaseId,
   payments,
   invoices,
-  leaseStatus,
+  readinessState,
   tenantName,
   ownerName,
   propertyAddress,
@@ -87,10 +88,9 @@ export function LeasePaymentsTab({
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
-  // SOTA 2026: Autoriser fully_signed (facture initiale créée à la signature)
-  const isPreActivation = !["active", "terminated", "archived", "fully_signed"].includes(leaseStatus);
+  const isFinancialLocked = readinessState.paymentState.status === "locked";
 
-  if (isPreActivation) {
+  if (isFinancialLocked) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
         <div className="p-4 bg-slate-100 rounded-full mb-4">
@@ -100,7 +100,7 @@ export function LeasePaymentsTab({
           Paiements non disponibles
         </h3>
         <p className="text-sm text-slate-500 text-center max-w-md">
-          Les factures et paiements seront générés une fois le bail signé par toutes les parties.
+          Le suivi financier se débloque après la signature complète du bail.
         </p>
       </div>
     );
@@ -115,10 +115,10 @@ export function LeasePaymentsTab({
           <Clock className="h-8 w-8 text-amber-600" />
         </div>
         <h3 className="text-lg font-semibold text-slate-700 mb-2">
-          En attente du premier paiement
+          {readinessState.paymentState.label}
         </h3>
         <p className="text-sm text-slate-500 text-center max-w-md">
-          La facture initiale sera disponible sous peu. Si elle n&apos;apparaît pas, vous pouvez la retrouver dans la comptabilité.
+          {readinessState.paymentState.description}
         </p>
         <Button variant="outline" size="sm" className="mt-4" asChild>
           <Link href={`/owner/money?lease_id=${leaseId}`}>
@@ -157,20 +157,17 @@ export function LeasePaymentsTab({
         animate={{ opacity: 1, y: 0 }}
         className="space-y-6 py-4"
       >
-        {/* Bannière bail signé - en attente d'activation */}
-        {leaseStatus === "fully_signed" && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
-            <Clock className="h-5 w-5 text-blue-500 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-blue-800">
-                Bail signé — En attente d&apos;activation
-              </p>
-              <p className="text-xs text-blue-600">
-                La facture initiale (caution + 1er mois) a été envoyée au locataire. Le bail sera activé après l&apos;état des lieux d&apos;entrée.
-              </p>
-            </div>
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-start gap-3">
+          <Clock className="h-5 w-5 text-slate-500 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-slate-800">
+              {readinessState.paymentState.label}
+            </p>
+            <p className="text-xs text-slate-600">
+              {readinessState.paymentState.description}
+            </p>
           </div>
-        )}
+        </div>
 
         {/* Résumé */}
         <div className="grid grid-cols-3 gap-4">
