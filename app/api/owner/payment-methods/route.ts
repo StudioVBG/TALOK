@@ -162,11 +162,9 @@ export async function POST(request: NextRequest) {
       customer: stripeCustomerId,
     });
 
-    if (!customerHasDefaultPaymentMethod) {
-      await stripe.customers.update(stripeCustomerId, {
-        invoice_settings: { default_payment_method: stripe_payment_method_id },
-      });
-    }
+    await stripe.customers.update(stripeCustomerId, {
+      invoice_settings: { default_payment_method: stripe_payment_method_id },
+    });
 
     const pm = await stripe.paymentMethods.retrieve(stripe_payment_method_id);
     const card = pm.card;
@@ -185,27 +183,25 @@ export async function POST(request: NextRequest) {
       getUserAgent(request)
     );
 
-    if (!customerHasDefaultPaymentMethod) {
-      await insertAudit(
-        supabase,
-        profile.id,
-        "set_default",
-        "card",
-        {
-          payment_method_id: stripe_payment_method_id,
-          mode: "automatic_first_card",
-        },
-        getClientIp(request),
-        getUserAgent(request)
-      );
-    }
+    await insertAudit(
+      supabase,
+      profile.id,
+      "set_default",
+      "card",
+      {
+        payment_method_id: stripe_payment_method_id,
+        mode: customerHasDefaultPaymentMethod ? "automatic_latest_card" : "automatic_first_card",
+      },
+      getClientIp(request),
+      getUserAgent(request)
+    );
 
     return NextResponse.json({
       success: true,
       payment_method: {
         id: pm.id,
         card: card ? { brand: card.brand, last4: card.last4, exp_month: card.exp_month, exp_year: card.exp_year } : null,
-        is_default: !customerHasDefaultPaymentMethod,
+        is_default: true,
       },
     });
   } catch (error) {

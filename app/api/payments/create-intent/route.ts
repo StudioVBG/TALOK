@@ -25,6 +25,19 @@ interface Profile {
   role: "admin" | "owner" | "tenant" | "provider";
 }
 
+const REUSABLE_PAYMENT_INTENT_STATUSES = new Set([
+  "requires_payment_method",
+  "requires_confirmation",
+  "requires_action",
+]);
+
+function isRecentPendingPayment(createdAt?: string | null, windowMs = 15 * 60 * 1000) {
+  if (!createdAt) return false;
+  const createdAtMs = new Date(createdAt).getTime();
+  if (Number.isNaN(createdAtMs)) return false;
+  return Date.now() - createdAtMs <= windowMs;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Authentification
@@ -105,6 +118,60 @@ export async function POST(request: NextRequest) {
     }
 
     const amount = paymentContext.remainingAmount;
+    const stripeAmount = formatAmountForStripe(amount);
+
+    const { data: latestPendingPayment } = await serviceClient
+      .from("payments")
+      .select("id, provider_ref, created_at, montant")
+      .eq("invoice_id", invoiceId)
+      .eq("statut", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const typedPendingPayment = latestPendingPayment as
+      | {
+          id?: string | null;
+          provider_ref?: string | null;
+          created_at?: string | null;
+          montant?: number | null;
+        }
+      | null;
+
+    if (
+      typedPendingPayment?.id &&
+      typedPendingPayment.provider_ref &&
+      isRecentPendingPayment(typedPendingPayment.created_at)
+    ) {
+      try {
+        const existingIntent = await stripe.paymentIntents.retrieve(typedPendingPayment.provider_ref);
+        const existingIntentStatus = existingIntent.status;
+        const sameAmount = existingIntent.amount === stripeAmount;
+        const sameCurrency = existingIntent.currency === currency.toLowerCase();
+        const sameCustomer =
+          !customerId ||
+          !existingIntent.customer ||
+          existingIntent.customer === customerId ||
+          (typeof existingIntent.customer === "object" && existingIntent.customer.id === customerId);
+
+        if (
+          REUSABLE_PAYMENT_INTENT_STATUSES.has(existingIntentStatus) &&
+          sameAmount &&
+          sameCurrency &&
+          sameCustomer &&
+          existingIntent.client_secret
+        ) {
+          return NextResponse.json({
+            clientSecret: existingIntent.client_secret,
+            paymentIntentId: existingIntent.id,
+            paymentId: typedPendingPayment.id,
+            reused: true,
+          });
+        }
+      } catch (error) {
+        console.warn("[create-intent] Impossible de reutiliser le PaymentIntent existant:", error);
+      }
+    }
 
     // Créer le Payment Intent Stripe
     const metadata: Record<string, string> = {
@@ -128,7 +195,7 @@ export async function POST(request: NextRequest) {
     }
 
     const intentParams: Record<string, unknown> = {
-      amount: formatAmountForStripe(amount),
+      amount: stripeAmount,
       currency,
       metadata,
       description: `Paiement facture ${invoiceId.slice(0, 8)}`,

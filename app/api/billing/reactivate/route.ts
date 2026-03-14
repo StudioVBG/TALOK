@@ -11,10 +11,20 @@ export async function POST() {
       return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
     }
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouve" }, { status: 404 });
+    }
+
     const { data: subscription } = await supabase
       .from("subscriptions")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("owner_id", profile.id)
       .single();
 
     if (!subscription?.stripe_subscription_id) {
