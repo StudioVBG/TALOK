@@ -13,6 +13,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createHmac } from "crypto";
+import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -42,6 +43,48 @@ export async function GET(_request: Request, { params }: RouteParams) {
     }
 
     const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
+    }
+
+    const { data: lease } = await serviceClient
+      .from("leases")
+      .select(`
+        id,
+        property_id,
+        properties!leases_property_id_fkey(owner_id)
+      `)
+      .eq("id", leaseId)
+      .single();
+
+    if (!lease) {
+      return NextResponse.json({ error: "Bail introuvable" }, { status: 404 });
+    }
+
+    const isOwner = profile.role === "owner" && (lease as any).properties?.owner_id === profile.id;
+    const isAdmin = profile.role === "admin";
+    let isSigner = false;
+
+    if (!isOwner && !isAdmin) {
+      const { data: signer } = await serviceClient
+        .from("lease_signers")
+        .select("id")
+        .eq("lease_id", leaseId)
+        .eq("profile_id", profile.id)
+        .maybeSingle();
+      isSigner = !!signer;
+    }
+
+    if (!isOwner && !isAdmin && !isSigner) {
+      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+    }
 
     // Chercher une remise des clés existante
     const { data: handover } = await (serviceClient
@@ -94,12 +137,21 @@ export async function POST(request: Request, { params }: RouteParams) {
     // Vérifier que le bail existe et est en état approprié
     const { data: lease } = await serviceClient
       .from("leases")
-      .select("id, statut, property_id")
+      .select(`
+        id,
+        statut,
+        property_id,
+        properties!leases_property_id_fkey(owner_id)
+      `)
       .eq("id", leaseId)
       .single();
 
     if (!lease) {
       return NextResponse.json({ error: "Bail introuvable" }, { status: 404 });
+    }
+
+    if ((lease as any).properties?.owner_id !== profile.id) {
+      return NextResponse.json({ error: "Ce bail ne vous appartient pas" }, { status: 403 });
     }
 
     if (!["fully_signed", "active"].includes(lease.statut)) {
@@ -113,6 +165,14 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Bail sans bien associé" }, { status: 400 });
     }
 
+    const initialInvoiceSettlement = await getInitialInvoiceSettlement(serviceClient as any, leaseId);
+    if (!initialInvoiceSettlement?.isSettled) {
+      return NextResponse.json(
+        { error: "Le paiement initial doit être confirmé avant la remise des clés" },
+        { status: 400 }
+      );
+    }
+
     // Récupérer les clés depuis le dernier EDL d'entrée
     const { data: edl } = await (serviceClient
       .from("edl") as any)
@@ -124,6 +184,13 @@ export async function POST(request: Request, { params }: RouteParams) {
       .maybeSingle();
 
     const keys = edl?.keys || [];
+
+    if (!edl || edl.status !== "signed") {
+      return NextResponse.json(
+        { error: "L'EDL d'entrée signé est requis avant la remise des clés" },
+        { status: 400 }
+      );
+    }
 
     // Récupérer l'adresse du bien
     const { data: property } = await serviceClient

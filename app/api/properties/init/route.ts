@@ -112,8 +112,20 @@ export async function POST(request: Request) {
     // On utilise des valeurs par défaut sûres pour éviter les erreurs de contraintes
     const departement = getDepartementFromCP(cp);
     
+    // Utiliser le service role client pour l'insert (cohérent avec /api/properties)
+    const serviceClient = createServiceRoleClient();
+    const { data: defaultEntity } = await serviceClient
+      .from("legal_entities")
+      .select("id")
+      .eq("owner_profile_id", profile.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
     const insertData: Record<string, any> = {
       owner_id: profile.id,
+      legal_entity_id: defaultEntity?.id ?? null,
       type: type, // Correspond au champ 'type' de la table properties
       type_bien: type, // Support V3 : type_bien (nouveau champ) aligné avec /api/properties
       etat: "draft", // Toujours 'draft' au début
@@ -133,8 +145,6 @@ export async function POST(request: Request) {
       // depot_garantie n'existe pas dans la table properties (c'est dans leases)
     };
 
-    // Utiliser le service role client pour l'insert (cohérent avec /api/properties)
-    const serviceClient = createServiceRoleClient();
     const { data: property, error: insertError } = await serviceClient
       .from("properties")
       .insert(insertData)

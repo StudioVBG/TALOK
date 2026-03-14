@@ -133,15 +133,11 @@ async function processEvent(supabase: any, event: any) {
         type: "payment_succeeded",
         user_id: payload.tenant_id,
         title: "✅ Paiement confirmé",
-        message: `Votre paiement de ${payload.amount}€ pour ${payload.property_address || "votre loyer"} (${payload.periode}) a été confirmé. Votre quittance est disponible.`,
+        message: payload.receipt_generated
+          ? `Votre paiement de ${payload.amount}€ pour ${payload.property_address || "votre loyer"} (${payload.periode}) a été confirmé. Votre quittance est disponible.`
+          : `Votre paiement de ${payload.amount}€ pour ${payload.property_address || "votre loyer"} (${payload.periode}) a été confirmé.`,
         metadata: { payment_id: payload.payment_id, invoice_id: payload.invoice_id },
       });
-
-      // La quittance est déjà générée dans le webhook Stripe (processReceiptGeneration)
-      // mais on garde un fallback au cas où
-      if (payload.invoice_id && !payload.receipt_generated) {
-        await generateReceiptAutomatically(supabase, payload.invoice_id, payload.payment_id);
-      }
       break;
 
     // ✅ SOTA 2026: Notifier le propriétaire qu'un paiement a été reçu
@@ -294,15 +290,21 @@ async function processEvent(supabase: any, event: any) {
 
     // ✅ SOTA 2026: Relances de paiement automatisées
     case "Payment.Reminder":
+    case "Payment.ReminderFriendly":
+    case "Payment.ReminderUrgent":
+    case "Payment.Late":
+    case "Payment.LateFormal":
+    case "Payment.MiseEnDemeure":
+    case "Payment.DernierAvertissement":
       await sendNotification(supabase, {
         type: "payment_reminder",
         user_id: payload.tenant_id,
-        title: payload.reminder_subject || "Rappel de paiement",
-        message: `Votre loyer de ${payload.montant_total}€ pour ${payload.property_address} (${payload.periode}) n'a pas encore été réglé (${payload.days_overdue} jours).`,
+        title: payload.reminder_subject || payload.title || "Rappel de paiement",
+        message: `Votre loyer de ${payload.montant_total || payload.amount}€ pour ${payload.property_address} (${payload.periode || payload.month}) n'a pas encore été réglé (${payload.days_overdue || payload.days_late || 0} jours).`,
         metadata: { 
           invoice_id: payload.invoice_id, 
-          level: payload.reminder_level,
-          days_overdue: payload.days_overdue 
+          level: payload.reminder_level || payload.reminder_type || event_type,
+          days_overdue: payload.days_overdue || payload.days_late || 0,
         },
       });
 
@@ -312,19 +314,51 @@ async function processEvent(supabase: any, event: any) {
 
     // ✅ SOTA 2026: Alerte propriétaire pour impayé critique
     case "Payment.OverdueAlert":
+    case "Owner.TenantPaymentLate":
       await sendNotification(supabase, {
         type: "payment_overdue_alert",
         user_id: payload.owner_id,
         title: "🚨 Impayé détecté",
-        message: `${payload.tenant_name} n'a pas réglé son loyer de ${payload.montant_total}€ pour ${payload.property_address} (${payload.days_overdue} jours de retard).`,
+        message: `${payload.tenant_name || "Le locataire"} n'a pas réglé son loyer de ${payload.montant_total || payload.amount}€ pour ${payload.property_address || "le logement"} (${payload.days_overdue || payload.days_late || 0} jours de retard).`,
         metadata: { 
           invoice_id: payload.invoice_id,
-          days_overdue: payload.days_overdue 
+          days_overdue: payload.days_overdue || payload.days_late || 0,
         },
       });
 
       // Email au propriétaire
       await sendOverdueAlertEmail(supabase, payload);
+      break;
+
+    case "Invoice.Paid":
+      if (payload.tenant_id) {
+        await sendNotification(supabase, {
+          type: "invoice_paid",
+          user_id: payload.tenant_id,
+          title: "Facture soldée",
+          message: "Votre paiement a été enregistré et la facture est maintenant soldée.",
+          metadata: {
+            invoice_id: payload.invoice_id,
+            payment_id: payload.payment_id,
+            receipt_document_id: payload.receipt_document_id || null,
+          },
+        });
+      }
+      break;
+
+    case "KeyHandover.Confirmed":
+      if (payload.tenant_user_id) {
+        await sendNotification(supabase, {
+          type: "key_handover_confirmed",
+          user_id: payload.tenant_user_id,
+          title: "Clés remises",
+          message: "La remise des clés a été confirmée. Votre attestation est disponible dans vos documents.",
+          metadata: {
+            lease_id: payload.lease_id,
+            handover_id: payload.handover_id,
+          },
+        });
+      }
       break;
 
     // ============================================

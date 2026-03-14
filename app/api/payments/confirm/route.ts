@@ -9,6 +9,8 @@ import { sendPaymentConfirmation } from "@/lib/emails";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { z } from "zod";
+import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
+import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 
 /**
  * Zod schema for payment confirmation
@@ -178,23 +180,18 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (invoice) {
-      // Vérifier le total payé
-      const { data: payments } = await supabase
-        .from("payments")
-        .select("montant")
-        .eq("invoice_id", invoiceId)
-        .eq("statut", "succeeded");
-
-      const totalPaid = (payments || []).reduce(
-        (sum, p: any) => sum + Number(p.montant),
-        0
+      const settlement = await syncInvoiceStatusFromPayments(
+        supabase as any,
+        invoiceId,
+        new Date().toISOString()
       );
 
-      if (totalPaid >= invoice.montant_total) {
-        await supabase
-          .from("invoices")
-          .update({ statut: "paid" } as any)
-          .eq("id", invoiceId as any);
+      if (settlement?.isSettled && payment?.id) {
+        try {
+          await ensureReceiptDocument(supabase as any, payment.id);
+        } catch (receiptError) {
+          console.error("[confirm] Erreur génération quittance:", receiptError);
+        }
       }
 
       // Envoyer l'email de confirmation

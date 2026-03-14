@@ -234,6 +234,7 @@ export const POST = withSecurity(async function POST(request: Request) {
 
     // Calculer le montant total
     const montant_total = validated.montant_loyer + validated.montant_charges;
+    const dueDate = `${validated.periode}-05`;
 
     // FIX AUDIT 2026-02-16: Vérifier qu'aucune facture n'existe déjà pour ce bail + période
     const { data: existingInvoice } = await svcClient
@@ -264,6 +265,8 @@ export const POST = withSecurity(async function POST(request: Request) {
         montant_loyer: validated.montant_loyer,
         montant_charges: validated.montant_charges,
         montant_total,
+        date_echeance: dueDate,
+        due_date: dueDate,
         statut: "draft",
         issuer_entity_id: (lease as any).signatory_entity_id ?? null,
       } as any)

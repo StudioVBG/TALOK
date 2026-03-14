@@ -195,6 +195,7 @@ export async function GET(request: NextRequest) {
             montant_charges: charges,
             montant_total: montantTotal,
             date_echeance: dateEcheance.toISOString().split("T")[0],
+            due_date: dateEcheance.toISOString().split("T")[0],
             statut: "sent",
             invoice_number: invoiceNumber,
             notes: `Loyer et charges - ${new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`,

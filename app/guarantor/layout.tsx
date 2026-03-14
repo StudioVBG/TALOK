@@ -7,6 +7,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import { getSecondaryRoleManifest } from "@/lib/navigation/secondary-role-manifest";
 import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
@@ -18,6 +19,7 @@ import { GuarantorSignOutButton } from "./_components/GuarantorSignOutButton";
  * Utilise getServerProfile() pour éviter la récursion RLS.
  */
 export default async function GuarantorLayout({ children }: { children: ReactNode }) {
+  const manifest = getSecondaryRoleManifest("guarantor");
   const supabase = await createClient();
 
   // Vérifier l'authentification
@@ -69,30 +71,17 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
               </div>
             </div>
             <nav className="flex items-center gap-4">
-              <Link
-                href="/guarantor/dashboard"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Tableau de bord
-              </Link>
-              <Link
-                href="/guarantor/documents"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Documents
-              </Link>
-              <Link
-                href="/guarantor/dashboard"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Engagements
-              </Link>
-              <Link
-                href="/guarantor/profile"
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Mon profil
-              </Link>
+              {[...manifest.navigation, ...manifest.footerNavigation]
+                .filter((item) => item.name !== "Aide")
+                .map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {item.name}
+                  </Link>
+                ))}
               <GuarantorSignOutButton />
             </nav>
           </div>

@@ -15,6 +15,8 @@ import { generateSignatureProof } from "@/lib/services/signature-proof.service";
 import { stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { revalidatePath } from "next/cache";
 import { verifyHandoverToken } from "../utils";
+import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
+import { ensureKeyHandoverAttestation } from "@/lib/services/final-documents.service";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -66,6 +68,57 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     if (!handover) {
       return NextResponse.json({ error: "Remise des clés introuvable ou déjà confirmée" }, { status: 404 });
+    }
+
+    const { data: lease } = await serviceClient
+      .from("leases")
+      .select(`
+        id,
+        statut,
+        date_debut,
+        property_id,
+        properties!leases_property_id_fkey(owner_id, adresse_complete)
+      `)
+      .eq("id", leaseId)
+      .single();
+
+    if (!lease) {
+      return NextResponse.json({ error: "Bail introuvable" }, { status: 404 });
+    }
+
+    const { data: signer } = await serviceClient
+      .from("lease_signers")
+      .select("id, role")
+      .eq("lease_id", leaseId)
+      .eq("profile_id", profile.id)
+      .maybeSingle();
+
+    if (!signer) {
+      return NextResponse.json({ error: "Vous n'êtes pas signataire de ce bail" }, { status: 403 });
+    }
+
+    const initialInvoiceSettlement = await getInitialInvoiceSettlement(serviceClient as any, leaseId);
+    if (!initialInvoiceSettlement?.isSettled) {
+      return NextResponse.json(
+        { error: "Le paiement initial doit être confirmé avant la remise des clés" },
+        { status: 400 }
+      );
+    }
+
+    const { data: edl } = await (serviceClient
+      .from("edl") as any)
+      .select("id, status")
+      .eq("lease_id", leaseId)
+      .eq("type", "entree")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!edl || edl.status !== "signed") {
+      return NextResponse.json(
+        { error: "L'EDL d'entrée doit être signé avant la remise des clés" },
+        { status: 400 }
+      );
     }
 
     // Upload de la signature du locataire
@@ -130,27 +183,26 @@ export async function POST(request: Request, { params }: RouteParams) {
       throw updateError;
     }
 
-    // Créer l'entrée document "Attestation de remise des clés"
     try {
-      await (serviceClient.from("documents") as any).insert({
-        type: "attestation_remise_cles",
-        property_id: handover.property_id,
-        lease_id: leaseId,
-        owner_id: handover.owner_profile_id,
-        tenant_id: profile.id,
-        title: "Attestation de remise des clés",
-        storage_path: `key-handover/${leaseId}/attestation.pdf`,
-        is_archived: false,
-        metadata: {
-          handover_id: handover.id,
-          confirmed_at: new Date().toISOString(),
-          keys_count: Array.isArray(handover.keys_list) ? handover.keys_list.length : 0,
-          proof_id: proof.proofId,
-          final: true,
-        },
-      });
+      await ensureKeyHandoverAttestation(serviceClient as any, handover.id);
     } catch (docErr) {
-      console.warn("[key-handover confirm] Document insert error (non-blocking):", docErr);
+      console.warn("[key-handover confirm] Document generation error (non-blocking):", docErr);
+    }
+
+    const activatedAt = new Date().toISOString();
+    if (lease.statut !== "active") {
+      const { error: leaseActivationError } = await serviceClient
+        .from("leases")
+        .update({
+          statut: "active",
+          activated_at: activatedAt,
+          updated_at: activatedAt,
+        })
+        .eq("id", leaseId);
+
+      if (leaseActivationError) {
+        console.warn("[key-handover confirm] Lease activation error (non-blocking):", leaseActivationError);
+      }
     }
 
     // Audit log
@@ -181,7 +233,27 @@ export async function POST(request: Request, { params }: RouteParams) {
         lease_id: leaseId,
         handover_id: handover.id,
         tenant_profile_id: profile.id,
+        tenant_user_id: user.id,
         confirmed_at: new Date().toISOString(),
+      },
+    });
+
+    const { data: tenantUserProfile } = await serviceClient
+      .from("profiles")
+      .select("user_id")
+      .eq("id", profile.id)
+      .single();
+
+    await (serviceClient.from("outbox") as any).insert({
+      event_type: "Lease.Activated",
+      payload: {
+        lease_id: leaseId,
+        activated_by: profile.id,
+        activated_at: activatedAt,
+        tenant_user_id: tenantUserProfile?.user_id || null,
+        property_address: (lease as any).properties?.adresse_complete || null,
+        initial_invoice_id: initialInvoiceSettlement.invoice?.id || null,
+        key_handover_id: handover.id,
       },
     });
 

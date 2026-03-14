@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { LeaseUpdateSchema, getMaxDepotLegal, getMaxDepotMois } from "@/lib/validations/lease-financial";
 import { SIGNER_ROLES, isTenantRole, isOwnerRole } from "@/lib/constants/roles";
 import { withSecurity } from "@/lib/api/with-security";
+import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -79,7 +80,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         `)
         .eq("id", leaseId)
         .single(),
-      // Requête 2: EDL + première facture en parallèle
+      // Requête 2: EDL + remise des clés en parallèle
       Promise.all([
         serviceClient
           .from("edl")
@@ -87,19 +88,23 @@ export async function GET(request: Request, { params }: RouteParams) {
           .eq("lease_id", leaseId)
           .eq("type", "entree")
           .maybeSingle(),
-        serviceClient
-          .from("invoices")
-          .select("statut")
+        (serviceClient
+          .from("key_handovers") as any)
+          .select("id, confirmed_at")
           .eq("lease_id", leaseId)
-          .eq("metadata->>type", "initial_invoice")
+          .not("confirmed_at", "is", null)
+          .order("confirmed_at", { ascending: false })
+          .limit(1)
           .maybeSingle(),
       ]),
     ]);
 
     const { data: lease, error: leaseError } = leaseResult;
-    const [edlResult, firstInvoiceResult] = auxiliaryResult;
+    const [edlResult, keyHandoverResult] = auxiliaryResult;
     const edl = edlResult.data;
-    const firstInvoice = firstInvoiceResult.data;
+    const keyHandover = keyHandoverResult?.data as { confirmed_at?: string | null } | null;
+    const initialInvoiceSettlement = await getInitialInvoiceSettlement(serviceClient as any, leaseId);
+
 
     if (leaseError || !lease) {
       console.error("[GET /api/leases] Erreur:", leaseError?.message);
@@ -157,7 +162,8 @@ export async function GET(request: Request, { params }: RouteParams) {
         statut: lease.statut,
         // Flags pour le tracker UI
         has_signed_edl: edl?.status === "signed",
-        has_paid_initial: firstInvoice?.statut === "paid",
+        has_paid_initial: initialInvoiceSettlement?.isSettled ?? false,
+        has_keys_handed_over: !!keyHandover?.confirmed_at,
         // Indice de référence
         indice_reference: lease.indice_reference || "IRL",
         // ... (reste des champs)

@@ -78,7 +78,7 @@ export async function GET(
 
     const results = {
       diagnostics: docs.filter(d => diagnosticsTypes.some(t => d.type?.toLowerCase().includes(t))),
-      contractual: docs.filter(d => !diagnosticsTypes.some(t => d.type?.toLowerCase().includes(t)) && ["bail", "quittance", "assurance", "edl"].some(t => d.type?.toLowerCase().includes(t))),
+      contractual: docs.filter(d => !diagnosticsTypes.some(t => d.type?.toLowerCase().includes(t)) && ["bail", "bail_signe", "quittance", "assurance", "edl", "attestation_remise_cles"].some(t => d.type?.toLowerCase().includes(t))),
       others: docs.filter(d => !diagnosticsTypes.some(t => d.type?.toLowerCase().includes(t)) && !["bail", "quittance", "assurance", "edl"].some(t => d.type?.toLowerCase().includes(t)))
     };
 

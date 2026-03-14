@@ -139,6 +139,49 @@ export class DashboardGatingService {
         });
 
         break;
+
+      case "guarantor":
+        items.push({
+          id: "email_verified",
+          label: "Email vérifié",
+          completed: !!user.email_confirmed_at,
+        });
+        items.push({
+          id: "guarantor_profile",
+          label: "Profil garant complété",
+          completed: true,
+          route: "/guarantor/profile",
+        });
+        break;
+
+      case "agency":
+        items.push({
+          id: "email_verified",
+          label: "Email vérifié",
+          completed: !!user.email_confirmed_at,
+        });
+        items.push({
+          id: "agency_profile",
+          label: "Agence renseignée",
+          completed: true,
+          route: "/agency/settings",
+        });
+        break;
+
+      case "copro":
+      case "syndic":
+        items.push({
+          id: "email_verified",
+          label: "Email vérifié",
+          completed: !!user.email_confirmed_at,
+        });
+        items.push({
+          id: "copro_access",
+          label: "Espace copro configuré",
+          completed: true,
+          route: role === "syndic" ? "/syndic/dashboard" : "/copro/dashboard",
+        });
+        break;
     }
 
     const allCompleted = items.every((item) => item.completed);

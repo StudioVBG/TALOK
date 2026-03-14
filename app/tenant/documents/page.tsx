@@ -80,6 +80,7 @@ function detectType(doc: any): string {
   // AUDIT UX: Identité détectée en priorité pour éviter qu'une CNI soit classée comme "bail"
   if (searchText.includes("cni") || searchText.includes("identité") || searchText.includes("identite") || searchText.includes("passeport") || searchText.includes("carte d'identité") || searchText.includes("carte d'identite") || searchText.includes("carte_identite") || searchText.includes("carte nationale")) return "cni";
   if (searchText.includes("quittance") || (searchText.includes("loyer") && !searchText.includes("attestation"))) return "quittance";
+  if (searchText.includes("remise des clés") || searchText.includes("remise des cles") || searchText.includes("attestation_remise_cles")) return "attestation_remise_cles";
   if (searchText.includes("bail") || searchText.includes("contrat") || searchText.includes("lease")) return "bail";
   if (searchText.includes("assurance") || (searchText.includes("attestation") && searchText.includes("habitation"))) return "attestation_assurance";
   if (searchText.includes("edl") || searchText.includes("état des lieux") || searchText.includes("etat_lieux")) {

@@ -8,7 +8,7 @@
  * Respecte : focus-visible, prefers-reduced-motion, touch targets 44px
  */
 
-import { Calendar, Eye, Download, FileText, FileSignature, Receipt, Shield, FileCheck, User, CheckCircle2 } from "lucide-react";
+import { Calendar, Eye, Download, FileText, FileSignature, Receipt, Shield, FileCheck, User, CheckCircle2, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 export const DOCUMENT_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
   // Documents de bail
   bail: { label: "Bail de location", icon: FileSignature, color: "text-blue-600", bgColor: "bg-blue-50" },
+  bail_signe: { label: "Bail signé", icon: FileSignature, color: "text-blue-600", bgColor: "bg-blue-50" },
   lease: { label: "Bail de location", icon: FileSignature, color: "text-blue-600", bgColor: "bg-blue-50" },
   contrat: { label: "Contrat de location", icon: FileSignature, color: "text-blue-600", bgColor: "bg-blue-50" },
   avenant: { label: "Avenant au bail", icon: FileSignature, color: "text-blue-600", bgColor: "bg-blue-50" },
@@ -36,6 +37,7 @@ export const DOCUMENT_CONFIG: Record<string, { label: string; icon: React.Elemen
   EDL_sortie: { label: "EDL de sortie", icon: FileCheck, color: "text-orange-600", bgColor: "bg-orange-50" },
   edl_sortie: { label: "EDL de sortie", icon: FileCheck, color: "text-orange-600", bgColor: "bg-orange-50" },
   edl: { label: "État des lieux", icon: FileCheck, color: "text-amber-600", bgColor: "bg-amber-50" },
+  attestation_remise_cles: { label: "Attestation remise des clés", icon: KeyRound, color: "text-violet-600", bgColor: "bg-violet-50" },
   
   // Diagnostics
   dpe: { label: "DPE", icon: FileText, color: "text-green-600", bgColor: "bg-green-50" },

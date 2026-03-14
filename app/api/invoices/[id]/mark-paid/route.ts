@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { AccountingIntegrationService } from "@/features/accounting/services/accounting-integration.service";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
+import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 
 /**
  * POST /api/invoices/[id]/mark-paid - Marquer une facture comme payée manuellement
@@ -65,7 +67,10 @@ export async function POST(
         *,
         lease:leases!inner(
           id,
-          property:properties!inner(owner_id)
+          property:properties!inner(
+            owner_id,
+            adresse_complete
+          )
         )
       `)
       .eq("id", invoiceId)
@@ -149,15 +154,14 @@ export async function POST(
       throw paymentError;
     }
 
-    // Mettre à jour le statut de la facture
-    const { error: updateError } = await supabase
-      .from("invoices")
-      .update({ statut: "paid" })
-      .eq("id", invoiceId);
+    const settlement = await syncInvoiceStatusFromPayments(
+      supabase as any,
+      invoiceId,
+      paymentData.date_paiement as string
+    );
 
-    if (updateError) {
-      console.error("[mark-paid] Erreur update invoice:", updateError);
-      throw updateError;
+    if (!settlement) {
+      throw new Error("Impossible de synchroniser le statut de la facture");
     }
 
     // =============================================
@@ -174,7 +178,8 @@ export async function POST(
           tenant_id,
           property:properties!inner(
             owner_id,
-            code_postal
+            code_postal,
+            adresse_complete
           )
         `)
         .eq("id", invoiceData.lease_id)
@@ -203,21 +208,70 @@ export async function POST(
       console.error("[mark-paid] Erreur comptabilité (non bloquante):", accountingError);
     }
 
-    // Émettre un événement
-    await supabase.from("outbox").insert({
-      event_type: "Invoice.Paid",
-      payload: {
-        invoice_id: invoiceId,
-        payment_id: payment?.id,
-        lease_id: invoiceData.lease_id,
-        tenant_id: invoiceData.tenant_id,
-        amount: paymentAmount,
-        payment_method: paymentMethod,
-        reference,
-        bank_name,
-        marked_by: user.id,
+    let receiptDocumentId: string | null = null;
+    if (settlement.isSettled && payment?.id) {
+      try {
+        const receiptResult = await ensureReceiptDocument(supabase as any, payment.id);
+        receiptDocumentId = receiptResult?.documentId || null;
+      } catch (receiptError) {
+        console.error("[mark-paid] Erreur génération quittance:", receiptError);
+      }
+    }
+
+    const [{ data: tenantProfile }, { data: ownerProfile }] = await Promise.all([
+      supabase.from("profiles").select("user_id, prenom, nom").eq("id", invoiceData.tenant_id).maybeSingle(),
+      supabase.from("profiles").select("user_id").eq("id", invoiceData.lease?.property?.owner_id).maybeSingle(),
+    ]);
+
+    const tenantDisplayName =
+      `${tenantProfile?.prenom || ""} ${tenantProfile?.nom || ""}`.trim() || "Le locataire";
+
+    const outboxEvents: Array<Record<string, unknown>> = [
+      {
+        event_type: "Payment.Succeeded",
+        payload: {
+          payment_id: payment?.id,
+          invoice_id: invoiceId,
+          tenant_id: tenantProfile?.user_id || null,
+          amount: paymentAmount,
+          periode: invoiceData.periode,
+          property_address: invoiceData.lease?.property?.adresse_complete || null,
+          receipt_generated: !!receiptDocumentId,
+        },
       },
-    } as any);
+      {
+        event_type: "Payment.Received",
+        payload: {
+          payment_id: payment?.id,
+          invoice_id: invoiceId,
+          owner_id: ownerProfile?.user_id || null,
+          tenant_name: tenantDisplayName,
+          amount: paymentAmount,
+          periode: invoiceData.periode,
+          property_address: invoiceData.lease?.property?.adresse_complete || null,
+        },
+      },
+    ];
+
+    if (settlement.isSettled) {
+      outboxEvents.push({
+        event_type: "Invoice.Paid",
+        payload: {
+          invoice_id: invoiceId,
+          payment_id: payment?.id,
+          lease_id: invoiceData.lease_id,
+          tenant_id: invoiceData.tenant_id,
+          amount: paymentAmount,
+          payment_method: paymentMethod,
+          reference,
+          bank_name,
+          marked_by: user.id,
+          receipt_document_id: receiptDocumentId,
+        },
+      });
+    }
+
+    await supabase.from("outbox").insert(outboxEvents as any);
 
     // Journaliser
     await supabase.from("audit_log").insert({
@@ -238,8 +292,14 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: "Facture marquée comme payée",
+      message: settlement.isSettled
+        ? "Facture marquée comme payée"
+        : "Paiement partiel enregistré",
       payment: payment,
+      invoice_status: settlement.status,
+      total_paid: settlement.totalPaid,
+      remaining: settlement.remaining,
+      receipt_document_id: receiptDocumentId,
     });
   } catch (error: unknown) {
     console.error("[mark-paid] Erreur:", error);

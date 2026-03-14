@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
 
 /**
  * POST /api/leases/[id]/activate
@@ -12,10 +13,12 @@ import { getServiceClient } from "@/lib/supabase/service-client";
  * Active un bail après vérification des conditions :
  * 1. Le bail doit être au statut "fully_signed"
  * 2. Un EDL d'entrée doit exister et être signé
- * 3. La date de début du bail doit être atteinte ou dépassée (optionnel mais recommandé)
+ * 3. La facture initiale doit être intégralement payée
+ * 4. La remise des clés doit être confirmée
+ * 5. La date de début du bail doit être atteinte ou dépassée (optionnel mais recommandé)
  *
  * FLUX LÉGAL FRANÇAIS :
- * - Bail signé → EDL d'entrée → Remise des clés → Bail actif
+ * - Bail signé → EDL d'entrée → Paiement initial → Remise des clés → Bail actif
  *
  * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
@@ -115,19 +118,17 @@ export async function POST(
       .eq("type", "entree")
       .single();
     
-    // Options selon le body de la requête
     const body = await request.json().catch(() => ({}));
-    const { force_without_edl = false, skip_date_check = false } = body;
-    
-    if (!edl && !force_without_edl) {
+    const { skip_date_check = false } = body;
+
+    if (!edl) {
       return NextResponse.json({
         error: "Aucun état des lieux d'entrée n'existe pour ce bail",
-        hint: "Créez un EDL d'entrée avant d'activer le bail, ou utilisez force_without_edl: true",
-        can_force: true
+        hint: "Créez et faites signer l'EDL d'entrée avant d'activer le bail.",
       }, { status: 400 });
     }
     
-    if (edl && edl.status !== "signed" && !force_without_edl) {
+    if (edl.status !== "signed") {
       const edlStatusMessages: Record<string, string> = {
         draft: "L'EDL d'entrée est en brouillon",
         in_progress: "L'EDL d'entrée est en cours",
@@ -139,12 +140,47 @@ export async function POST(
         error: edlStatusMessages[edl.status] || `L'EDL d'entrée doit être signé (statut actuel: ${edl.status})`,
         edl_status: edl.status,
         required_edl_status: "signed",
-        can_force: true,
-        hint: "Faites signer l'EDL, ou utilisez force_without_edl: true"
+        hint: "Faites signer l'EDL avant d'activer le bail."
+      }, { status: 400 });
+    }
+
+    // 6. Vérifier le paiement intégral de la facture initiale
+    const initialInvoiceSettlement = await getInitialInvoiceSettlement(serviceClient as any, leaseId);
+    if (!initialInvoiceSettlement?.invoice) {
+      return NextResponse.json({
+        error: "La facture initiale n'existe pas encore pour ce bail",
+        hint: "Le bail doit générer une facture initiale avant activation.",
+      }, { status: 400 });
+    }
+
+    if (!initialInvoiceSettlement.isSettled) {
+      return NextResponse.json({
+        error: "Le paiement initial n'est pas encore confirmé",
+        invoice_status: initialInvoiceSettlement.status,
+        total_paid: initialInvoiceSettlement.totalPaid,
+        remaining: initialInvoiceSettlement.remaining,
+        required_status: "paid",
+      }, { status: 400 });
+    }
+
+    // 7. Vérifier la remise des clés
+    const { data: handover } = await (serviceClient
+      .from("key_handovers") as any)
+      .select("id, confirmed_at")
+      .eq("lease_id", leaseId)
+      .not("confirmed_at", "is", null)
+      .order("confirmed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!handover?.confirmed_at) {
+      return NextResponse.json({
+        error: "La remise des clés n'est pas encore confirmée",
+        hint: "Confirmez la remise des clés pour finaliser l'activation du bail.",
       }, { status: 400 });
     }
     
-    // 6. Vérifier la date de début (avertissement si dans le futur)
+    // 8. Vérifier la date de début (avertissement si dans le futur)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const startDate = new Date(lease.date_debut);
@@ -154,7 +190,7 @@ export async function POST(
       dateWarning = `La date de début du bail (${lease.date_debut}) est dans le futur. L'activation anticipée est possible mais inhabituelle.`;
     }
     
-    // 7. Activer le bail
+    // 9. Activer le bail
     const { error: updateError } = await serviceClient
       .from("leases")
       .update({
@@ -168,137 +204,7 @@ export async function POST(
       throw updateError;
     }
 
-    // 7bis. Générer la facture initiale (Loyer + Dépôt de garantie)
-    let invoiceWarning: string | null = null;
-    try {
-      const { data: leaseFull } = await serviceClient
-        .from("leases")
-        .select(`
-          *,
-          property:properties!leases_property_id_fkey (owner_id, loyer_hc, charges_mensuelles),
-          signers:lease_signers(profile_id, role, invited_email)
-        `)
-        .eq("id", leaseId)
-        .single();
-
-      if (leaseFull) {
-        const TENANT_ROLES = ['locataire_principal', 'locataire', 'tenant', 'principal', 'colocataire'];
-        let tenantId = leaseFull.signers?.find((s: any) =>
-          TENANT_ROLES.includes(s.role)
-        )?.profile_id;
-
-        // Fallback: résolution par invited_email si profile_id est NULL
-        if (!tenantId) {
-          const tenantSigner = leaseFull.signers?.find((s: any) =>
-            TENANT_ROLES.includes(s.role)
-          );
-          if (tenantSigner?.invited_email) {
-            const { data: resolved } = await serviceClient
-              .from("profiles")
-              .select("id")
-              .eq("email", tenantSigner.invited_email)
-              .maybeSingle();
-            if (resolved) {
-              tenantId = resolved.id;
-              await serviceClient
-                .from("lease_signers")
-                .update({ profile_id: resolved.id })
-                .eq("lease_id", leaseId)
-                .eq("invited_email", tenantSigner.invited_email);
-            }
-          }
-        }
-
-        if (!tenantId) {
-          console.warn("[Activate Lease] Aucun locataire résolu (profile_id ou email) — facture créée avec tenant_id null pour lease", leaseId);
-        }
-
-        const ownerId = leaseFull.property?.owner_id;
-
-        if (ownerId && tenantId) {
-          // Garde anti-doublon : vérifier si la facture initiale existe déjà
-          // (créée par le trigger DB à la signature fully_signed)
-          const { data: existingInitialInvoice } = await serviceClient
-            .from("invoices")
-            .select("id")
-            .eq("lease_id", leaseId)
-            .eq("metadata->>type", "initial_invoice")
-            .maybeSingle();
-
-          if (existingInitialInvoice) {
-            console.log(`[Activate Lease] Initial invoice already exists (created at signing) for lease ${leaseId}, skipping`);
-          } else {
-            // SSOT 2026 : Utiliser le loyer contractuel du bail (pas du bien)
-            const baseRent = leaseFull.loyer ?? leaseFull.property?.loyer_hc ?? 0;
-            const baseCharges = leaseFull.charges_forfaitaires ?? leaseFull.property?.charges_mensuelles ?? 0;
-            const monthStr = leaseFull.date_debut?.slice(0, 7) || new Date().toISOString().slice(0, 7);
-
-            // Calcul du prorata
-            const startDate = new Date(leaseFull.date_debut);
-            const isMidMonthStart = startDate.getDate() > 1;
-
-            let finalRent = baseRent;
-            let finalCharges = baseCharges;
-            let isProrated = false;
-
-            if (isMidMonthStart) {
-              const year = startDate.getFullYear();
-              const month = startDate.getMonth();
-              const daysInMonth = new Date(year, month + 1, 0).getDate();
-              const remainingDays = daysInMonth - startDate.getDate() + 1;
-
-              finalRent = (baseRent / daysInMonth) * remainingDays;
-              finalCharges = (baseCharges / daysInMonth) * remainingDays;
-              isProrated = true;
-            }
-
-            const deposit = leaseFull.depot_de_garantie || 0;
-            const totalAmount = finalRent + finalCharges + deposit;
-
-            // Calculer la date d'échéance
-            const dueDate = leaseFull.date_debut || new Date().toISOString().slice(0, 10);
-
-            // Calculer period_start et period_end
-            const periodStart = leaseFull.date_debut;
-            const periodEndDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
-            const periodEnd = periodEndDate.toISOString().slice(0, 10);
-
-            // Créer la facture
-            await serviceClient
-              .from("invoices")
-              .insert({
-                lease_id: leaseId,
-                owner_id: ownerId,
-                tenant_id: tenantId,
-                issuer_entity_id: (leaseFull as any).signatory_entity_id ?? null,
-                periode: monthStr,
-                montant_loyer: Math.round(finalRent * 100) / 100,
-                montant_charges: Math.round(finalCharges * 100) / 100,
-                montant_total: Math.round(totalAmount * 100) / 100,
-                date_echeance: dueDate,
-                period_start: periodStart,
-                period_end: periodEnd,
-                statut: 'sent',
-                metadata: {
-                  type: 'initial_invoice',
-                  includes_deposit: true,
-                  deposit_amount: deposit,
-                  is_prorated: isProrated,
-                  generated_manually: true,
-                  version: "SOTA-2026"
-                }
-              } as any);
-
-            console.log(`[Activate Lease] Initial invoice created (Prorata: ${isProrated}) for lease ${leaseId}`);
-          }
-        }
-      }
-    } catch (invoiceErr) {
-      console.error("[Activate Lease] Failed to generate initial invoice:", invoiceErr);
-      invoiceWarning = "La première facture n'a pas pu être créée automatiquement. Elle sera générée par le cron mensuel.";
-    }
-    
-    // 8. Créer un événement dans l'outbox
+    // 10. Créer un événement dans l'outbox
     await serviceClient.from("outbox").insert({
       event_type: "Lease.Activated",
       payload: {
@@ -307,11 +213,14 @@ export async function POST(
         activated_at: new Date().toISOString(),
         edl_present: !!edl,
         edl_signed: edl?.status === "signed",
-        forced: force_without_edl
+        initial_invoice_id: initialInvoiceSettlement.invoice.id,
+        initial_payment_confirmed: true,
+        key_handover_id: handover.id,
+        key_handover_confirmed: true,
       }
     });
 
-    // 9. Journaliser
+    // 11. Journaliser
     await serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "lease_activated",
@@ -321,7 +230,8 @@ export async function POST(
         previous_status: lease.statut,
         new_status: "active",
         edl_id: edl?.id || null,
-        forced: force_without_edl
+        initial_invoice_id: initialInvoiceSettlement.invoice.id,
+        key_handover_id: handover.id,
       }
     });
     
@@ -333,7 +243,7 @@ export async function POST(
     }
     revalidatePath("/owner/leases");
 
-    const warnings = [dateWarning, invoiceWarning].filter(Boolean);
+    const warnings = [dateWarning].filter(Boolean);
 
     return NextResponse.json({
       success: true,
@@ -414,17 +324,33 @@ export async function GET(
       .select("role, signature_status")
       .eq("lease_id", leaseId);
     
+    const initialInvoiceSettlement = await getInitialInvoiceSettlement(serviceClient as any, leaseId);
+    const { data: handover } = await (serviceClient
+      .from("key_handovers") as any)
+      .select("id, confirmed_at")
+      .eq("lease_id", leaseId)
+      .not("confirmed_at", "is", null)
+      .order("confirmed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     // Analyser les conditions
     const conditions = {
       bail_signe: lease.statut === "fully_signed",
       edl_existe: !!edl,
       edl_signe: edl?.status === "signed",
+      paiement_initial_existe: !!initialInvoiceSettlement?.invoice,
+      paiement_initial_confirme: initialInvoiceSettlement?.isSettled ?? false,
+      remise_cles_confirmee: !!handover?.confirmed_at,
       date_debut_atteinte: new Date(lease.date_debut) <= new Date(),
       toutes_signatures: signers?.every((s: any) => s.signature_status === "signed") || false
     };
     
-    const canActivate = conditions.bail_signe && conditions.edl_signe;
-    const canForceActivate = conditions.bail_signe; // Force si au moins signé
+    const canActivate =
+      conditions.bail_signe &&
+      conditions.edl_signe &&
+      conditions.paiement_initial_confirme &&
+      conditions.remise_cles_confirmee;
     
     const missingConditions: string[] = [];
     if (!conditions.bail_signe) {
@@ -435,6 +361,14 @@ export async function GET(
     } else if (!conditions.edl_signe) {
       missingConditions.push(`L'état des lieux d'entrée n'est pas signé (statut: ${edl?.status})`);
     }
+    if (!conditions.paiement_initial_existe) {
+      missingConditions.push("La facture initiale n'existe pas encore");
+    } else if (!conditions.paiement_initial_confirme) {
+      missingConditions.push("Le paiement initial n'est pas intégralement confirmé");
+    }
+    if (!conditions.remise_cles_confirmee) {
+      missingConditions.push("La remise des clés n'est pas encore confirmée");
+    }
     if (!conditions.date_debut_atteinte) {
       missingConditions.push(`La date de début (${lease.date_debut}) n'est pas encore atteinte`);
     }
@@ -443,9 +377,21 @@ export async function GET(
       lease_id: leaseId,
       current_status: lease.statut,
       can_activate: canActivate,
-      can_force_activate: canForceActivate,
       conditions,
       missing_conditions: missingConditions,
+      initial_invoice: initialInvoiceSettlement
+        ? {
+            status: initialInvoiceSettlement.status,
+            total_paid: initialInvoiceSettlement.totalPaid,
+            remaining: initialInvoiceSettlement.remaining,
+          }
+        : null,
+      key_handover: handover
+        ? {
+            id: handover.id,
+            confirmed_at: handover.confirmed_at,
+          }
+        : null,
       edl: edl ? {
         id: edl.id,
         status: edl.status,

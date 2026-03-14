@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import QRCode from "qrcode";
 
 interface KeyItem {
   type: string;
@@ -41,7 +42,7 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
     handover_id: string;
   } | null>(null);
   const [status, setStatus] = useState<"idle" | "generated" | "confirmed">("idle");
-  const [qrSvg, setQrSvg] = useState<string>("");
+  const [qrImageSrc, setQrImageSrc] = useState<string>("");
 
   // Check existing handover status on mount
   useEffect(() => {
@@ -75,9 +76,12 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
       setQrData(data);
       setStatus("generated");
 
-      // Generate QR code SVG using a simple QR encoding
       const url = `${window.location.origin}/key-handover/verify?token=${encodeURIComponent(data.token)}&lease=${leaseId}`;
-      setQrSvg(url);
+      const qrDataUrl = await QRCode.toDataURL(url, {
+        width: 256,
+        margin: 1,
+      });
+      setQrImageSrc(qrDataUrl);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -90,19 +94,21 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
   }, [leaseId, toast]);
 
   const copyLink = useCallback(() => {
-    if (qrSvg) {
-      navigator.clipboard.writeText(qrSvg);
+    if (qrData?.token) {
+      const url = `${window.location.origin}/key-handover/verify?token=${encodeURIComponent(qrData.token)}&lease=${leaseId}`;
+      navigator.clipboard.writeText(url);
       toast({ title: "Lien copié", description: "Le lien de remise des clés a été copié." });
     }
-  }, [qrSvg, toast]);
+  }, [leaseId, qrData, toast]);
 
   const shareLink = useCallback(async () => {
-    if (qrSvg && navigator.share) {
+    if (qrData?.token && navigator.share) {
       try {
+        const url = `${window.location.origin}/key-handover/verify?token=${encodeURIComponent(qrData.token)}&lease=${leaseId}`;
         await navigator.share({
           title: "Remise des clés — Talok",
           text: "Confirmez la réception de vos clés",
-          url: qrSvg,
+          url,
         });
       } catch {
         copyLink();
@@ -110,7 +116,7 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
     } else {
       copyLink();
     }
-  }, [qrSvg, copyLink]);
+  }, [leaseId, qrData, copyLink]);
 
   if (status === "confirmed") {
     return (
@@ -183,11 +189,18 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
             {/* QR Code display */}
             <div className="flex flex-col items-center p-6 bg-white rounded-xl border border-border">
               <div className="p-4 bg-white rounded-2xl shadow-inner border border-slate-100">
-                {/* QR Code rendered as a visual placeholder with the URL */}
-                <div className="w-48 h-48 bg-slate-900 rounded-lg flex items-center justify-center relative overflow-hidden">
-                  <QrCode className="h-24 w-24 text-white" />
-                  <div className="absolute inset-0 bg-gradient-to-br from-transparent to-slate-900/50" />
-                </div>
+                {qrImageSrc ? (
+                  <img
+                    src={qrImageSrc}
+                    alt="QR code de remise des clés"
+                    className="w-48 h-48 rounded-lg border border-slate-200"
+                  />
+                ) : (
+                  <div className="w-48 h-48 bg-slate-900 rounded-lg flex items-center justify-center relative overflow-hidden">
+                    <QrCode className="h-24 w-24 text-white" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-transparent to-slate-900/50" />
+                  </div>
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-3 text-center max-w-xs">
                 Le locataire scanne ce QR code pour confirmer la réception des clés

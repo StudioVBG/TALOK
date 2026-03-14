@@ -9,6 +9,7 @@ import { z } from "zod";
 import { randomBytes } from "crypto";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
 import { getMaxDepotLegal } from "@/lib/validations/lease-financial";
+import { withSubscriptionLimit } from "@/lib/middleware/subscription-check";
 
 // Schéma pour un invité de colocation
 const inviteeSchema = z.object({
@@ -149,6 +150,22 @@ export async function POST(request: Request) {
         hint: `Votre rôle est "${profile.role}". Seuls les propriétaires peuvent créer des baux.`,
         current_role: profile.role
       }, { status: 403 });
+    }
+
+    if (profile.role === "owner") {
+      const limitCheck = await withSubscriptionLimit(profile.id, "leases");
+      if (!limitCheck.allowed) {
+        return NextResponse.json({
+          error: "SUBSCRIPTION_LIMIT",
+          message: limitCheck.message || "Limite de baux atteinte pour votre forfait.",
+          details: {
+            current: limitCheck.current,
+            max: limitCheck.max,
+            remaining: limitCheck.remaining,
+            plan: limitCheck.plan,
+          },
+        }, { status: 403 });
+      }
     }
     
     console.log("[API leases/invite] Profile found:", profile.id, profile.role);

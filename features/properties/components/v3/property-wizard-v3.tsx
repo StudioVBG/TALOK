@@ -11,6 +11,7 @@ import { Confetti } from "@/components/ui/confetti";
 import { ImportStep } from "./immersive/steps/ImportStep";
 import type { Property } from "@/lib/types";
 import { propertySchemaV3 } from "@/lib/validations/property-v3";
+import { propertiesService } from "@/features/properties/services/properties.service";
 
 // Dynamically import steps for code splitting
 const TypeStep = dynamic(() => import("./immersive/steps/TypeStep").then((mod) => ({ default: mod.TypeStep })), {
@@ -458,6 +459,17 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
       }
     }
     
+    try {
+      await propertiesService.submitProperty(storePropertyId);
+    } catch (err) {
+      toast({
+        title: "Publication impossible",
+        description: err instanceof Error ? err.message : "Le bien n'a pas pu être soumis.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // 🎉 Déclencher le confetti avant la redirection
     setShowConfetti(true);
     

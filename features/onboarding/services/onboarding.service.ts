@@ -251,6 +251,25 @@ export class OnboardingService {
           "syndic_owners",
           "syndic_review",
         ];
+      case "agency":
+        return [
+          "role_choice",
+          "account_creation",
+          "email_verification",
+          "agency_profile",
+          "agency_compliance",
+          "agency_team",
+          "agency_review",
+        ];
+      case "copro":
+        return [
+          "role_choice",
+          "account_creation",
+          "email_verification",
+          "copro_profile",
+          "copro_lots",
+          "copro_documents",
+        ];
       default:
         return [];
     }

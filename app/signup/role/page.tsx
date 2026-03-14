@@ -25,7 +25,7 @@ export default function RoleChoicePage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<"owner" | "tenant" | "provider" | "guarantor" | "syndic" | null>(null);
+  const [selectedRole, setSelectedRole] = useState<"owner" | "tenant" | "provider" | "guarantor" | "syndic" | "agency" | null>(null);
 
   // Vérifier si on a un token d'invitation (rôle verrouillé)
   const inviteToken = searchParams.get("invite");
@@ -43,7 +43,7 @@ export default function RoleChoicePage() {
   }, [inviteToken, lockedRole, router]);
 
   const handleRoleChoice = async (
-    role: "owner" | "tenant" | "provider" | "guarantor" | "syndic",
+    role: "owner" | "tenant" | "provider" | "guarantor" | "syndic" | "agency",
     options?: { propertyCode?: string }
   ) => {
     setLoading(true);
@@ -150,6 +150,14 @@ export default function RoleChoicePage() {
       icon: Wrench,
       features: ["Planning interventions", "Facturation automatique", "Suivi temps réel", "Paiements sécurisés"],
       gradient: "from-emerald-300/30 via-emerald-400/10 to-transparent",
+    },
+    {
+      role: "agency" as const,
+      title: "Agence",
+      pitch: "Je gère un portefeuille pour des propriétaires.",
+      icon: Building2,
+      features: ["Mandats & commissions", "Portefeuille multi-propriétaires", "Pilotage équipe", "Reporting agence"],
+      gradient: "from-fuchsia-300/30 via-fuchsia-400/10 to-transparent",
     },
     {
       role: "syndic" as const,

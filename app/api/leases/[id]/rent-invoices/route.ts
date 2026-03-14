@@ -130,6 +130,7 @@ export async function POST(
     const montant_loyer = parsedLoyerOverride ?? leaseData.loyer;
     const montant_charges = parsedChargesOverride ?? leaseData.charges_forfaitaires ?? 0;
     const montant_total = montant_loyer + montant_charges;
+    const dueDate = `${month}-05`;
 
     // Créer la facture
     const { data: invoice, error: invoiceError } = await supabase
@@ -142,6 +143,8 @@ export async function POST(
         montant_total,
         montant_loyer,
         montant_charges,
+        date_echeance: dueDate,
+        due_date: dueDate,
         statut: "sent",
       } as any)
       .select()

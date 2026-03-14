@@ -483,6 +483,7 @@ export async function POST(
                   montant_charges: Math.round(finalCharges * 100) / 100,
                   montant_total: Math.round(totalAmount * 100) / 100,
                   date_echeance: dueDate,
+                  due_date: dueDate,
                   period_start: (leaseFull as any).date_debut,
                   period_end: periodEnd,
                   statut: 'sent',

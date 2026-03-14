@@ -17,9 +17,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import Stripe from "stripe";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { generateReceiptPDF } from "@/lib/services/receipt-generator";
-import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import type { Json } from "@/lib/supabase/database.types";
+import { reconcileOwnerTransfer } from "@/lib/billing/owner-payout.service";
+import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
+import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 
 // Initialiser Stripe de manière lazy pour éviter les erreurs au build
 function getStripe(): Stripe {
@@ -32,152 +33,10 @@ function getStripe(): Stripe {
   });
 }
 
-// Fonction utilitaire pour générer et sauvegarder la quittance
-async function processReceiptGeneration(supabase: any, invoiceId: string, paymentId: string, amount: number) {
+// Fonction utilitaire pour générer et sauvegarder la quittance de façon idempotente
+async function processReceiptGeneration(supabase: any, _invoiceId: string, paymentId: string, _amount: number) {
   try {
-    // 1. Récupérer toutes les données nécessaires
-    const { data: invoice } = await supabase
-      .from("invoices")
-      .select(`
-        *,
-        lease:leases (
-          id,
-          property:properties (
-            id,
-            adresse_complete,
-            ville,
-            code_postal,
-            owner_id
-          ),
-          signers:lease_signers (
-            profile:profiles (
-              id,
-              nom,
-              prenom,
-              email
-            ),
-            role
-          )
-        )
-      `)
-      .eq("id", invoiceId)
-      .single();
-
-    if (!invoice || !invoice.lease) return;
-
-    const property = invoice.lease.property;
-
-    // Trouver le locataire principal
-    const tenantSigner = invoice.lease.signers.find((s: any) => s.role === 'locataire_principal');
-    const tenant = tenantSigner?.profile;
-
-    if (!property || !tenant) {
-      console.error("[Receipt] Missing property or tenant data");
-      return;
-    }
-
-    // Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
-    const ownerIdentity = await resolveOwnerIdentity(supabase, {
-      leaseId: invoice.lease.id,
-      propertyId: property.id,
-      profileId: property.owner_id,
-    });
-
-    const street = ownerIdentity.address.street || "";
-    const cp = ownerIdentity.address.postalCode || "";
-    const city = ownerIdentity.address.city || "";
-    const cpVille = [cp, city].filter(Boolean).join(" ");
-    const ownerAddress = street
-      ? (cp && street.includes(cp) ? street : [street, cpVille].filter(Boolean).join(", "))
-      : (ownerIdentity.billingAddress || "Adresse non renseignée");
-
-    // 2. Générer le PDF
-    const pdfBytes = await generateReceiptPDF({
-      ownerName: ownerIdentity.displayName,
-      ownerAddress: ownerAddress,
-      ownerSiret: ownerIdentity.siret || undefined,
-      
-      tenantName: `${tenant.prenom} ${tenant.nom}`,
-      
-      propertyAddress: property.adresse_complete,
-      propertyCity: property.ville,
-      propertyPostalCode: property.code_postal,
-      
-      period: invoice.periode,
-      rentAmount: invoice.montant_loyer,
-      chargesAmount: invoice.montant_charges,
-      totalAmount: amount, // Montant payé
-      paymentDate: new Date().toISOString(),
-      paymentMethod: "Carte Bancaire",
-      
-      invoiceId: invoice.id,
-      paymentId: paymentId,
-      leaseId: invoice.lease.id
-    });
-
-    // 3. Uploader sur Storage
-    const fileName = `receipts/${invoice.lease.id}/${invoice.periode}_${Date.now()}.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from("documents")
-      .upload(fileName, pdfBytes, {
-        contentType: 'application/pdf',
-        upsert: true
-      });
-
-    if (uploadError) {
-      console.error("[Receipt] Upload error:", uploadError);
-      return;
-    }
-
-    // 4. Créer l'entrée Document
-    const { data: doc } = await supabase
-      .from("documents")
-      .insert({
-        type: "quittance",
-        name: `Quittance - ${invoice.periode}`,
-        storage_path: fileName,
-        lease_id: invoice.lease.id,
-        tenant_id: tenant.id,
-        owner_id: property.owner_id,
-        property_id: property.id,
-        status: "valid",
-        metadata: {
-          invoice_id: invoiceId,
-          payment_id: paymentId,
-          period: invoice.periode,
-          amount: amount
-        }
-      })
-      .select()
-      .single();
-
-    console.log(`[Receipt] Generated and saved: ${fileName}`);
-
-    // 5. Envoyer email avec la quittance (via Resend)
-    const { sendRentReceiptEmail } = await import("@/lib/services/email-service");
-
-    // Obtenir une URL signée pour la quittance (plus fiable que getPublicUrl après upload)
-    const { data: signedUrlData } = await supabase.storage
-      .from("documents")
-      .createSignedUrl(fileName, 7 * 24 * 3600); // 7 days
-
-    const publicUrl = signedUrlData?.signedUrl;
-    if (!publicUrl) {
-      console.error("[Receipt] Failed to generate signed URL for:", fileName);
-      return;
-    }
-
-    await sendRentReceiptEmail(
-      tenant.email,
-      `${tenant.prenom} ${tenant.nom}`,
-      invoice.periode,
-      amount,
-      property.adresse_complete,
-      publicUrl
-    );
-
-    console.log(`[Receipt] Email sent to ${tenant.email}`);
-    
+    await ensureReceiptDocument(supabase, paymentId);
   } catch (error) {
     console.error("[Receipt] Generation failed:", error);
   }
@@ -191,7 +50,8 @@ async function emitPaymentSucceededEvent(
   supabase: any, 
   paymentId: string, 
   invoiceId: string, 
-  amount: number
+  amount: number,
+  options?: { invoiceSettled?: boolean; receiptGenerated?: boolean }
 ) {
   try {
     // Récupérer les infos du locataire et du propriétaire
@@ -245,7 +105,9 @@ async function emitPaymentSucceededEvent(
           tenant_name: `${tenantProfile.prenom || ""} ${tenantProfile.nom || ""}`.trim(),
           periode: invoice.periode,
           property_address: propertyAddress,
-          type: "tenant_notification"
+          type: "tenant_notification",
+          invoice_settled: options?.invoiceSettled ?? false,
+          receipt_generated: options?.receiptGenerated ?? false,
         },
       });
     }
@@ -262,7 +124,8 @@ async function emitPaymentSucceededEvent(
           tenant_name: `${tenantProfile?.prenom || ""} ${tenantProfile?.nom || ""}`.trim(),
           periode: invoice.periode,
           property_address: propertyAddress,
-          type: "owner_notification"
+          type: "owner_notification",
+          invoice_settled: options?.invoiceSettled ?? false,
         },
       });
     }
@@ -314,6 +177,18 @@ export async function POST(request: NextRequest) {
   console.log(`[Stripe Webhook] Received event: ${event.type}`);
 
   try {
+    const { data: existingWebhook } = await supabase
+      .from("webhook_logs")
+      .select("id")
+      .eq("provider", "stripe")
+      .eq("event_id", event.id)
+      .eq("status", "success")
+      .maybeSingle();
+
+    if ((existingWebhook as { id?: string } | null)?.id) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
     switch (event.type) {
       // ===============================================
       // PAIEMENT DE LOYER RÉUSSI
@@ -328,50 +203,85 @@ export async function POST(request: NextRequest) {
         
         if (invoiceId) {
           console.log(`[Stripe Webhook] Processing payment for invoice: ${invoiceId}`);
-          
-          // Mettre à jour la facture
-          const { error: invoiceError } = await supabase
+          const providerRef = session.payment_intent as string;
+          const paidAt = new Date().toISOString();
+
+          const { data: existingPayment } = await supabase
+            .from("payments")
+            .select("id")
+            .eq("provider_ref", providerRef)
+            .maybeSingle();
+
+          let paymentId: string | null = null;
+          if (existingPayment) {
+            const { data: updatedPayment, error: paymentUpdateError } = await supabase
+              .from("payments")
+              .update({
+                statut: "succeeded",
+                date_paiement: paidAt,
+              })
+              .eq("id", existingPayment.id)
+              .select("id")
+              .single();
+
+            if (paymentUpdateError) {
+              console.error("[Stripe Webhook] Error updating payment:", paymentUpdateError);
+            } else {
+              paymentId = updatedPayment?.id || null;
+            }
+          } else {
+            const { data: payment, error: paymentError } = await supabase
+              .from("payments")
+              .insert({
+                invoice_id: invoiceId,
+                montant: (session.amount_total || 0) / 100,
+                moyen: "cb",
+                provider_ref: providerRef,
+                date_paiement: paidAt,
+                statut: "succeeded",
+              })
+              .select("id")
+              .single();
+
+            if (paymentError) {
+              console.error("[Stripe Webhook] Error creating payment:", paymentError);
+            } else {
+              paymentId = payment?.id || null;
+            }
+          }
+
+          await supabase
             .from("invoices")
             .update({
-              statut: "paid",
-              date_paiement: new Date().toISOString(),
-              stripe_payment_intent_id: session.payment_intent as string,
+              stripe_payment_intent_id: providerRef,
               stripe_session_id: session.id,
             })
             .eq("id", invoiceId);
 
-          if (invoiceError) {
-            console.error("[Stripe Webhook] Error updating invoice:", invoiceError);
-            throw invoiceError;
-          }
+          const settlement = await syncInvoiceStatusFromPayments(supabase as any, invoiceId, paidAt);
 
-          // Créer l'enregistrement de paiement
-          const { data: payment, error: paymentError } = await supabase
-            .from("payments")
-            .insert({
-              invoice_id: invoiceId,
-              montant: (session.amount_total || 0) / 100, // Convertir centimes en euros
-              moyen: "cb",
-              provider_ref: session.payment_intent as string,
-              date_paiement: new Date().toISOString(),
-              statut: "succeeded",
-            })
-            .select("id")
-            .single();
+          if (paymentId) {
+            const receiptGenerated = !!settlement?.isSettled;
+            if (settlement?.isSettled) {
+              await processReceiptGeneration(
+                supabase,
+                invoiceId,
+                paymentId,
+                (session.amount_total || 0) / 100
+              );
+            }
+            await emitPaymentSucceededEvent(supabase, paymentId, invoiceId, (session.amount_total || 0) / 100, {
+              invoiceSettled: settlement?.isSettled ?? false,
+              receiptGenerated,
+            });
 
-          if (paymentError) {
-            console.error("[Stripe Webhook] Error creating payment:", paymentError);
-          } else {
-             // Générer la quittance PDF
-             await processReceiptGeneration(
-               supabase, 
-               invoiceId, 
-               payment.id, 
-               (session.amount_total || 0) / 100
-             );
-
-             // ✅ SOTA 2026: Émettre événement pour notifications
-             await emitPaymentSucceededEvent(supabase, payment.id, invoiceId, (session.amount_total || 0) / 100);
+            await reconcileOwnerTransfer(supabase as any, {
+              paymentId,
+              invoiceId,
+              paymentIntentId: providerRef,
+              amountCents: session.amount_total || 0,
+              paymentMethod: session.payment_method_types?.[0] || "card",
+            });
           }
 
           // Récupérer les infos pour la notification
@@ -430,7 +340,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          console.log(`[Stripe Webhook] Invoice ${invoiceId} marked as paid`);
+          console.log(`[Stripe Webhook] Invoice ${invoiceId} payment synchronized`);
         }
         break;
       }
@@ -443,48 +353,69 @@ export async function POST(request: NextRequest) {
         const invoiceId = paymentIntent.metadata?.invoice_id;
 
         if (invoiceId) {
-          // Vérifier si le paiement n'a pas déjà été traité
+          const paidAt = new Date().toISOString();
           const { data: existingPayment } = await supabase
             .from("payments")
             .select("id")
             .eq("provider_ref", paymentIntent.id)
             .maybeSingle();
 
-          if (!existingPayment) {
-            // Mettre à jour la facture
-            await supabase
-              .from("invoices")
+          let paymentId: string | null = null;
+          if (existingPayment) {
+            const { data: updatedPayment } = await supabase
+              .from("payments")
               .update({
-                statut: "paid",
-                date_paiement: new Date().toISOString(),
-                stripe_payment_intent_id: paymentIntent.id,
+                statut: "succeeded",
+                date_paiement: paidAt,
               })
-              .eq("id", invoiceId);
-
-            // Créer le paiement
+              .eq("id", existingPayment.id)
+              .select("id")
+              .single();
+            paymentId = updatedPayment?.id || null;
+          } else {
             const { data: newPayment } = await supabase.from("payments").insert({
               invoice_id: invoiceId,
               montant: paymentIntent.amount / 100,
               moyen: "cb",
               provider_ref: paymentIntent.id,
-              date_paiement: new Date().toISOString(),
+              date_paiement: paidAt,
               statut: "succeeded",
             }).select("id").single();
+            paymentId = newPayment?.id || null;
+          }
 
-            console.log(`[Stripe Webhook] Payment intent ${paymentIntent.id} processed`);
-            
-            // Générer la quittance PDF
-            if (newPayment) {
+          await supabase
+            .from("invoices")
+            .update({
+              stripe_payment_intent_id: paymentIntent.id,
+            })
+            .eq("id", invoiceId);
+
+          const settlement = await syncInvoiceStatusFromPayments(supabase as any, invoiceId, paidAt);
+
+          console.log(`[Stripe Webhook] Payment intent ${paymentIntent.id} processed`);
+          if (paymentId) {
+            const receiptGenerated = !!settlement?.isSettled;
+            if (settlement?.isSettled) {
               await processReceiptGeneration(
-                supabase, 
-                invoiceId, 
-                newPayment.id, 
+                supabase,
+                invoiceId,
+                paymentId,
                 paymentIntent.amount / 100
               );
-
-              // ✅ SOTA 2026: Émettre événement pour notifications
-              await emitPaymentSucceededEvent(supabase, newPayment.id, invoiceId, paymentIntent.amount / 100);
             }
+            await emitPaymentSucceededEvent(supabase, paymentId, invoiceId, paymentIntent.amount / 100, {
+              invoiceSettled: settlement?.isSettled ?? false,
+              receiptGenerated,
+            });
+
+            await reconcileOwnerTransfer(supabase as any, {
+              paymentId,
+              invoiceId,
+              paymentIntentId: paymentIntent.id,
+              amountCents: paymentIntent.amount,
+              paymentMethod: paymentIntent.payment_method_types?.[0] || "card",
+            });
           }
         }
         break;
@@ -548,15 +479,22 @@ export async function POST(request: NextRequest) {
             })
             .eq("id", subscription.id);
 
-          // Créer une entrée dans l'historique des factures d'abonnement
-          await supabase.from("subscription_invoices").insert({
-            subscription_id: subscription.id,
-            stripe_invoice_id: invoice.id,
-            amount: (invoice.amount_paid || 0) / 100,
-            status: "paid",
-            invoice_pdf_url: invoice.invoice_pdf,
-            created_at: new Date().toISOString(),
-          });
+          await supabase.from("subscription_invoices").upsert(
+            {
+              subscription_id: subscription.id,
+              stripe_invoice_id: invoice.id,
+              amount_due: invoice.amount_due || 0,
+              amount_paid: invoice.amount_paid || 0,
+              amount_remaining: invoice.amount_remaining || 0,
+              status: invoice.status || "paid",
+              hosted_invoice_url: invoice.hosted_invoice_url,
+              invoice_pdf: invoice.invoice_pdf,
+              paid_at: invoice.status_transitions?.paid_at
+                ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
+                : new Date().toISOString(),
+            },
+            { onConflict: "stripe_invoice_id" }
+          );
 
           console.log(`[Stripe Webhook] Subscription invoice paid: ${invoice.id}`);
         }
@@ -690,18 +628,38 @@ export async function POST(request: NextRequest) {
           .maybeSingle();
 
         if (connectAccount) {
-          await supabase.from("stripe_transfers").insert({
-            connect_account_id: connectAccount.id,
-            stripe_transfer_id: transfer.id,
-            stripe_payment_intent_id: transfer.source_transaction as string,
-            amount: transfer.amount,
-            currency: transfer.currency,
-            net_amount: transfer.amount, // Sans commission pour l'instant
-            status: "paid",
-            description: transfer.description,
-            metadata: transfer.metadata,
-            completed_at: new Date().toISOString(),
-          });
+          const { data: existingTransfer } = await supabase
+            .from("stripe_transfers")
+            .select("id")
+            .eq("stripe_transfer_id", transfer.id)
+            .maybeSingle();
+
+          const existingTransferId = (existingTransfer as { id?: string } | null)?.id;
+
+          if (existingTransferId) {
+            await supabase
+              .from("stripe_transfers")
+              .update({
+                status: "paid",
+                description: transfer.description,
+                metadata: transfer.metadata,
+                completed_at: new Date().toISOString(),
+              })
+              .eq("id", existingTransferId);
+          } else {
+            await supabase.from("stripe_transfers").insert({
+              connect_account_id: connectAccount.id,
+              stripe_transfer_id: transfer.id,
+              stripe_payment_intent_id: transfer.source_transaction as string,
+              amount: transfer.amount,
+              currency: transfer.currency,
+              net_amount: transfer.amount,
+              status: "paid",
+              description: transfer.description,
+              metadata: transfer.metadata,
+              completed_at: new Date().toISOString(),
+            });
+          }
 
           console.log(`[Stripe Webhook] Transfer created: ${transfer.id}`);
         }

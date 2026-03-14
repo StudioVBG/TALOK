@@ -47,15 +47,31 @@ export async function GET(
       },
     });
 
-    // Vérifier que la propriété existe avec serviceClient pour éviter les problèmes RLS
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
+    }
+
+    // Vérifier que la propriété existe et qu'elle appartient au propriétaire
     const { data: property } = await serviceClient
       .from("properties")
-      .select("id")
+      .select("id, owner_id")
       .eq("id", id as any)
       .maybeSingle();
 
     if (!property) {
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
+    }
+
+    const isOwner = property.owner_id === profile.id;
+    const isAdmin = profile.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 
     // Utiliser serviceClient pour récupérer les photos pour éviter les problèmes RLS

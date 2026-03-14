@@ -5,20 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
   Building2,
-  Users,
-  FileText,
-  Settings,
-  Euro,
-  UserCog,
-  ClipboardList,
-  HelpCircle,
-  PieChart,
-  FolderOpen,
   MoreHorizontal,
   X,
 } from "lucide-react";
+import { getSecondaryRoleManifest } from "@/lib/navigation/secondary-role-manifest";
 
 interface AgencySidebarProps {
   profile: {
@@ -30,63 +21,8 @@ interface AgencySidebarProps {
   agencyName: string;
 }
 
-const navigation = [
-  {
-    name: "Dashboard",
-    href: "/agency/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    name: "Mandats",
-    href: "/agency/mandates",
-    icon: FileText,
-  },
-  {
-    name: "Propriétaires",
-    href: "/agency/owners",
-    icon: Users,
-  },
-  {
-    name: "Biens gérés",
-    href: "/agency/properties",
-    icon: Building2,
-  },
-  {
-    name: "Locataires",
-    href: "/agency/tenants",
-    icon: UserCog,
-  },
-  {
-    name: "Finances",
-    href: "/agency/finances",
-    icon: Euro,
-  },
-  {
-    name: "Commissions",
-    href: "/agency/commissions",
-    icon: PieChart,
-  },
-  {
-    name: "Documents",
-    href: "/agency/documents",
-    icon: FolderOpen,
-  },
-  {
-    name: "Équipe",
-    href: "/agency/team",
-    icon: ClipboardList,
-  },
-  {
-    name: "Paramètres",
-    href: "/agency/settings",
-    icon: Settings,
-  },
-  {
-    name: "Aide",
-    href: "/agency/help",
-    icon: HelpCircle,
-  },
-];
+const manifest = getSecondaryRoleManifest("agency");
+const navigation = [...manifest.navigation, ...manifest.footerNavigation];
 
 export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
   const pathname = usePathname();

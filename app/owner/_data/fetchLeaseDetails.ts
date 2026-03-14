@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { Database, PropertyRow, LeaseRow, LeaseSignerRow, PaymentRow, InvoiceRow, DocumentRow, EDLItemRow, ProfileRow } from "@/lib/supabase/database.types";
+import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
 
 // ✅ SOTA 2026: Types stricts pour l'intégrité des données
 
@@ -97,6 +98,7 @@ export interface Lease {
   // ✅ SSOT 2026: Données pré-calculées
   has_signed_edl: boolean;
   has_paid_initial: boolean;
+  has_keys_handed_over?: boolean;
   property_id?: string | null;
   unit_id?: string | null;
   properties?: PropertyRow | null;
@@ -425,13 +427,18 @@ async function fetchLeaseDetailsFallback(
     };
   }
 
-  // 8. Vérifier si la première facture est payée (SSOT 2026)
-  const { data: initialInvoice } = await supabase
-    .from("invoices")
-    .select("statut")
-    .eq("lease_id", leaseId)
-    .eq("metadata->>type", "initial_invoice")
-    .maybeSingle();
+  // 8. Vérifier si la première facture est réglée et si la remise des clés est confirmée
+  const [initialInvoiceSettlement, keyHandover] = await Promise.all([
+    getInitialInvoiceSettlement(supabase as any, leaseId),
+    (supabase
+      .from("key_handovers")
+      .select("id, confirmed_at")
+      .eq("lease_id", leaseId)
+      .not("confirmed_at", "is", null)
+      .order("confirmed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()) as any,
+  ]);
 
   // Construire le résultat — on mappe TOUS les champs utilisés par mapLeaseToTemplate
   type PropertyRowExtended = PropertyRow & { numero_rue?: string; nom_rue?: string; dpe_date_validite?: string | null; dpe_cout_min?: number | null; dpe_cout_max?: number | null; has_parking?: boolean; cuisine_equipee?: boolean; interphone?: boolean; digicode?: boolean; fibre_optique?: boolean; crep_date?: string | null; crep_plomb?: boolean; elec_date?: string | null; elec_anomalies?: boolean; elec_nb_anomalies?: number | null; gaz_date?: string | null; gaz_anomalies?: boolean; gaz_type_anomalie?: string | null; erp_date?: string | null; bruit_date?: string | null; bruit_zone?: string | null; eau_chaude_energie?: string | null };
@@ -501,7 +508,7 @@ async function fetchLeaseDetailsFallback(
   };
 
   // SSOT 2026 : Consolider les données financières
-  const initialInvoiceTyped = initialInvoice as { statut?: string } | null;
+  const confirmedKeyHandover = keyHandover?.data as { id?: string; confirmed_at?: string | null } | null;
   const cleanLease: Lease = {
     ...leaseData,
     statut: leaseData.statut as LeaseStatus,
@@ -510,11 +517,14 @@ async function fetchLeaseDetailsFallback(
     loyer: property.loyer_hc ?? leaseData.loyer ?? 0,
     charges_forfaitaires: property.charges_mensuelles ?? leaseData.charges_forfaitaires ?? 0,
     has_signed_edl: edl?.status === "signed",
-    has_paid_initial: initialInvoiceTyped?.statut === "paid",
+    has_paid_initial: initialInvoiceSettlement?.isSettled ?? false,
     property_id: leaseData.property_id,
     unit_id: leaseData.unit_id,
     properties: propertyRow,
   };
+
+  (cleanLease as Lease & { has_keys_handed_over?: boolean }).has_keys_handed_over =
+    !!confirmedKeyHandover?.confirmed_at;
 
   // ✅ SOTA 2026: Auto-repair — lier les signers orphelins dont l'email matche un profil
   type SignerWithProfile = LeaseSignerRow & {

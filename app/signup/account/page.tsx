@@ -118,6 +118,10 @@ export default function AccountCreationPage() {
         return "garant";
       case "syndic":
         return "syndic";
+      case "agency":
+        return "agence";
+      case "copro":
+        return "copropriétaire";
       default:
         return "";
     }
@@ -129,6 +133,8 @@ export default function AccountCreationPage() {
     provider: "/provider/onboarding/profile",
     guarantor: inviteToken ? `/guarantor/onboarding/context?invite=${inviteToken}` : "/guarantor/onboarding/context",
     syndic: "/syndic/onboarding/profile",
+    agency: "/agency/onboarding/profile",
+    copro: "/copro/dashboard",
     admin: "/dashboard",
     platform_admin: "/admin",
   };

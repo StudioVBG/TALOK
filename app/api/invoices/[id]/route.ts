@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/helpers/api-error";
 import { invoiceSchema } from "@/lib/validations";
 import type { InvoiceUpdate, InvoiceRow, ProfileRow } from "@/lib/supabase/typed-client";
+import { getInvoiceSettlement } from "@/lib/services/invoice-status.service";
 
 /**
  * GET /api/invoices/[id] - Récupérer une facture par ID
@@ -39,7 +40,28 @@ export async function GET(
 
     const { data: invoice, error } = await supabase
       .from("invoices")
-      .select("*")
+      .select(`
+        *,
+        lease:leases(
+          id,
+          type_bail,
+          property:properties(
+            id,
+            adresse_complete
+          )
+        ),
+        tenant:profiles!invoices_tenant_id_fkey(
+          id,
+          prenom,
+          nom,
+          email
+        ),
+        owner:profiles!invoices_owner_id_fkey(
+          id,
+          prenom,
+          nom
+        )
+      `)
       .eq("id", id)
       .single();
 
@@ -61,7 +83,23 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ invoice });
+    const { data: payments } = await supabase
+      .from("payments")
+      .select("id, montant, moyen, date_paiement, statut")
+      .eq("invoice_id", id)
+      .order("date_paiement", { ascending: false });
+
+    const settlement = await getInvoiceSettlement(supabase as any, id);
+
+    return NextResponse.json({
+      invoice: {
+        ...invoiceAny,
+        date_echeance: invoiceAny.date_echeance || invoiceAny.due_date || null,
+        property: invoiceAny.lease?.property || null,
+        payments: payments || [],
+        montant_paye: settlement?.totalPaid || 0,
+      },
+    });
   } catch (error: unknown) {
     return handleApiError(error);
   }

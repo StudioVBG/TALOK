@@ -135,6 +135,8 @@ export async function POST(request: Request) {
       tenantId = resolved?.id ?? null;
     }
 
+    const dueDate = `${validated.periode}-05`;
+
     // Créer la facture
     const { data: invoice, error: invoiceError } = await serviceClient
       .from("invoices")
@@ -146,6 +148,8 @@ export async function POST(request: Request) {
         montant_loyer: Number(leaseData.loyer || 0),
         montant_charges: Number(leaseData.charges_forfaitaires || 0),
         montant_total: Number(leaseData.loyer || 0) + Number(leaseData.charges_forfaitaires || 0),
+        date_echeance: dueDate,
+        due_date: dueDate,
         statut: "draft" as any,
         issuer_entity_id: leaseData.signatory_entity_id ?? null,
       } as any)

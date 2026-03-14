@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl, COPRO_ROLES } from "@/lib/helpers/role-redirects";
+import { getSecondaryRoleManifest } from "@/lib/navigation/secondary-role-manifest";
 import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
@@ -19,14 +20,7 @@ import {
   MessageSquare, Bell, Home, Settings
 } from "lucide-react";
 
-// Navigation copropriétaire
-const navigation = [
-  { name: "Dashboard", href: "/copro/dashboard", icon: Home },
-  { name: "Assemblées", href: "/copro/assemblies", icon: Calendar },
-  { name: "Charges", href: "/copro/charges", icon: Euro },
-  { name: "Documents", href: "/copro/documents", icon: FileText },
-  { name: "Signalements", href: "/copro/tickets", icon: MessageSquare },
-];
+const { navigation } = getSecondaryRoleManifest("copro");
 
 // COPRO_ROLES importé depuis lib/helpers/role-redirects.ts
 
