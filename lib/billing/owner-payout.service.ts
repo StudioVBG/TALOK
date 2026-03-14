@@ -106,6 +106,8 @@ export async function reconcileOwnerTransfer(
       invoice_id: params.invoiceId,
       payment_id: params.paymentId,
       owner_id: ownerId,
+      ...(params.paymentIntentId ? { payment_intent_id: params.paymentIntentId } : {}),
+      ...(params.sourceTransactionId ? { source_transaction_id: params.sourceTransactionId } : {}),
       payment_method: normalizedMethod,
       gross_amount_cents: String(params.amountCents),
       platform_fee_cents: String(fees.feeAmount),

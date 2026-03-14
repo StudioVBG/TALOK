@@ -180,6 +180,184 @@ async function syncSubscriptionFromCheckoutSession(
   }
 }
 
+function getStripeInvoiceSubscriptionId(
+  invoice: Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }
+) {
+  return typeof invoice.subscription === "string"
+    ? invoice.subscription
+    : invoice.subscription?.id || null;
+}
+
+function getStripeInvoicePeriod(invoice: Stripe.Invoice) {
+  const firstLine = invoice.lines?.data?.[0];
+  return {
+    current_period_start: firstLine?.period?.start
+      ? new Date(firstLine.period.start * 1000).toISOString()
+      : null,
+    current_period_end: firstLine?.period?.end
+      ? new Date(firstLine.period.end * 1000).toISOString()
+      : null,
+  };
+}
+
+async function resolveSubscriptionRecord(
+  supabase: any,
+  stripeCustomerId?: string | null,
+  stripeSubscriptionId?: string | null
+) {
+  if (stripeSubscriptionId) {
+    const bySubscription = await supabase
+      .from("subscriptions")
+      .select("id, owner_id")
+      .eq("stripe_subscription_id", stripeSubscriptionId)
+      .maybeSingle();
+
+    if (bySubscription.data) {
+      return bySubscription.data as { id: string; owner_id?: string | null };
+    }
+  }
+
+  if (!stripeCustomerId) {
+    return null;
+  }
+
+  const byCustomer = await supabase
+    .from("subscriptions")
+    .select("id, owner_id")
+    .eq("stripe_customer_id", stripeCustomerId)
+    .maybeSingle();
+
+  return (byCustomer.data as { id: string; owner_id?: string | null } | null) ?? null;
+}
+
+async function upsertSubscriptionInvoiceRecord(
+  supabase: any,
+  subscriptionId: string,
+  invoice: Stripe.Invoice,
+  statusOverride?: string | null
+) {
+  await supabase.from("subscription_invoices").upsert(
+    {
+      subscription_id: subscriptionId,
+      stripe_invoice_id: invoice.id,
+      amount_due: invoice.amount_due || 0,
+      amount_paid: invoice.amount_paid || 0,
+      amount_remaining: invoice.amount_remaining || 0,
+      status: statusOverride || invoice.status || "open",
+      hosted_invoice_url: invoice.hosted_invoice_url,
+      invoice_pdf: invoice.invoice_pdf,
+      paid_at: invoice.status_transitions?.paid_at
+        ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
+        : null,
+    },
+    { onConflict: "stripe_invoice_id" }
+  );
+}
+
+async function syncSubscriptionFromInvoiceEvent(
+  supabase: any,
+  stripe: Stripe,
+  invoice: Stripe.Invoice & { subscription?: string | Stripe.Subscription | null },
+  statusOverride?: string | null
+) {
+  const stripeCustomerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id || null;
+  const stripeSubscriptionId = getStripeInvoiceSubscriptionId(invoice);
+
+  if (stripeSubscriptionId) {
+    try {
+      const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+      await syncSubscriptionStateFromStripeSubscription(supabase, stripeSubscription);
+    } catch (error) {
+      console.error("[Stripe Webhook] Impossible de synchroniser l'abonnement depuis la facture:", error);
+    }
+  }
+
+  const subscription = await resolveSubscriptionRecord(supabase, stripeCustomerId, stripeSubscriptionId);
+  if (!subscription) {
+    return null;
+  }
+
+  const invoicePeriod = getStripeInvoicePeriod(invoice);
+  const updatePayload: Record<string, unknown> = {
+    stripe_customer_id: stripeCustomerId,
+    stripe_subscription_id: stripeSubscriptionId,
+  };
+
+  if (statusOverride) {
+    updatePayload.status = statusOverride;
+  }
+  if (invoicePeriod.current_period_start) {
+    updatePayload.current_period_start = invoicePeriod.current_period_start;
+  }
+  if (invoicePeriod.current_period_end) {
+    updatePayload.current_period_end = invoicePeriod.current_period_end;
+  }
+
+  await supabase
+    .from("subscriptions")
+    .update(updatePayload)
+    .eq("id", subscription.id);
+
+  await upsertSubscriptionInvoiceRecord(supabase, subscription.id, invoice, statusOverride);
+
+  return subscription;
+}
+
+async function upsertPaymentAttempt(
+  supabase: any,
+  params: {
+    invoiceId: string;
+    amount: number;
+    method: string;
+    providerRef: string;
+    status: "pending" | "succeeded" | "failed";
+    paidAt?: string | null;
+  }
+) {
+  const { data: existingPayment } = await supabase
+    .from("payments")
+    .select("id, statut")
+    .eq("provider_ref", params.providerRef)
+    .maybeSingle();
+
+  const existing = existingPayment as { id?: string | null; statut?: string | null } | null;
+  const payload = {
+    invoice_id: params.invoiceId,
+    montant: params.amount,
+    moyen: params.method,
+    provider_ref: params.providerRef,
+    date_paiement: params.paidAt || null,
+    statut: params.status,
+  };
+
+  if (existing?.id) {
+    const { data: updatedPayment } = await supabase
+      .from("payments")
+      .update(payload)
+      .eq("id", existing.id)
+      .select("id")
+      .single();
+
+    return {
+      paymentId: (updatedPayment as { id?: string } | null)?.id || existing.id,
+      newlySucceeded: existing.statut !== "succeeded" && params.status === "succeeded",
+      newlyFailed: existing.statut !== "failed" && params.status === "failed",
+    };
+  }
+
+  const { data: createdPayment } = await supabase
+    .from("payments")
+    .insert(payload)
+    .select("id")
+    .single();
+
+  return {
+    paymentId: (createdPayment as { id?: string } | null)?.id || null,
+    newlySucceeded: params.status === "succeeded",
+    newlyFailed: params.status === "failed",
+  };
+}
+
 async function upsertStripePayout(
   supabase: any,
   stripeAccountId: string | null | undefined,
@@ -401,50 +579,17 @@ export async function POST(request: NextRequest) {
           console.log(`[Stripe Webhook] Processing payment for invoice: ${invoiceId}`);
           const providerRef = session.payment_intent as string;
           const paidAt = new Date().toISOString();
-
-          const { data: existingPayment } = await supabase
-            .from("payments")
-            .select("id")
-            .eq("provider_ref", providerRef)
-            .maybeSingle();
-
-          let paymentId: string | null = null;
-          if (existingPayment) {
-            const { data: updatedPayment, error: paymentUpdateError } = await supabase
-              .from("payments")
-              .update({
-                statut: "succeeded",
-                date_paiement: paidAt,
+          const paymentResult = providerRef
+            ? await upsertPaymentAttempt(supabase, {
+                invoiceId,
+                amount: (session.amount_total || 0) / 100,
+                method: "cb",
+                providerRef,
+                status: "succeeded",
+                paidAt,
               })
-              .eq("id", existingPayment.id)
-              .select("id")
-              .single();
-
-            if (paymentUpdateError) {
-              console.error("[Stripe Webhook] Error updating payment:", paymentUpdateError);
-            } else {
-              paymentId = updatedPayment?.id || null;
-            }
-          } else {
-            const { data: payment, error: paymentError } = await supabase
-              .from("payments")
-              .insert({
-                invoice_id: invoiceId,
-                montant: (session.amount_total || 0) / 100,
-                moyen: "cb",
-                provider_ref: providerRef,
-                date_paiement: paidAt,
-                statut: "succeeded",
-              })
-              .select("id")
-              .single();
-
-            if (paymentError) {
-              console.error("[Stripe Webhook] Error creating payment:", paymentError);
-            } else {
-              paymentId = payment?.id || null;
-            }
-          }
+            : { paymentId: null, newlySucceeded: false };
+          const paymentId = paymentResult.paymentId;
 
           await supabase
             .from("invoices")
@@ -456,7 +601,7 @@ export async function POST(request: NextRequest) {
 
           const settlement = await syncInvoiceStatusFromPayments(supabase as any, invoiceId, paidAt);
 
-          if (paymentId) {
+          if (paymentId && paymentResult.newlySucceeded) {
             const sourceTransactionId = await resolveSourceTransactionId(stripe, providerRef);
             const receiptGenerated = !!settlement?.isSettled;
             if (settlement?.isSettled) {
@@ -552,35 +697,15 @@ export async function POST(request: NextRequest) {
 
         if (invoiceId) {
           const paidAt = new Date().toISOString();
-          const { data: existingPayment } = await supabase
-            .from("payments")
-            .select("id")
-            .eq("provider_ref", paymentIntent.id)
-            .maybeSingle();
-
-          let paymentId: string | null = null;
-          if (existingPayment) {
-            const { data: updatedPayment } = await supabase
-              .from("payments")
-              .update({
-                statut: "succeeded",
-                date_paiement: paidAt,
-              })
-              .eq("id", existingPayment.id)
-              .select("id")
-              .single();
-            paymentId = updatedPayment?.id || null;
-          } else {
-            const { data: newPayment } = await supabase.from("payments").insert({
-              invoice_id: invoiceId,
-              montant: paymentIntent.amount / 100,
-              moyen: "cb",
-              provider_ref: paymentIntent.id,
-              date_paiement: paidAt,
-              statut: "succeeded",
-            }).select("id").single();
-            paymentId = newPayment?.id || null;
-          }
+          const paymentResult = await upsertPaymentAttempt(supabase, {
+            invoiceId,
+            amount: paymentIntent.amount / 100,
+            method: "cb",
+            providerRef: paymentIntent.id,
+            status: "succeeded",
+            paidAt,
+          });
+          const paymentId = paymentResult.paymentId;
 
           await supabase
             .from("invoices")
@@ -592,7 +717,7 @@ export async function POST(request: NextRequest) {
           const settlement = await syncInvoiceStatusFromPayments(supabase as any, invoiceId, paidAt);
 
           console.log(`[Stripe Webhook] Payment intent ${paymentIntent.id} processed`);
-          if (paymentId) {
+          if (paymentId && paymentResult.newlySucceeded) {
             const sourceTransactionId = await resolveSourceTransactionId(stripe, paymentIntent.id);
             const receiptGenerated = !!settlement?.isSettled;
             if (settlement?.isSettled) {
@@ -629,21 +754,21 @@ export async function POST(request: NextRequest) {
         const invoiceId = paymentIntent.metadata?.invoice_id;
 
         if (invoiceId) {
-          // Mettre à jour le statut de la facture
+          await upsertPaymentAttempt(supabase, {
+            invoiceId,
+            amount: paymentIntent.amount / 100,
+            method: "cb",
+            providerRef: paymentIntent.id,
+            status: "failed",
+            paidAt: new Date().toISOString(),
+          });
+
           await supabase
             .from("invoices")
-            .update({ statut: "late" })
+            .update({ stripe_payment_intent_id: paymentIntent.id })
             .eq("id", invoiceId);
 
-          // Enregistrer la tentative échouée
-          await supabase.from("payments").insert({
-            invoice_id: invoiceId,
-            montant: paymentIntent.amount / 100,
-            moyen: "cb",
-            provider_ref: paymentIntent.id,
-            date_paiement: new Date().toISOString(),
-            statut: "failed",
-          });
+          await syncInvoiceStatusFromPayments(supabase as any, invoiceId, null);
 
           console.log(`[Stripe Webhook] Payment failed for invoice ${invoiceId}`);
         }
@@ -659,10 +784,7 @@ export async function POST(request: NextRequest) {
         const stripeInvoice = invoice as Stripe.Invoice & {
           subscription?: string | Stripe.Subscription | null;
         };
-        const stripeSubscriptionId =
-          typeof stripeInvoice.subscription === "string"
-            ? stripeInvoice.subscription
-            : stripeInvoice.subscription?.id || null;
+        const stripeSubscriptionId = getStripeInvoiceSubscriptionId(stripeInvoice);
 
         // Trouver l'abonnement lié
         const { data: subscription } = await supabase
@@ -705,6 +827,33 @@ export async function POST(request: NextRequest) {
           );
 
           console.log(`[Stripe Webhook] Subscription invoice paid: ${invoice.id}`);
+        }
+        break;
+      }
+
+      case "invoice.payment_failed":
+      case "invoice.payment_action_required": {
+        const invoice = event.data.object as Stripe.Invoice & {
+          subscription?: string | Stripe.Subscription | null;
+        };
+        const subscription = await syncSubscriptionFromInvoiceEvent(
+          supabase,
+          stripe,
+          invoice,
+          "past_due"
+        );
+
+        if (subscription?.owner_id) {
+          await supabase.rpc("create_notification", {
+            p_recipient_id: subscription.owner_id,
+            p_type: "alert",
+            p_title: "Probleme de paiement abonnement",
+            p_message:
+              event.type === "invoice.payment_action_required"
+                ? "Votre abonnement requiert une action sur votre moyen de paiement."
+                : "Le renouvellement de votre abonnement a echoue. Verifiez votre carte.",
+            p_link: "/owner/money?tab=forfait",
+          });
         }
         break;
       }
@@ -769,6 +918,28 @@ export async function POST(request: NextRequest) {
           }
 
           console.log(`[Stripe Webhook] Subscription canceled: ${subscription.id}`);
+        }
+        break;
+      }
+
+      case "customer.subscription.trial_will_end": {
+        const subscription = event.data.object as Stripe.Subscription;
+        await syncSubscriptionStateFromStripeSubscription(supabase, subscription);
+
+        const resolvedSub = await resolveSubscriptionRecord(
+          supabase,
+          typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id || null,
+          subscription.id
+        );
+
+        if (resolvedSub?.owner_id) {
+          await supabase.rpc("create_notification", {
+            p_recipient_id: resolvedSub.owner_id,
+            p_type: "alert",
+            p_title: "Fin d'essai imminente",
+            p_message: "Votre periode d'essai arrive bientot a son terme. Verifiez votre carte pour eviter une interruption.",
+            p_link: "/owner/money?tab=forfait",
+          });
         }
         break;
       }
@@ -863,8 +1034,16 @@ export async function POST(request: NextRequest) {
             await supabase.from("stripe_transfers").insert({
               connect_account_id: connectAccount.id,
               stripe_transfer_id: transfer.id,
-              stripe_payment_intent_id: transfer.source_transaction as string,
-              stripe_source_transaction_id: transfer.source_transaction as string,
+              stripe_payment_intent_id:
+                typeof transfer.metadata?.payment_intent_id === "string"
+                  ? transfer.metadata.payment_intent_id
+                  : null,
+              stripe_source_transaction_id:
+                typeof transfer.source_transaction === "string"
+                  ? transfer.source_transaction
+                  : typeof transfer.metadata?.source_transaction_id === "string"
+                    ? transfer.metadata.source_transaction_id
+                    : null,
               amount: transfer.amount,
               currency: transfer.currency,
               net_amount: transfer.amount,
