@@ -254,6 +254,15 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan, context }: 
             </div>
           </div>
 
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+            <p className="text-sm text-slate-200 font-medium">
+              Activation simple en 1 etape
+            </p>
+            <p className="text-sm text-slate-400 mt-1">
+              Vous choisissez votre forfait, vous ajoutez votre carte, puis l&apos;abonnement se renouvelle automatiquement jusqu&apos;a annulation.
+            </p>
+          </div>
+
           {/* Plans cards */}
           <div className={cn(
             "grid gap-4",

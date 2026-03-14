@@ -12,7 +12,6 @@ import Link from "next/link";
 import {
   useSubscription,
   UpgradeModal,
-  CancelModal,
 } from "@/components/subscription";
 import {
   PLANS,
@@ -78,6 +77,7 @@ import type { SubscriptionInvoice } from "@/lib/subscriptions/types";
 import { PaymentMethod } from "@/components/billing/PaymentMethod";
 import { useOwnerCurrentPaymentMethod } from "@/lib/hooks/use-owner-payment-methods";
 import { isExpiringSoon } from "@/lib/billing-utils";
+import { useStripePortal } from "@/hooks/useStripePortal";
 
 // ── Constants ──
 
@@ -519,10 +519,10 @@ export function MonForfaitTab() {
   } = useSubscription();
 
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [showCancel, setShowCancel] = useState(false);
   const [showFeatures, setShowFeatures] = useState(false);
 
   const { data: ownerPaymentMethod } = useOwnerCurrentPaymentMethod();
+  const { mutateAsync: openBillingPortal, isPending: isOpeningBillingPortal } = useStripePortal();
   const plan = PLANS[currentPlan];
   const isPaid = currentPlan !== "gratuit";
   const canUpgrade = getPlanLevel(currentPlan) < getPlanLevel("enterprise_xl");
@@ -591,6 +591,21 @@ export function MonForfaitTab() {
       }
     } catch {
       toast({ title: "Erreur", description: "Impossible de réactiver l'abonnement.", variant: "destructive" });
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      await openBillingPortal();
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Impossible d'ouvrir la gestion de l'abonnement.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -855,13 +870,17 @@ export function MonForfaitTab() {
                 {canUpgrade && (
                   <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500" onClick={() => setShowUpgrade(true)}>
                     <ArrowUpRight className="w-4 h-4 mr-2" aria-hidden="true" />
-                    Changer de forfait
+                    Choisir ou modifier mon forfait
                   </Button>
                 )}
                 {isPaid && !isCanceled && (
-                  <Button variant="outline" className="border-red-500/30 text-red-600 hover:bg-red-500/10" onClick={() => setShowCancel(true)}>
-                    <X className="w-4 h-4 mr-2" aria-hidden="true" />
-                    Résilier
+                  <Button variant="outline" onClick={handleManageSubscription} disabled={isOpeningBillingPortal}>
+                    {isOpeningBillingPortal ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <CreditCard className="w-4 h-4 mr-2" aria-hidden="true" />
+                    )}
+                    Gerer paiement et annulation
                   </Button>
                 )}
                 {currentPlan === "gratuit" && (
@@ -891,6 +910,9 @@ export function MonForfaitTab() {
                 <CardDescription>Carte utilisée pour votre abonnement</CardDescription>
               </CardHeader>
               <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Une seule action: ajoutez votre carte pour le forfait, puis les renouvellements et l&apos;annulation se gerent ensuite depuis l&apos;espace de facturation.
+                </p>
                 <PaymentMethod
                   paymentMethod={ownerPaymentMethod ?? null}
                   manageUrl="/owner/money?tab=paiement"
@@ -948,7 +970,6 @@ export function MonForfaitTab() {
 
         {/* Modals */}
         <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} />
-        <CancelModal open={showCancel} onClose={() => setShowCancel(false)} onSuccess={() => refresh()} />
       </div>
     </TooltipProvider>
   );

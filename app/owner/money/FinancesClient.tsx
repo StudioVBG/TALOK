@@ -207,7 +207,7 @@ function MoyensPaiementTab() {
         <CardHeader>
           <CardTitle className="text-lg">Cartes pour votre abonnement</CardTitle>
           <CardDescription>
-            Sélectionnez la carte utilisée pour payer votre forfait Talok. Vos données sont sécurisées par Stripe.
+            Ajoutez simplement une carte pour votre forfait. Les renouvellements sont ensuite automatiques.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -292,7 +292,7 @@ function MoyensPaiementTab() {
                   <CreditCard className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                   <p className="font-medium">Aucune carte enregistrée</p>
                   <p className="text-sm text-muted-foreground mt-1 mb-4">
-                    Ajoutez une carte pour payer votre abonnement Talok
+                    Ajoutez une carte pour activer et renouveler votre forfait
                   </p>
                 </div>
               )}

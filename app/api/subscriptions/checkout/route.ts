@@ -147,7 +147,8 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      payment_method_types: ["card", "sepa_debit"],
+      // Parcours volontairement simple pour l'abonnement SaaS: carte bancaire uniquement.
+      payment_method_types: ["card"],
       line_items: lineItems,
       success_url:
         success_url || `${process.env.NEXT_PUBLIC_APP_URL}/owner/money?tab=forfait&success=true`,
