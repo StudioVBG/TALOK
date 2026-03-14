@@ -3,10 +3,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -29,20 +29,14 @@ import {
   Star,
   MessageSquare,
   FileText,
-  History,
   Phone,
   Mail,
   Home,
   Calendar,
   Euro,
-  TrendingUp,
-  TrendingDown,
-  AlertCircle,
-  CheckCircle2,
   MoreHorizontal,
   Filter,
   ArrowUpDown,
-  Building2,
   Clock,
   Wallet,
 } from "lucide-react";
@@ -52,7 +46,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { cn } from "@/lib/utils";
 
-interface TenantWithDetails {
+export interface TenantWithDetails {
   id: string;
   profile_id: string;
   prenom: string;
@@ -393,6 +387,8 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
       : 0,
     totalMonthlyRent: tenants.filter(t => t.lease_status === "active").reduce((sum, t) => sum + t.loyer + t.charges, 0),
   };
+  const hasActiveFilters = searchQuery.trim().length > 0 || statusFilter !== "all";
+  const visibleTenantsLabel = `${filteredTenants.length} locataire${filteredTenants.length > 1 ? "s" : ""} affiché${filteredTenants.length > 1 ? "s" : ""}`;
 
   if (tenants.length === 0) {
     return (
@@ -526,16 +522,42 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
           </Select>
         </motion.div>
 
+        {filteredTenants.length > 0 && (
+          <motion.div variants={itemVariants}>
+            <Card className="border-slate-200/70 bg-slate-50/80">
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{visibleTenantsLabel}</p>
+                  <p className="text-sm text-slate-500">
+                    {hasActiveFilters
+                      ? `Affichage filtré sur ${stats.total} locataire${stats.total > 1 ? "s" : ""}.`
+                      : "Tous les locataires chargés sont affichés ci-dessous."}
+                  </p>
+                </div>
+                {hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setStatusFilter("all");
+                    }}
+                  >
+                    Réinitialiser les filtres
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {/* Liste des locataires */}
         <motion.div
           variants={containerVariants}
           className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
         >
-          <AnimatePresence mode="popLayout">
-            {filteredTenants.map((tenant) => (
-              <TenantCard key={tenant.id} tenant={tenant} />
-            ))}
-          </AnimatePresence>
+          {filteredTenants.map((tenant) => (
+            <TenantCard key={tenant.id} tenant={tenant} />
+          ))}
         </motion.div>
 
         {/* Message si aucun résultat */}
