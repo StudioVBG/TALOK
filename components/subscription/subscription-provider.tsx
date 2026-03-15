@@ -15,6 +15,7 @@ import {
   hasPlanFeature,
   isSubscriptionStatusEntitled,
 } from "@/lib/subscriptions/plans";
+import { resolveCurrentPlan } from "@/lib/subscriptions/resolve-current-plan";
 import type { SubscriptionWithPlan, UsageSummary } from "@/lib/subscriptions/types";
 
 // ============================================
@@ -72,6 +73,7 @@ export function SubscriptionProvider({
 }: SubscriptionProviderProps) {
   const [subscription, setSubscription] = useState<SubscriptionWithPlan | null>(initialSubscription);
   const [usage, setUsage] = useState<UsageSummary | null>(initialUsage);
+  const [usagePlanSlug, setUsagePlanSlug] = useState<PlanSlug | null>(null);
   const [loading, setLoading] = useState(!initialSubscription);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,8 +84,8 @@ export function SubscriptionProvider({
 
   // Current plan slug - gratuit par défaut pour les nouveaux utilisateurs
   const currentPlan = useMemo<PlanSlug>(
-    () => (subscription?.plan_slug as PlanSlug) || "gratuit",
-    [subscription]
+    () => resolveCurrentPlan(subscription?.plan_slug, usagePlanSlug),
+    [subscription?.plan_slug, usagePlanSlug]
   );
 
   // Plan config
@@ -95,6 +97,8 @@ export function SubscriptionProvider({
 
   const fetchSubscription = useCallback(async () => {
     try {
+      setError(null);
+      setUsagePlanSlug(null);
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -102,6 +106,7 @@ export function SubscriptionProvider({
       if (!user) {
         setSubscription(null);
         setUsage(null);
+        setUsagePlanSlug(null);
         setLoading(false);
         return;
       }
@@ -136,6 +141,7 @@ export function SubscriptionProvider({
         // Pas de profil = pas d'abonnement
         setSubscription(null);
         setUsage(null);
+        setUsagePlanSlug(null);
         setLoading(false);
         return;
       }
@@ -204,6 +210,9 @@ export function SubscriptionProvider({
       if (usageRes.ok) {
         const usageData = await usageRes.json();
         setUsage(usageData.usage);
+        setUsagePlanSlug(resolveCurrentPlan(undefined, usageData.plan_slug));
+      } else {
+        setUsagePlanSlug(null);
       }
 
       // Succès : fin du chargement + reset retry counter
@@ -245,6 +254,7 @@ export function SubscriptionProvider({
       if (event === "SIGNED_OUT") {
         setSubscription(null);
         setUsage(null);
+        setUsagePlanSlug(null);
       }
     });
 
