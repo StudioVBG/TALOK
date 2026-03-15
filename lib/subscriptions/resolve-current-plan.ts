@@ -1,7 +1,11 @@
 import { PLANS, type PlanSlug } from "./plans";
 
 function isKnownPlanSlug(value?: string | null): value is PlanSlug {
-  return Boolean(value) && Object.prototype.hasOwnProperty.call(PLANS, value);
+  if (!value) {
+    return false;
+  }
+
+  return Object.prototype.hasOwnProperty.call(PLANS, value);
 }
 
 /**
