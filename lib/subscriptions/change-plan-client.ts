@@ -36,8 +36,7 @@ export async function changePlanForCurrentUser(
 
   const needsCheckout =
     !hasStripeSubscription ||
-    currentPlanSlug === "gratuit" ||
-    (getPlanLevel(planSlug) > getPlanLevel(currentPlanSlug) && currentPlanSlug === "gratuit");
+    currentPlanSlug === "gratuit";
 
   if (needsCheckout) {
     const response = await fetch("/api/subscriptions/checkout", {

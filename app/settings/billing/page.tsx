@@ -77,6 +77,7 @@ import {
 } from "@/components/ui/dialog";
 import Link from "next/link";
 import { changePlanForCurrentUser } from "@/lib/subscriptions/change-plan-client";
+import { isValidPlanSlug, type PlanSlug } from "@/lib/subscriptions/plans";
 
 // ============================================
 // TYPES
@@ -999,7 +1000,12 @@ export default function BillingPage() {
         throw new Error("Aucun forfait actif a modifier.");
       }
 
-      const result = await changePlanForCurrentUser(subscription.plan.slug, cycle);
+      const planSlug = subscription.plan.slug;
+      if (!isValidPlanSlug(planSlug)) {
+        throw new Error("Forfait invalide.");
+      }
+
+      const result = await changePlanForCurrentUser(planSlug as PlanSlug, cycle);
       if (result.mode === "checkout" && result.url) {
         window.location.href = result.url;
         return;

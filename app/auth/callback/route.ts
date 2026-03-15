@@ -70,10 +70,15 @@ export async function GET(request: Request) {
       if (!profileData?.onboarding_completed_at) {
         switch (profileData.role) {
           case "owner": {
+            const ownerId = profileData.id;
+            if (!ownerId) {
+              return NextResponse.redirect(new URL("/signup/role", origin));
+            }
+
             const { data: ownerSubscription } = await supabase
               .from("subscriptions")
               .select("selected_plan_at")
-              .eq("owner_id", profileData.id)
+              .eq("owner_id", ownerId)
               .maybeSingle();
 
             if (!(ownerSubscription as { selected_plan_at?: string | null } | null)?.selected_plan_at) {
